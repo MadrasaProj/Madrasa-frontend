@@ -1,27 +1,115 @@
 import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 
 export type UserRole = "admin" | "teacher" | "parent" | "committee";
+export type AuthActorType =
+  | "SUPER_ADMIN"
+  | "CLIENT_ADMIN"
+  | "TEACHER"
+  | "PARENT";
 
 interface User {
   id: string;
   name: string;
   role: UserRole;
-  email: string;
+  actorType: AuthActorType;
+  tenantSlug?: string;
+  clientId?: string;
+  defaultAcademicYearId?: string | null;
+  parentPhone?: string;
+  accessibleStudentIds?: string[];
 }
 
 interface AuthStore {
   user: User | null;
+  accessToken: string | null;
   isLoggedIn: boolean;
-  login: (user: User) => void;
+  hasHydrated: boolean;
+  login: (session: { user: User; accessToken: string }) => void;
   logout: () => void;
+  markHydrated: () => void;
 }
 
-export const useAuthStore = create<AuthStore>((set) => ({
-  user: null,
-  isLoggedIn: false,
-  login: (user) => set({ user, isLoggedIn: true }),
-  logout: () => set({ user: null, isLoggedIn: false }),
-}));
+export type AuthSessionPayload = {
+  access_token: string;
+  user: {
+    sub: string;
+    name: string;
+    role: AuthActorType | string;
+    actorType?: AuthActorType | string;
+    client?: {
+      slug?: string;
+      subdomain?: string;
+    };
+    clientId?: string;
+    defaultAcademicYearId?: string | null;
+    parentPhone?: string;
+    accessibleStudentIds?: string[];
+  };
+};
+
+const routeRoleByActor: Record<AuthActorType, UserRole> = {
+  SUPER_ADMIN: "admin",
+  CLIENT_ADMIN: "admin",
+  TEACHER: "teacher",
+  PARENT: "parent",
+};
+
+export function normalizeUserSession(payload: AuthSessionPayload) {
+  const rawActorType = payload.user.actorType ?? payload.user.role;
+  const actorType: AuthActorType =
+    rawActorType === "SUPER_ADMIN" ||
+    rawActorType === "CLIENT_ADMIN" ||
+    rawActorType === "TEACHER" ||
+    rawActorType === "PARENT"
+      ? rawActorType
+      : "CLIENT_ADMIN";
+  return {
+    accessToken: payload.access_token,
+    user: {
+      id: payload.user.sub,
+      name: payload.user.name,
+      role: routeRoleByActor[actorType],
+      actorType,
+      tenantSlug: payload.user.client?.slug ?? payload.user.client?.subdomain,
+      clientId: payload.user.clientId,
+      defaultAcademicYearId: payload.user.defaultAcademicYearId ?? null,
+      parentPhone: payload.user.parentPhone,
+      accessibleStudentIds: payload.user.accessibleStudentIds ?? [],
+    },
+  };
+}
+
+export const useAuthStore = create<AuthStore>()(
+  persist(
+    (set) => ({
+      user: null,
+      accessToken: null,
+      isLoggedIn: false,
+      hasHydrated: false,
+      login: ({ user, accessToken }) =>
+        set({
+          user,
+          accessToken,
+          isLoggedIn: true,
+        }),
+      logout: () => set({ user: null, accessToken: null, isLoggedIn: false }),
+      markHydrated: () => set({ hasHydrated: true }),
+    }),
+    {
+      name: "madrasa-auth-session",
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        user: state.user,
+        accessToken: state.accessToken,
+        isLoggedIn: state.isLoggedIn,
+      }),
+      onRehydrateStorage: () => (state) => {
+        state?.markHydrated();
+      },
+    },
+  ),
+);
 
 // Demo credentials
 export const demoCredentials = [

@@ -1,0 +1,10 @@
+import { redirect } from "next/navigation";
+
+export default async function LegacyTenantLoginPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  redirect(`/m/${slug}/admin/login`);
+}
