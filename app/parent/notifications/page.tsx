@@ -1,86 +1,131 @@
-"use client";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { notifications } from "@/mock-data";
-import { motion } from "framer-motion";
-import { Bell, BookOpen, ClipboardList, GraduationCap, CreditCard, FileText } from "lucide-react";
+import {
+  getNotifications, markNotificationRead,
+  type NotificationRecord,
+} from "@/lib/notifications-api";
+import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
-import { useLanguageStore } from "@/store/language";
-import { t } from "@/lib/i18n";
+import {
+  Bell, BookOpen, ClipboardList, GraduationCap, CreditCard,
+  FileText, Loader2, RefreshCw, CheckCheck,
+} from "lucide-react";
+import { motion } from "framer-motion";
 
-const typeConfig: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
-  attendance: { icon: ClipboardList, color: "text-emerald-700", bg: "bg-emerald-100" },
-  homework:   { icon: BookOpen,      color: "text-blue-700",    bg: "bg-blue-100"    },
-  exam:       { icon: GraduationCap, color: "text-purple-700",  bg: "bg-purple-100"  },
-  fee:        { icon: CreditCard,    color: "text-amber-700",   bg: "bg-amber-100"   },
-  diary:      { icon: FileText,      color: "text-teal-700",    bg: "bg-teal-100"    },
-  general:    { icon: Bell,          color: "text-gray-700",    bg: "bg-gray-100"    },
+const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
+  ANNOUNCEMENT:      { icon: Bell,          color: "text-purple-700", bg: "bg-purple-100" },
+  ATTENDANCE_ALERT:  { icon: ClipboardList, color: "text-emerald-700", bg: "bg-emerald-100" },
+  FEE_REMINDER:      { icon: CreditCard,    color: "text-amber-700",   bg: "bg-amber-100" },
+  HOMEWORK_REMINDER: { icon: BookOpen,      color: "text-blue-700",    bg: "bg-blue-100" },
+  EXAM_NOTICE:       { icon: GraduationCap, color: "text-indigo-700",  bg: "bg-indigo-100" },
+  GENERAL:           { icon: Bell,          color: "text-gray-700",    bg: "bg-gray-100" },
 };
 
-function timeAgo(dateStr: string, lang: "en" | "ml") {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const h = Math.floor(diff / 3600000);
-  if (h < 1) return t("parentPages", "justNow", lang);
-  if (h < 24) return `${h} ${t("parentPages", "hAgo", lang)}`;
-  return `${Math.floor(h / 24)} ${t("parentPages", "dAgo", lang)}`;
-}
-
 export default function ParentNotificationsPage() {
-  const { lang } = useLanguageStore();
-  const [items, setItems] = useState(notifications);
-  const unread = items.filter((n) => !n.read).length;
+  const { user, accessToken } = useAuthStore();
+  const cid   = user?.clientId ?? "";
+  const token = accessToken ?? "";
 
-  const markAllRead = () => setItems((prev) => prev.map((n) => ({ ...n, read: true })));
-  const markOne = (id: string) => setItems((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
+  const [notifs, setNotifs]   = useState<NotificationRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    if (!cid || !token) return;
+    setLoading(true);
+    try {
+      const data = await getNotifications(cid, token, { take: 60 });
+      setNotifs(data.notifications ?? []);
+    } catch { /* silent */ }
+    finally { setLoading(false); }
+  }, [cid, token]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleRead = async (id: string) => {
+    await markNotificationRead(cid, token, id).catch(() => {});
+    setNotifs((prev) => prev.map((n) => n.id === id ? { ...n, isRead: true } : n));
+  };
+
+  const markAllRead = async () => {
+    const unread = notifs.filter((n) => !n.isRead);
+    await Promise.all(unread.map((n) => markNotificationRead(cid, token, n.id).catch(() => {})));
+    setNotifs((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  };
+
+  const unread = notifs.filter((n) => !n.isRead).length;
 
   return (
     <DashboardLayout>
       <PageHeader
-        title={t("parentPages", "notifTitle", lang)}
-        subtitle={unread > 0 ? `${unread} ${t("notif", "unread", lang)}` : t("parentPages", "allRead", lang)}
+        title="Notifications"
+        subtitle={unread > 0 ? `${unread} unread` : "All caught up"}
         icon={Bell}
-        back
         action={
-          unread > 0 ? (
-            <button onClick={markAllRead} className="text-sm text-emerald-700 font-semibold px-3 py-1.5 bg-emerald-50 rounded-xl">
-              {t("parentPages", "markAllRead", lang)}
+          <div className="flex gap-2">
+            {unread > 0 && (
+              <button onClick={markAllRead} className="p-2 rounded-xl bg-gray-100 text-gray-600" title="Mark all read">
+                <CheckCheck className="w-4 h-4" />
+              </button>
+            )}
+            <button onClick={load} className="p-2 rounded-xl bg-gray-100 text-gray-600">
+              <RefreshCw className="w-4 h-4" />
             </button>
-          ) : undefined
+          </div>
         }
       />
 
-      <div className="space-y-3">
-        {items.map((notif, i) => {
-          const cfg = typeConfig[notif.type] ?? typeConfig.general;
-          const Icon = cfg.icon;
-          return (
-            <motion.div
-              key={notif.id}
-              initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-              onClick={() => markOne(notif.id)}
-              className={cn(
-                "bg-white rounded-2xl p-4 border flex gap-3 cursor-pointer active:scale-[0.99] transition-transform",
-                !notif.read ? "border-emerald-200 bg-emerald-50/30" : "border-gray-100"
-              )}
-            >
-              <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", cfg.bg)}>
-                <Icon className={cn("w-5 h-5", cfg.color)} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="font-semibold text-gray-900 text-sm leading-tight">{notif.title}</p>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {!notif.read && <span className="w-2 h-2 rounded-full bg-emerald-500" />}
-                    <span className="text-xs text-gray-400 whitespace-nowrap">{timeAgo(notif.timestamp, lang)}</span>
+      {loading ? (
+        <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
+          <Loader2 className="w-5 h-5 animate-spin" />
+        </div>
+      ) : notifs.length === 0 ? (
+        <div className="text-center py-16 text-gray-400 text-sm">
+          <Bell className="w-10 h-10 mx-auto mb-3 text-gray-200" />
+          No notifications yet
+        </div>
+      ) : (
+        <div className="space-y-2 pb-20">
+          {notifs.map((n, i) => {
+            const cfg = TYPE_CONFIG[n.type] ?? TYPE_CONFIG.GENERAL;
+            const Icon = cfg.icon;
+            return (
+              <motion.div
+                key={n.id}
+                initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
+                className={cn(
+                  "rounded-2xl border p-4 cursor-pointer transition-all",
+                  n.isRead ? "bg-white border-gray-100" : "bg-blue-50/40 border-blue-200",
+                )}
+                onClick={() => !n.isRead && handleRead(n.id)}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", cfg.bg)}>
+                    <Icon className={cn("w-5 h-5", cfg.color)} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className={cn("font-semibold text-sm", n.isRead ? "text-gray-700" : "text-gray-900")}>
+                        {n.title}
+                      </p>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {!n.isRead && <span className="w-2.5 h-2.5 bg-blue-500 rounded-full" />}
+                        <span className="text-[10px] text-gray-400">
+                          {new Date(n.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">{n.body}</p>
+                    {n.creator && (
+                      <p className="text-[10px] text-gray-400 mt-1">From: {n.creator.name}</p>
+                    )}
                   </div>
                 </div>
-                <p className="text-sm text-gray-500 mt-0.5 leading-snug">{notif.message}</p>
-              </div>
-            </motion.div>
-          );
-        })}
-      </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
     </DashboardLayout>
   );
 }

@@ -1,20 +1,17 @@
-"use client";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { motion } from "framer-motion";
 import { useLanguageStore } from "@/store/language";
-import { committeeSummary } from "@/mock-data";
+import { useCommitteeData } from "@/lib/use-committee-data";
 import {
   FileBarChart2, TrendingUp, AlertTriangle, CheckCircle2,
   IndianRupee, Users, BookOpen, Heart,
 } from "lucide-react";
 
-const d = committeeSummary;
-
-function computeHealthScore() {
-  const fees = d.fees.collectionPct;           // 0–100
-  const att  = d.attendance.overallPct;         // 0–100
-  const acad = d.academic.passRate;            // 0–100
-  const ibadah = d.ibadah.quranCompletionPct;  // 0–100
+function computeHealthScore(d: ReturnType<typeof import("@/lib/use-committee-data").useCommitteeData>) {
+  const fees   = d.fees.collectionPct;
+  const att    = d.attendance.overallPct;
+  const acad   = d.academic.passRate;
+  const ibadah = d.ibadah.quranCompletionPct;
   return Math.round((fees + att + acad + ibadah) / 4);
 }
 
@@ -36,7 +33,8 @@ function Bar({ value, color = "bg-emerald-500" }: { value: number; color?: strin
 
 export default function CommitteeReportsPage() {
   const { lang } = useLanguageStore();
-  const health = computeHealthScore();
+  const d = useCommitteeData();
+  const health = computeHealthScore(d);
   const overallStatus = getStatus(health, lang);
 
   const sections = [

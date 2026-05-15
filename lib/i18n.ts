@@ -174,6 +174,7 @@ const translations = {
     idCards: { en: "ID Cards", ml: "ഐഡി കാർഡുകൾ" },
     exams: { en: "Exams", ml: "പരീക്ഷകൾ" },
     reports: { en: "Reports", ml: "റിപ്പോർട്ടുകൾ" },
+    logs:    { en: "Activity Logs", ml: "ആക്ടിവിറ്റി ലോഗ്" },
     seats: { en: "Seats", ml: "സീറ്റ് പ്ലാൻ" },
     sksbv: { en: "SKSBV", ml: "SKSBV" },
     posters: { en: "Posters", ml: "പോസ്‌റ്ററുകൾ" },
@@ -192,6 +193,12 @@ const translations = {
     committee: { en: "Committee", ml: "കമ്മിറ്റി" },
     announcements: { en: "Announcements", ml: "അറിയിപ്പുകൾ" },
     expenses: { en: "Expenses", ml: "ചെലവുകൾ" },
+    teachers: { en: "Teachers", ml: "അധ്യാപകർ" },
+    notifications: { en: "Notifications", ml: "അറിയിപ്പുകൾ" },
+    madrasas: { en: "Madrasas", ml: "മദ്‌റസകൾ" },
+    superUsers: { en: "Admin Users", ml: "അഡ്‌മിൻ യൂസേഴ്സ്" },
+    platformReports: { en: "Platform Reports", ml: "പ്ലാറ്റ്ഫോം റിപ്പോർട്ടുകൾ" },
+    profile: { en: "Profile", ml: "പ്രൊഫൈൽ" },
   },
 
   // ── Admin Dashboard ───────────────────────────────────────────────────────

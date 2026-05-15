@@ -1,14 +1,11 @@
-"use client";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { motion } from "framer-motion";
 import { useLanguageStore } from "@/store/language";
-import { committeeSummary } from "@/mock-data";
+import { useCommitteeData } from "@/lib/use-committee-data";
 import {
   IndianRupee, CheckCircle2, TrendingUp, TrendingDown,
   AlertCircle, Users, CreditCard, BarChart3,
 } from "lucide-react";
-
-const d = committeeSummary;
 
 function Bar({ value, color = "bg-emerald-500", height = "h-2" }: { value: number; color?: string; height?: string }) {
   const safe = Math.min(100, Math.max(0, value));
@@ -25,6 +22,7 @@ function pct(v: number, max: number) {
 
 export default function CommitteeFinancePage() {
   const { lang } = useLanguageStore();
+  const d = useCommitteeData();
 
   const statCards = [
     {

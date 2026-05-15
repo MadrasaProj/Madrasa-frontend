@@ -1,15 +1,12 @@
-"use client";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { motion } from "framer-motion";
 import { useLanguageStore } from "@/store/language";
-import { committeeSummary } from "@/mock-data";
+import { useCommitteeData } from "@/lib/use-committee-data";
 import { useState } from "react";
 import {
   ClipboardList, CheckCircle2, XCircle, AlertTriangle, TrendingUp,
   Users, GraduationCap, UserCheck, UserX, CalendarOff,
 } from "lucide-react";
-
-const d = committeeSummary;
 
 function Bar({ value, color = "bg-emerald-500", height = "h-2" }: { value: number; color?: string; height?: string }) {
   const safe = Math.min(100, Math.max(0, value));
@@ -37,6 +34,7 @@ type Tab = "students" | "staff";
 
 export default function CommitteeAttendancePage() {
   const { lang } = useLanguageStore();
+  const d = useCommitteeData();
   const [activeTab, setActiveTab] = useState<Tab>("students");
 
   const s = d.attendance;

@@ -1,565 +1,375 @@
-"use client";
-import { useState, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { StatusBadge } from "@/components/ui/StatusBadge";
-import { homeworkList, students } from "@/mock-data";
 import {
-  BookOpen, Plus, Check, Search, Filter, ChevronDown, ChevronUp,
-  Calendar, Clock, Users, TrendingUp, AlertTriangle, CheckCircle2,
-  BookMarked, Star, Send, BarChart2, Bell, Trash2, Edit2, X,
+  listHomework, createHomework, deleteHomework,
+  getSubmissions, bulkUpdateSubmissions,
+  type HomeworkAssignment, type HomeworkStatus, type SubmissionsResponse,
+} from "@/lib/homework-api";
+import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
+import { useAuthStore } from "@/store/auth";
+import { cn } from "@/lib/utils";
+import {
+  BookOpen, Plus, Trash2, CheckCircle2, Clock,
+  Loader2, ChevronDown, ChevronUp, AlertTriangle,
+  Calendar, Users, Check, X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useLanguageStore } from "@/store/language";
-import { t as tr } from "@/lib/i18n";
 
-type HWStatus = "green" | "yellow" | "red" | "returned";
-type TabType = "all" | "daily" | "long" | "overdue";
-type PriorityType = "high" | "medium" | "low";
+type Tab = "assign" | "check" | "pending";
 
-const SUBJECTS = ["Quran", "Arabic", "Fiqh", "Islamic Studies"];
-const CLASSES  = ["Class 3", "Class 4", "Class 5"];
-
-const priorityConfig: Record<PriorityType, { label: string; color: string; bg: string }> = {
-  high:   { label: "High",   color: "text-red-600",    bg: "bg-red-50 border-red-200" },
-  medium: { label: "Medium", color: "text-amber-600",  bg: "bg-amber-50 border-amber-200" },
-  low:    { label: "Low",    color: "text-gray-500",   bg: "bg-gray-50 border-gray-200" },
+const STATUS_CONFIG = {
+  NOT_SUBMITTED: { label: "Not Submitted", color: "bg-red-100 text-red-700"     },
+  SUBMITTED:     { label: "Submitted",     color: "bg-amber-100 text-amber-700" },
+  CHECKED:       { label: "Checked",       color: "bg-emerald-100 text-emerald-700" },
 };
 
-const subjectIcon: Record<string, string> = {
-  Quran: "📖",
-  Arabic: "🌙",
-  Fiqh: "⚖️",
-  "Islamic Studies": "🕌",
-};
+function fmt(d: Date) { return d.toISOString().split("T")[0]; }
 
 export default function TeacherHomeworkPage() {
-  const { lang } = useLanguageStore();
-  const [showCreate, setShowCreate]   = useState(false);
-  const [hwType, setHwType]           = useState<"daily" | "long">("daily");
-  const [activeTab, setActiveTab]     = useState<TabType>("all");
-  const [search, setSearch]           = useState("");
-  const [subjectFilter, setSubjectFilter] = useState("all");
-  const [expandedId, setExpandedId]   = useState<string | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
-  const [verifiedSet, setVerifiedSet] = useState<Set<string>>(new Set());
-  const [showNotifyId, setShowNotifyId] = useState<string | null>(null);
+  const { user, accessToken } = useAuthStore();
+  const cid   = user?.clientId ?? "";
+  const token = accessToken ?? "";
 
-  // Form state
-  const [formTitle, setFormTitle]       = useState("");
-  const [formDesc, setFormDesc]         = useState("");
-  const [formSubject, setFormSubject]   = useState(SUBJECTS[0]);
-  const [formClass, setFormClass]       = useState(CLASSES[0]);
-  const [formDue, setFormDue]           = useState("");
-  const [formPriority, setFormPriority] = useState<PriorityType>("medium");
+  const [activeTab, setActiveTab] = useState<Tab>("check");
+  const [classes, setClasses]     = useState<ClassRecord[]>([]);
+  const [homework, setHomework]   = useState<HomeworkAssignment[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [expandedHw, setExpandedHw] = useState<string | null>(null);
+  const [submissions, setSubmissions] = useState<Record<string, SubmissionsResponse>>({});
+  const [loadingSubs, setLoadingSubs] = useState<string | null>(null);
+  const [savingSubs, setSavingSubs]   = useState(false);
+  const [localStatus, setLocalStatus] = useState<Record<string, Record<string, HomeworkStatus>>>({});
+  const [deletingId, setDeletingId]   = useState<string | null>(null);
 
-  const getStudentName = (id: string) => students.find((s) => s.id === id)?.name ?? id;
-  const getStudentInitials = (id: string) => {
-    const name = students.find((s) => s.id === id)?.name ?? id;
-    return name.split(" ").slice(0, 2).map((n) => n[0]).join("");
+  // New homework form
+  const [classId, setClassId]     = useState("");
+  const [title, setTitle]         = useState("");
+  const [desc, setDesc]           = useState("");
+  const [dueDate, setDueDate]     = useState(fmt(new Date(Date.now() + 86400_000)));
+  const [subjectId, setSubjectId] = useState("");
+  const [creating, setCreating]   = useState(false);
+
+  // Load classes + homework
+  useEffect(() => {
+    if (!cid || !token) return;
+    const ac = new AbortController();
+    Promise.all([
+      getMyClasses(cid, token, ac.signal),
+      listHomework(cid, token),
+    ]).then(([cls, hw]) => {
+      setClasses(cls);
+      setHomework(hw);
+      if (cls.length > 0 && !classId) setClassId(cls[0].id);
+    }).catch(() => {}).finally(() => setLoading(false));
+    return () => ac.abort();
+  }, [cid, token]);
+
+  const reload = useCallback(async () => {
+    const hw = await listHomework(cid, token).catch(() => [] as HomeworkAssignment[]);
+    setHomework(hw);
+  }, [cid, token]);
+
+  const loadSubmissions = async (hwId: string) => {
+    if (submissions[hwId]) { setExpandedHw(expandedHw === hwId ? null : hwId); return; }
+    setLoadingSubs(hwId);
+    try {
+      const data = await getSubmissions(cid, token, hwId);
+      setSubmissions((prev) => ({ ...prev, [hwId]: data }));
+      setLocalStatus((prev) => ({
+        ...prev,
+        [hwId]: Object.fromEntries(data.submissions.map((s) => [s.student!.id, s.status])),
+      }));
+      setExpandedHw(hwId);
+    } catch (e) { alert((e as Error).message); }
+    finally { setLoadingSubs(null); }
   };
 
-  const today = new Date();
-  const isOverdue = (dueDate: string) => new Date(dueDate) < today;
+  const saveSubmissions = async (hwId: string) => {
+    const statuses = localStatus[hwId];
+    if (!statuses) return;
+    setSavingSubs(true);
+    try {
+      await bulkUpdateSubmissions(cid, token, hwId,
+        Object.entries(statuses).map(([studentId, status]) => ({ studentId, status })),
+      );
+      // Refresh submissions
+      const data = await getSubmissions(cid, token, hwId);
+      setSubmissions((prev) => ({ ...prev, [hwId]: data }));
+    } catch (e) { alert((e as Error).message); }
+    finally { setSavingSubs(false); }
+  };
 
-  // Overall stats
-  const stats = useMemo(() => {
-    let total = 0, completed = 0, pending = 0, missing = 0;
-    homeworkList.forEach((hw) => {
-      hw.studentStatuses.forEach((ss) => {
-        total++;
-        if (ss.status === "green" || ss.status === "returned") completed++;
-        else if (ss.status === "yellow") pending++;
-        else if (ss.status === "red") missing++;
+  const handleCreate = async () => {
+    if (!classId || !title || !dueDate) return;
+    setCreating(true);
+    try {
+      await createHomework(cid, token, {
+        classId,
+        title,
+        description: desc || undefined,
+        dueDate,
+        subjectId: subjectId || undefined,
+        academicYearId: user?.defaultAcademicYearId ?? undefined,
       });
-    });
-    const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-    return { total, completed, pending, missing, pct };
-  }, []);
-
-  // Filtered list
-  const filtered = useMemo(() => {
-    return homeworkList.filter((hw) => {
-      if (activeTab === "daily"   && hw.type !== "daily") return false;
-      if (activeTab === "long"    && hw.type !== "long")  return false;
-      if (activeTab === "overdue" && !isOverdue(hw.dueDate)) return false;
-      if (subjectFilter !== "all" && hw.subject !== subjectFilter) return false;
-      if (search && !hw.title.toLowerCase().includes(search.toLowerCase()) &&
-          !hw.subject.toLowerCase().includes(search.toLowerCase())) return false;
-      return true;
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, subjectFilter, search]);
-
-  const handleVerify = (hwId: string, studentId: string) => {
-    setVerifiedSet((prev) => new Set([...prev, `${hwId}-${studentId}`]));
-    // Simulate notification toast
-    setShowNotifyId(`${hwId}-${studentId}`);
-    setTimeout(() => setShowNotifyId(null), 2500);
+      setTitle(""); setDesc("");
+      await reload();
+      setActiveTab("check");
+    } catch (e) { alert((e as Error).message); }
+    finally { setCreating(false); }
   };
 
-  const handleAssign = () => {
-    setShowCreate(false);
-    setFormTitle(""); setFormDesc(""); setFormDue("");
-    setShowNotifyId("new-hw");
-    setTimeout(() => setShowNotifyId(null), 3000);
+  const handleDelete = async (id: string) => {
+    setDeletingId(id);
+    try { await deleteHomework(cid, token, id); await reload(); }
+    catch (e) { alert((e as Error).message); }
+    finally { setDeletingId(null); }
   };
 
-  const overdueCount = homeworkList.filter((hw) => isOverdue(hw.dueDate)).length;
+  const today = fmt(new Date());
+  const pending = homework.filter((hw) => {
+    const due = hw.dueDate.split("T")[0];
+    return due <= today;
+  });
 
   return (
     <DashboardLayout>
-      <PageHeader
-        title={tr("teacherPages", "homeworkTitle", lang)}
-        subtitle={tr("teacherPages", "homeworkSub", lang)}
-        icon={BookOpen}
-        back
-        backHref="/teacher"
-        action={
-          <button
-            onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 active:scale-95 transition-all shadow-sm shadow-emerald-200"
-          >
-            <Plus className="w-4 h-4" /> {tr("common", "add", lang)}
-          </button>
-        }
-      />
+      <PageHeader title="Homework" icon={BookOpen} back backHref="/teacher" />
 
-      {/* ── Toast notification ───────────────────────────────── */}
-      <AnimatePresence>
-        {showNotifyId && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-            className="fixed top-4 left-1/2 -translate-x-1/2 z-100 bg-emerald-700 text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 text-sm font-medium"
-          >
-            <CheckCircle2 className="w-4 h-4" />
-            {showNotifyId === "new-hw" ? `${tr("teacherPages", "hwAssignedNotif", lang)} 📲` : `${tr("teacherPages", "hwVerifiedNotif", lang)} ✅`}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Stats row ────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        {[
-          { label: tr("teacherPages", "completedStat", lang),  value: stats.completed, icon: CheckCircle2,   color: "text-emerald-600", bg: "bg-emerald-50" },
-          { label: tr("teacherPages", "pendingStat", lang),    value: stats.pending,   icon: Clock,          color: "text-amber-600",   bg: "bg-amber-50" },
-          { label: tr("teacherPages", "missingStat", lang),    value: stats.missing,   icon: AlertTriangle,  color: "text-red-500",     bg: "bg-red-50" },
-          { label: tr("teacherPages", "completionStat", lang), value: `${stats.pct}%`, icon: TrendingUp,     color: "text-blue-600",    bg: "bg-blue-50" },
-        ].map(({ label, value, icon: Icon, color, bg }) => (
-          <motion.div key={label} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-3"
-          >
-            <div className={`${bg} rounded-xl p-2.5`}>
-              <Icon className={`w-5 h-5 ${color}`} />
-            </div>
-            <div>
-              <p className="text-xl font-bold text-gray-900 leading-none">{value}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{label}</p>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* ── Overall progress bar ─────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-5">
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
-            <BarChart2 className="w-4 h-4 text-emerald-600" /> {tr("teacherPages", "overallSubmission", lang)}
-          </p>
-          <span className="text-sm font-bold text-emerald-700">{stats.pct}%</span>
-        </div>
-        <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
-          <motion.div
-            initial={{ width: 0 }} animate={{ width: `${stats.pct}%` }} transition={{ duration: 1, ease: "easeOut" }}
-            className="h-full bg-linear-to-r from-emerald-400 to-emerald-600 rounded-full"
-          />
-        </div>
-        <div className="flex justify-between mt-2">
-          <span className="text-xs text-gray-400">{stats.completed} {tr("teacherPages", "submittedOutOf", lang)} {stats.total}</span>
-          {overdueCount > 0 && (
-            <span className="text-xs text-red-500 font-medium flex items-center gap-1">
-              <AlertTriangle className="w-3 h-3" /> {overdueCount} {tr("teacherPages", "overdue", lang)}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* ── Search + Filter bar ──────────────────────────────── */}
-      <div className="flex gap-2 mb-4">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder={tr("teacherPages", "searchHomework", lang)}
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-        </div>
-        <button
-          onClick={() => setShowFilters((v) => !v)}
-          className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border text-sm font-medium transition-colors ${showFilters ? "bg-emerald-600 text-white border-emerald-600" : "bg-white border-gray-200 text-gray-600"}`}
-        >
-          <Filter className="w-4 h-4" /> {tr("teacherPages", "filterBtn", lang)}
-        </button>
-      </div>
-
-      {/* Subject filter */}
-      <AnimatePresence>
-        {showFilters && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
-            className="mb-4 overflow-hidden"
-          >
-            <div className="flex gap-2 flex-wrap pb-1">
-              {["all", ...SUBJECTS].map((sub) => (
-                <button key={sub} onClick={() => setSubjectFilter(sub)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${subjectFilter === sub ? "bg-emerald-600 text-white border-emerald-600" : "bg-white text-gray-600 border-gray-200 hover:border-emerald-400"}`}
-                >
-                  {sub === "all" ? tr("teacherPages", "allSubjects", lang) : `${subjectIcon[sub]} ${sub}`}
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Tabs ─────────────────────────────────────────────── */}
-      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-5">
+      {/* Tabs */}
+      <div className="flex gap-1.5 mb-5 bg-gray-100 p-1 rounded-xl">
         {([
-          { key: "all",    label: tr("teacherPages", "allTab", lang),       count: homeworkList.length },
-          { key: "daily",  label: tr("teacherPages", "dailyTab", lang),     count: homeworkList.filter((h) => h.type === "daily").length },
-          { key: "long",   label: tr("teacherPages", "longTermTab", lang), count: homeworkList.filter((h) => h.type === "long").length },
-          { key: "overdue",label: tr("teacherPages", "overdueTab", lang),   count: overdueCount },
-        ] as { key: TabType; label: string; count: number }[]).map(({ key, label, count }) => (
-          <button key={key} onClick={() => setActiveTab(key)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${activeTab === key ? "bg-white text-emerald-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
-          >
-            {label}
-            {count > 0 && (
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeTab === key ? (key === "overdue" ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-700") : "bg-gray-200 text-gray-500"}`}>
-                {count}
-              </span>
+          { key: "check",   label: "Assignments",  icon: BookOpen    },
+          { key: "assign",  label: "New",          icon: Plus        },
+          { key: "pending", label: "Overdue",      icon: AlertTriangle },
+        ] as const).map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            onClick={() => setActiveTab(key)}
+            className={cn(
+              "flex-1 py-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
+              activeTab === key ? "bg-white shadow-sm text-emerald-700" : "text-gray-500",
             )}
+          >
+            <Icon className="w-3.5 h-3.5" /> {label}
           </button>
         ))}
       </div>
 
-      {/* ── Homework cards ───────────────────────────────────── */}
-      {filtered.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <BookMarked className="w-10 h-10 mx-auto mb-2 opacity-40" />
-          <p className="text-sm">{tr("teacherPages", "noHwFound", lang)}</p>
+      {loading ? (
+        <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
+          <Loader2 className="w-5 h-5 animate-spin" />
         </div>
       ) : (
-        <div className="space-y-4">
-          {filtered.map((hw, i) => {
-            const done     = hw.studentStatuses.filter((s) => s.status === "green" || s.status === "returned").length;
-            const pend     = hw.studentStatuses.filter((s) => s.status === "yellow").length;
-            const miss     = hw.studentStatuses.filter((s) => s.status === "red").length;
-            const total    = hw.studentStatuses.length;
-            const pct      = total > 0 ? Math.round((done / total) * 100) : 0;
-            const overdue  = isOverdue(hw.dueDate);
-            const priority = hw.priority as PriorityType;
-            const expanded = expandedId === hw.id;
+        <>
+          {/* ── NEW ASSIGNMENT ── */}
+          {activeTab === "assign" && (
+            <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+              <p className="font-bold text-gray-800">New Homework Assignment</p>
 
-            return (
-              <motion.div
-                key={hw.id}
-                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-                className={`bg-white rounded-2xl border overflow-hidden transition-shadow ${overdue ? "border-red-200 shadow-sm shadow-red-50" : "border-gray-100"}`}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Class *</label>
+                <select value={classId} onChange={(e) => setClassId(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
+                  {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Title *</label>
+                <input value={title} onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Surah Al-Baqarah verses 1-5"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Description (optional)</label>
+                <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={2}
+                  placeholder="Details, instructions..."
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Due Date *</label>
+                <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
+                  min={today}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+
+              <button
+                onClick={handleCreate}
+                disabled={!classId || !title || !dueDate || creating}
+                className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold text-sm disabled:opacity-60 flex items-center justify-center gap-2"
               >
-                {/* Card header */}
-                <div className="p-4">
-                  <div className="flex items-start gap-3">
-                    {/* Subject icon */}
-                    <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-lg shrink-0 border border-gray-100">
-                      {subjectIcon[hw.subject] ?? "📚"}
-                    </div>
+                {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                Create Assignment
+              </button>
+            </div>
+          )}
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${hw.type === "daily" ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-purple-50 text-purple-700 border-purple-200"}`}>
-                          {hw.type === "daily" ? tr("teacherPages", "daily", lang) : tr("teacherPages", "longTerm", lang)}
-                        </span>
-                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${priorityConfig[priority].bg} ${priorityConfig[priority].color}`}>
-                          {priority === "high" && <Star className="w-2.5 h-2.5 inline mr-0.5" />}
-                          {priority === "high" ? tr("teacherPages", "highPriority", lang) : priority === "medium" ? tr("teacherPages", "mediumPriority", lang) : tr("teacherPages", "lowPriority", lang)}
-                        </span>
-                        {overdue && (
-                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200 flex items-center gap-1">
-                            <AlertTriangle className="w-2.5 h-2.5" /> {tr("teacherPages", "overdueLabel", lang)}
+          {/* ── ASSIGNMENTS LIST (check submissions) ── */}
+          {activeTab === "check" && (
+            <div className="space-y-3 pb-20">
+              {homework.length === 0 ? (
+                <div className="text-center py-16 text-gray-400 text-sm">
+                  <BookOpen className="w-10 h-10 mx-auto mb-3 text-gray-200" />
+                  No assignments yet
+                </div>
+              ) : homework.map((hw) => {
+                const due     = new Date(hw.dueDate);
+                const isOver  = due < new Date();
+                const subResp = submissions[hw.id];
+                const total   = subResp?.submissions.length ?? hw._count?.submissions ?? 0;
+                const checked = subResp?.submissions.filter((s) => s.status === "CHECKED").length ?? 0;
+
+                return (
+                  <div key={hw.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                    <div
+                      className="flex items-start gap-3 p-4 cursor-pointer"
+                      onClick={() => loadSubmissions(hw.id)}
+                    >
+                      <div className={cn(
+                        "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                        isOver ? "bg-red-50" : "bg-emerald-50",
+                      )}>
+                        <BookOpen className={cn("w-5 h-5", isOver ? "text-red-500" : "text-emerald-600")} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-900 text-sm">{hw.title}</p>
+                        <p className="text-xs text-gray-400">
+                          {hw.class?.name}
+                          {hw.subject ? ` · ${hw.subject.name}` : ""}
+                        </p>
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className={cn("text-xs flex items-center gap-1", isOver ? "text-red-500" : "text-gray-400")}>
+                            <Calendar className="w-3 h-3" />
+                            {due.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                            {isOver ? " (overdue)" : ""}
                           </span>
-                        )}
-                      </div>
-
-                      <p className="font-semibold text-gray-900 text-sm leading-snug">{hw.title}</p>
-                      <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{hw.description}</p>
-
-                      <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-                        <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {tr("teacherPages", "dueLabel", lang)} {hw.dueDate}</span>
-                        <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {total} {tr("teacherPages", "studentsSmall", lang)}</span>
-                        <span className="flex items-center gap-1 font-medium text-gray-700">{hw.subject}</span>
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex flex-col items-end gap-2 shrink-0">
-                      <div className="flex items-center gap-1">
-                        <button className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                      <button
-                        onClick={() => setExpandedId(expanded ? null : hw.id)}
-                        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors"
-                      >
-                        {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Mini progress bar */}
-                  <div className="mt-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-3 text-xs">
-                        <span className="flex items-center gap-1 text-emerald-600 font-medium"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />{done} {tr("teacherPages", "doneCount", lang)}</span>
-                        <span className="flex items-center gap-1 text-amber-600"><span className="w-1.5 h-1.5 rounded-full bg-amber-400" />{pend} {tr("teacherPages", "pendingCount", lang)}</span>
-                        <span className="flex items-center gap-1 text-red-500"><span className="w-1.5 h-1.5 rounded-full bg-red-500" />{miss} {tr("teacherPages", "missingCount", lang)}</span>
-                      </div>
-                      <span className="text-xs font-bold text-gray-700">{pct}%</span>
-                    </div>
-                    <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden flex">
-                      <div className="h-full bg-emerald-500 transition-all" style={{ width: `${(done / total) * 100}%` }} />
-                      <div className="h-full bg-amber-400 transition-all" style={{ width: `${(pend / total) * 100}%` }} />
-                      <div className="h-full bg-red-400 transition-all" style={{ width: `${(miss / total) * 100}%` }} />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Expanded student list */}
-                <AnimatePresence>
-                  {expanded && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="border-t border-gray-50 bg-gray-50/50 px-4 pt-3 pb-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{tr("teacherPages", "studentSubmissions", lang)}</p>
-                          <button className="flex items-center gap-1 text-xs text-emerald-600 font-medium hover:underline">
-                            <Bell className="w-3 h-3" /> {tr("teacherPages", "remindAllMissing", lang)}
-                          </button>
+                          {total > 0 && (
+                            <span className="text-xs text-gray-400 flex items-center gap-1">
+                              <Users className="w-3 h-3" /> {checked}/{total} checked
+                            </span>
+                          )}
                         </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDelete(hw.id); }}
+                          disabled={deletingId === hw.id}
+                          className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                        >
+                          {deletingId === hw.id
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <Trash2 className="w-4 h-4" />}
+                        </button>
+                        {loadingSubs === hw.id
+                          ? <Loader2 className="w-4 h-4 animate-spin text-gray-300" />
+                          : expandedHw === hw.id
+                            ? <ChevronUp className="w-4 h-4 text-gray-400" />
+                            : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                      </div>
+                    </div>
 
-                        <div className="space-y-2">
-                          {hw.studentStatuses.map((ss) => {
-                            const vKey = `${hw.id}-${ss.studentId}`;
-                            const isVerified = verifiedSet.has(vKey) || ss.status === "green" || ss.status === "returned";
-                            const effectiveStatus: HWStatus = verifiedSet.has(vKey) ? "green" : (ss.status as HWStatus);
-
-                            return (
-                              <div key={ss.studentId}
-                                className="flex items-center gap-3 bg-white rounded-xl px-3 py-2.5 border border-gray-100"
+                    {/* Submissions */}
+                    <AnimatePresence>
+                      {expandedHw === hw.id && subResp && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }} className="overflow-hidden"
+                        >
+                          <div className="border-t border-gray-50 bg-gray-50/60 px-4 py-3">
+                            <div className="flex items-center justify-between mb-3">
+                              <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                                Submissions ({subResp.submissions.length})
+                              </p>
+                              <button
+                                onClick={() => saveSubmissions(hw.id)}
+                                disabled={savingSubs}
+                                className="flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg"
                               >
-                                {/* Avatar */}
-                                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center justify-center shrink-0">
-                                  {getStudentInitials(ss.studentId)}
-                                </div>
-
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-gray-800 truncate">{getStudentName(ss.studentId)}</p>
-                                  {ss.feedback && (
-                                    <p className="text-xs text-emerald-600 truncate">💬 {ss.feedback}</p>
-                                  )}
-                                  {ss.note && !ss.feedback && (
-                                    <p className="text-xs text-gray-400 truncate">📝 {ss.note}</p>
-                                  )}
-                                </div>
-
-                                {/* Progress bar for long term */}
-                                {hw.type === "long" && "progress" in ss && (
-                                  <div className="flex items-center gap-1.5 w-20">
-                                    <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                      <div
-                                        className={`h-full rounded-full ${(ss.progress as number) >= 100 ? "bg-emerald-500" : (ss.progress as number) >= 50 ? "bg-amber-400" : "bg-red-400"}`}
-                                        style={{ width: `${ss.progress}%` }}
-                                      />
+                                {savingSubs ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                                Save
+                              </button>
+                            </div>
+                            <div className="space-y-2">
+                              {subResp.submissions.map((sub) => {
+                                const curStatus = localStatus[hw.id]?.[sub.student!.id] ?? sub.status;
+                                return (
+                                  <div key={sub.id} className="bg-white rounded-xl px-3 py-2 flex items-center gap-3">
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-semibold text-gray-900 truncate">{sub.student!.name}</p>
+                                      <p className="text-xs text-gray-400">{sub.student!.adno}</p>
                                     </div>
-                                    <span className="text-[10px] text-gray-500 w-7 text-right">{ss.progress}%</span>
+                                    <div className="flex gap-1 shrink-0">
+                                      {(["NOT_SUBMITTED", "SUBMITTED", "CHECKED"] as HomeworkStatus[]).map((s) => (
+                                        <button
+                                          key={s}
+                                          onClick={() => setLocalStatus((prev) => ({
+                                            ...prev,
+                                            [hw.id]: { ...(prev[hw.id] ?? {}), [sub.student!.id]: s },
+                                          }))}
+                                          className={cn(
+                                            "px-2 py-1 rounded-lg text-[10px] font-bold transition-all",
+                                            curStatus === s
+                                              ? STATUS_CONFIG[s].color
+                                              : "bg-gray-100 text-gray-400",
+                                          )}
+                                        >
+                                          {s === "NOT_SUBMITTED" ? "✗" : s === "SUBMITTED" ? "✓" : "✓✓"}
+                                        </button>
+                                      ))}
+                                    </div>
                                   </div>
-                                )}
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                  <StatusBadge status={effectiveStatus} size="sm" />
-
-                                  {/* Verify button for parent-confirmed (yellow) */}
-                                  {ss.status === "yellow" && !isVerified && (
-                                    <button
-                                      onClick={() => handleVerify(hw.id, ss.studentId)}
-                                      title="Mark as verified"
-                                      className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors"
-                                    >
-                                      <Check className="w-3.5 h-3.5 text-emerald-600" />
-                                    </button>
-                                  )}
-
-                                  {/* Remind button for missing */}
-                                  {ss.status === "red" && (
-                                    <button
-                                      title="Send reminder to parent"
-                                      className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 border border-red-200 transition-colors"
-                                    >
-                                      <Send className="w-3.5 h-3.5 text-red-500" />
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        {/* Description block */}
-                        <div className="mt-3 bg-white rounded-xl p-3 border border-gray-100">
-                          <p className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">{tr("teacherPages", "hwInstructionsLabel", lang)}</p>
-                          <p className="text-sm text-gray-700">{hw.description}</p>
-                        </div>
+          {/* ── PENDING / OVERDUE ── */}
+          {activeTab === "pending" && (
+            <div className="space-y-3 pb-20">
+              {pending.length === 0 ? (
+                <div className="text-center py-16 text-gray-400 text-sm">
+                  <CheckCircle2 className="w-10 h-10 mx-auto mb-3 text-emerald-200" />
+                  No overdue assignments
+                </div>
+              ) : pending.map((hw) => {
+                const due = new Date(hw.dueDate);
+                const daysAgo = Math.floor((Date.now() - due.getTime()) / 86400_000);
+                return (
+                  <div key={hw.id} className="bg-white rounded-2xl border border-red-100 p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center shrink-0">
+                        <AlertTriangle className="w-5 h-5 text-red-500" />
                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            );
-          })}
-        </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-900 text-sm">{hw.title}</p>
+                        <p className="text-xs text-gray-400">{hw.class?.name}{hw.subject ? ` · ${hw.subject.name}` : ""}</p>
+                        <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          Due {due.toLocaleDateString("en-GB")} ({daysAgo === 0 ? "today" : `${daysAgo}d ago`})
+                        </p>
+                      </div>
+                      <span className="text-xs bg-red-100 text-red-700 font-bold px-2 py-1 rounded-lg shrink-0">
+                        {hw._count?.submissions ?? 0} students
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
-
-      {/* ── Assign Homework Modal ────────────────────────────── */}
-      <AnimatePresence>
-        {showCreate && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end lg:items-center justify-center p-4"
-            onClick={(e) => { if (e.target === e.currentTarget) setShowCreate(false); }}
-          >
-            <motion.div
-              initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 50 }}
-              className="bg-white rounded-3xl w-full max-w-md max-h-[90vh] overflow-y-auto"
-            >
-              {/* Modal header */}
-              <div className="sticky top-0 bg-white rounded-t-3xl px-6 pt-6 pb-4 border-b border-gray-100 flex items-center justify-between">
-                <div>
-                  <h2 className="font-bold text-gray-900 text-lg">{tr("teacherPages", "assignHomework", lang)}</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">{tr("teacherPages", "hwFillDetails", lang)}</p>
-                </div>
-                <button onClick={() => setShowCreate(false)} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition-colors">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="px-6 pb-6 pt-4 space-y-4">
-                {/* Type selector */}
-                <div className="flex gap-2 bg-gray-100 rounded-xl p-1">
-                  <button onClick={() => setHwType("daily")} className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${hwType === "daily" ? "bg-white text-emerald-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
-                    📅 {tr("teacherPages", "daily", lang)}
-                  </button>
-                  <button onClick={() => setHwType("long")} className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${hwType === "long" ? "bg-white text-purple-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
-                    📌 {tr("teacherPages", "longTerm", lang)}
-                  </button>
-                </div>
-
-                {/* Title */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">{tr("teacherPages", "hwTitleLabel", lang)} <span className="text-red-500">*</span></label>
-                  <input
-                    value={formTitle} onChange={(e) => setFormTitle(e.target.value)}
-                    placeholder="e.g. Memorize Surah Al-Fatiha"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm transition-colors"
-                  />
-                </div>
-
-                {/* Description */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">{tr("teacherPages", "hwInstructionsLabel", lang)}</label>
-                  <textarea
-                    value={formDesc} onChange={(e) => setFormDesc(e.target.value)}
-                    placeholder="Add detailed instructions for students..."
-                    rows={3}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm resize-none transition-colors"
-                  />
-                </div>
-
-                {/* Subject + Class row */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">{tr("teacherPages", "subjectField", lang)}</label>
-                    <select value={formSubject} onChange={(e) => setFormSubject(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none text-sm"
-                    >
-                      {SUBJECTS.map((s) => <option key={s}>{s}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">{tr("teacherPages", "hwClassLabel", lang)}</label>
-                    <select value={formClass} onChange={(e) => setFormClass(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none text-sm"
-                    >
-                      {CLASSES.map((c) => <option key={c}>{c}</option>)}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Priority */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">{tr("teacherPages", "priorityField", lang)}</label>
-                  <div className="flex gap-2">
-                    {(["high", "medium", "low"] as PriorityType[]).map((p) => (
-                      <button key={p} onClick={() => setFormPriority(p)}
-                        className={`flex-1 py-2 rounded-xl border text-xs font-bold capitalize transition-all ${formPriority === p ? `${priorityConfig[p].bg} ${priorityConfig[p].color} border-current` : "bg-white text-gray-400 border-gray-200"}`}
-                      >
-                        {p === "high" && "🔴 "}{p === "medium" && "🟡 "}{p === "low" && "🟢 "}
-                        {p === "high" ? tr("teacherPages", "highPriority", lang) : p === "medium" ? tr("teacherPages", "mediumPriority", lang) : tr("teacherPages", "lowPriority", lang)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Due date — only for long-term homework */}
-                {hwType === "long" && (
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                      {tr("teacherPages", "dueDateField", lang)} <span className="text-red-500">*</span>
-                    </label>
-                    <input type="date" value={formDue} onChange={(e) => setFormDue(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-                    />
-                  </div>
-                )}
-
-                {/* Notify toggle info */}
-                <div className="flex items-center gap-3 bg-emerald-50 rounded-xl p-3 border border-emerald-100">
-                  <Bell className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <p className="text-xs text-emerald-700">{tr("teacherPages", "hwParentAutoNotif", lang)}</p>
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-3 pt-1">
-                  <button
-                    onClick={handleAssign}
-                    disabled={!formTitle}
-                    className="flex-1 bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-xl text-sm font-bold hover:bg-emerald-700 active:scale-95 transition-all flex items-center justify-center gap-2"
-                  >
-                    <Send className="w-4 h-4" /> {tr("teacherPages", "hwAssignNotify", lang)}
-                  </button>
-                  <button onClick={() => setShowCreate(false)} className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl text-sm font-semibold hover:bg-gray-200 transition-colors">
-                    {tr("teacherPages", "hwCancelBtn", lang)}
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </DashboardLayout>
   );
 }

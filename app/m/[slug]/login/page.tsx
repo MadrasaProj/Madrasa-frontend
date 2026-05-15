@@ -1,10 +1,6 @@
-import { redirect } from "next/navigation";
+import { Navigate, useParams } from "react-router-dom";
 
-export default async function LegacyTenantLoginPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = await params;
-  redirect(`/m/${slug}/admin/login`);
+export default function LegacyTenantLoginPage() {
+  const { slug } = useParams<{ slug: string }>();
+  return <Navigate to={`/m/${slug}/admin/login`} replace />;
 }

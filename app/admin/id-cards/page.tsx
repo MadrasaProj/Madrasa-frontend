@@ -1,9 +1,11 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { students, idCardSettings } from "@/mock-data";
+import { getStudents } from "@/lib/students-api";
+import { getAllClasses } from "@/lib/classes-api";
+import { useAuthStore } from "@/store/auth";
 import {
   CreditCard, Search, Printer, Download, Eye, X,
   User, Phone, BookMarked, Calendar, MapPin, Hash,
@@ -23,7 +25,8 @@ const THEMES: { id: Theme; label: string; desc: string }[] = [
   { id: "islamic",  label: "Islamic Pattern", desc: "Gold accents with decorative border"   },
 ];
 
-const ALL_CLASSES = ["All", ...Array.from(new Set(students.map((s) => s.class))).sort()];
+// Placeholder — replaced at runtime with real class names
+const DEFAULT_CLASSES = ["All"];
 
 const classColors: Record<string, { bg: string; light: string; text: string; hex: string }> = {
   "Class 2": { bg: "bg-sky-500",     light: "bg-sky-50",     text: "text-sky-700",     hex: "#0ea5e9" },
@@ -35,6 +38,30 @@ const classColors: Record<string, { bg: string; light: string; text: string; hex
 const defaultColor = { bg: "bg-emerald-600", light: "bg-emerald-50", text: "text-emerald-700", hex: "#059669" };
 function getColor(cls: string) { return classColors[cls] ?? defaultColor; }
 function initials(name: string) { return name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase(); }
+
+// Mapped student shape used by all card components
+interface CardStudent {
+  id: string;
+  name: string;
+  admissionNumber: string;
+  class: string;
+  division: string;
+  dateOfBirth: string;
+  fatherName: string;
+  motherName: string;
+  phone: string;
+  address: string;
+  photo?: string;
+}
+
+// Default card settings — overridden by madrasa config in component
+const DEFAULT_CARD_SETTINGS = {
+  madrasaName: "Madrasa",
+  madrasaAddress: "",
+  madrasaPhone: "",
+  logoText: "M",
+  academicYear: new Date().getFullYear().toString(),
+};
 
 function BarcodeStrip({ light = false }: { light?: boolean }) {
   const bars = [3,1,2,1,3,2,1,2,1,3,1,2,1,1,3,2,1,2,3,1,2,1,1,3,1,2];
@@ -65,7 +92,7 @@ function IslamicPattern({ opacity = 0.12 }: { opacity?: number }) {
 }
 
 // ─── THEME 1: CLASSIC GREEN ───────────────────────────────────────────────
-function ClassicCard({ student, mini = false }: { student: typeof students[0]; mini?: boolean }) {
+function ClassicCard({ student, mini = false }: { student: CardStudent; mini?: boolean }) {
   const col = getColor(student.class);
   const sz  = mini ? "w-14 h-16 text-xl" : "w-20 h-24 text-3xl";
   return (
@@ -109,7 +136,7 @@ function ClassicCard({ student, mini = false }: { student: typeof students[0]; m
 }
 
 // ─── THEME 2: MODERN DARK ────────────────────────────────────────────────
-function ModernCard({ student, mini = false }: { student: typeof students[0]; mini?: boolean }) {
+function ModernCard({ student, mini = false }: { student: CardStudent; mini?: boolean }) {
   const col = getColor(student.class);
   const sz  = mini ? "w-14 h-16" : "w-20 h-24";
   return (
@@ -156,7 +183,7 @@ function ModernCard({ student, mini = false }: { student: typeof students[0]; mi
 }
 
 // ─── THEME 3: MINIMAL WHITE ──────────────────────────────────────────────
-function MinimalCard({ student, mini = false }: { student: typeof students[0]; mini?: boolean }) {
+function MinimalCard({ student, mini = false }: { student: CardStudent; mini?: boolean }) {
   const col = getColor(student.class);
   return (
     <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-200 select-none w-full flex">
@@ -201,7 +228,7 @@ function MinimalCard({ student, mini = false }: { student: typeof students[0]; m
 }
 
 // ─── THEME 4: ISLAMIC PATTERN ────────────────────────────────────────────
-function IslamicCard({ student, mini = false }: { student: typeof students[0]; mini?: boolean }) {
+function IslamicCard({ student, mini = false }: { student: CardStudent; mini?: boolean }) {
   return (
     <div className="bg-amber-700 rounded-2xl shadow-lg overflow-hidden border-2 border-amber-400/40 select-none w-full relative text-white">
       <IslamicPattern opacity={0.15} />
@@ -273,7 +300,7 @@ function IRowLight({ icon: Icon, text, mini }: { icon: React.ElementType; text: 
   );
 }
 
-function IDCard({ student, theme, mini = false }: { student: typeof students[0]; theme: Theme; mini?: boolean }) {
+function IDCard({ student, theme, mini = false }: { student: CardStudent; theme: Theme; mini?: boolean }) {
   switch (theme) {
     case "modern":  return <ModernCard  student={student} mini={mini} />;
     case "minimal": return <MinimalCard student={student} mini={mini} />;
@@ -285,6 +312,13 @@ function IDCard({ student, theme, mini = false }: { student: typeof students[0];
 // ─── PAGE ────────────────────────────────────────────────────────────────
 export default function IDCardsPage() {
   const { lang } = useLanguageStore();
+  const { user, accessToken, activeClientId } = useAuthStore();
+  const cid   = activeClientId ?? "";
+  const token = accessToken ?? "";
+
+  const [allStudents, setAllStudents]   = useState<CardStudent[]>([]);
+  const [allClasses, setAllClasses]     = useState<string[]>(DEFAULT_CLASSES);
+  const [dataLoading, setDataLoading]   = useState(true);
   const [search, setSearch]             = useState("");
   const [activeClass, setActiveClass]   = useState("All");
   const [theme, setTheme]               = useState<Theme>("classic");
@@ -293,6 +327,45 @@ export default function IDCardsPage() {
   const [showThemes, setShowThemes]     = useState(false);
   const [bulkMode, setBulkMode]         = useState(false);
   const [selected, setSelected]         = useState<Set<string>>(new Set());
+
+  const idCardSettings = {
+    madrasaName:    DEFAULT_CARD_SETTINGS.madrasaName,
+    madrasaAddress: DEFAULT_CARD_SETTINGS.madrasaAddress,
+    madrasaPhone:   DEFAULT_CARD_SETTINGS.madrasaPhone,
+    logoText:       DEFAULT_CARD_SETTINGS.logoText,
+    academicYear:   DEFAULT_CARD_SETTINGS.academicYear,
+  };
+
+  useEffect(() => {
+    if (!cid || !token) return;
+    const ac = new AbortController();
+    Promise.all([
+      getStudents(cid, token, { limit: 500, signal: ac.signal }).catch(() => ({ data: [] as any[] })),
+      getAllClasses(cid, token, ac.signal).catch(() => []),
+    ]).then(([stuData, classData]) => {
+      const mapped: CardStudent[] = (stuData.data ?? []).map((s) => ({
+        id:              s.id,
+        name:            s.name,
+        admissionNumber: s.adno,
+        class:           s.class?.name ?? "",
+        division:        "",
+        dateOfBirth:     s.dateOfBirth ? new Date(s.dateOfBirth).toLocaleDateString("en-GB") : "",
+        fatherName:      s.guardianName ?? "",
+        motherName:      "",
+        phone:           s.parentPhone ?? "",
+        address:         "",
+        photo:           undefined,
+      }));
+      setAllStudents(mapped);
+      const classNames = classData.map((c) => c.name);
+      setAllClasses(["All", ...Array.from(new Set(classNames)).sort()]);
+      setDataLoading(false);
+    });
+    return () => ac.abort();
+  }, [cid, token]);
+
+  const students = allStudents; // alias for card components
+  const ALL_CLASSES = allClasses;
 
   const filtered = students.filter((s) => {
     const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) ||

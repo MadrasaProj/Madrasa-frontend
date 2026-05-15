@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Darul Huda — 6-Page Brochure</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+Malayalam:wght@400;600;700&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #e5e7eb;
+      color: #1a1a1a;
+    }
+
+    /* ── Page Wrapper ── */
+    .page {
+      width: 900px;
+      min-height: 640px;
+      margin: 40px auto;
+      background: #ffffff;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+      overflow: hidden;
+      position: relative;
+      page-break-after: always;
+    }
+
+    /* ── Utility ── */
+    .ml { font-family: 'Noto Sans Malayalam', sans-serif; }
+    .text-emerald { color: #059669; }
+    .text-teal { color: #0d9488; }
+    .text-amber { color: #d97706; }
+    .text-gray { color: #6b7280; }
+    .text-gray-dark { color: #374151; }
+    .bg-emerald { background: #059669; }
+    .bg-teal { background: #0d9488; }
+    .flex { display: flex; }
+    .items-center { align-items: center; }
+    .gap-12 { gap: 12px; }
+    .gap-16 { gap: 16px; }
+    .gap-20 { gap: 20px; }
+
+    /* ── Section Label ── */
+    .section-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2.5px;
+      color: #059669;
+      margin-bottom: 12px;
+    }
+    .section-label::before {
+      content: '';
+      width: 20px;
+      height: 2px;
+      background: #059669;
+      border-radius: 2px;
+    }
+
+    .page-number {
+      position: absolute;
+      bottom: 24px;
+      right: 40px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #d1d5db;
+    }
+    .brand-footer {
+      position: absolute;
+      bottom: 24px;
+      left: 40px;
+      font-size: 11px;
+      color: #d1d5db;
+      font-weight: 500;
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════════
+       PAGE 1 — COVER
+    ══════════════════════════════════════════════════════════════════════════ */
+    .cover {
+      min-height: 640px;
+      display: flex;
+      flex-direction: column;
+      background: linear-gradient(160deg, #059669 0%, #047857 40%, #0d9488 100%);
+      color: white;
+      position: relative;
+      overflow: hidden;
+    }
+    .cover::before {
+      content: '';
+      position: absolute;
+      top: -150px; right: -150px;
+      width: 500px; height: 500px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 50%;
+    }
+    .cover::after {
+      content: '';
+      position: absolute;
+      bottom: -100px; left: -100px;
+      width: 350px; height: 350px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 50%;
+    }
+
+    .cover-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 60px;
+      position: relative;
+      z-index: 1;
+    }
+    .cover-logo {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+    .cover-logo-icon {
+      width: 80px; height: 80px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .cover h1 {
+      font-size: 56px;
+      font-weight: 900;
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+    .cover .ml-title {
+      font-family: 'Noto Sans Malayalam', sans-serif;
+      font-size: 28px;
+      font-weight: 600;
+      opacity: 0.75;
+      margin-top: 4px;
+    }
+    .cover h2 {
+      font-size: 22px;
+      font-weight: 400;
+      opacity: 0.9;
+      margin-bottom: 8px;
+      letter-spacing: 0.3px;
+    }
+    .cover .sub-ml {
+      font-family: 'Noto Sans Malayalam', sans-serif;
+      font-size: 15px;
+      opacity: 0.6;
+    }
+
+    .cover-badges {
+      display: flex;
+      gap: 12px;
+      margin-top: 40px;
+      flex-wrap: wrap;
+    }
+    .cover-badge {
+      padding: 10px 20px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 50px;
+      font-size: 13px;
+      font-weight: 500;
+      backdrop-filter: blur(8px);
+    }
+
+    .cover-visual {
+      position: absolute;
+      right: 60px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 280px;
+      z-index: 1;
+    }
+    .phone-mockup {
+      width: 220px;
+      height: 420px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 32px;
+      border: 2px solid rgba(255,255,255,0.2);
+      backdrop-filter: blur(10px);
+      padding: 16px;
+      margin-left: auto;
+    }
+    .phone-screen {
+      width: 100%;
+      height: 100%;
+      background: rgba(255,255,255,0.08);
+      border-radius: 22px;
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .phone-bar {
+      height: 8px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.15);
+    }
+    .phone-bar.w60 { width: 60%; }
+    .phone-bar.w80 { width: 80%; }
+    .phone-bar.w40 { width: 40%; }
+    .phone-card {
+      background: rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .phone-dot {
+      width: 28px; height: 28px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.2);
+      flex-shrink: 0;
+    }
+    .phone-lines {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .phone-line {
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255,255,255,0.12);
+    }
+    .phone-line.w70 { width: 70%; }
+    .phone-line.w50 { width: 50%; }
+
+    .cover-bottom {
+      padding: 24px 60px;
+      background: rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+    }
+    .cover-bottom p {
+      font-size: 13px;
+      opacity: 0.8;
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════════
+       PAGE 2–4 — FEATURE PAGES (ADMIN / TEACHER / PARENT)
+    ══════════════════════════════════════════════════════════════════════════ */
+    .feature-page {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      min-height: 640px;
+    }
+
+    .feature-left {
+      padding: 50px 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .feature-left::before {
+      content: '';
+      position: absolute;
+      bottom: -80px; right: -80px;
+      width: 250px; height: 250px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 50%;
+    }
+
+    .feature-left.admin-bg {
+      background: linear-gradient(160deg, #059669, #047857);
+      color: white;
+    }
+    .feature-left.teacher-bg {
+      background: linear-gradient(160deg, #0d9488, #0f766e);
+      color: white;
+    }
+    .feature-left.parent-bg {
+      background: linear-gradient(160deg, #d97706, #b45309);
+      color: white;
+    }
+
+    .feature-left .page-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      opacity: 0.6;
+      margin-bottom: 8px;
+    }
+    .feature-left h2 {
+      font-size: 36px;
+      font-weight: 800;
+      line-height: 1.15;
+      margin-bottom: 4px;
+    }
+    .feature-left .ml-heading {
+      font-family: 'Noto Sans Malayalam', sans-serif;
+      font-size: 18px;
+      font-weight: 600;
+      opacity: 0.7;
+      margin-bottom: 16px;
+    }
+    .feature-left p.desc {
+      font-size: 14px;
+      line-height: 1.7;
+      opacity: 0.85;
+    }
+
+    .feature-left .icon-large {
+      font-size: 64px;
+      margin-bottom: 24px;
+      opacity: 0.9;
+    }
+
+    /* Screenshot mockup in left panel */
+    .screen-preview {
+      margin-top: 24px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.15);
+      padding: 16px;
+      backdrop-filter: blur(8px);
+    }
+    .screen-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .screen-box {
+      flex: 1;
+      height: 40px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 8px;
+    }
+    .screen-box.tall { height: 60px; }
+    .screen-line {
+      height: 8px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+    .screen-line.w80 { width: 80%; }
+    .screen-line.w60 { width: 60%; }
+
+    .feature-right {
+      padding: 50px 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .feature-right h3 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 24px;
+    }
+
+    .feature-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .feature-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .feature-list .fi {
+      width: 40px; height: 40px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .fi.green-bg { background: #d1fae5; }
+    .fi.teal-bg { background: #ccfbf1; }
+    .fi.amber-bg { background: #fef3c7; }
+    .fi.blue-bg { background: #dbeafe; }
+    .fi.purple-bg { background: #ede9fe; }
+    .fi.rose-bg { background: #ffe4e6; }
+    .fi.cyan-bg { background: #cffafe; }
+    .fi.orange-bg { background: #ffedd5; }
+    .fi.indigo-bg { background: #e0e7ff; }
+    .fi.lime-bg { background: #ecfccb; }
+
+    .feature-list .fi-text h4 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin-bottom: 2px;
+    }
+    .feature-list .fi-text span {
+      font-size: 12px;
+      color: #9ca3af;
+      line-height: 1.5;
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════════
+       PAGE 5 — TECHNOLOGY & BILINGUAL
+    ══════════════════════════════════════════════════════════════════════════ */
+    .tech-page-content {
+      padding: 56px 52px;
+    }
+    .tech-header {
+      margin-bottom: 36px;
+    }
+    .tech-header h2 {
+      font-size: 32px;
+      font-weight: 800;
+      color: #1a1a1a;
+      margin-bottom: 4px;
+    }
+    .tech-header p {
+      font-size: 15px;
+      color: #6b7280;
+    }
+
+    .tech-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 36px;
+    }
+    .tech-card {
+      padding: 28px 24px;
+      border-radius: 20px;
+      border: 1px solid #e5e7eb;
+      background: #f9fafb;
+    }
+    .tech-card .tc-icon {
+      width: 48px; height: 48px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin-bottom: 16px;
+    }
+    .tech-card h4 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 6px;
+    }
+    .tech-card p {
+      font-size: 13px;
+      color: #6b7280;
+      line-height: 1.6;
+    }
+
+    .bilingual-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      background: linear-gradient(135deg, #059669, #0d9488);
+      border-radius: 20px;
+      padding: 32px;
+      color: white;
+    }
+    .bilingual-section .lang-box {
+      background: rgba(255,255,255,0.1);
+      border-radius: 14px;
+      padding: 24px;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    .lang-box h4 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .lang-box .sample-text {
+      font-size: 13px;
+      opacity: 0.85;
+      line-height: 1.7;
+    }
+    .lang-box .sample-text.ml {
+      font-family: 'Noto Sans Malayalam', sans-serif;
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════════
+       PAGE 6 — CTA / CONTACT
+    ══════════════════════════════════════════════════════════════════════════ */
+    .cta-page {
+      min-height: 640px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .cta-top {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 60px;
+      background: linear-gradient(160deg, #ffffff 0%, #f0fdf4 100%);
+    }
+    .cta-top .cta-icon {
+      font-size: 56px;
+      margin-bottom: 24px;
+    }
+    .cta-top h2 {
+      font-size: 36px;
+      font-weight: 800;
+      color: #1a1a1a;
+      margin-bottom: 8px;
+    }
+    .cta-top h2 span {
+      color: #059669;
+    }
+    .cta-top .cta-ml {
+      font-family: 'Noto Sans Malayalam', sans-serif;
+      font-size: 18px;
+      color: #6b7280;
+      margin-bottom: 16px;
+    }
+    .cta-top p.cta-desc {
+      font-size: 16px;
+      color: #6b7280;
+      max-width: 520px;
+      line-height: 1.7;
+      margin-bottom: 32px;
+    }
+
+    .cta-features {
+      display: flex;
+      gap: 24px;
+      margin-bottom: 36px;
+    }
+    .cta-feat {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #374151;
+    }
+    .cta-feat .cf-dot {
+      width: 32px; height: 32px;
+      border-radius: 10px;
+      background: #d1fae5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .cta-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, #059669, #0d9488);
+      color: white;
+      padding: 16px 40px;
+      border-radius: 16px;
+      font-size: 16px;
+      font-weight: 700;
+      text-decoration: none;
+      box-shadow: 0 8px 24px rgba(5,150,105,0.3);
+    }
+
+    .cta-bottom {
+      background: #059669;
+      color: white;
+      padding: 32px 60px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 32px;
+    }
+    .cta-contact h4 {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      opacity: 0.6;
+      margin-bottom: 10px;
+    }
+    .cta-contact p {
+      font-size: 14px;
+      line-height: 1.7;
+      opacity: 0.9;
+    }
+
+    /* ── Print Styles ── */
+    @media print {
+      body { background: white; }
+      .page { box-shadow: none; border-radius: 0; margin: 0; width: 100%; min-height: 100vh; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- PAGE 1 — COVER                                                          -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="cover">
+    <div class="cover-content">
+      <div class="cover-logo">
+        <div class="cover-logo-icon">📖</div>
+        <div>
+          <h1>Darul Huda</h1>
+          <div class="ml-title ml">ദാറുൽ ഹുദാ</div>
+        </div>
+      </div>
+
+      <h2>Complete Digital Madrasa<br/>Management System</h2>
+      <p class="sub-ml ml">സമ്പൂർണ ഡിജിറ്റൽ മദ്‌റസ മാനേജ്‌മെന്റ് സിസ്റ്റം</p>
+
+      <div class="cover-badges">
+        <span class="cover-badge">🛡️ Admin Dashboard</span>
+        <span class="cover-badge">🎓 Teacher Portal</span>
+        <span class="cover-badge">👨‍👩‍👧 Parent App</span>
+        <span class="cover-badge">🌐 Bilingual EN/ML</span>
+      </div>
+
+      <!-- Phone Mockup -->
+      <div class="cover-visual">
+        <div class="phone-mockup">
+          <div class="phone-screen">
+            <div class="phone-bar w60"></div>
+            <div class="phone-bar w80"></div>
+            <div style="height: 8px;"></div>
+            <div class="phone-card">
+              <div class="phone-dot"></div>
+              <div class="phone-lines">
+                <div class="phone-line w70"></div>
+                <div class="phone-line w50"></div>
+              </div>
+            </div>
+            <div class="phone-card">
+              <div class="phone-dot"></div>
+              <div class="phone-lines">
+                <div class="phone-line w70"></div>
+                <div class="phone-line w50"></div>
+              </div>
+            </div>
+            <div class="phone-card">
+              <div class="phone-dot"></div>
+              <div class="phone-lines">
+                <div class="phone-line w70"></div>
+                <div class="phone-line w50"></div>
+              </div>
+            </div>
+            <div style="flex:1;"></div>
+            <div style="display:flex; gap:8px; justify-content:center;">
+              <div style="width:16px; height:16px; border-radius:4px; background:rgba(255,255,255,0.2);"></div>
+              <div style="width:16px; height:16px; border-radius:4px; background:rgba(255,255,255,0.2);"></div>
+              <div style="width:16px; height:16px; border-radius:4px; background:rgba(255,255,255,0.2);"></div>
+              <div style="width:16px; height:16px; border-radius:4px; background:rgba(255,255,255,0.2);"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cover-bottom">
+      <p>Empowering Islamic Education Through Technology</p>
+      <p>www.darulhuda.app</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- PAGE 2 — ADMIN PANEL                                                    -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="feature-page">
+    <!-- Left Panel (Focus Visual) -->
+    <div class="feature-left admin-bg">
+      <div class="icon-large">🛡️</div>
+      <div class="page-label">Admin Dashboard</div>
+      <h2>Complete<br/>Admin Control</h2>
+      <div class="ml-heading ml">പൂർണ അഡ്‌മിൻ നിയന്ത്രണം</div>
+      <p class="desc">Oversee every aspect of your madrasa — from student enrolment to financial reports — all from a single, intuitive dashboard.</p>
+
+      <!-- Screen mockup -->
+      <div class="screen-preview">
+        <div class="screen-row">
+          <div class="screen-box"></div>
+          <div class="screen-box"></div>
+          <div class="screen-box"></div>
+          <div class="screen-box"></div>
+        </div>
+        <div class="screen-line w80"></div>
+        <div class="screen-line w60"></div>
+        <div class="screen-row">
+          <div class="screen-box tall"></div>
+          <div class="screen-box tall"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Panel (Feature List) -->
+    <div class="feature-right">
+      <div class="section-label">Key Capabilities</div>
+      <h3>Everything You Need to Manage</h3>
+      <ul class="feature-list">
+        <li>
+          <div class="fi green-bg">👨‍🎓</div>
+          <div class="fi-text">
+            <h4>Student Management</h4>
+            <span>Complete student profiles with class, guardian info, photo and admission details. Search and filter across all students.</span>
+          </div>
+        </li>
+        <li>
+          <div class="fi amber-bg">💰</div>
+          <div class="fi-text">
+            <h4>Fee Tracking &amp; Receipts</h4>
+            <span>Track paid/unpaid fees by month, generate digital receipts with UPI QR codes. View collection analytics.</span>
+          </div>
+        </li>
+        <li>
+          <div class="fi blue-bg">📊</div>
+          <div class="fi-text">
+            <h4>Reports &amp; Analytics</h4>
+            <span>Attendance trends, fee collection charts, student performance overviews. Visual dashboards with Recharts.</span>
+          </div>
+        </li>
+        <li>
+          <div class="fi purple-bg">🎓</div>
+          <div class="fi-text">
+            <h4>Exam Management</h4>
+            <span>Schedule exams, enter marks, publish results. Students are auto-ranked by performance.</span>
+          </div>
+        </li>
+        <li>
+          <div class="fi cyan-bg">🪪</div>
+          <div class="fi-text">
+            <h4>ID Cards &amp; Posters</h4>
+            <span>Generate downloadable student ID cards and create digital event posters with custom colours.</span>
+          </div>
+        </li>
+        <li>
+          <div class="fi rose-bg">⚙️</div>
+          <div class="fi-text">
+            <h4>Configuration &amp; Seats</h4>
+            <span>Manage classes, seat allocation, SKSBV, and notification settings — all from admin config.</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+  <span class="page-number">02</span>
+  <span class="brand-footer">Darul Huda — Madrasa Management System</span>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- PAGE 3 — TEACHER PANEL                                                  -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="feature-page">
+    <!-- Left Panel -->
+    <div class="feature-left teacher-bg">
+      <div class="icon-large">🎓</div>
+      <div class="page-label">Teacher Portal</div>
+      <h2>Empowering<br/>Every Usthad</h2>
+      <div class="ml-heading ml">എല്ലാ ഉസ്‌താദിനും ശക്തി</div>
+      <p class="desc">A dedicated workspace for teachers to manage daily classroom activities — from marking attendance to tracking each student's spiritual growth.</p>
+
+      <!-- Screen mockup -->
+      <div class="screen-preview">
+        <div class="screen-line w80"></div>
+        <div class="screen-row">
+          <div class="screen-box"></div>
+          <div class="screen-box"></div>
+          <div class="screen-box"></div>
+        </div>
+        <div class="screen-line w60"></div>
+        <div class="screen-row">
+          <div class="screen-box tall"></div>
+          <div class="screen-box tall"></div>
+        </div>
+        <div class="screen-line w80"></div>
+      </div>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="feature-right">
+      <div class="section-label">Teacher Tools</div>
+      <h3>Daily Classroom Essentials</h3>
+      <ul class="feature-list">
+        <li>
+          <div class="fi green-bg">📋</div>
+          <div class="fi-text">
+            <h4>Smart Attendance</h4>
+            <span>Mark Present / Absent / Late / Excused for each student. View weekly heatmaps, trends, and send low-attendance alerts to parents.</span>
+          </div>
+        </li>
+        <li>
+          <div class="fi teal-bg">📚</div>
+          <div class="fi-text">
+            <h4>Homework Management</h4>
+            <span>Assign homework with subject tags, set due dates, and track completion status. Filter by subject and date.</span>
+          </div>
+        </li>
+        <li>
+          <div class="fi amber-bg">📝</div>
+          <div class="fi-text">
+            <h4>Daily Diary</h4>
+            <span>Record what was taught, student behaviour notes, and daily remarks. Parents can view the diary for transparency.</span>
+          </div>
+        </li>
+        <li>
+          <div class="fi indigo-bg">🌙</div>
+          <div class="fi-text">
+            <h4>Ibadah Tracker</h4>
+            <span>Track 5 spiritual categories: Fard (فرض), Sunnah (سنة), Quran (القرآن), Zikr (ذكر) &amp; Akhlaq (أخلاق). Rate with star system.</span>
+          </div>
+        </li>
+        <li>
+          <div class="fi blue-bg">🎓</div>
+          <div class="fi-text">
+            <h4>Exam Marks &amp; Results</h4>
+            <span>Enter subject-wise marks, view class averages, and publish results. Parents get notified instantly upon publishing.</span>
+          </div>
+        </li>
+        <li>
+          <div class="fi lime-bg">🏆</div>
+          <div class="fi-text">
+            <h4>Performance Rankings</h4>
+            <span>Student performance overview with percentage, rank, and category breakdown. Identify top performers and those needing support.</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+  <span class="page-number">03</span>
+  <span class="brand-footer">Darul Huda — Madrasa Management System</span>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- PAGE 4 — PARENT PANEL                                                   -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="feature-page">
+    <!-- Left Panel -->
+    <div class="feature-left parent-bg">
+      <div class="icon-large">👨‍👩‍👧</div>
+      <div class="page-label">Parent App</div>
+      <h2>Stay Connected<br/>With Your Child</h2>
+      <div class="ml-heading ml">നിങ്ങളുടെ കുട്ടിയുമായി ബന്ധപ്പെടുക</div>
+      <p class="desc">Full visibility into your child's madrasa journey — attendance, homework, fees, exam results and spiritual progress — all at your fingertips.</p>
+
+      <!-- Screen mockup -->
+      <div class="screen-preview">
+        <div class="screen-row">
+          <div class="screen-box"></div>
+          <div class="screen-box"></div>
+        </div>
+        <div class="screen-line w80"></div>
+        <div class="screen-line w60"></div>
+        <div class="screen-row">
+          <div class="screen-box tall"></div>
+        </div>
+        <div class="screen-row">
+          <div class="screen-box"></div>
+          <div class="screen-box"></div>
+          <div class="screen-box"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="feature-right">
+      <div class="section-label">Parent Features</div>
+      <h3>Everything About Your Child</h3>
+      <ul class="feature-list">
+        <li>
+          <div class="fi green-bg">📅</div>
+          <div class="fi-text">
+            <h4>Attendance Overview</h4>
+            <span>See your child's daily attendance status, monthly summary with present/absent/late counts, and attendance percentage.</span>
+          </div>
+        </li>
+        <li>
+          <div class="fi teal-bg">📖</div>
+          <div class="fi-text">
+            <h4>Homework &amp; Diary</h4>
+            <span>View assigned homework with completion status. Read daily diary entries to know what was taught in class.</span>
+          </div>
+        </li>
+        <li>
+          <div class="fi amber-bg">💳</div>
+          <div class="fi-text">
+            <h4>Fee Status &amp; Receipts</h4>
+            <span>Check paid/pending fees by month. View digital receipts complete with UPI QR code for easy payment.</span>
+          </div>
+        </li>
+        <li>
+          <div class="fi blue-bg">📈</div>
+          <div class="fi-text">
+            <h4>Exam Results</h4>
+            <span>View published exam results with subject-wise marks, total percentage, class rank, and comparison with class average.</span>
+          </div>
+        </li>
+        <li>
+          <div class="fi indigo-bg">🌙</div>
+          <div class="fi-text">
+            <h4>Ibadah Progress</h4>
+            <span>Monitor your child's spiritual development across Fard, Sunnah, Quran recitation, Zikr and Akhlaq categories.</span>
+          </div>
+        </li>
+        <li>
+          <div class="fi rose-bg">🔔</div>
+          <div class="fi-text">
+            <h4>Real-time Notifications</h4>
+            <span>Receive alerts about attendance, homework, fee reminders, exam results, and important madrasa announcements.</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+  <span class="page-number">04</span>
+  <span class="brand-footer">Darul Huda — Madrasa Management System</span>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- PAGE 5 — TECHNOLOGY & BILINGUAL                                         -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="tech-page-content">
+    <div class="section-label">Technology &amp; Design</div>
+    <div class="tech-header">
+      <h2>Built with Modern Technology</h2>
+      <p>A responsive, performant, and beautifully designed system built on cutting-edge frameworks</p>
+    </div>
+
+    <div class="tech-grid">
+      <div class="tech-card">
+        <div class="tc-icon" style="background:#d1fae5;">⚡</div>
+        <h4>Next.js 16 &amp; React 19</h4>
+        <p>Server-side rendering, app router architecture, and Turbopack for blazing-fast development and production builds.</p>
+      </div>
+      <div class="tech-card">
+        <div class="tc-icon" style="background:#dbeafe;">🔷</div>
+        <h4>TypeScript</h4>
+        <p>Full type safety across the entire codebase. Catch errors at compile-time with strict typing on all components and data.</p>
+      </div>
+      <div class="tech-card">
+        <div class="tc-icon" style="background:#ccfbf1;">🎨</div>
+        <h4>Tailwind CSS</h4>
+        <p>Utility-first styling with custom design tokens. Consistent emerald/teal theme with cream (#faf9f6) background.</p>
+      </div>
+      <div class="tech-card">
+        <div class="tc-icon" style="background:#ede9fe;">✨</div>
+        <h4>Framer Motion</h4>
+        <p>Smooth, production-ready animations throughout — page transitions, card hovers, modal entries, and toast notifications.</p>
+      </div>
+      <div class="tech-card">
+        <div class="tc-icon" style="background:#fef3c7;">📊</div>
+        <h4>Recharts</h4>
+        <p>Interactive data visualisation for attendance trends, fee collection analytics, and student performance bar charts.</p>
+      </div>
+      <div class="tech-card">
+        <div class="tc-icon" style="background:#ffe4e6;">🧠</div>
+        <h4>Zustand State</h4>
+        <p>Lightweight yet powerful global state for auth, language, and UI state. Persistent sessions with store hydration.</p>
+      </div>
+    </div>
+
+    <!-- Bilingual Section -->
+    <div class="bilingual-section">
+      <div class="lang-box">
+        <h4>🇬🇧 English</h4>
+        <div class="sample-text">
+          Every label, button, heading, placeholder, notification, and toast message in the entire system is available in English. Automatic language switching with zero page reload.
+        </div>
+      </div>
+      <div class="lang-box">
+        <h4>🇮🇳 മലയാളം</h4>
+        <div class="sample-text ml">
+          എല്ലാ ലേബലുകളും ബട്ടണുകളും ഹെഡിംഗുകളും പ്ലേസ്‌ഹോൾഡറുകളും നോട്ടിഫിക്കേഷനുകളും ടോസ്റ്റ് മെസേജുകളും മലയാളത്തിൽ ലഭ്യമാണ്. പേജ് റീലോഡ് ഇല്ലാതെ ഭാഷ മാറ്റുക.
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center; margin-top: 28px;">
+      <p style="font-size:14px; color:#6b7280;">
+        <strong style="color:#059669;">39 pages</strong> · <strong style="color:#059669;">1,000+ i18n keys</strong> · <strong style="color:#059669;">3 role dashboards</strong> · <strong style="color:#059669;">Fully responsive</strong>
+      </p>
+    </div>
+  </div>
+  <span class="page-number">05</span>
+  <span class="brand-footer">Darul Huda — Madrasa Management System</span>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- PAGE 6 — CTA / CONTACT                                                  -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="cta-page">
+    <div class="cta-top">
+      <div class="cta-icon">🕌</div>
+      <h2>Digitise Your <span>Madrasa</span> Today</h2>
+      <p class="cta-ml ml">ഇന്ന് തന്നെ നിങ്ങളുടെ മദ്‌റസ ഡിജിറ്റൈസ് ചെയ്യൂ</p>
+      <p class="cta-desc">
+        Join hundreds of madrasas embracing technology to streamline administration, empower teachers, and keep parents connected. Darul Huda makes Islamic education management effortless.
+      </p>
+
+      <div class="cta-features">
+        <div class="cta-feat">
+          <div class="cf-dot">✅</div>
+          <span>Easy Setup</span>
+        </div>
+        <div class="cta-feat">
+          <div class="cf-dot">📱</div>
+          <span>Mobile Friendly</span>
+        </div>
+        <div class="cta-feat">
+          <div class="cf-dot">🌐</div>
+          <span>Bilingual</span>
+        </div>
+        <div class="cta-feat">
+          <div class="cf-dot">🔒</div>
+          <span>Secure</span>
+        </div>
+      </div>
+
+      <a href="#" class="cta-btn">
+        Get Started Now →
+      </a>
+    </div>
+
+    <div class="cta-bottom">
+      <div class="cta-contact">
+        <h4>Contact</h4>
+        <p>
+          📧 info@darulhuda.app<br/>
+          📞 +91 XXXXX XXXXX<br/>
+          🌐 www.darulhuda.app
+        </p>
+      </div>
+      <div class="cta-contact">
+        <h4>Address</h4>
+        <p>
+          Darul Huda Madrasa<br/>
+          [Your Address Here]<br/>
+          Kerala, India
+        </p>
+      </div>
+      <div class="cta-contact">
+        <h4>Follow Us</h4>
+        <p>
+          📘 Facebook<br/>
+          📸 Instagram<br/>
+          ▶️ YouTube
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

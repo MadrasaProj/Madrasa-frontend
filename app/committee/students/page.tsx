@@ -1,14 +1,11 @@
-"use client";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { motion } from "framer-motion";
 import { useLanguageStore } from "@/store/language";
-import { committeeSummary } from "@/mock-data";
+import { useCommitteeData } from "@/lib/use-committee-data";
 import {
   Users, Star, BookOpen, Award, Target, TrendingUp,
   GraduationCap, Heart,
 } from "lucide-react";
-
-const d = committeeSummary;
 
 function Bar({ value, color = "bg-emerald-500", height = "h-2" }: { value: number; color?: string; height?: string }) {
   const safe = Math.min(100, Math.max(0, value));
@@ -37,6 +34,7 @@ const medalEmoji = ["🥇", "🥈", "🥉", "🏅"];
 
 export default function CommitteeStudentsPage() {
   const { lang } = useLanguageStore();
+  const d = useCommitteeData();
 
   const statCards = [
     {

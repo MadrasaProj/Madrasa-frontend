@@ -1,13 +1,10 @@
-"use client";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { motion } from "framer-motion";
 import { useLanguageStore } from "@/store/language";
-import { committeeSummary, elections } from "@/mock-data";
+import { useCommitteeData } from "@/lib/use-committee-data";
 import {
   Vote, CheckCircle2, Clock, Users, Crown, AlertCircle,
 } from "lucide-react";
-
-const d = committeeSummary;
 
 const roleBadge: Record<string, { emoji: string; bg: string; text: string }> = {
   President:  { emoji: "👑", bg: "bg-amber-100",   text: "text-amber-800"   },
@@ -19,6 +16,12 @@ const roleBadge: Record<string, { emoji: string; bg: string; text: string }> = {
 
 export default function CommitteeElectionsPage() {
   const { lang } = useLanguageStore();
+  const _d = useCommitteeData(); // available for future use
+  // Elections have no backend yet — stub data
+  const d = {
+    elections: { activeCount: 0, completedCount: 0, pendingNominations: 0, totalVoters: 0, totalVotesCast: 0, results: [] as any[] },
+  };
+  const elections: any[] = [];
 
   const statCards = [
     {

@@ -1,4 +1,3 @@
-"use client";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { seatArrangements } from "@/mock-data";

@@ -1,50 +1,132 @@
-"use client";
 import { Sidebar, BottomNav } from "@/components/Navigation";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import { Bell } from "lucide-react";
-import Link from "next/link";
-import { useEffect } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { Bell, ShieldAlert, X, ChevronDown } from "lucide-react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
-import {
-  roleHomePath,
-  stripTenantPrefix,
-  tenantLoginPath,
-  withTenantPrefix,
-} from "@/lib/tenant-routing";
+import { tenantLoginPath } from "@/lib/tenant-routing";
+
+// ── Parent Student Switcher ────────────────────────────────────────────────────
+
+function ParentStudentSwitcher() {
+  const { user, activeStudentId, setActiveStudent } = useAuthStore();
+  const [open, setOpen] = useState(false);
+
+  if (!user || user.actorType !== "PARENT") return null;
+
+  const students = user.accessibleStudents ?? [];
+  const ids = user.accessibleStudentIds ?? [];
+  if (ids.length <= 1) return null;
+
+  const effectiveId = activeStudentId ?? ids[0];
+  const activeStudent = students.find((s) => s.id === effectiveId);
+  const activeName = activeStudent?.name ?? `Student ${ids.indexOf(effectiveId) + 1}`;
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold max-w-[140px]"
+      >
+        <span className="truncate">{activeName}</span>
+        <ChevronDown className="w-3.5 h-3.5 shrink-0" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 bg-white border border-gray-100 rounded-xl shadow-lg z-50 py-1 min-w-[180px]">
+          {ids.map((id) => {
+            const info = students.find((s) => s.id === id);
+            const name = info?.name ?? `Student`;
+            const sub = info?.className ?? info?.adno ?? "";
+            return (
+              <button
+                key={id}
+                onClick={() => { setActiveStudent(id); setOpen(false); }}
+                className={`w-full text-left px-4 py-2.5 transition-colors ${
+                  effectiveId === id
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <p className="text-sm font-semibold leading-tight">{name}</p>
+                {sub && <p className="text-xs text-gray-400 leading-tight mt-0.5">{sub}</p>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Super Admin Viewing Banner ─────────────────────────────────────────────────
+
+function SuperAdminViewingBanner() {
+  const { user, activeClientId, activeTenantSlug, switchToClient } = useAuthStore();
+  const navigate = useNavigate();
+
+  if (user?.actorType !== "SUPER_ADMIN" || !activeClientId) return null;
+
+  const handleExit = () => {
+    switchToClient(null, null);
+    navigate("/admin", { replace: true });
+  };
+
+  return (
+    <div className="bg-amber-500 text-white px-4 py-2 flex items-center justify-between gap-3 text-sm font-medium">
+      <div className="flex items-center gap-2">
+        <ShieldAlert className="w-4 h-4 shrink-0" />
+        <span>Super Admin — viewing <strong>{activeTenantSlug ?? activeClientId}</strong></span>
+      </div>
+      <button
+        onClick={handleExit}
+        className="flex items-center gap-1 px-3 py-1 rounded-lg bg-white/20 hover:bg-white/30 transition-colors text-xs font-semibold shrink-0"
+      >
+        <X className="w-3.5 h-3.5" />
+        Exit
+      </button>
+    </div>
+  );
+}
+
+// ── Dashboard Layout ───────────────────────────────────────────────────────────
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const { user, hasHydrated } = useAuthStore();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const { user, activeClientId, hasHydrated } = useAuthStore();
   const { lang } = useLanguageStore();
 
   useEffect(() => {
     if (!hasHydrated) return;
 
     if (!user) {
-      const slug =
-        typeof window !== "undefined"
-          ? window.location.pathname.match(/^\/m\/([^/]+)/)?.[1]
-          : null;
-      router.replace(tenantLoginPath(slug));
+      const slug = window.location.pathname.match(/^\/m\/([^/]+)/)?.[1] ?? null;
+      navigate(tenantLoginPath(slug), { replace: true });
       return;
     }
 
-    const roleHome = roleHomePath({
-      role: user.role,
-      actorType: user.actorType,
-      tenantSlug: user.tenantSlug,
-    });
-    const normalizedPath = user.tenantSlug
-      ? withTenantPrefix(stripTenantPrefix(pathname), user.tenantSlug)
-      : stripTenantPrefix(pathname);
-    if (!normalizedPath.startsWith(roleHome)) {
-      router.replace(roleHome);
+    const isSuperAdmin = user.actorType === "SUPER_ADMIN";
+
+    if (isSuperAdmin) {
+      // Valid: /admin (platform), /m/{slug}/admin/* (viewing madrasa)
+      if (pathname === "/admin" || pathname.startsWith("/admin/")) return;
+      if (pathname.match(/^\/m\/[^/]+\/admin/)) return;
+      navigate("/admin", { replace: true });
+      return;
     }
-  }, [hasHydrated, pathname, router, user]);
+
+    // Tenant users: valid at /{role}/* or /m/{slug}/{role}/*
+    const slug = user.tenantSlug;
+    const roleBase = `/${user.role}`;
+    const slugBase = slug ? `/m/${slug}/${user.role}` : null;
+
+    if (pathname.startsWith(roleBase)) return;
+    if (slugBase && pathname.startsWith(slugBase)) return;
+
+    navigate(slugBase ?? roleBase, { replace: true });
+  }, [hasHydrated, pathname, navigate, user]);
 
   if (!hasHydrated) {
     return (
@@ -56,16 +138,25 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   if (!user) return null;
 
+  const isSuperAdmin = user.actorType === "SUPER_ADMIN";
+  const isViewingMadrasa = isSuperAdmin && !!activeClientId;
+
   const roleLabel = (role: string) => {
+    if (isSuperAdmin && !isViewingMadrasa) return "Super Admin";
     if (role === "committee") return lang === "ml" ? "കമ്മിറ്റി" : "Committee";
     return t("common", role as "admin" | "teacher" | "parent", lang);
   };
 
+  const notifPath = user.role === "committee"
+    ? "/committee/announcements"
+    : `/${user.role}/notifications`;
+
   return (
     <div className="min-h-screen bg-[#faf9f6]">
       <Sidebar />
-      {/* Main */}
       <div className="lg:ml-64">
+        <SuperAdminViewingBanner />
+
         {/* ── Mobile top bar ─────────────────────────────────── */}
         <header
           className="lg:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-100 px-4 py-0 flex items-center justify-between"
@@ -73,37 +164,33 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         >
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center shrink-0">
-              <span className="text-white font-extrabold text-xs tracking-wide">
-                DH
-              </span>
+              <span className="text-white font-extrabold text-xs tracking-wide">DH</span>
             </div>
             <div className="leading-tight">
               <p className="font-bold text-gray-900 text-sm leading-none">
                 {t("common", "appName", lang)}
               </p>
               <p className="text-[10px] text-emerald-600 font-semibold capitalize mt-0.5">
-                {roleLabel(user?.role ?? "")}
+                {roleLabel(user.role)}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <ParentStudentSwitcher />
             <LanguageSwitcher />
-            <Link
-              href={withTenantPrefix(
-                `/${user?.role}/notifications`,
-                user?.actorType === "SUPER_ADMIN"
-                  ? undefined
-                  : user?.tenantSlug,
-              )}
-              className="relative w-9 h-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center active:scale-95 transition-transform"
-            >
-              <Bell className="w-4.5 h-4.5 text-gray-600" />
-              {user?.role !== "committee" && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white" />
-              )}
-            </Link>
+            {(!isSuperAdmin || isViewingMadrasa) && (
+              <Link
+                to={notifPath}
+                className="relative w-9 h-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center active:scale-95 transition-transform"
+              >
+                <Bell className="w-4.5 h-4.5 text-gray-600" />
+                {user.role !== "committee" && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white" />
+                )}
+              </Link>
+            )}
             <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0">
-              {user?.name?.charAt(0) ?? "U"}
+              {user.name?.charAt(0) ?? "U"}
             </div>
           </div>
         </header>
@@ -112,33 +199,26 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <header className="hidden lg:flex sticky top-0 z-30 bg-[#faf9f6]/90 backdrop-blur-md border-b border-gray-100 px-8 py-4 items-center justify-between">
           <div className="text-sm text-gray-500">
             {new Date().toLocaleDateString(lang === "ml" ? "ml-IN" : "en-IN", {
-              weekday: "long",
-              year: "numeric",
-              month: "long",
-              day: "numeric",
+              weekday: "long", year: "numeric", month: "long", day: "numeric",
             })}
           </div>
           <div className="flex items-center gap-3">
+            <ParentStudentSwitcher />
             <LanguageSwitcher />
-            <Link
-              href={withTenantPrefix(
-                `/${user?.role}/notifications`,
-                user?.actorType === "SUPER_ADMIN"
-                  ? undefined
-                  : user?.tenantSlug,
-              )}
-              className="p-2 rounded-xl bg-white border border-gray-200 relative hover:bg-gray-50"
-            >
-              <Bell className="w-5 h-5 text-gray-600" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-            </Link>
+            {(!isSuperAdmin || isViewingMadrasa) && (
+              <Link
+                to={notifPath}
+                className="p-2 rounded-xl bg-white border border-gray-200 relative hover:bg-gray-50"
+              >
+                <Bell className="w-5 h-5 text-gray-600" />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+              </Link>
+            )}
             <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2">
               <div className="w-7 h-7 bg-emerald-600 rounded-full flex items-center justify-center text-white font-bold text-xs">
-                {user?.name?.charAt(0) ?? "U"}
+                {user.name?.charAt(0) ?? "U"}
               </div>
-              <span className="text-sm font-medium text-gray-700">
-                {user?.name}
-              </span>
+              <span className="text-sm font-medium text-gray-700">{user.name}</span>
             </div>
           </div>
         </header>

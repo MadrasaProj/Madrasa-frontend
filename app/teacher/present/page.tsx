@@ -1,78 +1,142 @@
-"use client";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { attendanceRecords, students } from "@/mock-data";
-import { cn } from "@/lib/utils";
+import { getClassAttendance, type ClassAttendanceRecord } from "@/lib/attendance-api";
+import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
+import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
+import { UserCheck, Loader2, RefreshCw } from "lucide-react";
 
-// Get teacher's classes (hardcoded for demo, based on teachers[0])
-const TEACHER_CLASSES = ["Class 4", "Class 3"];
+function todayISO() {
+  return new Date().toISOString().split("T")[0];
+}
 
-function getStudentsInClass(classId: string) {
-  return students.filter((s) => s.class === classId);
+function fmtDate(d: string) {
+  return new Date(d).toLocaleDateString("en-GB", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
 }
 
 export default function TeacherPresentPage() {
   const { lang } = useLanguageStore();
-  const [selectedClass, setSelectedClass] = useState(TEACHER_CLASSES[0]);
+  const { user, accessToken } = useAuthStore();
 
-  // Get the latest attendance record (today's)
-  const latestRecord = attendanceRecords[0];
-  
-  // Filter records for selected class
-  const classStudents = getStudentsInClass(selectedClass);
-  const presentStudentIds = latestRecord?.records
-    .filter((r) => r.status === "present")
-    .map((r) => r.studentId) ?? [];
-  
-  const presentStudents = classStudents.filter((s) => presentStudentIds.includes(s.id));
+  const [classes, setClasses]           = useState<ClassRecord[]>([]);
+  const [selectedClass, setSelectedClass] = useState<ClassRecord | null>(null);
+  const [records, setRecords]           = useState<ClassAttendanceRecord[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState<string | null>(null);
+
+  const today = todayISO();
+
+  // Load teacher's classes once
+  useEffect(() => {
+    if (!user?.clientId || !accessToken) return;
+    const ac = new AbortController();
+    getMyClasses(user.clientId, accessToken, ac.signal)
+      .then((data) => {
+        setClasses(data);
+        if (data.length > 0) setSelectedClass(data[0]);
+      })
+      .catch(() => {});
+    return () => ac.abort();
+  }, [user?.clientId, accessToken]);
+
+  // Load attendance when class changes
+  const loadAttendance = useCallback(async (cls: ClassRecord) => {
+    if (!user?.clientId || !accessToken) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await getClassAttendance(user.clientId, accessToken, {
+        date: today,
+        classId: cls.id,
+        ...(user.defaultAcademicYearId ? { academicYearId: user.defaultAcademicYearId } : {}),
+      });
+      setRecords(res.records);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.clientId, user?.defaultAcademicYearId, accessToken, today]);
+
+  useEffect(() => {
+    if (selectedClass) loadAttendance(selectedClass);
+  }, [selectedClass, loadAttendance]);
+
+  const present = records.filter((r) => r.status === "PRESENT");
 
   return (
     <DashboardLayout>
-      <PageHeader title={t("teacherPages", "presentToday", lang)} subtitle={latestRecord?.date || "Latest"} />
+      <PageHeader
+        title={t("teacherPages", "presentToday", lang)}
+        subtitle={fmtDate(today)}
+        icon={UserCheck}
+        back
+        backHref="/teacher"
+      />
 
-      {/* ── Class Selector ── */}
-      <div className="flex gap-2 mb-4">
-        {TEACHER_CLASSES.map((cls) => (
+      {/* Class selector */}
+      <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide">
+        {classes.map((cls) => (
           <button
-            key={cls}
+            key={cls.id}
             onClick={() => setSelectedClass(cls)}
             className={cn(
-              "px-4 py-2 rounded-xl text-sm font-semibold transition-all",
-              selectedClass === cls
+              "px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 transition-all",
+              selectedClass?.id === cls.id
                 ? "bg-emerald-600 text-white shadow-sm"
-                : "bg-white border border-gray-200 text-gray-600 hover:border-emerald-300"
+                : "bg-white border border-gray-200 text-gray-600"
             )}
           >
-            {cls}
+            {cls.name}
           </button>
         ))}
       </div>
 
-      {/* ── Present List ── */}
-      <div className="bg-white rounded-2xl p-4 border border-gray-100 mt-4">
-        <p className="text-xs text-gray-500 mb-3">{t("teacherPages", "totalPresent", lang)}: {presentStudents.length}</p>
-        {presentStudents.length === 0 ? (
-          <div className="text-sm text-gray-500">{t("teacherPages", "noPresent", lang)} {selectedClass}.</div>
+      {/* Summary badge */}
+      {!loading && !error && (
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm font-semibold text-gray-700">
+            <span className="text-emerald-700 font-bold text-lg">{present.length}</span>
+            {" "}{t("teacherPages", "totalPresent", lang)}
+          </p>
+          <button
+            onClick={() => selectedClass && loadAttendance(selectedClass)}
+            className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600"
+          >
+            <RefreshCw className="w-3 h-3" /> Refresh
+          </button>
+        </div>
+      )}
+
+      {/* Content */}
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center gap-2 py-12 text-sm text-gray-400">
+            <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+          </div>
+        ) : error ? (
+          <div className="px-4 py-4 text-sm text-red-600 bg-red-50">{error}</div>
+        ) : present.length === 0 ? (
+          <div className="px-4 py-8 text-sm text-gray-400 text-center">
+            {t("teacherPages", "noPresent", lang)} {selectedClass?.name ?? ""}
+          </div>
         ) : (
-          <div className="space-y-2">
-            {presentStudents.map((s) => (
-              <div key={s.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100">
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm",
-                    s.gender === "female" ? "bg-pink-100 text-pink-700" : "bg-emerald-100 text-emerald-700"
-                  )}>
-                    {s.name.charAt(0)}
-                  </div>
-                  <div>
-                    <div className="font-semibold text-gray-900">{s.name}</div>
-                    <div className="text-xs text-gray-500">{s.admissionNumber}</div>
-                  </div>
+          <div className="divide-y divide-gray-50">
+            {present.map((r, i) => (
+              <div key={r.id} className="flex items-center gap-3 px-4 py-3">
+                <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold shrink-0">
+                  {i + 1}
                 </div>
-                <div className="text-xs text-emerald-700 font-semibold">✓ {t("common", "present", lang)}</div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-900 text-sm truncate">{r.student.name}</p>
+                  <p className="text-xs text-gray-400">{r.student.adno}</p>
+                </div>
+                <span className="text-xs text-emerald-700 font-bold bg-emerald-50 px-2 py-1 rounded-lg">
+                  ✓ {t("common", "present", lang)}
+                </span>
               </div>
             ))}
           </div>

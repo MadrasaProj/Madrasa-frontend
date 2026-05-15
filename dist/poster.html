@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Darul Huda — Madrasa Management System | Poster</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+Malayalam:wght@400;600;700&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f0fdf4;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .poster {
+      width: 800px;
+      min-height: 1120px;
+      background: linear-gradient(160deg, #ffffff 0%, #f0fdf4 30%, #ffffff 60%, #ecfdf5 100%);
+      border-radius: 24px;
+      box-shadow: 0 25px 80px rgba(0,0,0,0.12);
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ── Decorative background elements ── */
+    .poster::before {
+      content: '';
+      position: absolute;
+      top: -100px;
+      right: -100px;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(5,150,105,0.08) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+    .poster::after {
+      content: '';
+      position: absolute;
+      bottom: -80px;
+      left: -80px;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(13,148,136,0.06) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+
+    /* ── Header Section ── */
+    .header {
+      background: linear-gradient(135deg, #059669 0%, #0d9488 50%, #047857 100%);
+      padding: 48px 48px 40px;
+      color: white;
+      position: relative;
+      overflow: hidden;
+    }
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -20%;
+      width: 400px;
+      height: 400px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 50%;
+    }
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: -30%;
+      left: -10%;
+      width: 250px;
+      height: 250px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 50%;
+    }
+
+    .logo-row {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      position: relative;
+      z-index: 1;
+    }
+    .logo-icon {
+      width: 72px;
+      height: 72px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .logo-text h1 {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      line-height: 1.1;
+    }
+    .logo-text .ml-name {
+      font-family: 'Noto Sans Malayalam', sans-serif;
+      font-size: 20px;
+      font-weight: 600;
+      opacity: 0.85;
+      margin-top: 2px;
+    }
+    .tagline {
+      margin-top: 16px;
+      font-size: 18px;
+      font-weight: 400;
+      opacity: 0.9;
+      position: relative;
+      z-index: 1;
+      letter-spacing: 0.3px;
+    }
+    .tagline-ml {
+      font-family: 'Noto Sans Malayalam', sans-serif;
+      font-size: 14px;
+      opacity: 0.7;
+      margin-top: 4px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── Bilingual Badge ── */
+    .bilingual-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 8px 16px;
+      border-radius: 50px;
+      font-size: 13px;
+      font-weight: 500;
+      margin-top: 20px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── Body Content ── */
+    .body {
+      padding: 40px 48px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: #059669;
+      margin-bottom: 20px;
+    }
+
+    /* ── Three Role Cards ── */
+    .roles {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 36px;
+    }
+    .role-card {
+      padding: 24px 20px;
+      border-radius: 20px;
+      text-align: center;
+      border: 1px solid;
+      position: relative;
+      overflow: hidden;
+    }
+    .role-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+    }
+    .role-card.admin {
+      background: linear-gradient(180deg, #ecfdf5 0%, #ffffff 100%);
+      border-color: #a7f3d0;
+    }
+    .role-card.admin::before { background: #059669; }
+    .role-card.teacher {
+      background: linear-gradient(180deg, #f0fdfa 0%, #ffffff 100%);
+      border-color: #99f6e4;
+    }
+    .role-card.teacher::before { background: #0d9488; }
+    .role-card.parent {
+      background: linear-gradient(180deg, #fffbeb 0%, #ffffff 100%);
+      border-color: #fde68a;
+    }
+    .role-card.parent::before { background: #d97706; }
+
+    .role-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin: 0 auto 12px;
+    }
+    .admin .role-icon { background: #d1fae5; }
+    .teacher .role-icon { background: #ccfbf1; }
+    .parent .role-icon { background: #fef3c7; }
+
+    .role-card h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 4px;
+    }
+    .role-card .ml-label {
+      font-family: 'Noto Sans Malayalam', sans-serif;
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 10px;
+    }
+    .role-card p {
+      font-size: 12px;
+      color: #6b7280;
+      line-height: 1.5;
+    }
+
+    /* ── Features Grid ── */
+    .features {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 36px;
+    }
+    .feature {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 16px;
+      background: white;
+      border-radius: 14px;
+      border: 1px solid #e5e7eb;
+      transition: box-shadow 0.2s;
+    }
+    .feature-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .feature-icon.green { background: #d1fae5; }
+    .feature-icon.teal { background: #ccfbf1; }
+    .feature-icon.amber { background: #fef3c7; }
+    .feature-icon.blue { background: #dbeafe; }
+    .feature-icon.purple { background: #ede9fe; }
+    .feature-icon.rose { background: #ffe4e6; }
+    .feature-icon.cyan { background: #cffafe; }
+    .feature-icon.orange { background: #ffedd5; }
+    .feature h4 {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin-bottom: 2px;
+    }
+    .feature span {
+      font-size: 11px;
+      color: #9ca3af;
+      line-height: 1.4;
+    }
+
+    /* ── Stats Row ── */
+    .stats-row {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 36px;
+    }
+    .stat-pill {
+      flex: 1;
+      text-align: center;
+      padding: 16px;
+      background: linear-gradient(135deg, #059669, #0d9488);
+      color: white;
+      border-radius: 16px;
+    }
+    .stat-pill .num {
+      font-size: 28px;
+      font-weight: 800;
+    }
+    .stat-pill .label {
+      font-size: 11px;
+      opacity: 0.85;
+      margin-top: 2px;
+    }
+
+    /* ── Tech Strip ── */
+    .tech-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 32px;
+    }
+    .tech-tag {
+      padding: 6px 14px;
+      background: #f3f4f6;
+      border-radius: 50px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      background: #f9fafb;
+      border-top: 1px solid #e5e7eb;
+      padding: 28px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .footer-left p {
+      font-size: 13px;
+      color: #6b7280;
+    }
+    .footer-left p strong {
+      color: #059669;
+    }
+    .qr-placeholder {
+      width: 72px;
+      height: 72px;
+      background: white;
+      border: 2px dashed #d1d5db;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: #9ca3af;
+      text-align: center;
+    }
+
+    @media print {
+      body { background: white; padding: 0; }
+      .poster { box-shadow: none; border-radius: 0; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="poster">
+    <!-- ═══════ HEADER ═══════ -->
+    <div class="header">
+      <div class="logo-row">
+        <div class="logo-icon">📖</div>
+        <div class="logo-text">
+          <h1>Darul Huda</h1>
+          <div class="ml-name">ദാറുൽ ഹുദാ</div>
+        </div>
+      </div>
+      <p class="tagline">Complete Digital Madrasa Management System</p>
+      <p class="tagline-ml">സമ്പൂർണ ഡിജിറ്റൽ മദ്‌റസ മാനേജ്‌മെന്റ് സിസ്റ്റം</p>
+      <div class="bilingual-badge">
+        🌐 Bilingual — English &amp; മലയാളം
+      </div>
+    </div>
+
+    <!-- ═══════ BODY ═══════ -->
+    <div class="body">
+
+      <!-- Three Roles -->
+      <p class="section-title">Three Powerful Dashboards</p>
+      <div class="roles">
+        <div class="role-card admin">
+          <div class="role-icon">🛡️</div>
+          <h3>Admin</h3>
+          <div class="ml-label">അഡ്‌മിൻ</div>
+          <p>Full control over students, teachers, fees, reports &amp; configuration</p>
+        </div>
+        <div class="role-card teacher">
+          <div class="role-icon">🎓</div>
+          <h3>Teacher</h3>
+          <div class="ml-label">ഉസ്‌താദ്</div>
+          <p>Mark attendance, assign homework, track ibadah &amp; manage exams</p>
+        </div>
+        <div class="role-card parent">
+          <div class="role-icon">👨‍👩‍👧</div>
+          <h3>Parent</h3>
+          <div class="ml-label">രക്ഷിതാവ്</div>
+          <p>Monitor child's progress, fees, results &amp; receive notifications</p>
+        </div>
+      </div>
+
+      <!-- Key Features -->
+      <p class="section-title">Key Features</p>
+      <div class="features">
+        <div class="feature">
+          <div class="feature-icon green">📋</div>
+          <div>
+            <h4>Smart Attendance</h4>
+            <span>Daily tracking with heatmaps, trends &amp; parent alerts</span>
+          </div>
+        </div>
+        <div class="feature">
+          <div class="feature-icon teal">📚</div>
+          <div>
+            <h4>Homework &amp; Diary</h4>
+            <span>Assign, track &amp; review daily tasks and journals</span>
+          </div>
+        </div>
+        <div class="feature">
+          <div class="feature-icon amber">💰</div>
+          <div>
+            <h4>Fee Management</h4>
+            <span>Paid/unpaid tracking with UPI/QR receipts</span>
+          </div>
+        </div>
+        <div class="feature">
+          <div class="feature-icon blue">🎓</div>
+          <div>
+            <h4>Exam &amp; Results</h4>
+            <span>Enter marks, publish results, rank students</span>
+          </div>
+        </div>
+        <div class="feature">
+          <div class="feature-icon purple">🌙</div>
+          <div>
+            <h4>Ibadah Tracker</h4>
+            <span>Fard, Sunnah, Quran, Zikr &amp; Akhlaq tracking</span>
+          </div>
+        </div>
+        <div class="feature">
+          <div class="feature-icon rose">🔔</div>
+          <div>
+            <h4>Notifications</h4>
+            <span>Real-time alerts for parents, teachers &amp; admin</span>
+          </div>
+        </div>
+        <div class="feature">
+          <div class="feature-icon cyan">📊</div>
+          <div>
+            <h4>Reports &amp; Analytics</h4>
+            <span>Visual charts, attendance trends &amp; fee summaries</span>
+          </div>
+        </div>
+        <div class="feature">
+          <div class="feature-icon orange">🪪</div>
+          <div>
+            <h4>ID Cards &amp; Posters</h4>
+            <span>Generate student ID cards &amp; digital posters</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-pill">
+          <div class="num">3</div>
+          <div class="label">User Roles</div>
+        </div>
+        <div class="stat-pill">
+          <div class="num">20+</div>
+          <div class="label">Features</div>
+        </div>
+        <div class="stat-pill">
+          <div class="num">2</div>
+          <div class="label">Languages</div>
+        </div>
+        <div class="stat-pill">
+          <div class="num">39</div>
+          <div class="label">Pages</div>
+        </div>
+      </div>
+
+      <!-- Tech Stack -->
+      <p class="section-title">Built With</p>
+      <div class="tech-strip">
+        <span class="tech-tag">Next.js 16</span>
+        <span class="tech-tag">TypeScript</span>
+        <span class="tech-tag">Tailwind CSS</span>
+        <span class="tech-tag">Framer Motion</span>
+        <span class="tech-tag">Recharts</span>
+        <span class="tech-tag">Zustand</span>
+        <span class="tech-tag">Lucide Icons</span>
+      </div>
+    </div>
+
+    <!-- ═══════ FOOTER ═══════ -->
+    <div class="footer">
+      <div class="footer-left">
+        <p><strong>Darul Huda</strong> — Madrasa Management System</p>
+        <p>Digitise your madrasa. Empower your community.</p>
+      </div>
+      <div class="qr-placeholder">QR<br/>Code</div>
+    </div>
+  </div>
+</body>
+</html>

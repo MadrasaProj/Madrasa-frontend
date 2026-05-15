@@ -1,681 +1,257 @@
-"use client";
-import { useState, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { diaryEntries as mockDiaryEntries, students } from "@/mock-data";
+import { listDiary, upsertDiary, deleteDiary, type DiaryEntry } from "@/lib/diary-api";
+import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
+import { useAuthStore } from "@/store/auth";
+import { cn } from "@/lib/utils";
 import {
-  FileText, Plus, Search, Filter, BookOpen, User, Calendar,
-  Bell, Send, Trash2, Edit2, X, ChevronDown, ChevronUp,
-  CheckCircle2, Star, MessageSquare, Clock, Eye,
-  Bookmark, TrendingUp,
+  FileText, Save, CheckCircle2, Loader2, Trash2,
+  ChevronLeft, ChevronRight, Calendar,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useLanguageStore } from "@/store/language";
-import { t as tr } from "@/lib/i18n";
 
-type DiaryType = "class" | "student";
-type MoodType = "positive" | "neutral" | "concern";
-type TabType = "all" | "class" | "student" | "starred";
-
-interface DiaryEntry {
-  id: string;
-  date: string;
-  class: string;
-  teacherId: string;
-  type: DiaryType;
-  title: string;
-  content: string;
-  targetStudentId: string | null;
-  mood?: MoodType;
-  starred?: boolean;
-  notified?: boolean;
-  tags?: string[];
-}
-
-const MOODS: Record<MoodType, { emoji: string; label: string; color: string; bg: string }> = {
-  positive: { emoji: "😊", label: "Positive",  color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200" },
-  neutral:  { emoji: "😐", label: "Neutral",   color: "text-amber-700",   bg: "bg-amber-50 border-amber-200"   },
-  concern:  { emoji: "😟", label: "Concern",   color: "text-red-600",     bg: "bg-red-50 border-red-200"       },
-};
-
-const QUICK_TAGS = ["Tajweed", "Memorization", "Behavior", "Progress", "Attendance", "Homework", "Arabic", "Fiqh"];
-
-const enriched: DiaryEntry[] = [
-  ...mockDiaryEntries.map((e, i) => ({
-    ...e,
-    type: e.type as DiaryType,
-    mood: (["positive", "positive", "neutral"] as MoodType[])[i % 3],
-    starred: i === 1,
-    notified: true,
-    tags: ([["Tajweed", "Memorization"], ["Tajweed", "Progress"], ["Memorization"]] as string[][])[i % 3],
-  })),
-  {
-    id: "D004",
-    date: "2026-03-12",
-    class: "Class 4",
-    teacherId: "T001",
-    type: "student",
-    title: "Concern – Yusuf's Attendance",
-    content: "Yusuf was absent again today without prior notice. This is the third time this week. Please contact the family to understand the situation and ensure regular attendance.",
-    targetStudentId: "S003",
-    mood: "concern",
-    starred: false,
-    notified: true,
-    tags: ["Attendance", "Behavior"],
-  },
-  {
-    id: "D005",
-    date: "2026-03-11",
-    class: "Class 4",
-    teacherId: "T001",
-    type: "class",
-    title: "Arabic Grammar – Ism & Fi'l",
-    content: "Covered fundamentals of Ism (noun) and Fi'l (verb) in Arabic grammar. Students practised identifying each in Quranic verses. Class participation was excellent.",
-    targetStudentId: null,
-    mood: "positive",
-    starred: false,
-    notified: true,
-    tags: ["Arabic"],
-  },
-  {
-    id: "D006",
-    date: "2026-03-10",
-    class: "Class 4",
-    teacherId: "T001",
-    type: "student",
-    title: "Excellent Hifz Progress – Fatima",
-    content: "Fatima completed Surah Al-Mulk today with excellent tajweed. She is ahead of schedule. Encourage her to maintain this momentum and start reviewing previously memorized surahs.",
-    targetStudentId: "S004",
-    mood: "positive",
-    starred: true,
-    notified: true,
-    tags: ["Memorization", "Progress"],
-  },
-];
-
-const CLASSES  = ["Class 3", "Class 4", "Class 5"];
-const classStudents = (cls: string) => students.filter((s) => s.class === cls);
+function fmt(d: Date) { return d.toISOString().split("T")[0]; }
 
 export default function TeacherDiaryPage() {
-  const { lang } = useLanguageStore();
-  const [entries, setEntries]           = useState<DiaryEntry[]>(enriched);
-  const [showCreate, setShowCreate]     = useState(false);
-  const [activeTab, setActiveTab]       = useState<TabType>("all");
-  const [search, setSearch]             = useState("");
-  const [showFilters, setShowFilters]   = useState(false);
-  const [expandedId, setExpandedId]     = useState<string | null>(null);
-  const [showToast, setShowToast]       = useState<string | null>(null);
-  const [previewEntry, setPreviewEntry] = useState<DiaryEntry | null>(null);
+  const { user, accessToken } = useAuthStore();
+  const cid   = user?.clientId ?? "";
+  const token = accessToken ?? "";
 
-  // Form state
-  const [formType, setFormType]         = useState<DiaryType>("class");
-  const [formTitle, setFormTitle]       = useState("");
-  const [formContent, setFormContent]   = useState("");
-  const [formClass, setFormClass]       = useState(CLASSES[1]);
-  const [formStudent, setFormStudent]   = useState("");
-  const [formMood, setFormMood]         = useState<MoodType>("positive");
-  const [formTags, setFormTags]         = useState<string[]>([]);
-  const [formNotify, setFormNotify]     = useState(true);
+  const [classes, setClasses]       = useState<ClassRecord[]>([]);
+  const [activeClassId, setActiveClassId] = useState("");
+  const [date, setDate]             = useState(fmt(new Date()));
+  const [title, setTitle]           = useState("");
+  const [content, setContent]       = useState("");
+  const [history, setHistory]       = useState<DiaryEntry[]>([]);
+  const [currentEntry, setCurrentEntry] = useState<DiaryEntry | null>(null);
+  const [loadingClasses, setLoadingClasses] = useState(true);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [saving, setSaving]         = useState(false);
+  const [saved, setSaved]           = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const toast = (msg: string) => {
-    setShowToast(msg);
-    setTimeout(() => setShowToast(null), 2800);
+  // Load classes
+  useEffect(() => {
+    if (!cid || !token) return;
+    getMyClasses(cid, token)
+      .then((cls) => {
+        setClasses(cls);
+        if (cls.length > 0) setActiveClassId(cls[0].id);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingClasses(false));
+  }, [cid, token]);
+
+  // Load history when class changes
+  const loadHistory = useCallback(async () => {
+    if (!cid || !token || !activeClassId) return;
+    setLoadingHistory(true);
+    try {
+      const entries = await listDiary(cid, token, { classId: activeClassId });
+      setHistory(entries);
+    } catch { /* silent */ }
+    finally { setLoadingHistory(false); }
+  }, [cid, token, activeClassId]);
+
+  useEffect(() => { loadHistory(); }, [loadHistory]);
+
+  // When date changes, check for existing entry
+  useEffect(() => {
+    if (!activeClassId || !history.length) {
+      setCurrentEntry(null);
+      setTitle(""); setContent("");
+      return;
+    }
+    const existing = history.find((e) => e.date.split("T")[0] === date && e.classId === activeClassId);
+    if (existing) {
+      setCurrentEntry(existing);
+      setTitle(existing.title);
+      setContent(existing.content);
+    } else {
+      setCurrentEntry(null);
+      setTitle(""); setContent("");
+    }
+  }, [date, activeClassId, history]);
+
+  const handleSave = async () => {
+    if (!activeClassId || !title.trim() || !content.trim()) return;
+    setSaving(true);
+    try {
+      const entry = await upsertDiary(cid, token, {
+        classId: activeClassId,
+        date,
+        title,
+        content,
+        academicYearId: user?.defaultAcademicYearId ?? undefined,
+      });
+      setCurrentEntry(entry);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+      loadHistory();
+    } catch (e) { alert((e as Error).message); }
+    finally { setSaving(false); }
   };
 
-  const getStudentName = (id: string | null) =>
-    id ? (students.find((s) => s.id === id)?.name ?? id) : null;
-
-  const getStudentInitials = (id: string | null) => {
-    if (!id) return "?";
-    const name = students.find((s) => s.id === id)?.name ?? id;
-    return name.split(" ").slice(0, 2).map((n) => n[0]).join("");
+  const handleDelete = async (id: string) => {
+    setDeletingId(id);
+    try {
+      await deleteDiary(cid, token, id);
+      if (currentEntry?.id === id) {
+        setCurrentEntry(null); setTitle(""); setContent("");
+      }
+      loadHistory();
+    } catch (e) { alert((e as Error).message); }
+    finally { setDeletingId(null); }
   };
 
-  const toggleStar = (id: string) => {
-    setEntries((prev) => prev.map((e) => e.id === id ? { ...e, starred: !e.starred } : e));
+  const prevDay = () => { const d = new Date(date); d.setDate(d.getDate() - 1); setDate(fmt(d)); };
+  const nextDay = () => {
+    const d = new Date(date); d.setDate(d.getDate() + 1);
+    if (d <= new Date()) setDate(fmt(d));
   };
 
-  const deleteEntry = (id: string) => {
-    setEntries((prev) => prev.filter((e) => e.id !== id));
-    toast(tr("teacherPages", "entryDeleted", lang));
-  };
-
-  const handleSave = () => {
-    const newEntry: DiaryEntry = {
-      id: `D${Date.now()}`,
-      date: new Date().toISOString().split("T")[0],
-      class: formClass,
-      teacherId: "T001",
-      type: formType,
-      title: formTitle,
-      content: formContent,
-      targetStudentId: formType === "student" ? formStudent : null,
-      mood: formMood,
-      starred: false,
-      notified: formNotify,
-      tags: formTags,
-    };
-    setEntries((prev) => [newEntry, ...prev]);
-    setShowCreate(false);
-    setFormTitle(""); setFormContent(""); setFormTags([]);
-    toast(formNotify ? tr("teacherPages", "entrySavedNotif", lang) : tr("teacherPages", "entrySavedDraft", lang));
-  };
-
-  // Stats
-  const stats = useMemo(() => ({
-    total:    entries.length,
-    class:    entries.filter((e) => e.type === "class").length,
-    student:  entries.filter((e) => e.type === "student").length,
-    starred:  entries.filter((e) => e.starred).length,
-    positive: entries.filter((e) => e.mood === "positive").length,
-    concern:  entries.filter((e) => e.mood === "concern").length,
-  }), [entries]);
-
-  // Filtered
-  const filtered = useMemo(() => {
-    return entries.filter((e) => {
-      if (activeTab === "class"   && e.type !== "class")   return false;
-      if (activeTab === "student" && e.type !== "student") return false;
-      if (activeTab === "starred" && !e.starred)           return false;
-      if (search && !e.title.toLowerCase().includes(search.toLowerCase()) &&
-          !e.content.toLowerCase().includes(search.toLowerCase())) return false;
-      return true;
-    });
-  }, [entries, activeTab, search]);
-
-  // Group by date
-  const grouped = useMemo(() => {
-    const map: Record<string, DiaryEntry[]> = {};
-    filtered.forEach((e) => {
-      if (!map[e.date]) map[e.date] = [];
-      map[e.date].push(e);
-    });
-    return Object.entries(map).sort(([a], [b]) => b.localeCompare(a));
-  }, [filtered]);
-
-  const formatDate = (d: string) => {
-    const date = new Date(d);
-    const today = new Date(); today.setHours(0,0,0,0);
-    const yesterday = new Date(today); yesterday.setDate(today.getDate()-1);
-    if (date.toDateString() === today.toDateString()) return tr("teacherPages", "today", lang);
-    if (date.toDateString() === yesterday.toDateString()) return tr("teacherPages", "yesterday", lang);
-    return date.toLocaleDateString(lang === "ml" ? "ml-IN" : "en-GB", { weekday: "long", day: "numeric", month: "long" });
-  };
+  const activeClass = classes.find((c) => c.id === activeClassId);
 
   return (
     <DashboardLayout>
       <PageHeader
-        title={tr("teacherPages", "diaryTitle", lang)}
-        subtitle={tr("teacherPages", "diarySub", lang)}
+        title="Class Diary"
+        subtitle={activeClass?.name ?? ""}
         icon={FileText}
-        back
-        backHref="/teacher"
-        action={
-          <button
-            onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 active:scale-95 transition-all shadow-sm shadow-emerald-200"
-          >
-            <Plus className="w-4 h-4" /> {tr("common", "add", lang)}
-          </button>
-        }
+        back backHref="/teacher"
       />
 
-      {/* ── Toast ──────────────────────────────────────────── */}
-      <AnimatePresence>
-        {showToast && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-            className="fixed top-4 left-1/2 -translate-x-1/2 z-100 bg-gray-900 text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 text-sm font-medium"
-          >
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" /> {showToast}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Stats ──────────────────────────────────────────── */}
-      <div className="grid grid-cols-3 lg:grid-cols-6 gap-2 mb-5">
-        {[
-          { label: tr("teacherPages", "totalEntries", lang),    value: stats.total,    icon: FileText,     color: "text-gray-600",    bg: "bg-gray-50" },
-          { label: tr("teacherPages", "classNotes", lang),    value: stats.class,    icon: BookOpen,     color: "text-emerald-600", bg: "bg-emerald-50" },
-          { label: tr("teacherPages", "studentNotes", lang),  value: stats.student,  icon: User,         color: "text-blue-600",    bg: "bg-blue-50" },
-          { label: tr("teacherPages", "starred", lang),  value: stats.starred,  icon: Star,         color: "text-amber-500",   bg: "bg-amber-50" },
-          { label: tr("teacherPages", "positive", lang), value: stats.positive, icon: TrendingUp,   color: "text-emerald-600", bg: "bg-emerald-50" },
-          { label: tr("teacherPages", "concerns", lang), value: stats.concern,  icon: MessageSquare,color: "text-red-500",     bg: "bg-red-50" },
-        ].map(({ label, value, icon: Icon, color, bg }) => (
-          <motion.div key={label} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl border border-gray-100 p-3 flex flex-col items-center gap-1 text-center"
-          >
-            <div className={`${bg} rounded-lg p-2`}><Icon className={`w-4 h-4 ${color}`} /></div>
-            <p className="text-lg font-bold text-gray-900 leading-none">{value}</p>
-            <p className="text-[10px] text-gray-400 font-medium">{label}</p>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* ── Search + Filter ────────────────────────────────── */}
-      <div className="flex gap-2 mb-4">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder={tr("teacherPages", "searchDiary", lang)}
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
+      {loadingClasses ? (
+        <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
+          <Loader2 className="w-5 h-5 animate-spin" />
         </div>
-        <button
-          onClick={() => setShowFilters((v) => !v)}
-          className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border text-sm font-medium transition-colors ${showFilters ? "bg-emerald-600 text-white border-emerald-600" : "bg-white border-gray-200 text-gray-600"}`}
-        >
-          <Filter className="w-4 h-4" />
-        </button>
-      </div>
+      ) : classes.length === 0 ? (
+        <div className="text-center py-16 text-gray-400 text-sm">No classes assigned</div>
+      ) : (
+        <>
+          {/* Class selector */}
+          <div className="flex gap-2 mb-4 flex-wrap">
+            {classes.map((cls) => (
+              <button
+                key={cls.id}
+                onClick={() => setActiveClassId(cls.id)}
+                className={cn(
+                  "px-4 py-2 rounded-xl text-sm font-semibold transition-all",
+                  activeClassId === cls.id ? "bg-emerald-600 text-white" : "bg-white border border-gray-200 text-gray-700",
+                )}
+              >
+                {cls.name}
+              </button>
+            ))}
+          </div>
 
-      {/* Mood filter pills */}
-      <AnimatePresence>
-        {showFilters && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden mb-4"
-          >
-            <p className="text-xs text-gray-400 font-medium mb-2 uppercase tracking-wide">{tr("teacherPages", "filterByMood", lang)}</p>
-            <div className="flex gap-2 flex-wrap">
-              {(Object.entries(MOODS) as [MoodType, typeof MOODS[MoodType]][]).map(([key, cfg]) => (
-                <button key={key}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${cfg.bg} ${cfg.color}`}
+          {/* Date nav */}
+          <div className="flex items-center gap-3 mb-5">
+            <button onClick={prevDay} className="p-2 rounded-xl bg-white border border-gray-200">
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <div className="flex-1 text-center">
+              <input
+                type="date"
+                value={date}
+                max={fmt(new Date())}
+                onChange={(e) => setDate(e.target.value)}
+                className="text-sm font-semibold text-gray-800 focus:outline-none bg-transparent text-center"
+              />
+              {currentEntry && (
+                <p className="text-[10px] text-emerald-600 mt-0.5">Entry exists — editing</p>
+              )}
+            </div>
+            <button onClick={nextDay} disabled={date >= fmt(new Date())}
+              className="p-2 rounded-xl bg-white border border-gray-200 disabled:opacity-40">
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Entry form */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-5 space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">Title</label>
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Today's class summary..."
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">Content</label>
+              <textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                rows={5}
+                placeholder="Write about today's lesson, student behaviour, topics covered..."
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+              />
+            </div>
+            <button
+              onClick={handleSave}
+              disabled={saving || !title.trim() || !content.trim()}
+              className={cn(
+                "w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition-all",
+                saved ? "bg-emerald-100 text-emerald-700" : "bg-emerald-600 text-white disabled:opacity-60",
+              )}
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> :
+               saved  ? <><CheckCircle2 className="w-4 h-4" /> Saved!</> :
+                        <><Save className="w-4 h-4" /> {currentEntry ? "Update Entry" : "Save Entry"}</>}
+            </button>
+          </div>
+
+          {/* History */}
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">Previous Entries</p>
+          {loadingHistory ? (
+            <div className="flex items-center justify-center gap-2 py-8 text-gray-400">
+              <Loader2 className="w-4 h-4 animate-spin" />
+            </div>
+          ) : history.length === 0 ? (
+            <div className="text-center py-8 text-gray-400 text-sm">No diary entries yet</div>
+          ) : (
+            <div className="space-y-2 pb-20">
+              {history.map((entry, i) => (
+                <motion.div
+                  key={entry.id}
+                  initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+                  className={cn(
+                    "bg-white rounded-2xl border p-4 cursor-pointer transition-all",
+                    date === entry.date.split("T")[0] && activeClassId === entry.classId
+                      ? "border-emerald-300 bg-emerald-50/30"
+                      : "border-gray-100",
+                  )}
+                  onClick={() => setDate(entry.date.split("T")[0])}
                 >
-                  {cfg.emoji} {key === "positive" ? tr("teacherPages", "positiveFilter", lang) : key === "neutral" ? tr("teacherPages", "neutralFilter", lang) : tr("teacherPages", "concernFilter", lang)}
-                </button>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 text-sm truncate">{entry.title}</p>
+                      <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                        <Calendar className="w-3 h-3" />
+                        {new Date(entry.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
+                        {entry.class ? ` · ${entry.class.name}` : ""}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1.5 line-clamp-2">{entry.content}</p>
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDelete(entry.id); }}
+                      disabled={deletingId === entry.id}
+                      className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 shrink-0 transition-colors"
+                    >
+                      {deletingId === entry.id
+                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                        : <Trash2 className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </motion.div>
               ))}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Tabs ───────────────────────────────────────────── */}
-      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-5">
-        {([
-          { key: "all",     label: tr("teacherPages", "allDiary", lang),         count: entries.length },
-          { key: "class",   label: tr("teacherPages", "classNotesTab", lang), count: stats.class },
-          { key: "student", label: tr("teacherPages", "studentTab", lang),     count: stats.student },
-          { key: "starred", label: tr("teacherPages", "starredTab", lang),  count: stats.starred },
-        ] as { key: TabType; label: string; count: number }[]).map(({ key, label, count }) => (
-          <button key={key} onClick={() => setActiveTab(key)}
-            className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-semibold transition-all ${activeTab === key ? "bg-white text-emerald-700 shadow-sm" : "text-gray-500"}`}
-          >
-            {label}
-            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeTab === key ? "bg-emerald-100 text-emerald-700" : "bg-gray-200 text-gray-400"}`}>{count}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* ── Entries grouped by date ────────────────────────── */}
-      {grouped.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
-          <p className="text-sm">{tr("teacherPages", "noDiary", lang)}</p>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {grouped.map(([date, dayEntries]) => (
-            <div key={date}>
-              {/* Date separator */}
-              <div className="flex items-center gap-3 mb-3">
-                <div className="flex items-center gap-1.5 bg-white border border-gray-100 rounded-full px-3 py-1">
-                  <Calendar className="w-3 h-3 text-gray-400" />
-                  <span className="text-xs font-semibold text-gray-600">{formatDate(date)}</span>
-                </div>
-                <div className="flex-1 h-px bg-gray-100" />
-                <span className="text-xs text-gray-400">{dayEntries.length} {dayEntries.length === 1 ? tr("teacherPages", "entry", lang) : tr("teacherPages", "entries", lang)}</span>
-              </div>
-
-              <div className="space-y-3">
-                {dayEntries.map((entry, i) => {
-                  const isExpanded = expandedId === entry.id;
-                  const studentName = getStudentName(entry.targetStudentId);
-                  const mood = entry.mood ? MOODS[entry.mood] : null;
-
-                  return (
-                    <motion.div
-                      key={entry.id}
-                      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-                      className={`bg-white rounded-2xl border overflow-hidden transition-shadow hover:shadow-sm ${
-                        entry.mood === "concern" ? "border-red-100" :
-                        entry.mood === "positive" ? "border-emerald-100" :
-                        "border-gray-100"
-                      }`}
-                    >
-                      {/* Left accent bar */}
-                      <div className="flex">
-                        <div className={`w-1 shrink-0 ${entry.mood === "concern" ? "bg-red-400" : entry.mood === "positive" ? "bg-emerald-400" : "bg-amber-300"}`} />
-
-                        <div className="flex-1 p-4">
-                          {/* Top row */}
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              {/* Type badge */}
-                              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${entry.type === "class" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-blue-50 text-blue-700 border-blue-200"}`}>
-                                {entry.type === "class" ? tr("teacherPages", "classNote", lang) : tr("teacherPages", "studentNote", lang)}
-                              </span>
-                              {/* Mood badge */}
-                              {mood && (
-                                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${mood.bg} ${mood.color}`}>
-                                  {mood.emoji} {entry.mood === "positive" ? tr("teacherPages", "positiveFilter", lang) : entry.mood === "neutral" ? tr("teacherPages", "neutralFilter", lang) : tr("teacherPages", "concernFilter", lang)}
-                                </span>
-                              )}
-                              {/* Notified */}
-                              {entry.notified && (
-                                <span className="text-[11px] text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                                  {tr("teacherPages", "notified", lang)}
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Action buttons */}
-                            <div className="flex items-center gap-1 shrink-0">
-                              <button onClick={() => toggleStar(entry.id)}
-                                className={`p-1.5 rounded-lg transition-colors ${entry.starred ? "text-amber-500 bg-amber-50" : "text-gray-300 hover:text-amber-400 hover:bg-amber-50"}`}
-                              >
-                                <Star className="w-3.5 h-3.5" fill={entry.starred ? "currentColor" : "none"} />
-                              </button>
-                              <button onClick={() => setPreviewEntry(entry)}
-                                className="p-1.5 rounded-lg text-gray-300 hover:text-blue-500 hover:bg-blue-50 transition-colors"
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                              </button>
-                              <button className="p-1.5 rounded-lg text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
-                              <button onClick={() => deleteEntry(entry.id)}
-                                className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Student avatar (student notes) */}
-                          {entry.type === "student" && entry.targetStudentId && (
-                            <div className="flex items-center gap-2 mt-2.5">
-                              <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center">
-                                {getStudentInitials(entry.targetStudentId)}
-                              </div>
-                              <span className="text-xs font-semibold text-blue-700">{studentName}</span>
-                              <span className="text-xs text-gray-400">· {entry.class}</span>
-                            </div>
-                          )}
-                          {entry.type === "class" && (
-                            <div className="flex items-center gap-1 mt-2">
-                              <BookOpen className="w-3 h-3 text-gray-400" />
-                              <span className="text-xs text-gray-400">{entry.class}</span>
-                            </div>
-                          )}
-
-                          {/* Title + Content */}
-                          <h3 className="font-semibold text-gray-900 text-sm mt-2 leading-snug">{entry.title}</h3>
-                          <p className={`text-sm text-gray-600 leading-relaxed mt-1 ${isExpanded ? "" : "line-clamp-2"}`}>
-                            {entry.content}
-                          </p>
-
-                          {/* Tags */}
-                          {entry.tags && entry.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 mt-2.5">
-                              {entry.tags.map((tag) => (
-                                <span key={tag} className="text-[10px] font-semibold px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">
-                                  #{tag}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* Expand / Collapse */}
-                          <button
-                            onClick={() => setExpandedId(isExpanded ? null : entry.id)}
-                            className="mt-2.5 flex items-center gap-1 text-xs text-emerald-600 font-medium hover:underline"
-                          >
-                            {isExpanded ? <><ChevronUp className="w-3 h-3" /> {tr("teacherPages", "showLess", lang)}</> : <><ChevronDown className="w-3 h-3" /> {tr("teacherPages", "readMore", lang)}</>}
-                          </button>
-
-                          {/* Expanded actions */}
-                          <AnimatePresence>
-                            {isExpanded && (
-                              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
-                                className="overflow-hidden"
-                              >
-                                <div className="mt-3 pt-3 border-t border-gray-50 flex items-center gap-2 flex-wrap">
-                                  <button
-                                    onClick={() => { toast(tr("teacherPages", "reminderSent", lang)); }}
-                                    className="flex items-center gap-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition-colors"
-                                  >
-                                    <Bell className="w-3.5 h-3.5" /> {tr("teacherPages", "renotifyParents", lang)}
-                                  </button>
-                                  <button
-                                    onClick={() => { toast(tr("teacherPages", "copiedClipboard", lang)); }}
-                                    className="flex items-center gap-1.5 text-xs font-semibold bg-gray-50 text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-                                  >
-                                    <Send className="w-3.5 h-3.5" /> {tr("teacherPages", "shareEntry", lang)}
-                                  </button>
-                                  <button
-                                    onClick={() => toggleStar(entry.id)}
-                                    className={`flex items-center gap-1.5 text-xs font-semibold border px-3 py-1.5 rounded-lg transition-colors ${entry.starred ? "bg-amber-50 text-amber-600 border-amber-200" : "bg-gray-50 text-gray-500 border-gray-200"}`}
-                                  >
-                                    <Bookmark className="w-3.5 h-3.5" /> {entry.starred ? tr("teacherPages", "unstar", lang) : tr("teacherPages", "starEntryBtn", lang)}
-                                  </button>
-                                </div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
-
-      {/* ── Full Preview Modal ─────────────────────────────── */}
-      <AnimatePresence>
-        {previewEntry && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={(e) => { if (e.target === e.currentTarget) setPreviewEntry(null); }}
-          >
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${previewEntry.type === "class" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-blue-50 text-blue-700 border-blue-200"}`}>
-                    {previewEntry.type === "class" ? tr("teacherPages", "classNote", lang) : tr("teacherPages", "studentNote", lang)}
-                  </span>
-                  {previewEntry.mood && (
-                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${MOODS[previewEntry.mood].bg} ${MOODS[previewEntry.mood].color}`}>
-                      {MOODS[previewEntry.mood].emoji} {previewEntry.mood === "positive" ? tr("teacherPages", "positiveFilter", lang) : previewEntry.mood === "neutral" ? tr("teacherPages", "neutralFilter", lang) : tr("teacherPages", "concernFilter", lang)}
-                    </span>
-                  )}
-                </div>
-                <button onClick={() => setPreviewEntry(null)} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {previewEntry.type === "student" && previewEntry.targetStudentId && (
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center">
-                    {getStudentInitials(previewEntry.targetStudentId)}
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-800">{getStudentName(previewEntry.targetStudentId)}</p>
-                    <p className="text-xs text-gray-400">{previewEntry.class}</p>
-                  </div>
-                </div>
-              )}
-
-              <h2 className="text-lg font-bold text-gray-900 mb-2">{previewEntry.title}</h2>
-              <p className="text-sm text-gray-600 leading-relaxed mb-4">{previewEntry.content}</p>
-
-              {previewEntry.tags && previewEntry.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mb-4">
-                  {previewEntry.tags.map((tag) => (
-                    <span key={tag} className="text-xs font-semibold px-2.5 py-1 bg-gray-100 text-gray-500 rounded-full">#{tag}</span>
-                  ))}
-                </div>
-              )}
-
-              <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                  <Clock className="w-3.5 h-3.5" /> {previewEntry.date}
-                </div>
-                {previewEntry.notified && (
-                  <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> {tr("teacherPages", "parentsNotified", lang)}
-                  </span>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Write Diary Modal ──────────────────────────────── */}
-      <AnimatePresence>
-        {showCreate && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end lg:items-center justify-center p-4"
-            onClick={(e) => { if (e.target === e.currentTarget) setShowCreate(false); }}
-          >
-            <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 50 }}
-              className="bg-white rounded-3xl w-full max-w-md max-h-[92vh] overflow-y-auto"
-            >
-              {/* Header */}
-              <div className="sticky top-0 bg-white rounded-t-3xl px-6 pt-6 pb-4 border-b border-gray-100 flex items-center justify-between">
-                <div>
-                  <h2 className="font-bold text-gray-900 text-lg">{tr("teacherPages", "writeDiaryEntry", lang)}</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">{tr("teacherPages", "notesAutoSent", lang)}</p>
-                </div>
-                <button onClick={() => setShowCreate(false)} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400"><X className="w-5 h-5" /></button>
-              </div>
-
-              <div className="px-6 pb-6 pt-4 space-y-4">
-                {/* Type */}
-                <div className="flex gap-2 bg-gray-100 rounded-xl p-1">
-                  <button onClick={() => setFormType("class")}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-semibold transition-all ${formType === "class" ? "bg-white text-emerald-700 shadow-sm" : "text-gray-500"}`}
-                  >
-                    <BookOpen className="w-3.5 h-3.5" /> {tr("teacherPages", "classNoteType", lang)}
-                  </button>
-                  <button onClick={() => setFormType("student")}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-semibold transition-all ${formType === "student" ? "bg-white text-blue-700 shadow-sm" : "text-gray-500"}`}
-                  >
-                    <User className="w-3.5 h-3.5" /> {tr("teacherPages", "studentNoteType", lang)}
-                  </button>
-                </div>
-
-                {/* Class + Student */}
-                <div className={`grid gap-3 ${formType === "student" ? "grid-cols-2" : "grid-cols-1"}`}>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">{tr("teacherPages", "diaryClassLabel", lang)}</label>
-                    <select value={formClass} onChange={(e) => { setFormClass(e.target.value); setFormStudent(""); }}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none text-sm"
-                    >
-                      {CLASSES.map((c) => <option key={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  {formType === "student" && (
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">{tr("teacherPages", "diaryStudentLabel", lang)} <span className="text-red-500">*</span></label>
-                      <select value={formStudent} onChange={(e) => setFormStudent(e.target.value)}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none text-sm"
-                      >
-                        <option value="">{tr("teacherPages", "selectOpt", lang)}</option>
-                        {classStudents(formClass).map((s) => (
-                          <option key={s.id} value={s.id}>{s.name.split(" ")[0]}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-                </div>
-
-                {/* Title */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">{tr("teacherPages", "diaryTitleLabel", lang)} <span className="text-red-500">*</span></label>
-                  <input value={formTitle} onChange={(e) => setFormTitle(e.target.value)}
-                    placeholder={tr("teacherPages", "diaryTitlePlc", lang)}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm transition-colors"
-                  />
-                </div>
-
-                {/* Content */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">{tr("teacherPages", "messageField", lang)}</label>
-                  <textarea value={formContent} onChange={(e) => setFormContent(e.target.value)}
-                    placeholder={tr("teacherPages", "diaryMsgPlc", lang)}
-                    rows={4}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm resize-none transition-colors"
-                  />
-                  <p className="text-right text-xs text-gray-400 mt-1">{formContent.length} {tr("teacherPages", "chars", lang)}</p>
-                </div>
-
-                {/* Mood */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">{tr("teacherPages", "moodTone", lang)}</label>
-                  <div className="flex gap-2">
-                    {(Object.entries(MOODS) as [MoodType, typeof MOODS[MoodType]][]).map(([key, cfg]) => (
-                      <button key={key} onClick={() => setFormMood(key)}
-                        className={`flex-1 py-2.5 rounded-xl border text-xs font-bold transition-all ${formMood === key ? `${cfg.bg} ${cfg.color} border-current` : "bg-white text-gray-400 border-gray-200"}`}
-                      >
-                        {cfg.emoji}<br />{key === "positive" ? tr("teacherPages", "positiveFilter", lang) : key === "neutral" ? tr("teacherPages", "neutralFilter", lang) : tr("teacherPages", "concernFilter", lang)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Tags */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">{tr("teacherPages", "tagsField", lang)}</label>
-                  <div className="flex flex-wrap gap-2">
-                    {QUICK_TAGS.map((tag) => (
-                      <button key={tag} onClick={() => setFormTags((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag])}
-                        className={`text-xs font-semibold px-2.5 py-1 rounded-full border transition-all ${formTags.includes(tag) ? "bg-emerald-600 text-white border-emerald-600" : "bg-white text-gray-500 border-gray-200 hover:border-emerald-400"}`}
-                      >
-                        #{tag}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Notify toggle */}
-                <div className="flex items-center justify-between bg-emerald-50 rounded-xl px-4 py-3 border border-emerald-100">
-                  <div className="flex items-center gap-2">
-                    <Bell className="w-4 h-4 text-emerald-600" />
-                    <p className="text-sm font-semibold text-emerald-800">{tr("teacherPages", "notifyParents", lang)}</p>
-                  </div>
-                  <button onClick={() => setFormNotify((v) => !v)}
-                    className={`w-11 h-6 rounded-full transition-colors relative ${formNotify ? "bg-emerald-500" : "bg-gray-200"}`}
-                  >
-                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${formNotify ? "translate-x-5" : "translate-x-0"}`} />
-                  </button>
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-3 pt-1">
-                  <button
-                    onClick={handleSave}
-                    disabled={!formTitle || (formType === "student" && !formStudent)}
-                    className="flex-1 bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-white py-3 rounded-xl text-sm font-bold hover:bg-emerald-700 active:scale-95 transition-all flex items-center justify-center gap-2"
-                  >
-                    <Send className="w-4 h-4" /> {formNotify ? tr("teacherPages", "saveNotify", lang) : tr("teacherPages", "saveDraft", lang)}
-                  </button>
-                  <button onClick={() => setShowCreate(false)} className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl text-sm font-semibold hover:bg-gray-200 transition-colors">
-                    {tr("teacherPages", "cancelBtn", lang)}
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </DashboardLayout>
   );
 }

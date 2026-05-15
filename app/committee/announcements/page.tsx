@@ -1,12 +1,9 @@
-"use client";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguageStore } from "@/store/language";
-import { committeeSummary } from "@/mock-data";
+import { useCommitteeData } from "@/lib/use-committee-data";
 import { Megaphone, AlertCircle, Info, BellRing, Filter } from "lucide-react";
 import { useState } from "react";
-
-const d = committeeSummary;
 
 type Priority = "all" | "high" | "medium" | "low";
 
@@ -18,6 +15,7 @@ const priorityConfig: Record<string, { bg: string; text: string; border: string;
 
 export default function CommitteeAnnouncementsPage() {
   const { lang } = useLanguageStore();
+  const d = useCommitteeData();
   const [filter, setFilter] = useState<Priority>("all");
 
   const countHigh   = d.announcements.filter((a) => a.priority === "high").length;

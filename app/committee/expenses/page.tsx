@@ -1,8 +1,14 @@
-"use client";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguageStore } from "@/store/language";
-import { committeeSummary, ExpenseCategoryId, ExpenseItem } from "@/mock-data";
+import { useCommitteeData } from "@/lib/use-committee-data";
+
+// These types were in mock-data; kept inline since expenses have no backend yet
+type ExpenseCategoryId = "salaries" | "infrastructure" | "programs" | "maintenance" | "utilities" | "stationery";
+type ExpenseItem = {
+  id: string; categoryId: ExpenseCategoryId; title: string; title_ml: string;
+  amount: number; date: string; reference: string; approvedBy: string; status: "approved" | "pending" | "rejected";
+};
 import { useState } from "react";
 import {
   Receipt, IndianRupee, TrendingDown, Wallet, PiggyBank,
@@ -10,8 +16,6 @@ import {
   CheckCircle2, Clock, AlertTriangle, ChevronDown, ChevronUp,
   Plus, X, Save,
 } from "lucide-react";
-
-const d = committeeSummary;
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -76,7 +80,13 @@ const EMPTY_FORM: NewExpense = {
 
 export default function CommitteeExpensesPage() {
   const { lang } = useLanguageStore();
-  const exp = d.expenses;
+  const d = useCommitteeData();
+  // Expenses have no backend yet — stub object used for summary header
+  const exp = {
+    totalBudget: 0, totalSpent: 0, totalPending: 0,
+    categories: [] as { id: ExpenseCategoryId; label_en: string; label_ml: string; budget: number; spent: number; items: ExpenseItem[] }[],
+    recentItems: [] as ExpenseItem[],
+  };
 
   const [activeFilter, setActiveFilter] = useState<FilterId>("all");
   const [showAll, setShowAll]           = useState(false);

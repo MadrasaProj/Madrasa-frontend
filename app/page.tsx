@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { Navigate } from "react-router-dom";
 
 export default function RootPage() {
-  redirect("/super-admin/login");
+  return <Navigate to="/super-admin/login" replace />;
 }

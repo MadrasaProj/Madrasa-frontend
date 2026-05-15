@@ -1,124 +1,197 @@
-"use client";
+import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { PageHeader, SectionHeader } from "@/components/ui/PageHeader";
-import { performanceRankingData, parentCooperationData, homeworkCompletionData } from "@/mock-data";
-import { Star, Crown } from "lucide-react";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { getResults, type ResultRecord } from "@/lib/results-api";
+import { getExams, type ExamRecord } from "@/lib/exams-api";
+import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
+import { getHomeworkSummary } from "@/lib/reports-api";
+import { useAuthStore } from "@/store/auth";
+import { cn } from "@/lib/utils";
 import {
-  BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
-} from "recharts";
+  Star, TrendingUp, BookOpen, Loader2, RefreshCw,
+} from "lucide-react";
 import { motion } from "framer-motion";
-import { useState } from "react";
-import { useLanguageStore } from "@/store/language";
-import { t as tr } from "@/lib/i18n";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
+} from "recharts";
+
+function getGrade(score: number) {
+  if (score >= 90) return { label: "A+", color: "#10b981" };
+  if (score >= 75) return { label: "A",  color: "#3b82f6" };
+  if (score >= 60) return { label: "B",  color: "#8b5cf6" };
+  if (score >= 45) return { label: "C",  color: "#f59e0b" };
+  return { label: "F", color: "#ef4444" };
+}
 
 export default function TeacherPerformancePage() {
-  const { lang } = useLanguageStore();
-  const [filter, setFilter] = useState<"weekly" | "monthly">("monthly");
+  const { user, accessToken } = useAuthStore();
+  const cid   = user?.clientId ?? "";
+  const token = accessToken ?? "";
+  const ayId  = user?.defaultAcademicYearId ?? "";
 
-  const bestBoy = performanceRankingData.find((s) => s.gender === "male");
-  const bestGirl = performanceRankingData.find((s) => s.gender === "female");
+  const [classes, setClasses]   = useState<ClassRecord[]>([]);
+  const [exams, setExams]       = useState<ExamRecord[]>([]);
+  const [results, setResults]   = useState<ResultRecord[]>([]);
+  const [hwSummary, setHwSummary] = useState<{ completionRate: number; totalAssignments: number } | null>(null);
+  const [activeClassId, setActiveClassId] = useState("");
+  const [activeExamId, setActiveExamId]   = useState("");
+  const [loading, setLoading]   = useState(true);
+
+  useEffect(() => {
+    if (!cid || !token) return;
+    Promise.all([
+      getMyClasses(cid, token),
+      getHomeworkSummary(cid, token).catch(() => null),
+    ]).then(([cls, hw]) => {
+      setClasses(cls);
+      setHwSummary(hw ? { completionRate: hw.completionRate, totalAssignments: hw.totalAssignments } : null);
+      if (cls.length > 0) setActiveClassId(cls[0].id);
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, [cid, token]);
+
+  useEffect(() => {
+    if (!cid || !token || !activeClassId) return;
+    getExams(cid, token, { classId: activeClassId, accademicYearId: ayId || undefined, limit: 20 })
+      .then((data) => {
+        setExams(data.data ?? []);
+        const first = data.data?.[0];
+        if (first) setActiveExamId(first.id);
+      }).catch(() => {});
+  }, [cid, token, activeClassId, ayId]);
+
+  useEffect(() => {
+    if (!cid || !token || !activeExamId) return;
+    getResults(cid, token, { examId: activeExamId, classId: activeClassId, limit: 100 })
+      .then((data) => setResults(data.data ?? []))
+      .catch(() => {});
+  }, [cid, token, activeExamId, activeClassId]);
+
+  const gradeData = ["A+", "A", "B", "C", "F"].map((g) => ({
+    grade: g,
+    count: results.filter((r) => getGrade(r.score).label === g).length,
+    color: getGrade(g === "A+" ? 95 : g === "A" ? 80 : g === "B" ? 65 : g === "C" ? 50 : 0).color,
+  }));
+
+  const avgScore = results.length > 0
+    ? Math.round(results.reduce((s, r) => s + r.score, 0) / results.length)
+    : 0;
+
+  const topStudents = [...results].sort((a, b) => b.score - a.score).slice(0, 5);
 
   return (
     <DashboardLayout>
-      <PageHeader title={tr("teacherPages", "performanceTitle", lang)} subtitle={tr("teacherPages", "performanceSub", lang)} icon={Star} back backHref="/teacher" />
+      <PageHeader title="Class Performance" icon={Star} back backHref="/teacher" />
 
-      {/* Filter */}
-      <div className="flex gap-2 mb-5 bg-white border border-gray-100 rounded-xl p-1 w-fit">
-        {(["weekly", "monthly"] as const).map((f) => (
-          <button key={f} onClick={() => setFilter(f)} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filter === f ? "bg-emerald-600 text-white" : "text-gray-600 hover:bg-gray-50"}`}>{f === "weekly" ? tr("teacherPages", "weekly", lang) : tr("teacherPages", "monthly", lang)}</button>
-        ))}
-      </div>
-
-      {/* Best of Month */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        {[bestBoy, bestGirl].filter(Boolean).map((s) => (
-          <motion.div
-            key={s!.studentId}
-            initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-            className="bg-linear-to-br from-amber-400 to-orange-400 rounded-2xl p-4 text-white"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <Crown className="w-6 h-6" />
-              <span className="text-xs font-medium opacity-80">{s!.gender === "male" ? tr("teacherPages", "bestBoy", lang) : tr("teacherPages", "bestGirl", lang)}</span>
-            </div>
-            <p className="font-bold">{s!.name.split(" ")[0]}</p>
-            <p className="text-sm opacity-80 mt-0.5">{tr("teacherPages", "score", lang)}: {s!.total}</p>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Rankings */}
-      <div className="bg-white rounded-2xl p-5 border border-gray-100 mb-6">
-        <SectionHeader title={tr("teacherPages", "classRankings", lang)} />
-        <div className="space-y-3">
-          {performanceRankingData.map((s, i) => (
-            <div key={s.studentId} className="flex items-center gap-3">
-              <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${i === 0 ? "bg-amber-100 text-amber-700" : i === 1 ? "bg-gray-200 text-gray-600" : i === 2 ? "bg-orange-50 text-orange-600" : "bg-gray-50 text-gray-500"}`}>
-                {i + 1}
-              </span>
-              <div className="flex-1">
-                <div className="flex items-center gap-1">
-                  <p className="text-sm font-semibold text-gray-900">{s.name}</p>
-                  {s.crown && <Crown className="w-3.5 h-3.5 text-amber-500" />}
-                </div>
-                <div className="flex gap-3 mt-0.5">
-                  <span className="text-xs text-gray-500">{tr("teacherPages", "exam", lang)}: {s.examScore}</span>
-                  <span className="text-xs text-gray-500">{tr("teacherPages", "ibadahLabel", lang)}: {s.ibadah}</span>
-                  <span className="text-xs text-gray-500">{tr("teacherPages", "hw", lang)}: {s.homework}</span>
-                </div>
-                <div className="mt-1.5 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${(s.total / 400) * 100}%` }} />
-                </div>
-              </div>
-              <span className="text-base font-bold text-emerald-700">{s.total}</span>
-            </div>
-          ))}
+      {loading ? (
+        <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
+          <Loader2 className="w-5 h-5 animate-spin" />
         </div>
-      </div>
+      ) : (
+        <>
+          {/* Class selector */}
+          <div className="flex gap-2 mb-4 flex-wrap">
+            {classes.map((cls) => (
+              <button key={cls.id} onClick={() => setActiveClassId(cls.id)}
+                className={cn("px-3 py-1.5 rounded-xl text-xs font-semibold transition-all",
+                  activeClassId === cls.id ? "bg-emerald-600 text-white" : "bg-white border border-gray-200 text-gray-600")}>
+                {cls.name}
+              </button>
+            ))}
+          </div>
 
-      {/* Charts */}
-      <div className="space-y-5">
-        <div className="bg-white rounded-2xl p-5 border border-gray-100">
-          <SectionHeader title={tr("teacherPages", "hwCompletion", lang)} />
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={homeworkCompletionData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="week" tick={{ fontSize: 12, fill: "#9ca3af" }} />
-              <YAxis tick={{ fontSize: 12, fill: "#9ca3af" }} />
-              <Tooltip contentStyle={{ borderRadius: 12, border: "none" }} />
-              <Bar dataKey="completed" name={tr("common", "completed", lang)} fill="#059669" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="missing" name={tr("common", "absent", lang)} fill="#ef4444" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="bg-white rounded-2xl p-5 border border-gray-100">
-          <SectionHeader title={tr("teacherPages", "parentCoop", lang)} />
-          <div className="flex items-center gap-6">
-            <ResponsiveContainer width={140} height={140}>
-              <PieChart>
-                <Pie data={parentCooperationData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={3} dataKey="value">
-                  {parentCooperationData.map((entry, index) => (
-                    <Cell key={index} fill={entry.color} />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="space-y-2 flex-1">
-              {parentCooperationData.map((d) => (
-                <div key={d.name} className="flex items-center gap-2 justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: d.color }} />
-                    <span className="text-sm text-gray-700">{d.name}</span>
-                  </div>
-                  <span className="text-sm font-bold text-gray-900">{d.value}</span>
-                </div>
+          {/* Exam selector */}
+          {exams.length > 0 && (
+            <div className="flex gap-2 mb-5 overflow-x-auto pb-1">
+              {exams.map((ex) => (
+                <button key={ex.id} onClick={() => setActiveExamId(ex.id)}
+                  className={cn("px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all",
+                    activeExamId === ex.id ? "bg-blue-600 text-white" : "bg-white border border-gray-200 text-gray-600")}>
+                  {ex.name}
+                </button>
               ))}
             </div>
+          )}
+
+          {/* Summary cards */}
+          <div className="grid grid-cols-3 gap-3 mb-5">
+            {[
+              { label: "Students",   value: results.length,   icon: Star,      color: "text-blue-600",    bg: "bg-blue-50" },
+              { label: "Avg Score",  value: `${avgScore}%`,   icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50" },
+              { label: "HW Compl.", value: hwSummary ? `${hwSummary.completionRate}%` : "—", icon: BookOpen, color: "text-purple-600", bg: "bg-purple-50" },
+            ].map(({ label, value, icon: Icon, color, bg }) => (
+              <div key={label} className="bg-white rounded-2xl border border-gray-100 p-3 text-center">
+                <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center mx-auto mb-1", bg)}>
+                  <Icon className={cn("w-4 h-4", color)} />
+                </div>
+                <p className="text-lg font-bold text-gray-900">{value}</p>
+                <p className="text-[10px] text-gray-400">{label}</p>
+              </div>
+            ))}
           </div>
-        </div>
-      </div>
+
+          {results.length === 0 ? (
+            <div className="text-center py-10 text-gray-400 text-sm">
+              {exams.length === 0 ? "No exams found for this class" : "No results recorded yet"}
+            </div>
+          ) : (
+            <>
+              {/* Grade distribution chart */}
+              <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-5">
+                <p className="text-sm font-bold text-gray-800 mb-3">Grade Distribution</p>
+                <ResponsiveContainer width="100%" height={160}>
+                  <BarChart data={gradeData} barSize={36}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="grade" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+                    <Tooltip />
+                    <Bar dataKey="count" name="Students" radius={[4, 4, 0, 0]}>
+                      {gradeData.map((entry, index) => (
+                        <Cell key={index} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Top students */}
+              {topStudents.length > 0 && (
+                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-20">
+                  <div className="px-4 py-3 bg-amber-50 border-b border-amber-100">
+                    <p className="text-xs font-bold text-amber-700 uppercase tracking-wide flex items-center gap-1.5">
+                      <Star className="w-3.5 h-3.5" /> Top Students
+                    </p>
+                  </div>
+                  <div className="divide-y divide-gray-50">
+                    {topStudents.map((r, i) => {
+                      const grade = getGrade(r.score);
+                      return (
+                        <motion.div
+                          key={r.id}
+                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.05 }}
+                          className="flex items-center gap-3 px-4 py-3"
+                        >
+                          <div className={cn("w-7 h-7 rounded-xl flex items-center justify-center text-sm font-bold shrink-0",
+                            i === 0 ? "bg-amber-100 text-amber-700" : i === 1 ? "bg-gray-100 text-gray-600" : "bg-orange-100 text-orange-700")}>
+                            {i + 1}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 truncate">{r.student?.name}</p>
+                            <p className="text-xs text-gray-400">{r.student?.adno}</p>
+                          </div>
+                          <p className="text-lg font-bold text-gray-900">{r.score}</p>
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-lg" style={{ color: grade.color, backgroundColor: `${grade.color}20` }}>
+                            {grade.label}
+                          </span>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </>
+      )}
     </DashboardLayout>
   );
 }

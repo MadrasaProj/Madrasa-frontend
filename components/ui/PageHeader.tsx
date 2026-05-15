@@ -1,7 +1,6 @@
-"use client";
 import { cn } from "@/lib/utils";
 import { LucideIcon, ChevronLeft } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router-dom";
 
 interface PageHeaderProps {
   title: string;
@@ -13,13 +12,13 @@ interface PageHeaderProps {
 }
 
 export function PageHeader({ title, subtitle, icon: Icon, back, backHref, action }: PageHeaderProps) {
-  const router = useRouter();
+  const navigate = useNavigate();
   return (
     <div className="flex items-center justify-between gap-3 mb-5 lg:mb-6">
       <div className="flex items-center gap-2.5 min-w-0 flex-1">
         {back && (
           <button
-            onClick={() => backHref ? router.push(backHref) : router.back()}
+            onClick={() => backHref ? navigate(backHref) : navigate(-1)}
             className="p-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 transition-colors shrink-0 active:scale-95"
           >
             <ChevronLeft className="w-5 h-5 text-gray-600" />

@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find \"D:\\\\\\\\nestjs\\\\\\\\madrasproj-nest-backend\\\\\\\\src\" -name \"*dto*\" -type f)",
+      "Bash(find D:\\\\\\\\nestjs\\\\\\\\madrasproj-nest-backend\\\\\\\\src *)",
+      "Bash(npx prisma *)",
+      "PowerShell(cd \"D:\\\\nestjs\\\\madrasproj-nest-backend\"; npx tsc --noEmit 2>&1 | Where-Object { $_ -notmatch \"spec\\\\.ts|e2e-spec|test/\" })",
+      "PowerShell(cd \"D:\\\\nestjs\\\\madrasproj-nest-backend\"; npx tsc --noEmit 2>&1 | Where-Object { \\($_ -notmatch \"spec\\\\.ts|e2e-spec|test/\"\\) -and \\($_ -ne \"\"\\) })",
+      "PowerShell(cd \"D:\\\\nestjs\\\\madrasproj-nest-backend\"; $out = npx tsc --noEmit 2>&1; $filtered = $out | Where-Object { $_ -notmatch \"spec\\\\.ts|e2e-spec\\\\.ts\" }; $filtered)",
+      "PowerShell(cd \"D:\\\\nestjs\\\\madrasproj-nest-backend\"; npx tsc --noEmit 2>&1 | Out-String | Select-String -Pattern \"attendance|v2\\\\.module|jwt\\\\.strategy\" -AllMatches | ForEach-Object { $_.Matches } | ForEach-Object { $_.Value })",
+      "Bash(grep -v \"^$\")",
+      "Bash(Get-ChildItem -Path \"D:\\\\nestjs\\\\madrasproj-nest-backend\\\\src\\\\v2\" -Recurse)",
+      "Bash(Select-Object FullName)",
+      "Bash(Sort-Object FullName)",
+      "Bash(npx tsc *)",
+      "Bash(xargs grep -l \"findMany\\\\|findUnique\\\\|findFirst\")",
+      "Bash(grep -r '$transaction\\\\|transaction' src/ '--include=*.ts')",
+      "Bash(xargs cat)",
+      "Bash(xargs grep -l \"user\\\\|User\")",
+      "Bash(npm list *)",
+      "Bash(findstr /i \"\\\\\"swr\\\\\"\\\\|\\\\\"react-query\\\\\"\\\\|\\\\\"@tanstack\\\\\"\\\\|\\\\\"next\\\\\"\\\\|\\\\\"recharts\\\\\"\\\\|\\\\\"framer\\\\\"\")",
+      "Bash(node -e \"const p=require\\('./package.json'\\); const deps={...p.dependencies,...p.devDependencies}; ['swr','react-query','@tanstack/react-query','next','recharts','framer-motion','sharp'].forEach\\(k => console.log\\(k, deps[k] || 'NOT INSTALLED'\\)\\)\")",
+      "Bash(npm install *)",
+      "PowerShell(*)",
+      "Bash(*)"
+    ],
+    "defaultMode": "auto"
+  },
+  "env": {
+    "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1"
+  }
+}

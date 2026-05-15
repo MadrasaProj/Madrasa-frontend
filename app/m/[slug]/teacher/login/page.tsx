@@ -1,10 +1,7 @@
+import { useParams } from "react-router-dom";
 import RoleLoginPage from "@/components/auth/RoleLoginPage";
 
-export default async function TenantTeacherLoginPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = await params;
+export default function TenantTeacherLoginPage() {
+  const { slug } = useParams<{ slug: string }>();
   return <RoleLoginPage type="TEACHER" tenantSlug={slug} />;
 }

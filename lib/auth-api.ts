@@ -1,10 +1,16 @@
 const API_ORIGIN =
-  process.env.NEXT_PUBLIC_API_ORIGIN ?? "http://localhost:8000";
-const API_BASE_PATH = process.env.NEXT_PUBLIC_API_BASE_PATH ?? "/api/v2";
+  import.meta.env.VITE_API_ORIGIN ?? "http://localhost:3000";
+const API_BASE_PATH = import.meta.env.VITE_API_BASE_PATH ?? "/api/v2";
 
 const DEFAULT_API_BASE = `${API_ORIGIN}${API_BASE_PATH}`;
+const DEFAULT_TIMEOUT_MS = 15_000;
 
-export type LoginMode = "SUPER_ADMIN" | "CLIENT_ADMIN" | "TEACHER" | "PARENT";
+export type LoginMode =
+  | "SUPER_ADMIN"
+  | "CLIENT_ADMIN"
+  | "TEACHER"
+  | "PARENT"
+  | "COMMITTEE";
 
 export class AuthApiError extends Error {
   code?: string;
@@ -21,34 +27,67 @@ export class AuthApiError extends Error {
   }
 }
 
-export async function postJson<T>(path: string, body: unknown): Promise<T> {
-  const response = await fetch(`${DEFAULT_API_BASE}${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+export async function postJson<T>(
+  path: string,
+  body: unknown,
+  signal?: AbortSignal,
+): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+  signal?.addEventListener("abort", () => controller.abort());
 
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const message =
-      typeof payload?.message === "string"
-        ? payload.message
-        : Array.isArray(payload?.message)
-          ? payload.message.join(", ")
-          : payload?.error || "Request failed";
-    throw new AuthApiError(message, {
-      code: payload?.errorCode,
-      statusCode: payload?.statusCode,
+  try {
+    const response = await fetch(`${DEFAULT_API_BASE}${path}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
     });
-  }
 
-  return payload as T;
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const message =
+        typeof payload?.message === "string"
+          ? payload.message
+          : Array.isArray(payload?.message)
+            ? payload.message.join(", ")
+            : payload?.error || "Request failed";
+      throw new AuthApiError(message, {
+        code: payload?.errorCode,
+        statusCode: payload?.statusCode ?? response.status,
+      });
+    }
+
+    return payload as T;
+  } catch (err) {
+    if ((err as Error).name === "AbortError") {
+      throw new AuthApiError(
+        "Request timed out. Please check your connection.",
+        {
+          statusCode: 408,
+        },
+      );
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 }
+
+export type StudentInfo = {
+  id: string;
+  name: string;
+  adno: string;
+  gender: "MALE" | "FEMALE";
+  className: string | null;
+  classId: string | null;
+};
 
 export type AuthSessionPayload = {
   access_token: string;
+  students?: StudentInfo[]; // parent login only
   user: {
     sub: string;
     name: string;
@@ -62,63 +101,109 @@ export type AuthSessionPayload = {
       id?: string;
       slug?: string;
       subdomain?: string;
+      attendanceMode?: string;
     };
-  };
+    };
 };
 
-export async function loginSuperAdmin(identifier: string, password: string) {
-  return postJson<AuthSessionPayload>("/auth/super-admin/login", {
-    identifier,
-    password,
-  });
+export async function loginSuperAdmin(
+  identifier: string,
+  password: string,
+  signal?: AbortSignal,
+) {
+  return postJson<AuthSessionPayload>(
+    "/auth/super-admin/login",
+    {
+      identifier,
+      password,
+    },
+    signal,
+  );
 }
 
 export async function loginMadrasa(
   identifier: string,
   madrasaSlug: string,
   password: string,
+  signal?: AbortSignal,
 ) {
-  return postJson<AuthSessionPayload>("/auth/madrasa/login", {
-    identifier,
-    madrasaSlug,
-    password,
-  });
+  return postJson<AuthSessionPayload>(
+    "/auth/madrasa/login",
+    {
+      identifier,
+      madrasaSlug,
+      password,
+    },
+    signal,
+  );
 }
 
 export async function loginTeacher(
   identifier: string,
   password: string,
   madrasaSlug?: string,
+  signal?: AbortSignal,
 ) {
-  return postJson<AuthSessionPayload>("/auth/teacher/login", {
-    identifier,
-    password,
-    ...(madrasaSlug ? { madrasaSlug } : {}),
-  });
+  return postJson<AuthSessionPayload>(
+    "/auth/teacher/login",
+    {
+      identifier,
+      password,
+      ...(madrasaSlug ? { madrasaSlug } : {}),
+    },
+    signal,
+  );
 }
 
 export async function requestParentOtp(
   madrasaSlug: string,
   parentPhone: string,
+  signal?: AbortSignal,
 ) {
   return postJson<{
     challengeId: string;
     expiresInSeconds: number;
     devOtpCode?: string;
-  }>("/auth/parent/request-otp", {
-    madrasaSlug,
-    parentPhone,
-  });
+  }>(
+    "/auth/parent/request-otp",
+    {
+      madrasaSlug,
+      parentPhone,
+    },
+    signal,
+  );
 }
 
 export async function loginParent(
   madrasaSlug: string,
   parentPhone: string,
   options: { password?: string; otpCode?: string; challengeId?: string },
+  signal?: AbortSignal,
 ) {
-  return postJson<AuthSessionPayload>("/auth/parent/login", {
-    madrasaSlug,
-    parentPhone,
-    ...options,
-  });
+  return postJson<AuthSessionPayload>(
+    "/auth/parent/login",
+    {
+      madrasaSlug,
+      parentPhone,
+      ...options,
+    },
+    signal,
+  );
+}
+
+export async function loginCommittee(
+  madrasaSlug: string,
+  identifier: string,
+  password: string,
+  signal?: AbortSignal,
+) {
+  return postJson<AuthSessionPayload>(
+    "/auth/committee/login",
+    {
+      madrasaSlug,
+      identifier,
+      password,
+    },
+    signal,
+  );
 }

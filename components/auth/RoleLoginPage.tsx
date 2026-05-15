@@ -1,7 +1,5 @@
-"use client";
-
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   BookMarked,
@@ -18,6 +16,7 @@ import {
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import {
   AuthApiError,
+  loginCommittee,
   loginMadrasa,
   loginParent,
   loginSuperAdmin,
@@ -29,7 +28,7 @@ import { normalizeUserSession, useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 
-type LoginType = "SUPER_ADMIN" | "CLIENT_ADMIN" | "TEACHER" | "PARENT";
+type LoginType = "SUPER_ADMIN" | "CLIENT_ADMIN" | "TEACHER" | "PARENT" | "COMMITTEE";
 
 type RoleLoginPageProps = {
   type: LoginType;
@@ -57,6 +56,11 @@ const metaByType = {
     subtitle: "Track your child progress and updates",
     icon: Users,
   },
+  COMMITTEE: {
+    title: "Committee Sign In",
+    subtitle: "View reports, finances, and send announcements",
+    icon: Users,
+  },
 } satisfies Record<
   LoginType,
   { title: string; subtitle: string; icon: typeof Shield }
@@ -66,7 +70,7 @@ export default function RoleLoginPage({
   type,
   tenantSlug,
 }: RoleLoginPageProps) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { login } = useAuthStore();
   const { lang } = useLanguageStore();
 
@@ -84,6 +88,7 @@ export default function RoleLoginPage({
   const meta = useMemo(() => metaByType[type], [type]);
   const Icon = meta.icon;
   const isTenantRole = type !== "SUPER_ADMIN";
+  const isPasswordRole = type !== "PARENT";
 
   const getLocalizedError = (
     error: unknown,
@@ -166,6 +171,9 @@ export default function RoleLoginPage({
       } else if (type === "TEACHER") {
         const slug = requireTenantSlug();
         session = await loginTeacher(identifier.trim(), password, slug);
+      } else if (type === "COMMITTEE") {
+        const slug = requireTenantSlug();
+        session = await loginCommittee(slug!, identifier.trim(), password);
       } else {
         const slug = requireTenantSlug();
         session = await loginParent(
@@ -184,11 +192,11 @@ export default function RoleLoginPage({
       login(normalized);
 
       if (normalized.user.actorType === "SUPER_ADMIN") {
-        router.push("/admin");
+        navigate("/admin");
         return;
       }
 
-      router.push(
+      navigate(
         roleHomePath({
           role: normalized.user.role,
           actorType: normalized.user.actorType,
@@ -229,14 +237,16 @@ export default function RoleLoginPage({
 
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
           <form onSubmit={handleLogin} className="space-y-4">
-            {type !== "PARENT" && (
+            {isPasswordRole && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   {type === "SUPER_ADMIN"
                     ? "Admin Identifier"
                     : type === "CLIENT_ADMIN"
                       ? "Email or Phone"
-                      : "Teacher Username"}
+                      : type === "COMMITTEE"
+                        ? "Committee Username"
+                        : "Teacher Username"}
                 </label>
                 <input
                   type="text"
@@ -323,7 +333,7 @@ export default function RoleLoginPage({
               </>
             )}
 
-            {(type !== "PARENT" || !useOtp) && (
+            {(isPasswordRole || !useOtp) && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   {t("login", "password", lang)}

@@ -1,177 +1,238 @@
-"use client";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { PageHeader, SectionHeader } from "@/components/ui/PageHeader";
-import { notifications, teachers, parents } from "@/mock-data";
-import { motion, AnimatePresence } from "framer-motion";
-import { Bell, Send, Users, BookOpen, ClipboardList, GraduationCap, CreditCard, FileText, X } from "lucide-react";
+import { PageHeader } from "@/components/ui/PageHeader";
+import {
+  getSentNotifications, createNotification, deleteNotification,
+  type NotificationRecord, type NotificationType,
+} from "@/lib/notifications-api";
+import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
+import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
-import { useLanguageStore } from "@/store/language";
-import { t } from "@/lib/i18n";
+import {
+  Bell, Plus, Send, Trash2, Loader2, X,
+  BookOpen, ClipboardList, GraduationCap, CreditCard, FileText, Users,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
-const typeConfig: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
-  attendance: { icon: ClipboardList, color: "text-emerald-700", bg: "bg-emerald-100" },
-  homework:   { icon: BookOpen,      color: "text-blue-700",    bg: "bg-blue-100"    },
-  exam:       { icon: GraduationCap, color: "text-purple-700",  bg: "bg-purple-100"  },
-  fee:        { icon: CreditCard,    color: "text-amber-700",   bg: "bg-amber-100"   },
-  diary:      { icon: FileText,      color: "text-teal-700",    bg: "bg-teal-100"    },
-  general:    { icon: Bell,          color: "text-gray-700",    bg: "bg-gray-100"    },
+const TYPE_CONFIG: Record<NotificationType, { label: string; icon: React.ElementType; color: string; bg: string }> = {
+  ANNOUNCEMENT:       { label: "Announcement",    icon: Bell,          color: "text-purple-700", bg: "bg-purple-100" },
+  ATTENDANCE_ALERT:   { label: "Attendance",       icon: ClipboardList, color: "text-emerald-700", bg: "bg-emerald-100" },
+  FEE_REMINDER:       { label: "Fee Reminder",     icon: CreditCard,    color: "text-amber-700",   bg: "bg-amber-100" },
+  HOMEWORK_REMINDER:  { label: "Homework",         icon: BookOpen,      color: "text-blue-700",    bg: "bg-blue-100" },
+  EXAM_NOTICE:        { label: "Exam Notice",      icon: GraduationCap, color: "text-indigo-700",  bg: "bg-indigo-100" },
+  GENERAL:            { label: "General",          icon: Bell,          color: "text-gray-700",    bg: "bg-gray-100" },
 };
 
-function timeAgo(dateStr: string, lang: "en" | "ml") {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const h = Math.floor(diff / 3600000);
-  if (h < 1) return t("notif", "justNow", lang);
-  if (h < 24) return `${h} ${t("notif", "hAgo", lang)}`;
-  return `${Math.floor(h / 24)} ${t("notif", "dAgo", lang)}`;
-}
+const ROLES = ["CLIENT_ADMIN", "TEACHER", "PARENT"];
 
 export default function AdminNotificationsPage() {
-  const { lang } = useLanguageStore();
-  const [items, setItems] = useState(notifications);
+  const { user, accessToken, activeClientId } = useAuthStore();
+  const cid   = activeClientId ?? "";
+  const token = accessToken ?? "";
+
+  const [sent, setSent]           = useState<NotificationRecord[]>([]);
+  const [total, setTotal]         = useState(0);
+  const [classes, setClasses]     = useState<ClassRecord[]>([]);
+  const [loading, setLoading]     = useState(true);
   const [showCompose, setShowCompose] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [form, setForm] = useState({ title: "", message: "", audience: "all" });
+  const [deletingId, setDeletingId]   = useState<string | null>(null);
 
-  const unread = items.filter((n) => !n.read).length;
-  const markAllRead = () => setItems((prev) => prev.map((n) => ({ ...n, read: true })));
-  const markOne = (id: string) => setItems((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
+  // Compose form
+  const [cTitle, setCTitle]       = useState("");
+  const [cBody, setCBody]         = useState("");
+  const [cType, setCType]         = useState<NotificationType>("ANNOUNCEMENT");
+  const [cRoles, setCRoles]       = useState<string[]>(["PARENT"]);
+  const [cClassIds, setCClassIds] = useState<string[]>([]);
+  const [sending, setSending]     = useState(false);
+  const [sendError, setSendError] = useState("");
 
-  const handleSend = () => {
-    setSent(true);
-    setTimeout(() => { setSent(false); setShowCompose(false); setForm({ title: "", message: "", audience: "all" }); }, 1800);
+  const loadSent = useCallback(async () => {
+    if (!cid || !token) return;
+    setLoading(true);
+    try {
+      const data = await getSentNotifications(cid, token, { take: 50 });
+      setSent(data.notifications ?? []);
+      setTotal(data.total ?? 0);
+    } catch { /* silent */ }
+    finally { setLoading(false); }
+  }, [cid, token]);
+
+  useEffect(() => {
+    if (!cid || !token) return;
+    loadSent();
+    getAllClasses(cid, token).then(setClasses).catch(() => {});
+  }, [cid, token, loadSent]);
+
+  const handleSend = async () => {
+    if (!cTitle || !cBody || !cRoles.length) return;
+    setSendError(""); setSending(true);
+    try {
+      await createNotification(cid, token, {
+        title: cTitle, body: cBody, type: cType,
+        targetRoles: cRoles,
+        targetClassIds: cClassIds.length ? cClassIds : undefined,
+      });
+      setShowCompose(false);
+      setCTitle(""); setCBody(""); setCRoles(["PARENT"]); setCClassIds([]);
+      loadSent();
+    } catch (e) { setSendError((e as Error).message); }
+    finally { setSending(false); }
   };
+
+  const handleDelete = async (id: string) => {
+    setDeletingId(id);
+    try { await deleteNotification(cid, token, id); loadSent(); }
+    catch (e) { alert((e as Error).message); }
+    finally { setDeletingId(null); }
+  };
+
+  const toggleRole = (r: string) =>
+    setCRoles((prev) => prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]);
 
   return (
     <DashboardLayout>
       <PageHeader
-        title={t("adminPages", "notifTitle", lang)}
-        subtitle={unread > 0 ? `${unread} ${t("notif", "unread", lang)}` : t("notif", "allRead", lang)}
+        title="Notifications"
+        subtitle={`${total} sent`}
         icon={Bell}
         action={
           <button onClick={() => setShowCompose(true)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold"
-          >
-            <Send className="w-4 h-4" />{t("notif", "send", lang)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold">
+            <Plus className="w-4 h-4" /> Compose
           </button>
         }
       />
 
-      {/* Stats row */}
-      <div className="grid grid-cols-3 gap-3 mb-5">
-        <div className="bg-white rounded-2xl p-3 text-center border border-gray-100">
-          <p className="text-xl font-bold text-gray-900">{items.length}</p>
-          <p className="text-xs text-gray-500">{t("notif", "total", lang)}</p>
+      {loading ? (
+        <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
+          <Loader2 className="w-5 h-5 animate-spin" />
         </div>
-        <div className="bg-white rounded-2xl p-3 text-center border border-gray-100">
-          <p className="text-xl font-bold text-emerald-600">{unread}</p>
-          <p className="text-xs text-gray-500">{t("notif", "unread", lang)}</p>
+      ) : sent.length === 0 ? (
+        <div className="text-center py-16 text-gray-400 text-sm">No notifications sent yet</div>
+      ) : (
+        <div className="space-y-3 pb-20">
+          {sent.map((n, i) => {
+            const cfg = TYPE_CONFIG[n.type] ?? TYPE_CONFIG.GENERAL;
+            const Icon = cfg.icon;
+            return (
+              <motion.div
+                key={n.id}
+                initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+                className="bg-white rounded-2xl border border-gray-100 p-4"
+              >
+                <div className="flex items-start gap-3">
+                  <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0", cfg.bg)}>
+                    <Icon className={cn("w-4 h-4", cfg.color)} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-900 text-sm">{n.title}</p>
+                    <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{n.body}</p>
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                      <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-lg", cfg.bg, cfg.color)}>
+                        {cfg.label}
+                      </span>
+                      {n.targetRoles.map((r) => (
+                        <span key={r} className="text-[10px] bg-gray-100 text-gray-600 font-semibold px-2 py-0.5 rounded-lg">
+                          {r}
+                        </span>
+                      ))}
+                      <span className="text-[10px] text-gray-400 ml-auto">
+                        {new Date(n.createdAt).toLocaleDateString("en-GB")}
+                        {n._count ? ` · ${n._count.reads} read` : ""}
+                      </span>
+                    </div>
+                  </div>
+                  <button onClick={() => handleDelete(n.id)} disabled={deletingId === n.id}
+                    className="p-1 shrink-0 text-gray-300 hover:text-red-500 transition-colors">
+                    {deletingId === n.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  </button>
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
-        <div className="bg-white rounded-2xl p-3 text-center border border-gray-100">
-          <p className="text-xl font-bold text-blue-600">{teachers.length + parents.length}</p>
-          <p className="text-xs text-gray-500">{t("notif", "recipients", lang)}</p>
-        </div>
-      </div>
-
-      {unread > 0 && (
-        <button onClick={markAllRead} className="mb-4 text-sm text-emerald-700 font-semibold underline underline-offset-2">
-          {t("notif", "markAllRead", lang)}
-        </button>
       )}
 
-      <SectionHeader title={t("notif", "allNotifications", lang)} className="mb-3" />
-      <div className="space-y-3">
-        {items.map((notif, i) => {
-          const cfg = typeConfig[notif.type] ?? typeConfig.general;
-          const Icon = cfg.icon;
-          return (
-            <motion.div
-              key={notif.id}
-              initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-              onClick={() => markOne(notif.id)}
-              className={cn(
-                "bg-white rounded-2xl p-4 border flex gap-3 cursor-pointer",
-                !notif.read ? "border-emerald-200 bg-emerald-50/30" : "border-gray-100"
-              )}
-            >
-              <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", cfg.bg)}>
-                <Icon className={cn("w-5 h-5", cfg.color)} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="font-semibold text-gray-900 text-sm">{notif.title}</p>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {!notif.read && <span className="w-2 h-2 rounded-full bg-emerald-500" />}
-                    <span className="text-xs text-gray-400">{timeAgo(notif.timestamp, lang)}</span>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-500 mt-0.5">{notif.message}</p>
-              </div>
-            </motion.div>
-          );
-        })}
-      </div>
-
-      {/* Compose Modal */}
+      {/* Compose modal */}
       <AnimatePresence>
         {showCompose && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-4"
-          >
-            <motion.div initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }}
-              className="bg-white rounded-3xl p-6 w-full max-w-md"
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/30 z-40 backdrop-blur-sm" onClick={() => setShowCompose(false)} />
+            <motion.div initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
+              className="fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-3xl max-h-[90vh] overflow-y-auto"
             >
-              <div className="flex justify-between items-center mb-5">
-                <h3 className="font-bold text-gray-900 text-lg">{t("adminPages", "sendNotification", lang)}</h3>
-                <button onClick={() => setShowCompose(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                  <X className="w-4 h-4" />
-                </button>
+              <div className="sticky top-0 bg-white px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                <p className="font-bold text-gray-900 text-lg">Compose Notification</p>
+                <button onClick={() => setShowCompose(false)}><X className="w-5 h-5 text-gray-400" /></button>
               </div>
-
-              <div className="space-y-4">
+              <div className="p-5 space-y-4">
+                {sendError && (
+                  <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl">{sendError}</div>
+                )}
                 <div>
-                  <label className="text-sm font-semibold text-gray-700 block mb-1.5">{t("adminPages", "sendTo", lang)}</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { value: "all", label: t("notif", "everyone", lang), icon: Users },
-                      { value: "parents", label: t("notif", "parentsOnly", lang), icon: Users },
-                      { value: "teachers", label: t("notif", "teachersOnly", lang), icon: BookOpen },
-                    ].map((opt) => (
-                      <button key={opt.value} onClick={() => setForm((f) => ({ ...f, audience: opt.value }))}
-                        className={cn("py-2.5 rounded-xl text-xs font-semibold flex flex-col items-center gap-1",
-                          form.audience === opt.value ? "bg-emerald-600 text-white" : "bg-gray-100 text-gray-600")}
-                      >
-                        <opt.icon className="w-4 h-4" />
-                        {opt.label}
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Title *</label>
+                  <input value={cTitle} onChange={(e) => setCTitle(e.target.value)}
+                    placeholder="Notification title"
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Message *</label>
+                  <textarea value={cBody} onChange={(e) => setCBody(e.target.value)} rows={3}
+                    placeholder="Write your message..."
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Type</label>
+                  <select value={cType} onChange={(e) => setCType(e.target.value as NotificationType)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none bg-white">
+                    {Object.entries(TYPE_CONFIG).map(([k, v]) => (
+                      <option key={k} value={k}>{v.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-2">Target Roles</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {ROLES.map((r) => (
+                      <button key={r} onClick={() => toggleRole(r)}
+                        className={cn("px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all",
+                          cRoles.includes(r) ? "bg-emerald-600 text-white border-emerald-600" : "bg-white text-gray-600 border-gray-200")}>
+                        {r}
                       </button>
                     ))}
                   </div>
                 </div>
-                <div>
-                  <label className="text-sm font-semibold text-gray-700 block mb-1.5">{t("adminPages", "titleLabel", lang)}</label>
-                  <input
-                    type="text" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                    placeholder={t("adminPages", "notifTitlePlc", lang)}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-400"
-                  />
+                {classes.length > 0 && (
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-2">
+                      Target Classes <span className="text-gray-400 font-normal">(empty = all)</span>
+                    </label>
+                    <div className="flex gap-2 flex-wrap">
+                      {classes.map((c) => (
+                        <button key={c.id} onClick={() =>
+                          setCClassIds((prev) => prev.includes(c.id) ? prev.filter((x) => x !== c.id) : [...prev, c.id])
+                        }
+                          className={cn("px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all",
+                            cClassIds.includes(c.id) ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200")}>
+                          {c.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="flex gap-3 pt-2">
+                  <button onClick={() => setShowCompose(false)}
+                    className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700">Cancel</button>
+                  <button onClick={handleSend} disabled={!cTitle || !cBody || !cRoles.length || sending}
+                    className="flex-1 py-3 bg-emerald-600 text-white rounded-xl text-sm font-semibold disabled:opacity-60 flex items-center justify-center gap-2">
+                    {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    Send
+                  </button>
                 </div>
-                <div>
-                  <label className="text-sm font-semibold text-gray-700 block mb-1.5">{t("adminPages", "messageLabel", lang)}</label>
-                  <textarea
-                    value={form.message} onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
-                    placeholder={t("adminPages", "writeMessage", lang)}
-                    rows={3}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-400 resize-none"
-                  />
-                </div>
-                <button onClick={handleSend}
-                  className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold flex items-center justify-center gap-2"
-                >
-                  {sent ? t("adminPages", "notifSent", lang) : <><Send className="w-4 h-4" />{form.audience === "all" ? t("adminPages", "sendToEveryone", lang) : form.audience === "parents" ? t("adminPages", "sendToParents", lang) : t("adminPages", "sendToTeachers", lang)}</>}
-                </button>
               </div>
             </motion.div>
-          </motion.div>
+          </>
         )}
       </AnimatePresence>
     </DashboardLayout>

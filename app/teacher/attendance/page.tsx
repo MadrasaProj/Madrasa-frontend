@@ -1,13 +1,15 @@
-"use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { students, attendanceRecords } from "@/mock-data";
+import { getStudents } from "@/lib/students-api";
 import {
   ClipboardList, ChevronLeft, ChevronRight, Check, X,
   Clock, FileText, BarChart2, Users, Bell, Save,
-  AlertCircle,
+  AlertCircle, Loader2,
 } from "lucide-react";
+import { useAuthStore } from "@/store/auth";
+import { bulkUpsertAttendance, type AttendanceStatus as ApiStatus } from "@/lib/attendance-api";
+import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
@@ -50,60 +52,73 @@ function getStudent(id: string) {
 }
 
 // ── Component ─────────────────────────────────────────────────────────────
+const STATUS_TO_API: Record<AttStatus, ApiStatus> = {
+  present: "PRESENT",
+  absent: "ABSENT",
+  late: "LATE",
+  excused: "EXCUSED",
+};
+
 export default function TeacherAttendancePage() {
   const { lang } = useLanguageStore();
-  const [activeClass, setActiveClass]   = useState("Class 4");
+  const { user, accessToken } = useAuthStore();
+  const [classes,      setClasses]      = useState<ClassRecord[]>([]);
+  const [classesLoading, setClassesLoading] = useState(true);
+  const [activeClass, setActiveClass]   = useState("");
   const [dateIdx,     setDateIdx]       = useState(0);   // index into DATES
   const [view,        setView]          = useState<ViewTab>("mark");
   const [saved,       setSaved]         = useState(false);
+  const [saving,      setSaving]        = useState(false);
+  const [saveError,   setSaveError]     = useState<string | null>(null);
   const [showRemark,  setShowRemark]    = useState<string | null>(null);  // studentId
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup saved-banner timer on unmount
+  useEffect(() => () => { if (savedTimerRef.current) clearTimeout(savedTimerRef.current); }, []);
+
+  // Load real classes from API
+  useEffect(() => {
+    if (!user?.clientId || !accessToken) { setClassesLoading(false); return; }
+    const ac = new AbortController();
+    getMyClasses(user.clientId, accessToken, ac.signal)
+      .then((data) => {
+        setClasses(data);
+        if (data.length > 0) setActiveClass(data[0].name);
+      })
+      .catch(() => {})
+      .finally(() => setClassesLoading(false));
+    return () => ac.abort();
+  }, [user?.clientId, accessToken]);
+
+  // Real classId (UUID) for the currently selected class
+  const activeClassId = classes.find((c) => c.name === activeClass)?.id ?? null;
 
   const selectedDate = DATES[dateIdx];
-  const classStudents = useMemo(
-    () => students.filter((s) => s.class === activeClass),
-    [activeClass]
-  );
+  const [classStudents, setClassStudents] = useState<{ id: string; name: string; adno?: string }[]>([]);
+  const [studentsLoading, setStudentsLoading] = useState(false);
 
-  // Seed from mock data if available, else default to "present"
-  const seedRecord = attendanceRecords.find(
-    (r) => r.date === selectedDate && r.classId === activeClass
-  );
+  // Load real students when class changes
+  useEffect(() => {
+    if (!user?.clientId || !accessToken || !activeClassId) return;
+    const ac = new AbortController();
+    setStudentsLoading(true);
+    getStudents(user.clientId, accessToken, { classId: activeClassId, limit: 100, signal: ac.signal })
+      .then((data) => {
+        const stu = (data.data ?? []).map((s) => ({ id: s.id, name: s.name, adno: s.adno }));
+        setClassStudents(stu);
+        setAttendance(Object.fromEntries(stu.map((s) => [s.id, "present" as AttStatus])));
+        setRemarks(Object.fromEntries(stu.map((s) => [s.id, ""])));
+      })
+      .catch(() => {})
+      .finally(() => setStudentsLoading(false));
+    return () => ac.abort();
+  }, [user?.clientId, accessToken, activeClassId]);
 
-  const [attendance, setAttendance] = useState<Record<string, AttStatus>>(() =>
-    Object.fromEntries(
-      classStudents.map((s) => [
-        s.id,
-        (seedRecord?.records.find((r) => r.studentId === s.id)?.status as AttStatus) ?? "present",
-      ])
-    )
-  );
-  const [remarks, setRemarks] = useState<Record<string, string>>(() =>
-    Object.fromEntries(
-      classStudents.map((s) => [
-        s.id,
-        seedRecord?.records.find((r) => r.studentId === s.id)?.remark ?? "",
-      ])
-    )
-  );
+  const [attendance, setAttendance] = useState<Record<string, AttStatus>>({});
+  const [remarks, setRemarks]       = useState<Record<string, string>>({});
 
-  // re-seed when date or class changes
+  // Context change: just update date index and reset saved flag
   const changeContext = (newClass: string, newDateIdx: number) => {
-    const newStudents = students.filter((s) => s.class === newClass);
-    const rec = attendanceRecords.find(
-      (r) => r.date === DATES[newDateIdx] && r.classId === newClass
-    );
-    setAttendance(Object.fromEntries(
-      newStudents.map((s) => [
-        s.id,
-        (rec?.records.find((r) => r.studentId === s.id)?.status as AttStatus) ?? "present",
-      ])
-    ));
-    setRemarks(Object.fromEntries(
-      newStudents.map((s) => [
-        s.id,
-        rec?.records.find((r) => r.studentId === s.id)?.remark ?? "",
-      ])
-    ));
     setSaved(false);
   };
 
@@ -125,41 +140,52 @@ export default function TeacherAttendancePage() {
 
   const pct = counts.total > 0 ? Math.round((counts.present / counts.total) * 100) : 0;
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
-  };
+  const handleSave = useCallback(async () => {
+    if (!accessToken || !user?.clientId) return;
+    if (!activeClassId) {
+      setSaveError("Class not found. Please refresh and try again.");
+      return;
+    }
+
+    const classId = activeClassId;
+    setSaving(true);
+    setSaveError(null);
+
+    try {
+      await bulkUpsertAttendance(user.clientId, accessToken, {
+        classId,
+        date: selectedDate,
+        ...(user.defaultAcademicYearId
+          ? { academicYearId: user.defaultAcademicYearId }
+          : {}),
+        records: classStudents.map((s) => ({
+          studentId: s.id,
+          status: STATUS_TO_API[attendance[s.id] ?? "present"],
+          ...(remarks[s.id] ? { notes: remarks[s.id] } : {}),
+        })),
+      });
+      setSaved(true);
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+      savedTimerRef.current = setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      setSaveError((err as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken, user?.clientId, user?.defaultAcademicYearId, activeClassId, selectedDate, classStudents, attendance, remarks]);
 
   // ── Per-student historical attendance stats ──
   const studentStats = useMemo(() =>
-    classStudents.map((stu) => {
-      const recs = attendanceRecords
-        .filter((r) => r.classId === activeClass)
-        .map((r) => r.records.find((x) => x.studentId === stu.id))
-        .filter(Boolean);
-      const present = recs.filter((r) => r?.status === "present").length;
-      const absent  = recs.filter((r) => r?.status === "absent").length;
-      const late    = recs.filter((r) => r?.status === "late").length;
-      const total   = recs.length;
-      return { stu, present, absent, late, total, pct: total > 0 ? Math.round((present / total) * 100) : 0 };
-    }),
-  [classStudents, activeClass]);
+    classStudents.map((stu) => ({ stu, present: 0, absent: 0, late: 0, total: 0, pct: 0 })),
+  [classStudents]);
 
   // ── Weekly heatmap data (last 8 days × students) ──
   const heatmapDates = DATES.slice(0, 6);
 
-  // ── History records for selected class ──
-  const historyRecs = attendanceRecords
-    .filter((r) => r.classId === activeClass)
-    .sort((a, b) => b.date.localeCompare(a.date));
-
-  // ── Bar chart data for stats tab ──
-  const barData = historyRecs.slice(0, 8).reverse().map((rec) => ({
-    date: new Date(rec.date).toLocaleDateString("en-GB", { day:"2-digit", month:"short" }),
-    P: rec.records.filter((r) => r.status === "present").length,
-    A: rec.records.filter((r) => r.status === "absent").length,
-    L: rec.records.filter((r) => r.status === "late").length,
-  }));
+  // History/chart data — empty until real history API integration
+  const historyRecs: any[] = [];
+  const barData: { date: string; P: number; A: number; L: number }[] = [];
 
   return (
     <DashboardLayout>
@@ -173,19 +199,25 @@ export default function TeacherAttendancePage() {
 
       {/* ── Class selector ── */}
       <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide">
-        {["Class 4","Class 3","Class 2"].map((cls) => (
-          <button key={cls} onClick={() => { setActiveClass(cls); changeContext(cls, dateIdx); }}
+        {classesLoading ? (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-100 text-xs text-gray-400">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading classes…
+          </div>
+        ) : classes.length === 0 ? (
+          <p className="text-xs text-gray-400 px-3 py-2">No classes assigned</p>
+        ) : classes.map((cls) => (
+          <button key={cls.id} onClick={() => { setActiveClass(cls.name); changeContext(cls.name, dateIdx); }}
             className={cn(
               "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-all",
-              activeClass === cls ? "bg-gray-900 text-white" : "bg-white border border-gray-200 text-gray-500"
+              activeClass === cls.name ? "bg-gray-900 text-white" : "bg-white border border-gray-200 text-gray-500"
             )}
           >
-            <Users className="w-3.5 h-3.5" />{cls}
+            <Users className="w-3.5 h-3.5" />{cls.name}
             <span className={cn(
               "text-xs px-1.5 py-0.5 rounded-full font-bold",
-              activeClass === cls ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
+              activeClass === cls.name ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
             )}>
-              {students.filter((s) => s.class === cls).length}
+              {cls.studentCount}
             </span>
           </button>
         ))}
@@ -320,7 +352,7 @@ export default function TeacherAttendancePage() {
                       </div>
                       <div className="text-left">
                         <p className="font-semibold text-gray-900 text-sm">{student.name}</p>
-                        <p className="text-xs text-gray-400">{student.admissionNumber} · {student.division}</p>
+                        <p className="text-xs text-gray-400">{(student as any).adno ?? (student as any).admissionNumber ?? ""}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -358,18 +390,34 @@ export default function TeacherAttendancePage() {
             })}
           </div>
 
+          {/* Save error */}
+          {saveError && (
+            <div className="mb-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-center gap-2 text-sm text-red-700">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              {saveError}
+            </div>
+          )}
+
           {/* Save button */}
           <motion.button
             whileTap={{ scale: 0.98 }}
             onClick={handleSave}
+            disabled={saving}
             className={cn(
               "w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-sm transition-all sticky bottom-20 lg:bottom-6 shadow-lg",
               saved
                 ? "bg-emerald-100 text-emerald-700 shadow-emerald-100"
-                : "bg-emerald-600 text-white shadow-emerald-200"
+                : saving
+                  ? "bg-emerald-400 text-white cursor-not-allowed"
+                  : "bg-emerald-600 text-white shadow-emerald-200"
             )}
           >
-            {saved ? (
+            {saving ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Saving…
+              </>
+            ) : saved ? (
               <>
                 <Check className="w-5 h-5" />
                 {tr("teacherPages", "savedNotif", lang)} {counts.absent > 0 ? `${counts.absent} ${counts.absent > 1 ? tr("teacherPages", "parentsNotifiedAtt", lang) : tr("teacherPages", "parentNotifiedAtt", lang)}` : tr("teacherPages", "allPresentMsg", lang)}
@@ -415,13 +463,12 @@ export default function TeacherAttendancePage() {
                   <div className="w-28 flex items-center gap-2 shrink-0">
                     <div className={cn(
                       "w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0",
-                      stu.gender === "female" ? "bg-pink-400" : "bg-emerald-500"
+                      "bg-emerald-500"
                     )}>{stu.name.charAt(0)}</div>
                     <p className="text-xs text-gray-700 font-semibold truncate max-w-18">{stu.name.split(" ")[0]}</p>
                   </div>
                   {heatmapDates.map((d) => {
-                    const rec = attendanceRecords.find((r) => r.date === d && r.classId === activeClass);
-                    const s = rec?.records.find((r) => r.studentId === stu.id)?.status as AttStatus | undefined;
+                    const s = undefined as AttStatus | undefined; // history data not yet loaded
                     return (
                       <div key={d} className={cn(
                         "w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold",
@@ -538,7 +585,7 @@ export default function TeacherAttendancePage() {
                     <div className="flex items-center gap-2">
                       <div className={cn(
                         "w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold text-white",
-                        stu.gender === "female" ? "bg-pink-400" : "bg-emerald-500"
+                        "bg-emerald-500"
                       )}>{stu.name.charAt(0)}</div>
                       <div>
                         <p className="text-sm font-semibold text-gray-900 leading-tight">{stu.name}</p>

@@ -1,4 +1,4 @@
-export type ActorType = "SUPER_ADMIN" | "CLIENT_ADMIN" | "TEACHER" | "PARENT";
+export type ActorType = "SUPER_ADMIN" | "CLIENT_ADMIN" | "TEACHER" | "PARENT" | "COMMITTEE";
 
 const RESERVED_SUBDOMAINS = new Set([
   "www",
@@ -65,14 +65,19 @@ export function withTenantPrefix(
 
 export function roleHomePath(params: {
   role: "admin" | "teacher" | "parent" | "committee";
-  actorType: ActorType;
+  actorType?: ActorType;
   tenantSlug?: string | null;
 }): string {
-  const base = `/${params.role}`;
-  if (params.actorType === "SUPER_ADMIN") return base;
-  return withTenantPrefix(base, params.tenantSlug);
+  if (params.tenantSlug && params.actorType !== "SUPER_ADMIN") {
+    return `/m/${params.tenantSlug}/${params.role}`;
+  }
+  return `/${params.role}`;
 }
 
-export function tenantLoginPath(tenantSlug?: string | null): string {
-  return tenantSlug ? `/m/${tenantSlug}/admin/login` : "/super-admin/login";
+export function tenantLoginPath(
+  tenantSlug?: string | null,
+  role: "admin" | "teacher" | "parent" | "committee" = "admin",
+): string {
+  if (!tenantSlug) return "/super-admin/login";
+  return `/m/${tenantSlug}/${role}/login`;
 }

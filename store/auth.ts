@@ -1,12 +1,18 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import type { StudentInfo } from "@/lib/auth-api";
 
 export type UserRole = "admin" | "teacher" | "parent" | "committee";
 export type AuthActorType =
   | "SUPER_ADMIN"
   | "CLIENT_ADMIN"
   | "TEACHER"
-  | "PARENT";
+  | "PARENT"
+  | "COMMITTEE";
+
+export type AttendanceMode = "CLASS_BASED" | "PERIOD_BASED";
+
+export type { StudentInfo };
 
 interface User {
   id: string;
@@ -18,6 +24,8 @@ interface User {
   defaultAcademicYearId?: string | null;
   parentPhone?: string;
   accessibleStudentIds?: string[];
+  accessibleStudents?: StudentInfo[];
+  attendanceMode?: AttendanceMode;
 }
 
 interface AuthStore {
@@ -25,13 +33,19 @@ interface AuthStore {
   accessToken: string | null;
   isLoggedIn: boolean;
   hasHydrated: boolean;
+  activeClientId: string | null;
+  activeTenantSlug: string | null;
+  activeStudentId: string | null;
   login: (session: { user: User; accessToken: string }) => void;
   logout: () => void;
   markHydrated: () => void;
+  switchToClient: (clientId: string | null, slug?: string | null) => void;
+  setActiveStudent: (studentId: string) => void;
 }
 
 export type AuthSessionPayload = {
   access_token: string;
+  students?: StudentInfo[];
   user: {
     sub: string;
     name: string;
@@ -40,6 +54,7 @@ export type AuthSessionPayload = {
     client?: {
       slug?: string;
       subdomain?: string;
+      attendanceMode?: AttendanceMode;
     };
     clientId?: string;
     defaultAcademicYearId?: string | null;
@@ -53,17 +68,25 @@ const routeRoleByActor: Record<AuthActorType, UserRole> = {
   CLIENT_ADMIN: "admin",
   TEACHER: "teacher",
   PARENT: "parent",
+  COMMITTEE: "committee",
 };
+
+const validActorTypes: AuthActorType[] = [
+  "SUPER_ADMIN",
+  "CLIENT_ADMIN",
+  "TEACHER",
+  "PARENT",
+  "COMMITTEE",
+];
 
 export function normalizeUserSession(payload: AuthSessionPayload) {
   const rawActorType = payload.user.actorType ?? payload.user.role;
-  const actorType: AuthActorType =
-    rawActorType === "SUPER_ADMIN" ||
-    rawActorType === "CLIENT_ADMIN" ||
-    rawActorType === "TEACHER" ||
-    rawActorType === "PARENT"
-      ? rawActorType
-      : "CLIENT_ADMIN";
+  const actorType: AuthActorType = validActorTypes.includes(
+    rawActorType as AuthActorType
+  )
+    ? (rawActorType as AuthActorType)
+    : "CLIENT_ADMIN";
+
   return {
     accessToken: payload.access_token,
     user: {
@@ -76,25 +99,56 @@ export function normalizeUserSession(payload: AuthSessionPayload) {
       defaultAcademicYearId: payload.user.defaultAcademicYearId ?? null,
       parentPhone: payload.user.parentPhone,
       accessibleStudentIds: payload.user.accessibleStudentIds ?? [],
-    },
+      accessibleStudents: payload.students ?? [],
+      attendanceMode: (payload.user.client?.attendanceMode as AttendanceMode) ?? "CLASS_BASED",
+    } satisfies User,
   };
 }
 
 export const useAuthStore = create<AuthStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       accessToken: null,
       isLoggedIn: false,
       hasHydrated: false,
+      activeClientId: null,
+      activeTenantSlug: null,
+      activeStudentId: null,
+
       login: ({ user, accessToken }) =>
         set({
           user,
           accessToken,
           isLoggedIn: true,
+          activeClientId: user.clientId ?? null,
+          activeTenantSlug: user.tenantSlug ?? null,
+          activeStudentId:
+            user.actorType === "PARENT" && user.accessibleStudentIds?.length
+              ? user.accessibleStudentIds[0]
+              : null,
         }),
-      logout: () => set({ user: null, accessToken: null, isLoggedIn: false }),
+
+      logout: () =>
+        set({
+          user: null,
+          accessToken: null,
+          isLoggedIn: false,
+          activeClientId: null,
+          activeTenantSlug: null,
+          activeStudentId: null,
+        }),
+
       markHydrated: () => set({ hasHydrated: true }),
+
+      switchToClient: (clientId, slug) =>
+        set((state) => ({
+          activeClientId: clientId,
+          activeTenantSlug: slug !== undefined ? slug : state.activeTenantSlug,
+          activeStudentId: null,
+        })),
+
+      setActiveStudent: (studentId) => set({ activeStudentId: studentId }),
     }),
     {
       name: "madrasa-auth-session",
@@ -103,6 +157,9 @@ export const useAuthStore = create<AuthStore>()(
         user: state.user,
         accessToken: state.accessToken,
         isLoggedIn: state.isLoggedIn,
+        activeClientId: state.activeClientId,
+        activeTenantSlug: state.activeTenantSlug,
+        activeStudentId: state.activeStudentId,
       }),
       onRehydrateStorage: () => (state) => {
         state?.markHydrated();
@@ -110,35 +167,3 @@ export const useAuthStore = create<AuthStore>()(
     },
   ),
 );
-
-// Demo credentials
-export const demoCredentials = [
-  {
-    role: "admin" as UserRole,
-    email: "admin@madrasa.com",
-    password: "admin123",
-    name: "Admin – Darul Huda",
-    id: "ADMIN001",
-  },
-  {
-    role: "teacher" as UserRole,
-    email: "kareem@madrasa.com",
-    password: "teacher123",
-    name: "Usthad Abdul Kareem",
-    id: "T001",
-  },
-  {
-    role: "parent" as UserRole,
-    email: "abdullah@email.com",
-    password: "parent123",
-    name: "Abdullah Rahman",
-    id: "P001",
-  },
-  {
-    role: "committee" as UserRole,
-    email: "committee@madrasa.com",
-    password: "committee123",
-    name: "Hajiyar Abdul Latheef",
-    id: "CMT001",
-  },
-];

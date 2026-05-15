@@ -1,111 +1,260 @@
-"use client";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { StatCard, ActionCard } from "@/components/ui/Cards";
+import { ActionCard } from "@/components/ui/Cards";
 import { SectionHeader } from "@/components/ui/PageHeader";
-import { adminStats, monthlyAttendanceData, feeCollectionData } from "@/mock-data";
+import { getStudentStats, getFeeSummary, getAttendanceSummary } from "@/lib/reports-api";
 import {
-  Users, UserCheck, UserX, CreditCard, BookOpen, BarChart3,
-  Settings, GraduationCap, BookMarked, TrendingUp, ClipboardList
+  listClients,
+  type ClientListItem,
+} from "@/lib/super-admin-api";
+import { useAuthStore } from "@/store/auth";
+import { useNavigate, useLocation } from "react-router-dom";
+import {
+  Users, CreditCard, BookOpen, BarChart3, Settings, GraduationCap,
+  BookMarked, ClipboardList, Loader2, Building2, ShieldCheck,
+  UserCircle2, LogIn, CheckCircle, XCircle,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import {
-  AreaChart, Area, BarChart, Bar, XAxis, YAxis,
-  CartesianGrid, Tooltip, ResponsiveContainer
-} from "recharts";
 import { motion } from "framer-motion";
-import { useLanguageStore } from "@/store/language";
-import { t } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 
-export default function AdminDashboard() {
-  const router = useRouter();
-  const { lang } = useLanguageStore();
+const isExpired = (d?: string) => !!d && new Date(d) < new Date();
+
+// ── Platform Overview (Super Admin without active client) ─────────────────────
+
+function PlatformOverview() {
+  const { user, accessToken, switchToClient } = useAuthStore();
+  const navigate = useNavigate();
+  const [clients, setClients] = useState<ClientListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [entering, setEntering] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    listClients(accessToken)
+      .then((r) => setClients(r.data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [accessToken]);
+
+  const totalClients = clients.length;
+  const activeClients = clients.filter((c) => c.status === "ACTIVE").length;
+  const totalStudents = clients.reduce((s, c) => s + (c._count?.students ?? 0), 0);
+  const totalStaff = clients.reduce((s, c) => s + (c._count?.users ?? 0), 0);
+
+  const handleEnter = (clientId: string, slug: string) => {
+    setEntering(clientId);
+    switchToClient(clientId, slug);
+    navigate(`/m/${slug}/admin`);
+  };
+
+  const statCards = [
+    { label: "Total Madrasas",  value: loading ? "…" : totalClients,  },
+    { label: "Active",          value: loading ? "…" : activeClients, },
+    { label: "Total Students",  value: loading ? "…" : totalStudents, },
+    { label: "Total Staff",     value: loading ? "…" : totalStaff,    },
+  ];
+
+  const quickActions = [
+    { title: "Madrasas",         icon: Building2,   href: "/admin/madrasas",         desc: "Manage all madrasas" },
+    { title: "Admin Users",      icon: ShieldCheck, href: "/admin/super-users",      desc: "Platform administrators" },
+    { title: "Platform Reports", icon: BarChart3,   href: "/admin/platform-reports", desc: "Analytics & stats" },
+    { title: "Profile",          icon: UserCircle2, href: "/admin/profile",          desc: "Your account settings" },
+  ];
 
   return (
-    <DashboardLayout>
-      {/* ── Greeting ──────────────────────────────────────────── */}
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-4 lg:mb-6">
-        <h1 className="text-xl lg:text-2xl font-bold text-gray-900">{t("common", "greeting", lang)}</h1>
-        <p className="text-gray-500 text-xs lg:text-sm mt-0.5">{t("adminDash", "adminOverview", lang)}</p>
-      </motion.div>
-
-      {/* ── Stats Grid ────────────────────────────────────────── */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-        className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 lg:gap-4 mb-4 lg:mb-6"
-      >
-  <StatCard title={t("adminDash", "totalStudents", lang)} value={adminStats.totalStudents} icon={Users} subtitle={t("common", "enrolled", lang)} onClick={() => router.push('/admin/students')} />
-  <StatCard title={t("adminDash", "presentToday", lang)} value={adminStats.presentToday} icon={UserCheck} iconColor="text-emerald-600" iconBg="bg-emerald-50" trend={`94% ${t("common", "rate", lang)}`} trendUp onClick={() => router.push('/admin/present')} />
-  <StatCard title={t("adminDash", "absentToday", lang)} value={adminStats.absentToday} icon={UserX} iconColor="text-red-500" iconBg="bg-red-50" onClick={() => router.push('/admin/absent')} />
-  <StatCard title={t("common", "teachers", lang)} value={adminStats.totalTeachers} icon={GraduationCap} iconColor="text-teal-600" iconBg="bg-teal-50" onClick={() => router.push('/admin/teachers')} />
-      </motion.div>
-
-      {/* ── Fee Stats ─────────────────────────────────────────── */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-        className="grid grid-cols-2 gap-2.5 lg:gap-4 mb-4 lg:mb-6"
-      >
-        <div className="bg-linear-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 lg:p-5 text-white">
-          <p className="text-emerald-100 text-xs lg:text-sm font-medium">{t("adminDash", "feesCollected", lang)}</p>
-          <p className="text-2xl lg:text-3xl font-bold mt-1">₹{adminStats.feesCollectedThisMonth.toLocaleString()}</p>
-          <p className="text-emerald-200 text-[10px] lg:text-xs mt-1">{lang === "ml" ? "മാർച്ച് 2026" : "March 2026"}</p>
-        </div>
-        <div className="bg-white rounded-2xl p-4 lg:p-5 border border-gray-100">
-          <p className="text-gray-500 text-xs lg:text-sm font-medium">{t("adminDash", "feesPending", lang)}</p>
-          <p className="text-2xl lg:text-3xl font-bold mt-1 text-amber-600">₹{adminStats.feesPending.toLocaleString()}</p>
-          <p className="text-gray-400 text-[10px] lg:text-xs mt-1">{t("common", "awaitingPayment", lang)}</p>
-        </div>
-      </motion.div>
-
-      {/* ── Charts ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-4 lg:mb-6">
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="bg-white rounded-2xl p-4 lg:p-5 border border-gray-100">
-          <SectionHeader title={t("adminDash", "attendanceTrend", lang)} />
-          <ResponsiveContainer width="100%" height={160}>
-            <AreaChart data={monthlyAttendanceData}>
-              <defs>
-                <linearGradient id="colorRate" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#059669" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="#059669" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#9ca3af" }} />
-              <YAxis domain={[70, 100]} tick={{ fontSize: 10, fill: "#9ca3af" }} width={28} />
-              <Tooltip contentStyle={{ borderRadius: 12, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontSize: 12 }} />
-              <Area type="monotone" dataKey="rate" stroke="#059669" strokeWidth={2} fill="url(#colorRate)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }} className="bg-white rounded-2xl p-4 lg:p-5 border border-gray-100">
-          <SectionHeader title={t("adminDash", "feeCollection", lang)} />
-          <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={feeCollectionData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#9ca3af" }} />
-              <YAxis tick={{ fontSize: 10, fill: "#9ca3af" }} width={28} />
-              <Tooltip contentStyle={{ borderRadius: 12, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontSize: 12 }} />
-              <Bar dataKey="collected" fill="#059669" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="pending" fill="#fbbf24" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+    <>
+      {/* Stats banner */}
+      <div className="mb-5">
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-r from-indigo-700 to-purple-600 rounded-3xl p-5 text-white"
+        >
+          <p className="text-indigo-200 text-xs font-semibold uppercase tracking-widest mb-1">
+            Super Admin Platform
+          </p>
+          <h1 className="text-xl font-bold mb-3">Welcome, {user?.name ?? "Admin"}</h1>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+            {statCards.map((s) => (
+              <div key={s.label} className="bg-white/15 rounded-2xl p-2.5 text-center">
+                <p className="text-lg font-black text-white">{s.value}</p>
+                <p className="text-[10px] text-indigo-200 leading-tight">{s.label}</p>
+              </div>
+            ))}
+          </div>
         </motion.div>
       </div>
 
-      {/* ── Quick Actions ─────────────────────────────────────── */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-        <SectionHeader title={t("adminDash", "quickActions", lang)} />
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 lg:gap-4">
-          <ActionCard title={t("common", "students", lang)} description={t("adminDash", "manageAdmissions", lang)} icon={Users} color="emerald" onClick={() => router.push("/admin/students")} />
-          <ActionCard title={t("nav", "fees", lang)} description={t("adminDash", "feeManagement", lang)} icon={CreditCard} color="teal" onClick={() => router.push("/admin/fees")} />
-          <ActionCard title={t("nav", "exams", lang)} description={t("adminDash", "createManage", lang)} icon={BookOpen} color="blue" onClick={() => router.push("/admin/exams")} />
-          <ActionCard title={t("nav", "reports", lang)} description={t("adminDash", "analyticsCharts", lang)} icon={BarChart3} color="purple" onClick={() => router.push("/admin/reports")} />
-          <ActionCard title={t("nav", "attendance", lang)} description={t("adminDash", "viewRecords", lang)} icon={ClipboardList} color="amber" onClick={() => router.push("/admin/reports")} />
-          <ActionCard title={t("adminDash", "seatPlan", lang)} description={t("adminDash", "examArrangement", lang)} icon={BookMarked} color="rose" onClick={() => router.push("/admin/seats")} />
-          <ActionCard title={t("nav", "performance", lang)} description={t("adminDash", "studentRankings", lang)} icon={TrendingUp} color="teal" onClick={() => router.push("/admin/reports")} />
-          <ActionCard title={t("nav", "config", lang)} description={t("adminDash", "madrasaSettings", lang)} icon={Settings} color="emerald" onClick={() => router.push("/admin/config")} />
+      {/* Quick actions */}
+      <SectionHeader title="Quick Actions" className="mb-3" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        {quickActions.map((a, i) => (
+          <motion.div key={a.title} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+            <ActionCard title={a.title} description={a.desc} icon={a.icon} onClick={() => navigate(a.href)} />
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Madrasa list — quick switch */}
+      <SectionHeader title="Madrasas" className="mb-3" />
+      {loading ? (
+        <div className="flex items-center gap-2 text-gray-400 text-sm py-8 justify-center">
+          <Loader2 className="w-4 h-4 animate-spin" /> Loading madrasas...
         </div>
-      </motion.div>
+      ) : clients.length === 0 ? (
+        <p className="text-sm text-gray-400 text-center py-8">No madrasas registered yet.</p>
+      ) : (
+        <div className="space-y-2 pb-20">
+          {clients.map((client, i) => {
+            const expired = isExpired(client.subscriptionEnd);
+            return (
+              <motion.div
+                key={client.id}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.03 }}
+                className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-3"
+              >
+                <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center shrink-0">
+                  <Building2 className="w-5 h-5 text-indigo-700" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-semibold text-gray-900 text-sm">{client.name}</p>
+                    <span className="text-xs font-mono text-gray-400">{client.slug}</span>
+                    <span className={cn(
+                      "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                      client.status === "ACTIVE" ? "bg-emerald-100 text-emerald-700"
+                        : client.status === "TRIAL" ? "bg-blue-100 text-blue-700"
+                        : "bg-gray-100 text-gray-500",
+                    )}>
+                      {client.status}
+                    </span>
+                    {expired && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-600">EXPIRED</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-400">
+                    <span>{client._count.students} students</span>
+                    <span>{client._count.users} staff</span>
+                    {client.city && <span>{client.city}</span>}
+                    {client.isLoginEnabled
+                      ? <span className="flex items-center gap-0.5 text-emerald-600 font-medium"><CheckCircle className="w-3 h-3" /> Login on</span>
+                      : <span className="flex items-center gap-0.5 text-gray-400"><XCircle className="w-3 h-3" /> Login off</span>}
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleEnter(client.id, client.slug)}
+                  disabled={entering === client.id}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60 transition-all shrink-0"
+                >
+                  {entering === client.id
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <LogIn className="w-3.5 h-3.5" />}
+                  Enter
+                </button>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
+}
+
+// ── Madrasa Admin Dashboard ────────────────────────────────────────────────────
+
+function MadrasaAdminDashboard() {
+  const { user, accessToken, activeClientId } = useAuthStore();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const slugMatch = pathname.match(/^\/m\/([^/]+)\//);
+  const slugPrefix = slugMatch ? `/m/${slugMatch[1]}` : "";
+
+  const cid   = activeClientId ?? "";
+  const token = accessToken ?? "";
+  const ayId  = user?.defaultAcademicYearId ?? "";
+
+  const [stats, setStats] = useState({ totalStudents: 0, activeStudents: 0, collectionPct: 0, attRate: 0 });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!cid || !token) return;
+    Promise.all([
+      getStudentStats(cid, token).catch(() => null),
+      getFeeSummary(cid, token, ayId || undefined).catch(() => null),
+      getAttendanceSummary(cid, token).catch(() => null),
+    ]).then(([stu, fee, att]) => {
+      setStats({
+        totalStudents: stu?.total ?? 0,
+        activeStudents: stu?.byStatus.find((s: any) => s.status === "ACTIVE")?._count.id ?? 0,
+        collectionPct: fee
+          ? (() => { const c = Number(fee.totalCollected); const p = Number(fee.totalPending); const t = c + p; return t > 0 ? Math.round((c / t) * 100) : 0; })()
+          : 0,
+        attRate: att?.rate ?? 0,
+      });
+    }).finally(() => setLoading(false));
+  }, [cid, token, ayId]);
+
+  const statCards = [
+    { label: "Total Students",  value: stats.totalStudents,       color: "text-blue-600" },
+    { label: "Active Students", value: stats.activeStudents,      color: "text-emerald-600" },
+    { label: "Fee Collection",  value: `${stats.collectionPct}%`, color: "text-amber-600" },
+    { label: "Attendance Rate", value: `${stats.attRate}%`,       color: "text-purple-600" },
+  ];
+
+  const quickActions = [
+    { title: "Students",      icon: GraduationCap, href: `${slugPrefix}/admin/students`,      desc: "Manage student records" },
+    { title: "Teachers",      icon: Users,         href: `${slugPrefix}/admin/teachers`,      desc: "Staff management" },
+    { title: "Attendance",    icon: ClipboardList, href: `${slugPrefix}/admin/present`,       desc: "Today's attendance" },
+    { title: "Fees",          icon: CreditCard,    href: `${slugPrefix}/admin/fees`,          desc: "Fee management" },
+    { title: "Exams",         icon: BookOpen,      href: `${slugPrefix}/admin/exams`,         desc: "Results & exams" },
+    { title: "Notifications", icon: BookMarked,    href: `${slugPrefix}/admin/notifications`, desc: "Send announcements" },
+    { title: "Reports",       icon: BarChart3,     href: `${slugPrefix}/admin/reports`,       desc: "Analytics & audit logs" },
+    { title: "Configuration", icon: Settings,      href: `${slugPrefix}/admin/config`,        desc: "Madrasa settings" },
+  ];
+
+  return (
+    <>
+      <div className="mb-5">
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-r from-emerald-700 to-teal-600 rounded-3xl p-5 text-white">
+          <p className="text-emerald-200 text-xs font-semibold uppercase tracking-widest mb-1">Admin Dashboard</p>
+          <h1 className="text-xl font-bold mb-3">Welcome back</h1>
+          {loading ? (
+            <div className="flex items-center gap-2 text-emerald-200"><Loader2 className="w-4 h-4 animate-spin" /><span className="text-sm">Loading stats...</span></div>
+          ) : (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+              {statCards.map((s) => (
+                <div key={s.label} className="bg-white/15 rounded-2xl p-2.5 text-center">
+                  <p className="text-lg font-black">{s.value}</p>
+                  <p className="text-[10px] text-emerald-200 leading-tight">{s.label}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </motion.div>
+      </div>
+      <SectionHeader title="Quick Actions" className="mb-3" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pb-20">
+        {quickActions.map((a, i) => (
+          <motion.div key={a.title} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+            <ActionCard title={a.title} description={a.desc} icon={a.icon} onClick={() => navigate(a.href)} />
+          </motion.div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+// ── Page ───────────────────────────────────────────────────────────────────────
+
+export default function AdminDashboard() {
+  const { user, activeClientId } = useAuthStore();
+  const isSuperAdmin = user?.actorType === "SUPER_ADMIN" && !activeClientId;
+  return (
+    <DashboardLayout>
+      {isSuperAdmin ? <PlatformOverview /> : <MadrasaAdminDashboard />}
     </DashboardLayout>
   );
 }

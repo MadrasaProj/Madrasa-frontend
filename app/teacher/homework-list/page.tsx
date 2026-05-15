@@ -1,118 +1,202 @@
-"use client";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { homeworkList, students } from "@/mock-data";
+import { listHomework, getSubmissions, type HomeworkAssignment, type SubmissionsResponse } from "@/lib/homework-api";
+import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
+import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
-import { useLanguageStore } from "@/store/language";
-import { t } from "@/lib/i18n";
+import {
+  BookOpen, AlertTriangle, CheckCircle2, Clock,
+  Loader2, ChevronDown, ChevronUp, Calendar,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
-// Get teacher's classes (hardcoded for demo, based on teachers[0])
-const TEACHER_CLASSES = ["Class 4", "Class 3"];
+function fmt(d: Date) { return d.toISOString().split("T")[0]; }
 
 export default function TeacherHomeworkListPage() {
-  const { lang } = useLanguageStore();
-  const [selectedClass, setSelectedClass] = useState(TEACHER_CLASSES[0]);
+  const { user, accessToken } = useAuthStore();
+  const cid   = user?.clientId ?? "";
+  const token = accessToken ?? "";
 
-  // Get all homework for this class with pending statuses
-  const homeworksForClass = homeworkList.filter((hw) => hw.class === selectedClass);
+  const [classes, setClasses]     = useState<ClassRecord[]>([]);
+  const [homework, setHomework]   = useState<HomeworkAssignment[]>([]);
+  const [activeClassId, setActiveClassId] = useState("");
+  const [loading, setLoading]     = useState(true);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [subsMap, setSubsMap]     = useState<Record<string, SubmissionsResponse>>({});
+  const [loadingSubs, setLoadingSubs] = useState<string | null>(null);
 
-  // For each homework, collect students with pending/incomplete status
-  const pendingHomeworks = homeworksForClass.map((hw) => {
-    const pendingStudents = hw.studentStatuses
-      .filter((s) => s.status === "red" || s.status === "yellow")
-      .map((s) => ({
-        ...s,
-        studentName: students.find((st) => st.id === s.studentId)?.name || s.studentId,
-      }));
-    return {
-      ...hw,
-      pendingStudents,
-    };
-  }).filter((hw) => hw.pendingStudents.length > 0);
+  useEffect(() => {
+    if (!cid || !token) return;
+    Promise.all([
+      getMyClasses(cid, token),
+      listHomework(cid, token),
+    ]).then(([cls, hw]) => {
+      setClasses(cls);
+      setHomework(hw);
+      if (cls.length > 0) setActiveClassId(cls[0].id);
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, [cid, token]);
+
+  const loadSubs = async (hwId: string) => {
+    if (subsMap[hwId]) { setExpandedId(expandedId === hwId ? null : hwId); return; }
+    setLoadingSubs(hwId);
+    try {
+      const data = await getSubmissions(cid, token, hwId);
+      setSubsMap((prev) => ({ ...prev, [hwId]: data }));
+      setExpandedId(hwId);
+    } catch { /* silent */ }
+    finally { setLoadingSubs(null); }
+  };
+
+  const today = fmt(new Date());
+  const filtered = homework.filter((hw) => !activeClassId || hw.classId === activeClassId);
+  const overdue  = filtered.filter((hw) => hw.dueDate.split("T")[0] < today);
+  const upcoming = filtered.filter((hw) => hw.dueDate.split("T")[0] >= today);
 
   return (
     <DashboardLayout>
-      <PageHeader title={t("teacherPages", "hwPending", lang)} subtitle={t("teacherPages", "hwPendingSub", lang)} />
+      <PageHeader title="Homework Overview" icon={BookOpen} back backHref="/teacher" />
 
-      {/* ── Class Selector ── */}
-      <div className="flex gap-2 mb-4">
-        {TEACHER_CLASSES.map((cls) => (
-          <button
-            key={cls}
-            onClick={() => setSelectedClass(cls)}
-            className={cn(
-              "px-4 py-2 rounded-xl text-sm font-semibold transition-all",
-              selectedClass === cls
-                ? "bg-amber-600 text-white shadow-sm"
-                : "bg-white border border-gray-200 text-gray-600 hover:border-amber-300"
-            )}
-          >
-            {cls}
-          </button>
-        ))}
-      </div>
-
-      {/* ── Homework List ── */}
-      <div className="space-y-4">
-        {pendingHomeworks.length === 0 ? (
-          <div className="bg-white rounded-2xl p-4 border border-gray-100">
-            <div className="text-sm text-gray-500">{t("teacherPages", "allComplete", lang)} {selectedClass}!</div>
+      {loading ? (
+        <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
+          <Loader2 className="w-5 h-5 animate-spin" />
+        </div>
+      ) : (
+        <>
+          {/* Class filter */}
+          <div className="flex gap-2 mb-4 flex-wrap">
+            {classes.map((cls) => (
+              <button
+                key={cls.id}
+                onClick={() => setActiveClassId(cls.id)}
+                className={cn(
+                  "px-3 py-1.5 rounded-xl text-xs font-semibold transition-all",
+                  activeClassId === cls.id ? "bg-emerald-600 text-white" : "bg-white border border-gray-200 text-gray-600",
+                )}
+              >
+                {cls.name}
+              </button>
+            ))}
           </div>
-        ) : (
-          pendingHomeworks.map((hw) => (
-            <div key={hw.id} className="bg-white rounded-2xl p-4 border border-gray-100">
-              {/* Homework title */}
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <p className="font-bold text-gray-900">{hw.title}</p>
-                  <p className="text-xs text-gray-500 mt-1">{hw.description}</p>
-                </div>
-                <span className={cn(
-                  "text-xs font-bold px-2 py-1 rounded-full",
-                  hw.priority === "high" ? "bg-red-100 text-red-700" :
-                  hw.priority === "medium" ? "bg-amber-100 text-amber-700" :
-                  "bg-blue-100 text-blue-700"
-                )}>
-                  {hw.priority}
-                </span>
-              </div>
 
-              {/* Pending students */}
-              <div className="space-y-2">
-                <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest">
-                  {t("common", "pending", lang)} ({hw.pendingStudents.length})
-                </p>
-                {hw.pendingStudents.map((ps) => (
-                  <div key={ps.studentId} className="flex items-center justify-between p-2.5 rounded-lg bg-gray-50 border border-gray-100">
-                    <div className="flex items-center gap-2">
-                      <div className={cn(
-                        "w-8 h-8 rounded flex items-center justify-center font-bold text-xs",
-                        ps.status === "red" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
-                      )}>
-                        {ps.studentName.charAt(0)}
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{ps.studentName}</div>
-                        <div className="text-xs text-gray-500">
-                          {ps.status === "red" ? t("teacherPages", "notCompleted", lang) : t("teacherPages", "partial", lang)}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-xs font-bold">
-                      {ps.status === "red" ? (
-                        <span className="text-red-600">✗</span>
-                      ) : (
-                        <span className="text-amber-600">⚠</span>
-                      )}
-                    </div>
-                  </div>
+          {/* Summary */}
+          <div className="grid grid-cols-3 gap-2 mb-5">
+            {[
+              { label: "Total",    value: filtered.length, icon: BookOpen,     color: "text-blue-600",   bg: "bg-blue-50" },
+              { label: "Overdue",  value: overdue.length,  icon: AlertTriangle, color: "text-red-600",    bg: "bg-red-50" },
+              { label: "Upcoming", value: upcoming.length, icon: Clock,         color: "text-emerald-600", bg: "bg-emerald-50" },
+            ].map(({ label, value, icon: Icon, color, bg }) => (
+              <div key={label} className="bg-white rounded-2xl border border-gray-100 p-3 text-center">
+                <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center mx-auto mb-1", bg)}>
+                  <Icon className={cn("w-4 h-4", color)} />
+                </div>
+                <p className="text-lg font-bold text-gray-900">{value}</p>
+                <p className="text-[10px] text-gray-400">{label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Overdue section */}
+          {overdue.length > 0 && (
+            <>
+              <p className="text-xs font-bold text-red-600 uppercase tracking-wide mb-2 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" /> Overdue ({overdue.length})
+              </p>
+              <div className="space-y-2 mb-5">
+                {overdue.map((hw) => (
+                  <HWRow key={hw.id} hw={hw} expandedId={expandedId} loadingSubs={loadingSubs}
+                    subs={subsMap[hw.id]} onExpand={loadSubs} overdue />
                 ))}
               </div>
-            </div>
-          ))
-        )}
-      </div>
+            </>
+          )}
+
+          {/* Upcoming section */}
+          {upcoming.length > 0 && (
+            <>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Upcoming ({upcoming.length})</p>
+              <div className="space-y-2 pb-20">
+                {upcoming.map((hw) => (
+                  <HWRow key={hw.id} hw={hw} expandedId={expandedId} loadingSubs={loadingSubs}
+                    subs={subsMap[hw.id]} onExpand={loadSubs} />
+                ))}
+              </div>
+            </>
+          )}
+
+          {filtered.length === 0 && (
+            <div className="text-center py-16 text-gray-400 text-sm">No homework assignments</div>
+          )}
+        </>
+      )}
     </DashboardLayout>
+  );
+}
+
+function HWRow({
+  hw, expandedId, loadingSubs, subs, onExpand, overdue = false,
+}: {
+  hw: HomeworkAssignment;
+  expandedId: string | null;
+  loadingSubs: string | null;
+  subs?: SubmissionsResponse;
+  onExpand: (id: string) => void;
+  overdue?: boolean;
+}) {
+  const due = new Date(hw.dueDate);
+  const notSubmitted = subs?.submissions.filter((s) => s.status === "NOT_SUBMITTED").length ?? 0;
+  const total        = subs?.submissions.length ?? hw._count?.submissions ?? 0;
+
+  return (
+    <div className={cn("bg-white rounded-2xl border overflow-hidden", overdue ? "border-red-100" : "border-gray-100")}>
+      <div className="flex items-start gap-3 p-4 cursor-pointer" onClick={() => onExpand(hw.id)}>
+        <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0",
+          overdue ? "bg-red-50" : "bg-blue-50")}>
+          <BookOpen className={cn("w-4 h-4", overdue ? "text-red-500" : "text-blue-600")} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-gray-900 text-sm">{hw.title}</p>
+          <p className="text-xs text-gray-400">{hw.class?.name}{hw.subject ? ` · ${hw.subject.name}` : ""}</p>
+          <p className={cn("text-xs flex items-center gap-1 mt-0.5", overdue ? "text-red-500" : "text-gray-400")}>
+            <Calendar className="w-3 h-3" />
+            Due {due.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+            {overdue ? " (overdue)" : ""}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {subs && <span className="text-xs text-red-500 font-bold">{notSubmitted}/{total} pending</span>}
+          {loadingSubs === hw.id
+            ? <Loader2 className="w-4 h-4 animate-spin text-gray-300" />
+            : expandedId === hw.id
+              ? <ChevronUp className="w-4 h-4 text-gray-400" />
+              : <ChevronDown className="w-4 h-4 text-gray-400" />}
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {expandedId === hw.id && subs && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+            <div className="border-t border-gray-50 bg-gray-50/60 px-4 py-3 space-y-1.5">
+              {subs.submissions.map((sub) => (
+                <div key={sub.id} className="flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-gray-800 truncate">{sub.student?.name}</p>
+                    <p className="text-[10px] text-gray-400">{sub.student?.adno}</p>
+                  </div>
+                  <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-lg",
+                    sub.status === "CHECKED"       ? "bg-emerald-100 text-emerald-700" :
+                    sub.status === "SUBMITTED"     ? "bg-amber-100 text-amber-700" :
+                                                     "bg-red-100 text-red-700")}>
+                    {sub.status.replace("_", " ")}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
