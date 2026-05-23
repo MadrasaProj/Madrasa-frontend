@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import {
   getStudentHomework,
   type StudentHomeworkResponse, type HomeworkStatus,
@@ -97,9 +98,7 @@ export default function ParentHomeworkPage() {
       ) : (
         <>
           {active?.error ? (
-            <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" /> {active.error}
-            </div>
+            <ApiErrorBanner message={active.error} onRetry={load} />
           ) : active?.hw ? (
             <>
               {/* Summary bar */}

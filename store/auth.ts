@@ -26,6 +26,8 @@ interface User {
   accessibleStudentIds?: string[];
   accessibleStudents?: StudentInfo[];
   attendanceMode?: AttendanceMode;
+  madrasaName?: string;
+  madrasaLogo?: string | null;
 }
 
 interface AuthStore {
@@ -41,6 +43,7 @@ interface AuthStore {
   markHydrated: () => void;
   switchToClient: (clientId: string | null, slug?: string | null) => void;
   setActiveStudent: (studentId: string) => void;
+  setAttendanceMode: (mode: AttendanceMode) => void;
 }
 
 export type AuthSessionPayload = {
@@ -52,6 +55,8 @@ export type AuthSessionPayload = {
     role: AuthActorType | string;
     actorType?: AuthActorType | string;
     client?: {
+      name?: string;
+      logo?: string | null;
       slug?: string;
       subdomain?: string;
       attendanceMode?: AttendanceMode;
@@ -101,6 +106,8 @@ export function normalizeUserSession(payload: AuthSessionPayload) {
       accessibleStudentIds: payload.user.accessibleStudentIds ?? [],
       accessibleStudents: payload.students ?? [],
       attendanceMode: (payload.user.client?.attendanceMode as AttendanceMode) ?? "CLASS_BASED",
+      madrasaName: payload.user.client?.name,
+      madrasaLogo: payload.user.client?.logo ?? null,
     } satisfies User,
   };
 }
@@ -149,6 +156,11 @@ export const useAuthStore = create<AuthStore>()(
         })),
 
       setActiveStudent: (studentId) => set({ activeStudentId: studentId }),
+
+      setAttendanceMode: (mode) =>
+        set((state) => ({
+          user: state.user ? { ...state.user, attendanceMode: mode } : null,
+        })),
     }),
     {
       name: "madrasa-auth-session",

@@ -7,6 +7,7 @@ import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { tenantLoginPath } from "@/lib/tenant-routing";
+import { getClientConfig } from "@/lib/config-api";
 
 // ── Parent Student Switcher ────────────────────────────────────────────────────
 
@@ -95,8 +96,27 @@ function SuperAdminViewingBanner() {
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const { user, activeClientId, hasHydrated } = useAuthStore();
+  const { user, activeClientId, hasHydrated, accessToken, setAttendanceMode, logout } = useAuthStore();
   const { lang } = useLanguageStore();
+
+  // Global 401 handler — any API that dispatches "auth:unauthorized" triggers logout
+  useEffect(() => {
+    const handler = () => {
+      logout();
+      const slug = window.location.pathname.match(/^\/m\/([^/]+)/)?.[1] ?? null;
+      navigate(tenantLoginPath(slug), { replace: true });
+    };
+    window.addEventListener("auth:unauthorized", handler);
+    return () => window.removeEventListener("auth:unauthorized", handler);
+  }, [logout, navigate]);
+
+  // Sync attendanceMode when super admin switches to a madrasa
+  useEffect(() => {
+    if (user?.actorType !== "SUPER_ADMIN" || !activeClientId || !accessToken) return;
+    getClientConfig(activeClientId, accessToken)
+      .then((cfg) => { if (cfg.attendanceMode) setAttendanceMode(cfg.attendanceMode); })
+      .catch(() => {});
+  }, [activeClientId]); // eslint-disable-line
 
   useEffect(() => {
     if (!hasHydrated) return;

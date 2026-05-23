@@ -1,15 +1,22 @@
+import { apiFetch } from "@/lib/fetch";
+
 const API_ORIGIN = import.meta.env.VITE_API_ORIGIN ?? "http://localhost:3000";
-const V1_BASE    = `${API_ORIGIN}/api/madrasa`;
-const TIMEOUT    = 15_000;
+const V2_BASE    = `${API_ORIGIN}/api/v2`;
+
+export type ExamStatus = "DRAFT" | "MARK_ENTRY" | "PUBLISHED" | "CANCELLED";
 
 export interface ExamRecord {
   id: string;
   name: string;
   status: string;
+  examStatus: ExamStatus;
+  startDate?: string | null;
+  endDate?: string | null;
+  markEntryLastDate?: string | null;
+  publishedDate?: string | null;
   accademicYear?: { id: string; name: string } | null;
-  subject?:       { id: string; name: string } | null;
   class?:         { id: string; name: string } | null;
-  client?:        { id: string; name: string } | null;
+  _count?: { results: number };
 }
 
 export interface ExamListResponse {
@@ -19,61 +26,109 @@ export interface ExamListResponse {
   limit?: number;
 }
 
-async function apiFetch<T>(path: string, token: string, init?: RequestInit): Promise<T> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT);
-  try {
-    const res = await fetch(`${V1_BASE}${path}`, {
-      ...init,
-      signal: controller.signal,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        ...(init?.headers ?? {}),
-      },
-    });
-    const payload = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      const msg =
-        typeof payload?.message === "string" ? payload.message :
-        Array.isArray(payload?.message) ? payload.message.join(", ") :
-        payload?.error ?? "Request failed";
-      throw new Error(msg);
-    }
-    return payload as T;
-  } catch (err) {
-    if ((err as Error).name === "AbortError") throw new Error("Request timed out");
-    throw err;
-  } finally {
-    clearTimeout(timer);
-  }
-}
+// ── Exam CRUD ─────────────────────────────────────────────────────────────────
 
 export const getExams = (
   clientId: string, token: string,
-  params?: { classId?: string; accademicYearId?: string; page?: number; limit?: number },
+  params?: { accademicYearId?: string; examStatus?: ExamStatus; page?: number; limit?: number },
 ) => {
   const q = new URLSearchParams();
-  const filters: Record<string, string> = { clientId };
-  if (params?.classId)         filters.classId = params.classId;
-  if (params?.accademicYearId) filters.accademicYearId = params.accademicYearId;
-  q.set("filters", JSON.stringify(filters));
-  if (params?.page)  q.set("page",  String(params.page));
-  if (params?.limit) q.set("limit", String(params.limit));
-  return apiFetch<ExamListResponse>(`/${clientId}/exams?${q}`, token);
+  if (params?.accademicYearId) q.set("accademicYearId", params.accademicYearId);
+  if (params?.examStatus)      q.set("examStatus", params.examStatus);
+  if (params?.page)            q.set("page", String(params.page));
+  if (params?.limit)           q.set("limit", String(params.limit));
+  return apiFetch<ExamListResponse>(`${V2_BASE}/${clientId}/exams?${q}`, token);
 };
+
+export const getExam = (clientId: string, token: string, id: string) =>
+  apiFetch<ExamRecord>(`${V2_BASE}/${clientId}/exams/${id}`, token);
 
 export const createExam = (
   clientId: string, token: string,
-  data: { name: string; classId: string; subjectId: string; accademicYearId: string },
+  data: {
+    name: string; accademicYearId: string;
+    startDate?: string; endDate?: string;
+    markEntryLastDate?: string; publishedDate?: string; examStatus?: ExamStatus;
+  },
 ) =>
-  apiFetch<ExamRecord>(`/${clientId}/exams`, token, {
-    method: "POST",
-    body: JSON.stringify({ ...data, clientId }),
+  apiFetch<ExamRecord>(`${V2_BASE}/${clientId}/exams`, token, {
+    method: "POST", body: JSON.stringify(data),
   });
 
-export const updateExam = (clientId: string, token: string, id: string, data: Partial<{ name: string }>) =>
-  apiFetch<ExamRecord>(`/${clientId}/exams/${id}`, token, { method: "PATCH", body: JSON.stringify(data) });
+export const updateExam = (
+  clientId: string, token: string, id: string,
+  data: Partial<{ name: string; startDate: string | null; endDate: string | null; markEntryLastDate: string | null; publishedDate: string | null; examStatus: ExamStatus }>,
+) =>
+  apiFetch<ExamRecord>(`${V2_BASE}/${clientId}/exams/${id}`, token, {
+    method: "PATCH", body: JSON.stringify(data),
+  });
 
 export const deleteExam = (clientId: string, token: string, id: string) =>
-  apiFetch<{ message: string }>(`/${clientId}/exams/${id}`, token, { method: "DELETE" });
+  apiFetch<{ message: string }>(`${V2_BASE}/${clientId}/exams/${id}`, token, { method: "DELETE" });
+
+export const generateRanks = (clientId: string, token: string, id: string) =>
+  apiFetch<{ ranked: number; classes: number }>(
+    `${V2_BASE}/${clientId}/exams/${id}/generate-ranks`, token, { method: "POST" },
+  );
+
+// ── Exam config ───────────────────────────────────────────────────────────────
+
+export interface GradeConfigEntry { min: number }
+export type GradeConfig = Record<string, GradeConfigEntry>;
+
+export interface ExamConfig {
+  id: string;
+  clientId: string;
+  passedLabel: string;
+  failedLabel: string;
+  promotedLabel: string;
+  withheldLabel: string;
+  hideMarks: boolean;
+  defaultMaxMarks: number;
+  gradeConfig: GradeConfig;
+  updatedAt: string;
+}
+
+export const getExamConfig = (clientId: string, token: string) =>
+  apiFetch<ExamConfig>(`${V2_BASE}/${clientId}/exams/config`, token);
+
+export const updateExamConfig = (
+  clientId: string, token: string,
+  data: Partial<{
+    passedLabel: string; failedLabel: string; promotedLabel: string; withheldLabel: string;
+    hideMarks: boolean; defaultMaxMarks: number; gradeConfig: GradeConfig;
+  }>,
+) =>
+  apiFetch<ExamConfig>(`${V2_BASE}/${clientId}/exams/config`, token, {
+    method: "PUT", body: JSON.stringify(data),
+  });
+
+// ── Subject exam config (sparse) ──────────────────────────────────────────────
+
+export interface SubjectExamConfig {
+  id: string;
+  subjectId: string;
+  examId: string;
+  clientId: string;
+  maxMarks: number | null;
+  gradeConfig: GradeConfig | null;
+  subject: { id: string; name: string };
+}
+
+export const getSubjectExamConfigs = (clientId: string, token: string, examId: string) =>
+  apiFetch<SubjectExamConfig[]>(`${V2_BASE}/${clientId}/exams/${examId}/subject-configs`, token);
+
+export const upsertSubjectExamConfig = (
+  clientId: string, token: string, examId: string, subjectId: string,
+  data: { maxMarks?: number; gradeConfig?: GradeConfig },
+) =>
+  apiFetch<SubjectExamConfig>(
+    `${V2_BASE}/${clientId}/exams/${examId}/subject-configs/${subjectId}`, token,
+    { method: "PUT", body: JSON.stringify(data) },
+  );
+
+export const deleteSubjectExamConfig = (clientId: string, token: string, examId: string, subjectId: string) =>
+  apiFetch<{ deleted: boolean }>(
+    `${V2_BASE}/${clientId}/exams/${examId}/subject-configs/${subjectId}`, token,
+    { method: "DELETE" },
+  );

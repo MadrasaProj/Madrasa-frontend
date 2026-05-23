@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import {
   getStudentStats, getFeeSummary, getAttendanceSummary, getHomeworkSummary,
   type StudentStats, type FeeSummary, type AttendanceSummary, type HomeworkSummary,
@@ -41,21 +42,25 @@ export default function AdminReportsPage() {
   const [attendance, setAttendance] = useState<AttendanceSummary | null>(null);
   const [homework, setHomework]     = useState<HomeworkSummary | null>(null);
   const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!cid || !token) return;
-    setLoading(true);
-    const [s, f, a, h] = await Promise.all([
-      getStudentStats(cid, token).catch(() => null),
-      getFeeSummary(cid, token, ayId || undefined).catch(() => null),
-      getAttendanceSummary(cid, token).catch(() => null),
-      getHomeworkSummary(cid, token).catch(() => null),
-    ]);
-    setStudents(s);
-    setFees(f);
-    setAttendance(a);
-    setHomework(h);
-    setLoading(false);
+    setError(null); setLoading(true);
+    try {
+      const [s, f, a, h] = await Promise.all([
+        getStudentStats(cid, token).catch((e) => { setError((e as Error).message); return null; }),
+        getFeeSummary(cid, token, ayId || undefined).catch((e) => { setError((e as Error).message); return null; }),
+        getAttendanceSummary(cid, token).catch((e) => { setError((e as Error).message); return null; }),
+        getHomeworkSummary(cid, token).catch((e) => { setError((e as Error).message); return null; }),
+      ]);
+      setStudents(s);
+      setFees(f);
+      setAttendance(a);
+      setHomework(h);
+    } finally {
+      setLoading(false);
+    }
   }, [cid, token, ayId]);
 
   useEffect(() => { load(); }, [load]);
@@ -95,6 +100,8 @@ export default function AdminReportsPage() {
           </button>
         }
       />
+
+      {error && <ApiErrorBanner message={error} onRetry={load} />}
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-16 text-gray-400">

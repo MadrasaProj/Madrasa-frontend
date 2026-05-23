@@ -5,7 +5,7 @@ import {
   CreditCard, BarChart3, Bell, Settings, Star, BookMarked,
   UserCircle, Home, GraduationCap, Moon, IndianRupee,
   BadgeCheck, FileBarChart2, Megaphone, UserCog, Activity, LogOut,
-  Building2, ShieldCheck, UserCircle2,
+  Building2, ShieldCheck, UserCircle2, School,
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
@@ -13,20 +13,23 @@ import { t } from "@/lib/i18n";
 import { tenantLoginPath } from "@/lib/tenant-routing";
 
 type NavKey =
-  | "dashboard" | "students" | "teachers" | "fees" | "otherPayments"
+  | "dashboard" | "students" | "teachers" | "classes" | "subjects" | "fees"
   | "idCards" | "exams" | "reports" | "logs" | "config" | "attendance"
   | "homework" | "diary" | "ibadah" | "performance" | "home"
   | "results" | "alerts" | "overview" | "finance" | "announcements" | "notifications"
   | "madrasas" | "superUsers" | "platformReports" | "profile";
 
 const adminLinks = [
-  { href: "/admin",                icon: LayoutDashboard, key: "dashboard" as NavKey },
-  { href: "/admin/students",       icon: Users,           key: "students"  as NavKey },
-  { href: "/admin/teachers",       icon: UserCog,         key: "teachers"  as NavKey },
-  { href: "/admin/fees",           icon: CreditCard,      key: "fees"      as NavKey },
-  { href: "/admin/other-payments", icon: IndianRupee,     key: "otherPayments" as NavKey },
-  { href: "/admin/id-cards",       icon: BadgeCheck,      key: "idCards"   as NavKey },
-  { href: "/admin/exams",          icon: GraduationCap,   key: "exams"     as NavKey },
+  { href: "/admin",                icon: LayoutDashboard, key: "dashboard"     as NavKey },
+  { href: "/admin/students",       icon: Users,           key: "students"      as NavKey },
+  { href: "/admin/classes",        icon: School,          key: "classes"       as NavKey },
+  { href: "/admin/subjects",       icon: BookOpen,        key: "subjects"      as NavKey },
+  { href: "/admin/teachers",       icon: UserCog,         key: "teachers"      as NavKey },
+  { href: "/admin/attendance",     icon: ClipboardList,   key: "attendance"    as NavKey },
+  { href: "/admin/ibadah",         icon: Moon,            key: "ibadah"        as NavKey },
+  { href: "/admin/fees",           icon: CreditCard,      key: "fees"          as NavKey },
+  { href: "/admin/id-cards",       icon: BadgeCheck,      key: "idCards"       as NavKey },
+  { href: "/admin/exams",          icon: GraduationCap,   key: "exams"         as NavKey },
   { href: "/admin/reports",        icon: BarChart3,       key: "reports"       as NavKey },
   { href: "/admin/logs",           icon: Activity,        key: "logs"          as NavKey },
   { href: "/admin/notifications",  icon: Bell,            key: "notifications" as NavKey },
@@ -50,6 +53,7 @@ const parentLinks = [
   { href: "/parent",               icon: Home,            key: "home"         as NavKey },
   { href: "/parent/attendance",    icon: ClipboardList,   key: "attendance"   as NavKey },
   { href: "/parent/homework",      icon: BookOpen,        key: "homework"     as NavKey },
+  { href: "/parent/diary",         icon: FileText,        key: "diary"        as NavKey },
   { href: "/parent/ibadah",        icon: Moon,            key: "ibadah"       as NavKey },
   { href: "/parent/fees",          icon: CreditCard,      key: "fees"         as NavKey },
   { href: "/parent/results",       icon: GraduationCap,   key: "results"      as NavKey },
@@ -71,6 +75,7 @@ const superAdminLinks = [
   { href: "/admin",                    icon: LayoutDashboard, key: "dashboard"       as NavKey },
   { href: "/admin/madrasas",           icon: Building2,       key: "madrasas"        as NavKey },
   { href: "/admin/super-users",        icon: ShieldCheck,     key: "superUsers"      as NavKey },
+  { href: "/admin/ibadah-config",      icon: Moon,            key: "ibadah"          as NavKey },
   { href: "/admin/platform-reports",   icon: BarChart3,       key: "platformReports" as NavKey },
   { href: "/admin/profile",            icon: UserCircle2,     key: "profile"         as NavKey },
 ];

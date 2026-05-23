@@ -1,38 +1,101 @@
-const API_ORIGIN = import.meta.env.VITE_API_ORIGIN ?? "http://localhost:3000";
-const V1_BASE    = `${API_ORIGIN}/api/madrasa`;
-const TIMEOUT    = 10_000;
+import { apiFetch } from "@/lib/fetch";
+
+const API_ORIGIN =
+  typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_API_ORIGIN
+    ? (import.meta as any).env.VITE_API_ORIGIN
+    : "http://localhost:3000";
+const V2_BASE = `${API_ORIGIN}/api/v2`;
 
 export interface SubjectRecord {
   id: string;
   name: string;
+  classId: string;
+  teacherId: string | null;
   status: string;
   class?: { id: string; name: string } | null;
+  teacher?: { id: string; name: string } | null;
 }
 
-async function apiFetch<T>(path: string, token: string): Promise<T> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT);
-  try {
-    const res = await fetch(`${V1_BASE}${path}`, {
-      signal: controller.signal,
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const payload = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(payload?.message ?? "Request failed");
-    return payload as T;
-  } catch (err) {
-    if ((err as Error).name === "AbortError") throw new Error("Request timed out");
-    throw err;
-  } finally {
-    clearTimeout(timer);
-  }
+export interface GetSubjectsParams {
+  classId?: string;
+  teacherId?: string;
+  status?: string;
+  search?: string;
+  /** kept for backward compat — ignored by V2 (no server-side pagination for subjects list) */
+  page?: number;
+  limit?: number;
 }
 
-export const getSubjects = (clientId: string, token: string, classId?: string) => {
+/**
+ * Returns { data: SubjectRecord[], total: number } for backward compat with existing callers.
+ */
+export function getSubjects(
+  clientId: string,
+  token: string,
+  params: GetSubjectsParams = {},
+): Promise<{ data: SubjectRecord[]; total: number }> {
   const q = new URLSearchParams();
-  const filters: Record<string, string> = { clientId };
-  if (classId) filters.classId = classId;
-  q.set("filters", JSON.stringify(filters));
-  q.set("limit", "100");
-  return apiFetch<{ data: SubjectRecord[] }>(`/${clientId}/subjects?${q}`, token);
-};
+  if (params.classId)   q.set("classId",   params.classId);
+  if (params.teacherId) q.set("teacherId", params.teacherId);
+  if (params.status)    q.set("status",    params.status);
+  if (params.search)    q.set("search",    params.search);
+  const qs = q.toString();
+  return apiFetch<SubjectRecord[]>(
+    `${V2_BASE}/${clientId}/subjects${qs ? `?${qs}` : ""}`,
+    token,
+  ).then((data) => ({ data, total: data.length }));
+}
+
+export function getSubject(
+  clientId: string,
+  token: string,
+  subjectId: string,
+): Promise<SubjectRecord> {
+  return apiFetch<SubjectRecord>(`${V2_BASE}/${clientId}/subjects/${subjectId}`, token);
+}
+
+export function createSubject(
+  clientId: string,
+  token: string,
+  data: { name: string; classId: string; teacherId?: string },
+): Promise<SubjectRecord> {
+  return apiFetch<SubjectRecord>(`${V2_BASE}/${clientId}/subjects`, token, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateSubject(
+  clientId: string,
+  token: string,
+  subjectId: string,
+  data: { name?: string; teacherId?: string | null; status?: string },
+): Promise<SubjectRecord> {
+  return apiFetch<SubjectRecord>(
+    `${V2_BASE}/${clientId}/subjects/${subjectId}`,
+    token,
+    { method: "PATCH", body: JSON.stringify(data) },
+  );
+}
+
+export function deleteSubject(
+  clientId: string,
+  token: string,
+  subjectId: string,
+): Promise<void> {
+  return apiFetch(`${V2_BASE}/${clientId}/subjects/${subjectId}`, token, {
+    method: "DELETE",
+  });
+}
+
+export function bulkAssignTeacher(
+  clientId: string,
+  token: string,
+  data: { classId: string; teacherId: string },
+): Promise<{ updated: number }> {
+  return apiFetch<{ updated: number }>(
+    `${V2_BASE}/${clientId}/subjects/bulk-assign-teacher`,
+    token,
+    { method: "PATCH", body: JSON.stringify(data) },
+  );
+}

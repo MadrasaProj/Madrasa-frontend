@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import {
   listHomework, createHomework, deleteHomework,
   getSubmissions, bulkUpdateSubmissions,
   type HomeworkAssignment, type HomeworkStatus, type SubmissionsResponse,
 } from "@/lib/homework-api";
 import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
+import { getSubjects, type SubjectRecord } from "@/lib/subjects-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
@@ -28,8 +30,10 @@ function fmt(d: Date) { return d.toISOString().split("T")[0]; }
 
 export default function TeacherHomeworkPage() {
   const { user, accessToken } = useAuthStore();
-  const cid   = user?.clientId ?? "";
-  const token = accessToken ?? "";
+  const cid          = user?.clientId ?? "";
+  const token        = accessToken ?? "";
+  const teacherId    = user?.id ?? "";
+  const isPeriodBased = user?.attendanceMode === "PERIOD_BASED";
 
   const [activeTab, setActiveTab] = useState<Tab>("check");
   const [classes, setClasses]     = useState<ClassRecord[]>([]);
@@ -41,32 +45,57 @@ export default function TeacherHomeworkPage() {
   const [savingSubs, setSavingSubs]   = useState(false);
   const [localStatus, setLocalStatus] = useState<Record<string, Record<string, HomeworkStatus>>>({});
   const [deletingId, setDeletingId]   = useState<string | null>(null);
+  const [error, setError]             = useState<string | null>(null);
 
   // New homework form
-  const [classId, setClassId]     = useState("");
-  const [title, setTitle]         = useState("");
-  const [desc, setDesc]           = useState("");
-  const [dueDate, setDueDate]     = useState(fmt(new Date(Date.now() + 86400_000)));
-  const [subjectId, setSubjectId] = useState("");
-  const [creating, setCreating]   = useState(false);
+  const [classId, setClassId]         = useState("");
+  const [title, setTitle]             = useState("");
+  const [desc, setDesc]               = useState("");
+  const [dueDate, setDueDate]         = useState(fmt(new Date(Date.now() + 86400_000)));
+  const [subjectId, setSubjectId]     = useState("");
+  const [classSubjects, setClassSubjects] = useState<SubjectRecord[]>([]);
+  const [creating, setCreating]       = useState(false);
 
   // Load classes + homework
   useEffect(() => {
     if (!cid || !token) return;
     const ac = new AbortController();
+    setError(null);
     Promise.all([
       getMyClasses(cid, token, ac.signal),
       listHomework(cid, token),
     ]).then(([cls, hw]) => {
-      setClasses(cls);
+      // Filter to accessible classes:
+      // CLASS_BASED: only classes where teacher is classTeacher
+      // PERIOD_BASED: classes where teacher has subjects (loaded later per class)
+      const accessible = isPeriodBased
+        ? cls  // show all; subject filter handles access
+        : cls.filter((c) => c.classTeacherId === teacherId);
+      setClasses(accessible);
       setHomework(hw);
-      if (cls.length > 0 && !classId) setClassId(cls[0].id);
-    }).catch(() => {}).finally(() => setLoading(false));
+      if (accessible.length > 0) setClassId(accessible[0].id);
+    }).catch((e) => { setError((e as Error).message); }).finally(() => setLoading(false));
     return () => ac.abort();
-  }, [cid, token]);
+  }, [cid, token]); // eslint-disable-line
+
+  // Load subjects when classId changes
+  useEffect(() => {
+    if (!cid || !token || !classId) return;
+    setSubjectId("");
+    setClassSubjects([]);
+    const params = isPeriodBased
+      ? { classId, teacherId }   // only teacher's subjects
+      : { classId };             // all subjects of teacher's class
+    getSubjects(cid, token, params)
+      .then((r) => {
+        setClassSubjects(r.data);
+        if (r.data.length > 0) setSubjectId(r.data[0].id);
+      })
+      .catch(() => {});
+  }, [classId, cid, token]); // eslint-disable-line
 
   const reload = useCallback(async () => {
-    const hw = await listHomework(cid, token).catch(() => [] as HomeworkAssignment[]);
+    const hw = await listHomework(cid, token).catch((e) => { setError((e as Error).message); return [] as HomeworkAssignment[]; });
     setHomework(hw);
   }, [cid, token]);
 
@@ -81,7 +110,7 @@ export default function TeacherHomeworkPage() {
         [hwId]: Object.fromEntries(data.submissions.map((s) => [s.student!.id, s.status])),
       }));
       setExpandedHw(hwId);
-    } catch (e) { alert((e as Error).message); }
+    } catch (e) { setError((e as Error).message); }
     finally { setLoadingSubs(null); }
   };
 
@@ -96,33 +125,33 @@ export default function TeacherHomeworkPage() {
       // Refresh submissions
       const data = await getSubmissions(cid, token, hwId);
       setSubmissions((prev) => ({ ...prev, [hwId]: data }));
-    } catch (e) { alert((e as Error).message); }
+    } catch (e) { setError((e as Error).message); }
     finally { setSavingSubs(false); }
   };
 
   const handleCreate = async () => {
-    if (!classId || !title || !dueDate) return;
+    if (!classId || !title || !dueDate || !subjectId) return;
     setCreating(true);
     try {
       await createHomework(cid, token, {
         classId,
+        subjectId,
         title,
         description: desc || undefined,
         dueDate,
-        subjectId: subjectId || undefined,
         academicYearId: user?.defaultAcademicYearId ?? undefined,
       });
       setTitle(""); setDesc("");
       await reload();
       setActiveTab("check");
-    } catch (e) { alert((e as Error).message); }
+    } catch (e) { setError((e as Error).message); }
     finally { setCreating(false); }
   };
 
   const handleDelete = async (id: string) => {
     setDeletingId(id);
     try { await deleteHomework(cid, token, id); await reload(); }
-    catch (e) { alert((e as Error).message); }
+    catch (e) { setError((e as Error).message); }
     finally { setDeletingId(null); }
   };
 
@@ -135,6 +164,8 @@ export default function TeacherHomeworkPage() {
   return (
     <DashboardLayout>
       <PageHeader title="Homework" icon={BookOpen} back backHref="/teacher" />
+
+      {error && <ApiErrorBanner message={error} onRetry={() => { setError(null); }} />}
 
       {/* Tabs */}
       <div className="flex gap-1.5 mb-5 bg-gray-100 p-1 rounded-xl">
@@ -171,7 +202,29 @@ export default function TeacherHomeworkPage() {
                 <label className="block text-xs font-semibold text-gray-500 mb-1.5">Class *</label>
                 <select value={classId} onChange={(e) => setClassId(e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
-                  {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {classes.length === 0
+                    ? <option value="">No accessible classes</option>
+                    : classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)
+                  }
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                  Subject *
+                  {isPeriodBased && <span className="text-gray-400 font-normal ml-1">(your subjects)</span>}
+                </label>
+                <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
+                  {classSubjects.length === 0
+                    ? <option value="">
+                        {classId
+                          ? isPeriodBased ? "No subjects assigned to you in this class" : "No subjects in this class"
+                          : "Select a class first"
+                        }
+                      </option>
+                    : classSubjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)
+                  }
                 </select>
               </div>
 
@@ -198,7 +251,7 @@ export default function TeacherHomeworkPage() {
 
               <button
                 onClick={handleCreate}
-                disabled={!classId || !title || !dueDate || creating}
+                disabled={!classId || !subjectId || !title || !dueDate || creating}
                 className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold text-sm disabled:opacity-60 flex items-center justify-center gap-2"
               >
                 {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}

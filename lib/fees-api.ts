@@ -1,9 +1,9 @@
+import { apiFetch } from "@/lib/fetch";
+
 const API_ORIGIN =
   import.meta.env.VITE_API_ORIGIN ?? "http://localhost:3000";
 const API_BASE_PATH = import.meta.env.VITE_API_BASE_PATH ?? "/api/v2";
 const DEFAULT_API_BASE = `${API_ORIGIN}${API_BASE_PATH}`;
-const DEFAULT_TIMEOUT_MS = 15_000;
-const MAX_RETRIES = 2;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -120,63 +120,19 @@ export class FeesApiError extends Error {
   }
 }
 
-// ─── Fetch helper ─────────────────────────────────────────────────────────────
-
-async function apiFetch<T>(
-  path: string,
-  token: string,
-  init?: RequestInit & { signal?: AbortSignal },
-  retries = MAX_RETRIES,
-): Promise<T> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
-  init?.signal?.addEventListener("abort", () => controller.abort());
-
-  try {
-    const res = await fetch(`${DEFAULT_API_BASE}${path}`, {
-      ...init,
-      signal: controller.signal,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        ...(init?.headers ?? {}),
-      },
-    });
-    const payload = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      if (res.status >= 500 && retries > 0) {
-        clearTimeout(timer);
-        await new Promise((r) => setTimeout(r, 500 * (MAX_RETRIES - retries + 1)));
-        return apiFetch<T>(path, token, init, retries - 1);
-      }
-      const msg =
-        typeof payload?.message === "string" ? payload.message :
-        Array.isArray(payload?.message) ? payload.message.join(", ") :
-        payload?.error ?? "Request failed";
-      throw new FeesApiError(msg, { statusCode: payload?.statusCode ?? res.status, code: payload?.errorCode });
-    }
-    return payload as T;
-  } catch (err) {
-    if ((err as Error).name === "AbortError") throw new FeesApiError("Request timed out", { statusCode: 408 });
-    throw err;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 // ─── Fee Types ────────────────────────────────────────────────────────────────
 
 export const getFeeTypes = (clientId: string, token: string, academicYearId?: string, signal?: AbortSignal) =>
-  apiFetch<FeeType[]>(`/${clientId}/fees/fee-types${academicYearId ? `?academicYearId=${academicYearId}` : ""}`, token, { signal });
+  apiFetch<FeeType[]>(`${DEFAULT_API_BASE}/${clientId}/fees/fee-types${academicYearId ? `?academicYearId=${academicYearId}` : ""}`, token, { signal });
 
 export const createFeeType = (clientId: string, token: string, data: CreateFeeTypePayload, signal?: AbortSignal) =>
-  apiFetch<FeeType>(`/${clientId}/fees/fee-types`, token, { method: "POST", body: JSON.stringify(data), signal });
+  apiFetch<FeeType>(`${DEFAULT_API_BASE}/${clientId}/fees/fee-types`, token, { method: "POST", body: JSON.stringify(data), signal });
 
 export const updateFeeType = (clientId: string, token: string, id: string, data: Partial<CreateFeeTypePayload & { status?: string }>, signal?: AbortSignal) =>
-  apiFetch<FeeType>(`/${clientId}/fees/fee-types/${id}`, token, { method: "PATCH", body: JSON.stringify(data), signal });
+  apiFetch<FeeType>(`${DEFAULT_API_BASE}/${clientId}/fees/fee-types/${id}`, token, { method: "PATCH", body: JSON.stringify(data), signal });
 
 export const deleteFeeType = (clientId: string, token: string, id: string, signal?: AbortSignal) =>
-  apiFetch<{ message: string }>(`/${clientId}/fees/fee-types/${id}`, token, { method: "DELETE", signal });
+  apiFetch<{ message: string }>(`${DEFAULT_API_BASE}/${clientId}/fees/fee-types/${id}`, token, { method: "DELETE", signal });
 
 // ─── Payments ─────────────────────────────────────────────────────────────────
 
@@ -191,28 +147,28 @@ export const getPayments = (clientId: string, token: string, params: GetPayments
   const q = new URLSearchParams();
   Object.entries(rest).forEach(([k, v]) => { if (v !== undefined) q.set(k, String(v)); });
   const qs = q.toString();
-  return apiFetch<PaymentsListResponse>(`/${clientId}/fees/payments${qs ? `?${qs}` : ""}`, token, { signal });
+  return apiFetch<PaymentsListResponse>(`${DEFAULT_API_BASE}/${clientId}/fees/payments${qs ? `?${qs}` : ""}`, token, { signal });
 };
 
 export const recordPayment = (clientId: string, token: string, data: RecordPaymentPayload, signal?: AbortSignal) =>
-  apiFetch<FeePayment>(`/${clientId}/fees/payments`, token, { method: "POST", body: JSON.stringify(data), signal });
+  apiFetch<FeePayment>(`${DEFAULT_API_BASE}/${clientId}/fees/payments`, token, { method: "POST", body: JSON.stringify(data), signal });
 
 export const updatePayment = (clientId: string, token: string, id: string, data: UpdatePaymentPayload, signal?: AbortSignal) =>
-  apiFetch<FeePayment>(`/${clientId}/fees/payments/${id}`, token, { method: "PATCH", body: JSON.stringify(data), signal });
+  apiFetch<FeePayment>(`${DEFAULT_API_BASE}/${clientId}/fees/payments/${id}`, token, { method: "PATCH", body: JSON.stringify(data), signal });
 
 export const getPaymentReceipt = (clientId: string, token: string, id: string, signal?: AbortSignal) =>
-  apiFetch<ReceiptData>(`/${clientId}/fees/payments/${id}/receipt`, token, { signal });
+  apiFetch<ReceiptData>(`${DEFAULT_API_BASE}/${clientId}/fees/payments/${id}/receipt`, token, { signal });
 
 export const getStudentFees = (clientId: string, token: string, studentId: string, signal?: AbortSignal) =>
-  apiFetch<StudentFeeSummary>(`/${clientId}/fees/student/${studentId}`, token, { signal });
+  apiFetch<StudentFeeSummary>(`${DEFAULT_API_BASE}/${clientId}/fees/student/${studentId}`, token, { signal });
 
 export const getFeeSummary = (clientId: string, token: string, academicYearId?: string, signal?: AbortSignal) =>
   apiFetch<{ byStatus: any[]; byFeeType: any[] }>(
-    `/${clientId}/fees/summary${academicYearId ? `?academicYearId=${academicYearId}` : ""}`,
+    `${DEFAULT_API_BASE}/${clientId}/fees/summary${academicYearId ? `?academicYearId=${academicYearId}` : ""}`,
     token, { signal }
   );
 
 export const generatePayments = (clientId: string, token: string, data: { feeTypeId: string; academicYearId?: string; classIds?: string[] }, signal?: AbortSignal) =>
   apiFetch<{ generated: number; total?: number; dueDate?: string; message?: string }>(
-    `/${clientId}/fees/generate`, token, { method: "POST", body: JSON.stringify(data), signal }
+    `${DEFAULT_API_BASE}/${clientId}/fees/generate`, token, { method: "POST", body: JSON.stringify(data), signal }
   );

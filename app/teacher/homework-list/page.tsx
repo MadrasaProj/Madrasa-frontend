@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
+
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { listHomework, getSubmissions, type HomeworkAssignment, type SubmissionsResponse } from "@/lib/homework-api";
 import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
 import { useAuthStore } from "@/store/auth";
@@ -22,30 +24,38 @@ export default function TeacherHomeworkListPage() {
   const [homework, setHomework]   = useState<HomeworkAssignment[]>([]);
   const [activeClassId, setActiveClassId] = useState("");
   const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [subsMap, setSubsMap]     = useState<Record<string, SubmissionsResponse>>({});
   const [loadingSubs, setLoadingSubs] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadData = useCallback(async () => {
     if (!cid || !token) return;
-    Promise.all([
-      getMyClasses(cid, token),
-      listHomework(cid, token),
-    ]).then(([cls, hw]) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [cls, hw] = await Promise.all([
+        getMyClasses(cid, token),
+        listHomework(cid, token),
+      ]);
       setClasses(cls);
       setHomework(hw);
       if (cls.length > 0) setActiveClassId(cls[0].id);
-    }).catch(() => {}).finally(() => setLoading(false));
+    } catch (e) { setError((e as Error).message); }
+    finally { setLoading(false); }
   }, [cid, token]);
+
+  useEffect(() => { loadData(); }, [loadData]);
 
   const loadSubs = async (hwId: string) => {
     if (subsMap[hwId]) { setExpandedId(expandedId === hwId ? null : hwId); return; }
     setLoadingSubs(hwId);
+    setError(null);
     try {
       const data = await getSubmissions(cid, token, hwId);
       setSubsMap((prev) => ({ ...prev, [hwId]: data }));
       setExpandedId(hwId);
-    } catch { /* silent */ }
+    } catch (e) { setError((e as Error).message); }
     finally { setLoadingSubs(null); }
   };
 
@@ -57,6 +67,8 @@ export default function TeacherHomeworkListPage() {
   return (
     <DashboardLayout>
       <PageHeader title="Homework Overview" icon={BookOpen} back backHref="/teacher" />
+
+      {error && <ApiErrorBanner message={error} onRetry={loadData} />}
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-16 text-gray-400">

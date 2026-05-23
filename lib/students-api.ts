@@ -1,8 +1,8 @@
+import { apiFetch } from "@/lib/fetch";
+
 const API_ORIGIN =
   import.meta.env.VITE_API_ORIGIN ?? "http://localhost:3000";
 const V1_BASE = `${API_ORIGIN}/api/madrasa`;
-const DEFAULT_TIMEOUT_MS = 15_000;
-const MAX_RETRIES = 2;
 
 export interface StudentRecord {
   id: string;
@@ -12,6 +12,7 @@ export interface StudentRecord {
   dateOfBirth: string | null;
   parentPhone: string | null;
   parentAltPhone: string | null;
+  parentEmail: string | null;
   guardianName: string | null;
   relationToStudent: string | null;
   status: "ACTIVE" | "INACTIVE" | "GRADUATED" | "TRANSFERRED" | "DROPPED_OUT";
@@ -42,6 +43,7 @@ export interface CreateStudentPayload {
   dateOfBirth?: string;
   parentPhone?: string;
   parentAltPhone?: string;
+  parentEmail?: string;
   guardianName?: string;
   relationToStudent?: string;
   parentPassword?: string;
@@ -50,66 +52,19 @@ export interface CreateStudentPayload {
 
 export interface UpdateStudentPayload extends Partial<CreateStudentPayload> {}
 
+/** Maps field name → error message, e.g. { adno: "Admission number already in use" } */
+export type FieldErrors = Record<string, string>;
+
 export class StudentsApiError extends Error {
   statusCode?: number;
   code?: string;
-  constructor(message: string, opts?: { statusCode?: number; code?: string }) {
+  fieldErrors?: FieldErrors;
+  constructor(message: string, opts?: { statusCode?: number; code?: string; fieldErrors?: FieldErrors }) {
     super(message);
     this.name = "StudentsApiError";
     this.statusCode = opts?.statusCode;
     this.code = opts?.code;
-  }
-}
-
-async function apiFetch<T>(
-  url: string,
-  token: string,
-  init?: RequestInit & { signal?: AbortSignal },
-  retries = MAX_RETRIES,
-): Promise<T> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
-  init?.signal?.addEventListener("abort", () => controller.abort());
-
-  try {
-    const res = await fetch(url, {
-      ...init,
-      signal: controller.signal,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        ...(init?.headers ?? {}),
-      },
-    });
-
-    const payload = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      if (res.status >= 500 && retries > 0) {
-        clearTimeout(timer);
-        await new Promise((r) => setTimeout(r, 500 * (MAX_RETRIES - retries + 1)));
-        return apiFetch<T>(url, token, init, retries - 1);
-      }
-      const msg =
-        typeof payload?.message === "string"
-          ? payload.message
-          : Array.isArray(payload?.message)
-            ? payload.message.join(", ")
-            : payload?.error ?? "Request failed";
-      throw new StudentsApiError(msg, {
-        statusCode: payload?.statusCode ?? res.status,
-        code: payload?.errorCode,
-      });
-    }
-
-    return payload as T;
-  } catch (err) {
-    if ((err as Error).name === "AbortError") {
-      throw new StudentsApiError("Request timed out", { statusCode: 408 });
-    }
-    throw err;
-  } finally {
-    clearTimeout(timer);
+    this.fieldErrors = opts?.fieldErrors;
   }
 }
 
@@ -118,7 +73,10 @@ export interface GetStudentsParams {
   limit?: number;
   search?: string;
   classId?: string;
+  gender?: "MALE" | "FEMALE";
   status?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
   signal?: AbortSignal;
 }
 
@@ -127,15 +85,16 @@ export function getStudents(
   token: string,
   params: GetStudentsParams = {},
 ): Promise<StudentListResponse> {
-  const { page = 1, limit = 20, search, classId, status, signal } = params;
+  const { page = 1, limit = 20, search, classId, gender, status, sortBy, sortOrder, signal } = params;
   const q = new URLSearchParams({ page: String(page), limit: String(limit) });
   if (search) q.set("search", search);
-  if (classId || status) {
-    const filters: Record<string, string> = {};
-    if (classId) filters.classId = classId;
-    if (status) filters.status = status;
-    q.set("filters", JSON.stringify(filters));
-  }
+  if (sortBy) q.set("sortBy", sortBy);
+  if (sortOrder) q.set("sortOrder", sortOrder);
+  const filters: Record<string, string> = {};
+  if (classId) filters.classId = classId;
+  if (gender) filters.gender = gender;
+  if (status) filters.status = status;
+  if (Object.keys(filters).length) q.set("filters", JSON.stringify(filters));
   return apiFetch<StudentListResponse>(
     `${V1_BASE}/${clientId}/students?${q}`,
     token,

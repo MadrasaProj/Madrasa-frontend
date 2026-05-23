@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import {
   getStudentFees, getPaymentReceipt,
   type StudentFeeSummary, type ReceiptData,
@@ -81,6 +82,7 @@ export default function ParentFeesPage() {
   const [children, setChildren] = useState<ChildData[]>([]);
   const [activeIdx, setActiveIdx] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
   const [loadingReceipt, setLoadingReceipt] = useState<string | null>(null);
 
@@ -91,6 +93,7 @@ export default function ParentFeesPage() {
   const load = useCallback(async () => {
     if (!cid || !token || !ids.length) { setLoading(false); return; }
     setLoading(true);
+    setError(null);
     const results = await Promise.all(
       ids.map(async (sid) => {
         try {
@@ -113,8 +116,9 @@ export default function ParentFeesPage() {
 
   const showReceipt = async (paymentId: string) => {
     setLoadingReceipt(paymentId);
+    setError(null);
     try { setReceipt(await getPaymentReceipt(cid, token, paymentId)); }
-    catch (e) { alert((e as Error).message); }
+    catch (e) { setError((e as Error).message); }
     finally { setLoadingReceipt(null); }
   };
 
@@ -127,6 +131,8 @@ export default function ParentFeesPage() {
           <RefreshCw className="w-4 h-4" />
         </button>
       } />
+
+      {error && <ApiErrorBanner message={error} onRetry={load} />}
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-16 text-gray-400">

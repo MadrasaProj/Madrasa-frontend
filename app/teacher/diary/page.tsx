@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { listDiary, upsertDiary, deleteDiary, type DiaryEntry } from "@/lib/diary-api";
 import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
 import { useAuthStore } from "@/store/auth";
@@ -30,27 +31,32 @@ export default function TeacherDiaryPage() {
   const [saving, setSaving]         = useState(false);
   const [saved, setSaved]           = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [error, setError]           = useState<string | null>(null);
 
-  // Load classes
+  const teacherId = user?.id ?? "";
+
+  // Load classes — teacher only sees classes where they are classTeacher
   useEffect(() => {
     if (!cid || !token) return;
     getMyClasses(cid, token)
       .then((cls) => {
-        setClasses(cls);
-        if (cls.length > 0) setActiveClassId(cls[0].id);
+        const ownClasses = cls.filter((c) => c.classTeacherId === teacherId);
+        setClasses(ownClasses);
+        if (ownClasses.length > 0) setActiveClassId(ownClasses[0].id);
       })
-      .catch(() => {})
+      .catch((e: unknown) => { setError((e as Error).message); })
       .finally(() => setLoadingClasses(false));
-  }, [cid, token]);
+  }, [cid, token]); // eslint-disable-line
 
   // Load history when class changes
   const loadHistory = useCallback(async () => {
     if (!cid || !token || !activeClassId) return;
     setLoadingHistory(true);
+    setError(null);
     try {
       const entries = await listDiary(cid, token, { classId: activeClassId });
       setHistory(entries);
-    } catch { /* silent */ }
+    } catch (e) { setError((e as Error).message); }
     finally { setLoadingHistory(false); }
   }, [cid, token, activeClassId]);
 
@@ -89,7 +95,7 @@ export default function TeacherDiaryPage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
       loadHistory();
-    } catch (e) { alert((e as Error).message); }
+    } catch (e) { setError((e as Error).message); }
     finally { setSaving(false); }
   };
 
@@ -101,7 +107,7 @@ export default function TeacherDiaryPage() {
         setCurrentEntry(null); setTitle(""); setContent("");
       }
       loadHistory();
-    } catch (e) { alert((e as Error).message); }
+    } catch (e) { setError((e as Error).message); }
     finally { setDeletingId(null); }
   };
 
@@ -121,6 +127,8 @@ export default function TeacherDiaryPage() {
         icon={FileText}
         back backHref="/teacher"
       />
+
+      {error && <ApiErrorBanner message={error} onRetry={loadHistory} />}
 
       {loadingClasses ? (
         <div className="flex items-center justify-center gap-2 py-16 text-gray-400">

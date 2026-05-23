@@ -19,6 +19,7 @@ import ParentProfilePage from "../app/admin/profile/page";
 import CommitteeProfilePage from "../app/admin/profile/page";
 import AdminStudentsPage from "../app/admin/students/page";
 import AdminStudentDetailPage from "../app/admin/students/[id]/page";
+import AdminAttendancePage from "../app/admin/attendance/page";
 import AdminPresentPage from "../app/admin/present/page";
 import AdminAbsentPage from "../app/admin/absent/page";
 import AdminFeesPage from "../app/admin/fees/page";
@@ -26,10 +27,18 @@ import AdminFeesPaidPage from "../app/admin/fees/paid/page";
 import AdminFeesUnpaidPage from "../app/admin/fees/unpaid/page";
 import AdminOtherPaymentsPage from "../app/admin/other-payments/page";
 import AdminTeachersPage from "../app/admin/teachers/page";
+import AdminClassesPage from "../app/admin/classes/page";
+import AdminSubjectsPage from "../app/admin/subjects/page";
 import AdminExamsPage from "../app/admin/exams/page";
+import AdminClassReportPage from "../app/admin/exams/class-report/page";
+import AdminExamConfigPage from "../app/admin/exams/config/page";
+// ClassReportPage is role-agnostic; teacher route reuses the same component
+const TeacherClassReportPage = AdminClassReportPage;
 import AdminNotificationsPage from "../app/admin/notifications/page";
 import AdminReportsPage from "../app/admin/reports/page";
 import AdminConfigPage from "../app/admin/config/page";
+import AdminIbadahConfigPage from "../app/admin/ibadah-config/page";
+import AdminIbadahPage from "../app/admin/ibadah/page";
 import AdminLogsPage from "../app/admin/logs/page";
 import AdminIdCardsPage from "../app/admin/id-cards/page";
 
@@ -54,6 +63,7 @@ import ParentHomeworkPage from "../app/parent/homework/page";
 import ParentIbadahPage from "../app/parent/ibadah/page";
 import ParentResultsPage from "../app/parent/results/page";
 import ParentNotificationsPage from "../app/parent/notifications/page";
+import ParentDiaryPage from "../app/parent/diary/page";
 
 // ── Committee ─────────────────────────────────────────────────────────────────
 import CommitteeDashboard from "../app/committee/page";
@@ -83,17 +93,24 @@ export default function App() {
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/students" element={<AdminStudentsPage />} />
         <Route path="/admin/students/:id" element={<AdminStudentDetailPage />} />
+        <Route path="/admin/attendance" element={<AdminAttendancePage />} />
         <Route path="/admin/present" element={<AdminPresentPage />} />
         <Route path="/admin/absent" element={<AdminAbsentPage />} />
         <Route path="/admin/fees" element={<AdminFeesPage />} />
         <Route path="/admin/fees/paid" element={<AdminFeesPaidPage />} />
         <Route path="/admin/fees/unpaid" element={<AdminFeesUnpaidPage />} />
         <Route path="/admin/other-payments" element={<AdminOtherPaymentsPage />} />
+        <Route path="/admin/classes" element={<AdminClassesPage />} />
+        <Route path="/admin/subjects" element={<AdminSubjectsPage />} />
         <Route path="/admin/teachers" element={<AdminTeachersPage />} />
         <Route path="/admin/exams" element={<AdminExamsPage />} />
+        <Route path="/admin/exams/class-report" element={<AdminClassReportPage />} />
+        <Route path="/admin/exams/config" element={<AdminExamConfigPage />} />
         <Route path="/admin/notifications" element={<AdminNotificationsPage />} />
         <Route path="/admin/reports" element={<AdminReportsPage />} />
         <Route path="/admin/config" element={<AdminConfigPage />} />
+        <Route path="/admin/ibadah" element={<AdminIbadahPage />} />
+        <Route path="/admin/ibadah-config" element={<AdminIbadahConfigPage />} />
         <Route path="/admin/id-cards" element={<AdminIdCardsPage />} />
         <Route path="/admin/logs" element={<AdminLogsPage />} />
 
@@ -118,16 +135,22 @@ export default function App() {
         <Route path="/m/:slug/admin" element={<AdminDashboard />} />
         <Route path="/m/:slug/admin/students" element={<AdminStudentsPage />} />
         <Route path="/m/:slug/admin/students/:id" element={<AdminStudentDetailPage />} />
+        <Route path="/m/:slug/admin/attendance" element={<AdminAttendancePage />} />
         <Route path="/m/:slug/admin/present" element={<AdminPresentPage />} />
         <Route path="/m/:slug/admin/absent" element={<AdminAbsentPage />} />
         <Route path="/m/:slug/admin/fees" element={<AdminFeesPage />} />
         <Route path="/m/:slug/admin/fees/paid" element={<AdminFeesPaidPage />} />
         <Route path="/m/:slug/admin/fees/unpaid" element={<AdminFeesUnpaidPage />} />
         <Route path="/m/:slug/admin/other-payments" element={<AdminOtherPaymentsPage />} />
+        <Route path="/m/:slug/admin/classes" element={<AdminClassesPage />} />
+        <Route path="/m/:slug/admin/subjects" element={<AdminSubjectsPage />} />
         <Route path="/m/:slug/admin/teachers" element={<AdminTeachersPage />} />
         <Route path="/m/:slug/admin/exams" element={<AdminExamsPage />} />
+        <Route path="/m/:slug/admin/exams/class-report" element={<AdminClassReportPage />} />
+        <Route path="/m/:slug/admin/exams/config" element={<AdminExamConfigPage />} />
         <Route path="/m/:slug/admin/notifications" element={<AdminNotificationsPage />} />
         <Route path="/m/:slug/admin/reports" element={<AdminReportsPage />} />
+        <Route path="/m/:slug/admin/ibadah" element={<AdminIbadahPage />} />
         <Route path="/m/:slug/admin/config" element={<AdminConfigPage />} />
         <Route path="/m/:slug/admin/id-cards" element={<AdminIdCardsPage />} />
         <Route path="/m/:slug/admin/logs" element={<AdminLogsPage />} />
@@ -142,6 +165,7 @@ export default function App() {
         <Route path="/teacher/diary" element={<TeacherDiaryPage />} />
         <Route path="/teacher/ibadah" element={<TeacherIbadahPage />} />
         <Route path="/teacher/exams" element={<TeacherExamsPage />} />
+        <Route path="/teacher/exams/class-report" element={<TeacherClassReportPage />} />
         <Route path="/teacher/notifications" element={<TeacherNotificationsPage />} />
         <Route path="/teacher/performance" element={<TeacherPerformancePage />} />
 
@@ -155,6 +179,7 @@ export default function App() {
         <Route path="/m/:slug/teacher/diary" element={<TeacherDiaryPage />} />
         <Route path="/m/:slug/teacher/ibadah" element={<TeacherIbadahPage />} />
         <Route path="/m/:slug/teacher/exams" element={<TeacherExamsPage />} />
+        <Route path="/m/:slug/teacher/exams/class-report" element={<TeacherClassReportPage />} />
         <Route path="/m/:slug/teacher/notifications" element={<TeacherNotificationsPage />} />
         <Route path="/m/:slug/teacher/performance" element={<TeacherPerformancePage />} />
 
@@ -166,6 +191,7 @@ export default function App() {
         <Route path="/parent/ibadah" element={<ParentIbadahPage />} />
         <Route path="/parent/results" element={<ParentResultsPage />} />
         <Route path="/parent/notifications" element={<ParentNotificationsPage />} />
+        <Route path="/parent/diary" element={<ParentDiaryPage />} />
 
         {/* Parent — slug-prefixed */}
         <Route path="/m/:slug/parent" element={<ParentDashboard />} />
@@ -175,6 +201,7 @@ export default function App() {
         <Route path="/m/:slug/parent/ibadah" element={<ParentIbadahPage />} />
         <Route path="/m/:slug/parent/results" element={<ParentResultsPage />} />
         <Route path="/m/:slug/parent/notifications" element={<ParentNotificationsPage />} />
+        <Route path="/m/:slug/parent/diary" element={<ParentDiaryPage />} />
 
         {/* Committee */}
         <Route path="/committee" element={<CommitteeDashboard />} />

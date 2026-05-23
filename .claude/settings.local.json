@@ -1,4 +1,10 @@
 {
+  "env": {
+    "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1"
+  },
+  "trustedDirectories": [
+    "D:\\nestjs\\madrasproj-nest-backend"
+  ],
   "permissions": {
     "allow": [
       "Bash(find \"D:\\\\\\\\nestjs\\\\\\\\madrasproj-nest-backend\\\\\\\\src\" -name \"*dto*\" -type f)",
@@ -22,11 +28,19 @@
       "Bash(node -e \"const p=require\\('./package.json'\\); const deps={...p.dependencies,...p.devDependencies}; ['swr','react-query','@tanstack/react-query','next','recharts','framer-motion','sharp'].forEach\\(k => console.log\\(k, deps[k] || 'NOT INSTALLED'\\)\\)\")",
       "Bash(npm install *)",
       "PowerShell(*)",
-      "Bash(*)"
+      "Bash(*)",
+      "Skill(caveman:compress)",
+      "Read(*)",
+      "Write(*)",
+      "Edit(*)",
+      "Glob(*)",
+      "Grep(*)"
+    ],
+    "ask": [
+      "Bash(rm -rf:*)",
+      "Bash(git push --force:*)",
+      "Bash(git reset --hard:*)"
     ],
     "defaultMode": "auto"
-  },
-  "env": {
-    "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1"
   }
 }

@@ -194,6 +194,8 @@ const translations = {
     announcements: { en: "Announcements", ml: "അറിയിപ്പുകൾ" },
     expenses: { en: "Expenses", ml: "ചെലവുകൾ" },
     teachers: { en: "Teachers", ml: "അധ്യാപകർ" },
+    classes: { en: "Classes", ml: "ക്ലാസുകൾ" },
+    subjects: { en: "Subjects", ml: "വിഷയങ്ങൾ" },
     notifications: { en: "Notifications", ml: "അറിയിപ്പുകൾ" },
     madrasas: { en: "Madrasas", ml: "മദ്‌റസകൾ" },
     superUsers: { en: "Admin Users", ml: "അഡ്‌മിൻ യൂസേഴ്സ്" },

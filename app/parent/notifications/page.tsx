@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import {
   getNotifications, markNotificationRead,
   type NotificationRecord,
@@ -29,14 +30,16 @@ export default function ParentNotificationsPage() {
 
   const [notifs, setNotifs]   = useState<NotificationRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!cid || !token) return;
     setLoading(true);
+    setError(null);
     try {
       const data = await getNotifications(cid, token, { take: 60 });
       setNotifs(data.notifications ?? []);
-    } catch { /* silent */ }
+    } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   }, [cid, token]);
 
@@ -74,6 +77,8 @@ export default function ParentNotificationsPage() {
           </div>
         }
       />
+
+      {error && <ApiErrorBanner message={error} onRetry={load} />}
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-16 text-gray-400">

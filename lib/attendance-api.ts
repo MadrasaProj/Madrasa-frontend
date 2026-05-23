@@ -1,11 +1,11 @@
+import { apiFetch } from "@/lib/fetch";
+
 const API_ORIGIN =
   import.meta.env.VITE_API_ORIGIN ?? "http://localhost:3000";
 const API_BASE_PATH = import.meta.env.VITE_API_BASE_PATH ?? "/api/v2";
 const DEFAULT_API_BASE = `${API_ORIGIN}${API_BASE_PATH}`;
-const DEFAULT_TIMEOUT_MS = 15_000;
-const MAX_RETRIES = 2;
 
-export type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE" | "EXCUSED";
+export type AttendanceStatus = "PRESENT" | "ABSENT" | "LEAVE" | "SICK" | "LATE" | "EXCUSED";
 
 export interface AttendanceRecord {
   id: string;
@@ -65,71 +65,6 @@ export class AttendanceApiError extends Error {
   }
 }
 
-function withTimeout(signal?: AbortSignal): { signal: AbortSignal; cleanup: () => void } {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
-
-  // Propagate caller's abort to ours
-  signal?.addEventListener("abort", () => controller.abort());
-
-  return {
-    signal: controller.signal,
-    cleanup: () => clearTimeout(timer),
-  };
-}
-
-async function apiFetch<T>(
-  path: string,
-  token: string,
-  init?: RequestInit & { signal?: AbortSignal },
-  retries = MAX_RETRIES,
-): Promise<T> {
-  const { signal, cleanup } = withTimeout(init?.signal);
-
-  try {
-    const res = await fetch(`${DEFAULT_API_BASE}${path}`, {
-      ...init,
-      signal,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        ...(init?.headers ?? {}),
-      },
-    });
-
-    const payload = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      // Retry on 5xx (server errors), not on 4xx (client errors)
-      if (res.status >= 500 && retries > 0) {
-        cleanup();
-        await new Promise((r) => setTimeout(r, 500 * (MAX_RETRIES - retries + 1)));
-        return apiFetch<T>(path, token, init, retries - 1);
-      }
-
-      const msg =
-        typeof payload?.message === "string"
-          ? payload.message
-          : Array.isArray(payload?.message)
-            ? payload.message.join(", ")
-            : payload?.error ?? "Request failed";
-
-      throw new AttendanceApiError(msg, {
-        statusCode: payload?.statusCode ?? res.status,
-        code: payload?.errorCode,
-      });
-    }
-
-    return payload as T;
-  } catch (err) {
-    if ((err as Error).name === "AbortError") {
-      throw new AttendanceApiError("Request timed out", { statusCode: 408 });
-    }
-    throw err;
-  } finally {
-    cleanup();
-  }
-}
 
 export function getClassAttendance(
   clientId: string,
@@ -143,7 +78,7 @@ export function getClassAttendance(
   if (params.skip !== undefined) q.set("skip", String(params.skip));
   if (params.take !== undefined) q.set("take", String(params.take));
   return apiFetch<ClassAttendanceResponse>(
-    `/${clientId}/attendance?${q}`,
+    `${DEFAULT_API_BASE}/${clientId}/attendance?${q}`,
     token,
     { signal },
   );
@@ -160,7 +95,7 @@ export function bulkUpsertAttendance(
   },
   signal?: AbortSignal,
 ): Promise<BulkUpsertResponse> {
-  return apiFetch<BulkUpsertResponse>(`/${clientId}/attendance`, token, {
+  return apiFetch<BulkUpsertResponse>(`${DEFAULT_API_BASE}/${clientId}/attendance`, token, {
     method: "POST",
     body: JSON.stringify(body),
     signal,
@@ -175,7 +110,7 @@ export function updateAttendanceRecord(
   signal?: AbortSignal,
 ): Promise<AttendanceRecord> {
   return apiFetch<AttendanceRecord>(
-    `/${clientId}/attendance/${attendanceId}`,
+    `${DEFAULT_API_BASE}/${clientId}/attendance/${attendanceId}`,
     token,
     {
       method: "PATCH",
@@ -200,7 +135,7 @@ export function getStudentAttendance(
   if (params?.take !== undefined) q.set("take", String(params.take));
   const qs = q.toString();
   return apiFetch<StudentAttendanceResponse>(
-    `/${clientId}/attendance/student/${studentId}${qs ? `?${qs}` : ""}`,
+    `${DEFAULT_API_BASE}/${clientId}/attendance/student/${studentId}${qs ? `?${qs}` : ""}`,
     token,
     { signal },
   );

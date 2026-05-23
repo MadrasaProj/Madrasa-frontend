@@ -2,14 +2,15 @@
 
 ## Project Overview
 
-Next.js 16 frontend for a multi-tenant SaaS Madrasa Management System.
-Serves admins, teachers, parents, and committee members across multiple madrasas (tenants).
+Vite + React 19 frontend for multi-tenant SaaS Madrasa Management System.
+Serves admins, teachers, parents, committee members across multiple madrasas (tenants).
 PWA-capable. Bilingual: English + Malayalam (`ml`).
+**Path**: `D:\nestjs\madrasa-new-frontend`
+**Backend path**: `D:\nestjs\madrasproj-nest-backend`
 
 ## Tech Stack
 
-- **Framework**: Next.js 16 (App Router, standalone output)
-- **React**: 19
+- **Framework**: Vite 8 + React 19 + React Router v7 (NOT Next.js)
 - **Styling**: Tailwind CSS v4 + class-variance-authority + clsx + tailwind-merge
 - **UI Primitives**: Radix UI (dialog, dropdown, select, tabs, switch, slider, etc.)
 - **Animations**: Framer Motion
@@ -17,160 +18,135 @@ PWA-capable. Bilingual: English + Malayalam (`ml`).
 - **State**: Zustand v5
 - **Icons**: lucide-react
 - **i18n**: custom via `lib/i18n.ts` (en + ml)
+- **Router**: `src/App.tsx` — all routes defined with `<Routes>/<Route>`
+- **Entry**: `src/main.tsx` → `src/App.tsx`
 
 ## App Structure
 
 ```
-app/
-├── page.tsx               # Root → redirects to /super-admin/login
-├── layout.tsx             # RootLayout with PwaRegister
-├── super-admin/login/     # Super-admin login (platform-level)
-├── m/[slug]/              # Tenant-scoped routes
-│   ├── login/             # Redirects to /m/[slug]/admin/login
-│   ├── admin/login/       # CLIENT_ADMIN login
-│   ├── teacher/login/     # TEACHER login
-│   └── parent/login/      # PARENT login (OTP or password)
-├── admin/                 # Admin dashboard + sub-pages
-│   ├── page.tsx           # Dashboard
-│   ├── students/          # Student list + [id] detail
-│   ├── teachers/          # Teacher list
-│   ├── attendance/        # View attendance
-│   ├── absent/ present/   # Quick views
-│   ├── fees/ (paid/unpaid)
-│   ├── exams/
-│   ├── reports/
-│   ├── seats/             # Exam seat plan
-│   ├── elections/
-│   ├── notifications/
-│   ├── id-cards/
-│   ├── posters/
-│   ├── config/            # Madrasa settings
-│   └── sksbv/
-├── teacher/               # Teacher dashboard + sub-pages
-│   ├── attendance/        # Mark + history + stats — WIRED TO REAL API
-│   ├── present/ absent/
-│   ├── homework/ homework-list/
-│   ├── diary/
-│   ├── ibadah/
-│   ├── exams/
-│   ├── performance/
-│   ├── elections/
-│   └── notifications/
-├── parent/                # Parent portal
-│   ├── attendance/
-│   ├── fees/
-│   ├── results/
-│   ├── homework/
-│   ├── ibadah/
-│   ├── elections/
-│   └── notifications/
-└── committee/             # Committee portal
-    ├── attendance/
-    ├── finance/ expenses/
-    ├── students/
-    ├── elections/
-    ├── announcements/
-    └── reports/
+app/                           # Page components (imported by src/App.tsx)
+├── admin/students/page.tsx    # Student list — DataTable, gender filter, import, edit
+├── admin/students/[id]/page.tsx # Student detail — edit drawer, delete
+├── admin/teachers/page.tsx    # Teacher list — DataTable
+├── admin/page.tsx             # Dashboard
+└── ...                        # Other pages
 
 lib/
-├── attendance-api.ts      # Attendance CRUD API client (REAL API, typed)
-├── auth-api.ts            # Auth API client (all login flows)
-├── tenant-routing.ts      # Tenant slug detection, path helpers
-├── i18n.ts                # Translation helper t(namespace, key, lang)
-└── utils.ts               # cn() utility
+├── students-api.ts    # GET /api/madrasa/:clientId/students (pagination, filters, sort)
+├── attendance-api.ts  # Attendance CRUD
+├── auth-api.ts        # All login flows
+├── classes-api.ts     # GET /api/v2/:clientId/classes
+├── teachers-api.ts    # GET /api/v2/:clientId/teachers
+└── i18n.ts            # t(namespace, key, lang)
 
-store/                     # Zustand stores (directory exists, files being added)
-components/                # Shared components (directory exists, files being added)
-mock-data/                 # Mock data used by pages NOT yet wired to API
+components/
+├── DashboardLayout.tsx
+├── ui/DataTable.tsx   # Generic table: desktop table + mobile cards, sort, pageSize dropdown
+├── ui/ImportModal.tsx # Generic import base: ImportConfig<TPayload> pattern, xlsx lazy-load
+├── ui/PageHeader.tsx
+├── ui/Cards.tsx
+└── ui/StatusBadge.tsx
+
+store/
+├── auth.ts            # useAuthStore (Zustand persist) — user, accessToken, activeClientId
+└── language.ts        # useLanguageStore — lang: "en" | "ml"
 ```
 
 ## Multi-Tenant Routing
 
-Tenants are detected two ways:
+1. **Path**: `/m/[slug]/...` — local dev primary
+2. **Subdomain**: `slug.domain.com` — production
 
-1. **Path**: `/m/[slug]/...` — primary for local dev
-2. **Subdomain**: `slug.domain.com` — for production deployments
-
-`lib/tenant-routing.ts` handles both. Key helpers:
-
-- `getTenantSlugFromPath(pathname)` — extracts slug from `/m/[slug]/`
-- `detectTenantSlug(pathname, hostname)` — tries path then subdomain
-- `roleHomePath({ role, actorType, tenantSlug })` — builds correct home URL
+`lib/tenant-routing.ts` key helpers:
+- `getTenantSlugFromPath(pathname)` — extract slug from `/m/[slug]/`
+- `detectTenantSlug(pathname, hostname)` — path then subdomain fallback
+- `roleHomePath({ role, actorType, tenantSlug })` — correct home URL
 - `tenantLoginPath(tenantSlug)` — `/m/[slug]/admin/login` or `/super-admin/login`
 
 ## Auth System
 
-**API client**: `lib/auth-api.ts`
-**Backend endpoint**: `${API_ORIGIN}/api/v2/auth/*`
+**API client**: `lib/auth-api.ts`  
+**Backend endpoint**: `${VITE_API_ORIGIN}/api/v2/auth/*`
 
-| Function                                           | Endpoint                        | Role         |
-| -------------------------------------------------- | ------------------------------- | ------------ |
-| `loginSuperAdmin(identifier, password)`            | `POST /auth/super-admin/login`  | SUPER_ADMIN  |
-| `loginMadrasa(identifier, slug, password)`         | `POST /auth/madrasa/login`      | CLIENT_ADMIN |
-| `loginTeacher(identifier, password, slug?)`        | `POST /auth/teacher/login`      | TEACHER      |
-| `requestParentOtp(slug, phone)`                    | `POST /auth/parent/request-otp` | —            |
-| `loginParent(slug, phone, {otpCode, challengeId})` | `POST /auth/parent/login`       | PARENT       |
+| Function | Endpoint | Role |
+|---|---|---|
+| `loginSuperAdmin(identifier, password)` | `POST /auth/super-admin/login` | SUPER_ADMIN |
+| `loginMadrasa(identifier, slug, password)` | `POST /auth/madrasa/login` | CLIENT_ADMIN |
+| `loginTeacher(identifier, password, slug?)` | `POST /auth/teacher/login` | TEACHER |
+| `requestParentOtp(slug, phone)` | `POST /auth/parent/request-otp` | — |
+| `loginParent(slug, phone, {otpCode, challengeId})` | `POST /auth/parent/login` | PARENT |
 
-JWT payload (from `AuthSessionPayload`):
+Auth stored in `useAuthStore`. Access: `const { user, accessToken, activeClientId } = useAuthStore()`.
 
-```ts
-{
-  access_token: string,
-  user: {
-    sub: string,
-    name: string,
-    role: string,            // SUPER_ADMIN | CLIENT_ADMIN | TEACHER | PARENT
-    actorType?: string,
-    clientId?: string,
-    defaultAcademicYearId?: string | null,
-    parentPhone?: string,
-    accessibleStudentIds?: string[],  // PARENT only
-    client?: { id, slug, subdomain }
-  }
-}
-```
+## Students API
 
-Auth state is stored in `useAuthStore` (Zustand, `store/auth` — being built).
-Access via `const { user, accessToken } = useAuthStore()`.
-
-## Attendance API
-
-**API client**: `lib/attendance-api.ts`
-**Backend endpoint**: `${API_BASE}/[clientId]/attendance`
+`lib/students-api.ts` — `V1_BASE = ${VITE_API_ORIGIN}/api/madrasa`
 
 ```ts
-// Bulk mark attendance (teacher saves)
-bulkUpsertAttendance(clientId, token, {
-  classId: string,
-  date: "YYYY-MM-DD",
-  academicYearId?: string,
-  records: { studentId, status: "PRESENT"|"ABSENT"|"LATE"|"EXCUSED", notes? }[]
+getStudents(clientId, token, {
+  page?, limit?,          // pagination
+  search?,                // searches name + adno
+  classId?, gender?,      // filters (sent as JSON: filters={"classId":"...","gender":"MALE"})
+  status?,                // "ACTIVE" | "INACTIVE"
+  sortBy?, sortOrder?,    // "asc" | "desc" — backend supports any field
 })
-
-// Get class attendance for a date
-getClassAttendance(clientId, token, { date, classId?, academicYearId? })
-
-// Get student attendance history (parent/teacher)
-getStudentAttendance(clientId, token, studentId, { from?, to?, academicYearId? })
-
-// Update single record
-updateAttendanceRecord(clientId, token, attendanceId, { status?, notes? })
+// returns { data: StudentRecord[], total, page, limit }
 ```
 
-**Important**: `teacher/attendance/page.tsx` currently uses placeholder classId UUIDs (`"class-4-uuid-placeholder"`). Once the backend has a `/classes` endpoint, replace `CLASS_ID_MAP` with real IDs from the user's JWT or a classes API call.
+## DataTable Component
+
+`components/ui/DataTable.tsx` — reuse for all list pages.
+
+```tsx
+<DataTable
+  columns={columns}          // Column<T>[] — set sortable:true for sortable cols
+  data={data}
+  keyExtractor={(r) => r.id}
+  loading={loading}
+  onSort={handleSort}        // (key, dir) => void
+  sortKey={sortBy}
+  sortDir={sortDir}
+  pagination={{
+    page, totalPages, total,
+    pageSize,                // current items per page
+    pageSizeOptions: [10,20,50,100],
+    onPageChange: setPage,
+    onPageSizeChange: (sz) => { setPageSize(sz); setPage(1); },
+  }}
+  mobileRender={(row) => <.../>}   // mobile card view
+  onRowClick={(row) => navigate(...)}
+/>
+```
+
+## ImportModal Component
+
+`components/ui/ImportModal.tsx` — extend for any module.
+
+```tsx
+const config = useMemo<ImportConfig<CreateXPayload>>(() => ({
+  entityName: "Students",
+  templateFilename: "student-import-template",
+  columns: IMPORT_COLUMNS,    // static ImportColumnDef[] — parse/validate callbacks
+  createRow: (row) => createStudent(clientId!, token!, row),
+  context: { classes },       // passed to parse() callbacks
+}), [clientId, token, classes])
+
+<ImportModal show={showImport} config={config} onComplete={reload} onClose={() => setShowImport(false)} />
+```
 
 ## Environment Variables
 
 ```
-NEXT_PUBLIC_API_ORIGIN=http://localhost:9000   # Backend base URL
-NEXT_PUBLIC_API_BASE_PATH=/api/v2              # API path prefix
+VITE_API_ORIGIN=http://localhost:9000
+VITE_API_BASE_PATH=/api/v2
 ```
 
 ## Dev Commands
 
 ```bash
-npm run dev      # Start dev server (localhost:3000)
-npm run build    # Production build
+npm run dev      # Vite dev server (default port 9000)
+npm run build    # tsc -b && vite build → dist/
+npm run preview  # Preview dist/
 npm run lint     # ESLint
 ```
 
@@ -180,52 +156,39 @@ npm run lint     # ESLint
 import { t } from "@/lib/i18n";
 import { useLanguageStore } from "@/store/language";
 
-const { lang } = useLanguageStore();   // "en" | "ml"
-t("namespace", "key", lang)            // returns translated string
+const { lang } = useLanguageStore();  // "en" | "ml"
+t("namespace", "key", lang)
 ```
 
-Namespaces in use: `common`, `nav`, `adminDash`, `teacherDash`, `teacherPages`, `parentPages`
+Namespaces: `common`, `nav`, `adminDash`, `teacherDash`, `teacherPages`, `parentPages`, `adminPages`
 
 ## Component Patterns
 
-All dashboard pages use `<DashboardLayout>` as wrapper.
-UI components used:
+All dashboard pages wrap with `<DashboardLayout>`.  
+UI: `<StatCard>`, `<ActionCard>` from `@/components/ui/Cards`; `<PageHeader>`, `<SectionHeader>` from `@/components/ui/PageHeader`; `cn()` from `@/lib/utils`.  
+Animations: framer-motion `initial/animate` pattern on page entry.
 
-- `<StatCard>`, `<ActionCard>` — from `@/components/ui/Cards`
-- `<PageHeader>`, `<SectionHeader>` — from `@/components/ui/PageHeader`
-- `cn()` from `@/lib/utils` for conditional className merging
+## Static Hosting (Cloudflare Pages)
 
-Dashboard uses `framer-motion` for page-entry animations — keep `initial/animate` pattern consistent.
+`public/_redirects` — `/* /index.html 200` — already in place.  
+Build cmd: `npm run build`. Output: `dist/`.
 
 ## Mock Data Status
 
-Most pages still use `mock-data/` imports — not yet connected to real API.
+| Page | Status |
+|---|---|
+| `teacher/attendance` | **REAL API** |
+| `admin/students`, `admin/teachers` | **REAL API** |
+| Everything else | Mock data |
 
-| Page                 | Status                                    |
-| -------------------- | ----------------------------------------- |
-| `teacher/attendance` | **REAL API** (bulkUpsertAttendance wired) |
-| Everything else      | Mock data                                 |
-
-When wiring a page to the real API:
-
-1. Import from `lib/*-api.ts` (or create new api file)
-2. Get `{ user, accessToken }` from `useAuthStore`
-3. Pass `user.clientId` and `accessToken` to API calls
-4. Handle loading/error states
+Wire new pages: import from `lib/*-api.ts`, get `{ user, accessToken }` from `useAuthStore`, pass `user.clientId` + `accessToken`, handle loading/error.
 
 ## Backend Contract Notes
 
-- Backend prefix is `/api/v2/` — do NOT use `/api/` alone (that's legacy V1)
-- Attendance `classId` must be a real UUID from the DB (Class model)
-- `academicYearId` should be `user.defaultAcademicYearId` from JWT when available
-- Parent can only call `getStudentAttendance` for IDs in `user.accessibleStudentIds`
-- API returns validation errors as `{ message: string, errors: [{field, fieldName, message}][] }`
-
-## Known Issues / In-Progress
-
-- `store/` and `components/` directories are empty — being populated
-- `useAuthStore` is used in pages but the store file isn't written yet — create `store/auth.ts`
-- `useLanguageStore` used in pages but `store/language.ts` isn't written yet — create it
-- Teacher attendance page classIds are hardcoded placeholders — needs `/classes` endpoint
-- Parent OTP login — `devOtpCode` is returned by backend in non-prod; no SMS integration yet
-- PWA service worker registered via `components/PwaRegister` — component file not yet created
+- Students API: `GET /api/madrasa/:clientId/students` — filters JSON supports `classId`, `gender`, `status`, `sectionId`
+- Sort: pass `sortBy` + `sortOrder` query params (any Prisma field name)
+- Attendance `classId` must be real UUID from DB
+- `academicYearId` → `user.defaultAcademicYearId` from JWT
+- Parent only calls `getStudentAttendance` for IDs in `user.accessibleStudentIds`
+- Errors: `{ message: string, errors: [{field, fieldName, message}][] }`
+- `AccademicYear` — double-c typo intentional in DB, don't fix

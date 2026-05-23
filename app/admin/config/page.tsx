@@ -3,8 +3,9 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { getClientConfig, updateClientConfig, type ClientConfig } from "@/lib/config-api";
 import { useAuthStore } from "@/store/auth";
-import { Settings, Save, CheckCircle2, Loader2, AlertCircle } from "lucide-react";
+import { Settings, Save, CheckCircle2, Loader2, AlertCircle, CalendarCheck } from "lucide-react";
 import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 type Field = {
   key: keyof ClientConfig;
@@ -55,20 +56,27 @@ const SECTIONS: { title: string; fields: Field[] }[] = [
 ];
 
 export default function AdminConfigPage() {
-  const { user, accessToken, activeClientId } = useAuthStore();
+  const { user, accessToken, activeClientId, setAttendanceMode } = useAuthStore();
   const cid   = activeClientId ?? "";
   const token = accessToken ?? "";
 
-  const [config, setConfig]     = useState<Partial<ClientConfig>>({});
-  const [loading, setLoading]   = useState(true);
-  const [saving, setSaving]     = useState(false);
-  const [saved, setSaved]       = useState(false);
-  const [error, setError]       = useState("");
+  const [config, setConfig]           = useState<Partial<ClientConfig>>({});
+  const [loading, setLoading]         = useState(true);
+  const [saving, setSaving]           = useState(false);
+  const [saved, setSaved]             = useState(false);
+  const [error, setError]             = useState("");
+  const [attMode, setAttMode]         = useState<"CLASS_BASED" | "PERIOD_BASED">("CLASS_BASED");
+  const [savingAtt, setSavingAtt]     = useState(false);
+  const [savedAtt, setSavedAtt]       = useState(false);
+  const [attError, setAttError]       = useState("");
 
   useEffect(() => {
     if (!cid || !token) return;
     getClientConfig(cid, token)
-      .then((data) => setConfig(data))
+      .then((data) => {
+        setConfig(data);
+        if (data.attendanceMode) setAttMode(data.attendanceMode);
+      })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
   }, [cid, token]);
@@ -106,6 +114,18 @@ export default function AdminConfigPage() {
       setTimeout(() => setSaved(false), 3000);
     } catch (e) { setError((e as Error).message); }
     finally { setSaving(false); }
+  };
+
+  const handleSaveAttendanceMode = async () => {
+    if (!cid || !token) return;
+    setSavingAtt(true); setAttError("");
+    try {
+      await updateClientConfig(cid, token, { attendanceMode: attMode });
+      setAttendanceMode(attMode);
+      setSavedAtt(true);
+      setTimeout(() => setSavedAtt(false), 3000);
+    } catch (e) { setAttError((e as Error).message); }
+    finally { setSavingAtt(false); }
   };
 
   return (
@@ -153,6 +173,57 @@ export default function AdminConfigPage() {
               </div>
             </motion.div>
           ))}
+
+          {/* Attendance Mode */}
+          <motion.div
+            initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-2xl border border-gray-100 p-5"
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <CalendarCheck className="w-4 h-4 text-emerald-600" />
+              <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide">Attendance Mode</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              {(["CLASS_BASED", "PERIOD_BASED"] as const).map((mode) => (
+                <label key={mode}
+                  className={cn(
+                    "flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition-all",
+                    attMode === mode ? "border-emerald-500 bg-emerald-50" : "border-gray-200 bg-gray-50",
+                  )}
+                >
+                  <input type="radio" name="attendanceMode" value={mode}
+                    checked={attMode === mode}
+                    onChange={() => setAttMode(mode)}
+                    className="sr-only"
+                  />
+                  <span className={cn("text-sm font-bold mb-1",
+                    attMode === mode ? "text-emerald-700" : "text-gray-700")}>
+                    {mode === "CLASS_BASED" ? "Class Based" : "Period Based"}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {mode === "CLASS_BASED"
+                      ? "Class teacher marks whole class once per day"
+                      : "Each subject teacher marks attendance per period"}
+                  </span>
+                </label>
+              ))}
+            </div>
+            {attError && (
+              <div className="bg-red-50 text-red-600 text-xs px-3 py-2 rounded-xl mb-3">{attError}</div>
+            )}
+            <button
+              onClick={handleSaveAttendanceMode}
+              disabled={savingAtt || attMode === config.attendanceMode}
+              className={cn(
+                "flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold transition-colors",
+                savedAtt ? "bg-emerald-100 text-emerald-700" : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60",
+              )}
+            >
+              {savingAtt ? <Loader2 className="w-4 h-4 animate-spin" /> :
+               savedAtt  ? <><CheckCircle2 className="w-4 h-4" /> Saved!</> :
+                           <><Save className="w-4 h-4" /> Save Attendance Mode</>}
+            </button>
+          </motion.div>
 
           {/* Sticky save */}
           <div className="sticky bottom-20 lg:bottom-6">

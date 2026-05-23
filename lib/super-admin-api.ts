@@ -1,31 +1,23 @@
+import { apiFetch } from "@/lib/fetch";
+
 const API_ORIGIN = import.meta.env.VITE_API_ORIGIN ?? "http://localhost:3000";
 const API_BASE_PATH = import.meta.env.VITE_API_BASE_PATH ?? "/api/v2";
 const API_BASE = `${API_ORIGIN}${API_BASE_PATH}`;
 
-async function getJson<T>(path: string, token: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) throw new Error(`Request failed: ${res.status}`);
-  return res.json();
+function getJson<T>(path: string, token: string): Promise<T> {
+  return apiFetch<T>(`${API_BASE}${path}`, token);
 }
 
-async function mutateJson<T>(
+function mutateJson<T>(
   method: "POST" | "PATCH" | "PUT",
   path: string,
   body: unknown,
   token: string,
 ): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  return apiFetch<T>(`${API_BASE}${path}`, token, {
     method,
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify(body),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(typeof err.message === "string" ? err.message : `Request failed: ${res.status}`);
-  }
-  return res.json();
 }
 
 // ── Clients ───────────────────────────────────────────────────────────────────
@@ -126,15 +118,8 @@ export function getClientLogs(clientId: string, token: string, skip = 0, take = 
   );
 }
 
-async function deleteJson(path: string, token: string): Promise<void> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(typeof err.message === "string" ? err.message : `Delete failed: ${res.status}`);
-  }
+function deleteJson(path: string, token: string): Promise<void> {
+  return apiFetch<void>(`${API_BASE}${path}`, token, { method: "DELETE" });
 }
 
 // ── Super Admin Users ─────────────────────────────────────────────────────────

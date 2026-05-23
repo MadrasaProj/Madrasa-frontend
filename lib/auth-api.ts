@@ -99,6 +99,8 @@ export type AuthSessionPayload = {
     accessibleStudentIds?: string[];
     client?: {
       id?: string;
+      name?: string;
+      logo?: string | null;
       slug?: string;
       subdomain?: string;
       attendanceMode?: string;

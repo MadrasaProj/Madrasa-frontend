@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import {
   getSentNotifications, createNotification, deleteNotification,
   type NotificationRecord, type NotificationType,
@@ -34,6 +35,7 @@ export default function AdminNotificationsPage() {
   const [total, setTotal]         = useState(0);
   const [classes, setClasses]     = useState<ClassRecord[]>([]);
   const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState<string | null>(null);
   const [showCompose, setShowCompose] = useState(false);
   const [deletingId, setDeletingId]   = useState<string | null>(null);
 
@@ -43,24 +45,25 @@ export default function AdminNotificationsPage() {
   const [cType, setCType]         = useState<NotificationType>("ANNOUNCEMENT");
   const [cRoles, setCRoles]       = useState<string[]>(["PARENT"]);
   const [cClassIds, setCClassIds] = useState<string[]>([]);
+  const [cEventDate, setCEventDate] = useState("");
   const [sending, setSending]     = useState(false);
   const [sendError, setSendError] = useState("");
 
   const loadSent = useCallback(async () => {
     if (!cid || !token) return;
-    setLoading(true);
+    setError(null); setLoading(true);
     try {
       const data = await getSentNotifications(cid, token, { take: 50 });
       setSent(data.notifications ?? []);
       setTotal(data.total ?? 0);
-    } catch { /* silent */ }
+    } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   }, [cid, token]);
 
   useEffect(() => {
     if (!cid || !token) return;
     loadSent();
-    getAllClasses(cid, token).then(setClasses).catch(() => {});
+    getAllClasses(cid, token).then(setClasses).catch((e) => { setError((e as Error).message); });
   }, [cid, token, loadSent]);
 
   const handleSend = async () => {
@@ -71,9 +74,10 @@ export default function AdminNotificationsPage() {
         title: cTitle, body: cBody, type: cType,
         targetRoles: cRoles,
         targetClassIds: cClassIds.length ? cClassIds : undefined,
+        eventDate: cEventDate || undefined,
       });
       setShowCompose(false);
-      setCTitle(""); setCBody(""); setCRoles(["PARENT"]); setCClassIds([]);
+      setCTitle(""); setCBody(""); setCRoles(["PARENT"]); setCClassIds([]); setCEventDate("");
       loadSent();
     } catch (e) { setSendError((e as Error).message); }
     finally { setSending(false); }
@@ -102,6 +106,8 @@ export default function AdminNotificationsPage() {
           </button>
         }
       />
+
+      {error && <ApiErrorBanner message={error} onRetry={loadSent} />}
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
@@ -221,6 +227,13 @@ export default function AdminNotificationsPage() {
                     </div>
                   </div>
                 )}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                    Event Date <span className="text-gray-400 font-normal">(optional — shows in diary)</span>
+                  </label>
+                  <input type="date" value={cEventDate} onChange={(e) => setCEventDate(e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white" />
+                </div>
                 <div className="flex gap-3 pt-2">
                   <button onClick={() => setShowCompose(false)}
                     className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700">Cancel</button>
