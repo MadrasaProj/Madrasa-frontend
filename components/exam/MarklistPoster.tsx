@@ -3,22 +3,25 @@ import { Download, Share2, Loader2, Upload, X, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ClassReportRow, ClassReport } from "@/lib/results-api";
 import { GRADE_COLORS, TOTAL_GRADE_LABELS } from "@/lib/results-api";
+import { downloadAsJPG, downloadAsPDF, shareAsJPG } from "@/lib/poster-utils";
 
-// ── Rank accent colours ───────────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────────
 
-const RANK_HEADER: Record<number, { grad: string; badge: string }> = {
-  1: { grad: "from-yellow-500 via-amber-400 to-yellow-600", badge: "bg-yellow-700"  },
-  2: { grad: "from-slate-400 via-slate-300 to-slate-500",   badge: "bg-slate-600"   },
-  3: { grad: "from-amber-600 via-orange-500 to-amber-700",  badge: "bg-amber-800"   },
+const RANK_HEADER: Record<number, { grad: string; accent: string }> = {
+  1: { grad: "from-yellow-400 via-amber-300 to-yellow-500",  accent: "bg-yellow-600"  },
+  2: { grad: "from-slate-400 via-slate-300 to-slate-500",    accent: "bg-slate-600"   },
+  3: { grad: "from-amber-500 via-orange-400 to-amber-600",   accent: "bg-amber-700"   },
 };
-const DEFAULT_GRAD = "from-blue-900 via-blue-700 to-blue-800";
-const RANK_MEDALS  = ["🥇", "🥈", "🥉"];
+const DEFAULT_GRAD = "from-blue-800 via-blue-700 to-indigo-800";
+
+const RANK_LABELS: Record<number, string> = { 1: "1st", 2: "2nd", 3: "3rd" };
+const RANK_MEDALS = ["🥇", "🥈", "🥉"];
 
 const STATUS_STYLE: Record<string, string> = {
   PASSED:   "bg-emerald-100 text-emerald-800 border-emerald-300",
-  FAILED:   "bg-red-100 text-red-800 border-red-300",
-  PROMOTED: "bg-blue-100 text-blue-800 border-blue-300",
-  WITHHELD: "bg-amber-100 text-amber-800 border-amber-300",
+  FAILED:   "bg-red-100    text-red-800    border-red-300",
+  PROMOTED: "bg-blue-100   text-blue-800   border-blue-300",
+  WITHHELD: "bg-amber-100  text-amber-800  border-amber-300",
 };
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -34,14 +37,15 @@ interface Props {
 
 export function MarklistPoster({ row, report, madrasaName, madrasaLogo }: Props) {
   const { student, summary, marks } = row;
-  const { exam, subjects, config }  = report;
+  const { exam, subjects, config, class: cls } = report;
   const rank = summary.rank ?? 0;
 
   const posterRef                 = useRef<HTMLDivElement>(null);
   const [photo, setPhoto]         = useState<string | null>(null);
   const [exporting, setExporting] = useState<"jpg" | "pdf" | "share" | null>(null);
 
-  const headerGrad = rank >= 1 && rank <= 3 ? RANK_HEADER[rank].grad : DEFAULT_GRAD;
+  const headerGrad  = rank >= 1 && rank <= 3 ? RANK_HEADER[rank].grad : DEFAULT_GRAD;
+  const accentClass = rank >= 1 && rank <= 3 ? RANK_HEADER[rank].accent : "bg-blue-700";
 
   const statusLabels: Record<string, string> = {
     PASSED:   config.passedLabel,
@@ -49,8 +53,6 @@ export function MarklistPoster({ row, report, madrasaName, madrasaLogo }: Props)
     PROMOTED: config.promotedLabel,
     WITHHELD: config.withheldLabel,
   };
-
-  // ── Handlers ─────────────────────────────────────────────────────────────────
 
   const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -60,62 +62,24 @@ export function MarklistPoster({ row, report, madrasaName, madrasaLogo }: Props)
     reader.readAsDataURL(file);
   };
 
-  const capture = async () => {
-    const html2canvas = (await import("html2canvas")).default;
-    return html2canvas(posterRef.current!, {
-      scale: 3, useCORS: true, backgroundColor: "#ffffff", logging: false,
-    });
-  };
+  const stem = `${madrasaName}-${student.name}-${exam.name}`.replace(/\s+/g, "-");
 
-  const exportJPG = async () => {
-    setExporting("jpg");
+  const run = async (type: "jpg" | "pdf" | "share") => {
+    if (!posterRef.current) return;
+    setExporting(type);
     try {
-      const canvas = await capture();
-      const a = document.createElement("a");
-      a.download = `result-${student.name.replace(/\s+/g, "-")}.jpg`;
-      a.href = canvas.toDataURL("image/jpeg", 0.95);
-      a.click();
-    } finally { setExporting(null); }
-  };
-
-  const exportPDF = async () => {
-    setExporting("pdf");
-    try {
-      const [html2canvas, { jsPDF }] = await Promise.all([
-        import("html2canvas").then((m) => m.default),
-        import("jspdf"),
-      ]);
-      const canvas = await html2canvas(posterRef.current!, {
-        scale: 3, useCORS: true, backgroundColor: "#ffffff", logging: false,
-      });
-      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a5" });
-      const w   = pdf.internal.pageSize.getWidth();
-      const h   = (canvas.height / canvas.width) * w;
-      pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, w, Math.min(h, pdf.internal.pageSize.getHeight()));
-      pdf.save(`result-${student.name}.pdf`);
-    } finally { setExporting(null); }
-  };
-
-  const shareJPG = async () => {
-    setExporting("share");
-    try {
-      const canvas = await capture();
-      const blob   = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", 0.95));
-      if (!blob) return;
-      const file = new File([blob], `result-${student.name}.jpg`, { type: "image/jpeg" });
-      if (navigator.share && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: `Result · ${student.name}`,
-          text:  `${student.name} · ${exam.name} · ${madrasaName}`,
-        });
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a   = document.createElement("a");
-        a.href = url; a.download = `result-${student.name}.jpg`; a.click();
-        URL.revokeObjectURL(url);
-      }
-    } finally { setExporting(null); }
+      if (type === "jpg")   await downloadAsJPG(posterRef.current, stem);
+      if (type === "pdf")   await downloadAsPDF(posterRef.current, stem);
+      if (type === "share") await shareAsJPG(
+        posterRef.current, `${stem}.jpg`,
+        `Result · ${student.name}`,
+        `${student.name} · ${exam.name} · ${madrasaName}`,
+      );
+    } catch (err) {
+      console.error("Poster export failed", err);
+    } finally {
+      setExporting(null);
+    }
   };
 
   // ── Render ────────────────────────────────────────────────────────────────────
@@ -123,7 +87,7 @@ export function MarklistPoster({ row, report, madrasaName, madrasaLogo }: Props)
   return (
     <div className="space-y-3">
 
-      {/* Controls */}
+      {/* ── Toolbar ── */}
       <div className="flex items-center gap-2 flex-wrap">
         <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 cursor-pointer transition-colors">
           <Upload className="w-4 h-4" />
@@ -136,80 +100,81 @@ export function MarklistPoster({ row, report, madrasaName, madrasaLogo }: Props)
             <X className="w-4 h-4" />
           </button>
         )}
-        <button onClick={exportJPG} disabled={!!exporting}
+        <button onClick={() => run("jpg")} disabled={!!exporting}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
           {exporting === "jpg" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
           JPG
         </button>
-        <button onClick={exportPDF} disabled={!!exporting}
+        <button onClick={() => run("pdf")} disabled={!!exporting}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
           {exporting === "pdf" ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
           PDF
         </button>
-        <button onClick={shareJPG} disabled={!!exporting}
+        <button onClick={() => run("share")} disabled={!!exporting}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 transition-colors">
           {exporting === "share" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
           Share
         </button>
       </div>
 
-      {/* ── Poster card ─────────────────────────────────────────────────────────── */}
+      {/* ── Poster card ── */}
       <div
         ref={posterRef}
-        className="bg-white rounded-2xl overflow-hidden shadow-xl border border-gray-100 w-full max-w-sm mx-auto"
-        style={{ fontFamily: "'Arial', sans-serif" }}
+        className="bg-white rounded-2xl overflow-hidden shadow-xl border border-gray-100 w-full max-w-sm mx-auto select-none"
+        style={{ fontFamily: "Arial, Helvetica, sans-serif" }}
       >
-
         {/* Header gradient */}
-        <div className={cn("bg-gradient-to-br text-white text-center px-6 py-5 relative overflow-hidden", headerGrad)}>
-          <div className="absolute inset-0 opacity-[0.08] pointer-events-none">
-            <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-white" />
-            <div className="absolute -bottom-8  -left-8  w-28 h-28 rounded-full bg-white" />
-          </div>
-          <div className="relative z-10">
-            {madrasaLogo && (
-              <img src={madrasaLogo} alt="" className="h-9 w-auto mx-auto mb-2 object-contain" crossOrigin="anonymous" />
+        <div className={cn("bg-gradient-to-br text-white text-center px-6 pt-6 pb-5 relative overflow-hidden", headerGrad)}>
+          {/* Decorative circles */}
+          <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/10 pointer-events-none" />
+          <div className="absolute -bottom-6 -left-6 w-24 h-24 rounded-full bg-white/10 pointer-events-none" />
+
+          <div className="relative z-10 space-y-1">
+            {madrasaLogo ? (
+              <img src={madrasaLogo} alt="" className="h-10 w-auto mx-auto mb-2 object-contain"
+                crossOrigin="anonymous" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+            ) : (
+              <div className="w-10 h-10 bg-white/20 rounded-full mx-auto mb-2 flex items-center justify-center text-xl font-black">
+                {madrasaName.charAt(0)}
+              </div>
             )}
-            <p className="text-sm font-bold uppercase tracking-widest leading-tight">{madrasaName}</p>
-            <p className="text-xs opacity-75 font-medium mt-0.5">{exam.name}</p>
-            <p className="text-[10px] opacity-50 uppercase tracking-widest mt-1">Result Card</p>
+            <p className="text-xs font-bold uppercase tracking-[0.15em] opacity-90">{madrasaName}</p>
+            <p className="text-base font-extrabold leading-tight">{exam.name}</p>
+            <p className="text-[10px] uppercase tracking-widest opacity-60">Result Card · {cls.name}</p>
           </div>
         </div>
 
-        {/* Student identity */}
-        <div className="flex items-center gap-4 px-5 py-4 border-b border-gray-100">
+        {/* Student row */}
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-gray-50">
           {/* Avatar */}
-          <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-100 border-2 border-gray-200 flex items-center justify-center shrink-0">
+          <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-200 border-2 border-white shadow shrink-0 flex items-center justify-center text-2xl">
             {photo
-              ? <img src={photo} alt={student.name} className="w-full h-full object-cover" />
-              : <span className="text-3xl">{student.gender === "FEMALE" ? "👩‍🎓" : "👨‍🎓"}</span>
+              ? <img src={photo} alt="" className="w-full h-full object-cover" />
+              : (student.gender === "FEMALE" ? "👩" : "👨")
             }
           </div>
-          {/* Details */}
+          {/* Info */}
           <div className="flex-1 min-w-0">
-            <p className="font-bold text-gray-900 text-sm leading-tight">{student.name}</p>
-            <p className="text-[11px] text-gray-500 mt-0.5">
-              Adm: <span className="font-mono font-semibold text-gray-700">{student.adno}</span>
-            </p>
+            <p className="font-bold text-gray-900 text-sm leading-snug truncate">{student.name}</p>
             <p className="text-[11px] text-gray-500">
-              Class: <span className="font-semibold text-gray-700">{report.class.name}</span>
+              Reg: <span className="font-mono font-semibold text-gray-700">{student.adno}</span>
             </p>
+            <p className="text-[11px] text-gray-500">Class: <span className="font-semibold text-gray-700">{cls.name}</span></p>
           </div>
-          {/* Rank bubble */}
+          {/* Rank badge */}
           {rank > 0 && (
             <div className="text-center shrink-0">
               {rank <= 3 ? (
-                <>
-                  <div className="text-2xl leading-none">{RANK_MEDALS[rank - 1]}</div>
-                  <span className={cn(
-                    "mt-1 inline-block text-[10px] font-bold px-2 py-0.5 rounded-full text-white",
-                    RANK_HEADER[rank]?.badge,
-                  )}>
-                    {rank === 1 ? "1st" : rank === 2 ? "2nd" : "3rd"}
+                <div className="flex flex-col items-center gap-0.5">
+                  <span className="text-2xl leading-none">{RANK_MEDALS[rank - 1]}</span>
+                  <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full text-white", accentClass)}>
+                    {RANK_LABELS[rank]}
                   </span>
-                </>
+                </div>
               ) : (
-                <span className="text-xs font-bold text-gray-400">#{rank}</span>
+                <div className={cn("text-xs font-bold px-2 py-1 rounded-lg text-white", accentClass)}>
+                  #{rank}
+                </div>
               )}
             </div>
           )}
@@ -218,47 +183,46 @@ export function MarklistPoster({ row, report, madrasaName, madrasaLogo }: Props)
         {/* Marks table */}
         <table className="w-full text-xs" style={{ borderCollapse: "collapse" }}>
           <thead>
-            <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="text-left px-4 py-2 text-gray-500 font-semibold">Subject</th>
+            <tr className="bg-gray-100 border-b border-gray-200">
+              <th className="text-left px-3 py-2 text-gray-500 font-bold uppercase tracking-wide text-[10px]">Subject</th>
               {!config.hideMarks && (
-                <th className="text-center px-2 py-2 text-gray-500 font-semibold whitespace-nowrap">Marks</th>
+                <th className="text-center px-2 py-2 text-gray-500 font-bold uppercase tracking-wide text-[10px] whitespace-nowrap">Marks</th>
               )}
-              <th className="text-center px-2 py-2 text-gray-500 font-semibold">%</th>
-              <th className="text-center px-2 py-2 text-gray-500 font-semibold">Grade</th>
-              <th className="text-center px-1 py-2 text-gray-500 font-semibold">✓</th>
+              <th className="text-center px-2 py-2 text-gray-500 font-bold uppercase tracking-wide text-[10px]">%</th>
+              <th className="text-center px-2 py-2 text-gray-500 font-bold uppercase tracking-wide text-[10px]">Grade</th>
+              <th className="text-center px-1 py-2 text-gray-500 font-bold text-[10px]">✓</th>
             </tr>
           </thead>
           <tbody>
             {subjects.map((sub, i) => {
               const m          = marks[sub.id];
               const gradeClass = m?.grade ? (GRADE_COLORS[m.grade] ?? "text-gray-600 bg-gray-50 border-gray-200") : "";
+              const failed     = m?.isPassed === false;
               return (
                 <tr key={sub.id} className={cn(
                   "border-b border-gray-100",
-                  i % 2 === 0 ? "bg-white" : "bg-gray-50/40",
-                  m?.isPassed === false && "bg-red-50/30",
+                  i % 2 === 0 ? "bg-white" : "bg-gray-50/50",
+                  failed && "bg-red-50/40",
                 )}>
-                  <td className="px-4 py-2 text-gray-800 font-medium">{sub.name}</td>
+                  <td className="px-3 py-2 text-gray-800 font-medium text-[11px] leading-tight">{sub.name}</td>
                   {!config.hideMarks && (
-                    <td className="px-2 py-2 text-center text-gray-700 font-mono whitespace-nowrap">
-                      {m != null ? `${m.score}/${m.maxMarks}` : "—"}
+                    <td className="px-2 py-2 text-center font-mono text-gray-700 text-[11px] whitespace-nowrap">
+                      {m ? `${m.score}/${m.maxMarks}` : "—"}
                     </td>
                   )}
-                  <td className="px-2 py-2 text-center text-gray-600">
-                    {m?.percentage != null ? `${m.percentage.toFixed(1)}%` : "—"}
+                  <td className="px-2 py-2 text-center text-gray-600 text-[11px]">
+                    {m?.percentage != null ? `${m.percentage.toFixed(0)}%` : "—"}
                   </td>
                   <td className="px-2 py-2 text-center">
                     {m?.grade
                       ? <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-bold border", gradeClass)}>{m.grade}</span>
-                      : <span className="text-gray-300">—</span>
+                      : <span className="text-gray-300 text-[10px]">—</span>
                     }
                   </td>
-                  <td className="px-1 py-2 text-center">
-                    {m == null
-                      ? <span className="text-gray-300 text-[10px]">—</span>
-                      : m.isPassed
-                        ? <span className="text-emerald-600 font-bold">✓</span>
-                        : <span className="text-red-500 font-bold">✗</span>
+                  <td className="px-1 py-2 text-center text-[12px] font-bold">
+                    {m == null ? <span className="text-gray-300">—</span>
+                      : m.isPassed ? <span className="text-emerald-600">✓</span>
+                      : <span className="text-red-500">✗</span>
                     }
                   </td>
                 </tr>
@@ -269,17 +233,17 @@ export function MarklistPoster({ row, report, madrasaName, madrasaLogo }: Props)
           {/* Total row */}
           {summary.totalScore != null && (
             <tfoot>
-              <tr className="bg-blue-50 border-t-2 border-blue-200">
-                <td className="px-4 py-2.5 font-bold text-blue-900 text-xs">Total</td>
+              <tr className="bg-gradient-to-r from-blue-50 to-indigo-50 border-t-2 border-blue-200">
+                <td className="px-3 py-2.5 font-black text-blue-900 text-xs">TOTAL</td>
                 {!config.hideMarks && (
-                  <td className="px-2 py-2.5 text-center font-bold text-blue-900 font-mono text-xs whitespace-nowrap">
-                    {summary.totalScore?.toFixed(0)}/{summary.totalMaxMarks?.toFixed(0)}
+                  <td className="px-2 py-2.5 text-center font-black text-blue-900 font-mono text-xs whitespace-nowrap">
+                    {summary.totalScore.toFixed(0)}/{summary.totalMaxMarks?.toFixed(0)}
                   </td>
                 )}
-                <td className="px-2 py-2.5 text-center font-bold text-blue-900 text-xs">
+                <td className="px-2 py-2.5 text-center font-black text-blue-900 text-xs">
                   {summary.totalPercentage?.toFixed(1)}%
                 </td>
-                <td colSpan={2} className="px-2 py-2.5 text-center text-blue-700 text-[10px] font-semibold">
+                <td colSpan={2} className="px-2 py-2.5 text-center text-blue-700 text-[10px] font-bold">
                   {summary.totalGrade ? TOTAL_GRADE_LABELS[summary.totalGrade] : ""}
                 </td>
               </tr>
@@ -287,12 +251,13 @@ export function MarklistPoster({ row, report, madrasaName, madrasaLogo }: Props)
           )}
         </table>
 
-        {/* Percentage bar + status badges */}
+        {/* Progress + badges */}
         {summary.totalPercentage != null && (
-          <div className="px-5 py-3 border-t border-gray-100 space-y-2.5">
-            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div className="px-4 py-3 space-y-2 border-t border-gray-100">
+            {/* Bar */}
+            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
               <div
-                className={cn("h-full rounded-full transition-all",
+                className={cn("h-full rounded-full",
                   summary.totalPercentage >= 80 ? "bg-emerald-500" :
                   summary.totalPercentage >= 60 ? "bg-blue-500"    :
                   summary.totalPercentage >= 40 ? "bg-amber-500"   : "bg-red-500",
@@ -300,27 +265,28 @@ export function MarklistPoster({ row, report, madrasaName, madrasaLogo }: Props)
                 style={{ width: `${Math.min(summary.totalPercentage, 100)}%` }}
               />
             </div>
+            {/* Badges row */}
             <div className="flex items-center gap-2 flex-wrap">
               {summary.finalStatus && (
-                <span className={cn("px-3 py-1 rounded-full text-xs font-bold border", STATUS_STYLE[summary.finalStatus])}>
-                  {statusLabels[summary.finalStatus]}
+                <span className={cn("px-2.5 py-0.5 rounded-full text-xs font-bold border", STATUS_STYLE[summary.finalStatus])}>
+                  {statusLabels[summary.finalStatus] ?? summary.finalStatus}
                 </span>
               )}
               {summary.totalGrade && (
-                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-800 border border-purple-200">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-800 border border-purple-200">
                   {TOTAL_GRADE_LABELS[summary.totalGrade]}
                 </span>
               )}
-              <span className="text-xs font-bold text-gray-500 ml-auto">
-                {summary.totalPercentage?.toFixed(2)}%
+              <span className="ml-auto text-xs font-bold text-gray-500">
+                {summary.totalPercentage.toFixed(1)}%
               </span>
             </div>
           </div>
         )}
 
         {/* Footer watermark */}
-        <div className="px-5 py-2 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-          <span className="text-[9px] text-gray-400 uppercase tracking-widest font-medium">Al Madrasa Platform</span>
+        <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+          <span className="text-[9px] text-gray-400 uppercase tracking-widest font-semibold">Al Madrasa Platform</span>
           <span className="text-[9px] text-gray-400">{new Date().getFullYear()}</span>
         </div>
       </div>

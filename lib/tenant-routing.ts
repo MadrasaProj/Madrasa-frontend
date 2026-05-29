@@ -1,4 +1,11 @@
 export type ActorType = "SUPER_ADMIN" | "CLIENT_ADMIN" | "TEACHER" | "PARENT" | "COMMITTEE";
+export type RouteRole = "admin" | "teacher" | "parent" | "committee";
+
+type SessionForRedirect = {
+  actorType?: ActorType | string;
+  role?: RouteRole | string;
+  tenantSlug?: string | null;
+};
 
 const RESERVED_SUBDOMAINS = new Set([
   "www",
@@ -52,6 +59,12 @@ export function stripTenantPrefix(pathname: string): string {
   return match[1] || "/";
 }
 
+export function getRoleFromPath(pathname: string): RouteRole | null {
+  const path = stripTenantPrefix(pathname).toLowerCase();
+  const match = path.match(/^\/(admin|teacher|parent|committee)(?:\/|$)/);
+  return (match?.[1] as RouteRole | undefined) ?? null;
+}
+
 export function withTenantPrefix(
   path: string,
   tenantSlug?: string | null,
@@ -76,8 +89,56 @@ export function roleHomePath(params: {
 
 export function tenantLoginPath(
   tenantSlug?: string | null,
-  role: "admin" | "teacher" | "parent" | "committee" = "admin",
+  role: RouteRole = "admin",
 ): string {
   if (!tenantSlug) return "/super-admin/login";
   return `/m/${tenantSlug}/${role}/login`;
+}
+
+export function roleFromActorType(actorType?: ActorType | string): RouteRole | null {
+  switch (actorType) {
+    case "CLIENT_ADMIN":
+      return "admin";
+    case "TEACHER":
+      return "teacher";
+    case "PARENT":
+      return "parent";
+    case "COMMITTEE":
+      return "committee";
+    default:
+      return null;
+  }
+}
+
+export function resolveLoginRedirectPath(params: {
+  pathname: string;
+  hostname?: string;
+  user?: SessionForRedirect | null;
+  activeTenantSlug?: string | null;
+}): string {
+  const { pathname, hostname, user, activeTenantSlug } = params;
+
+  if (user?.actorType === "SUPER_ADMIN") return "/super-admin/login";
+
+  const tenantSlug =
+    user?.tenantSlug ??
+    activeTenantSlug ??
+    detectTenantSlug(pathname, hostname);
+
+  const sessionRole = roleFromActorType(user?.actorType);
+  if (sessionRole) return tenantLoginPath(tenantSlug, sessionRole);
+
+  const storedRole =
+    user?.role === "admin" ||
+    user?.role === "teacher" ||
+    user?.role === "parent" ||
+    user?.role === "committee"
+      ? user.role
+      : null;
+  if (storedRole) return tenantLoginPath(tenantSlug, storedRole);
+
+  const routeRole = getRoleFromPath(pathname);
+  if (routeRole) return tenantLoginPath(tenantSlug, routeRole);
+
+  return tenantLoginPath(tenantSlug);
 }

@@ -5,6 +5,7 @@ import { getExams, type ExamRecord } from "@/lib/exams-api";
 import { getResults, getSummaries, type ResultRecord, type ExamSummary, GRADE_COLORS, TOTAL_GRADE_LABELS } from "@/lib/results-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
+import { downloadAsJPG, downloadAsPDF, shareAsJPG, downloadTransparentJPG, shareTransparentJPG } from "@/lib/poster-utils";
 import {
   Medal, Loader2, AlertCircle, RefreshCw, GraduationCap, Trophy,
   Download, Share2, Upload, X, FileText, ChevronRight,
@@ -90,56 +91,21 @@ function ParentResultCard({
     reader.readAsDataURL(file);
   };
 
-  const capture = async () => {
-    const html2canvas = (await import("html2canvas")).default;
-    return html2canvas(posterRef.current!, { scale: 3, useCORS: true, backgroundColor: "#ffffff", logging: false });
-  };
+  const stem = `result-${studentName}`.replace(/\s+/g, "-");
 
-  const exportJPG = async () => {
-    setExporting("jpg");
+  const run = async (type: "jpg" | "pdf" | "share") => {
+    if (!posterRef.current) return;
+    setExporting(type);
     try {
-      const canvas = await capture();
-      const a = document.createElement("a");
-      a.download = `result-${studentName.replace(/\s+/g, "-")}.jpg`;
-      a.href = canvas.toDataURL("image/jpeg", 0.95);
-      a.click();
-    } finally { setExporting(null); }
-  };
-
-  const exportPDF = async () => {
-    setExporting("pdf");
-    try {
-      const [html2canvas, { jsPDF }] = await Promise.all([
-        import("html2canvas").then((m) => m.default),
-        import("jspdf"),
-      ]);
-      const canvas = await html2canvas(posterRef.current!, { scale: 3, useCORS: true, backgroundColor: "#ffffff", logging: false });
-      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a5" });
-      const w = pdf.internal.pageSize.getWidth();
-      const h = (canvas.height / canvas.width) * w;
-      pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, w, Math.min(h, pdf.internal.pageSize.getHeight()));
-      pdf.save(`result-${studentName}.pdf`);
-    } finally { setExporting(null); }
-  };
-
-  const shareJPG = async () => {
-    setExporting("share");
-    try {
-      const canvas = await capture();
-      const blob   = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", 0.95));
-      if (!blob) return;
-      const file = new File([blob], `result-${studentName}.jpg`, { type: "image/jpeg" });
-      if (navigator.share && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: `Result · ${studentName}`,
-          text: `${studentName} · ${exam.name} · ${madrasaName}`,
-        });
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a"); a.href = url; a.download = file.name; a.click();
-        URL.revokeObjectURL(url);
-      }
+      if (type === "jpg")   await downloadAsJPG(posterRef.current, stem);
+      if (type === "pdf")   await downloadAsPDF(posterRef.current, stem);
+      if (type === "share") await shareAsJPG(
+        posterRef.current, `${stem}.jpg`,
+        `Result · ${studentName}`,
+        `${studentName} · ${exam.name} · ${madrasaName}`,
+      );
+    } catch (err) {
+      console.error("Result card export failed", err);
     } finally { setExporting(null); }
   };
 
@@ -157,17 +123,17 @@ function ParentResultCard({
             <X className="w-4 h-4" />
           </button>
         )}
-        <button onClick={exportJPG} disabled={!!exporting}
+        <button onClick={() => run("jpg")} disabled={!!exporting}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
           {exporting === "jpg" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
           JPG
         </button>
-        <button onClick={exportPDF} disabled={!!exporting}
+        <button onClick={() => run("pdf")} disabled={!!exporting}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
           {exporting === "pdf" ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
           PDF
         </button>
-        <button onClick={shareJPG} disabled={!!exporting}
+        <button onClick={() => run("share")} disabled={!!exporting}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 transition-colors">
           {exporting === "share" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
           Share
@@ -200,7 +166,7 @@ function ParentResultCard({
           <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-100 border-2 border-gray-200 flex items-center justify-center shrink-0">
             {photo
               ? <img src={photo} alt={studentName} className="w-full h-full object-cover" />
-              : <span className="text-3xl">{studentGender === "FEMALE" ? "👩‍🎓" : "👨‍🎓"}</span>
+              : <span className="text-3xl">{studentGender === "FEMALE" ? "👩" : "👨"}</span>
             }
           </div>
           <div className="flex-1 min-w-0">
@@ -349,40 +315,23 @@ function ParentRankCard({
     reader.readAsDataURL(file);
   };
 
-  const capture = async () => {
-    const html2canvas = (await import("html2canvas")).default;
-    return html2canvas(posterRef.current!, { scale: 3, useCORS: true, backgroundColor: null, logging: false });
-  };
+  const stem = `rank-${rank}-${studentName}`.replace(/\s+/g, "-");
 
-  const exportJPG = async () => {
-    setExporting("jpg");
+  const run = async (type: "jpg" | "share") => {
+    if (!posterRef.current) return;
+    setExporting(type);
     try {
-      const canvas = await capture();
-      const a = document.createElement("a");
-      a.download = `rank-${rank}-${studentName.replace(/\s+/g, "-")}.jpg`;
-      a.href = canvas.toDataURL("image/jpeg", 0.95);
-      a.click();
-    } finally { setExporting(null); }
-  };
-
-  const shareJPG = async () => {
-    setExporting("share");
-    try {
-      const canvas = await capture();
-      const blob   = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", 0.95));
-      if (!blob) return;
-      const file = new File([blob], `rank-${rank}-${studentName}.jpg`, { type: "image/jpeg" });
-      if (navigator.share && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: `🎉 Congratulations ${studentName}!`,
-          text: `${studentName} secured ${RANK_LABELS[rank - 1]} in ${exam.name} · ${madrasaName}`,
-        });
+      if (type === "jpg") {
+        await downloadTransparentJPG(posterRef.current, stem);
       } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a"); a.href = url; a.download = file.name; a.click();
-        URL.revokeObjectURL(url);
+        await shareTransparentJPG(
+          posterRef.current, `${stem}.jpg`,
+          `Congratulations ${studentName}!`,
+          `${studentName} secured ${RANK_LABELS[rank - 1]} in ${exam.name} · ${madrasaName}`,
+        );
       }
+    } catch (err) {
+      console.error("Rank card export failed", err);
     } finally { setExporting(null); }
   };
 
@@ -399,13 +348,13 @@ function ParentRankCard({
             <X className="w-4 h-4" />
           </button>
         )}
-        <button onClick={exportJPG} disabled={!!exporting}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50">
+        <button onClick={() => run("jpg")} disabled={!!exporting}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
           {exporting === "jpg" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
           Download JPG
         </button>
-        <button onClick={shareJPG} disabled={!!exporting}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50">
+        <button onClick={() => run("share")} disabled={!!exporting}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 transition-colors">
           {exporting === "share" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
           Share
         </button>
@@ -433,7 +382,7 @@ function ParentRankCard({
           <div className="w-28 h-28 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white/30 flex items-center justify-center">
             {photo
               ? <img src={photo} alt={studentName} className="w-full h-full object-cover" />
-              : <span className="text-5xl">{studentGender === "FEMALE" ? "👩‍🎓" : "👨‍🎓"}</span>
+              : <span className="text-5xl">{studentGender === "FEMALE" ? "👩" : "👨"}</span>
             }
           </div>
           <div className="text-center">

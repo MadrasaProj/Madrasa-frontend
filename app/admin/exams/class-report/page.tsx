@@ -5,6 +5,7 @@ import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { ClassResultTable } from "@/components/exam/ClassResultTable";
 import { RankPoster } from "@/components/exam/RankPoster";
 import { MarklistPoster } from "@/components/exam/MarklistPoster";
+import { ResultAnnouncementPoster } from "@/components/exam/ResultAnnouncementPoster";
 import { ExcelImportModal } from "@/components/exam/ExcelImportModal";
 import {
   getClassReport, computeSummary, setFinalStatus,
@@ -535,43 +536,67 @@ function PostersTab({ rankedStudents, report, posterStudentId, setPosterStudentI
   madrasaName: string;
   madrasaLogo?: string | null;
 }) {
-  if (rankedStudents.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-gray-400 gap-3">
-        <Trophy className="w-12 h-12 opacity-30" />
-        <p className="text-sm">No ranked students yet. Compute grades first.</p>
-      </div>
-    );
-  }
+  const totalStudents = report.stats?.totalStudents ?? report.students.length;
+  const passCount     = report.stats?.passedCount ?? undefined;
 
   return (
-    <div className="space-y-6">
-      {/* Selector */}
-      <div className="flex gap-2 flex-wrap">
-        {rankedStudents.map((r) => (
-          <button key={r.student.id}
-            onClick={() => setPosterStudentId(r.student.id === posterStudentId ? null : r.student.id)}
-            className={cn(
-              "px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all",
-              posterStudentId === r.student.id
-                ? "border-blue-600 bg-blue-50 text-blue-700"
-                : "border-gray-200 bg-white text-gray-700 hover:border-blue-300",
-            )}
-          >
-            {r.summary.rank === 1 ? "🥇" : r.summary.rank === 2 ? "🥈" : "🥉"} {r.student.name}
-          </button>
-        ))}
+    <div className="space-y-8">
+
+      {/* ── Announcement poster ── */}
+      <div>
+        <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+          Result Announcement Poster
+        </h3>
+        <div className="max-w-sm mx-auto">
+          <ResultAnnouncementPoster
+            exam={report.exam}
+            madrasaName={madrasaName}
+            madrasaLogo={madrasaLogo}
+            stats={{
+              totalStudents,
+              passCount: passCount > 0 ? passCount : undefined,
+              className: report.class.name,
+            }}
+          />
+        </div>
       </div>
 
-      {posterRow && (
-        <motion.div
-          key={posterRow.student.id}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-sm mx-auto"
-        >
-          <RankPoster row={posterRow} report={report} madrasaName={madrasaName} madrasaLogo={madrasaLogo} />
-        </motion.div>
+      {/* ── Rank posters ── */}
+      {rankedStudents.length > 0 && (
+        <div>
+          <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+            Rank Posters
+          </h3>
+          {/* Selector */}
+          <div className="flex gap-2 flex-wrap mb-4">
+            {rankedStudents.map((r) => (
+              <button key={r.student.id}
+                onClick={() => setPosterStudentId(r.student.id === posterStudentId ? null : r.student.id)}
+                className={cn(
+                  "px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all",
+                  posterStudentId === r.student.id
+                    ? "border-blue-600 bg-blue-50 text-blue-700"
+                    : "border-gray-200 bg-white text-gray-700 hover:border-blue-300",
+                )}
+              >
+                {r.summary.rank === 1 ? "🥇" : r.summary.rank === 2 ? "🥈" : "🥉"} {r.student.name}
+              </button>
+            ))}
+          </div>
+
+          {posterRow && (
+            <motion.div
+              key={posterRow.student.id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="max-w-sm mx-auto"
+            >
+              <RankPoster row={posterRow} report={report} madrasaName={madrasaName} madrasaLogo={madrasaLogo} />
+            </motion.div>
+          )}
+        </div>
       )}
     </div>
   );
