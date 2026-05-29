@@ -1,3 +1,5 @@
+import { NETWORK_ERROR, TIMEOUT_ERROR } from "@/lib/fetch";
+
 const API_ORIGIN =
   import.meta.env.VITE_API_ORIGIN ?? "http://localhost:3000";
 const API_BASE_PATH = import.meta.env.VITE_API_BASE_PATH ?? "/api/v2";
@@ -62,14 +64,26 @@ export async function postJson<T>(
 
     return payload as T;
   } catch (err) {
+    if (err instanceof AuthApiError) throw err;
+
     if ((err as Error).name === "AbortError") {
-      throw new AuthApiError(
-        "Request timed out. Please check your connection.",
-        {
-          statusCode: 408,
-        },
-      );
+      throw new AuthApiError(TIMEOUT_ERROR, {
+        code: "TIMEOUT",
+        statusCode: 408,
+      });
     }
+
+    const msg = (err as Error)?.message ?? "";
+    if (
+      msg === "Failed to fetch" ||
+      msg.includes("NetworkError") ||
+      msg.includes("Network request failed") ||
+      msg.includes("ERR_CONNECTION_REFUSED") ||
+      msg.includes("ECONNREFUSED")
+    ) {
+      throw new AuthApiError(NETWORK_ERROR, { code: "NETWORK" });
+    }
+
     throw err;
   } finally {
     clearTimeout(timer);

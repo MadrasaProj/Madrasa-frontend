@@ -2,11 +2,11 @@ import { Sidebar, BottomNav } from "@/components/Navigation";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { Bell, ShieldAlert, X, ChevronDown } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
-import { tenantLoginPath } from "@/lib/tenant-routing";
+import { resolveLoginRedirectPath } from "@/lib/tenant-routing";
 import { getClientConfig } from "@/lib/config-api";
 
 // ── Parent Student Switcher ────────────────────────────────────────────────────
@@ -96,19 +96,26 @@ function SuperAdminViewingBanner() {
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const { user, activeClientId, hasHydrated, accessToken, setAttendanceMode, logout } = useAuthStore();
+  const { user, activeClientId, activeTenantSlug, hasHydrated, accessToken, setAttendanceMode, logout } = useAuthStore();
   const { lang } = useLanguageStore();
+  const loginRedirectPath = useCallback(() =>
+    resolveLoginRedirectPath({
+      pathname: window.location.pathname,
+      hostname: window.location.hostname,
+      user,
+      activeTenantSlug,
+    }), [activeTenantSlug, user]);
 
   // Global 401 handler — any API that dispatches "auth:unauthorized" triggers logout
   useEffect(() => {
     const handler = () => {
+      const redirectTo = loginRedirectPath();
       logout();
-      const slug = window.location.pathname.match(/^\/m\/([^/]+)/)?.[1] ?? null;
-      navigate(tenantLoginPath(slug), { replace: true });
+      navigate(redirectTo, { replace: true });
     };
     window.addEventListener("auth:unauthorized", handler);
     return () => window.removeEventListener("auth:unauthorized", handler);
-  }, [logout, navigate]);
+  }, [loginRedirectPath, logout, navigate]);
 
   // Sync attendanceMode when super admin switches to a madrasa
   useEffect(() => {
@@ -122,8 +129,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     if (!hasHydrated) return;
 
     if (!user) {
-      const slug = window.location.pathname.match(/^\/m\/([^/]+)/)?.[1] ?? null;
-      navigate(tenantLoginPath(slug), { replace: true });
+      navigate(loginRedirectPath(), { replace: true });
       return;
     }
 
@@ -146,7 +152,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     if (slugBase && pathname.startsWith(slugBase)) return;
 
     navigate(slugBase ?? roleBase, { replace: true });
-  }, [hasHydrated, pathname, navigate, user]);
+  }, [hasHydrated, loginRedirectPath, pathname, navigate, user]);
 
   if (!hasHydrated) {
     return (

@@ -128,15 +128,6 @@ export function resolveLoginRedirectPath(params: {
   const sessionRole = roleFromActorType(user?.actorType);
   if (sessionRole) return tenantLoginPath(tenantSlug, sessionRole);
 
-  const storedRole =
-    user?.role === "admin" ||
-    user?.role === "teacher" ||
-    user?.role === "parent" ||
-    user?.role === "committee"
-      ? user.role
-      : null;
-  if (storedRole) return tenantLoginPath(tenantSlug, storedRole);
-
   const routeRole = getRoleFromPath(pathname);
   if (routeRole) return tenantLoginPath(tenantSlug, routeRole);
 
