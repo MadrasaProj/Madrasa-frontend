@@ -9,8 +9,18 @@ import {
 import { useAuthStore } from "@/store/auth";
 import { useNavigate } from "react-router-dom";
 import {
-  Moon, BookOpen, Loader2, AlertCircle, CheckCircle2,
-  Save, Plus, Trash2, Hash, ToggleLeft, Edit2, X,
+  Moon,
+  BookOpen,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+  Save,
+  Plus,
+  Trash2,
+  Hash,
+  ToggleLeft,
+  Edit2,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,14 +34,20 @@ interface ItemForm {
   max: string;
 }
 
-const EMPTY_ITEM: ItemForm = { key: "", label: "", type: "boolean", min: "", max: "" };
+const EMPTY_ITEM: ItemForm = {
+  key: "",
+  label: "",
+  type: "boolean",
+  min: "",
+  max: "",
+};
 
 const PRAYERS: { field: keyof IbadahConfig; label: string; time: string }[] = [
-  { field: "enableFajr",    label: "Fajr",    time: "Dawn"      },
-  { field: "enableDhuhr",   label: "Dhuhr",   time: "Midday"    },
-  { field: "enableAsr",     label: "Asr",     time: "Afternoon" },
-  { field: "enableMaghrib", label: "Maghrib", time: "Sunset"    },
-  { field: "enableIsha",    label: "Isha",    time: "Night"     },
+  { field: "enableFajr", label: "Fajr", time: "Dawn" },
+  { field: "enableDhuhr", label: "Dhuhr", time: "Midday" },
+  { field: "enableAsr", label: "Asr", time: "Afternoon" },
+  { field: "enableMaghrib", label: "Maghrib", time: "Sunset" },
+  { field: "enableIsha", label: "Isha", time: "Night" },
 ];
 
 export default function SuperAdminIbadahPage() {
@@ -40,19 +56,19 @@ export default function SuperAdminIbadahPage() {
   const token = accessToken ?? "";
 
   const [config, setConfig] = useState<IbadahConfig | null>(null);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState<string | null>(null);
-  const [saving, setSaving]       = useState(false);
-  const [saved, setSaved]         = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const [showItemForm, setShowItemForm] = useState(false);
-  const [editingIdx, setEditingIdx]     = useState<number | null>(null);
-  const [itemForm, setItemForm]         = useState<ItemForm>(EMPTY_ITEM);
-  const [itemError, setItemError]       = useState<string | null>(null);
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [itemForm, setItemForm] = useState<ItemForm>(EMPTY_ITEM);
+  const [itemError, setItemError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user || (user.actorType !== "SUPER_ADMIN" && user.role !== "SUPER_ADMIN")) {
+    if (!user || user.actorType !== "SUPER_ADMIN") {
       navigate("/super-admin/login");
     }
   }, [user, navigate]);
@@ -77,13 +93,13 @@ export default function SuperAdminIbadahPage() {
     setSaveError(null);
     try {
       const updated = await updateSuperAdminIbadahConfig(token, {
-        enableFajr:       config.enableFajr,
-        enableDhuhr:      config.enableDhuhr,
-        enableAsr:        config.enableAsr,
-        enableMaghrib:    config.enableMaghrib,
-        enableIsha:       config.enableIsha,
+        enableFajr: config.enableFajr,
+        enableDhuhr: config.enableDhuhr,
+        enableAsr: config.enableAsr,
+        enableMaghrib: config.enableMaghrib,
+        enableIsha: config.enableIsha,
         enableQuranPages: config.enableQuranPages,
-        customItems:      config.customItems,
+        customItems: config.customItems,
       });
       setConfig(updated);
       setSaved(true);
@@ -105,11 +121,11 @@ export default function SuperAdminIbadahPage() {
   const openEditItem = (idx: number) => {
     const item = config!.customItems[idx];
     setItemForm({
-      key:   item.key,
+      key: item.key,
       label: item.label,
-      type:  item.type,
-      min:   item.min != null ? String(item.min) : "",
-      max:   item.max != null ? String(item.max) : "",
+      type: item.type,
+      min: item.min != null ? String(item.min) : "",
+      max: item.max != null ? String(item.max) : "",
     });
     setEditingIdx(idx);
     setItemError(null);
@@ -118,7 +134,10 @@ export default function SuperAdminIbadahPage() {
 
   const deleteItem = (idx: number) => {
     if (!config) return;
-    setConfig({ ...config, customItems: config.customItems.filter((_, i) => i !== idx) });
+    setConfig({
+      ...config,
+      customItems: config.customItems.filter((_, i) => i !== idx),
+    });
     setSaved(false);
   };
 
@@ -127,13 +146,29 @@ export default function SuperAdminIbadahPage() {
   const saveItem = () => {
     if (!config) return;
     const { key, label, type, min, max } = itemForm;
-    if (!key.trim()) { setItemError("Key required"); return; }
-    if (!validateKey(key.trim())) { setItemError("Key must start with letter, only letters/digits/underscore"); return; }
-    if (!label.trim()) { setItemError("Label required"); return; }
+    if (!key.trim()) {
+      setItemError("Key required");
+      return;
+    }
+    if (!validateKey(key.trim())) {
+      setItemError(
+        "Key must start with letter, only letters/digits/underscore",
+      );
+      return;
+    }
+    if (!label.trim()) {
+      setItemError("Label required");
+      return;
+    }
 
     // Check for duplicate key (excluding current edit index)
-    const duplicate = config.customItems.findIndex((item, i) => item.key === key.trim() && i !== editingIdx);
-    if (duplicate >= 0) { setItemError("Key already exists"); return; }
+    const duplicate = config.customItems.findIndex(
+      (item, i) => item.key === key.trim() && i !== editingIdx,
+    );
+    if (duplicate >= 0) {
+      setItemError("Key already exists");
+      return;
+    }
 
     const newItem: CustomItem = {
       key: key.trim(),
@@ -162,7 +197,8 @@ export default function SuperAdminIbadahPage() {
         title="Ibadah Config"
         subtitle="Manage prayer tracking &amp; custom items"
         icon={Moon}
-        back backHref="/super-admin"
+        back
+        backHref="/super-admin"
       />
 
       {loading ? (
@@ -175,12 +211,13 @@ export default function SuperAdminIbadahPage() {
         </div>
       ) : config ? (
         <div className="space-y-4 pb-28">
-
           {/* Prayer toggles */}
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
             <div className="px-4 py-3 bg-gray-50 flex items-center gap-2">
               <Moon className="w-4 h-4 text-emerald-600" />
-              <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Prayers</p>
+              <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">
+                Prayers
+              </p>
             </div>
             <div className="divide-y divide-gray-50">
               {PRAYERS.map(({ field, label, time }) => {
@@ -191,20 +228,35 @@ export default function SuperAdminIbadahPage() {
                     onClick={() => togglePrayer(field)}
                     className="w-full flex items-center gap-4 px-4 py-3.5 transition-colors text-left hover:bg-gray-50"
                   >
-                    <div className={cn(
-                      "w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 transition-all",
-                      enabled ? "bg-emerald-500 text-white" : "bg-gray-100 text-gray-400",
-                    )}>
+                    <div
+                      className={cn(
+                        "w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 transition-all",
+                        enabled
+                          ? "bg-emerald-500 text-white"
+                          : "bg-gray-100 text-gray-400",
+                      )}
+                    >
                       {enabled ? "ON" : "OFF"}
                     </div>
                     <div className="flex-1">
-                      <p className={cn("text-sm font-bold", enabled ? "text-emerald-800" : "text-gray-500")}>{label}</p>
+                      <p
+                        className={cn(
+                          "text-sm font-bold",
+                          enabled ? "text-emerald-800" : "text-gray-500",
+                        )}
+                      >
+                        {label}
+                      </p>
                       <p className="text-xs text-gray-400">{time}</p>
                     </div>
-                    <span className={cn(
-                      "text-xs font-semibold px-2 py-1 rounded-lg",
-                      enabled ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500",
-                    )}>
+                    <span
+                      className={cn(
+                        "text-xs font-semibold px-2 py-1 rounded-lg",
+                        enabled
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-gray-100 text-gray-500",
+                      )}
+                    >
                       {enabled ? "Enabled" : "Disabled"}
                     </span>
                   </button>
@@ -216,23 +268,42 @@ export default function SuperAdminIbadahPage() {
                 onClick={() => togglePrayer("enableQuranPages")}
                 className="w-full flex items-center gap-4 px-4 py-3.5 transition-colors text-left hover:bg-gray-50"
               >
-                <div className={cn(
-                  "w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 transition-all",
-                  config.enableQuranPages ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-400",
-                )}>
+                <div
+                  className={cn(
+                    "w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 transition-all",
+                    config.enableQuranPages
+                      ? "bg-blue-500 text-white"
+                      : "bg-gray-100 text-gray-400",
+                  )}
+                >
                   {config.enableQuranPages ? "ON" : "OFF"}
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-1.5">
                     <BookOpen className="w-4 h-4 text-blue-500" />
-                    <p className={cn("text-sm font-bold", config.enableQuranPages ? "text-blue-800" : "text-gray-500")}>Quran Pages</p>
+                    <p
+                      className={cn(
+                        "text-sm font-bold",
+                        config.enableQuranPages
+                          ? "text-blue-800"
+                          : "text-gray-500",
+                      )}
+                    >
+                      Quran Pages
+                    </p>
                   </div>
-                  <p className="text-xs text-gray-400">Daily page count tracking</p>
+                  <p className="text-xs text-gray-400">
+                    Daily page count tracking
+                  </p>
                 </div>
-                <span className={cn(
-                  "text-xs font-semibold px-2 py-1 rounded-lg",
-                  config.enableQuranPages ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500",
-                )}>
+                <span
+                  className={cn(
+                    "text-xs font-semibold px-2 py-1 rounded-lg",
+                    config.enableQuranPages
+                      ? "bg-blue-100 text-blue-700"
+                      : "bg-gray-100 text-gray-500",
+                  )}
+                >
                   {config.enableQuranPages ? "Enabled" : "Disabled"}
                 </span>
               </button>
@@ -242,7 +313,9 @@ export default function SuperAdminIbadahPage() {
           {/* Custom items */}
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
             <div className="px-4 py-3 bg-gray-50 flex items-center justify-between">
-              <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Custom Items</p>
+              <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">
+                Custom Items
+              </p>
               <button
                 onClick={openAddItem}
                 className="flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1.5 rounded-lg transition-colors"
@@ -258,21 +331,37 @@ export default function SuperAdminIbadahPage() {
             ) : (
               <div className="divide-y divide-gray-50">
                 {config.customItems.map((item, idx) => (
-                  <div key={item.key} className="flex items-center gap-3 px-4 py-3">
-                    <div className={cn(
-                      "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
-                      item.type === "boolean" ? "bg-purple-100" : "bg-orange-100",
-                    )}>
-                      {item.type === "boolean"
-                        ? <ToggleLeft className="w-4 h-4 text-purple-600" />
-                        : <Hash className="w-4 h-4 text-orange-600" />}
+                  <div
+                    key={item.key}
+                    className="flex items-center gap-3 px-4 py-3"
+                  >
+                    <div
+                      className={cn(
+                        "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+                        item.type === "boolean"
+                          ? "bg-purple-100"
+                          : "bg-orange-100",
+                      )}
+                    >
+                      {item.type === "boolean" ? (
+                        <ToggleLeft className="w-4 h-4 text-purple-600" />
+                      ) : (
+                        <Hash className="w-4 h-4 text-orange-600" />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-800 truncate">{item.label}</p>
+                      <p className="text-sm font-semibold text-gray-800 truncate">
+                        {item.label}
+                      </p>
                       <p className="text-xs text-gray-400">
-                        key: <code className="bg-gray-100 px-1 rounded">{item.key}</code>
-                        {" · "}{item.type}
-                        {item.type === "number" && (item.min != null || item.max != null)
+                        key:{" "}
+                        <code className="bg-gray-100 px-1 rounded">
+                          {item.key}
+                        </code>
+                        {" · "}
+                        {item.type}
+                        {item.type === "number" &&
+                        (item.min != null || item.max != null)
                           ? ` (${item.min ?? 0}–${item.max ?? "∞"})`
                           : ""}
                       </p>
@@ -304,16 +393,26 @@ export default function SuperAdminIbadahPage() {
                 <p className="text-sm font-bold text-gray-800">
                   {editingIdx !== null ? "Edit Item" : "New Custom Item"}
                 </p>
-                <button onClick={() => setShowItemForm(false)} className="p-1 rounded-lg hover:bg-gray-100">
+                <button
+                  onClick={() => setShowItemForm(false)}
+                  className="p-1 rounded-lg hover:bg-gray-100"
+                >
                   <X className="w-4 h-4 text-gray-400" />
                 </button>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Key <span className="text-gray-400 font-normal">(no spaces, unique)</span></label>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">
+                  Key{" "}
+                  <span className="text-gray-400 font-normal">
+                    (no spaces, unique)
+                  </span>
+                </label>
                 <input
                   value={itemForm.key}
-                  onChange={(e) => setItemForm((f) => ({ ...f, key: e.target.value }))}
+                  onChange={(e) =>
+                    setItemForm((f) => ({ ...f, key: e.target.value }))
+                  }
                   placeholder="e.g. dhikr_count"
                   className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-300"
                   disabled={editingIdx !== null}
@@ -321,17 +420,26 @@ export default function SuperAdminIbadahPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Label <span className="text-gray-400 font-normal">(shown to parents)</span></label>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">
+                  Label{" "}
+                  <span className="text-gray-400 font-normal">
+                    (shown to parents)
+                  </span>
+                </label>
                 <input
                   value={itemForm.label}
-                  onChange={(e) => setItemForm((f) => ({ ...f, label: e.target.value }))}
+                  onChange={(e) =>
+                    setItemForm((f) => ({ ...f, label: e.target.value }))
+                  }
                   placeholder="e.g. Morning Dhikr"
                   className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-300"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Type</label>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">
+                  Type
+                </label>
                 <div className="flex gap-2">
                   {(["boolean", "number"] as const).map((t) => (
                     <button
@@ -344,7 +452,11 @@ export default function SuperAdminIbadahPage() {
                           : "bg-white text-gray-600 border-gray-200",
                       )}
                     >
-                      {t === "boolean" ? <ToggleLeft className="w-3.5 h-3.5" /> : <Hash className="w-3.5 h-3.5" />}
+                      {t === "boolean" ? (
+                        <ToggleLeft className="w-3.5 h-3.5" />
+                      ) : (
+                        <Hash className="w-3.5 h-3.5" />
+                      )}
                       {t === "boolean" ? "Yes / No" : "Number"}
                     </button>
                   ))}
@@ -354,21 +466,35 @@ export default function SuperAdminIbadahPage() {
               {itemForm.type === "number" && (
                 <div className="flex gap-3">
                   <div className="flex-1">
-                    <label className="block text-xs font-semibold text-gray-500 mb-1">Min <span className="text-gray-400 font-normal">(optional)</span></label>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">
+                      Min{" "}
+                      <span className="text-gray-400 font-normal">
+                        (optional)
+                      </span>
+                    </label>
                     <input
                       type="number"
                       value={itemForm.min}
-                      onChange={(e) => setItemForm((f) => ({ ...f, min: e.target.value }))}
+                      onChange={(e) =>
+                        setItemForm((f) => ({ ...f, min: e.target.value }))
+                      }
                       placeholder="0"
                       className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-300"
                     />
                   </div>
                   <div className="flex-1">
-                    <label className="block text-xs font-semibold text-gray-500 mb-1">Max <span className="text-gray-400 font-normal">(optional)</span></label>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">
+                      Max{" "}
+                      <span className="text-gray-400 font-normal">
+                        (optional)
+                      </span>
+                    </label>
                     <input
                       type="number"
                       value={itemForm.max}
-                      onChange={(e) => setItemForm((f) => ({ ...f, max: e.target.value }))}
+                      onChange={(e) =>
+                        setItemForm((f) => ({ ...f, max: e.target.value }))
+                      }
                       placeholder="∞"
                       className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-300"
                     />
@@ -413,9 +539,13 @@ export default function SuperAdminIbadahPage() {
               {saving ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : saved ? (
-                <><CheckCircle2 className="w-5 h-5" /> Config Saved!</>
+                <>
+                  <CheckCircle2 className="w-5 h-5" /> Config Saved!
+                </>
               ) : (
-                <><Save className="w-5 h-5" /> Save Config</>
+                <>
+                  <Save className="w-5 h-5" /> Save Config
+                </>
               )}
             </button>
           </div>

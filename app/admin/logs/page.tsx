@@ -4,56 +4,69 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { getActivityLogs, type ActivityLogItem } from "@/lib/super-admin-api";
 import { useAuthStore } from "@/store/auth";
 import { motion } from "framer-motion";
-import { Activity, Loader2, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Activity,
+  Loader2,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ACTOR_COLORS: Record<string, string> = {
-  SUPER_ADMIN:  "bg-purple-100 text-purple-700",
+  SUPER_ADMIN: "bg-purple-100 text-purple-700",
   CLIENT_ADMIN: "bg-blue-100 text-blue-700",
-  TEACHER:      "bg-emerald-100 text-emerald-700",
-  PARENT:       "bg-amber-100 text-amber-700",
-  COMMITTEE:    "bg-pink-100 text-pink-700",
+  TEACHER: "bg-emerald-100 text-emerald-700",
+  PARENT: "bg-amber-100 text-amber-700",
+  COMMITTEE: "bg-pink-100 text-pink-700",
 };
 
 const ACTION_ICONS: Record<string, string> = {
-  AUTH_LOGIN:                   "🔐",
-  AUTH_IMPERSONATE:             "🎭",
-  ATTENDANCE_BULK_UPSERT:       "📋",
-  ATTENDANCE_UPDATE:            "✏️",
-  HOMEWORK_CREATE:              "📝",
-  HOMEWORK_UPDATE:              "✏️",
-  HOMEWORK_DELETE:              "🗑️",
-  HOMEWORK_SUBMISSIONS_UPDATE:  "✅",
-  DIARY_UPSERT:                 "📔",
-  DIARY_UPDATE:                 "✏️",
-  DIARY_DELETE:                 "🗑️",
-  IBADAH_BULK_UPSERT:           "🤲",
-  FEE_TYPE_CREATE:              "💰",
-  FEE_TYPE_UPDATE:              "✏️",
-  FEE_TYPE_DELETE:              "🗑️",
-  FEE_PAYMENT_RECORD:           "💳",
-  FEE_PAYMENT_UPDATE:           "✏️",
-  FEE_PAYMENTS_GENERATE:        "⚡",
-  NOTIFICATION_CREATE:          "🔔",
-  NOTIFICATION_DELETE:          "🗑️",
-  CLIENT_UPDATE:                "⚙️",
-  SUBSCRIPTION_PAYMENT_RECORD:  "💳",
+  AUTH_LOGIN: "🔐",
+  AUTH_IMPERSONATE: "🎭",
+  ATTENDANCE_BULK_UPSERT: "📋",
+  ATTENDANCE_UPDATE: "✏️",
+  HOMEWORK_CREATE: "📝",
+  HOMEWORK_UPDATE: "✏️",
+  HOMEWORK_DELETE: "🗑️",
+  HOMEWORK_SUBMISSIONS_UPDATE: "✅",
+  DIARY_UPSERT: "📔",
+  DIARY_UPDATE: "✏️",
+  DIARY_DELETE: "🗑️",
+  IBADAH_BULK_UPSERT: "🤲",
+  FEE_TYPE_CREATE: "💰",
+  FEE_TYPE_UPDATE: "✏️",
+  FEE_TYPE_DELETE: "🗑️",
+  FEE_PAYMENT_RECORD: "💳",
+  FEE_PAYMENT_UPDATE: "✏️",
+  FEE_PAYMENTS_GENERATE: "⚡",
+  NOTIFICATION_CREATE: "🔔",
+  NOTIFICATION_DELETE: "🗑️",
+  CLIENT_UPDATE: "⚙️",
+  SUBSCRIPTION_PAYMENT_RECORD: "💳",
 };
 
-const ALL_ACTORS = ["", "SUPER_ADMIN", "CLIENT_ADMIN", "TEACHER", "PARENT", "COMMITTEE"];
+const ALL_ACTORS = [
+  "",
+  "SUPER_ADMIN",
+  "CLIENT_ADMIN",
+  "TEACHER",
+  "PARENT",
+  "COMMITTEE",
+];
 const TAKE = 30;
 
 export default function ActivityLogsPage() {
   const { user, accessToken, activeClientId } = useAuthStore();
-  const cid   = activeClientId ?? "";
+  const cid = activeClientId ?? "";
   const token = accessToken ?? "";
 
-  const [logs, setLogs]       = useState<ActivityLogItem[]>([]);
-  const [total, setTotal]     = useState(0);
-  const [page, setPage]       = useState(0);
+  const [logs, setLogs] = useState<ActivityLogItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
   const [actorType, setActorType] = useState("");
-  const [action, setAction]       = useState("");
+  const [action, setAction] = useState("");
 
   const load = useCallback(() => {
     if (!cid || !token) return;
@@ -64,12 +77,17 @@ export default function ActivityLogsPage() {
       skip: page * TAKE,
       take: TAKE,
     })
-      .then((r) => { setLogs(r.data); setTotal(r.total); })
+      .then((r) => {
+        setLogs(r.data);
+        setTotal(r.total);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [cid, token, actorType, action, page]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const totalPages = Math.ceil(total / TAKE);
 
@@ -81,21 +99,35 @@ export default function ActivityLogsPage() {
       <div className="flex flex-wrap gap-3 mb-4">
         <select
           value={actorType}
-          onChange={(e) => { setActorType(e.target.value); setPage(0); }}
+          onChange={(e) => {
+            setActorType(e.target.value);
+            setPage(0);
+          }}
           className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400"
         >
           <option value="">All roles</option>
-          {ALL_ACTORS.slice(1).map((a) => <option key={a} value={a}>{a}</option>)}
+          {ALL_ACTORS.slice(1).map((a) => (
+            <option key={a} value={a}>
+              {a}
+            </option>
+          ))}
         </select>
         <input
           type="text"
           value={action}
-          onChange={(e) => { setAction(e.target.value.toUpperCase()); setPage(0); }}
+          onChange={(e) => {
+            setAction(e.target.value.toUpperCase());
+            setPage(0);
+          }}
           placeholder="Filter by action…"
           className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 min-w-[180px]"
         />
         <button
-          onClick={() => { setActorType(""); setAction(""); setPage(0); }}
+          onClick={() => {
+            setActorType("");
+            setAction("");
+            setPage(0);
+          }}
           className="text-xs text-gray-400 hover:text-gray-700 px-3 py-2 rounded-xl hover:bg-gray-50 transition-all"
         >
           Clear
@@ -122,7 +154,9 @@ export default function ActivityLogsPage() {
         <div className="text-center py-16 text-gray-400">
           <Activity className="w-10 h-10 mx-auto mb-3 opacity-30" />
           <p className="font-semibold">No activity found</p>
-          <p className="text-xs mt-1">Mutations and logins are recorded here.</p>
+          <p className="text-xs mt-1">
+            Mutations and logins are recorded here.
+          </p>
         </div>
       ) : (
         <div className="space-y-2 mb-6">
@@ -139,11 +173,16 @@ export default function ActivityLogsPage() {
               </span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                  <span className="text-sm font-semibold text-gray-900">{log.action}</span>
-                  <span className={cn(
-                    "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
-                    ACTOR_COLORS[log.actorType] ?? "bg-gray-100 text-gray-500",
-                  )}>
+                  <span className="text-sm font-semibold text-gray-900">
+                    {log.action}
+                  </span>
+                  <span
+                    className={cn(
+                      "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                      ACTOR_COLORS[log.actorType] ??
+                        "bg-gray-100 text-gray-500",
+                    )}
+                  >
                     {log.actorType}
                   </span>
                   {log.resource && (
@@ -155,19 +194,32 @@ export default function ActivityLogsPage() {
                 <p className="text-xs text-gray-500">
                   {log.actorName ?? log.actorId.slice(0, 20)}
                   {log.resourceId && (
-                    <span className="text-gray-300 ml-1">· {log.resourceId.slice(0, 8)}…</span>
+                    <span className="text-gray-300 ml-1">
+                      · {log.resourceId.slice(0, 8)}…
+                    </span>
                   )}
                 </p>
-                {log.meta && typeof log.meta === "object" && Object.keys(log.meta).length > 0 && (
+                {log.meta &&
+                typeof log.meta === "object" &&
+                Object.keys(log.meta as Record<string, unknown>).length > 0 ? (
                   <p className="text-[10px] text-gray-400 mt-0.5 font-mono truncate">
-                    {JSON.stringify(log.meta).slice(0, 80)}
+                    {JSON.stringify(log.meta as Record<string, unknown>).slice(
+                      0,
+                      80,
+                    )}
                   </p>
-                )}
+                ) : null}
               </div>
               <time className="text-[10px] text-gray-400 shrink-0 text-right">
-                {new Date(log.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+                {new Date(log.createdAt).toLocaleDateString("en-IN", {
+                  day: "2-digit",
+                  month: "short",
+                })}
                 <br />
-                {new Date(log.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                {new Date(log.createdAt).toLocaleTimeString("en-IN", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               </time>
             </motion.div>
           ))}

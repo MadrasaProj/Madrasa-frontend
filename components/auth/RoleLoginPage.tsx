@@ -28,7 +28,12 @@ import { normalizeUserSession, useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 
-type LoginType = "SUPER_ADMIN" | "CLIENT_ADMIN" | "TEACHER" | "PARENT" | "COMMITTEE";
+type LoginType =
+  | "SUPER_ADMIN"
+  | "CLIENT_ADMIN"
+  | "TEACHER"
+  | "PARENT"
+  | "COMMITTEE";
 
 type RoleLoginPageProps = {
   type: LoginType;
@@ -185,7 +190,9 @@ export default function RoleLoginPage({
         );
       }
 
-      const normalized = normalizeUserSession(session);
+      const normalized = normalizeUserSession(
+        session as import("@/store/auth").AuthSessionPayload,
+      );
       if (!normalized.user.tenantSlug && tenantSlug) {
         normalized.user.tenantSlug = tenantSlug;
       }
