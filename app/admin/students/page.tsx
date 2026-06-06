@@ -3,18 +3,34 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { DataTable, type Column } from "@/components/ui/DataTable";
-import { ImportModal, type ImportConfig, type ImportColumnDef, type ParseResult } from "@/components/ui/ImportModal";
 import {
-  getStudents, createStudent, updateStudent, deleteStudent,
-  type StudentRecord, type CreateStudentPayload,
+  ImportModal,
+  type ImportConfig,
+  type ImportColumnDef,
+  type ParseResult,
+} from "@/components/ui/ImportModal";
+import {
+  getStudents,
+  createStudent,
+  updateStudent,
+  deleteStudent,
+  type StudentRecord,
+  type CreateStudentPayload,
 } from "@/lib/students-api";
 import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import {
-  Users, Plus, Search, Eye, GraduationCap,
-  Loader2, Pencil, Upload, Trash2,
+  Users,
+  Plus,
+  Search,
+  Eye,
+  GraduationCap,
+  Loader2,
+  Pencil,
+  Upload,
+  Trash2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -22,9 +38,9 @@ import { cn } from "@/lib/utils";
 
 // Simple 2-color scheme: pink for girls, indigo for boys
 const GENDER_AVATAR = {
-  FEMALE: { bg: "bg-pink-100",   text: "text-pink-700"   },
-  MALE:   { bg: "bg-indigo-100", text: "text-indigo-700" },
-  null:   { bg: "bg-gray-100",   text: "text-gray-600"   },
+  FEMALE: { bg: "bg-pink-100", text: "text-pink-700" },
+  MALE: { bg: "bg-indigo-100", text: "text-indigo-700" },
+  null: { bg: "bg-gray-100", text: "text-gray-600" },
 };
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -33,15 +49,32 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 // ── Form state ────────────────────────────────────────────────────────────────
 
 interface FormState {
-  name: string; uid: string; adno: string; classId: string; gender: "MALE" | "FEMALE";
-  dateOfBirth: string; guardianName: string; parentPhone: string;
-  parentAltPhone: string; parentEmail: string;
-  relationToStudent: string; parentPassword: string;
+  name: string;
+  uid: string;
+  adno: string;
+  classId: string;
+  gender: "MALE" | "FEMALE";
+  dateOfBirth: string;
+  guardianName: string;
+  parentPhone: string;
+  parentAltPhone: string;
+  parentEmail: string;
+  relationToStudent: string;
+  parentPassword: string;
 }
 const EMPTY_FORM: FormState = {
-  name: "", uid: "", adno: "", classId: "", gender: "MALE",
-  dateOfBirth: "", guardianName: "", parentPhone: "",
-  parentAltPhone: "", parentEmail: "", relationToStudent: "father", parentPassword: "",
+  name: "",
+  uid: "",
+  adno: "",
+  classId: "",
+  gender: "MALE",
+  dateOfBirth: "",
+  guardianName: "",
+  parentPhone: "",
+  parentAltPhone: "",
+  parentEmail: "",
+  relationToStudent: "father",
+  parentPassword: "",
 };
 
 function studentToForm(s: StudentRecord): FormState {
@@ -64,8 +97,13 @@ function studentToForm(s: StudentRecord): FormState {
 // ── Import column definitions (static — no auth deps here) ───────────────────
 
 const STUDENT_IMPORT_COLUMNS: ImportColumnDef[] = [
-  { header: "Name",           field: "name",             required: true,  example: "Mohammed Abdullah" },
-  { header: "Admission No",   field: "adno",             required: true,  example: "ADM001" },
+  {
+    header: "Name",
+    field: "name",
+    required: true,
+    example: "Mohammed Abdullah",
+  },
+  { header: "Admission No", field: "adno", required: true, example: "ADM001" },
   {
     header: "Class",
     field: "classId",
@@ -73,7 +111,9 @@ const STUDENT_IMPORT_COLUMNS: ImportColumnDef[] = [
     parse: (val, ctx): ParseResult => {
       const classes = ctx.classes as ClassRecord[] | undefined;
       if (!val.trim()) return { ok: true, value: undefined };
-      const match = classes?.find(c => c.name.toLowerCase() === val.trim().toLowerCase());
+      const match = classes?.find(
+        (c) => c.name.toLowerCase() === val.trim().toLowerCase(),
+      );
       if (!match) return { ok: false, error: `Class "${val}" not found` };
       return { ok: true, value: match.id };
     },
@@ -85,7 +125,11 @@ const STUDENT_IMPORT_COLUMNS: ImportColumnDef[] = [
     parse: (val): ParseResult => {
       const v = val.trim().toUpperCase();
       if (!v) return { ok: true, value: undefined };
-      if (v !== "MALE" && v !== "FEMALE") return { ok: false, error: `Gender must be MALE or FEMALE (got "${val}")` };
+      if (v !== "MALE" && v !== "FEMALE")
+        return {
+          ok: false,
+          error: `Gender must be MALE or FEMALE (got "${val}")`,
+        };
       return { ok: true, value: v };
     },
   },
@@ -101,11 +145,12 @@ const STUDENT_IMPORT_COLUMNS: ImportColumnDef[] = [
         const iso = `${ddmm[3]}-${ddmm[2].padStart(2, "0")}-${ddmm[1].padStart(2, "0")}`;
         if (!isNaN(Date.parse(iso))) return { ok: true, value: iso };
       }
-      if (/^\d{4}-\d{2}-\d{2}$/.test(val) && !isNaN(Date.parse(val))) return { ok: true, value: val };
+      if (/^\d{4}-\d{2}-\d{2}$/.test(val) && !isNaN(Date.parse(val)))
+        return { ok: true, value: val };
       return { ok: false, error: `Invalid date "${val}" — use DD/MM/YYYY` };
     },
   },
-  { header: "Guardian Name",  field: "guardianName",     example: "Ahmed Abdullah" },
+  { header: "Guardian Name", field: "guardianName", example: "Ahmed Abdullah" },
   {
     header: "Phone",
     field: "parentPhone",
@@ -133,8 +178,19 @@ const STUDENT_IMPORT_COLUMNS: ImportColumnDef[] = [
     parse: (val): ParseResult => {
       const v = val.trim().toLowerCase();
       if (!v) return { ok: true, value: undefined };
-      const valid = ["father", "mother", "guardian", "uncle", "aunt", "grandparent"];
-      if (!valid.includes(v)) return { ok: false, error: `Relation must be one of: ${valid.join(", ")}` };
+      const valid = [
+        "father",
+        "mother",
+        "guardian",
+        "uncle",
+        "aunt",
+        "grandparent",
+      ];
+      if (!valid.includes(v))
+        return {
+          ok: false,
+          error: `Relation must be one of: ${valid.join(", ")}`,
+        };
       return { ok: true, value: v };
     },
   },
@@ -144,7 +200,8 @@ const STUDENT_IMPORT_COLUMNS: ImportColumnDef[] = [
     example: "pass123",
     validate: (val) => {
       if (!val) return null;
-      if (String(val).length < 6) return "Password must be at least 6 characters";
+      if (String(val).length < 6)
+        return "Password must be at least 6 characters";
       return null;
     },
   },
@@ -160,22 +217,22 @@ export default function AdminStudentsPage() {
   const slugMatch = pathname.match(/^\/m\/([^/]+)\//);
   const slugPrefix = slugMatch ? `/m/${slugMatch[1]}` : "";
 
-  const [students, setStudents]     = useState<StudentRecord[]>([]);
-  const [total, setTotal]           = useState(0);
-  const [page, setPage]             = useState(1);
-  const [pageSize, setPageSize]     = useState(DEFAULT_PAGE_SIZE);
-  const [sortBy, setSortBy]         = useState<string | undefined>(undefined);
-  const [sortDir, setSortDir]       = useState<"asc" | "desc">("asc");
-  const [classes, setClasses]       = useState<ClassRecord[]>([]);
-  const [search, setSearch]         = useState("");
+  const [students, setStudents] = useState<StudentRecord[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [sortBy, setSortBy] = useState<string | undefined>(undefined);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [classes, setClasses] = useState<ClassRecord[]>([]);
+  const [search, setSearch] = useState("");
   const [activeClassId, setActiveClassId] = useState<string | "all">("all");
-  const [gender, setGender]         = useState<"all" | "MALE" | "FEMALE">("all");
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState<string | null>(null);
+  const [gender, setGender] = useState<"all" | "MALE" | "FEMALE">("all");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Drawer state: null = closed, "add" = adding, StudentRecord = editing
-  const [drawer, setDrawer]         = useState<null | "add" | StudentRecord>(null);
-  const [form, setForm]             = useState<FormState>(EMPTY_FORM);
+  const [drawer, setDrawer] = useState<null | "add" | StudentRecord>(null);
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -189,47 +246,74 @@ export default function AdminStudentsPage() {
     const ac = new AbortController();
     getAllClasses(activeClientId, accessToken, ac.signal)
       .then(setClasses)
-      .catch((e) => { setError((e as Error).message); });
+      .catch((e) => {
+        setError((e as Error).message);
+      });
     return () => ac.abort();
   }, [activeClientId, accessToken]);
 
-  const loadStudents = useCallback(async (
-    pg: number, srch: string, clsId: string, gen: "all" | "MALE" | "FEMALE",
-    lim: number, sb?: string, sd?: "asc" | "desc",
-  ) => {
-    if (!activeClientId || !accessToken) return;
-    setLoading(true); setError(null);
-    try {
-      const res = await getStudents(activeClientId, accessToken, {
-        page: pg, limit: lim,
-        search: srch || undefined,
-        classId: clsId !== "all" ? clsId : undefined,
-        gender: gen !== "all" ? gen : undefined,
-        status: "ACTIVE",
-        sortBy: sb,
-        sortOrder: sd,
-      });
-      setStudents(res.data);
-      setTotal(res.total);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [activeClientId, accessToken]);
+  const loadStudents = useCallback(
+    async (
+      pg: number,
+      srch: string,
+      clsId: string,
+      gen: "all" | "MALE" | "FEMALE",
+      lim: number,
+      sb?: string,
+      sd?: "asc" | "desc",
+    ) => {
+      if (!activeClientId || !accessToken) return;
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await getStudents(activeClientId, accessToken, {
+          page: pg,
+          limit: lim,
+          search: srch || undefined,
+          classId: clsId !== "all" ? clsId : undefined,
+          gender: gen !== "all" ? gen : undefined,
+          status: "ACTIVE",
+          sortBy: sb,
+          sortOrder: sd,
+        });
+        setStudents(res.data);
+        setTotal(res.total);
+      } catch (err) {
+        setError((err as Error).message);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [activeClientId, accessToken],
+  );
 
   useEffect(() => {
-    loadStudents(page, search, activeClassId, gender, pageSize, sortBy, sortDir);
+    loadStudents(
+      page,
+      search,
+      activeClassId,
+      gender,
+      pageSize,
+      sortBy,
+      sortDir,
+    );
   }, [page, activeClassId, gender, pageSize, sortBy, sortDir, loadStudents]); // eslint-disable-line
 
   const handleSearch = (val: string) => {
-    setSearch(val); setPage(1);
+    setSearch(val);
+    setPage(1);
     if (searchTimer.current) clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => loadStudents(1, val, activeClassId, gender, pageSize, sortBy, sortDir), 400);
+    searchTimer.current = setTimeout(
+      () =>
+        loadStudents(1, val, activeClassId, gender, pageSize, sortBy, sortDir),
+      400,
+    );
   };
 
   const handleSort = (key: string, dir: "asc" | "desc") => {
-    setSortBy(key); setSortDir(dir); setPage(1);
+    setSortBy(key);
+    setSortDir(dir);
+    setPage(1);
   };
 
   const openAdd = () => {
@@ -248,7 +332,8 @@ export default function AdminStudentsPage() {
 
   const handleSubmit = async () => {
     if (!activeClientId || !accessToken) return;
-    setSubmitting(true); setSubmitError(null);
+    setSubmitting(true);
+    setSubmitError(null);
     try {
       const payload: CreateStudentPayload = {
         name: form.name.trim(),
@@ -257,13 +342,21 @@ export default function AdminStudentsPage() {
         ...(form.classId ? { classId: form.classId } : {}),
         gender: form.gender,
         ...(form.dateOfBirth ? { dateOfBirth: form.dateOfBirth } : {}),
-        ...(form.guardianName ? { guardianName: form.guardianName.trim() } : {}),
+        ...(form.guardianName
+          ? { guardianName: form.guardianName.trim() }
+          : {}),
         ...(form.parentPhone ? { parentPhone: form.parentPhone.trim() } : {}),
-        ...(form.parentAltPhone ? { parentAltPhone: form.parentAltPhone.trim() } : {}),
+        ...(form.parentAltPhone
+          ? { parentAltPhone: form.parentAltPhone.trim() }
+          : {}),
         ...(form.parentEmail ? { parentEmail: form.parentEmail.trim() } : {}),
-        ...(form.relationToStudent ? { relationToStudent: form.relationToStudent } : {}),
+        ...(form.relationToStudent
+          ? { relationToStudent: form.relationToStudent }
+          : {}),
         ...(form.parentPassword ? { parentPassword: form.parentPassword } : {}),
-        ...(user?.defaultAcademicYearId ? { accademicYearId: user.defaultAcademicYearId } : {}),
+        ...(user?.defaultAcademicYearId
+          ? { accademicYearId: user.defaultAcademicYearId }
+          : {}),
       };
 
       if (typeof drawer === "object" && drawer !== null) {
@@ -285,7 +378,12 @@ export default function AdminStudentsPage() {
   };
 
   const handleDelete = async (student: StudentRecord) => {
-    if (!window.confirm(`Delete student "${student.name}"? This action cannot be undone.`)) return;
+    if (
+      !window.confirm(
+        `Delete student "${student.name}"? This action cannot be undone.`,
+      )
+    )
+      return;
     try {
       await deleteStudent(activeClientId!, accessToken!, student.id);
       setDrawer(null);
@@ -301,104 +399,143 @@ export default function AdminStudentsPage() {
   const canWrite = user?.actorType !== "TEAM_LEADER";
 
   // Import config (bound to current auth + classes)
-  const importConfig = useMemo<ImportConfig<CreateStudentPayload>>(() => ({
-    entityName: "Students",
-    templateFilename: "student-import-template",
-    columns: STUDENT_IMPORT_COLUMNS,
-    createRow: (row) => createStudent(activeClientId!, accessToken!, {
-      ...row,
-      ...(user?.defaultAcademicYearId ? { accademicYearId: user.defaultAcademicYearId } : {}),
+  const importConfig = useMemo<ImportConfig<CreateStudentPayload>>(
+    () => ({
+      entityName: "Students",
+      templateFilename: "student-import-template",
+      columns: STUDENT_IMPORT_COLUMNS,
+      createRow: (row) =>
+        createStudent(activeClientId!, accessToken!, {
+          ...row,
+          ...(user?.defaultAcademicYearId
+            ? { accademicYearId: user.defaultAcademicYearId }
+            : {}),
+        }),
+      context: { classes },
     }),
-    context: { classes },
-  }), [activeClientId, accessToken, user?.defaultAcademicYearId, classes]); // eslint-disable-line
+    [activeClientId, accessToken, user?.defaultAcademicYearId, classes],
+  ); // eslint-disable-line
 
   // DataTable column definitions
-  const columns = useMemo((): Column<StudentRecord>[] => [
-    {
-      key: "name",
-      header: "Student",
-      sortable: true,
-      render: (s) => {
-        const av = s.gender === "FEMALE" ? GENDER_AVATAR.FEMALE : GENDER_AVATAR.MALE;
-        return (
-          <div className="flex items-center gap-3">
-            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0", av.bg, av.text)}>
-              {s.name.charAt(0)}
+  const columns = useMemo(
+    (): Column<StudentRecord>[] => [
+      {
+        key: "name",
+        header: "Student",
+        sortable: true,
+        render: (s) => {
+          const av =
+            s.gender === "FEMALE" ? GENDER_AVATAR.FEMALE : GENDER_AVATAR.MALE;
+          return (
+            <div className="flex items-center gap-3">
+              <div
+                className={cn(
+                  "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0",
+                  av.bg,
+                  av.text,
+                )}
+              >
+                {s.name.charAt(0)}
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900 text-sm leading-tight">
+                  {s.name}
+                </p>
+                <p className="text-xs text-gray-400">{s.adno}</p>
+              </div>
             </div>
-            <div>
-              <p className="font-semibold text-gray-900 text-sm leading-tight">{s.name}</p>
-              <p className="text-xs text-gray-400">{s.adno}</p>
-            </div>
-          </div>
-        );
+          );
+        },
       },
-    },
-    {
-      key: "class",
-      header: "Class",
-      render: (s) => s.class
-        ? <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-gray-100 text-gray-700">{s.class.name}</span>
-        : <span className="text-gray-300">—</span>,
-    },
-    {
-      key: "gender",
-      header: "Gender",
-      sortable: true,
-      render: (s) => (
-        <span className={cn(
-          "text-xs font-semibold px-2.5 py-1 rounded-lg",
-          s.gender === "FEMALE" ? "bg-pink-100 text-pink-700" : "bg-indigo-100 text-indigo-700",
-        )}>
-          {s.gender === "FEMALE" ? "Girls" : "Boys"}
-        </span>
-      ),
-      className: "hidden sm:table-cell",
-      headerClass: "hidden sm:table-cell",
-    },
-    {
-      key: "guardianName",
-      header: "Guardian",
-      sortable: true,
-      render: (s) => s.guardianName
-        ? <span className="text-sm text-gray-600">{s.guardianName}</span>
-        : <span className="text-gray-300">—</span>,
-      className: "hidden lg:table-cell",
-      headerClass: "hidden lg:table-cell",
-    },
-    {
-      key: "actions",
-      header: "",
-      render: (s) => (
-        <div className="flex items-center gap-1.5 justify-end">
-          {canWrite && (
-            <>
-              <button
-                onClick={(e) => { e.stopPropagation(); openEdit(s); }}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors text-xs font-semibold"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Edit</span>
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); handleDelete(s); }}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </>
-          )}
-          <button
-            onClick={(e) => { e.stopPropagation(); navigate(`${slugPrefix}/admin/students/${s.id}`); }}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors text-xs font-semibold"
+      {
+        key: "class",
+        header: "Class",
+        render: (s) =>
+          s.class ? (
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-gray-100 text-gray-700">
+              {s.class.name}
+            </span>
+          ) : (
+            <span className="text-gray-300">—</span>
+          ),
+      },
+      {
+        key: "gender",
+        header: "Gender",
+        sortable: true,
+        render: (s) => (
+          <span
+            className={cn(
+              "text-xs font-semibold px-2.5 py-1 rounded-lg",
+              s.gender === "FEMALE"
+                ? "bg-pink-100 text-pink-700"
+                : "bg-indigo-100 text-indigo-700",
+            )}
           >
-            <Eye className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{t("adminPages", "viewBtn", lang)}</span>
-          </button>
-        </div>
-      ),
-      className: "text-right",
-    },
-  ], [lang, navigate, canWrite]); // eslint-disable-line
+            {s.gender === "FEMALE" ? "Girls" : "Boys"}
+          </span>
+        ),
+        className: "hidden sm:table-cell",
+        headerClass: "hidden sm:table-cell",
+      },
+      {
+        key: "guardianName",
+        header: "Guardian",
+        sortable: true,
+        render: (s) =>
+          s.guardianName ? (
+            <span className="text-sm text-gray-600">{s.guardianName}</span>
+          ) : (
+            <span className="text-gray-300">—</span>
+          ),
+        className: "hidden lg:table-cell",
+        headerClass: "hidden lg:table-cell",
+      },
+      {
+        key: "actions",
+        header: "",
+        render: (s) => (
+          <div className="flex items-center gap-1.5 justify-end">
+            {canWrite && (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openEdit(s);
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors text-xs font-semibold"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  {/* <span className="hidden sm:inline">Edit</span> */}
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(s);
+                  }}
+                  className="p-1.5 rounded-lg text-red-400 bg-red-50 hover:bg-red-100 hover:text-red-500  transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </>
+            )}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`${slugPrefix}/admin/students/${s.id}`);
+              }}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors text-xs font-semibold"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              {/* <span className="hidden sm:inline">{t("adminPages", "viewBtn", lang)}</span> */}
+            </button>
+          </div>
+        ),
+        className: "text-right",
+      },
+    ],
+    [lang, navigate, canWrite],
+  ); // eslint-disable-line
 
   return (
     <DashboardLayout>
@@ -420,14 +557,30 @@ export default function AdminStudentsPage() {
                 onClick={openAdd}
                 className="flex items-center gap-1.5 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-colors"
               >
-                <Plus className="w-4 h-4" /> {t("adminPages", "addStudent", lang)}
+                <Plus className="w-4 h-4" />{" "}
+                {t("adminPages", "addStudent", lang)}
               </button>
             </div>
           ) : undefined
         }
       />
 
-      {error && <ApiErrorBanner message={error} onRetry={() => loadStudents(page, search, activeClassId, gender, pageSize, sortBy, sortDir)} />}
+      {error && (
+        <ApiErrorBanner
+          message={error}
+          onRetry={() =>
+            loadStudents(
+              page,
+              search,
+              activeClassId,
+              gender,
+              pageSize,
+              sortBy,
+              sortDir,
+            )
+          }
+        />
+      )}
 
       {/* Search */}
       <div className="relative mb-4">
@@ -446,13 +599,17 @@ export default function AdminStudentsPage() {
           <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
           <select
             value={activeClassId}
-            onChange={(e) => { setActiveClassId(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setActiveClassId(e.target.value);
+              setPage(1);
+            }}
             className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 appearance-none cursor-pointer"
           >
             <option value="all">All Classes ({total})</option>
             {classes.map((cls) => (
               <option key={cls.id} value={cls.id}>
-                {cls.name}{cls.studentCount != null ? ` (${cls.studentCount})` : ""}
+                {cls.name}
+                {cls.studentCount != null ? ` (${cls.studentCount})` : ""}
               </option>
             ))}
           </select>
@@ -460,7 +617,10 @@ export default function AdminStudentsPage() {
         <div className="relative">
           <select
             value={gender}
-            onChange={(e) => { setGender(e.target.value as typeof gender); setPage(1); }}
+            onChange={(e) => {
+              setGender(e.target.value as typeof gender);
+              setPage(1);
+            }}
             className="pl-3 pr-8 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 appearance-none cursor-pointer"
           >
             <option value="all">All</option>
@@ -485,46 +645,69 @@ export default function AdminStudentsPage() {
         sortKey={sortBy}
         sortDir={sortDir}
         pagination={{
-          page, totalPages, total,
-          pageSize, pageSizeOptions: PAGE_SIZE_OPTIONS,
+          page,
+          totalPages,
+          total,
+          pageSize,
+          pageSizeOptions: PAGE_SIZE_OPTIONS,
           onPageChange: setPage,
-          onPageSizeChange: (sz) => { setPageSize(sz); setPage(1); },
+          onPageSizeChange: (sz) => {
+            setPageSize(sz);
+            setPage(1);
+          },
         }}
         mobileRender={(s) => {
           return (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={cn(
-                  "w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg shrink-0",
-                  s.gender === "FEMALE" ? "bg-pink-100 text-pink-700" : "bg-indigo-100 text-indigo-700",
-                )}>
+                <div
+                  className={cn(
+                    "w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg shrink-0",
+                    s.gender === "FEMALE"
+                      ? "bg-pink-100 text-pink-700"
+                      : "bg-indigo-100 text-indigo-700",
+                  )}
+                >
                   {s.name.charAt(0)}
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900 text-sm">{s.name}</p>
+                  <p className="font-semibold text-gray-900 text-sm">
+                    {s.name}
+                  </p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    {s.adno}{s.class?.name ? ` · ${s.class.name}` : ""}
+                    {s.adno}
+                    {s.class?.name ? ` · ${s.class.name}` : ""}
                   </p>
                   {s.guardianName && (
-                    <p className="text-xs text-gray-400 mt-0.5">{s.guardianName}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {s.guardianName}
+                    </p>
                   )}
                 </div>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 {canWrite && (
                   <button
-                    onClick={(e) => { e.stopPropagation(); openEdit(s); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEdit(s);
+                    }}
                     className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
                   >
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
                 )}
                 <button
-                  onClick={(e) => { e.stopPropagation(); navigate(`${slugPrefix}/admin/students/${s.id}`); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`${slugPrefix}/admin/students/${s.id}`);
+                  }}
                   className="flex items-center gap-1 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors text-xs font-semibold"
                 >
                   <Eye className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">{t("adminPages", "viewBtn", lang)}</span>
+                  <span className="hidden sm:inline">
+                    {t("adminPages", "viewBtn", lang)}
+                  </span>
                 </button>
               </div>
             </div>
@@ -536,13 +719,19 @@ export default function AdminStudentsPage() {
       <AnimatePresence>
         {drawer !== null && (
           <>
-            <motion.div key="drawer-backdrop"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            <motion.div
+              key="drawer-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               onClick={() => setDrawer(null)}
               className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
             />
-            <motion.div key="drawer-panel"
-              initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+            <motion.div
+              key="drawer-panel"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
               className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[92dvh] flex flex-col"
             >
@@ -552,67 +741,141 @@ export default function AdminStudentsPage() {
               <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
                 <div>
                   <h2 className="font-bold text-gray-900 text-lg">
-                    {isEditing ? "Edit Student" : t("adminPages", "newAdmission", lang)}
+                    {isEditing
+                      ? "Edit Student"
+                      : t("adminPages", "newAdmission", lang)}
                   </h2>
-                  <p className="text-xs text-gray-400 mt-0.5">{t("adminPages", "fillStudentDetails", lang)}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {t("adminPages", "fillStudentDetails", lang)}
+                  </p>
                 </div>
-                <button onClick={() => setDrawer(null)}
-                  className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200">
+                <button
+                  onClick={() => setDrawer(null)}
+                  className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200"
+                >
                   ✕
                 </button>
               </div>
 
               <div className="overflow-y-auto flex-1 px-5 py-4 space-y-6 pb-8">
                 {submitError && (
-                  <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl">{submitError}</div>
+                  <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl">
+                    {submitError}
+                  </div>
                 )}
 
                 {/* Student Info */}
                 <section>
                   <div className="flex items-center gap-2 mb-3">
-                    <div className="w-5 h-5 rounded-full bg-emerald-600 flex items-center justify-center text-white text-xs font-bold">1</div>
-                    <p className="text-sm font-bold text-emerald-700 uppercase tracking-wide">{t("adminPages", "studentInfo", lang)}</p>
+                    <div className="w-5 h-5 rounded-full bg-emerald-600 flex items-center justify-center text-white text-xs font-bold">
+                      1
+                    </div>
+                    <p className="text-sm font-bold text-emerald-700 uppercase tracking-wide">
+                      {t("adminPages", "studentInfo", lang)}
+                    </p>
                   </div>
                   <div className="space-y-3">
-                    {([
-                      { key: "name" as const,        label: t("adminPages", "studentName", lang),    placeholder: t("adminPages", "fullName", lang),      type: "text" },
-                      { key: "uid" as const,         label: "Student UID",                           placeholder: "Optional unique identifier",           type: "text" },
-                      { key: "adno" as const,        label: t("adminPages", "admissionNumber", lang), placeholder: t("adminPages", "admNoPlaceholder", lang), type: "text" },
-                      { key: "dateOfBirth" as const, label: t("adminPages", "dateOfBirth2", lang),    placeholder: "",                                     type: "date" },
-                    ]).map(({ key, label, placeholder, type }) => (
+                    {[
+                      {
+                        key: "name" as const,
+                        label: t("adminPages", "studentName", lang),
+                        placeholder: t("adminPages", "fullName", lang),
+                        type: "text",
+                      },
+                      {
+                        key: "uid" as const,
+                        label: "Student UID",
+                        placeholder: "Optional unique identifier",
+                        type: "text",
+                      },
+                      {
+                        key: "adno" as const,
+                        label: t("adminPages", "admissionNumber", lang),
+                        placeholder: t("adminPages", "admNoPlaceholder", lang),
+                        type: "text",
+                      },
+                      {
+                        key: "dateOfBirth" as const,
+                        label: t("adminPages", "dateOfBirth2", lang),
+                        placeholder: "",
+                        type: "date",
+                      },
+                    ].map(({ key, label, placeholder, type }) => (
                       <div key={key}>
-                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">{label}</label>
-                        <input type={type} placeholder={placeholder} value={form[key]}
-                          onChange={(e) => { setForm(f => ({ ...f, [key]: e.target.value })); setFieldErrors(fe => ({ ...fe, [key]: "" })); }}
+                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                          {label}
+                        </label>
+                        <input
+                          type={type}
+                          placeholder={placeholder}
+                          value={form[key]}
+                          onChange={(e) => {
+                            setForm((f) => ({ ...f, [key]: e.target.value }));
+                            setFieldErrors((fe) => ({ ...fe, [key]: "" }));
+                          }}
                           className={cn(
                             "w-full px-4 py-3 rounded-2xl border bg-gray-50 focus:outline-none focus:bg-white text-sm transition-colors",
-                            fieldErrors[key] ? "border-red-400 focus:border-red-400" : "border-gray-200 focus:border-emerald-400",
+                            fieldErrors[key]
+                              ? "border-red-400 focus:border-red-400"
+                              : "border-gray-200 focus:border-emerald-400",
                           )}
                         />
-                        {fieldErrors[key] && <p className="text-xs text-red-500 mt-1 px-1">{fieldErrors[key]}</p>}
+                        {fieldErrors[key] && (
+                          <p className="text-xs text-red-500 mt-1 px-1">
+                            {fieldErrors[key]}
+                          </p>
+                        )}
                       </div>
                     ))}
                     <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t("adminPages", "gender", lang)}</label>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                        {t("adminPages", "gender", lang)}
+                      </label>
                       <div className="grid grid-cols-2 gap-2">
                         {(["MALE", "FEMALE"] as const).map((g) => (
-                          <label key={g} className={cn(
-                            "flex items-center justify-center gap-2 py-3 rounded-2xl border text-sm font-semibold cursor-pointer transition-all",
-                            form.gender === g ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-gray-200 bg-gray-50 text-gray-700",
-                          )}>
-                            <input type="radio" name="gender" value={g} checked={form.gender === g}
-                              onChange={() => setForm(f => ({ ...f, gender: g }))} className="sr-only" />
-                            {g === "MALE" ? t("adminPages", "male", lang) : t("adminPages", "female", lang)}
+                          <label
+                            key={g}
+                            className={cn(
+                              "flex items-center justify-center gap-2 py-3 rounded-2xl border text-sm font-semibold cursor-pointer transition-all",
+                              form.gender === g
+                                ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                                : "border-gray-200 bg-gray-50 text-gray-700",
+                            )}
+                          >
+                            <input
+                              type="radio"
+                              name="gender"
+                              value={g}
+                              checked={form.gender === g}
+                              onChange={() =>
+                                setForm((f) => ({ ...f, gender: g }))
+                              }
+                              className="sr-only"
+                            />
+                            {g === "MALE"
+                              ? t("adminPages", "male", lang)
+                              : t("adminPages", "female", lang)}
                           </label>
                         ))}
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t("adminPages", "classField", lang)}</label>
-                      <select value={form.classId} onChange={(e) => setForm(f => ({ ...f, classId: e.target.value }))}
-                        className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm">
+                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                        {t("adminPages", "classField", lang)}
+                      </label>
+                      <select
+                        value={form.classId}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, classId: e.target.value }))
+                        }
+                        className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
+                      >
                         <option value="">— No class —</option>
-                        {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        {classes.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   </div>
@@ -623,35 +886,97 @@ export default function AdminStudentsPage() {
                 {/* Parent Info */}
                 <section>
                   <div className="flex items-center gap-2 mb-3">
-                    <div className="w-5 h-5 rounded-full bg-teal-600 flex items-center justify-center text-white text-xs font-bold">2</div>
-                    <p className="text-sm font-bold text-teal-700 uppercase tracking-wide">{t("adminPages", "parentInfo", lang)}</p>
+                    <div className="w-5 h-5 rounded-full bg-teal-600 flex items-center justify-center text-white text-xs font-bold">
+                      2
+                    </div>
+                    <p className="text-sm font-bold text-teal-700 uppercase tracking-wide">
+                      {t("adminPages", "parentInfo", lang)}
+                    </p>
                   </div>
                   <div className="space-y-3">
-                    {([
-                      { key: "guardianName" as const,   label: t("adminPages", "fatherNameForm", lang), placeholder: t("adminPages", "fatherFullName", lang), type: "text"     },
-                      { key: "parentPhone" as const,    label: t("adminPages", "phoneNumber", lang),    placeholder: t("adminPages", "tenDigitMobile", lang), type: "tel"      },
-                      { key: "parentAltPhone" as const, label: "Alt. Phone",                             placeholder: "Alternate mobile",                      type: "tel"      },
-                      { key: "parentEmail" as const,    label: "Parent Email",                           placeholder: "parent@email.com",                      type: "email"    },
-                      { key: "parentPassword" as const, label: t("adminPages", "parentLoginPwd", lang), placeholder: t("adminPages", "minSixChars", lang),    type: "password" },
-                    ]).map(({ key, label, placeholder, type }) => (
+                    {[
+                      {
+                        key: "guardianName" as const,
+                        label: t("adminPages", "fatherNameForm", lang),
+                        placeholder: t("adminPages", "fatherFullName", lang),
+                        type: "text",
+                      },
+                      {
+                        key: "parentPhone" as const,
+                        label: t("adminPages", "phoneNumber", lang),
+                        placeholder: t("adminPages", "tenDigitMobile", lang),
+                        type: "tel",
+                      },
+                      {
+                        key: "parentAltPhone" as const,
+                        label: "Alt. Phone",
+                        placeholder: "Alternate mobile",
+                        type: "tel",
+                      },
+                      {
+                        key: "parentEmail" as const,
+                        label: "Parent Email",
+                        placeholder: "parent@email.com",
+                        type: "email",
+                      },
+                      {
+                        key: "parentPassword" as const,
+                        label: t("adminPages", "parentLoginPwd", lang),
+                        placeholder: t("adminPages", "minSixChars", lang),
+                        type: "password",
+                      },
+                    ].map(({ key, label, placeholder, type }) => (
                       <div key={key}>
-                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">{label}</label>
-                        <input type={type} placeholder={placeholder} value={form[key]}
-                          onChange={(e) => { setForm(f => ({ ...f, [key]: e.target.value })); setFieldErrors(fe => ({ ...fe, [key]: "" })); }}
+                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                          {label}
+                        </label>
+                        <input
+                          type={type}
+                          placeholder={placeholder}
+                          value={form[key]}
+                          onChange={(e) => {
+                            setForm((f) => ({ ...f, [key]: e.target.value }));
+                            setFieldErrors((fe) => ({ ...fe, [key]: "" }));
+                          }}
                           className={cn(
                             "w-full px-4 py-3 rounded-2xl border bg-gray-50 focus:outline-none focus:bg-white text-sm transition-colors",
-                            fieldErrors[key] ? "border-red-400 focus:border-red-400" : "border-gray-200 focus:border-teal-400",
+                            fieldErrors[key]
+                              ? "border-red-400 focus:border-red-400"
+                              : "border-gray-200 focus:border-teal-400",
                           )}
                         />
-                        {fieldErrors[key] && <p className="text-xs text-red-500 mt-1 px-1">{fieldErrors[key]}</p>}
+                        {fieldErrors[key] && (
+                          <p className="text-xs text-red-500 mt-1 px-1">
+                            {fieldErrors[key]}
+                          </p>
+                        )}
                       </div>
                     ))}
                     <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">Relation to student</label>
-                      <select value={form.relationToStudent} onChange={(e) => setForm(f => ({ ...f, relationToStudent: e.target.value }))}
-                        className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-teal-400 text-sm">
-                        {["father", "mother", "guardian", "uncle", "aunt", "grandparent"].map((r) => (
-                          <option key={r} value={r} className="capitalize">{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                        Relation to student
+                      </label>
+                      <select
+                        value={form.relationToStudent}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            relationToStudent: e.target.value,
+                          }))
+                        }
+                        className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-teal-400 text-sm"
+                      >
+                        {[
+                          "father",
+                          "mother",
+                          "guardian",
+                          "uncle",
+                          "aunt",
+                          "grandparent",
+                        ].map((r) => (
+                          <option key={r} value={r} className="capitalize">
+                            {r.charAt(0).toUpperCase() + r.slice(1)}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -670,17 +995,23 @@ export default function AdminStudentsPage() {
                   )}
                   <button
                     onClick={handleSubmit}
-                    disabled={submitting || !form.name.trim() || !form.adno.trim()}
+                    disabled={
+                      submitting || !form.name.trim() || !form.adno.trim()
+                    }
                     className={cn(
                       "bg-emerald-600 text-white font-bold py-4 rounded-2xl text-base active:scale-[0.98] transition-transform shadow-lg shadow-emerald-200 disabled:opacity-60",
-                      isEditing && canWrite ? "flex-1" : "w-full"
+                      isEditing && canWrite ? "flex-1" : "w-full",
                     )}
                   >
                     {submitting ? (
                       <span className="flex items-center justify-center gap-2">
                         <Loader2 className="w-4 h-4 animate-spin" /> Saving…
                       </span>
-                    ) : isEditing ? "Save Changes" : t("adminPages", "admitStudent", lang)}
+                    ) : isEditing ? (
+                      "Save Changes"
+                    ) : (
+                      t("adminPages", "admitStudent", lang)
+                    )}
                   </button>
                 </div>
               </div>
@@ -693,7 +1024,18 @@ export default function AdminStudentsPage() {
       <ImportModal
         show={showImport}
         config={importConfig}
-        onComplete={() => { setPage(1); loadStudents(1, search, activeClassId, gender, pageSize, sortBy, sortDir); }}
+        onComplete={() => {
+          setPage(1);
+          loadStudents(
+            1,
+            search,
+            activeClassId,
+            gender,
+            pageSize,
+            sortBy,
+            sortDir,
+          );
+        }}
         onClose={() => setShowImport(false)}
       />
     </DashboardLayout>
