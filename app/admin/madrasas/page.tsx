@@ -2,16 +2,35 @@ import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
-  listClients, listClientPayments, recordClientPayment, updateClient, getClientLogs,
+  listClients,
+  listClientPayments,
+  recordClientPayment,
+  updateClient,
+  getClientLogs,
   createClient,
-  type ClientListItem, type ClientPayment, type ActivityLogItem,
-  type CreateClientDto, type UpdateClientDto,
+  type ClientListItem,
+  type ClientPayment,
+  type ActivityLogItem,
+  type CreateClientDto,
+  type UpdateClientDto,
 } from "@/lib/super-admin-api";
 import { useAuthStore } from "@/store/auth";
 import { useNavigate } from "react-router-dom";
 import {
-  Building2, Loader2, LogIn, ChevronDown, ChevronUp, Plus, Activity,
-  CheckCircle, XCircle, ClipboardList, X, Pencil, Save, AlertCircle,
+  Building2,
+  Loader2,
+  LogIn,
+  ChevronDown,
+  ChevronUp,
+  Plus,
+  Activity,
+  CheckCircle,
+  XCircle,
+  ClipboardList,
+  X,
+  Pencil,
+  Save,
+  AlertCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -20,8 +39,15 @@ import { cn } from "@/lib/utils";
 
 const isExpired = (d?: string) => !!d && new Date(d) < new Date();
 const fmtDate = (d?: string) =>
-  d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
-const fmtCurrency = (n: string | number) => `₹${Number(n).toLocaleString("en-IN")}`;
+  d
+    ? new Date(d).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : "—";
+const fmtCurrency = (n: string | number) =>
+  `₹${Number(n).toLocaleString("en-IN")}`;
 
 const STATUS_OPTIONS = ["ACTIVE", "TRIAL", "SUSPENDED", "CANCELLED"] as const;
 const STATUS_COLORS: Record<string, string> = {
@@ -61,7 +87,10 @@ function EditMadrasaDrawer({
     setForm((f) => ({ ...f, [k]: v }));
 
   const handleSave = async () => {
-    if (!form.name?.trim()) { setError("Name is required."); return; }
+    if (!form.name?.trim()) {
+      setError("Name is required.");
+      return;
+    }
     setSaving(true);
     setError("");
     setSuccess(false);
@@ -87,19 +116,25 @@ function EditMadrasaDrawer({
     }
   };
 
-  const inputCls = "w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white";
+  const inputCls =
+    "w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white";
   const labelCls = "text-xs text-gray-500 mb-1.5 block font-medium";
-  const sectionCls = "text-xs font-bold text-gray-400 uppercase tracking-wide pt-2 pb-1";
+  const sectionCls =
+    "text-xs font-bold text-gray-400 uppercase tracking-wide pt-2 pb-1";
 
   return (
     <>
       <motion.div
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
         className="fixed inset-0 bg-black/40 z-40"
         onClick={onClose}
       />
       <motion.div
-        initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 30, stiffness: 300 }}
         className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl max-h-[92dvh] flex flex-col"
       >
@@ -107,9 +142,14 @@ function EditMadrasaDrawer({
         <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-100 shrink-0">
           <div>
             <h2 className="text-base font-bold text-gray-900">Edit Madrasa</h2>
-            <p className="text-xs text-gray-400 mt-0.5 font-mono">{client.slug}</p>
+            <p className="text-xs text-gray-400 mt-0.5 font-mono">
+              {client.slug}
+            </p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-100">
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-100"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -196,8 +236,12 @@ function EditMadrasaDrawer({
           {/* Login toggle */}
           <div className="flex items-center justify-between bg-gray-50 rounded-2xl px-4 py-3 border border-gray-100">
             <div>
-              <p className="text-sm font-semibold text-gray-800">Login Access</p>
-              <p className="text-xs text-gray-400 mt-0.5">Allow users to log in to this madrasa</p>
+              <p className="text-sm font-semibold text-gray-800">
+                Login Access
+              </p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Allow users to log in to this madrasa
+              </p>
             </div>
             <button
               onClick={() => set("isLoginEnabled", !form.isLoginEnabled)}
@@ -206,16 +250,20 @@ function EditMadrasaDrawer({
                 form.isLoginEnabled ? "bg-emerald-500" : "bg-gray-300",
               )}
             >
-              <span className={cn(
-                "absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200",
-                form.isLoginEnabled ? "translate-x-6" : "translate-x-0",
-              )} />
+              <span
+                className={cn(
+                  "absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200",
+                  form.isLoginEnabled ? "translate-x-6" : "translate-x-0",
+                )}
+              />
             </button>
           </div>
 
           {/* Attendance mode toggle */}
           <div className="bg-gray-50 rounded-2xl px-4 py-3 border border-gray-100">
-            <p className="text-sm font-semibold text-gray-800 mb-2">Attendance Mode</p>
+            <p className="text-sm font-semibold text-gray-800 mb-2">
+              Attendance Mode
+            </p>
             <div className="flex gap-2">
               {(["CLASS_BASED", "PERIOD_BASED"] as const).map((m) => (
                 <button
@@ -248,11 +296,19 @@ function EditMadrasaDrawer({
             disabled={saving || success}
             className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 disabled:opacity-60 transition-all"
           >
-            {saving
-              ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</>
-              : success
-              ? <><CheckCircle className="w-4 h-4" /> Saved</>
-              : <><Save className="w-4 h-4" /> Save Changes</>}
+            {saving ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" /> Saving…
+              </>
+            ) : success ? (
+              <>
+                <CheckCircle className="w-4 h-4" /> Saved
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" /> Save Changes
+              </>
+            )}
           </button>
         </div>
       </motion.div>
@@ -278,10 +334,13 @@ function ClientDetail({
   const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
-    amount: "", paidAt: new Date().toISOString().slice(0, 10),
+    amount: "",
+    paidAt: new Date().toISOString().slice(0, 10),
     periodStart: new Date().toISOString().slice(0, 10),
     periodEnd: new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10),
-    method: "CASH", reference: "", notes: "",
+    method: "CASH",
+    reference: "",
+    notes: "",
   });
 
   const loadPayments = useCallback(() => {
@@ -300,7 +359,9 @@ function ClientDetail({
       .finally(() => setLoadingL(false));
   }, [client.id, token]);
 
-  useEffect(() => { loadPayments(); }, [loadPayments]);
+  useEffect(() => {
+    loadPayments();
+  }, [loadPayments]);
 
   const handleTabChange = (t: "payments" | "logs") => {
     setTab(t);
@@ -311,15 +372,19 @@ function ClientDetail({
     if (!form.amount || Number(form.amount) <= 0) return;
     setSaving(true);
     try {
-      await recordClientPayment(client.id, {
-        amount: Number(form.amount),
-        paidAt: form.paidAt,
-        periodStart: form.periodStart,
-        periodEnd: form.periodEnd,
-        method: form.method || undefined,
-        reference: form.reference || undefined,
-        notes: form.notes || undefined,
-      }, token);
+      await recordClientPayment(
+        client.id,
+        {
+          amount: Number(form.amount),
+          paidAt: form.paidAt,
+          periodStart: form.periodStart,
+          periodEnd: form.periodEnd,
+          method: form.method || undefined,
+          reference: form.reference || undefined,
+          notes: form.notes || undefined,
+        },
+        token,
+      );
       setShowAddPayment(false);
       setForm((f) => ({ ...f, amount: "", reference: "", notes: "" }));
       loadPayments();
@@ -335,7 +400,8 @@ function ClientDetail({
       {/* Subscription status row */}
       <div className="flex items-center gap-2 mb-3 text-xs text-gray-500">
         <ClipboardList className="w-3.5 h-3.5 text-gray-400" />
-        Subscription: {fmtDate(client.subscriptionStart)} → {fmtDate(client.subscriptionEnd)}
+        Subscription: {fmtDate(client.subscriptionStart)} →{" "}
+        {fmtDate(client.subscriptionEnd)}
         {isExpired(client.subscriptionEnd) && (
           <span className="text-red-500 font-semibold">EXPIRED</span>
         )}
@@ -376,50 +442,97 @@ function ClientDetail({
             exit={{ opacity: 0, height: 0 }}
             className="bg-white rounded-xl p-4 border border-emerald-100 mb-3 overflow-hidden"
           >
-            <p className="text-xs font-semibold text-gray-600 mb-3">Record Subscription Payment</p>
+            <p className="text-xs font-semibold text-gray-600 mb-3">
+              Record Subscription Payment
+            </p>
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Amount (₹) *</label>
-                <input type="number" min="0" value={form.amount}
-                  onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+                <label className="text-xs text-gray-500 mb-1 block">
+                  Amount (₹) *
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.amount}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, amount: e.target.value }))
+                  }
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                  placeholder="e.g. 2999" />
+                  placeholder="e.g. 2999"
+                />
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Paid On *</label>
-                <input type="date" value={form.paidAt}
-                  onChange={(e) => setForm((f) => ({ ...f, paidAt: e.target.value }))}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                <label className="text-xs text-gray-500 mb-1 block">
+                  Paid On *
+                </label>
+                <input
+                  type="date"
+                  value={form.paidAt}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, paidAt: e.target.value }))
+                  }
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                />
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Period Start *</label>
-                <input type="date" value={form.periodStart}
-                  onChange={(e) => setForm((f) => ({ ...f, periodStart: e.target.value }))}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                <label className="text-xs text-gray-500 mb-1 block">
+                  Period Start *
+                </label>
+                <input
+                  type="date"
+                  value={form.periodStart}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, periodStart: e.target.value }))
+                  }
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                />
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Period End *</label>
-                <input type="date" value={form.periodEnd}
-                  onChange={(e) => setForm((f) => ({ ...f, periodEnd: e.target.value }))}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                <label className="text-xs text-gray-500 mb-1 block">
+                  Period End *
+                </label>
+                <input
+                  type="date"
+                  value={form.periodEnd}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, periodEnd: e.target.value }))
+                  }
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                />
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Method</label>
-                <select value={form.method}
-                  onChange={(e) => setForm((f) => ({ ...f, method: e.target.value }))}
+                <label className="text-xs text-gray-500 mb-1 block">
+                  Method
+                </label>
+                <select
+                  value={form.method}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, method: e.target.value }))
+                  }
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white"
                 >
-                  {["CASH", "BANK_TRANSFER", "UPI", "CHEQUE", "OTHER"].map((m) => (
-                    <option key={m} value={m}>{m}</option>
-                  ))}
+                  {["CASH", "BANK_TRANSFER", "UPI", "CHEQUE", "OTHER"].map(
+                    (m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ),
+                  )}
                 </select>
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Reference / Receipt #</label>
-                <input type="text" value={form.reference}
-                  onChange={(e) => setForm((f) => ({ ...f, reference: e.target.value }))}
+                <label className="text-xs text-gray-500 mb-1 block">
+                  Reference / Receipt #
+                </label>
+                <input
+                  type="text"
+                  value={form.reference}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, reference: e.target.value }))
+                  }
                   placeholder="Optional"
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                />
               </div>
             </div>
             <div className="flex gap-2 justify-end">
@@ -434,7 +547,11 @@ function ClientDetail({
                 disabled={saving || !form.amount}
                 className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all disabled:opacity-60"
               >
-                {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                {saving ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Plus className="w-3.5 h-3.5" />
+                )}
                 Save Payment
               </button>
             </div>
@@ -443,61 +560,82 @@ function ClientDetail({
       </AnimatePresence>
 
       {/* Payments tab */}
-      {tab === "payments" && (
-        loadingP ? (
+      {tab === "payments" &&
+        (loadingP ? (
           <div className="flex items-center gap-2 text-gray-400 text-xs py-4 justify-center">
             <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading...
           </div>
         ) : payments.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-4">No payments recorded yet.</p>
+          <p className="text-xs text-gray-400 text-center py-4">
+            No payments recorded yet.
+          </p>
         ) : (
           <div className="space-y-2">
             {payments.map((p) => (
-              <div key={p.id} className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-gray-100">
+              <div
+                key={p.id}
+                className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-gray-100"
+              >
                 <div>
-                  <p className="text-sm font-bold text-emerald-700">{fmtCurrency(p.amount)}</p>
-                  <p className="text-xs text-gray-400">{fmtDate(p.paidAt)} · {p.method ?? "—"}</p>
-                  {p.reference && <p className="text-xs text-gray-400">Ref: {p.reference}</p>}
+                  <p className="text-sm font-bold text-emerald-700">
+                    {fmtCurrency(p.amount)}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {fmtDate(p.paidAt)} · {p.method ?? "—"}
+                  </p>
+                  {p.reference && (
+                    <p className="text-xs text-gray-400">Ref: {p.reference}</p>
+                  )}
                 </div>
                 <div className="text-right">
-                  <p className="text-xs font-semibold text-gray-600">{fmtDate(p.periodStart)}</p>
-                  <p className="text-xs text-gray-400">to {fmtDate(p.periodEnd)}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )
-      )}
-
-      {/* Logs tab */}
-      {tab === "logs" && (
-        loadingL ? (
-          <div className="flex items-center gap-2 text-gray-400 text-xs py-4 justify-center">
-            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading...
-          </div>
-        ) : logs.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-4">No activity yet.</p>
-        ) : (
-          <div className="space-y-1.5 max-h-72 overflow-y-auto">
-            {logs.map((log) => (
-              <div key={log.id} className="flex items-start gap-3 bg-white rounded-xl px-3 py-2.5 border border-gray-100">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-semibold text-gray-800">{log.action}</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">
-                      {log.actorType}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-gray-400 leading-tight mt-0.5">
-                    {log.actorName ?? log.actorId.slice(0, 16)} · {new Date(log.createdAt).toLocaleString("en-IN")}
+                  <p className="text-xs font-semibold text-gray-600">
+                    {fmtDate(p.periodStart)}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    to {fmtDate(p.periodEnd)}
                   </p>
                 </div>
               </div>
             ))}
           </div>
-        )
-      )}
+        ))}
+
+      {/* Logs tab */}
+      {tab === "logs" &&
+        (loadingL ? (
+          <div className="flex items-center gap-2 text-gray-400 text-xs py-4 justify-center">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading...
+          </div>
+        ) : logs.length === 0 ? (
+          <p className="text-xs text-gray-400 text-center py-4">
+            No activity yet.
+          </p>
+        ) : (
+          <div className="space-y-1.5 max-h-72 overflow-y-auto">
+            {logs.map((log) => (
+              <div
+                key={log.id}
+                className="flex items-start gap-3 bg-white rounded-xl px-3 py-2.5 border border-gray-100"
+              >
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-semibold text-gray-800">
+                      {log.action}
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">
+                      {log.actorType}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-400 leading-tight mt-0.5">
+                    {log.actorName ?? log.actorId.slice(0, 16)} ·{" "}
+                    {new Date(log.createdAt).toLocaleString("en-IN")}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
     </div>
   );
 }
@@ -505,13 +643,23 @@ function ClientDetail({
 // ── New Madrasa Drawer ─────────────────────────────────────────────────────────
 
 const emptyForm: CreateClientDto = {
-  name: "", slug: "", arabicName: "", city: "", state: "",
+  name: "",
+  slug: "",
+  arabicName: "",
+  city: "",
+  state: "",
   attendanceMode: "CLASS_BASED",
-  adminName: "", adminIdentifier: "", adminPassword: "",
+  adminName: "",
+  adminIdentifier: "",
+  adminPassword: "",
 };
 
 function slugify(s: string) {
-  return s.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").slice(0, 40);
+  return s
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .slice(0, 40);
 }
 
 function NewMadrasaDrawer({
@@ -536,7 +684,13 @@ function NewMadrasaDrawer({
   };
 
   const handleSubmit = async () => {
-    if (!form.name || !form.slug || !form.adminName || !form.adminIdentifier || !form.adminPassword) {
+    if (
+      !form.name ||
+      !form.slug ||
+      !form.adminName ||
+      !form.adminIdentifier ||
+      !form.adminPassword
+    ) {
       setError("Please fill in all required fields.");
       return;
     }
@@ -553,60 +707,95 @@ function NewMadrasaDrawer({
     }
   };
 
-  const inputCls = "w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400";
+  const inputCls =
+    "w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400";
   const labelCls = "text-xs text-gray-500 mb-1 block font-medium";
 
   return (
     <>
       <motion.div
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
         className="fixed inset-0 bg-black/40 z-40"
         onClick={onClose}
       />
       <motion.div
-        initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 30, stiffness: 300 }}
         className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl max-h-[90dvh] overflow-y-auto"
       >
         <div className="p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-bold text-gray-900">Add New Madrasa</h2>
-            <button onClick={onClose} className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-100 transition-all">
+            <h2 className="text-base font-bold text-gray-900">
+              Add New Madrasa
+            </h2>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-100 transition-all"
+            >
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {error && (
-            <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">{error}</div>
+            <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">
+              {error}
+            </div>
           )}
 
           <div className="space-y-3">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Madrasa Info</p>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+              Madrasa Info
+            </p>
             <div>
               <label className={labelCls}>Name *</label>
-              <input value={form.name} onChange={(e) => set("name", e.target.value)}
-                className={inputCls} placeholder="e.g. Darul Huda" />
+              <input
+                value={form.name}
+                onChange={(e) => set("name", e.target.value)}
+                className={inputCls}
+                placeholder="e.g. Darul Huda"
+              />
             </div>
             <div>
               <label className={labelCls}>Slug * (URL identifier)</label>
-              <input value={form.slug} onChange={(e) => set("slug", e.target.value)}
-                className={inputCls} placeholder="e.g. darul-huda" />
+              <input
+                value={form.slug}
+                onChange={(e) => set("slug", e.target.value)}
+                className={inputCls}
+                placeholder="e.g. darul-huda"
+              />
             </div>
             <div>
               <label className={labelCls}>Arabic Name</label>
-              <input value={form.arabicName} onChange={(e) => set("arabicName", e.target.value)}
-                className={inputCls} placeholder="Optional" dir="rtl" />
+              <input
+                value={form.arabicName}
+                onChange={(e) => set("arabicName", e.target.value)}
+                className={inputCls}
+                placeholder="Optional"
+                dir="rtl"
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelCls}>City</label>
-                <input value={form.city} onChange={(e) => set("city", e.target.value)}
-                  className={inputCls} placeholder="Optional" />
+                <input
+                  value={form.city}
+                  onChange={(e) => set("city", e.target.value)}
+                  className={inputCls}
+                  placeholder="Optional"
+                />
               </div>
               <div>
                 <label className={labelCls}>State</label>
-                <input value={form.state} onChange={(e) => set("state", e.target.value)}
-                  className={inputCls} placeholder="Optional" />
+                <input
+                  value={form.state}
+                  onChange={(e) => set("state", e.target.value)}
+                  className={inputCls}
+                  placeholder="Optional"
+                />
               </div>
             </div>
             <div>
@@ -615,7 +804,9 @@ function NewMadrasaDrawer({
                 {(["CLASS_BASED", "PERIOD_BASED"] as const).map((m) => (
                   <button
                     key={m}
-                    onClick={() => setForm((f) => ({ ...f, attendanceMode: m }))}
+                    onClick={() =>
+                      setForm((f) => ({ ...f, attendanceMode: m }))
+                    }
                     className={cn(
                       "flex-1 py-2 text-xs font-semibold rounded-xl border transition-all",
                       form.attendanceMode === m
@@ -629,32 +820,56 @@ function NewMadrasaDrawer({
               </div>
             </div>
 
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide pt-2">Admin Account</p>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide pt-2">
+              Admin Account
+            </p>
             <div>
               <label className={labelCls}>Admin Name *</label>
-              <input value={form.adminName} onChange={(e) => set("adminName", e.target.value)}
-                className={inputCls} placeholder="e.g. Muhammad Ali" />
+              <input
+                value={form.adminName}
+                onChange={(e) => set("adminName", e.target.value)}
+                className={inputCls}
+                placeholder="e.g. Muhammad Ali"
+              />
             </div>
             <div>
               <label className={labelCls}>Admin Username *</label>
-              <input value={form.adminIdentifier} onChange={(e) => set("adminIdentifier", e.target.value)}
-                className={inputCls} placeholder="e.g. admin@darulhuda" />
+              <input
+                value={form.adminIdentifier}
+                onChange={(e) => set("adminIdentifier", e.target.value)}
+                className={inputCls}
+                placeholder="e.g. admin@darulhuda"
+              />
             </div>
             <div>
               <label className={labelCls}>Admin Password *</label>
-              <input type="password" value={form.adminPassword} onChange={(e) => set("adminPassword", e.target.value)}
-                className={inputCls} placeholder="Min 8 characters" />
+              <input
+                type="password"
+                value={form.adminPassword}
+                onChange={(e) => set("adminPassword", e.target.value)}
+                className={inputCls}
+                placeholder="Min 8 characters"
+              />
             </div>
           </div>
 
           <div className="flex gap-3 mt-5">
-            <button onClick={onClose}
-              className="flex-1 py-3 text-sm font-semibold text-gray-500 bg-gray-100 rounded-2xl hover:bg-gray-200 transition-all">
+            <button
+              onClick={onClose}
+              className="flex-1 py-3 text-sm font-semibold text-gray-500 bg-gray-100 rounded-2xl hover:bg-gray-200 transition-all"
+            >
               Cancel
             </button>
-            <button onClick={handleSubmit} disabled={saving}
-              className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-all disabled:opacity-60">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            <button
+              onClick={handleSubmit}
+              disabled={saving}
+              className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-all disabled:opacity-60"
+            >
+              {saving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Plus className="w-4 h-4" />
+              )}
               Create Madrasa
             </button>
           </div>
@@ -673,7 +888,9 @@ export default function AdminMadrasasPage() {
   const [loading, setLoading] = useState(true);
   const [entering, setEntering] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [editingClient, setEditingClient] = useState<ClientListItem | null>(null);
+  const [editingClient, setEditingClient] = useState<ClientListItem | null>(
+    null,
+  );
   const [showNew, setShowNew] = useState(false);
 
   useEffect(() => {
@@ -691,7 +908,7 @@ export default function AdminMadrasasPage() {
   };
 
   const handleSaved = (updated: ClientListItem) => {
-    setClients((prev) => prev.map((c) => c.id === updated.id ? updated : c));
+    setClients((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
   };
 
   return (
@@ -743,14 +960,22 @@ export default function AdminMadrasasPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-semibold text-gray-900 text-sm">{client.name}</p>
-                      <span className="text-xs font-mono text-gray-400">{client.slug}</span>
-                      <span className={cn(
-                        "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
-                        client.status === "ACTIVE" ? "bg-emerald-100 text-emerald-700"
-                          : client.status === "TRIAL" ? "bg-blue-100 text-blue-700"
-                          : "bg-gray-100 text-gray-500",
-                      )}>
+                      <p className="font-semibold text-gray-900 text-sm">
+                        {client.name}
+                      </p>
+                      <span className="text-xs font-mono text-gray-400">
+                        {client.slug}
+                      </span>
+                      <span
+                        className={cn(
+                          "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                          client.status === "ACTIVE"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : client.status === "TRIAL"
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-gray-100 text-gray-500",
+                        )}
+                      >
                         {client.status}
                       </span>
                       {expired && (
@@ -760,18 +985,29 @@ export default function AdminMadrasasPage() {
                       )}
                     </div>
                     <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-400">
-                      <span>{client._count.students} students</span>
-                      <span>{client._count.users} staff</span>
-                      {client.currentAcademicYear && <span>{client.currentAcademicYear.name}</span>}
+                      <span>{client._count?.students ?? 0} students</span>
+                      <span>{client._count?.users ?? 0} staff</span>
+                      {client.currentAcademicYear && (
+                        <span>{client.currentAcademicYear.name}</span>
+                      )}
                       {client.city && <span>{client.city}</span>}
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
-                      {client.isLoginEnabled
-                        ? <span className="flex items-center gap-0.5 text-[10px] text-emerald-600 font-medium"><CheckCircle className="w-3 h-3" /> Login on</span>
-                        : <span className="flex items-center gap-0.5 text-[10px] text-gray-400"><XCircle className="w-3 h-3" /> Login off</span>}
+                      {client.isLoginEnabled ? (
+                        <span className="flex items-center gap-0.5 text-[10px] text-emerald-600 font-medium">
+                          <CheckCircle className="w-3 h-3" /> Login on
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
+                          <XCircle className="w-3 h-3" /> Login off
+                        </span>
+                      )}
                       <span className="text-[10px] text-gray-400">·</span>
                       <span className="text-[10px] text-gray-400">
-                        {client.attendanceMode === "PERIOD_BASED" ? "Period-based" : "Class-based"} attendance
+                        {client.attendanceMode === "PERIOD_BASED"
+                          ? "Period-based"
+                          : "Class-based"}{" "}
+                        attendance
                       </span>
                     </div>
                   </div>
@@ -788,16 +1024,22 @@ export default function AdminMadrasasPage() {
                       disabled={entering === client.id}
                       className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 transition-all"
                     >
-                      {entering === client.id
-                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        : <LogIn className="w-3.5 h-3.5" />}
+                      {entering === client.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <LogIn className="w-3.5 h-3.5" />
+                      )}
                       Enter
                     </button>
                     <button
                       onClick={() => setExpanded(isOpen ? null : client.id)}
                       className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-50 hover:text-gray-700 transition-all"
                     >
-                      {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      {isOpen ? (
+                        <ChevronUp className="w-4 h-4" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4" />
+                      )}
                     </button>
                   </div>
                 </div>
@@ -831,7 +1073,9 @@ export default function AdminMadrasasPage() {
             key={editingClient.id}
             client={editingClient}
             token={accessToken!}
-            onSaved={(updated) => { handleSaved(updated); }}
+            onSaved={(updated) => {
+              handleSaved(updated);
+            }}
             onClose={() => setEditingClient(null)}
           />
         )}
