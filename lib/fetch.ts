@@ -15,6 +15,9 @@ export const AUTH_ERROR    = "Session expired. Please log in again.";
 
 function extractMessage(payload: unknown, status: number): string {
   const p = payload as Record<string, unknown> | null;
+  if (Array.isArray(p?.errors)) {
+    return p.errors.map((e: any) => e.message || `${e.fieldName || e.field} is invalid`).join(", ");
+  }
   if (typeof p?.message === "string") return p.message;
   if (Array.isArray(p?.message))      return (p!.message as string[]).join(", ");
   if (typeof p?.error === "string")   return p.error;

@@ -37,6 +37,8 @@ export interface ClientListItem {
   lastLoginAt?: string;
   createdAt: string;
   currentAcademicYear?: { id: string; name: string } | null;
+  loginEmail?: string;
+  loginPhone?: string;
   _count: { users: number; students: number };
 }
 
@@ -52,6 +54,8 @@ export interface UpdateClientDto {
   status?: "ACTIVE" | "SUSPENDED" | "TRIAL" | "CANCELLED";
   isLoginEnabled?: boolean;
   attendanceMode?: "CLASS_BASED" | "PERIOD_BASED";
+  adminIdentifier?: string;
+  password?: string;
 }
 
 export function updateClient(clientId: string, dto: UpdateClientDto, token: string) {
@@ -167,6 +171,8 @@ export interface CreateClientDto {
   adminName: string;
   adminIdentifier: string;
   adminPassword: string;
+  status?: "ACTIVE" | "SUSPENDED" | "TRIAL" | "CANCELLED";
+  isLoginEnabled?: boolean;
 }
 
 export function createClient(dto: CreateClientDto, token: string) {

@@ -28,7 +28,7 @@ const ROLE_LABEL: Record<string, string> = {
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
-  const { user, accessToken } = useAuthStore();
+  const { user, accessToken, updateUser } = useAuthStore();
 
   const [name, setName] = useState(user?.name ?? "");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -69,6 +69,9 @@ export default function ProfilePage() {
     try {
       await updateProfile(accessToken!, dto);
       setSuccess("Profile updated successfully.");
+      if (dto.name) {
+        updateUser({ name: dto.name });
+      }
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");

@@ -70,7 +70,7 @@ function EditMadrasaDrawer({
   onSaved: (updated: ClientListItem) => void;
   onClose: () => void;
 }) {
-  const [form, setForm] = useState<UpdateClientDto>({
+  const [form, setForm] = useState<UpdateClientDto & { adminIdentifier?: string; password?: string }>({
     name: client.name,
     arabicName: client.arabicName ?? "",
     city: client.city ?? "",
@@ -78,12 +78,14 @@ function EditMadrasaDrawer({
     status: client.status as UpdateClientDto["status"],
     isLoginEnabled: client.isLoginEnabled,
     attendanceMode: client.attendanceMode as UpdateClientDto["attendanceMode"],
+    adminIdentifier: client.loginEmail || client.loginPhone || "",
+    password: "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  const set = <K extends keyof UpdateClientDto>(k: K, v: UpdateClientDto[K]) =>
+  const set = (k: string, v: any) =>
     setForm((f) => ({ ...f, [k]: v }));
 
   const handleSave = async () => {
@@ -103,6 +105,8 @@ function EditMadrasaDrawer({
         status: form.status,
         isLoginEnabled: form.isLoginEnabled,
         attendanceMode: form.attendanceMode,
+        adminIdentifier: form.adminIdentifier?.trim() || undefined,
+        password: form.password?.trim() || undefined,
       };
       const updated = await updateClient(client.id, dto, token);
       const merged: ClientListItem = { ...client, ...updated };
@@ -209,6 +213,28 @@ function EditMadrasaDrawer({
                 placeholder="Optional"
               />
             </div>
+          </div>
+
+          {/* Admin Account */}
+          <p className={sectionCls}>Admin Account</p>
+          <div>
+            <label className={labelCls}>Admin Username * (Email or Phone)</label>
+            <input
+              value={form.adminIdentifier ?? ""}
+              onChange={(e) => set("adminIdentifier", e.target.value)}
+              className={inputCls}
+              placeholder="e.g. admin@darulhuda or 9876543210"
+            />
+          </div>
+          <div>
+            <label className={labelCls}>Admin Password (leave blank to keep unchanged)</label>
+            <input
+              type="password"
+              value={form.password ?? ""}
+              onChange={(e) => set("password", e.target.value)}
+              className={inputCls}
+              placeholder="New password (optional)"
+            />
           </div>
 
           {/* Status */}
@@ -652,6 +678,8 @@ const emptyForm: CreateClientDto = {
   adminName: "",
   adminIdentifier: "",
   adminPassword: "",
+  status: "ACTIVE",
+  isLoginEnabled: true,
 };
 
 function slugify(s: string) {
@@ -804,6 +832,7 @@ function NewMadrasaDrawer({
                 {(["CLASS_BASED", "PERIOD_BASED"] as const).map((m) => (
                   <button
                     key={m}
+                    type="button"
                     onClick={() =>
                       setForm((f) => ({ ...f, attendanceMode: m }))
                     }
@@ -817,6 +846,58 @@ function NewMadrasaDrawer({
                     {m === "CLASS_BASED" ? "Class Based" : "Period Based"}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Status */}
+            <div>
+              <label className={labelCls}>Account Status</label>
+              <div className="grid grid-cols-2 gap-2">
+                {STATUS_OPTIONS.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, status: s }))}
+                    className={cn(
+                      "py-2 px-3 rounded-xl text-xs font-semibold border transition-all text-left",
+                      form.status === s
+                        ? STATUS_COLORS[s]
+                        : "bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100",
+                    )}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Settings */}
+            <div>
+              <label className={labelCls}>Settings</label>
+              <div className="flex items-center justify-between bg-gray-50 rounded-2xl px-4 py-3 border border-gray-100">
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">
+                    Login Access
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Allow users to log in to this madrasa
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, isLoginEnabled: !f.isLoginEnabled }))}
+                  className={cn(
+                    "relative w-12 h-6 rounded-full transition-colors duration-200 shrink-0",
+                    form.isLoginEnabled ? "bg-emerald-500" : "bg-gray-300",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200",
+                      form.isLoginEnabled ? "translate-x-6" : "translate-x-0",
+                    )}
+                  />
+                </button>
               </div>
             </div>
 

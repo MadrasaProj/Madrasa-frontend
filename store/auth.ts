@@ -44,6 +44,7 @@ interface AuthStore {
   switchToClient: (clientId: string | null, slug?: string | null) => void;
   setActiveStudent: (studentId: string) => void;
   setAttendanceMode: (mode: AttendanceMode) => void;
+  updateUser: (fields: Partial<User>) => void;
 }
 
 export type AuthSessionPayload = {
@@ -160,6 +161,11 @@ export const useAuthStore = create<AuthStore>()(
       setAttendanceMode: (mode) =>
         set((state) => ({
           user: state.user ? { ...state.user, attendanceMode: mode } : null,
+        })),
+
+      updateUser: (fields) =>
+        set((state) => ({
+          user: state.user ? { ...state.user, ...fields } : null,
         })),
     }),
     {
