@@ -8,7 +8,8 @@ export type AuthActorType =
   | "CLIENT_ADMIN"
   | "TEACHER"
   | "PARENT"
-  | "COMMITTEE";
+  | "COMMITTEE"
+  | "TEAM_LEADER";
 
 export type AttendanceMode = "CLASS_BASED" | "PERIOD_BASED";
 
@@ -75,6 +76,7 @@ const routeRoleByActor: Record<AuthActorType, UserRole> = {
   TEACHER: "teacher",
   PARENT: "parent",
   COMMITTEE: "committee",
+  TEAM_LEADER: "teacher",
 };
 
 const validActorTypes: AuthActorType[] = [
@@ -83,6 +85,7 @@ const validActorTypes: AuthActorType[] = [
   "TEACHER",
   "PARENT",
   "COMMITTEE",
+  "TEAM_LEADER",
 ];
 
 export function normalizeUserSession(payload: AuthSessionPayload) {

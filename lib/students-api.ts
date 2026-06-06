@@ -7,6 +7,7 @@ const V1_BASE = `${API_ORIGIN}/api/madrasa`;
 export interface StudentRecord {
   id: string;
   name: string;
+  uid?: string | null;
   adno: string;
   gender: "MALE" | "FEMALE" | null;
   dateOfBirth: string | null;
@@ -36,6 +37,7 @@ export interface StudentListResponse {
 
 export interface CreateStudentPayload {
   name: string;
+  uid?: string | null;
   adno: string;
   accademicYearId?: string;
   classId?: string;

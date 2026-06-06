@@ -5,7 +5,7 @@ import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { ImportModal, type ImportConfig, type ImportColumnDef, type ParseResult } from "@/components/ui/ImportModal";
 import {
-  getStudents, createStudent, updateStudent,
+  getStudents, createStudent, updateStudent, deleteStudent,
   type StudentRecord, type CreateStudentPayload,
 } from "@/lib/students-api";
 import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
@@ -14,7 +14,7 @@ import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import {
   Users, Plus, Search, Eye, GraduationCap,
-  Loader2, Pencil, Upload,
+  Loader2, Pencil, Upload, Trash2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -33,13 +33,13 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 // ── Form state ────────────────────────────────────────────────────────────────
 
 interface FormState {
-  name: string; adno: string; classId: string; gender: "MALE" | "FEMALE";
+  name: string; uid: string; adno: string; classId: string; gender: "MALE" | "FEMALE";
   dateOfBirth: string; guardianName: string; parentPhone: string;
   parentAltPhone: string; parentEmail: string;
   relationToStudent: string; parentPassword: string;
 }
 const EMPTY_FORM: FormState = {
-  name: "", adno: "", classId: "", gender: "MALE",
+  name: "", uid: "", adno: "", classId: "", gender: "MALE",
   dateOfBirth: "", guardianName: "", parentPhone: "",
   parentAltPhone: "", parentEmail: "", relationToStudent: "father", parentPassword: "",
 };
@@ -47,6 +47,7 @@ const EMPTY_FORM: FormState = {
 function studentToForm(s: StudentRecord): FormState {
   return {
     name: s.name,
+    uid: s.uid ?? "",
     adno: s.adno,
     classId: s.classId ?? "",
     gender: s.gender ?? "MALE",
@@ -251,6 +252,7 @@ export default function AdminStudentsPage() {
     try {
       const payload: CreateStudentPayload = {
         name: form.name.trim(),
+        uid: form.uid.trim() || null,
         adno: form.adno.trim(),
         ...(form.classId ? { classId: form.classId } : {}),
         gender: form.gender,
@@ -282,8 +284,21 @@ export default function AdminStudentsPage() {
     }
   };
 
+  const handleDelete = async (student: StudentRecord) => {
+    if (!window.confirm(`Delete student "${student.name}"? This action cannot be undone.`)) return;
+    try {
+      await deleteStudent(activeClientId!, accessToken!, student.id);
+      setDrawer(null);
+      setPage(1);
+      loadStudents(1, search, activeClassId, gender, pageSize, sortBy, sortDir);
+    } catch (err: any) {
+      alert(err?.message ?? "Failed to delete student.");
+    }
+  };
+
   const totalPages = Math.ceil(total / pageSize);
   const isEditing = typeof drawer === "object" && drawer !== null;
+  const canWrite = user?.actorType !== "TEAM_LEADER";
 
   // Import config (bound to current auth + classes)
   const importConfig = useMemo<ImportConfig<CreateStudentPayload>>(() => ({
@@ -355,13 +370,23 @@ export default function AdminStudentsPage() {
       header: "",
       render: (s) => (
         <div className="flex items-center gap-1.5 justify-end">
-          <button
-            onClick={(e) => { e.stopPropagation(); openEdit(s); }}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors text-xs font-semibold"
-          >
-            <Pencil className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Edit</span>
-          </button>
+          {canWrite && (
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); openEdit(s); }}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors text-xs font-semibold"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Edit</span>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleDelete(s); }}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
           <button
             onClick={(e) => { e.stopPropagation(); navigate(`${slugPrefix}/admin/students/${s.id}`); }}
             className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors text-xs font-semibold"
@@ -373,7 +398,7 @@ export default function AdminStudentsPage() {
       ),
       className: "text-right",
     },
-  ], [lang, navigate]); // eslint-disable-line
+  ], [lang, navigate, canWrite]); // eslint-disable-line
 
   return (
     <DashboardLayout>
@@ -382,21 +407,23 @@ export default function AdminStudentsPage() {
         subtitle={`${total} ${t("common", "students", lang).toLowerCase()}`}
         icon={Users}
         action={
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowImport(true)}
-              className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 px-3 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
-            >
-              <Upload className="w-4 h-4" />
-              <span className="hidden sm:inline">Import</span>
-            </button>
-            <button
-              onClick={openAdd}
-              className="flex items-center gap-1.5 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-colors"
-            >
-              <Plus className="w-4 h-4" /> {t("adminPages", "addStudent", lang)}
-            </button>
-          </div>
+          canWrite ? (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowImport(true)}
+                className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 px-3 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
+              >
+                <Upload className="w-4 h-4" />
+                <span className="hidden sm:inline">Import</span>
+              </button>
+              <button
+                onClick={openAdd}
+                className="flex items-center gap-1.5 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-colors"
+              >
+                <Plus className="w-4 h-4" /> {t("adminPages", "addStudent", lang)}
+              </button>
+            </div>
+          ) : undefined
         }
       />
 
@@ -484,12 +511,14 @@ export default function AdminStudentsPage() {
                 </div>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
-                <button
-                  onClick={(e) => { e.stopPropagation(); openEdit(s); }}
-                  className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                </button>
+                {canWrite && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); openEdit(s); }}
+                    className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                )}
                 <button
                   onClick={(e) => { e.stopPropagation(); navigate(`${slugPrefix}/admin/students/${s.id}`); }}
                   className="flex items-center gap-1 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors text-xs font-semibold"
@@ -547,6 +576,7 @@ export default function AdminStudentsPage() {
                   <div className="space-y-3">
                     {([
                       { key: "name" as const,        label: t("adminPages", "studentName", lang),    placeholder: t("adminPages", "fullName", lang),      type: "text" },
+                      { key: "uid" as const,         label: "Student UID",                           placeholder: "Optional unique identifier",           type: "text" },
                       { key: "adno" as const,        label: t("adminPages", "admissionNumber", lang), placeholder: t("adminPages", "admNoPlaceholder", lang), type: "text" },
                       { key: "dateOfBirth" as const, label: t("adminPages", "dateOfBirth2", lang),    placeholder: "",                                     type: "date" },
                     ]).map(({ key, label, placeholder, type }) => (
@@ -628,17 +658,31 @@ export default function AdminStudentsPage() {
                   </div>
                 </section>
 
-                <button
-                  onClick={handleSubmit}
-                  disabled={submitting || !form.name.trim() || !form.adno.trim()}
-                  className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl text-base active:scale-[0.98] transition-transform shadow-lg shadow-emerald-200 disabled:opacity-60"
-                >
-                  {submitting ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" /> Saving…
-                    </span>
-                  ) : isEditing ? "Save Changes" : t("adminPages", "admitStudent", lang)}
-                </button>
+                <div className="flex gap-3">
+                  {isEditing && canWrite && (
+                    <button
+                      onClick={() => handleDelete(drawer as StudentRecord)}
+                      type="button"
+                      className="flex-1 bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 font-bold py-4 rounded-2xl text-base active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                    >
+                      <Trash2 className="w-4 h-4" /> Delete
+                    </button>
+                  )}
+                  <button
+                    onClick={handleSubmit}
+                    disabled={submitting || !form.name.trim() || !form.adno.trim()}
+                    className={cn(
+                      "bg-emerald-600 text-white font-bold py-4 rounded-2xl text-base active:scale-[0.98] transition-transform shadow-lg shadow-emerald-200 disabled:opacity-60",
+                      isEditing && canWrite ? "flex-1" : "w-full"
+                    )}
+                  >
+                    {submitting ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin" /> Saving…
+                      </span>
+                    ) : isEditing ? "Save Changes" : t("adminPages", "admitStudent", lang)}
+                  </button>
+                </div>
               </div>
             </motion.div>
           </>

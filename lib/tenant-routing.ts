@@ -1,4 +1,4 @@
-export type ActorType = "SUPER_ADMIN" | "CLIENT_ADMIN" | "TEACHER" | "PARENT" | "COMMITTEE";
+export type ActorType = "SUPER_ADMIN" | "CLIENT_ADMIN" | "TEACHER" | "PARENT" | "COMMITTEE" | "TEAM_LEADER";
 export type RouteRole = "admin" | "teacher" | "parent" | "committee";
 
 type SessionForRedirect = {
@@ -100,6 +100,7 @@ export function roleFromActorType(actorType?: ActorType | string): RouteRole | n
     case "CLIENT_ADMIN":
       return "admin";
     case "TEACHER":
+    case "TEAM_LEADER":
       return "teacher";
     case "PARENT":
       return "parent";

@@ -22,7 +22,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 interface FormState {
-  name: string; adno: string; classId: string; gender: "MALE" | "FEMALE";
+  name: string; uid: string; adno: string; classId: string; gender: "MALE" | "FEMALE";
   dateOfBirth: string; guardianName: string; parentPhone: string;
   parentAltPhone: string; parentEmail: string;
   relationToStudent: string; parentPassword: string;
@@ -31,6 +31,7 @@ interface FormState {
 function studentToForm(s: StudentRecord): FormState {
   return {
     name: s.name,
+    uid: s.uid ?? "",
     adno: s.adno,
     classId: s.classId ?? "",
     gender: s.gender ?? "MALE",
@@ -51,6 +52,7 @@ export default function StudentDetailPage() {
   const slugMatch = pathname.match(/^\/m\/([^/]+)\//);
   const slugPrefix = slugMatch ? `/m/${slugMatch[1]}` : "";
   const { user, accessToken, activeClientId } = useAuthStore();
+  const canWrite = user?.actorType !== "TEAM_LEADER";
 
   const [student, setStudent]             = useState<StudentRecord | null>(null);
   const [attendance, setAttendance]       = useState<StudentAttendanceResponse | null>(null);
@@ -104,6 +106,7 @@ export default function StudentDetailPage() {
     try {
       const payload: Partial<CreateStudentPayload> = {
         name: form.name.trim(),
+        uid: form.uid.trim() || null,
         adno: form.adno.trim(),
         ...(form.classId ? { classId: form.classId } : { classId: undefined }),
         gender: form.gender,
@@ -179,20 +182,22 @@ export default function StudentDetailPage() {
         back
         backHref={`${slugPrefix}/admin/students`}
         action={
-          <div className="flex items-center gap-2">
-            <button
-              onClick={openEdit}
-              className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 px-3 py-2 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
-            >
-              <Pencil className="w-4 h-4" /> Edit
-            </button>
-            <button
-              onClick={() => setConfirmDelete(true)}
-              className="flex items-center gap-1.5 bg-red-50 text-red-600 px-3 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition-colors"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
+          canWrite ? (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={openEdit}
+                className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 px-3 py-2 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
+              >
+                <Pencil className="w-4 h-4" /> Edit
+              </button>
+              <button
+                onClick={() => setConfirmDelete(true)}
+                className="flex items-center gap-1.5 bg-red-50 text-red-600 px-3 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ) : undefined
         }
       />
 
@@ -231,6 +236,7 @@ export default function StudentDetailPage() {
         <div className="grid grid-cols-2 gap-3">
           {[
             { icon: Hash,          label: "Admission No",   value: student.adno },
+            { icon: Hash,          label: "Student UID",    value: student.uid ?? "—" },
             { icon: GraduationCap, label: "Class",           value: student.class?.name ?? "—" },
             ...(student.dateOfBirth ? [{ icon: Calendar, label: "Date of Birth",  value: new Date(student.dateOfBirth).toLocaleDateString("en-GB") }] : []),
             ...(student.guardianName ? [{ icon: User, label: "Guardian",   value: `${student.guardianName} (${student.relationToStudent ?? "guardian"})` }] : []),
@@ -343,6 +349,7 @@ export default function StudentDetailPage() {
                   <div className="space-y-3">
                     {([
                       { key: "name" as const,        label: "Full Name",        placeholder: "", type: "text" },
+                      { key: "uid" as const,         label: "Student UID",      placeholder: "", type: "text" },
                       { key: "adno" as const,        label: "Admission No",     placeholder: "", type: "text" },
                       { key: "dateOfBirth" as const, label: "Date of Birth",    placeholder: "", type: "date" },
                     ]).map(({ key, label, placeholder, type }) => (
