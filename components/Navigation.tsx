@@ -14,7 +14,7 @@ import { tenantLoginPath } from "@/lib/tenant-routing";
 
 type NavKey =
   | "dashboard" | "students" | "teachers" | "classes" | "subjects" | "fees"
-  | "idCards" | "exams" | "reports" | "logs" | "config" | "attendance"
+  | "idCards" | "exams" | "classTests" | "reports" | "logs" | "config" | "attendance"
   | "homework" | "diary" | "ibadah" | "performance" | "home"
   | "results" | "alerts" | "overview" | "finance" | "announcements" | "notifications"
   | "madrasas" | "superUsers" | "platformReports" | "profile";
@@ -30,6 +30,7 @@ const adminLinks = [
   { href: "/admin/fees",           icon: CreditCard,      key: "fees"          as NavKey },
   { href: "/admin/id-cards",       icon: BadgeCheck,      key: "idCards"       as NavKey },
   { href: "/admin/exams",          icon: GraduationCap,   key: "exams"         as NavKey },
+  { href: "/admin/exams/class-test", icon: GraduationCap, key: "classTests"    as NavKey },
   { href: "/admin/reports",        icon: BarChart3,       key: "reports"       as NavKey },
   { href: "/admin/logs",           icon: Activity,        key: "logs"          as NavKey },
   { href: "/admin/notifications",  icon: Bell,            key: "notifications" as NavKey },
@@ -44,6 +45,7 @@ const teacherLinks = [
   { href: "/teacher/diary",        icon: FileText,        key: "diary"        as NavKey },
   { href: "/teacher/ibadah",       icon: Moon,            key: "ibadah"       as NavKey },
   { href: "/teacher/exams",        icon: GraduationCap,   key: "exams"        as NavKey },
+  { href: "/teacher/exams/class-test", icon: GraduationCap, key: "classTests" as NavKey },
   { href: "/teacher/performance",  icon: Star,            key: "performance"  as NavKey },
   { href: "/teacher/notifications",icon: Bell,            key: "notifications"as NavKey },
   { href: "/teacher/profile",      icon: UserCircle2,     key: "profile"      as NavKey },

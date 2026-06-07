@@ -5,17 +5,23 @@ const V2_BASE    = `${API_ORIGIN}/api/v2`;
 
 export type ExamStatus = "DRAFT" | "MARK_ENTRY" | "PUBLISHED" | "CANCELLED";
 
+export type ExamType = "TERM_EXAM" | "CLASS_TEST" | "UNIT_TEST";
+
 export interface ExamRecord {
   id: string;
   name: string;
   status: string;
   examStatus: ExamStatus;
+  type?: ExamType;
+  classId?: string | null;
+  subjectId?: string | null;
   startDate?: string | null;
   endDate?: string | null;
   markEntryLastDate?: string | null;
   publishedDate?: string | null;
   accademicYear?: { id: string; name: string } | null;
   class?:         { id: string; name: string } | null;
+  subject?:       { id: string; name: string } | null;
   _count?: { results: number };
 }
 
@@ -30,11 +36,13 @@ export interface ExamListResponse {
 
 export const getExams = (
   clientId: string, token: string,
-  params?: { accademicYearId?: string; examStatus?: ExamStatus; page?: number; limit?: number },
+  params?: { accademicYearId?: string; examStatus?: ExamStatus; type?: ExamType; classId?: string; page?: number; limit?: number },
 ) => {
   const q = new URLSearchParams();
   if (params?.accademicYearId) q.set("accademicYearId", params.accademicYearId);
   if (params?.examStatus)      q.set("examStatus", params.examStatus);
+  if (params?.type)            q.set("type", params.type);
+  if (params?.classId)         q.set("classId", params.classId);
   if (params?.page)            q.set("page", String(params.page));
   if (params?.limit)           q.set("limit", String(params.limit));
   return apiFetch<ExamListResponse>(`${V2_BASE}/${clientId}/exams?${q}`, token);
@@ -47,6 +55,7 @@ export const createExam = (
   clientId: string, token: string,
   data: {
     name: string; accademicYearId: string;
+    type?: ExamType; classId?: string; subjectId?: string;
     startDate?: string; endDate?: string;
     markEntryLastDate?: string; publishedDate?: string; examStatus?: ExamStatus;
   },

@@ -173,6 +173,7 @@ const translations = {
     otherPayments: { en: "Other Payments", ml: "മറ്റു പേയ്‌മെന്റുകൾ" },
     idCards: { en: "ID Cards", ml: "ഐഡി കാർഡുകൾ" },
     exams: { en: "Exams", ml: "പരീക്ഷകൾ" },
+    classTests: { en: "Class Tests", ml: "ക്ലാസ് ടെസ്റ്റ്" },
     reports: { en: "Reports", ml: "റിപ്പോർട്ടുകൾ" },
     logs:    { en: "Activity Logs", ml: "ആക്ടിവിറ്റി ലോഗ്" },
     seats: { en: "Seats", ml: "സീറ്റ് പ്ലാൻ" },

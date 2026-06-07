@@ -52,6 +52,7 @@ import TeacherHomeworkListPage from "../app/teacher/homework-list/page";
 import TeacherDiaryPage from "../app/teacher/diary/page";
 import TeacherIbadahPage from "../app/teacher/ibadah/page";
 import TeacherExamsPage from "../app/teacher/exams/page";
+import TeacherClassTestsPage from "../app/teacher/exams/class-test/page";
 import TeacherNotificationsPage from "../app/teacher/notifications/page";
 import TeacherPerformancePage from "../app/teacher/performance/page";
 
@@ -104,6 +105,7 @@ export default function App() {
         <Route path="/admin/subjects" element={<AdminSubjectsPage />} />
         <Route path="/admin/teachers" element={<AdminTeachersPage />} />
         <Route path="/admin/exams" element={<AdminExamsPage />} />
+        <Route path="/admin/exams/class-test" element={<TeacherClassTestsPage />} />
         <Route path="/admin/exams/class-report" element={<AdminClassReportPage />} />
         <Route path="/admin/exams/config" element={<AdminExamConfigPage />} />
         <Route path="/admin/notifications" element={<AdminNotificationsPage />} />
@@ -146,6 +148,7 @@ export default function App() {
         <Route path="/m/:slug/admin/subjects" element={<AdminSubjectsPage />} />
         <Route path="/m/:slug/admin/teachers" element={<AdminTeachersPage />} />
         <Route path="/m/:slug/admin/exams" element={<AdminExamsPage />} />
+        <Route path="/m/:slug/admin/exams/class-test" element={<TeacherClassTestsPage />} />
         <Route path="/m/:slug/admin/exams/class-report" element={<AdminClassReportPage />} />
         <Route path="/m/:slug/admin/exams/config" element={<AdminExamConfigPage />} />
         <Route path="/m/:slug/admin/notifications" element={<AdminNotificationsPage />} />
@@ -165,6 +168,7 @@ export default function App() {
         <Route path="/teacher/diary" element={<TeacherDiaryPage />} />
         <Route path="/teacher/ibadah" element={<TeacherIbadahPage />} />
         <Route path="/teacher/exams" element={<TeacherExamsPage />} />
+        <Route path="/teacher/exams/class-test" element={<TeacherClassTestsPage />} />
         <Route path="/teacher/exams/class-report" element={<TeacherClassReportPage />} />
         <Route path="/teacher/notifications" element={<TeacherNotificationsPage />} />
         <Route path="/teacher/performance" element={<TeacherPerformancePage />} />
@@ -179,6 +183,7 @@ export default function App() {
         <Route path="/m/:slug/teacher/diary" element={<TeacherDiaryPage />} />
         <Route path="/m/:slug/teacher/ibadah" element={<TeacherIbadahPage />} />
         <Route path="/m/:slug/teacher/exams" element={<TeacherExamsPage />} />
+        <Route path="/m/:slug/teacher/exams/class-test" element={<TeacherClassTestsPage />} />
         <Route path="/m/:slug/teacher/exams/class-report" element={<TeacherClassReportPage />} />
         <Route path="/m/:slug/teacher/notifications" element={<TeacherNotificationsPage />} />
         <Route path="/m/:slug/teacher/performance" element={<TeacherPerformancePage />} />
