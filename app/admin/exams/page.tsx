@@ -187,7 +187,7 @@ export default function AdminExamsPage() {
     setLoading(true);
     try {
       const [examData, classData] = await Promise.all([
-        getExams(cid, token, { accademicYearId: ayId || undefined, limit: 100 }),
+        getExams(cid, token, { limit: 100 }),
         getAllClasses(cid, token),
       ]);
       setExams(examData.data ?? []);
