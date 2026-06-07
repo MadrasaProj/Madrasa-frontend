@@ -5,7 +5,7 @@ import {
   CreditCard, BarChart3, Bell, Settings, Star, BookMarked,
   UserCircle, Home, GraduationCap, Moon, IndianRupee,
   BadgeCheck, FileBarChart2, Megaphone, UserCog, Activity, LogOut,
-  Building2, ShieldCheck, UserCircle2, School,
+  Building2, ShieldCheck, UserCircle2, School, Clock,
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
@@ -14,7 +14,7 @@ import { tenantLoginPath } from "@/lib/tenant-routing";
 
 type NavKey =
   | "dashboard" | "students" | "teachers" | "classes" | "subjects" | "fees"
-  | "idCards" | "exams" | "classTests" | "reports" | "logs" | "config" | "attendance"
+  | "idCards" | "exams" | "classTests" | "checkin" | "reports" | "logs" | "config" | "attendance"
   | "homework" | "diary" | "ibadah" | "performance" | "home"
   | "results" | "alerts" | "overview" | "finance" | "announcements" | "notifications"
   | "madrasas" | "superUsers" | "platformReports" | "profile";
@@ -40,6 +40,7 @@ const adminLinks = [
 
 const teacherLinks = [
   { href: "/teacher",              icon: LayoutDashboard, key: "dashboard"    as NavKey },
+  { href: "/teacher/checkin",      icon: Clock,           key: "checkin"      as NavKey },
   { href: "/teacher/attendance",   icon: ClipboardList,   key: "attendance"   as NavKey },
   { href: "/teacher/homework",     icon: BookOpen,        key: "homework"     as NavKey },
   { href: "/teacher/diary",        icon: FileText,        key: "diary"        as NavKey },
@@ -146,17 +147,25 @@ export function Sidebar() {
         {links.map(({ href, icon: Icon, key }) => {
           const fullHref = slugPrefix ? `${slugPrefix}${href}` : href;
           const active = pathname === fullHref || (!ROOT_PATHS.includes(fullHref) && pathname.startsWith(fullHref));
+          const isCheckin = key === "checkin";
           return (
             <Link
               key={href}
               to={fullHref}
               className={cn(
                 "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all",
-                active ? "bg-emerald-600 text-white shadow-sm" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                isCheckin && !active
+                  ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200 shadow-sm"
+                  : active
+                    ? "bg-emerald-600 text-white shadow-sm"
+                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
               )}
             >
-              <Icon className="w-5 h-5 shrink-0" />
+              <Icon className={cn("w-5 h-5 shrink-0", isCheckin && !active && "text-emerald-600")} />
               {t("nav", key, lang)}
+              {isCheckin && !active && (
+                <span className="ml-auto w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              )}
             </Link>
           );
         })}

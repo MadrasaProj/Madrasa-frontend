@@ -181,6 +181,7 @@ const translations = {
     posters: { en: "Posters", ml: "പോസ്‌റ്ററുകൾ" },
     config: { en: "Config", ml: "ക്രമീകരണം" },
     attendance: { en: "Attendance", ml: "ഹാജർ" },
+    checkin: { en: "Check In", ml: "ചെക്ക് ഇൻ" },
     homework: { en: "Homework", ml: "ഹോംവർക്ക്" },
     diary: { en: "Diary", ml: "ഡയറി" },
     ibadah: { en: "Ibadah", ml: "ഇബാദത്ത്" },

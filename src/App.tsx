@@ -51,6 +51,7 @@ import TeacherHomeworkPage from "../app/teacher/homework/page";
 import TeacherHomeworkListPage from "../app/teacher/homework-list/page";
 import TeacherDiaryPage from "../app/teacher/diary/page";
 import TeacherIbadahPage from "../app/teacher/ibadah/page";
+import TeacherCheckinPage from "../app/teacher/checkin/page";
 import TeacherExamsPage from "../app/teacher/exams/page";
 import TeacherClassTestsPage from "../app/teacher/exams/class-test/page";
 import TeacherNotificationsPage from "../app/teacher/notifications/page";
@@ -160,6 +161,7 @@ export default function App() {
 
         {/* Teacher */}
         <Route path="/teacher" element={<TeacherDashboard />} />
+        <Route path="/teacher/checkin" element={<TeacherCheckinPage />} />
         <Route path="/teacher/attendance" element={<TeacherAttendancePage />} />
         <Route path="/teacher/present" element={<TeacherPresentPage />} />
         <Route path="/teacher/absent" element={<TeacherAbsentPage />} />
@@ -175,6 +177,7 @@ export default function App() {
 
         {/* Teacher — slug-prefixed */}
         <Route path="/m/:slug/teacher" element={<TeacherDashboard />} />
+        <Route path="/m/:slug/teacher/checkin" element={<TeacherCheckinPage />} />
         <Route path="/m/:slug/teacher/attendance" element={<TeacherAttendancePage />} />
         <Route path="/m/:slug/teacher/present" element={<TeacherPresentPage />} />
         <Route path="/m/:slug/teacher/absent" element={<TeacherAbsentPage />} />
