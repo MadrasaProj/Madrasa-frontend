@@ -33,6 +33,7 @@ export interface HomeworkSubmission {
 
 export interface StudentHomeworkItem extends HomeworkAssignment {
   submission: {
+    id: string;
     status: HomeworkStatus;
     submittedAt: string | null;
     teacherNote: string | null;
@@ -88,3 +89,11 @@ export const bulkUpdateSubmissions = (
 
 export const getStudentHomework = (clientId: string, token: string, studentId: string) =>
   apiFetch<StudentHomeworkResponse>(`${API_BASE}/${clientId}/homework/student/${studentId}`, token);
+
+export const parentSubmitHomework = (clientId: string, token: string, submissionId: string) =>
+  apiFetch<{ message: string; status: HomeworkStatus }>(
+    `${API_BASE}/${clientId}/homework/submissions/${submissionId}/submit`,
+    token,
+    { method: "POST" }
+  );
+

@@ -37,11 +37,11 @@ const SECTIONS: { title: string; fields: Field[] }[] = [
     ],
   },
   {
-    title: "Principal / Management",
+    title: "Sadr Muallim (Head master) / Management",
     fields: [
-      { key: "principalName",  label: "Principal Name",  placeholder: "Dr. Abdul Rahman" },
-      { key: "principalPhone", label: "Principal Phone", placeholder: "+91 9876543210", type: "tel" },
-      { key: "principalEmail", label: "Principal Email", placeholder: "principal@madrasa.com", type: "email" },
+      { key: "principalName",  label: "Sadr Muallim (Head master) Name",  placeholder: "Dr. Abdul Rahman" },
+      { key: "principalPhone", label: "Sadr Muallim (Head master) Phone", placeholder: "+91 9876543210", type: "tel" },
+      { key: "principalEmail", label: "Sadr Muallim (Head master) Email", placeholder: "principal@madrasa.com", type: "email" },
     ],
   },
   {

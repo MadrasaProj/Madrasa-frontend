@@ -3,7 +3,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import {
-  listHomework, createHomework, deleteHomework,
+  listHomework, createHomework, deleteHomework, updateHomework,
   getSubmissions, bulkUpdateSubmissions,
   type HomeworkAssignment, type HomeworkStatus, type SubmissionsResponse,
 } from "@/lib/homework-api";
@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import {
   BookOpen, Plus, Trash2, CheckCircle2, Clock,
   Loader2, ChevronDown, ChevronUp, AlertTriangle,
-  Calendar, Users, Check, X,
+  Calendar, Users, Check, X, Pencil,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -55,6 +55,15 @@ export default function TeacherHomeworkPage() {
   const [subjectId, setSubjectId]     = useState("");
   const [classSubjects, setClassSubjects] = useState<SubjectRecord[]>([]);
   const [creating, setCreating]       = useState(false);
+
+  // Edit homework form
+  const [showEditDrawer, setShowEditDrawer] = useState(false);
+  const [editTarget, setEditTarget]         = useState<HomeworkAssignment | null>(null);
+  const [editTitle, setEditTitle]           = useState("");
+  const [editDesc, setEditDesc]             = useState("");
+  const [editDueDate, setEditDueDate]       = useState("");
+  const [editSubjectId, setEditSubjectId]   = useState("");
+  const [updating, setUpdating]             = useState(false);
 
   // Load classes + homework
   useEffect(() => {
@@ -146,6 +155,45 @@ export default function TeacherHomeworkPage() {
       setActiveTab("check");
     } catch (e) { setError((e as Error).message); }
     finally { setCreating(false); }
+  };
+
+  const openEdit = async (hw: HomeworkAssignment) => {
+    setEditTarget(hw);
+    setEditTitle(hw.title);
+    setEditDesc(hw.description ?? "");
+    setEditDueDate(hw.dueDate.split("T")[0]);
+    setEditSubjectId(hw.subjectId ?? "");
+    if (cid && token && hw.classId) {
+      const params = isPeriodBased
+        ? { classId: hw.classId, teacherId }
+        : { classId: hw.classId };
+      getSubjects(cid, token, params)
+        .then((r) => {
+          setClassSubjects(r.data);
+        })
+        .catch(() => {});
+    }
+    setShowEditDrawer(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!editTarget || !editTitle || !editDueDate || !editSubjectId) return;
+    setUpdating(true);
+    try {
+      await updateHomework(cid, token, editTarget.id, {
+        title: editTitle,
+        description: editDesc || undefined,
+        dueDate: editDueDate,
+        subjectId: editSubjectId,
+      });
+      setShowEditDrawer(false);
+      setEditTarget(null);
+      await reload();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setUpdating(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -308,6 +356,12 @@ export default function TeacherHomeworkPage() {
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <button
+                          onClick={(e) => { e.stopPropagation(); openEdit(hw); }}
+                          className="p-1.5 rounded-lg text-gray-300 hover:text-emerald-500 hover:bg-emerald-50 transition-colors"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={(e) => { e.stopPropagation(); handleDelete(hw.id); }}
                           disabled={deletingId === hw.id}
                           className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
@@ -423,6 +477,72 @@ export default function TeacherHomeworkPage() {
           )}
         </>
       )}
+
+      {/* Edit Homework Drawer */}
+      <AnimatePresence>
+        {showEditDrawer && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => !updating && setShowEditDrawer(false)}
+              className="fixed inset-0 bg-black/30 z-40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              className="fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-3xl p-5 shadow-2xl max-h-[92dvh] flex flex-col"
+            >
+              <div className="flex items-center justify-between mb-4 shrink-0">
+                <p className="font-bold text-gray-900">Edit Assignment</p>
+                <button onClick={() => setShowEditDrawer(false)}><X className="w-5 h-5 text-gray-400" /></button>
+              </div>
+
+              <div className="space-y-4 overflow-y-auto flex-1 pb-8">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Subject *</label>
+                  <select value={editSubjectId} onChange={(e) => setEditSubjectId(e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
+                    {classSubjects.length === 0
+                      ? <option value="">No subjects available</option>
+                      : classSubjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)
+                    }
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Title *</label>
+                  <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
+                    placeholder="e.g. Surah Al-Baqarah verses 1-5"
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Description (optional)</label>
+                  <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} rows={3}
+                    placeholder="Details, instructions..."
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none" />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Due Date *</label>
+                  <input type="date" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)}
+                    min={today}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+
+                <button
+                  onClick={handleUpdate}
+                  disabled={!editTitle || !editDueDate || !editSubjectId || updating}
+                  className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold text-sm disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  Save Changes
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </DashboardLayout>
   );
 }

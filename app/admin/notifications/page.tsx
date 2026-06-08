@@ -3,14 +3,14 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import {
-  getSentNotifications, createNotification, deleteNotification,
+  getSentNotifications, createNotification, deleteNotification, updateNotification,
   type NotificationRecord, type NotificationType,
 } from "@/lib/notifications-api";
 import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
-  Bell, Plus, Send, Trash2, Loader2, X,
+  Bell, Plus, Send, Trash2, Loader2, X, Pencil,
   BookOpen, ClipboardList, GraduationCap, CreditCard, FileText, Users,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -38,6 +38,7 @@ export default function AdminNotificationsPage() {
   const [error, setError]         = useState<string | null>(null);
   const [showCompose, setShowCompose] = useState(false);
   const [deletingId, setDeletingId]   = useState<string | null>(null);
+  const [editTarget, setEditTarget]   = useState<NotificationRecord | null>(null);
 
   // Compose form
   const [cTitle, setCTitle]       = useState("");
@@ -48,6 +49,25 @@ export default function AdminNotificationsPage() {
   const [cEventDate, setCEventDate] = useState("");
   const [sending, setSending]     = useState(false);
   const [sendError, setSendError] = useState("");
+
+  const handleComposeClick = () => {
+    setEditTarget(null);
+    setCTitle(""); setCBody(""); setCType("ANNOUNCEMENT"); setCRoles(["PARENT"]); setCClassIds([]); setCEventDate("");
+    setSendError("");
+    setShowCompose(true);
+  };
+
+  const handleEditClick = (n: NotificationRecord) => {
+    setEditTarget(n);
+    setCTitle(n.title);
+    setCBody(n.body);
+    setCType(n.type);
+    setCRoles(n.targetRoles);
+    setCClassIds(n.targetClassIds);
+    setCEventDate(n.eventDate ? n.eventDate.split("T")[0] : "");
+    setSendError("");
+    setShowCompose(true);
+  };
 
   const loadSent = useCallback(async () => {
     if (!cid || !token) return;
@@ -70,13 +90,23 @@ export default function AdminNotificationsPage() {
     if (!cTitle || !cBody || !cRoles.length) return;
     setSendError(""); setSending(true);
     try {
-      await createNotification(cid, token, {
-        title: cTitle, body: cBody, type: cType,
-        targetRoles: cRoles,
-        targetClassIds: cClassIds.length ? cClassIds : undefined,
-        eventDate: cEventDate || undefined,
-      });
+      if (editTarget) {
+        await updateNotification(cid, token, editTarget.id, {
+          title: cTitle, body: cBody, type: cType,
+          targetRoles: cRoles,
+          targetClassIds: cClassIds.length ? cClassIds : undefined,
+          eventDate: cEventDate || undefined,
+        });
+      } else {
+        await createNotification(cid, token, {
+          title: cTitle, body: cBody, type: cType,
+          targetRoles: cRoles,
+          targetClassIds: cClassIds.length ? cClassIds : undefined,
+          eventDate: cEventDate || undefined,
+        });
+      }
       setShowCompose(false);
+      setEditTarget(null);
       setCTitle(""); setCBody(""); setCRoles(["PARENT"]); setCClassIds([]); setCEventDate("");
       loadSent();
     } catch (e) { setSendError((e as Error).message); }
@@ -100,7 +130,7 @@ export default function AdminNotificationsPage() {
         subtitle={`${total} sent`}
         icon={Bell}
         action={
-          <button onClick={() => setShowCompose(true)}
+          <button onClick={handleComposeClick}
             className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold">
             <Plus className="w-4 h-4" /> Compose
           </button>
@@ -148,10 +178,16 @@ export default function AdminNotificationsPage() {
                       </span>
                     </div>
                   </div>
-                  <button onClick={() => handleDelete(n.id)} disabled={deletingId === n.id}
-                    className="p-1 shrink-0 text-gray-300 hover:text-red-500 transition-colors">
-                    {deletingId === n.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                  </button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button onClick={() => handleEditClick(n)}
+                      className="p-1 text-gray-300 hover:text-emerald-600 transition-colors">
+                      <Pencil className="w-4.5 h-4.5" />
+                    </button>
+                    <button onClick={() => handleDelete(n.id)} disabled={deletingId === n.id}
+                      className="p-1 text-gray-300 hover:text-red-500 transition-colors">
+                      {deletingId === n.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             );
@@ -169,7 +205,7 @@ export default function AdminNotificationsPage() {
               className="fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-3xl max-h-[90vh] overflow-y-auto"
             >
               <div className="sticky top-0 bg-white px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                <p className="font-bold text-gray-900 text-lg">Compose Notification</p>
+                <p className="font-bold text-gray-900 text-lg">{editTarget ? "Edit Notification" : "Compose Notification"}</p>
                 <button onClick={() => setShowCompose(false)}><X className="w-5 h-5 text-gray-400" /></button>
               </div>
               <div className="p-5 space-y-4">

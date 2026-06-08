@@ -19,12 +19,13 @@ export interface DiaryEntry {
 
 export const listDiary = (
   clientId: string, token: string,
-  params?: { classId?: string; from?: string; to?: string },
+  params?: { classId?: string; studentId?: string; from?: string; to?: string },
 ) => {
   const q = new URLSearchParams();
-  if (params?.classId) q.set("classId", params.classId);
-  if (params?.from)    q.set("from", params.from);
-  if (params?.to)      q.set("to", params.to);
+  if (params?.classId)   q.set("classId", params.classId);
+  if (params?.studentId) q.set("studentId", params.studentId);
+  if (params?.from)      q.set("from", params.from);
+  if (params?.to)        q.set("to", params.to);
   const qs = q.toString();
   return apiFetch<DiaryEntry[]>(`${API_BASE}/${clientId}/diary${qs ? `?${qs}` : ""}`, token);
 };

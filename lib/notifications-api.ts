@@ -17,6 +17,7 @@ export interface NotificationRecord {
   createdAt: string;
   isRead: boolean;
   readAt: string | null;
+  eventDate?: string | null;
   creator?: { id: string; name: string };
   _count?: { reads: number };
 }
@@ -95,3 +96,19 @@ export const markNotificationRead = (clientId: string, token: string, id: string
 
 export const deleteNotification = (clientId: string, token: string, id: string) =>
   apiFetch<{ message: string }>(`${API_BASE}/${clientId}/notifications/${id}`, token, { method: "DELETE" });
+
+export const updateNotification = (
+  clientId: string, token: string, id: string,
+  data: {
+    title: string;
+    body: string;
+    type: NotificationType;
+    targetRoles: string[];
+    targetClassIds?: string[];
+    eventDate?: string;
+  },
+) =>
+  apiFetch<NotificationRecord>(`${API_BASE}/${clientId}/notifications/${id}`, token, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });

@@ -457,6 +457,19 @@ export default function TeacherIbadahPage() {
                                                   <span className="text-gray-500">{log.quranPages}p</span>
                                                 </div>
                                               )}
+                                              {customItems.length > 0 && log.customData && (
+                                                <div className="flex flex-col items-center gap-0.5 border-t border-gray-50 pt-0.5 mt-0.5">
+                                                  {customItems.map((item) => {
+                                                    const val = log.customData?.[item.key];
+                                                    if (val === undefined || val === null) return null;
+                                                    return (
+                                                      <div key={item.key} className="text-[9px] text-purple-600 font-semibold truncate max-w-[80px]">
+                                                        {item.label.slice(0, 8)}: {item.type === "boolean" ? (val ? "✓" : "✗") : val}
+                                                      </div>
+                                                    );
+                                                  })}
+                                                </div>
+                                              )}
                                             </div>
                                           )}
                                         </div>

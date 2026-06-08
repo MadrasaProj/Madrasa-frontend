@@ -58,3 +58,9 @@ export const updateTeacher = (
     method: "PATCH",
     body: JSON.stringify(data),
   });
+
+export const deleteTeacher = (clientId: string, token: string, id: string) =>
+  apiFetch<{ message: string }>(`${V2_BASE}/${clientId}/teachers/${id}`, token, {
+    method: "DELETE",
+  });
+

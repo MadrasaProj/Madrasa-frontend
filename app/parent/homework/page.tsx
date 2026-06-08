@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import {
   getStudentHomework,
+  parentSubmitHomework,
   type StudentHomeworkResponse,
   type HomeworkStatus,
 } from "@/lib/homework-api";
@@ -69,6 +70,20 @@ export default function ParentHomeworkPage() {
   const [active, setActive] = useState<ChildData | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<HomeworkStatus | "all">("all");
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
+
+  const handleSubmitHomework = async (submissionId: string) => {
+    if (!cid || !token) return;
+    setSubmittingId(submissionId);
+    try {
+      await parentSubmitHomework(cid, token, submissionId);
+      await load();
+    } catch (e) {
+      alert((e as Error).message);
+    } finally {
+      setSubmittingId(null);
+    }
+  };
 
   const load = useCallback(async () => {
     if (!cid || !token || !effectiveId) {
@@ -318,6 +333,21 @@ export default function ParentHomeworkPage() {
                           <div className="mt-2 bg-blue-50 rounded-xl px-3 py-2 text-xs text-blue-700">
                             Teacher: {sub.teacherNote}
                           </div>
+                        )}
+
+                        {sub.status === "NOT_SUBMITTED" && (
+                          <button
+                            onClick={() => handleSubmitHomework(sub.id)}
+                            disabled={submittingId === sub.id}
+                            className="mt-3 w-full py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-[0.98]"
+                          >
+                            {submittingId === sub.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                            )}
+                            Mark as Submitted
+                          </button>
                         )}
                       </motion.div>
                     );

@@ -36,10 +36,12 @@ interface FormState {
   notes: string;
 }
 
-const EMPTY_FORM: FormState = {
-  fajr: false, dhuhr: false, asr: false, maghrib: false, isha: false,
-  quranPages: 0, customData: {}, notes: "",
-};
+function getEmptyForm(): FormState {
+  return {
+    fajr: false, dhuhr: false, asr: false, maghrib: false, isha: false,
+    quranPages: 0, customData: {}, notes: "",
+  };
+}
 
 function fmt(d: Date) { return d.toISOString().split("T")[0]; }
 
@@ -64,7 +66,7 @@ export default function ParentIbadahPage() {
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState<string | null>(null);
   const [date, setDate]               = useState(fmt(new Date()));
-  const [form, setForm]               = useState<FormState>(EMPTY_FORM);
+  const [form, setForm]               = useState<FormState>(getEmptyForm());
   const [saving, setSaving]           = useState(false);
   const [saved, setSaved]             = useState(false);
   const [saveError, setSaveError]     = useState<string | null>(null);
@@ -96,8 +98,8 @@ export default function ParentIbadahPage() {
   // Pre-fill form from existing log when date or ibadah changes
   useEffect(() => {
     if (!ibadah) return;
-    const log = ibadah.logs.find((l) => l.date.startsWith(date));
-    setForm(log ? logToForm(log) : EMPTY_FORM);
+    const log = ibadah.logs.find((l) => l.date.split("T")[0] === date);
+    setForm(log ? logToForm(log) : getEmptyForm());
   }, [date, ibadah]);
 
   const config = ibadah?.config ?? null;
@@ -572,6 +574,27 @@ export default function ParentIbadahPage() {
                                   <p className="text-sm text-blue-700">
                                     <span className="font-bold">{log.quranPages}</span> Quran pages
                                   </p>
+                                </div>
+                              )}
+                              {customItems.length > 0 && log.customData && (
+                                <div className="space-y-1.5">
+                                  {customItems.map((item) => {
+                                    const val = log.customData?.[item.key];
+                                    if (val === undefined || val === null) return null;
+                                    return (
+                                      <div key={item.key} className="flex items-center gap-2 bg-purple-50 rounded-xl px-3 py-2">
+                                        {item.type === "boolean" ? (
+                                          <ToggleLeft className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                                        ) : (
+                                          <Hash className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                                        )}
+                                        <p className="text-sm text-purple-700">
+                                          <span className="font-bold">{item.label}:</span>{" "}
+                                          {item.type === "boolean" ? (val ? "Yes" : "No") : val}
+                                        </p>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               )}
                               {log.notes && (

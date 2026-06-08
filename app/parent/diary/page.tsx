@@ -47,7 +47,7 @@ export default function ParentDiaryPage() {
     setLoading(true); setError(null);
     try {
       const [diaryData, eventsData] = await Promise.all([
-        listDiary(cid, token, { classId, from: d, to: d }),
+        listDiary(cid, token, { classId, studentId: activeStudent?.id, from: d, to: d }),
         getDiaryEvents(cid, token, { from: d, to: d, classId }),
       ]);
       setEntries(diaryData);
@@ -57,7 +57,7 @@ export default function ParentDiaryPage() {
     } finally {
       setLoading(false);
     }
-  }, [cid, token, classId]);
+  }, [cid, token, classId, activeStudent]);
 
   useEffect(() => { load(date); }, [date, load]);
 
@@ -72,7 +72,7 @@ export default function ParentDiaryPage() {
   return (
     <DashboardLayout>
       <PageHeader
-        title="School Diary"
+        title="Madrasa Diary"
         subtitle={activeStudent ? `${activeStudent.name}` : ""}
         icon={FileText}
         back
@@ -154,7 +154,7 @@ export default function ParentDiaryPage() {
           {events.length > 0 && (
             <div>
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">
-                School Announcements
+                Madrasa Announcements
               </p>
               <div className="space-y-3">
                 {events.map((ev) => {

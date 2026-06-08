@@ -140,8 +140,13 @@ export default function TeacherAttendancePage() {
       ]);
 
       const map = new Map<string, LocalRecord>();
+      const hasExistingRecords = attendanceRes.records && attendanceRes.records.length > 0;
       for (const s of studentsRes.data) {
-        map.set(s.id, { status: null, notes: "", dirty: false });
+        map.set(s.id, {
+          status: hasExistingRecords ? null : "PRESENT",
+          notes: "",
+          dirty: !hasExistingRecords,
+        });
       }
       for (const rec of attendanceRes.records) {
         map.set(rec.student.id, {

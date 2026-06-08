@@ -4,7 +4,7 @@ import { PageHeader, SectionHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { DataTable, type Column, type SortDir } from "@/components/ui/DataTable";
 import {
-  getTeachers, createTeacher, updateTeacher,
+  getTeachers, createTeacher, updateTeacher, deleteTeacher,
   type TeacherRecord, type UpdateTeacherPayload,
 } from "@/lib/teachers-api";
 import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
@@ -13,7 +13,7 @@ import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
   Users, Plus, Search, Loader2, X, Eye, EyeOff, Pencil,
-  GraduationCap, BookOpen, CheckCircle2, ChevronDown,
+  GraduationCap, BookOpen, CheckCircle2, ChevronDown, Trash2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -52,6 +52,8 @@ export default function AdminTeachersPage() {
   const [showNewPw, setShowNewPw]   = useState(false);
   const [saving, setSaving]         = useState(false);
   const [saveError, setSaveError]   = useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting]     = useState(false);
 
   // ── Assignment data (loaded on edit open) ──────────────────────────────────
   const [allClasses, setAllClasses]   = useState<ClassRecord[]>([]);
@@ -102,6 +104,25 @@ export default function AdminTeachersPage() {
     setSaveError(""); setShowPw(false); setShowNewPw(false);
     setAllClasses([]); setAllSubjects([]); setAssignError("");
     setSubjectSearch(""); setExpandedGroups(new Set());
+    setShowDeleteConfirm(false); setDeleting(false);
+  };
+
+  const handleDelete = async () => {
+    if (!editTarget || !cid || !token) return;
+    setDeleting(true);
+    setSaveError("");
+    try {
+      await deleteTeacher(cid, token, editTarget.id);
+      setShowDeleteConfirm(false);
+      setShowDrawer(false);
+      setPage(1);
+      load(search, 1, pageSize, sortBy, sortDir);
+    } catch (e) {
+      setSaveError((e as Error).message);
+      setShowDeleteConfirm(false);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const openAdd = () => {
@@ -409,7 +430,7 @@ export default function AdminTeachersPage() {
             <motion.div key="teacher-drawer"
               initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[92dvh] flex flex-col"
+              className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[92dvh] flex flex-col relative"
             >
               {/* Handle */}
               <div className="flex justify-center pt-3 pb-1 shrink-0">
@@ -703,8 +724,17 @@ export default function AdminTeachersPage() {
                   </>
                 )}
 
-                {/* ── Save button ── */}
-                <div className={cn(editTarget ? "" : "pt-0")}>
+                {/* ── Save button & Delete button ── */}
+                <div className={cn("space-y-3", editTarget ? "mt-4" : "pt-0")}>
+                  {editTarget && (
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className="w-full border border-red-200 hover:border-red-300 text-red-600 font-semibold py-3 rounded-2xl text-sm transition-all"
+                    >
+                      Delete Teacher
+                    </button>
+                  )}
                   <button
                     onClick={handleSave}
                     disabled={saving || !fName.trim() || !fUsername.trim() || (!editTarget && !fPassword) || (editTarget !== null && loadingAssign)}
@@ -718,6 +748,34 @@ export default function AdminTeachersPage() {
                   </button>
                 </div>
               </div>
+
+              {/* Delete Confirmation Overlay */}
+              <AnimatePresence>
+                {showDeleteConfirm && (
+                  <div className="absolute inset-0 bg-white/95 z-50 flex flex-col items-center justify-center p-6 text-center">
+                    <Trash2 className="w-12 h-12 text-red-500 mb-3" />
+                    <p className="font-bold text-gray-900 text-lg">Delete Teacher?</p>
+                    <p className="text-sm text-gray-500 mt-1 max-w-xs">
+                      Are you sure you want to delete {editTarget?.name}? This action cannot be undone. All classes, subjects, results, diaries, and homework will be unlinked or deleted.
+                    </p>
+                    <div className="flex gap-3 mt-6 w-full max-w-xs">
+                      <button
+                        onClick={() => setShowDeleteConfirm(false)}
+                        className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleDelete}
+                        disabled={deleting}
+                        className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
+                      >
+                        {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </AnimatePresence>
             </motion.div>
           </>
         )}
