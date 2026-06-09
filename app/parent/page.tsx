@@ -93,7 +93,7 @@ export default function ParentDashboard() {
             {lang === "ml" ? "രക്ഷിതാവ് പോർട്ടൽ" : "Parent Portal"}
           </p>
           <h1 className="text-xl font-bold">
-            {lang === "ml" ? "സ്വാഗതം" : "Welcome"}
+            {lang === "ml" ? "സ്വാഗതം" : "Welcome"}{user?.name ? `, ${user.name}` : ""}
           </h1>
           <div className="flex items-center gap-3 mt-3">
             <div className="bg-white/15 rounded-2xl px-4 py-2 text-center">

@@ -19,11 +19,19 @@ function ParentStudentSwitcher() {
 
   const students = user.accessibleStudents ?? [];
   const ids = user.accessibleStudentIds ?? [];
-  if (ids.length <= 1) return null;
+  if (ids.length === 0) return null;
 
   const effectiveId = activeStudentId ?? ids[0];
   const activeStudent = students.find((s) => s.id === effectiveId);
   const activeName = activeStudent?.name ?? `Student ${ids.indexOf(effectiveId) + 1}`;
+
+  if (ids.length === 1) {
+    return (
+      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold max-w-[140px]">
+        <span className="truncate">{activeName}</span>
+      </div>
+    );
+  }
 
   return (
     <div className="relative">
