@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
-// import PwaRegister from "../components/PwaRegister";
+import PwaRegister from "../components/PwaRegister";
 
 // ── Auth / Login ──────────────────────────────────────────────────────────────
 import AdminLoginPage from "../app/m/[slug]/admin/login/page";
@@ -78,7 +78,7 @@ import CommitteeStudentsPage from "../app/committee/students/page";
 export default function App() {
   return (
     <>
-      {/* <PwaRegister /> */}
+      <PwaRegister />
       <Routes>
         {/* Root redirect */}
         <Route path="/" element={<Navigate to="/super-admin/login" replace />} />
@@ -140,7 +140,6 @@ export default function App() {
         <Route path="/m/:slug/admin/students" element={<AdminStudentsPage />} />
         <Route path="/m/:slug/admin/students/:id" element={<AdminStudentDetailPage />} />
         <Route path="/m/:slug/admin/attendance" element={<AdminAttendancePage />} />
-        <Route path="/m/:slug/admin/leave-requests" element={<AdminLeaveRequestsPage />} />
         <Route path="/m/:slug/admin/present" element={<AdminPresentPage />} />
         <Route path="/m/:slug/admin/absent" element={<AdminAbsentPage />} />
         <Route path="/m/:slug/admin/fees" element={<AdminFeesPage />} />
@@ -183,7 +182,6 @@ export default function App() {
         <Route path="/m/:slug/teacher" element={<TeacherDashboard />} />
         <Route path="/m/:slug/teacher/checkin" element={<TeacherCheckinPage />} />
         <Route path="/m/:slug/teacher/attendance" element={<TeacherAttendancePage />} />
-        <Route path="/m/:slug/teacher/leave-requests" element={<TeacherLeaveRequestsPage />} />
         <Route path="/m/:slug/teacher/present" element={<TeacherPresentPage />} />
         <Route path="/m/:slug/teacher/absent" element={<TeacherAbsentPage />} />
         <Route path="/m/:slug/teacher/homework" element={<TeacherHomeworkPage />} />
@@ -199,7 +197,6 @@ export default function App() {
         {/* Parent */}
         <Route path="/parent" element={<ParentDashboard />} />
         <Route path="/parent/attendance" element={<ParentAttendancePage />} />
-        <Route path="/parent/leave-requests" element={<ParentLeaveRequestsPage />} />
         <Route path="/parent/fees" element={<ParentFeesPage />} />
         <Route path="/parent/homework" element={<ParentHomeworkPage />} />
         <Route path="/parent/ibadah" element={<ParentIbadahPage />} />
@@ -210,7 +207,6 @@ export default function App() {
         {/* Parent — slug-prefixed */}
         <Route path="/m/:slug/parent" element={<ParentDashboard />} />
         <Route path="/m/:slug/parent/attendance" element={<ParentAttendancePage />} />
-        <Route path="/m/:slug/parent/leave-requests" element={<ParentLeaveRequestsPage />} />
         <Route path="/m/:slug/parent/fees" element={<ParentFeesPage />} />
         <Route path="/m/:slug/parent/homework" element={<ParentHomeworkPage />} />
         <Route path="/m/:slug/parent/ibadah" element={<ParentIbadahPage />} />
