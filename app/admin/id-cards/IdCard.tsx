@@ -10,6 +10,8 @@ import { getStudents, StudentRecord } from "@/lib/students-api";
 
 import { ClassRecord, getAllClasses } from "@/lib/classes-api";
 
+import { getClientConfig, ClientConfig } from "@/lib/config-api";
+
 import { useAuthStore } from "@/store/auth";
 
 import { useLanguageStore } from "@/store/language";
@@ -30,6 +32,8 @@ import {
 import { cn } from "@/lib/utils";
 
 import { Group, Leafer, Image as LeaferImage, Rect, Text } from "leafer-ui";
+
+import "@leafer-in/export";
 
 interface StudentInfo {
   id: string;
@@ -87,6 +91,8 @@ function CardCanvas({
   madrasaName,
 
   avatars,
+
+  clientConfig,
 }: {
   student: StudentInfo;
 
@@ -99,6 +105,8 @@ function CardCanvas({
   madrasaName?: string;
 
   avatars?: Record<string, string>;
+
+  clientConfig?: ClientConfig | null;
 }) {
   const leaferRef = useRef<Leafer | null>(null);
 
@@ -130,6 +138,8 @@ function CardCanvas({
     });
 
     leaferRef.current = leafer;
+
+    (el as any).__leafer = leafer;
 
     const card = new Group({ x: 0, y: 0 });
 
@@ -612,7 +622,7 @@ function CardCanvas({
 
       y: 192,
 
-      text: "Madrasa Address · Phone: 0495-XXXXXX",
+      text: [clientConfig?.address, clientConfig?.phone].filter(Boolean).join(" · ") || "Madrasa Address · Phone: 0495-XXXXXX",
 
       fontSize: 7.5,
 
@@ -624,9 +634,11 @@ function CardCanvas({
     leafer.add(card);
 
     return () => {
+      (el as any).__leafer = undefined;
+
       leafer.destroy();
     };
-  }, [student, theme, bgImage, madrasaName, avatars]);
+  }, [student, theme, bgImage, madrasaName, avatars, clientConfig]);
 
   return null;
 }
@@ -691,6 +703,8 @@ export default function IDCardsPage() {
 
   const [avatars, setAvatars] = useState<Record<string, string>>({});
 
+  const [clientConfig, setClientConfig] = useState<ClientConfig | null>(null);
+
   const selected = useMemo(
     () => students.find((s) => s.id === selectedId) ?? null,
 
@@ -725,7 +739,9 @@ export default function IDCardsPage() {
       })),
 
       getAllClasses(cid, token, ac.signal).catch(() => [] as ClassRecord[]),
-    ]).then(([stuData, classData]) => {
+
+      getClientConfig(cid, token).catch(() => null as unknown as ClientConfig),
+    ]).then(([stuData, classData, config]) => {
       const mapped: StudentInfo[] = (stuData.data ?? []).map((s) => ({
         id: s.id,
 
@@ -750,6 +766,8 @@ export default function IDCardsPage() {
 
       setClasses(classData);
 
+      setClientConfig(config ?? null);
+
       if (mapped.length > 0 && !selectedId) {
         setSelectedId(mapped[0].id);
       }
@@ -761,15 +779,19 @@ export default function IDCardsPage() {
   }, [cid, token]);
 
   const handleExport = async () => {
-    const canvas = canvasRef.current?.querySelector("canvas");
+    const leafer = (canvasRef.current as any)?.__leafer as Leafer | undefined;
 
-    if (!canvas) return;
+    if (!leafer) return;
+
+    const dataUrl = await leafer.export("png", { quality: 1,pixelRatio:5  });
+ 
+    if (!dataUrl) return;
 
     const link = document.createElement("a");
 
     link.download = `id-card-${selected?.name?.replace(/\s+/g, "-") || "student"}.png`;
 
-    link.href = canvas.toDataURL("image/png");
+    link.href = dataUrl.data;
 
     link.click();
   };
@@ -1057,6 +1079,7 @@ export default function IDCardsPage() {
                     bgImage={bgImage}
                     madrasaName={madrasaName}
                     avatars={avatars}
+                    clientConfig={clientConfig}
                   />
                 </div>
 
