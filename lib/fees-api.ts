@@ -168,6 +168,12 @@ export const getFeeSummary = (clientId: string, token: string, academicYearId?: 
     token, { signal }
   );
 
+export const cancelPayment = (clientId: string, token: string, id: string, reason?: string, signal?: AbortSignal) =>
+  apiFetch<FeePayment>(`${DEFAULT_API_BASE}/${clientId}/fees/payments/${id}/cancel`, token, { method: "POST", body: JSON.stringify({ reason }), signal });
+
+export const undoCancelPayment = (clientId: string, token: string, id: string, signal?: AbortSignal) =>
+  apiFetch<FeePayment>(`${DEFAULT_API_BASE}/${clientId}/fees/payments/${id}/undo-cancel`, token, { method: "POST", signal });
+
 export const generatePayments = (clientId: string, token: string, data: { feeTypeId: string; academicYearId?: string; classIds?: string[] }, signal?: AbortSignal) =>
   apiFetch<{ generated: number; total?: number; dueDate?: string; message?: string }>(
     `${DEFAULT_API_BASE}/${clientId}/fees/generate`, token, { method: "POST", body: JSON.stringify(data), signal }

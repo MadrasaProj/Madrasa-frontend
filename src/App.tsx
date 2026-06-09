@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
-import PwaRegister from "../components/PwaRegister";
+// import PwaRegister from "../components/PwaRegister";
 
 // ── Auth / Login ──────────────────────────────────────────────────────────────
 import AdminLoginPage from "../app/m/[slug]/admin/login/page";
@@ -75,7 +75,7 @@ import CommitteeStudentsPage from "../app/committee/students/page";
 export default function App() {
   return (
     <>
-      <PwaRegister />
+      {/* <PwaRegister /> */}
       <Routes>
         {/* Root redirect */}
         <Route path="/" element={<Navigate to="/super-admin/login" replace />} />
