@@ -1,11 +1,11 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard, Users, ClipboardList, BookOpen, FileText,
+  LayoutDashboard, Users,   ClipboardList, BookOpen, FileText,
   CreditCard, BarChart3, Bell, Settings, Star, BookMarked,
   UserCircle, Home, GraduationCap, Moon, IndianRupee,
   BadgeCheck, FileBarChart2, Megaphone, UserCog, Activity, LogOut,
-  Building2, ShieldCheck, UserCircle2, School, Clock,
+  Building2, ShieldCheck, UserCircle2, School, Clock, FilePen,
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
@@ -16,6 +16,7 @@ type NavKey =
   | "dashboard" | "students" | "teachers" | "classes" | "subjects" | "fees"
   | "idCards" | "exams" | "classTests" | "checkin" | "reports" | "logs" | "config" | "attendance"
   | "homework" | "diary" | "ibadah" | "performance" | "home"
+  | "leaveRequests"
   | "results" | "alerts" | "overview" | "finance" | "announcements" | "notifications"
   | "madrasas" | "superUsers" | "platformReports" | "profile";
 
@@ -25,8 +26,9 @@ const adminLinks = [
   { href: "/admin/classes",        icon: School,          key: "classes"       as NavKey },
   { href: "/admin/subjects",       icon: BookOpen,        key: "subjects"      as NavKey },
   { href: "/admin/teachers",       icon: UserCog,         key: "teachers"      as NavKey },
-  { href: "/admin/attendance",     icon: ClipboardList,   key: "attendance"    as NavKey },
-  { href: "/admin/ibadah",         icon: Moon,            key: "ibadah"        as NavKey },
+  { href: "/admin/attendance",        icon: ClipboardList,   key: "attendance"     as NavKey },
+  { href: "/admin/leave-requests",    icon: FilePen,         key: "leaveRequests"  as NavKey },
+  { href: "/admin/ibadah",            icon: Moon,            key: "ibadah"         as NavKey },
   { href: "/admin/fees",           icon: CreditCard,      key: "fees"          as NavKey },
   { href: "/admin/id-cards",       icon: BadgeCheck,      key: "idCards"       as NavKey },
   { href: "/admin/exams",          icon: GraduationCap,   key: "exams"         as NavKey },
@@ -41,8 +43,9 @@ const adminLinks = [
 const teacherLinks = [
   { href: "/teacher",              icon: LayoutDashboard, key: "dashboard"    as NavKey },
   { href: "/teacher/checkin",      icon: Clock,           key: "checkin"      as NavKey },
-  { href: "/teacher/attendance",   icon: ClipboardList,   key: "attendance"   as NavKey },
-  { href: "/teacher/homework",     icon: BookOpen,        key: "homework"     as NavKey },
+  { href: "/teacher/attendance",      icon: ClipboardList,   key: "attendance"    as NavKey },
+  { href: "/teacher/leave-requests",  icon: FilePen,         key: "leaveRequests" as NavKey },
+  { href: "/teacher/homework",        icon: BookOpen,        key: "homework"      as NavKey },
   { href: "/teacher/diary",        icon: FileText,        key: "diary"        as NavKey },
   { href: "/teacher/ibadah",       icon: Moon,            key: "ibadah"       as NavKey },
   { href: "/teacher/exams",        icon: GraduationCap,   key: "exams"        as NavKey },
@@ -54,8 +57,9 @@ const teacherLinks = [
 
 const parentLinks = [
   { href: "/parent",               icon: Home,            key: "home"         as NavKey },
-  { href: "/parent/attendance",    icon: ClipboardList,   key: "attendance"   as NavKey },
-  { href: "/parent/homework",      icon: BookOpen,        key: "homework"     as NavKey },
+  { href: "/parent/attendance",       icon: ClipboardList,   key: "attendance"    as NavKey },
+  { href: "/parent/leave-requests",   icon: FilePen,         key: "leaveRequests" as NavKey },
+  { href: "/parent/homework",         icon: BookOpen,        key: "homework"      as NavKey },
   { href: "/parent/diary",         icon: FileText,        key: "diary"        as NavKey },
   { href: "/parent/ibadah",        icon: Moon,            key: "ibadah"       as NavKey },
   { href: "/parent/fees",          icon: CreditCard,      key: "fees"         as NavKey },
