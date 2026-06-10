@@ -5,6 +5,7 @@ import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import {
   getFeeTypes, getPayments, updatePayment, getPaymentReceipt,
   cancelPayment as cancelPaymentApi,
+  undoCancelPayment as undoCancelPaymentApi,
   type FeeType, type FeePayment, type ReceiptData,
   type FeePaymentStatus,
 } from "@/lib/fees-api";
@@ -18,7 +19,7 @@ import { motion, AnimatePresence } from "framer-motion";
 const PALETTE = [
   { bg: "bg-emerald-600", light: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700" },
   { bg: "bg-blue-600", light: "bg-blue-50", border: "border-blue-200", text: "text-blue-700" },
-  { bg: "bg-purple-600", light: "bg-purple-50", border: "border-purple-200", text: "text-purple-700" },
+  { bg: "bg-sky-600", light: "bg-sky-50", border: "border-sky-200", text: "text-sky-700" },
   { bg: "bg-rose-600", light: "bg-rose-50", border: "border-rose-200", text: "text-rose-700" },
   { bg: "bg-orange-500", light: "bg-orange-50", border: "border-orange-200", text: "text-orange-700" },
   { bg: "bg-teal-600", light: "bg-teal-50", border: "border-teal-200", text: "text-teal-700" },
@@ -104,6 +105,10 @@ export default function TeacherFeesPage() {
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
   const [loadingReceipt, setLoadingReceipt] = useState<string | null>(null);
 
+  const [cancelling, setCancelling] = useState<string | null>(null);
+  const [cancellingNote, setCancellingNote] = useState("");
+  const [cancellingSave, setCancellingSave] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
 
   const loadTypes = useCallback(async () => {
@@ -157,6 +162,36 @@ export default function TeacherFeesPage() {
     finally { setLoadingReceipt(null); }
   };
 
+  const cancelPayment = async (p: FeePayment) => {
+    setCancellingSave(true);
+    try {
+      await cancelPaymentApi(cid, token, p.id, cancellingNote || undefined);
+      setCancelling(null);
+      setCancellingNote("");
+      loadPayments();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setCancellingSave(false);
+    }
+  };
+
+  const undoCancel = async (p: FeePayment) => {
+    setCancellingSave(true);
+    try {
+      await undoCancelPaymentApi(cid, token, p.id);
+      loadPayments();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setCancellingSave(false);
+    }
+  };
+
+  const cancellingPayment = cancelling
+    ? payments.find((p) => p.id === cancelling) ?? null
+    : null;
+
   return (
     <DashboardLayout>
       <PageHeader title="Fees & Payments" subtitle="View and record payments" icon={CreditCard} />
@@ -172,7 +207,7 @@ export default function TeacherFeesPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-5">
             <button onClick={() => { setActiveTypeId(null); setPaySkip(0); setStatusFilter("all"); setSearch(""); }}
               className={cn("text-left p-4 rounded-2xl border-2 transition-all",
-                activeTypeId === null ? "bg-gray-900 border-gray-900 text-white" : "bg-white border-gray-100 hover:border-gray-200 text-gray-700")}>
+                activeTypeId === null ? "bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-100" : "bg-white border-gray-100 hover:border-gray-200 text-gray-700")}>
               <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center mb-2",
                 activeTypeId === null ? "bg-white/20" : "bg-gray-100")}>
                 <CreditCard className={cn("w-4 h-4", activeTypeId === null ? "text-white" : "text-gray-500")} />
@@ -271,19 +306,73 @@ export default function TeacherFeesPage() {
                               {isPaid ? "✓ " : ""}{meta.label}
                             </span>
                             {isPaid ? (
-                              <button onClick={() => showReceiptFor(p.id)} disabled={loadingReceipt === p.id} className="shrink-0 p-1">
-                                {loadingReceipt === p.id ? (
-                                  <Loader2 className="w-4 h-4 text-gray-300 animate-spin" />
-                                ) : (
-                                  <Receipt className="w-4 h-4 text-gray-300 hover:text-blue-500 transition-colors" />
-                                )}
+                              <>
+                                <button onClick={() => showReceiptFor(p.id)} disabled={loadingReceipt === p.id} className="shrink-0 p-1" title="View receipt">
+                                  {loadingReceipt === p.id ? (
+                                    <Loader2 className="w-4 h-4 text-gray-300 animate-spin" />
+                                  ) : (
+                                    <Receipt className="w-4 h-4 text-gray-300 hover:text-blue-500 transition-colors" />
+                                  )}
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setCancelling(p.id);
+                                    setCancellingNote("");
+                                  }}
+                                  className="shrink-0 p-1"
+                                  title="Cancel fee"
+                                >
+                                  <XCircle
+                                    className={cn(
+                                      "w-5 h-5 transition-colors",
+                                      cancelling === p.id
+                                        ? "text-red-500"
+                                        : "text-gray-300 hover:text-red-500",
+                                    )}
+                                  />
+                                </button>
+                              </>
+                            ) : p.status === "WAIVED" ? (
+                              <button
+                                onClick={() => undoCancel(p)}
+                                disabled={cancellingSave}
+                                className="shrink-0 p-1"
+                                title="Undo cancel"
+                              >
+                                <RefreshCw
+                                  className={cn(
+                                    "w-4 h-4 transition-colors",
+                                    cancellingSave
+                                      ? "text-gray-300 animate-spin"
+                                      : "text-gray-300 hover:text-amber-500",
+                                  )}
+                                />
                               </button>
-                            ) : p.status !== "WAIVED" ? (
-                              <button onClick={() => { setRecording(p.id); setPayMethod("CASH"); setPayRef(""); }} className="shrink-0 p-1" title="Mark paid">
-                                <CheckCircle className={cn("w-5 h-5 transition-colors",
-                                  recording === p.id ? "text-emerald-500" : "text-gray-300 hover:text-emerald-500")} />
-                              </button>
-                            ) : null}
+                            ) : (
+                              <>
+                                <button onClick={() => { setRecording(p.id); setPayMethod("CASH"); setPayRef(""); }} className="shrink-0 p-1" title="Mark paid">
+                                  <CheckCircle className={cn("w-5 h-5 transition-colors",
+                                    recording === p.id ? "text-emerald-500" : "text-gray-300 hover:text-emerald-500")} />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setCancelling(p.id);
+                                    setCancellingNote("");
+                                  }}
+                                  className="shrink-0 p-1"
+                                  title="Cancel fee"
+                                >
+                                  <XCircle
+                                    className={cn(
+                                      "w-5 h-5 transition-colors",
+                                      cancelling === p.id
+                                        ? "text-red-500"
+                                        : "text-gray-300 hover:text-red-500",
+                                    )}
+                                  />
+                                </button>
+                              </>
+                            )}
                           </div>
 
                           <AnimatePresence>
@@ -345,6 +434,72 @@ export default function TeacherFeesPage() {
       )}
 
       {receipt && <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />}
+
+      {/* Cancel Payment Modal */}
+      <AnimatePresence>
+        {cancellingPayment && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+              onClick={() => setCancelling(null)}
+            />
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            >
+              <div className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-sm shadow-xl overflow-hidden">
+                <div className="bg-red-50 px-5 py-4 border-b border-red-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+                      <XCircle className="w-5 h-5 text-red-600" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-gray-900">Cancel Fee Payment</p>
+                      <p className="text-xs text-gray-500">This action will mark the payment as waived</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="px-5 py-4 space-y-3">
+                  <div className="bg-gray-50 rounded-xl p-3 space-y-1.5">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Student</span>
+                      <span className="font-semibold text-gray-900">{cancellingPayment.student.name}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Adm No</span>
+                      <span className="font-semibold text-gray-900">{cancellingPayment.student.adno}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Fee Type</span>
+                      <span className="font-semibold text-gray-900">{cancellingPayment.feeType.name}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Amount</span>
+                      <span className="font-semibold text-gray-900">₹{Number(cancellingPayment.paidAmount ?? cancellingPayment.dueAmount).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Status</span>
+                      <span className="font-semibold text-amber-600">{cancellingPayment.status}</span>
+                    </div>
+                  </div>
+                  <input type="text" value={cancellingNote} onChange={(e) => setCancellingNote(e.target.value)}
+                    placeholder="Reason for cancellation (optional)"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-red-400" />
+                </div>
+                <div className="px-5 pb-5 flex gap-2">
+                  <button onClick={() => { setCancelling(null); setCancellingNote(""); }}
+                    className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Keep</button>
+                  <button onClick={() => cancelPayment(cancellingPayment)} disabled={cancellingSave}
+                    className="flex-1 py-3 rounded-xl bg-red-600 text-white text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5"
+                  >
+                    {cancellingSave ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                    Confirm Cancel
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </DashboardLayout>
   );
 }

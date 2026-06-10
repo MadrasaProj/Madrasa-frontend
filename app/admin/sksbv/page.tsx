@@ -25,7 +25,7 @@ const categoryStyle: Record<string, { icon: React.ElementType; color: string; bg
   Charity:   { icon: Heart,    color: "text-rose-700",    bg: "bg-rose-50",    ring: "border-rose-200"    },
   Cultural:  { icon: Star,     color: "text-amber-700",   bg: "bg-amber-50",   ring: "border-amber-200"   },
   Sports:    { icon: Dumbbell, color: "text-emerald-700", bg: "bg-emerald-50", ring: "border-emerald-200" },
-  Outing:    { icon: Bus,      color: "text-purple-700",  bg: "bg-purple-50",  ring: "border-purple-200"  },
+  Outing:    { icon: Bus,      color: "text-indigo-700",  bg: "bg-indigo-50",  ring: "border-indigo-200"  },
   Community: { icon: Shield,   color: "text-teal-700",    bg: "bg-teal-50",    ring: "border-teal-200"    },
 };
 

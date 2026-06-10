@@ -63,10 +63,10 @@ const PALETTE = [
     text: "text-blue-700",
   },
   {
-    bg: "bg-purple-600",
-    light: "bg-purple-50",
-    border: "border-purple-200",
-    text: "text-purple-700",
+    bg: "bg-sky-600",
+    light: "bg-sky-50",
+    border: "border-sky-200",
+    text: "text-sky-700",
   },
   {
     bg: "bg-rose-600",
@@ -525,7 +525,7 @@ export default function AdminFeesPage() {
               className={cn(
                 "text-left p-4 rounded-2xl border-2 transition-all",
                 activeTypeId === null
-                  ? "bg-gray-900 border-gray-900 text-white"
+                  ? "bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-100"
                   : "bg-white border-gray-100 hover:border-gray-200 text-gray-700",
               )}
             >

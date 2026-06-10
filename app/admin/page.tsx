@@ -263,7 +263,7 @@ function PlatformOverview() {
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-indigo-700 to-purple-600 rounded-3xl p-5 text-white"
+          className="bg-gradient-to-r from-emerald-800 to-teal-600 rounded-3xl p-5 text-white"
         >
           <p className="text-indigo-200 text-xs font-semibold uppercase tracking-widest mb-1">
             Super Admin Platform
@@ -343,7 +343,7 @@ function MadrasaAdminDashboard() {
     { label: "Total Students",  value: stats.totalStudents,       color: "text-blue-600" },
     { label: "Active Students", value: stats.activeStudents,      color: "text-emerald-600" },
     { label: "Fee Collection",  value: `${stats.collectionPct}%`, color: "text-amber-600" },
-    { label: "Attendance Rate", value: `${stats.attRate}%`,       color: "text-purple-600" },
+    { label: "Attendance Rate", value: `${stats.attRate}%`,       color: "text-emerald-600" },
   ];
 
   const quickActions = [

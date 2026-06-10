@@ -345,10 +345,10 @@ export default function ParentIbadahPage() {
                         )}
                       >
                         <div className={cn(
-                          "w-10 h-10 rounded-xl flex items-center justify-center text-base font-bold shrink-0 transition-all",
-                          form[p] ? "bg-emerald-500 text-white shadow-sm scale-105" : "bg-gray-100 text-gray-400",
+                          "w-5 h-5 rounded-md border-2 shrink-0 transition-all flex items-center justify-center text-xs font-bold",
+                          form[p] ? "bg-emerald-600 border-emerald-600 text-white shadow-sm scale-105" : "border-gray-300 bg-white text-transparent",
                         )}>
-                          {form[p] ? "✓" : "✗"}
+                          {form[p] ? "✓" : ""}
                         </div>
                         <div className="flex-1">
                           <p className={cn("text-sm font-bold", form[p] ? "text-emerald-800" : "text-gray-700")}>
@@ -414,13 +414,13 @@ export default function ParentIbadahPage() {
                           <button
                             onClick={() => toggleCustomBoolean(item.key)}
                             className={cn(
-                              "w-10 h-10 rounded-xl text-sm font-bold transition-all active:scale-95",
+                              "w-5 h-5 rounded-md border-2 transition-all active:scale-95 flex items-center justify-center text-xs font-bold",
                               form.customData[item.key]
-                                ? "bg-emerald-500 text-white shadow-sm"
-                                : "bg-gray-100 text-gray-400",
+                                ? "bg-emerald-600 border-emerald-600 text-white shadow-sm"
+                                : "border-gray-300 bg-white text-transparent",
                             )}
                           >
-                            {form.customData[item.key] ? "✓" : "✗"}
+                            {form.customData[item.key] ? "✓" : ""}
                           </button>
                         ) : (
                           <div className="flex items-center gap-2">
@@ -428,12 +428,12 @@ export default function ParentIbadahPage() {
                               onClick={() => setCustomNumber(item.key, ((form.customData[item.key] as number) ?? 0) - 1, item.min, item.max)}
                               className="w-8 h-8 rounded-xl bg-gray-100 text-gray-600 font-bold flex items-center justify-center"
                             >−</button>
-                            <span className="w-8 text-center text-base font-bold text-purple-700">
+                            <span className="w-8 text-center text-base font-bold text-blue-700">
                               {(form.customData[item.key] as number) ?? 0}
                             </span>
                             <button
                               onClick={() => setCustomNumber(item.key, ((form.customData[item.key] as number) ?? 0) + 1, item.min, item.max)}
-                              className="w-8 h-8 rounded-xl bg-purple-500 text-white font-bold flex items-center justify-center"
+                              className="w-8 h-8 rounded-xl bg-blue-500 text-white font-bold flex items-center justify-center"
                             >+</button>
                           </div>
                         )}
@@ -563,7 +563,7 @@ export default function ParentIbadahPage() {
                                       log[p] ? "bg-emerald-500 text-white" : "bg-gray-200 text-gray-500",
                                     )}
                                   >
-                                    <div className="text-sm">{log[p] ? "✓" : "✗"}</div>
+                                    <div className="text-sm">{log[p] ? "✓" : "—"}</div>
                                     <div className="opacity-80 mt-0.5">{PRAYER_META[p].label}</div>
                                   </div>
                                 ))}
@@ -582,13 +582,13 @@ export default function ParentIbadahPage() {
                                     const val = log.customData?.[item.key];
                                     if (val === undefined || val === null) return null;
                                     return (
-                                      <div key={item.key} className="flex items-center gap-2 bg-purple-50 rounded-xl px-3 py-2">
+                                      <div key={item.key} className="flex items-center gap-2 bg-blue-50 rounded-xl px-3 py-2">
                                         {item.type === "boolean" ? (
-                                          <ToggleLeft className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                                          <ToggleLeft className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                                         ) : (
-                                          <Hash className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                                          <Hash className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                                         )}
-                                        <p className="text-sm text-purple-700">
+                                        <p className="text-sm text-blue-700">
                                           <span className="font-bold">{item.label}:</span>{" "}
                                           {item.type === "boolean" ? (val ? "Yes" : "No") : val}
                                         </p>

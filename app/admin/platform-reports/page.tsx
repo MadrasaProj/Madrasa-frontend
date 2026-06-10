@@ -158,7 +158,7 @@ export default function AdminPlatformReportsPage() {
               <StatCard label="Total Students" value={stats.totalStudents} icon={Users} color="bg-blue-500" />
             </motion.div>
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-              <StatCard label="Total Staff" value={stats.totalStaff} icon={Users} color="bg-purple-500" />
+              <StatCard label="Total Staff" value={stats.totalStaff} icon={Users} color="bg-teal-500" />
             </motion.div>
           </div>
 

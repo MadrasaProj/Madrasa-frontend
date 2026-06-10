@@ -270,7 +270,7 @@ function ParentResultCard({
               </span>
             )}
             {totalGrade && (
-              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-800 border border-purple-200">
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-800 border border-indigo-200">
                 {TOTAL_GRADE_LABELS[totalGrade] ?? totalGrade}
               </span>
             )}
@@ -691,7 +691,7 @@ export default function ParentResultsPage() {
                             <div className="px-4 py-3">
                               <p className="text-sm font-bold text-gray-900">TOTAL</p>
                               {summary?.totalGrade && (
-                                <p className="text-[10px] text-purple-600 font-semibold mt-0.5">
+                                <p className="text-[10px] text-indigo-600 font-semibold mt-0.5">
                                   {TOTAL_GRADE_LABELS[summary.totalGrade] ?? summary.totalGrade}
                                 </p>
                               )}

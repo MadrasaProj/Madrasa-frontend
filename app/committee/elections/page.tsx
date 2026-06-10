@@ -14,7 +14,7 @@ import {
 const roleBadge: Record<string, { emoji: string; bg: string; text: string }> = {
   President: { emoji: "👑", bg: "bg-amber-100", text: "text-amber-800" },
   Chairman: { emoji: "🎖️", bg: "bg-blue-100", text: "text-blue-800" },
-  Convener: { emoji: "📋", bg: "bg-purple-100", text: "text-purple-800" },
+  Convener: { emoji: "📋", bg: "bg-blue-100", text: "text-blue-800" },
   Secretary: { emoji: "📝", bg: "bg-teal-100", text: "text-teal-800" },
   Treasurer: { emoji: "💰", bg: "bg-emerald-100", text: "text-emerald-800" },
 };
@@ -60,9 +60,9 @@ export default function CommitteeElectionsPage() {
       value: `${d.elections.sksbvUnionMembers.length}`,
       sub: lang === "ml" ? "യൂണിയൻ ഭരണ സമിതി" : "Union committee",
       icon: Users,
-      color: "text-violet-700",
-      bg: "bg-violet-50",
-      border: "border-violet-200",
+      color: "text-indigo-700",
+      bg: "bg-indigo-50",
+      border: "border-indigo-200",
     },
     {
       label: lang === "ml" ? "തിരഞ്ഞെടുക്കൽ ബാക്കി" : "Pending Posts",
@@ -83,7 +83,7 @@ export default function CommitteeElectionsPage() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-6"
       >
-        <div className="bg-linear-to-r from-indigo-700 to-violet-600 rounded-3xl p-5 lg:p-6 text-white">
+        <div className="bg-linear-to-r from-emerald-800 to-teal-600 rounded-3xl p-5 lg:p-6 text-white">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
               <Vote className="w-5 h-5 text-white" />

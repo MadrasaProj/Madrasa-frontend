@@ -14,7 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const ACTOR_COLORS: Record<string, string> = {
-  SUPER_ADMIN: "bg-purple-100 text-purple-700",
+  SUPER_ADMIN: "bg-blue-100 text-blue-700",
   CLIENT_ADMIN: "bg-blue-100 text-blue-700",
   TEACHER: "bg-emerald-100 text-emerald-700",
   PARENT: "bg-amber-100 text-amber-700",

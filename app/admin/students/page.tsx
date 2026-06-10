@@ -236,6 +236,9 @@ export default function AdminStudentsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<StudentRecord | null>(null);
 
   const [showImport, setShowImport] = useState(false);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -377,20 +380,20 @@ export default function AdminStudentsPage() {
     }
   };
 
-  const handleDelete = async (student: StudentRecord) => {
-    if (
-      !window.confirm(
-        `Delete student "${student.name}"? This action cannot be undone.`,
-      )
-    )
-      return;
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(deleteTarget.id);
     try {
-      await deleteStudent(activeClientId!, accessToken!, student.id);
+      await deleteStudent(activeClientId!, accessToken!, deleteTarget.id);
       setDrawer(null);
+      setShowDeleteConfirm(false);
       setPage(1);
       loadStudents(1, search, activeClassId, gender, pageSize, sortBy, sortDir);
     } catch (err: any) {
-      alert(err?.message ?? "Failed to delete student.");
+      setError(err?.message ?? "Failed to delete student.");
+      setShowDeleteConfirm(false);
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -511,11 +514,14 @@ export default function AdminStudentsPage() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleDelete(s);
+                    setDeleteTarget(s);
+                    setShowDeleteConfirm(true);
                   }}
-                  className="p-1.5 rounded-lg text-red-400 bg-red-50 hover:bg-red-100 hover:text-red-500  transition-colors"
+                  disabled={deleting === s.id}
+                  className="p-1.5 rounded-lg text-red-400 bg-red-50 hover:bg-red-100 hover:text-red-500 transition-colors disabled:opacity-40"
+                  title="Delete Student"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  {deleting === s.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                 </button>
               </>
             )}
@@ -687,15 +693,28 @@ export default function AdminStudentsPage() {
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 {canWrite && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openEdit(s);
-                    }}
-                    className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
+                  <>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEdit(s);
+                      }}
+                      className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteTarget(s);
+                        setShowDeleteConfirm(true);
+                      }}
+                      disabled={deleting === s.id}
+                      className="p-2 rounded-xl text-red-400 bg-red-50 hover:bg-red-100 hover:text-red-500 transition-colors disabled:opacity-40"
+                    >
+                      {deleting === s.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                    </button>
+                  </>
                 )}
                 <button
                   onClick={(e) => {
@@ -733,7 +752,7 @@ export default function AdminStudentsPage() {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[92dvh] flex flex-col"
+              className="fixed bottom-0 left-0 right-0 md:left-1/2 md:right-auto md:w-full md:max-w-xl md:-translate-x-1/2 z-50 bg-white rounded-t-3xl max-h-[92dvh] flex flex-col"
             >
               <div className="flex justify-center pt-3 pb-1 shrink-0">
                 <div className="w-10 h-1 bg-gray-300 rounded-full" />
@@ -986,7 +1005,10 @@ export default function AdminStudentsPage() {
                 <div className="flex gap-3">
                   {isEditing && canWrite && (
                     <button
-                      onClick={() => handleDelete(drawer as StudentRecord)}
+                      onClick={() => {
+                        setDeleteTarget(drawer as StudentRecord);
+                        setShowDeleteConfirm(true);
+                      }}
                       type="button"
                       className="flex-1 bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 font-bold py-4 rounded-2xl text-base active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                     >
@@ -1038,6 +1060,53 @@ export default function AdminStudentsPage() {
         }}
         onClose={() => setShowImport(false)}
       />
+
+      {/* Standalone Delete Confirm Dialog */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <>
+            <motion.div key="del-backdrop"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => !deleting && setShowDeleteConfirm(false)}
+              className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
+            />
+            <motion.div key="del-dialog"
+              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 bg-white rounded-3xl p-6 max-w-sm mx-auto shadow-2xl"
+            >
+              <div className="text-center space-y-3">
+                <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto animate-bounce">
+                  <Trash2 className="w-7 h-7 text-red-600" />
+                </div>
+                <h3 className="font-bold text-gray-900 text-lg">Delete Student?</h3>
+                <p className="text-sm text-gray-500">
+                  Are you sure you want to delete student <strong>{deleteTarget?.name}</strong>? This action cannot be undone and will delete all parent link mappings.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mt-6">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={deleting !== null}
+                  className="py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting !== null}
+                  className="py-3 rounded-2xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors disabled:opacity-60"
+                >
+                  {deleting !== null ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Deleting…
+                    </span>
+                  ) : "Delete"}
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </DashboardLayout>
   );
 }

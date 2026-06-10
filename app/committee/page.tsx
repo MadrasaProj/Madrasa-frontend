@@ -52,7 +52,7 @@ export default function CommitteeDashboard() {
       label: ml ? "അറിയിപ്പുകൾ" : "Notifications",
       value: d.announcements.length,
       sub:   `${d.announcements.filter((a) => a.priority === "high").length} ${ml ? "ഉടൻ" : "urgent"}`,
-      icon: Bell, color: "text-purple-600", bg: "bg-purple-100",
+      icon: Bell, color: "text-indigo-600", bg: "bg-indigo-100",
     },
   ];
 
@@ -60,7 +60,7 @@ export default function CommitteeDashboard() {
     { href: "/committee/attendance", label: ml ? "ഹാജർ"        : "Attendance",     icon: ClipboardList, color: "from-teal-600 to-cyan-600" },
     { href: "/committee/finance",    label: ml ? "ഫിനാൻസ്"      : "Finance",        icon: IndianRupee,   color: "from-emerald-600 to-teal-600" },
     { href: "/committee/students",   label: ml ? "വിദ്യാർത്ഥി"   : "Students",       icon: Users,         color: "from-blue-600 to-indigo-600" },
-    { href: "/committee/reports",    label: ml ? "റിപ്പോർട്ട്"   : "Reports",        icon: BarChart3,     color: "from-violet-600 to-purple-600" },
+    { href: "/committee/reports",    label: ml ? "റിപ്പോർട്ട്"   : "Reports",        icon: BarChart3,     color: "from-blue-600 to-indigo-600" },
     { href: "/committee/announcements", label: ml ? "അറിയിപ്പ്" : "Announcements",  icon: Bell,          color: "from-rose-600 to-pink-600" },
   ];
 

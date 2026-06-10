@@ -370,7 +370,7 @@ export default function TeacherIbadahPage() {
                                         {r.customData[item.key] ? "✓" : "–"}
                                       </div>
                                     ) : (
-                                      <span className={cn("text-lg font-bold", (r.customData[item.key] as number) > 0 ? "text-purple-700" : "text-gray-300")}>
+                                      <span className={cn("text-lg font-bold", (r.customData[item.key] as number) > 0 ? "text-blue-700" : "text-gray-300")}>
                                         {(r.customData[item.key] as number) ?? 0}
                                       </span>
                                     )}
@@ -463,8 +463,8 @@ export default function TeacherIbadahPage() {
                                                     const val = log.customData?.[item.key];
                                                     if (val === undefined || val === null) return null;
                                                     return (
-                                                      <div key={item.key} className="text-[9px] text-purple-600 font-semibold truncate max-w-[80px]">
-                                                        {item.label.slice(0, 8)}: {item.type === "boolean" ? (val ? "✓" : "✗") : val}
+                                                      <div key={item.key} className="text-[9px] text-blue-600 font-semibold truncate max-w-[80px]">
+                                                        {item.label.slice(0, 8)}: {item.type === "boolean" ? (val ? "✓" : "—") : val}
                                                       </div>
                                                     );
                                                   })}

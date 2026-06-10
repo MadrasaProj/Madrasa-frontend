@@ -265,8 +265,8 @@ export default function AdminIbadahPage() {
             <div className="grid grid-cols-3 gap-3 mb-5">
               {[
                 { label: "Submitted",   value: stats.total,      icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
-                { label: "All Prayers", value: stats.presentAll, icon: Moon,         color: "text-blue-600",    bg: "bg-blue-50"    },
-                { label: "Quran",       value: stats.quranDone,  icon: BookOpen,     color: "text-purple-600",  bg: "bg-purple-50"  },
+                { label: "All Prayers", value: stats.presentAll, icon: Moon,         color: "text-indigo-600",  bg: "bg-indigo-50"  },
+                { label: "Quran",       value: stats.quranDone,  icon: BookOpen,     color: "text-blue-600",    bg: "bg-blue-50"    },
               ].map(({ label, value, icon: Icon, color, bg }) => (
                 <div key={label} className="bg-white rounded-2xl border border-gray-100 p-3 flex items-center gap-2">
                   <div className={cn("rounded-xl p-2", bg)}>
@@ -385,7 +385,7 @@ export default function AdminIbadahPage() {
                                       {r.customData[item.key] ? "✓" : "–"}
                                     </div>
                                   ) : (
-                                    <span className={cn("text-lg font-bold", (r.customData[item.key] as number) > 0 ? "text-purple-700" : "text-gray-300")}>
+                                    <span className={cn("text-lg font-bold", (r.customData[item.key] as number) > 0 ? "text-blue-700" : "text-gray-300")}>
                                       {(r.customData[item.key] as number) ?? 0}
                                     </span>
                                   )}
@@ -470,8 +470,8 @@ export default function AdminIbadahPage() {
                                                     const val = log.customData?.[item.key];
                                                     if (val === undefined || val === null) return null;
                                                     return (
-                                                      <div key={item.key} className="text-[9px] text-purple-600 font-semibold truncate max-w-[80px]">
-                                                        {item.label.slice(0, 8)}: {item.type === "boolean" ? (val ? "✓" : "✗") : val}
+                                                      <div key={item.key} className="text-[9px] text-blue-600 font-semibold truncate max-w-[80px]">
+                                                        {item.label.slice(0, 8)}: {item.type === "boolean" ? (val ? "✓" : "—") : val}
                                                       </div>
                                                     );
                                                   })}

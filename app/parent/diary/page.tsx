@@ -18,7 +18,7 @@ function fmtDisplay(iso: string) {
 }
 
 const TYPE_CONFIG: Record<NotificationType, { label: string; icon: React.ElementType; color: string; bg: string }> = {
-  ANNOUNCEMENT:      { label: "Announcement",   icon: Bell,          color: "text-purple-700", bg: "bg-purple-100" },
+  ANNOUNCEMENT:      { label: "Announcement",   icon: Bell,          color: "text-indigo-700", bg: "bg-indigo-100" },
   ATTENDANCE_ALERT:  { label: "Attendance",      icon: ClipboardList, color: "text-emerald-700", bg: "bg-emerald-100" },
   FEE_REMINDER:      { label: "Fee Reminder",    icon: CreditCard,    color: "text-amber-700",   bg: "bg-amber-100" },
   HOMEWORK_REMINDER: { label: "Homework",        icon: BookOpen,      color: "text-blue-700",    bg: "bg-blue-100" },

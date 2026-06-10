@@ -266,7 +266,7 @@ export default function ClassReportPage() {
             { label: "Passed",         value: stats.passedCount,   color: "text-emerald-700", bg: "bg-emerald-50" },
             { label: "Failed",         value: stats.failedCount,   color: "text-red-700",     bg: "bg-red-50" },
             { label: "Ranked",         value: stats.rankedCount,   color: "text-blue-700",    bg: "bg-blue-50" },
-            { label: "Class Average",  value: `${stats.classAverage.toFixed(1)}%`, color: "text-purple-700", bg: "bg-purple-50" },
+            { label: "Class Average",  value: `${stats.classAverage.toFixed(1)}%`, color: "text-blue-700", bg: "bg-blue-50" },
           ].map(({ label, value, color, bg }) => (
             <div key={label} className={cn("rounded-xl p-4 text-center", bg)}>
               <div className={cn("text-2xl font-bold", color)}>{value}</div>

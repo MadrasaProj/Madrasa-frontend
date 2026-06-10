@@ -53,6 +53,8 @@ export default function AdminClassesPage() {
   const [saving, setSaving]         = useState(false);
   const [saveError, setSaveError]   = useState("");
   const [deleting, setDeleting]     = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTarget, setDeleteTarget]           = useState<ClassRecord | null>(null);
 
   const load = useCallback(async (srch?: string) => {
     if (!cid || !token) return;
@@ -116,14 +118,16 @@ export default function AdminClassesPage() {
     }
   };
 
-  const handleDelete = async (cls: ClassRecord) => {
-    if (!window.confirm(`Deactivate "${cls.name}"? Students won't be deleted.`)) return;
-    setDeleting(cls.id);
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(deleteTarget.id);
     try {
-      await deleteClass(cid, token, cls.id);
-      setClasses((prev) => prev.filter((c) => c.id !== cls.id));
+      await deleteClass(cid, token, deleteTarget.id);
+      setClasses((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+      setShowDeleteConfirm(false);
     } catch (e) {
       setError((e as Error).message);
+      setShowDeleteConfirm(false);
     } finally {
       setDeleting(null);
     }
@@ -201,9 +205,10 @@ export default function AdminClassesPage() {
                 <span className="hidden sm:inline">Edit</span>
               </button>
               <button
-                onClick={(e) => { e.stopPropagation(); handleDelete(c); }}
+                onClick={(e) => { e.stopPropagation(); setDeleteTarget(c); setShowDeleteConfirm(true); }}
                 disabled={deleting === c.id}
                 className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"
+                title="Delete Class"
               >
                 {deleting === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
               </button>
@@ -292,7 +297,7 @@ export default function AdminClassesPage() {
             <motion.div key="classes-drawer"
               initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[92dvh] flex flex-col"
+              className="fixed bottom-0 left-0 right-0 md:left-1/2 md:right-auto md:w-full md:max-w-xl md:-translate-x-1/2 z-50 bg-white rounded-t-3xl max-h-[92dvh] flex flex-col"
             >
               {/* Handle */}
               <div className="flex justify-center pt-3 pb-1 shrink-0">
@@ -383,6 +388,53 @@ export default function AdminClassesPage() {
                 >
                   {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                   {editTarget ? "Save Changes" : "Create Class"}
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Standalone Delete Confirm Dialog */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <>
+            <motion.div key="del-backdrop"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => !deleting && setShowDeleteConfirm(false)}
+              className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
+            />
+            <motion.div key="del-dialog"
+              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 bg-white rounded-3xl p-6 max-w-sm mx-auto shadow-2xl"
+            >
+              <div className="text-center space-y-3">
+                <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto animate-bounce">
+                  <Trash2 className="w-7 h-7 text-red-600" />
+                </div>
+                <h3 className="font-bold text-gray-900 text-lg">Delete Class?</h3>
+                <p className="text-sm text-gray-500">
+                  Are you sure you want to deactivate or delete class <strong>{deleteTarget?.name}</strong>? Students won't be deleted, but all course mappings will be affected.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mt-6">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={deleting !== null}
+                  className="py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting !== null}
+                  className="py-3 rounded-2xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors disabled:opacity-60"
+                >
+                  {deleting !== null ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Deactivating…
+                    </span>
+                  ) : "Deactivate"}
                 </button>
               </div>
             </motion.div>

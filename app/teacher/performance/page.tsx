@@ -180,8 +180,8 @@ export default function TeacherPerformancePage() {
                 label: "HW Compl.",
                 value: hwSummary ? `${hwSummary.completionRate}%` : "—",
                 icon: BookOpen,
-                color: "text-purple-600",
-                bg: "bg-purple-50",
+                color: "text-indigo-600",
+                bg: "bg-indigo-50",
               },
             ].map(({ label, value, icon: Icon, color, bg }) => (
               <div

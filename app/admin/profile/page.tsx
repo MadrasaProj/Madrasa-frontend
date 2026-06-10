@@ -14,7 +14,7 @@ const ROLE_BADGE: Record<string, string> = {
   CLIENT_ADMIN: "bg-emerald-100 text-emerald-700",
   TEACHER: "bg-blue-100 text-blue-700",
   PARENT: "bg-amber-100 text-amber-700",
-  COMMITTEE: "bg-purple-100 text-purple-700",
+  COMMITTEE: "bg-blue-100 text-blue-700",
 };
 
 const ROLE_LABEL: Record<string, string> = {

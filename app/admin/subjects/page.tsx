@@ -64,6 +64,8 @@ export default function AdminSubjectsPage() {
   const [showExamConfig, setShowExamConfig] = useState(false);
   const subjectExamConfig = useRef<{ maxMarks: number | null; gradeConfig: Record<string, { min: number }> } | null>(null);
   const [deleting, setDeleting]       = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<SubjectRecord | null>(null);
 
   // Bulk assign modal
   const [showBulkModal, setShowBulkModal] = useState(false);
@@ -147,14 +149,16 @@ export default function AdminSubjectsPage() {
     }
   };
 
-  const handleDelete = async (s: SubjectRecord) => {
-    if (!window.confirm(`Delete subject "${s.name}"?`)) return;
-    setDeleting(s.id);
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(deleteTarget.id);
     try {
-      await deleteSubject(cid, token, s.id);
-      setSubjects((prev) => prev.filter((sub) => sub.id !== s.id));
+      await deleteSubject(cid, token, deleteTarget.id);
+      setSubjects((prev) => prev.filter((sub) => sub.id !== deleteTarget.id));
+      setShowDeleteConfirm(false);
     } catch (e) {
       setError((e as Error).message);
+      setShowDeleteConfirm(false);
     } finally {
       setDeleting(null);
     }
@@ -246,9 +250,10 @@ export default function AdminSubjectsPage() {
                 <span className="hidden sm:inline">Edit</span>
               </button>
               <button
-                onClick={(e) => { e.stopPropagation(); handleDelete(s); }}
+                onClick={(e) => { e.stopPropagation(); setDeleteTarget(s); setShowDeleteConfirm(true); }}
                 disabled={deleting === s.id}
                 className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"
+                title="Delete Subject"
               >
                 {deleting === s.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
               </button>
@@ -361,7 +366,7 @@ export default function AdminSubjectsPage() {
             <motion.div key="subjects-drawer"
               initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[92dvh] flex flex-col"
+              className="fixed bottom-0 left-0 right-0 md:left-1/2 md:right-auto md:w-full md:max-w-xl md:-translate-x-1/2 z-50 bg-white rounded-t-3xl max-h-[92dvh] flex flex-col"
             >
               <div className="flex justify-center pt-3 pb-1 shrink-0">
                 <div className="w-10 h-1 bg-gray-300 rounded-full" />
@@ -555,6 +560,53 @@ export default function AdminSubjectsPage() {
                     Assign
                   </button>
                 </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Standalone Delete Confirm Dialog */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <>
+            <motion.div key="del-backdrop"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => !deleting && setShowDeleteConfirm(false)}
+              className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
+            />
+            <motion.div key="del-dialog"
+              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 bg-white rounded-3xl p-6 max-w-sm mx-auto shadow-2xl"
+            >
+              <div className="text-center space-y-3">
+                <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto animate-bounce">
+                  <Trash2 className="w-7 h-7 text-red-600" />
+                </div>
+                <h3 className="font-bold text-gray-900 text-lg">Delete Subject?</h3>
+                <p className="text-sm text-gray-500">
+                  Are you sure you want to delete subject <strong>{deleteTarget?.name}</strong>? This action cannot be undone and will affect grading metrics.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mt-6">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={deleting !== null}
+                  className="py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting !== null}
+                  className="py-3 rounded-2xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors disabled:opacity-60"
+                >
+                  {deleting !== null ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Deleting…
+                    </span>
+                  ) : "Delete"}
+                </button>
               </div>
             </motion.div>
           </>
