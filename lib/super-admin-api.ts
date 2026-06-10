@@ -171,6 +171,8 @@ export interface CreateClientDto {
   adminName: string;
   adminIdentifier: string;
   adminPassword: string;
+  committieUsername?: string;
+  committiePassword?: string;
   status?: "ACTIVE" | "SUSPENDED" | "TRIAL" | "CANCELLED";
   isLoginEnabled?: boolean;
 }
