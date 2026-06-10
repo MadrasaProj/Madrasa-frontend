@@ -52,6 +52,7 @@ import TeacherHomeworkPage from "../app/teacher/homework/page";
 import TeacherIbadahPage from "../app/teacher/ibadah/page";
 import TeacherNotificationsPage from "../app/teacher/notifications/page";
 import TeacherDashboard from "../app/teacher/page";
+import TeacherFeesPage from "../app/teacher/fees/page";
 import TeacherPerformancePage from "../app/teacher/performance/page";
 import TeacherPresentPage from "../app/teacher/present/page";
 
@@ -140,6 +141,7 @@ export default function App() {
         <Route path="/m/:slug/admin/students" element={<AdminStudentsPage />} />
         <Route path="/m/:slug/admin/students/:id" element={<AdminStudentDetailPage />} />
         <Route path="/m/:slug/admin/attendance" element={<AdminAttendancePage />} />
+        <Route path="/m/:slug/admin/leave-requests" element={<AdminLeaveRequestsPage />} />
         <Route path="/m/:slug/admin/present" element={<AdminPresentPage />} />
         <Route path="/m/:slug/admin/absent" element={<AdminAbsentPage />} />
         <Route path="/m/:slug/admin/fees" element={<AdminFeesPage />} />
@@ -172,6 +174,7 @@ export default function App() {
         <Route path="/teacher/homework-list" element={<TeacherHomeworkListPage />} />
         <Route path="/teacher/diary" element={<TeacherDiaryPage />} />
         <Route path="/teacher/ibadah" element={<TeacherIbadahPage />} />
+        <Route path="/teacher/fees" element={<TeacherFeesPage />} />
         <Route path="/teacher/exams" element={<TeacherExamsPage />} />
         <Route path="/teacher/exams/class-test" element={<TeacherClassTestsPage />} />
         <Route path="/teacher/exams/class-report" element={<TeacherClassReportPage />} />
@@ -182,12 +185,14 @@ export default function App() {
         <Route path="/m/:slug/teacher" element={<TeacherDashboard />} />
         <Route path="/m/:slug/teacher/checkin" element={<TeacherCheckinPage />} />
         <Route path="/m/:slug/teacher/attendance" element={<TeacherAttendancePage />} />
+        <Route path="/m/:slug/teacher/leave-requests" element={<TeacherLeaveRequestsPage />} />
         <Route path="/m/:slug/teacher/present" element={<TeacherPresentPage />} />
         <Route path="/m/:slug/teacher/absent" element={<TeacherAbsentPage />} />
         <Route path="/m/:slug/teacher/homework" element={<TeacherHomeworkPage />} />
         <Route path="/m/:slug/teacher/homework-list" element={<TeacherHomeworkListPage />} />
         <Route path="/m/:slug/teacher/diary" element={<TeacherDiaryPage />} />
         <Route path="/m/:slug/teacher/ibadah" element={<TeacherIbadahPage />} />
+        <Route path="/m/:slug/teacher/fees" element={<TeacherFeesPage />} />
         <Route path="/m/:slug/teacher/exams" element={<TeacherExamsPage />} />
         <Route path="/m/:slug/teacher/exams/class-test" element={<TeacherClassTestsPage />} />
         <Route path="/m/:slug/teacher/exams/class-report" element={<TeacherClassReportPage />} />
@@ -207,6 +212,7 @@ export default function App() {
         {/* Parent — slug-prefixed */}
         <Route path="/m/:slug/parent" element={<ParentDashboard />} />
         <Route path="/m/:slug/parent/attendance" element={<ParentAttendancePage />} />
+        <Route path="/m/:slug/parent/leave-requests" element={<ParentLeaveRequestsPage />} />
         <Route path="/m/:slug/parent/fees" element={<ParentFeesPage />} />
         <Route path="/m/:slug/parent/homework" element={<ParentHomeworkPage />} />
         <Route path="/m/:slug/parent/ibadah" element={<ParentIbadahPage />} />

@@ -48,6 +48,7 @@ const teacherLinks = [
   { href: "/teacher/homework",        icon: BookOpen,        key: "homework"      as NavKey },
   { href: "/teacher/diary",        icon: FileText,        key: "diary"        as NavKey },
   { href: "/teacher/ibadah",       icon: Moon,            key: "ibadah"       as NavKey },
+  { href: "/teacher/fees",         icon: CreditCard,      key: "fees"         as NavKey },
   { href: "/teacher/exams",        icon: GraduationCap,   key: "exams"        as NavKey },
   { href: "/teacher/exams/class-test", icon: GraduationCap, key: "classTests" as NavKey },
   { href: "/teacher/performance",  icon: Star,            key: "performance"  as NavKey },

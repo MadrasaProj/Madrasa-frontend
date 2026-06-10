@@ -153,9 +153,10 @@ export default function TeacherClassTestsPage() {
       const data = await getResults(cid, token, { examId, limit: 2000 });
       setResults(data.data ?? []);
       const r = data.data ?? [];
-      if (r.length > 0) {
-        const clsId = r[0].classId;
-        const subId = r[0].subject?.id ?? "";
+      const exam = exams.find((e) => e.id === examId);
+      const clsId = r.length > 0 ? r[0].classId : (exam?.classId ?? "");
+      const subId = r.length > 0 ? (r[0].subject?.id ?? "") : "";
+      if (clsId) {
         const students = await getStudents(cid, token, { classId: clsId, limit: 500 });
         setMeStudents(students.data ?? []);
         setMeSubjectId(subId);
@@ -293,7 +294,7 @@ export default function TeacherClassTestsPage() {
                             <div className="flex items-center gap-2">
                               <select value={exam.classId ?? ""} onChange={(e) => loadMeStudents(exam.id, e.target.value)}
                                 className="flex-1 px-3 py-1.5 border border-gray-200 rounded-xl text-xs bg-white focus:outline-none">
-                                <option value="">{exam.class?.name ?? "Select class"}</option>
+                                <option value={exam.classId ?? ""}>{exam.class?.name ?? "Select class"}</option>
                               </select>
                               <button onClick={() => handleMeSave(exam.id)} disabled={meSaving}
                                 className={cn(
