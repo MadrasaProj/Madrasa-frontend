@@ -1,11 +1,11 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard, Users, ClipboardList, BookOpen, FileText,
+  LayoutDashboard, Users,   ClipboardList, BookOpen, FileText,
   CreditCard, BarChart3, Bell, Settings, Star, BookMarked,
   UserCircle, Home, GraduationCap, Moon, IndianRupee,
   BadgeCheck, FileBarChart2, Megaphone, UserCog, Activity, LogOut,
-  Building2, ShieldCheck, UserCircle2, School,
+  Building2, ShieldCheck, UserCircle2, School, Clock, FilePen,
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
@@ -14,8 +14,9 @@ import { tenantLoginPath } from "@/lib/tenant-routing";
 
 type NavKey =
   | "dashboard" | "students" | "teachers" | "classes" | "subjects" | "fees"
-  | "idCards" | "exams" | "reports" | "logs" | "config" | "attendance"
+  | "idCards" | "exams" | "classTests" | "checkin" | "reports" | "logs" | "config" | "attendance"
   | "homework" | "diary" | "ibadah" | "performance" | "home"
+  | "leaveRequests"
   | "results" | "alerts" | "overview" | "finance" | "announcements" | "notifications"
   | "madrasas" | "superUsers" | "platformReports" | "profile";
 
@@ -25,11 +26,13 @@ const adminLinks = [
   { href: "/admin/classes",        icon: School,          key: "classes"       as NavKey },
   { href: "/admin/subjects",       icon: BookOpen,        key: "subjects"      as NavKey },
   { href: "/admin/teachers",       icon: UserCog,         key: "teachers"      as NavKey },
-  { href: "/admin/attendance",     icon: ClipboardList,   key: "attendance"    as NavKey },
-  { href: "/admin/ibadah",         icon: Moon,            key: "ibadah"        as NavKey },
+  { href: "/admin/attendance",        icon: ClipboardList,   key: "attendance"     as NavKey },
+  { href: "/admin/leave-requests",    icon: FilePen,         key: "leaveRequests"  as NavKey },
+  { href: "/admin/ibadah",            icon: Moon,            key: "ibadah"         as NavKey },
   { href: "/admin/fees",           icon: CreditCard,      key: "fees"          as NavKey },
   { href: "/admin/id-cards",       icon: BadgeCheck,      key: "idCards"       as NavKey },
   { href: "/admin/exams",          icon: GraduationCap,   key: "exams"         as NavKey },
+  { href: "/admin/exams/class-test", icon: GraduationCap, key: "classTests"    as NavKey },
   { href: "/admin/reports",        icon: BarChart3,       key: "reports"       as NavKey },
   { href: "/admin/logs",           icon: Activity,        key: "logs"          as NavKey },
   { href: "/admin/notifications",  icon: Bell,            key: "notifications" as NavKey },
@@ -39,11 +42,15 @@ const adminLinks = [
 
 const teacherLinks = [
   { href: "/teacher",              icon: LayoutDashboard, key: "dashboard"    as NavKey },
-  { href: "/teacher/attendance",   icon: ClipboardList,   key: "attendance"   as NavKey },
-  { href: "/teacher/homework",     icon: BookOpen,        key: "homework"     as NavKey },
+  { href: "/teacher/checkin",      icon: Clock,           key: "checkin"      as NavKey },
+  { href: "/teacher/attendance",      icon: ClipboardList,   key: "attendance"    as NavKey },
+  { href: "/teacher/leave-requests",  icon: FilePen,         key: "leaveRequests" as NavKey },
+  { href: "/teacher/homework",        icon: BookOpen,        key: "homework"      as NavKey },
   { href: "/teacher/diary",        icon: FileText,        key: "diary"        as NavKey },
   { href: "/teacher/ibadah",       icon: Moon,            key: "ibadah"       as NavKey },
+  { href: "/teacher/fees",         icon: CreditCard,      key: "fees"         as NavKey },
   { href: "/teacher/exams",        icon: GraduationCap,   key: "exams"        as NavKey },
+  { href: "/teacher/exams/class-test", icon: GraduationCap, key: "classTests" as NavKey },
   { href: "/teacher/performance",  icon: Star,            key: "performance"  as NavKey },
   { href: "/teacher/notifications",icon: Bell,            key: "notifications"as NavKey },
   { href: "/teacher/profile",      icon: UserCircle2,     key: "profile"      as NavKey },
@@ -51,8 +58,9 @@ const teacherLinks = [
 
 const parentLinks = [
   { href: "/parent",               icon: Home,            key: "home"         as NavKey },
-  { href: "/parent/attendance",    icon: ClipboardList,   key: "attendance"   as NavKey },
-  { href: "/parent/homework",      icon: BookOpen,        key: "homework"     as NavKey },
+  { href: "/parent/attendance",       icon: ClipboardList,   key: "attendance"    as NavKey },
+  { href: "/parent/leave-requests",   icon: FilePen,         key: "leaveRequests" as NavKey },
+  { href: "/parent/homework",         icon: BookOpen,        key: "homework"      as NavKey },
   { href: "/parent/diary",         icon: FileText,        key: "diary"        as NavKey },
   { href: "/parent/ibadah",        icon: Moon,            key: "ibadah"       as NavKey },
   { href: "/parent/fees",          icon: CreditCard,      key: "fees"         as NavKey },
@@ -144,17 +152,25 @@ export function Sidebar() {
         {links.map(({ href, icon: Icon, key }) => {
           const fullHref = slugPrefix ? `${slugPrefix}${href}` : href;
           const active = pathname === fullHref || (!ROOT_PATHS.includes(fullHref) && pathname.startsWith(fullHref));
+          const isCheckin = key === "checkin";
           return (
             <Link
               key={href}
               to={fullHref}
               className={cn(
                 "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all",
-                active ? "bg-emerald-600 text-white shadow-sm" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                isCheckin && !active
+                  ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200 shadow-sm"
+                  : active
+                    ? "bg-emerald-600 text-white shadow-sm"
+                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
               )}
             >
-              <Icon className="w-5 h-5 shrink-0" />
+              <Icon className={cn("w-5 h-5 shrink-0", isCheckin && !active && "text-emerald-600")} />
               {t("nav", key, lang)}
+              {isCheckin && !active && (
+                <span className="ml-auto w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              )}
             </Link>
           );
         })}

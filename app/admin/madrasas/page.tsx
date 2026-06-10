@@ -678,6 +678,8 @@ const emptyForm: CreateClientDto = {
   adminName: "",
   adminIdentifier: "",
   adminPassword: "",
+  committieUsername: "",
+  committiePassword: "",
   status: "ACTIVE",
   isLoginEnabled: true,
 };
@@ -928,6 +930,29 @@ function NewMadrasaDrawer({
                 type="password"
                 value={form.adminPassword}
                 onChange={(e) => set("adminPassword", e.target.value)}
+                className={inputCls}
+                placeholder="Min 8 characters"
+              />
+            </div>
+
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide pt-2">
+              Committee Account
+            </p>
+            <div>
+              <label className={labelCls}>Committee Username</label>
+              <input
+                value={form.committieUsername ?? ""}
+                onChange={(e) => set("committieUsername", e.target.value)}
+                className={inputCls}
+                placeholder="e.g. committee.darulhuda"
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Committee Password</label>
+              <input
+                type="password"
+                value={form.committiePassword ?? ""}
+                onChange={(e) => set("committiePassword", e.target.value)}
                 className={inputCls}
                 placeholder="Min 8 characters"
               />
