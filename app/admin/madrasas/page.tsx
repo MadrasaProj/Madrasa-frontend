@@ -14,6 +14,10 @@ import {
   type CreateClientDto,
   type UpdateClientDto,
 } from "@/lib/super-admin-api";
+import {
+  getAllClasses,
+  type ClassRecord,
+} from "@/lib/classes-api";
 import { useAuthStore } from "@/store/auth";
 import { useNavigate } from "react-router-dom";
 import {
@@ -34,6 +38,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { ClassDivisionsPicker } from "@/components/ui/ClassDivisionsPicker";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -88,10 +93,30 @@ function EditMadrasaDrawer({
     attendanceMode: client.attendanceMode as UpdateClientDto["attendanceMode"],
     adminIdentifier: client.loginEmail || client.loginPhone || "",
     password: "",
+    committieUsername: "",
+    committiePassword: "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [editDivisions, setEditDivisions] = useState<Record<number, string[]>>({});
+  const [existingClasses, setExistingClasses] = useState<ClassRecord[]>([]);
+  const [classesLoading, setClassesLoading] = useState(true);
+
+  useEffect(() => {
+    getAllClasses(client.id, token)
+      .then((classes) => {
+        setExistingClasses(classes);
+        const map: Record<number, string[]> = {};
+        for (const c of classes) {
+          if (c.status !== 'ACTIVE' || c.classLevel == null || !c.division) continue;
+          (map[c.classLevel] ??= []).push(c.division);
+        }
+        setEditDivisions(map);
+      })
+      .catch(() => {})
+      .finally(() => setClassesLoading(false));
+  }, [client.id, token]);
 
   const set = (k: string, v: any) =>
     setForm((f) => ({ ...f, [k]: v }));
@@ -105,6 +130,22 @@ function EditMadrasaDrawer({
     setError("");
     setSuccess(false);
     try {
+      // Build full desired state from active existing classes + any overrides
+      const byLevel: Record<number, string[]> = {};
+      for (const c of existingClasses) {
+        if (c.status !== 'ACTIVE' || c.classLevel == null || !c.division) continue;
+        (byLevel[c.classLevel] ??= []).push(c.division);
+      }
+      // Merge editDivisions overrides into the map (including empty = removed)
+      for (const [lvlStr, divs] of Object.entries(editDivisions)) {
+        byLevel[Number(lvlStr)] = divs;
+      }
+      const allLevels = Object.keys(byLevel).map(Number).sort();
+      const divisions: Record<string, string[]> = {};
+      for (const lvl of allLevels) {
+        divisions[String(lvl)] = byLevel[lvl];
+      }
+      const hasRemovals = Object.values(editDivisions).some((d) => d.length === 0);
       const dto: UpdateClientDto = {
         name: form.name?.trim(),
         arabicName: form.arabicName?.trim() || undefined,
@@ -115,6 +156,10 @@ function EditMadrasaDrawer({
         attendanceMode: form.attendanceMode,
         adminIdentifier: form.adminIdentifier?.trim() || undefined,
         password: form.password?.trim() || undefined,
+        committieUsername: form.committieUsername?.trim() || undefined,
+        committiePassword: form.committiePassword?.trim() || undefined,
+        classLevels: allLevels.length > 0 ? allLevels : undefined,
+        divisions: Object.keys(divisions).length > 0 || hasRemovals ? divisions : undefined,
       };
       const updated = await updateClient(client.id, dto, token);
       const merged: ClientListItem = { ...client, ...updated };
@@ -132,7 +177,7 @@ function EditMadrasaDrawer({
     "w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white";
   const labelCls = "text-xs text-gray-500 mb-1.5 block font-medium";
   const sectionCls =
-    "text-xs font-bold text-gray-400 uppercase tracking-wide pt-2 pb-1";
+    "text-xs font-bold text-gray-400 uppercase tracking-wide pt-6 pb-2 border-t border-gray-200 mt-8";
 
   return (
     <>
@@ -188,7 +233,7 @@ function EditMadrasaDrawer({
           )}
 
           {/* Basic info */}
-          <p className={sectionCls}>Madrasa Info</p>
+          <p className={cn(sectionCls, "border-t-0 mt-0")}>Madrasa Info</p>
           <div>
             <label className={labelCls}>Name *</label>
             <input
@@ -248,6 +293,28 @@ function EditMadrasaDrawer({
               onChange={(e) => set("password", e.target.value)}
               className={inputCls}
               placeholder="New password (optional)"
+            />
+          </div>
+
+          {/* Committee Account */}
+          <p className={sectionCls}>Committee Account</p>
+          <div>
+            <label className={labelCls}>Committee Username</label>
+            <input
+              value={form.committieUsername ?? ""}
+              onChange={(e) => set("committieUsername", e.target.value)}
+              className={inputCls}
+              placeholder="e.g. committee.darulhuda"
+            />
+          </div>
+          <div>
+            <label className={labelCls}>Committee Password (leave blank to keep unchanged)</label>
+            <input
+              type="password"
+              value={form.committiePassword ?? ""}
+              onChange={(e) => set("committiePassword", e.target.value)}
+              className={inputCls}
+              placeholder="New committee password (optional)"
             />
           </div>
 
@@ -321,6 +388,20 @@ function EditMadrasaDrawer({
               ))}
             </div>
           </div>
+
+          {/* Classes */}
+          <p className={sectionCls}>Classes</p>
+
+          {classesLoading ? (
+            <div className="flex items-center gap-2 text-gray-400 text-xs py-4 justify-center">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading classes...
+            </div>
+          ) : (
+            <ClassDivisionsPicker
+              value={editDivisions}
+              onChange={setEditDivisions}
+            />
+          )}
         </div>
 
         {/* Footer */}
@@ -725,6 +806,7 @@ function NewMadrasaDrawer({
   }, []);
 
   const [form, setForm] = useState<CreateClientDto>(emptyForm);
+  const [levelDivisions, setLevelDivisions] = useState<Record<number, string[]>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -750,7 +832,16 @@ function NewMadrasaDrawer({
     setSaving(true);
     setError("");
     try {
-      const created = await createClient(form, token);
+      const classLevels = Object.keys(levelDivisions)
+        .map(Number)
+        .filter((l) => (levelDivisions[l]?.length ?? 0) > 0)
+        .sort();
+      const divisions: Record<string, string[]> = {};
+      for (const lvl of classLevels) {
+        divisions[String(lvl)] = levelDivisions[lvl];
+      }
+      const payload = { ...form, classLevels: classLevels.length > 0 ? classLevels : undefined, divisions: Object.keys(divisions).length > 0 ? divisions : undefined };
+      const created = await createClient(payload, token);
       onCreated(created);
       onClose();
     } catch (e: unknown) {
@@ -806,7 +897,7 @@ function NewMadrasaDrawer({
           )}
 
           <div className="space-y-3">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide border-t border-gray-100 pt-6 mt-8">
               Madrasa Info
             </p>
             <div>
@@ -932,7 +1023,17 @@ function NewMadrasaDrawer({
               </div>
             </div>
 
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide pt-2">
+            {/* Classes */}
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide border-t border-gray-100 pt-6 mt-8">
+              Classes
+            </p>
+
+            <ClassDivisionsPicker
+              value={levelDivisions}
+              onChange={setLevelDivisions}
+            />
+
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide border-t border-gray-100 pt-6 mt-8">
               Admin Account
             </p>
             <div>
@@ -964,7 +1065,7 @@ function NewMadrasaDrawer({
               />
             </div>
 
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide pt-2">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide border-t border-gray-100 pt-6 mt-8">
               Committee Account
             </p>
             <div>
