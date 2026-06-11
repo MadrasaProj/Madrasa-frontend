@@ -9,6 +9,8 @@ const V2_BASE = `${API_ORIGIN}/api/v2`;
 export interface ClassRecord {
   id: string;
   name: string;
+  classLevel?: number;
+  division?: string;
   status: string;
   sectionId: string | null;
   classTeacherId: string | null;
@@ -25,6 +27,7 @@ export interface ClassDetail extends ClassRecord {
 
 export interface CreateClassPayload {
   name: string;
+  division?: string;
   accademicYearId?: string;
   classTeacherId?: string | null;
   sectionId?: string;
@@ -32,6 +35,7 @@ export interface CreateClassPayload {
 
 export interface UpdateClassPayload {
   name?: string;
+  division?: string;
   accademicYearId?: string;
   classTeacherId?: string | null;
   sectionId?: string;

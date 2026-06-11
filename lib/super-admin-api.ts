@@ -56,6 +56,10 @@ export interface UpdateClientDto {
   attendanceMode?: "CLASS_BASED" | "PERIOD_BASED";
   adminIdentifier?: string;
   password?: string;
+  committieUsername?: string;
+  committiePassword?: string;
+  classLevels?: number[];
+  divisions?: Record<string, string[]>;
 }
 
 export function updateClient(clientId: string, dto: UpdateClientDto, token: string) {
@@ -175,6 +179,8 @@ export interface CreateClientDto {
   committiePassword?: string;
   status?: "ACTIVE" | "SUSPENDED" | "TRIAL" | "CANCELLED";
   isLoginEnabled?: boolean;
+  classLevels?: number[];
+  divisions?: Record<string, string[]>;
 }
 
 export function createClient(dto: CreateClientDto, token: string) {
