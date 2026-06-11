@@ -68,9 +68,7 @@ export default function TeacherExamsPage() {
   // CLASS_BASED: teacher can only mark their own class (must be classTeacher).
   // PERIOD_BASED: teacher can mark any class where they have subjects assigned.
   const myClassIds = new Set(mySubjects.map((s) => s.classId));
-  const teacherClasses = isPeriodBased
-    ? allClasses.filter((c) => myClassIds.has(c.id) || c.classTeacherId === teacherId)
-    : allClasses.filter((c) => c.classTeacherId === teacherId);
+  const teacherClasses = allClasses.filter((c) => myClassIds.has(c.id) || c.classTeacherId === teacherId);
 
   const [classSubjects, setClassSubjects] = useState<SubjectRecord[]>([]);
 

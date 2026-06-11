@@ -80,6 +80,14 @@ export default function TeacherClassTestsPage() {
   const [meSaving, setMeSaving]         = useState(false);
   const [meSaved, setMeSaved]           = useState(false);
 
+  const isPeriodBased = user?.attendanceMode === "PERIOD_BASED";
+  const teacherId = user?.id ?? "";
+
+  const myClassIds = new Set(subjects.filter((s) => s.teacherId === teacherId).map((s) => s.classId));
+  const teacherClasses = isPeriodBased
+    ? classes.filter((c) => myClassIds.has(c.id) || c.classTeacherId === teacherId)
+    : classes.filter((c) => c.classTeacherId === teacherId);
+
   const load = useCallback(async (clsId?: string) => {
     if (!cid || !token) return;
     setLoading(true); setError(null);
@@ -248,7 +256,7 @@ export default function TeacherClassTestsPage() {
         <select value={filterClassId} onChange={(e) => { setFilterClassId(e.target.value); load(e.target.value); }}
           className="w-full max-w-xs px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
           <option value="">All Classes</option>
-          {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          {teacherClasses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </div>
 
@@ -409,7 +417,7 @@ export default function TeacherClassTestsPage() {
                       <select value={formClassId} onChange={(e) => { setFormClassId(e.target.value); setFormSubjectId(""); }}
                         className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors">
                         <option value="">Select class</option>
-                        {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        {teacherClasses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                       </select>
                     </div>
                     <div>
@@ -418,9 +426,12 @@ export default function TeacherClassTestsPage() {
                         disabled={!formClassId}
                         className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors disabled:opacity-50">
                         <option value="">Select subject</option>
-                        {subjects.filter((s) => s.classId === formClassId).map((s) => (
-                          <option key={s.id} value={s.id}>{s.name}</option>
-                        ))}
+                        {subjects
+                          .filter((s) => s.classId === formClassId)
+                          .filter((s) => !isPeriodBased || s.teacherId === teacherId)
+                          .map((s) => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                          ))}
                       </select>
                     </div>
                   </>

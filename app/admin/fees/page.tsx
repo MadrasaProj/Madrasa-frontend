@@ -6,6 +6,7 @@ import {
   getFeeTypes,
   getPayments,
   createFeeType,
+  recordPayment,
   updatePayment,
   generatePayments,
   getPaymentReceipt,
@@ -36,6 +37,8 @@ import {
   XCircle,
   Users,
   Zap,
+  Pencil,
+  Save,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -238,6 +241,10 @@ export default function AdminFeesPage() {
   // Generate
   const [generating, setGenerating] = useState<string | null>(null);
 
+  // Overwrite amount / discount state
+  const [editingAmount, setEditingAmount] = useState<string | null>(null);
+  const [customAmount, setCustomAmount] = useState("");
+
   // Error
   const [error, setError] = useState<string | null>(null);
 
@@ -377,13 +384,25 @@ export default function AdminFeesPage() {
   const markPaid = async (p: FeePayment) => {
     setSaving(true);
     try {
-      await updatePayment(cid, token, p.id, {
-        paidAmount: Number(p.dueAmount),
-        method: payMethod as any,
-        reference: payRef || undefined,
-        status: "PAID",
-        paidAt: new Date().toISOString(),
-      });
+      if (p.virtual) {
+        await recordPayment(cid, token, {
+          studentId: p.student.id,
+          feeTypeId: p.feeType.id,
+          dueDate: p.dueDate,
+          dueAmount: Number(p.dueAmount),
+          paidAmount: Number(p.dueAmount),
+          method: payMethod as any,
+          reference: payRef || undefined,
+          status: "PAID",
+        });
+      } else {
+        await updatePayment(cid, token, p.id, {
+          paidAmount: Number(p.dueAmount),
+          method: payMethod as any,
+          reference: payRef || undefined,
+          status: "PAID",
+        });
+      }
       setRecording(null);
       setPayRef("");
       loadPayments();
@@ -397,7 +416,19 @@ export default function AdminFeesPage() {
   const cancelPayment = async (p: FeePayment) => {
     setCancellingSave(true);
     try {
-      await cancelPaymentApi(cid, token, p.id, cancellingNote || undefined);
+      if (p.virtual) {
+        await recordPayment(cid, token, {
+          studentId: p.student.id,
+          feeTypeId: p.feeType.id,
+          dueDate: p.dueDate,
+          dueAmount: Number(p.dueAmount),
+          paidAmount: 0,
+          status: "WAIVED",
+          notes: cancellingNote || undefined,
+        });
+      } else {
+        await cancelPaymentApi(cid, token, p.id, cancellingNote || undefined);
+      }
       setCancelling(null);
       setCancellingNote("");
       loadPayments();
@@ -405,6 +436,33 @@ export default function AdminFeesPage() {
       setError((e as Error).message);
     } finally {
       setCancellingSave(false);
+    }
+  };
+
+  const saveDiscount = async (p: FeePayment) => {
+    if (!customAmount || isNaN(Number(customAmount))) return;
+    setSaving(true);
+    try {
+      if (p.virtual) {
+        await recordPayment(cid, token, {
+          studentId: p.student.id,
+          feeTypeId: p.feeType.id,
+          dueDate: p.dueDate,
+          dueAmount: Number(customAmount),
+          paidAmount: 0,
+          status: "PENDING",
+        });
+      } else {
+        await updatePayment(cid, token, p.id, {
+          dueAmount: Number(customAmount),
+        });
+      }
+      setEditingAmount(null);
+      loadPayments();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -645,22 +703,6 @@ export default function AdminFeesPage() {
                     </p>
                   )}
                 </div>
-                <button
-                  onClick={() => handleGenerate(activeType)}
-                  disabled={generating === activeType.id}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all",
-                    activePalette.bg,
-                    "text-white disabled:opacity-60",
-                  )}
-                >
-                  {generating === activeType.id ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Zap className="w-3.5 h-3.5" />
-                  )}
-                  Generate
-                </button>
               </div>
               <div className="grid grid-cols-4 gap-2">
                 {[
@@ -908,6 +950,23 @@ export default function AdminFeesPage() {
                                   <>
                                     <button
                                       onClick={() => {
+                                        setEditingAmount(p.id);
+                                        setCustomAmount(String(p.dueAmount));
+                                      }}
+                                      className="shrink-0 p-1"
+                                      title="Overwrite / Discount fee"
+                                    >
+                                      <Pencil
+                                        className={cn(
+                                          "w-4 h-4 transition-colors",
+                                          editingAmount === p.id
+                                            ? "text-blue-500"
+                                            : "text-gray-300 hover:text-blue-500",
+                                        )}
+                                      />
+                                    </button>
+                                    <button
+                                      onClick={() => {
                                         setRecording(p.id);
                                         setPayMethod("CASH");
                                         setPayRef("");
@@ -997,6 +1056,51 @@ export default function AdminFeesPage() {
                                             <CheckCircle className="w-3 h-3" />
                                           )}
                                           Mark Paid
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+
+                              {/* Inline edit amount / discount panel */}
+                              <AnimatePresence>
+                                {editingAmount === p.id && (
+                                  <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: "auto", opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    className="overflow-hidden"
+                                  >
+                                    <div className="px-4 pb-3 border-t border-gray-50 pt-2 space-y-2">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs text-gray-500 shrink-0">New Amount:</span>
+                                        <input
+                                          type="number"
+                                          value={customAmount}
+                                          onChange={(e) => setCustomAmount(e.target.value)}
+                                          placeholder="Enter discounted amount"
+                                          className="px-3 py-1.5 rounded-xl border text-xs focus:outline-none focus:border-blue-400 w-full"
+                                        />
+                                      </div>
+                                      <div className="flex gap-2">
+                                        <button
+                                          onClick={() => setEditingAmount(null)}
+                                          className="flex-1 py-2 rounded-xl border text-xs font-semibold text-gray-600"
+                                        >
+                                          Cancel
+                                        </button>
+                                        <button
+                                          onClick={() => saveDiscount(p)}
+                                          disabled={saving}
+                                          className="flex-1 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold disabled:opacity-60 flex items-center justify-center gap-1"
+                                        >
+                                          {saving ? (
+                                            <Loader2 className="w-3 h-3 animate-spin" />
+                                          ) : (
+                                            <Save className="w-3 h-3" />
+                                          )}
+                                          Save Amount
                                         </button>
                                       </div>
                                     </div>

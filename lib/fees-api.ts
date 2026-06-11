@@ -30,6 +30,7 @@ export interface FeeType {
 
 export interface FeePayment {
   id: string;
+  virtual?: boolean;
   dueAmount: string;
   paidAmount: string | null;
   dueDate: string;
@@ -93,6 +94,8 @@ export interface RecordPaymentPayload {
   studentId: string;
   feeTypeId: string;
   paidAmount: number;
+  dueAmount?: number;
+  status?: FeePaymentStatus;
   dueDate?: string;
   method?: PaymentMethod;
   reference?: string;
@@ -103,6 +106,7 @@ export interface RecordPaymentPayload {
 export interface UpdatePaymentPayload {
   status?: FeePaymentStatus;
   paidAmount?: number;
+  dueAmount?: number;
   method?: PaymentMethod;
   reference?: string;
   notes?: string;
