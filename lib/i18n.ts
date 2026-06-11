@@ -7,7 +7,7 @@ export type Lang = "en" | "ml";
 const translations = {
   // ── Common / Shared ───────────────────────────────────────────────────────
   common: {
-    appName: { en: "Darul Huda", ml: "ദാറുൽ ഹുദാ" },
+    appName: { en: "Smart Madrasa", ml: "സ്മാർട്ട് മദ്‌റസ" },
     madrasa: { en: "Madrasa", ml: "മദ്‌റസ" },
     madrasaSystem: {
       en: "Madrasa Management System",
@@ -209,8 +209,8 @@ const translations = {
   // ── Admin Dashboard ───────────────────────────────────────────────────────
   adminDash: {
     adminOverview: {
-      en: "Darul Huda Madrasa – Admin Overview",
-      ml: "ദാറുൽ ഹുദാ മദ്‌റസ – അഡ്‌മിൻ അവലോകനം",
+      en: "Smart Madrasa – Admin Overview",
+      ml: "സ്മാർട്ട് മദ്‌റസ – അഡ്‌മിൻ അവലോകനം",
     },
     totalStudents: { en: "Total Students", ml: "ആകെ വിദ്യാർത്ഥികൾ" },
     presentToday: { en: "Present Today", ml: "ഇന്ന് ഹാജർ" },

@@ -18,7 +18,7 @@ const SECTIONS: { title: string; fields: Field[] }[] = [
   {
     title: "Basic Information",
     fields: [
-      { key: "name",          label: "Madrasa Name",    placeholder: "e.g. Darul Huda Madrasa" },
+      { key: "name",          label: "Madrasa Name",    placeholder: "e.g. Smart Madrasa" },
       { key: "arabicName",    label: "Arabic Name",     placeholder: "دار الهدى" },
       { key: "phone",         label: "Phone",           placeholder: "+91 9876543210", type: "tel" },
       { key: "email",         label: "Email",           placeholder: "info@madrasa.com", type: "email" },

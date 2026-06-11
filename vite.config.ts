@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["icons/**", "favicon.ico"],
       manifest: {
-        name: "Darul Huda – Madrasa Management",
-        short_name: "Darul Huda",
+        name: "Smart Madrasa",
+        short_name: "Smart Madrasa",
         description: "Modern Madrasa Management System",
         theme_color: "#059669",
         background_color: "#faf9f6",

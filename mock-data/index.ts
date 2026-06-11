@@ -920,7 +920,7 @@ export const performanceRankingData = [
 ];
 
 export const madrasaConfig = {
-  name: "Darul Huda Madrasa",
+  name: "Smart Madrasa",
   samasthaRegNumber: "SMT-KL-2019-4521",
   divisionEnabled: true,
   teachingModel: "subject_based",
@@ -931,7 +931,7 @@ export const madrasaConfig = {
   divisions: ["A", "B"],
   address: "Masjid Complex, Calicut, Kerala – 673001",
   phone: "0495-2345678",
-  email: "info@darulhuda.edu",
+  email: "info@smartmadrasa.app",
 };
 
 export const adminStats = {
@@ -1008,12 +1008,12 @@ export const otherPaymentRecords = [
 
 // ── Student ID Cards ──────────────────────────────────────────────────────────
 export const idCardSettings = {
-  madrasaName: "Darul Huda Madrasa",
+  madrasaName: "Smart Madrasa",
   madrasaAddress: "Mosque Road, Calicut, Kerala – 673001",
   madrasaPhone: "0495-2765432",
   academicYear: "2025–2026",
   primaryColor: "#059669",
-  logoText: "DH",
+  logoText: "SM",
 };
 
 // ── SKSBV Student Union ───────────────────────────────────────────────────────
@@ -1847,8 +1847,8 @@ export interface CommitteeSummary {
 
 export const committeeSummary: CommitteeSummary = {
   madrasa: {
-    name: "Darul Huda Madrasa",
-    name_ml: "ദാറുൽ ഹുദാ മദ്‌റസ",
+    name: "Smart Madrasa",
+    name_ml: "സ്മാർട്ട് മദ്‌റസ",
     established: "1998",
     location: "Malappuram, Kerala",
     location_ml: "മലപ്പുറം, കേരള",

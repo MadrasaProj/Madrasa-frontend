@@ -906,7 +906,7 @@ function NewMadrasaDrawer({
                 value={form.name}
                 onChange={(e) => set("name", e.target.value)}
                 className={inputCls}
-                placeholder="e.g. Darul Huda"
+                placeholder="e.g. Smart Madrasa"
               />
             </div>
             <div>
@@ -915,7 +915,7 @@ function NewMadrasaDrawer({
                 value={form.slug}
                 onChange={(e) => set("slug", e.target.value)}
                 className={inputCls}
-                placeholder="e.g. darul-huda"
+                placeholder="e.g. smart-madrasa"
               />
             </div>
             <div>
@@ -1051,7 +1051,7 @@ function NewMadrasaDrawer({
                 value={form.adminIdentifier}
                 onChange={(e) => set("adminIdentifier", e.target.value)}
                 className={inputCls}
-                placeholder="e.g. admin@darulhuda"
+                placeholder="e.g. admin@smartmadrasa"
               />
             </div>
             <div>
@@ -1074,7 +1074,7 @@ function NewMadrasaDrawer({
                 value={form.committieUsername ?? ""}
                 onChange={(e) => set("committieUsername", e.target.value)}
                 className={inputCls}
-                placeholder="e.g. committee.darulhuda"
+                placeholder="e.g. committee.smartmadrasa"
               />
             </div>
             <div>

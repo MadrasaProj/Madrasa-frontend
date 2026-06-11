@@ -198,7 +198,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         >
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center shrink-0">
-              <span className="text-white font-extrabold text-xs tracking-wide">DH</span>
+              <span className="text-white font-extrabold text-xs tracking-wide">SM</span>
             </div>
             <div className="leading-tight">
               <p className="font-bold text-gray-900 text-sm leading-none">

@@ -44,8 +44,18 @@ export function proxy(request: NextRequest) {
   }
 
   const hostParts = host.split(".");
-  const hasSubdomainTenant = hostParts.length >= 3;
-  const tenantFromHost = hasSubdomainTenant ? hostParts[0] : null;
+  let tenantFromHost: string | null = null;
+
+  if (host === "madrasa.feztify.com") {
+    tenantFromHost = null;
+  } else if (host.endsWith(".madrasa.feztify.com")) {
+    const prefix = host.substring(0, host.length - ".madrasa.feztify.com".length);
+    const parts = prefix.split(".");
+    tenantFromHost = parts[parts.length - 1];
+  } else {
+    const hasSubdomainTenant = hostParts.length >= 3;
+    tenantFromHost = hasSubdomainTenant ? hostParts[0] : null;
+  }
   if (
     tenantFromHost &&
     !["www", "app", "api", "admin", "localhost"].includes(tenantFromHost) &&

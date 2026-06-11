@@ -28,6 +28,19 @@ export function getTenantSlugFromHost(hostname: string): string | null {
   const host = hostname.split(":")[0].toLowerCase();
   if (!host || host === "localhost" || isIpLikeHost(host)) return null;
 
+  // Handle staging environment
+  if (host === "madrasa.feztify.com") {
+    return null;
+  }
+  if (host.endsWith(".madrasa.feztify.com")) {
+    const prefix = host.substring(0, host.length - ".madrasa.feztify.com".length);
+    const parts = prefix.split(".");
+    const subdomain = parts[parts.length - 1];
+    if (!subdomain || RESERVED_SUBDOMAINS.has(subdomain)) return null;
+    return subdomain;
+  }
+
+  // General fallback (for smartmadrasa.app and local development)
   const parts = host.split(".");
   if (parts.length < 3) return null;
 
