@@ -26,6 +26,14 @@ export default function AdminTeachersPage() {
   const token = accessToken ?? "";
   const isPeriodBased = user?.attendanceMode === "PERIOD_BASED";
 
+  const [isMobile, setIsMobile] = useState(true);
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   // ── List state ─────────────────────────────────────────────────────────────
   const [teachers, setTeachers] = useState<TeacherRecord[]>([]);
   const [total, setTotal]       = useState(0);
@@ -444,15 +452,23 @@ export default function AdminTeachersPage() {
               onClick={() => !saving && setShowDrawer(false)}
               className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
             />
-            <motion.div key="teacher-drawer"
-              initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 md:left-1/2 md:right-auto md:w-full md:max-w-xl md:-translate-x-1/2 z-50 bg-white rounded-t-3xl max-h-[92dvh] flex flex-col relative"
-            >
-              {/* Handle */}
-              <div className="flex justify-center pt-3 pb-1 shrink-0">
-                <div className="w-10 h-1 bg-gray-300 rounded-full" />
-              </div>
+            <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-none md:p-4">
+              <motion.div key="teacher-drawer"
+                initial={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.95 }}
+                animate={isMobile ? { y: 0 } : { opacity: 1, scale: 1 }}
+                exit={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.95 }}
+                transition={isMobile ? { type: "spring", damping: 30, stiffness: 300 } : { duration: 0.2 }}
+                className={cn(
+                  "w-full bg-white flex flex-col pointer-events-auto shadow-2xl relative",
+                  isMobile 
+                    ? "rounded-t-3xl max-h-[92dvh]" 
+                    : "rounded-3xl max-w-xl max-h-[85dvh]"
+                )}
+              >
+                {/* Handle */}
+                <div className="flex justify-center pt-3 pb-1 shrink-0 md:hidden">
+                  <div className="w-10 h-1 bg-gray-300 rounded-full" />
+                </div>
 
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
@@ -766,6 +782,7 @@ export default function AdminTeachersPage() {
                 </div>
               </div>
             </motion.div>
+            </div>
           </>
         )}
       </AnimatePresence>

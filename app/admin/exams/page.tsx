@@ -179,6 +179,13 @@ export default function AdminExamsPage() {
   const [editForm, setEditForm]   = useState<Partial<ExamForm>>({});
   const [saving, setSaving]       = useState(false);
 
+  // Deletion modals state
+  const [showDeleteExamConfirm, setShowDeleteExamConfirm] = useState(false);
+  const [deleteExamTarget, setDeleteExamTarget] = useState<ExamRecord | null>(null);
+
+  const [showDeleteResultConfirm, setShowDeleteResultConfirm] = useState(false);
+  const [deleteResultTarget, setDeleteResultTarget] = useState<{ id: string; name: string; subject: string; score: number; examId: string } | null>(null);
+
   // ── Load ───────────────────────────────────────────────────────────────────
 
   const loadData = useCallback(async () => {
@@ -253,10 +260,9 @@ export default function AdminExamsPage() {
     } finally { setSavingCell(null); setEditCell(null); }
   };
 
-  // ── Delete single result ───────────────────────────────────────────────────
-
-  const handleDeleteResult = async (resultId: string, examId: string) => {
-    if (!confirm("Delete this result?")) return;
+  const handleDeleteResult = async () => {
+    if (!deleteResultTarget) return;
+    const { id: resultId, examId } = deleteResultTarget;
     setDeletingResultId(resultId);
     try {
       await deleteResult(cid, token, resultId);
@@ -265,6 +271,8 @@ export default function AdminExamsPage() {
         [examId]: (m[examId] ?? []).filter((r) => r.id !== resultId),
       }));
       setRankStaleFor((s) => new Set([...s, examId]));
+      setShowDeleteResultConfirm(false);
+      setDeleteResultTarget(null);
     } catch (e) { alert((e as Error).message); }
     finally { setDeletingResultId(null); }
   };
@@ -373,11 +381,16 @@ export default function AdminExamsPage() {
     finally { setCreating(false); }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Delete this exam? Cannot be undone.")) return;
+  const handleDelete = async () => {
+    if (!deleteExamTarget) return;
+    const id = deleteExamTarget.id;
     setDeletingId(id);
-    try { await deleteExam(cid, token, id); loadData(); }
-    catch (e) { alert((e as Error).message); }
+    try {
+      await deleteExam(cid, token, id);
+      setShowDeleteExamConfirm(false);
+      setDeleteExamTarget(null);
+      loadData();
+    } catch (e) { alert((e as Error).message); }
     finally { setDeletingId(null); }
   };
 
@@ -523,7 +536,7 @@ export default function AdminExamsPage() {
                           className="p-1.5 rounded-lg text-gray-300 hover:text-blue-500 transition-colors" title="Edit exam">
                           <Edit2 className="w-4 h-4" />
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); handleDelete(exam.id); }} disabled={deletingId === exam.id}
+                        <button onClick={(e) => { e.stopPropagation(); setDeleteExamTarget(exam); setShowDeleteExamConfirm(true); }} disabled={deletingId === exam.id}
                           className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 transition-colors" title="Delete exam">
                           {deletingId === exam.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                         </button>
@@ -793,7 +806,16 @@ export default function AdminExamsPage() {
                                         </div>
                                         {/* Delete result */}
                                         <button
-                                          onClick={() => handleDeleteResult(r.id, exam.id)}
+                                          onClick={() => {
+                                            setDeleteResultTarget({
+                                              id: r.id,
+                                              name: st.name,
+                                              subject: r.subject?.name ?? "Subject",
+                                              score: r.score,
+                                              examId: exam.id
+                                            });
+                                            setShowDeleteResultConfirm(true);
+                                          }}
                                           disabled={isDeletingR}
                                           className="p-1 rounded-lg text-gray-200 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
                                           title="Delete this result">
@@ -874,6 +896,100 @@ export default function AdminExamsPage() {
                     {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : null} Create Exam
                   </button>
                 </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Standalone Delete Exam Confirm Dialog */}
+      <AnimatePresence>
+        {showDeleteExamConfirm && deleteExamTarget && (
+          <>
+            <motion.div key="del-exam-backdrop"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => !deletingId && setShowDeleteExamConfirm(false)}
+              className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm pointer-events-auto"
+            />
+            <motion.div key="del-exam-dialog"
+              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-[60] bg-white rounded-3xl p-6 max-w-sm mx-auto shadow-2xl pointer-events-auto"
+            >
+              <div className="text-center space-y-3">
+                <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto animate-bounce">
+                  <Trash2 className="w-7 h-7 text-red-600" />
+                </div>
+                <h3 className="font-bold text-gray-900 text-lg">Delete Exam?</h3>
+                <p className="text-sm text-gray-500">
+                  Are you sure you want to delete exam <strong>{deleteExamTarget.name}</strong>? This action cannot be undone.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mt-6">
+                <button
+                  onClick={() => setShowDeleteExamConfirm(false)}
+                  disabled={deletingId !== null}
+                  className="py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deletingId !== null}
+                  className="py-3 rounded-2xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors disabled:opacity-60"
+                >
+                  {deletingId !== null ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Deleting…
+                    </span>
+                  ) : "Delete"}
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Standalone Delete Result Confirm Dialog */}
+      <AnimatePresence>
+        {showDeleteResultConfirm && deleteResultTarget && (
+          <>
+            <motion.div key="del-result-backdrop"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => !deletingResultId && setShowDeleteResultConfirm(false)}
+              className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm pointer-events-auto"
+            />
+            <motion.div key="del-result-dialog"
+              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-[60] bg-white rounded-3xl p-6 max-w-sm mx-auto shadow-2xl pointer-events-auto"
+            >
+              <div className="text-center space-y-3">
+                <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto animate-bounce">
+                  <Trash2 className="w-7 h-7 text-red-600" />
+                </div>
+                <h3 className="font-bold text-gray-900 text-lg">Delete Result?</h3>
+                <p className="text-sm text-gray-500">
+                  Are you sure you want to delete result of <strong>{deleteResultTarget.name}</strong> for subject <strong>{deleteResultTarget.subject}</strong> (Score: {deleteResultTarget.score})?
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mt-6">
+                <button
+                  onClick={() => setShowDeleteResultConfirm(false)}
+                  disabled={deletingResultId !== null}
+                  className="py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteResult}
+                  disabled={deletingResultId !== null}
+                  className="py-3 rounded-2xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors disabled:opacity-60"
+                >
+                  {deletingResultId !== null ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Deleting…
+                    </span>
+                  ) : "Delete"}
+                </button>
               </div>
             </motion.div>
           </>

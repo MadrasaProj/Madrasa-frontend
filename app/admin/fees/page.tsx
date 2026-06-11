@@ -1207,8 +1207,9 @@ export default function AdminFeesPage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+              onClick={() => setShowCreate(false)}
             >
-              <div className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-md shadow-xl max-h-[90dvh] overflow-y-auto">
+              <div className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-md shadow-xl max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between px-5 py-4 border-b">
                   <p className="font-bold text-gray-900">New Fee Type</p>
                   <button onClick={() => setShowCreate(false)}>
@@ -1420,8 +1421,9 @@ export default function AdminFeesPage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              onClick={() => setCancelling(null)}
             >
-              <div className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-sm shadow-xl overflow-hidden">
+              <div className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-sm shadow-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
                 <div className="bg-red-50 px-5 py-4 border-b border-red-100">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">

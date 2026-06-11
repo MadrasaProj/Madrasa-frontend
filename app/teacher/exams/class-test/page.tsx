@@ -40,6 +40,17 @@ export default function TeacherClassTestsPage() {
   const token = accessToken ?? "";
   const ayId  = user?.defaultAcademicYearId ?? "";
 
+  const [isMobile, setIsMobile] = useState(true);
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<ExamRecord | null>(null);
+
   const [exams, setExams]       = useState<ExamRecord[]>([]);
   const [classes, setClasses]   = useState<ClassRecord[]>([]);
   const [subjects, setSubjects] = useState<SubjectRecord[]>([]);
@@ -137,10 +148,16 @@ export default function TeacherClassTestsPage() {
     finally { setSaving(false); }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("Delete this class test?")) return;
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    const id = deleteTarget.id;
     setDeleting(id);
-    try { await deleteExam(cid, token, id); setExams((prev) => prev.filter((e) => e.id !== id)); }
+    try {
+      await deleteExam(cid, token, id);
+      setExams((prev) => prev.filter((e) => e.id !== id));
+      setShowDeleteConfirm(false);
+      setDeleteTarget(null);
+    }
     catch (e) { setError((e as Error).message); }
     finally { setDeleting(null); }
   };
@@ -271,7 +288,7 @@ export default function TeacherClassTestsPage() {
                         className="p-1.5 rounded-lg text-gray-300 hover:text-blue-500 transition-colors" title="Edit">
                         <Pencil className="w-4 h-4" />
                       </button>
-                      <button onClick={(e) => { e.stopPropagation(); handleDelete(exam.id); }} disabled={isDeleting}
+                      <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(exam); setShowDeleteConfirm(true); }} disabled={isDeleting}
                         className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 transition-colors" title="Delete">
                         {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                       </button>
@@ -351,11 +368,24 @@ export default function TeacherClassTestsPage() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => !saving && setShowDrawer(false)}
               className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm" />
-            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[90dvh] flex flex-col">
-              <div className="flex justify-center pt-3 pb-1 shrink-0"><div className="w-10 h-1 bg-gray-300 rounded-full" /></div>
-              <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
+            <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-none md:p-4">
+              <motion.div
+                initial={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.95 }}
+                animate={isMobile ? { y: 0 } : { opacity: 1, scale: 1 }}
+                exit={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.95 }}
+                transition={isMobile ? { type: "spring", damping: 30, stiffness: 300 } : { duration: 0.2 }}
+                className={cn(
+                  "w-full bg-white flex flex-col pointer-events-auto shadow-2xl relative",
+                  isMobile 
+                    ? "rounded-t-3xl max-h-[90dvh]" 
+                    : "rounded-3xl max-w-xl max-h-[85dvh]"
+                )}
+              >
+                {/* Handle */}
+                <div className="flex justify-center pt-3 pb-1 shrink-0 md:hidden">
+                  <div className="w-10 h-1 bg-gray-300 rounded-full" />
+                </div>
+                <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
                 <h2 className="font-bold text-gray-900 text-lg">{editTarget ? "Edit Class Test" : "New Class Test"}</h2>
                 <button onClick={() => !saving && setShowDrawer(false)} disabled={saving}
                   className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200">
@@ -430,6 +460,54 @@ export default function TeacherClassTestsPage() {
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 disabled:opacity-50">
                   {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                   {editTarget ? "Save Changes" : "Create Test"}
+                </button>
+              </div>
+            </motion.div>
+            </div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Standalone Delete Confirm Dialog */}
+      <AnimatePresence>
+        {showDeleteConfirm && deleteTarget && (
+          <>
+            <motion.div key="del-backdrop"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => !deleting && setShowDeleteConfirm(false)}
+              className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm pointer-events-auto"
+            />
+            <motion.div key="del-dialog"
+              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 bg-white rounded-3xl p-6 max-w-sm mx-auto shadow-2xl pointer-events-auto"
+            >
+              <div className="text-center space-y-3">
+                <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto animate-bounce">
+                  <Trash2 className="w-7 h-7 text-red-600" />
+                </div>
+                <h3 className="font-bold text-gray-900 text-lg">Delete Class Test?</h3>
+                <p className="text-sm text-gray-500">
+                  Are you sure you want to delete the class test <strong>{deleteTarget.name}</strong>? All scores entered for this test will be lost.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mt-6">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={deleting !== null}
+                  className="py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting !== null}
+                  className="py-3 rounded-2xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors disabled:opacity-60"
+                >
+                  {deleting !== null ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Deleting…
+                    </span>
+                  ) : "Delete"}
                 </button>
               </div>
             </motion.div>
