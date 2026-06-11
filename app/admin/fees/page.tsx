@@ -304,28 +304,45 @@ export default function AdminFeesPage() {
     if (tab === "records") loadPayments();
   }, [tab, loadPayments]);
 
-  // Stats
+  // Stats / Report
   const [summary, setSummary] = useState<{
     byStatus: any[];
     byFeeType: any[];
   } | null>(null);
-  const loadSummary = useCallback(async () => {
+  const [reportFeeTypeId, setReportFeeTypeId] = useState<string>("");
+  const [reportClassId, setReportClassId] = useState<string>("");
+  const [reportPayments, setReportPayments] = useState<FeePayment[]>([]);
+  const [reportPayLoading, setReportPayLoading] = useState(false);
+
+  const loadReportData = useCallback(async () => {
     if (!cid || !token) return;
+    setReportPayLoading(true);
     try {
-      const data = await getFeeSummary(
-        cid,
-        token,
-        user?.defaultAcademicYearId ?? undefined,
-      );
-      setSummary(data);
+      const [summaryData, payRes] = await Promise.all([
+        getFeeSummary(
+          cid,
+          token,
+          user?.defaultAcademicYearId ?? undefined,
+        ),
+        getPayments(cid, token, {
+          feeTypeId: reportFeeTypeId || undefined,
+          classId: reportClassId || undefined,
+          academicYearId: user?.defaultAcademicYearId ?? undefined,
+          take: 500,
+        }),
+      ]);
+      setSummary(summaryData);
+      setReportPayments(payRes.payments);
     } catch {
       /* silent */
+    } finally {
+      setReportPayLoading(false);
     }
-  }, [cid, token, user?.defaultAcademicYearId]);
+  }, [cid, token, user?.defaultAcademicYearId, reportFeeTypeId, reportClassId]);
 
   useEffect(() => {
-    if (tab === "reports") loadSummary();
-  }, [tab, loadSummary]);
+    if (tab === "reports") loadReportData();
+  }, [tab, loadReportData]);
 
   const activeType = feeTypes.find((f) => f.id === activeTypeId) ?? null;
   const activePalette = activeType
@@ -486,7 +503,7 @@ export default function AdminFeesPage() {
       {error && (
         <ApiErrorBanner
           message={error}
-          onRetry={tab === "records" ? loadPayments : loadSummary}
+          onRetry={tab === "records" ? loadPayments : loadReportData}
         />
       )}
 
@@ -1040,12 +1057,110 @@ export default function AdminFeesPage() {
           {/* ── Reports tab ── */}
           {tab === "reports" && (
             <div className="space-y-4">
-              {!summary ? (
+              {/* Filters */}
+              <div className="flex flex-wrap gap-2">
+                <select
+                  value={reportFeeTypeId}
+                  onChange={(e) => setReportFeeTypeId(e.target.value)}
+                  className="px-3 py-2 rounded-xl border border-gray-200 text-sm bg-white"
+                >
+                  <option value="">All Fee Types</option>
+                  {feeTypes.map((ft) => (
+                    <option key={ft.id} value={ft.id}>{ft.name}</option>
+                  ))}
+                </select>
+                <select
+                  value={reportClassId}
+                  onChange={(e) => setReportClassId(e.target.value)}
+                  className="px-3 py-2 rounded-xl border border-gray-200 text-sm bg-white"
+                >
+                  <option value="">All Classes</option>
+                  {classes.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {reportPayLoading ? (
                 <div className="flex items-center justify-center gap-2 py-12 text-gray-400">
                   <Loader2 className="w-4 h-4 animate-spin" />
                 </div>
               ) : (
                 <>
+                  {/* Summary cards */}
+                  {(() => {
+                    const totalDue = reportPayments.reduce((s, p) => s + Number(p.dueAmount), 0);
+                    const totalPaid = reportPayments.reduce((s, p) => s + Number(p.paidAmount ?? 0), 0);
+                    const totalPending = reportPayments.filter((p) => p.status === "PENDING" || p.status === "OVERDUE").reduce((s, p) => s + Number(p.dueAmount) - Number(p.paidAmount ?? 0), 0);
+                    const paidCount = reportPayments.filter((p) => p.status === "PAID").length;
+                    const pendingCount = reportPayments.filter((p) => p.status === "PENDING" || p.status === "OVERDUE").length;
+                    const waivedCount = reportPayments.filter((p) => p.status === "WAIVED").length;
+                    return (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-100">
+                          <p className="text-xs text-emerald-600 font-semibold">Collected</p>
+                          <p className="text-lg font-bold text-emerald-800 mt-1">₹{totalPaid.toLocaleString()}</p>
+                          <p className="text-[10px] text-emerald-500 mt-0.5">{paidCount} students</p>
+                        </div>
+                        <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100">
+                          <p className="text-xs text-amber-600 font-semibold">Pending</p>
+                          <p className="text-lg font-bold text-amber-800 mt-1">₹{totalPending.toLocaleString()}</p>
+                          <p className="text-[10px] text-amber-500 mt-0.5">{pendingCount} students</p>
+                        </div>
+                        <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                          <p className="text-xs text-gray-600 font-semibold">Total Due</p>
+                          <p className="text-lg font-bold text-gray-800 mt-1">₹{totalDue.toLocaleString()}</p>
+                          <p className="text-[10px] text-gray-500 mt-0.5">{reportPayments.length} records</p>
+                        </div>
+                        <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                          <p className="text-xs text-gray-600 font-semibold">Waived</p>
+                          <p className="text-lg font-bold text-gray-800 mt-1">{waivedCount}</p>
+                          <p className="text-[10px] text-gray-500 mt-0.5">cancelled</p>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Student list by status */}
+                  <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                      <p className="text-sm font-bold text-gray-900">Students</p>
+                      <p className="text-xs text-gray-400">{reportPayments.length} records</p>
+                    </div>
+                    {reportPayments.length === 0 ? (
+                      <div className="text-center py-10 text-gray-400 text-sm">No payments found</div>
+                    ) : (
+                      <div className="divide-y divide-gray-50">
+                        {reportPayments.map((p) => (
+                          <div key={p.id} className="flex items-center gap-3 px-4 py-3">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-gray-900 truncate">
+                                {p.student.name}
+                              </p>
+                              <p className="text-xs text-gray-400">
+                                {p.student.adno}
+                                {p.student.class ? ` · ${p.student.class.name}` : ""}
+                                {p.feeType ? ` · ${p.feeType.name}` : ""}
+                              </p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="text-sm font-bold text-gray-900">
+                                ₹{Number(p.dueAmount).toLocaleString()}
+                              </p>
+                              <span className={cn(
+                                "text-[10px] font-semibold px-2 py-0.5 rounded-lg",
+                                STATUS_META[p.status as FeePaymentStatus]?.bg ?? "bg-gray-100",
+                                STATUS_META[p.status as FeePaymentStatus]?.color ?? "text-gray-600",
+                              )}>
+                                {STATUS_META[p.status as FeePaymentStatus]?.label ?? p.status}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                   {/* Collection bar chart */}
                   {chartData.length > 0 && (
                     <div className="bg-white rounded-2xl border border-gray-100 p-5">
@@ -1054,134 +1169,45 @@ export default function AdminFeesPage() {
                       </p>
                       <ResponsiveContainer width="100%" height={220}>
                         <BarChart data={chartData} barSize={24}>
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="#f0f0f0"
-                          />
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                           <XAxis dataKey="name" tick={{ fontSize: 10 }} />
                           <YAxis tick={{ fontSize: 10 }} />
-                          <Tooltip
-                            formatter={(v: any) =>
-                              `₹${(v || 0).toLocaleString()}`
-                            }
-                          />
-                          <Bar
-                            dataKey="paid"
-                            name="Collected"
-                            fill="#059669"
-                            radius={[4, 4, 0, 0]}
-                          />
-                          <Bar
-                            dataKey="due"
-                            name="Due"
-                            fill="#e5e7eb"
-                            radius={[4, 4, 0, 0]}
-                          />
+                          <Tooltip formatter={(v: any) => `₹${(v || 0).toLocaleString()}`} />
+                          <Bar dataKey="paid" name="Collected" fill="#059669" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="due" name="Due" fill="#e5e7eb" radius={[4, 4, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
                   )}
 
                   {/* Status breakdown */}
-                  <div className="bg-white rounded-2xl border border-gray-100 p-5">
-                    <p className="font-bold text-gray-900 text-sm mb-4">
-                      By Status
-                    </p>
-                    <div className="space-y-2">
-                      {summary.byStatus.map((s) => {
-                        const meta =
-                          STATUS_META[s.status as FeePaymentStatus] ??
-                          STATUS_META.PENDING;
-                        const due = Number(s._sum.dueAmount ?? 0);
-                        const paid = Number(s._sum.paidAmount ?? 0);
-                        return (
-                          <div
-                            key={s.status}
-                            className="flex items-center gap-3"
-                          >
-                            <span
-                              className={cn(
-                                "text-xs font-bold px-2.5 py-1 rounded-lg w-20 text-center shrink-0",
-                                meta.bg,
-                                meta.color,
-                              )}
-                            >
-                              {meta.label}
-                            </span>
-                            <div className="flex-1">
-                              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                <div
-                                  className={cn(
-                                    "h-full rounded-full",
-                                    s.status === "PAID"
-                                      ? "bg-emerald-500"
-                                      : s.status === "OVERDUE"
-                                        ? "bg-red-400"
-                                        : "bg-amber-400",
-                                  )}
-                                  style={{
-                                    width: `${due > 0 ? Math.min(100, (paid / due) * 100) : 0}%`,
-                                  }}
-                                />
+                  {summary && summary.byStatus.length > 0 && (
+                    <div className="bg-white rounded-2xl border border-gray-100 p-5">
+                      <p className="font-bold text-gray-900 text-sm mb-4">By Status</p>
+                      <div className="space-y-2">
+                        {summary.byStatus.map((s) => {
+                          const meta = STATUS_META[s.status as FeePaymentStatus] ?? STATUS_META.PENDING;
+                          const due = Number(s._sum.dueAmount ?? 0);
+                          const paid = Number(s._sum.paidAmount ?? 0);
+                          return (
+                            <div key={s.status} className="flex items-center gap-3">
+                              <span className={cn("text-xs font-bold px-2.5 py-1 rounded-lg w-20 text-center shrink-0", meta.bg, meta.color)}>
+                                {meta.label}
+                              </span>
+                              <div className="flex-1">
+                                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                  <div className={cn("h-full rounded-full", s.status === "PAID" ? "bg-emerald-500" : s.status === "OVERDUE" ? "bg-red-400" : "bg-amber-400")}
+                                    style={{ width: `${due > 0 ? Math.min(100, (paid / due) * 100) : 0}%` }}
+                                  />
+                                </div>
                               </div>
+                              <span className="text-xs font-bold text-gray-700 w-10 text-right shrink-0">{s._count.id}</span>
                             </div>
-                            <span className="text-xs font-bold text-gray-700 w-10 text-right shrink-0">
-                              {s._count.id}
-                            </span>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-
-                  {/* Per fee type table */}
-                  <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-gray-100">
-                      <p className="text-sm font-bold text-gray-900">
-                        All Fee Types
-                      </p>
-                    </div>
-                    <div className="divide-y divide-gray-50">
-                      {feeTypes.map((ft, i) => {
-                        const pal = PALETTE[i % PALETTE.length];
-                        return (
-                          <div
-                            key={ft.id}
-                            className="flex items-center gap-3 px-4 py-3"
-                          >
-                            <div
-                              className={cn(
-                                "w-8 h-8 rounded-xl flex items-center justify-center shrink-0",
-                                pal.bg,
-                              )}
-                            >
-                              <CreditCard className="w-3.5 h-3.5 text-white" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-gray-900 truncate">
-                                {ft.name}
-                              </p>
-                              <p className="text-xs text-gray-400 capitalize">
-                                {ft.kind.toLowerCase()}
-                                {ft.frequency ? ` · ${ft.frequency}` : ""}
-                                {ft.targetClassIds.length > 0
-                                  ? ` · ${ft.targetClassIds.length} class(es)`
-                                  : " · all classes"}
-                              </p>
-                            </div>
-                            <div className="text-right shrink-0">
-                              <p className="text-sm font-bold text-gray-900">
-                                ₹{Number(ft.amount).toLocaleString()}
-                              </p>
-                              <p className="text-[10px] text-gray-400">
-                                {ft._count?.payments ?? 0} records
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  )}
                 </>
               )}
             </div>
