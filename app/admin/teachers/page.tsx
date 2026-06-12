@@ -756,30 +756,30 @@ export default function AdminTeachersPage() {
                     )}
                   </>
                 )}
+              </div>
 
-                {/* ── Save button & Delete button ── */}
-                <div className={cn("space-y-3", editTarget ? "mt-4" : "pt-0")}>
-                  {editTarget && (
-                    <button
-                      type="button"
-                      onClick={() => setShowDeleteConfirm(true)}
-                      className="w-full border border-red-200 hover:border-red-300 text-red-600 font-semibold py-3 rounded-2xl text-sm transition-all"
-                    >
-                      Delete Teacher
-                    </button>
-                  )}
+              {/* Footer */}
+              <div className="px-5 py-4 border-t border-gray-100 flex flex-col gap-3 shrink-0">
+                {editTarget && (
                   <button
-                    onClick={handleSave}
-                    disabled={saving || !fName.trim() || !fUsername.trim() || (!editTarget && !fPassword) || (editTarget !== null && loadingAssign)}
-                    className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl text-base shadow-lg shadow-emerald-200 disabled:opacity-60 active:scale-[0.98] transition-transform"
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="w-full border border-red-200 hover:border-red-300 text-red-600 font-semibold py-3 rounded-2xl text-sm transition-all"
                   >
-                    {saving ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin" /> Saving…
-                      </span>
-                    ) : editTarget ? "Save Changes" : "Add Teacher"}
+                    Delete Teacher
                   </button>
-                </div>
+                )}
+                <button
+                  onClick={handleSave}
+                  disabled={saving || !fName.trim() || !fUsername.trim() || (!editTarget && !fPassword) || (editTarget !== null && loadingAssign)}
+                  className="w-full bg-emerald-600 text-white font-bold py-3.5 rounded-2xl text-sm shadow-lg shadow-emerald-200 disabled:opacity-60 active:scale-[0.98] transition-transform"
+                >
+                  {saving ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Saving…
+                    </span>
+                  ) : editTarget ? "Save Changes" : "Add Teacher"}
+                </button>
               </div>
             </motion.div>
             </div>

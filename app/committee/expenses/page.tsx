@@ -22,7 +22,7 @@ type ExpenseItem = {
   approvedBy: string;
   status: "approved" | "pending" | "rejected";
 };
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Receipt,
   IndianRupee,
@@ -200,6 +200,14 @@ export default function CommitteeExpensesPage() {
   const [localExpenses, setLocalExpenses] = useState<ExpenseItem[]>([]);
   const [saved, setSaved] = useState(false);
 
+  const [isMobile, setIsMobile] = useState(true);
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   const allExpenses: ExpenseItem[] = [...localExpenses, ...exp.recentExpenses];
   const maxMonth = Math.max(...exp.monthlyTrend.map((m) => m.amount));
 
@@ -260,25 +268,31 @@ export default function CommitteeExpensesPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/40 z-40"
+              className="fixed inset-0 bg-black/40 z-40 backdrop-blur-sm"
               onClick={() => setShowForm(false)}
             />
-            {/* Drawer */}
-            <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl max-h-[92vh] overflow-y-auto"
-            >
-              {/* Handle */}
-              <div className="flex justify-center pt-3 pb-1">
-                <div className="w-10 h-1 bg-gray-300 rounded-full" />
-              </div>
+            {/* Drawer Container */}
+            <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-none md:p-4">
+              <motion.div
+                initial={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.95 }}
+                animate={isMobile ? { y: 0 } : { opacity: 1, scale: 1 }}
+                exit={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.95 }}
+                transition={isMobile ? { type: "spring", damping: 30, stiffness: 300 } : { duration: 0.2 }}
+                className={`w-full bg-white flex flex-col pointer-events-auto shadow-2xl relative ${
+                  isMobile
+                    ? "rounded-t-3xl max-h-[90dvh]"
+                    : "rounded-3xl max-w-xl max-h-[85dvh]"
+                }`}
+              >
+                {/* Handle */}
+                {isMobile && (
+                  <div className="flex justify-center pt-3 pb-1 shrink-0">
+                    <div className="w-10 h-1 bg-gray-300 rounded-full" />
+                  </div>
+                )}
 
-              <div className="px-5 pb-8">
                 {/* Drawer header */}
-                <div className="flex items-center justify-between mb-5 pt-2">
+                <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-100 shrink-0">
                   <div className="flex items-center gap-2">
                     <div className="w-9 h-9 bg-orange-100 rounded-xl flex items-center justify-center">
                       <Plus className="w-4 h-4 text-orange-600" />
@@ -298,14 +312,14 @@ export default function CommitteeExpensesPage() {
                   </div>
                   <button
                     onClick={() => setShowForm(false)}
-                    className="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center"
+                    className="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center hover:bg-gray-200 transition-all"
                   >
                     <X className="w-4 h-4 text-gray-500" />
                   </button>
                 </div>
 
-                {/* Form fields */}
-                <div className="space-y-4">
+                {/* Scrollable body */}
+                <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4 pb-6">
                   {/* Category */}
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1.5">
@@ -503,8 +517,10 @@ export default function CommitteeExpensesPage() {
                       className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-medium text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 resize-none"
                     />
                   </div>
+                </div>
 
-                  {/* Save button */}
+                {/* Sticky Footer */}
+                <div className="p-5 border-t border-gray-100 shrink-0 bg-white">
                   <button
                     onClick={handleSave}
                     disabled={!isFormValid}
@@ -529,18 +545,19 @@ export default function CommitteeExpensesPage() {
                     )}
                   </button>
                 </div>
-              </div>
-            </motion.div>
+              </motion.div>
+            </div>
           </>
         )}
       </AnimatePresence>
 
-      {/* ── Header ── */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-5"
-      >
+      <div className="max-w-5xl mx-auto w-full pb-20">
+        {/* ── Header ── */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-5"
+        >
         <div className="bg-linear-to-r from-orange-600 to-amber-500 rounded-3xl p-5 lg:p-6 text-white">
           <div className="flex items-center justify-between gap-3 mb-4">
             <div className="flex items-center gap-3">
@@ -1068,6 +1085,7 @@ export default function CommitteeExpensesPage() {
           </div>
         </motion.div>
       )}
+      </div>
     </DashboardLayout>
   );
 }

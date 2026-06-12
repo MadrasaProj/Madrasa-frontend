@@ -40,6 +40,14 @@ export default function AdminNotificationsPage() {
   const [deletingId, setDeletingId]   = useState<string | null>(null);
   const [editTarget, setEditTarget]   = useState<NotificationRecord | null>(null);
 
+  const [isMobile, setIsMobile] = useState(true);
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   // Compose form
   const [cTitle, setCTitle]       = useState("");
   const [cBody, setCBody]         = useState("");
@@ -146,7 +154,7 @@ export default function AdminNotificationsPage() {
       ) : sent.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm">No notifications sent yet</div>
       ) : (
-        <div className="space-y-3 pb-20">
+        <div className="max-w-4xl mx-auto w-full space-y-3 pb-20">
           {sent.map((n, i) => {
             const cfg = TYPE_CONFIG[n.type] ?? TYPE_CONFIG.GENERAL;
             const Icon = cfg.icon;
@@ -201,14 +209,24 @@ export default function AdminNotificationsPage() {
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="fixed inset-0 bg-black/30 z-40 backdrop-blur-sm" onClick={() => setShowCompose(false)} />
-            <motion.div initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
-              className="fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-3xl max-h-[90vh] overflow-y-auto"
-            >
-              <div className="sticky top-0 bg-white px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                <p className="font-bold text-gray-900 text-lg">{editTarget ? "Edit Notification" : "Compose Notification"}</p>
-                <button onClick={() => setShowCompose(false)}><X className="w-5 h-5 text-gray-400" /></button>
-              </div>
-              <div className="p-5 space-y-4">
+            <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-none md:p-4">
+              <motion.div
+                initial={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.95 }}
+                animate={isMobile ? { y: 0 } : { opacity: 1, scale: 1 }}
+                exit={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.95 }}
+                transition={isMobile ? { type: "spring", damping: 30, stiffness: 300 } : { duration: 0.2 }}
+                className={cn(
+                  "w-full bg-white flex flex-col pointer-events-auto shadow-2xl relative",
+                  isMobile 
+                    ? "rounded-t-3xl max-h-[90dvh]" 
+                    : "rounded-3xl max-w-xl max-h-[85dvh]"
+                )}
+              >
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+                  <p className="font-bold text-gray-900 text-lg">{editTarget ? "Edit Notification" : "Compose Notification"}</p>
+                  <button onClick={() => setShowCompose(false)}><X className="w-5 h-5 text-gray-400" /></button>
+                </div>
+                <div className="overflow-y-auto flex-1 p-5 space-y-4">
                 {sendError && (
                   <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl">{sendError}</div>
                 )}
@@ -270,17 +288,20 @@ export default function AdminNotificationsPage() {
                   <input type="date" value={cEventDate} onChange={(e) => setCEventDate(e.target.value)}
                     className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white" />
                 </div>
-                <div className="flex gap-3 pt-2">
-                  <button onClick={() => setShowCompose(false)}
-                    className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700">Cancel</button>
-                  <button onClick={handleSend} disabled={!cTitle || !cBody || !cRoles.length || sending}
-                    className="flex-1 py-3 bg-emerald-600 text-white rounded-xl text-sm font-semibold disabled:opacity-60 flex items-center justify-center gap-2">
-                    {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                    Send
-                  </button>
-                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-5 py-4 border-t border-gray-100 shrink-0 flex gap-3">
+                <button onClick={() => setShowCompose(false)}
+                  className="flex-1 py-3.5 border border-gray-200 rounded-2xl text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all">Cancel</button>
+                <button onClick={handleSend} disabled={!cTitle || !cBody || !cRoles.length || sending}
+                  className="flex-1 py-3.5 bg-emerald-600 text-white rounded-2xl text-sm font-semibold disabled:opacity-60 flex items-center justify-center gap-2">
+                  {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  Send
+                </button>
               </div>
             </motion.div>
+          </div>
           </>
         )}
       </AnimatePresence>

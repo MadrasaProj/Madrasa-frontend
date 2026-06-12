@@ -198,7 +198,7 @@ function EditMadrasaDrawer({
             "w-full bg-white flex flex-col pointer-events-auto shadow-2xl relative",
             isMobile 
               ? "rounded-t-3xl max-h-[92dvh]" 
-              : "rounded-3xl max-w-xl max-h-[85dvh]"
+              : "rounded-3xl max-w-3xl max-h-[85dvh]"
           )}
         >
         {/* Header */}
@@ -871,25 +871,27 @@ function NewMadrasaDrawer({
           exit={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.95 }}
           transition={isMobile ? { type: "spring", damping: 30, stiffness: 300 } : { duration: 0.2 }}
           className={cn(
-            "w-full bg-white flex flex-col pointer-events-auto shadow-2xl relative overflow-y-auto",
+            "w-full bg-white flex flex-col pointer-events-auto shadow-2xl relative",
             isMobile 
               ? "rounded-t-3xl max-h-[90dvh]" 
-              : "rounded-3xl max-w-xl max-h-[85dvh]"
+              : "rounded-3xl max-w-3xl max-h-[85dvh]"
           )}
         >
-        <div className="p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-bold text-gray-900">
-              Add New Madrasa
-            </h2>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-100 transition-all"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-100 shrink-0">
+          <h2 className="text-base font-bold text-gray-900">
+            Add New Madrasa
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-100 transition-all"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
+        {/* Scrollable body */}
+        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-3 pb-6">
           {error && (
             <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">
               {error}
@@ -1088,27 +1090,28 @@ function NewMadrasaDrawer({
               />
             </div>
           </div>
+        </div>
 
-          <div className="flex gap-3 mt-5">
-            <button
-              onClick={onClose}
-              className="flex-1 py-3 text-sm font-semibold text-gray-500 bg-gray-100 rounded-2xl hover:bg-gray-200 transition-all"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={saving}
-              className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-all disabled:opacity-60"
-            >
-              {saving ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Plus className="w-4 h-4" />
-              )}
-              Create Madrasa
-            </button>
-          </div>
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-gray-100 shrink-0 flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 py-3 text-sm font-semibold text-gray-500 bg-gray-100 rounded-2xl hover:bg-gray-200 transition-all"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={saving}
+            className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-all disabled:opacity-60"
+          >
+            {saving ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Plus className="w-4 h-4" />
+            )}
+            Create Madrasa
+          </button>
         </div>
       </motion.div>
       </div>
@@ -1179,7 +1182,7 @@ export default function AdminMadrasasPage() {
           </button>
         </div>
       ) : (
-        <div className="space-y-2 pb-20">
+        <div className="max-w-5xl mx-auto w-full space-y-2 pb-20">
           {clients.map((client) => {
             const expired = isExpired(client.subscriptionEnd);
             const isOpen = expanded === client.id;

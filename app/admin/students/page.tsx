@@ -1016,41 +1016,42 @@ export default function AdminStudentsPage() {
                     </div>
                   </div>
                 </section>
+              </div>
 
-                <div className="flex gap-3">
-                  {isEditing && canWrite && (
-                    <button
-                      onClick={() => {
-                        setDeleteTarget(drawer as StudentRecord);
-                        setShowDeleteConfirm(true);
-                      }}
-                      type="button"
-                      className="flex-1 bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 font-bold py-4 rounded-2xl text-base active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                    >
-                      <Trash2 className="w-4 h-4" /> Delete
-                    </button>
-                  )}
+              {/* Footer */}
+              <div className="px-5 py-4 border-t border-gray-100 flex gap-3 shrink-0">
+                {isEditing && canWrite && (
                   <button
-                    onClick={handleSubmit}
-                    disabled={
-                      submitting || !form.name.trim() || !form.adno.trim()
-                    }
-                    className={cn(
-                      "bg-emerald-600 text-white font-bold py-4 rounded-2xl text-base active:scale-[0.98] transition-transform shadow-lg shadow-emerald-200 disabled:opacity-60",
-                      isEditing && canWrite ? "flex-1" : "w-full",
-                    )}
+                    onClick={() => {
+                      setDeleteTarget(drawer as StudentRecord);
+                      setShowDeleteConfirm(true);
+                    }}
+                    type="button"
+                    className="flex-1 bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 font-bold py-3.5 rounded-2xl text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                   >
-                    {submitting ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin" /> Saving…
-                      </span>
-                    ) : isEditing ? (
-                      "Save Changes"
-                    ) : (
-                      t("adminPages", "admitStudent", lang)
-                    )}
+                    <Trash2 className="w-4 h-4" /> Delete
                   </button>
-                </div>
+                )}
+                <button
+                  onClick={handleSubmit}
+                  disabled={
+                    submitting || !form.name.trim() || !form.adno.trim()
+                  }
+                  className={cn(
+                    "bg-emerald-600 text-white font-bold py-3.5 rounded-2xl text-sm active:scale-[0.98] transition-transform shadow-lg shadow-emerald-200 disabled:opacity-60",
+                    isEditing && canWrite ? "flex-1" : "w-full",
+                  )}
+                >
+                  {submitting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Saving…
+                    </span>
+                  ) : isEditing ? (
+                    "Save Changes"
+                  ) : (
+                    t("adminPages", "admitStudent", lang)
+                  )}
+                </button>
               </div>
             </motion.div>
             </div>

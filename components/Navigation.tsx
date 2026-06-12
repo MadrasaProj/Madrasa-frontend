@@ -205,7 +205,7 @@ export function BottomNav() {
   const links = getLinksByRole(user.role, user.actorType, hasActiveClient).slice(0, isSuperAdmin && !hasActiveClient ? 4 : 5);
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-50 pb-safe">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-30 pb-safe">
       <div className="flex items-stretch justify-around px-1">
         {links.map(({ href, icon: Icon, key }) => {
           const fullHref = slugPrefix ? `${slugPrefix}${href}` : href;

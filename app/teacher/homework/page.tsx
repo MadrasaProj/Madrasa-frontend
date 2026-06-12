@@ -65,6 +65,14 @@ export default function TeacherHomeworkPage() {
   const [editSubjectId, setEditSubjectId]   = useState("");
   const [updating, setUpdating]             = useState(false);
 
+  const [isMobile, setIsMobile] = useState(true);
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   // Load classes + homework
   useEffect(() => {
     if (!cid || !token) return;
@@ -487,17 +495,26 @@ export default function TeacherHomeworkPage() {
               onClick={() => !updating && setShowEditDrawer(false)}
               className="fixed inset-0 bg-black/30 z-40 backdrop-blur-sm"
             />
-            <motion.div
-              initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-3xl p-5 shadow-2xl max-h-[92dvh] flex flex-col"
-            >
-              <div className="flex items-center justify-between mb-4 shrink-0">
-                <p className="font-bold text-gray-900">Edit Assignment</p>
-                <button onClick={() => setShowEditDrawer(false)}><X className="w-5 h-5 text-gray-400" /></button>
-              </div>
+            <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-none md:p-4">
+              <motion.div
+                key="edit-hw-drawer"
+                initial={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.95 }}
+                animate={isMobile ? { y: 0 } : { opacity: 1, scale: 1 }}
+                exit={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.95 }}
+                transition={isMobile ? { type: "spring", damping: 30, stiffness: 300 } : { duration: 0.2 }}
+                className={cn(
+                  "w-full bg-white flex flex-col pointer-events-auto shadow-2xl relative",
+                  isMobile 
+                    ? "rounded-t-3xl max-h-[92dvh]" 
+                    : "rounded-3xl max-w-xl max-h-[85dvh]"
+                )}
+              >
+                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+                  <p className="font-bold text-gray-900 text-lg">Edit Assignment</p>
+                  <button onClick={() => setShowEditDrawer(false)}><X className="w-5 h-5 text-gray-400" /></button>
+                </div>
 
-              <div className="space-y-4 overflow-y-auto flex-1 pb-8">
+                <div className="space-y-4 overflow-y-auto flex-1 px-5 py-4 pb-8">
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1.5">Subject *</label>
                   <select value={editSubjectId} onChange={(e) => setEditSubjectId(e.target.value)}
@@ -530,16 +547,27 @@ export default function TeacherHomeworkPage() {
                     className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                 </div>
 
+              </div>
+
+              {/* Footer */}
+              <div className="px-5 py-4 border-t border-gray-100 shrink-0 flex gap-3">
+                <button
+                  onClick={() => setShowEditDrawer(false)}
+                  className="flex-1 py-3.5 text-sm font-semibold text-gray-500 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all"
+                >
+                  Cancel
+                </button>
                 <button
                   onClick={handleUpdate}
                   disabled={!editTitle || !editDueDate || !editSubjectId || updating}
-                  className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold text-sm disabled:opacity-60 flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-semibold text-sm disabled:opacity-60 flex items-center justify-center gap-2"
                 >
                   {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                   Save Changes
                 </button>
               </div>
             </motion.div>
+          </div>
           </>
         )}
       </AnimatePresence>

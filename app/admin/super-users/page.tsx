@@ -64,20 +64,36 @@ function UserDrawer({
     }
   };
 
+  const [isMobile, setIsMobile] = useState(true);
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   return (
     <>
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/40 z-40"
+        className="fixed inset-0 bg-black/40 z-40 backdrop-blur-sm"
         onClick={onClose}
       />
-      <motion.div
-        initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
-        transition={{ type: "spring", damping: 30, stiffness: 300 }}
-        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto"
-      >
-        <div className="p-5">
-          <div className="flex items-center justify-between mb-4">
+      <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-none md:p-4">
+        <motion.div
+          initial={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.95 }}
+          animate={isMobile ? { y: 0 } : { opacity: 1, scale: 1 }}
+          exit={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.95 }}
+          transition={isMobile ? { type: "spring", damping: 30, stiffness: 300 } : { duration: 0.2 }}
+          className={cn(
+            "w-full bg-white flex flex-col pointer-events-auto shadow-2xl relative",
+            isMobile 
+              ? "rounded-t-3xl max-h-[92dvh]" 
+              : "rounded-3xl max-w-xl max-h-[85dvh]"
+          )}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-100 shrink-0">
             <h2 className="text-base font-bold text-gray-900">
               {mode === "add" ? "Add Admin User" : "Edit Admin User"}
             </h2>
@@ -86,30 +102,34 @@ function UserDrawer({
             </button>
           </div>
 
-          {error && (
-            <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">{error}</div>
-          )}
-
-          <div className="space-y-3">
-            <div>
-              <label className={labelCls}>Name *</label>
-              <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} placeholder="Full name" />
-            </div>
-            {mode === "add" && (
-              <div>
-                <label className={labelCls}>Username / Identifier *</label>
-                <input value={identifier} onChange={(e) => setIdentifier(e.target.value)}
-                  className={inputCls} placeholder="e.g. superadmin" />
-              </div>
+          {/* Body */}
+          <div className="overflow-y-auto flex-1 px-5 py-4 space-y-3 pb-6">
+            {error && (
+              <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">{error}</div>
             )}
-            <div>
-              <label className={labelCls}>{mode === "add" ? "Password *" : "New Password (leave blank to keep)"}</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-                className={inputCls} placeholder={mode === "edit" ? "Optional" : "Min 8 characters"} />
+
+            <div className="space-y-3">
+              <div>
+                <label className={labelCls}>Name *</label>
+                <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} placeholder="Full name" />
+              </div>
+              {mode === "add" && (
+                <div>
+                  <label className={labelCls}>Username / Identifier *</label>
+                  <input value={identifier} onChange={(e) => setIdentifier(e.target.value)}
+                    className={inputCls} placeholder="e.g. superadmin" />
+                </div>
+              )}
+              <div>
+                <label className={labelCls}>{mode === "add" ? "Password *" : "New Password (leave blank to keep)"}</label>
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+                  className={inputCls} placeholder={mode === "edit" ? "Optional" : "Min 8 characters"} />
+              </div>
             </div>
           </div>
 
-          <div className="flex gap-3 mt-5">
+          {/* Footer */}
+          <div className="px-5 py-4 border-t border-gray-100 shrink-0 flex gap-3">
             <button onClick={onClose}
               className="flex-1 py-3 text-sm font-semibold text-gray-500 bg-gray-100 rounded-2xl hover:bg-gray-200 transition-all">
               Cancel
@@ -120,8 +140,8 @@ function UserDrawer({
               {mode === "add" ? "Add User" : "Save Changes"}
             </button>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
     </>
   );
 }
@@ -203,7 +223,7 @@ export default function AdminSuperUsersPage() {
           <p className="text-sm text-gray-400">No admin users found.</p>
         </div>
       ) : (
-        <div className="space-y-2 pb-20">
+        <div className="max-w-4xl mx-auto w-full space-y-2 pb-20">
           {users.map((u) => (
             <motion.div
               key={u.id}

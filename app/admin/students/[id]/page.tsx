@@ -70,6 +70,14 @@ export default function StudentDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting]           = useState(false);
 
+  const [isMobile, setIsMobile] = useState(true);
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   useEffect(() => {
     if (!activeClientId || !accessToken) return;
     const ac = new AbortController();
@@ -319,11 +327,19 @@ export default function StudentDetailPage() {
               onClick={() => setShowEdit(false)}
               className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
             />
-            <motion.div key="edit-drawer"
-              initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[92dvh] flex flex-col"
-            >
+            <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-none md:p-4">
+              <motion.div key="edit-drawer"
+                initial={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.95 }}
+                animate={isMobile ? { y: 0 } : { opacity: 1, scale: 1 }}
+                exit={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.95 }}
+                transition={isMobile ? { type: "spring", damping: 30, stiffness: 300 } : { duration: 0.2 }}
+                className={cn(
+                  "w-full bg-white flex flex-col pointer-events-auto shadow-2xl relative",
+                  isMobile 
+                    ? "rounded-t-3xl max-h-[92dvh]" 
+                    : "rounded-3xl max-w-xl max-h-[85dvh]"
+                )}
+              >
               <div className="flex justify-center pt-3 pb-1 shrink-0">
                 <div className="w-10 h-1 bg-gray-300 rounded-full" />
               </div>
@@ -423,11 +439,20 @@ export default function StudentDetailPage() {
                     </div>
                   </div>
                 </section>
+              </div>
 
+              {/* Footer */}
+              <div className="px-5 py-4 border-t border-gray-100 shrink-0 flex gap-3">
+                <button
+                  onClick={() => setShowEdit(false)}
+                  className="flex-1 py-3.5 text-sm font-semibold text-gray-500 bg-gray-100 rounded-2xl hover:bg-gray-200 transition-all"
+                >
+                  Cancel
+                </button>
                 <button
                   onClick={handleSave}
                   disabled={submitting || !form.name.trim() || !form.adno.trim()}
-                  className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl text-base active:scale-[0.98] transition-transform shadow-lg shadow-emerald-200 disabled:opacity-60"
+                  className="flex-1 bg-emerald-600 text-white font-bold py-3.5 rounded-2xl text-sm active:scale-[0.98] transition-transform shadow-lg shadow-emerald-200 disabled:opacity-60"
                 >
                   {submitting ? (
                     <span className="flex items-center justify-center gap-2">
@@ -437,6 +462,7 @@ export default function StudentDetailPage() {
                 </button>
               </div>
             </motion.div>
+          </div>
           </>
         )}
       </AnimatePresence>

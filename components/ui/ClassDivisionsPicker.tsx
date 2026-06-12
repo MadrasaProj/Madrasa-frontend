@@ -12,7 +12,7 @@ export function ClassDivisionsPicker({ value, onChange }: ClassDivisionsPickerPr
   const [customInput, setCustomInput] = useState<Record<number, string>>({});
 
   return (
-    <div className="space-y-2">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
       {Array.from({ length: 12 }, (_, i) => {
         const lvl = i + 1;
         const divs = value[lvl] ?? [];
@@ -41,7 +41,7 @@ export function ClassDivisionsPicker({ value, onChange }: ClassDivisionsPickerPr
         return (
           <div
             key={lvl}
-            className="flex items-start gap-3 py-2 border-b border-gray-100 last:border-0"
+            className="flex items-start gap-3 py-2 border-b border-gray-100"
           >
             <div className="w-16 shrink-0 pt-1">
               <span className="text-xs font-bold text-gray-700">
