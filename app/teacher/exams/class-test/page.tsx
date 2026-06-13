@@ -15,7 +15,7 @@ import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
   GraduationCap, Plus, Loader2, Trash2, ChevronDown, ChevronUp,
-  Pencil, X, Save, CheckCircle2, AlertCircle, PenLine, Calendar,
+  Pencil, X, Save, CheckCircle2, AlertCircle, PenLine, Calendar, Lock,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -39,6 +39,19 @@ export default function TeacherClassTestsPage() {
   const cid   = activeClientId ?? "";
   const token = accessToken ?? "";
   const ayId  = user?.defaultAcademicYearId ?? "";
+  const isAdmin = user?.actorType === "SUPER_ADMIN" || user?.actorType === "CLIENT_ADMIN";
+
+  const canEditExam = (exam: ExamRecord) => {
+    if (isAdmin) return true;
+    const cls = classes.find((c) => c.id === exam.classId);
+    if (!cls) return false;
+    if (cls.classTeacherId === user?.id) return true;
+    if (user?.attendanceMode === "PERIOD_BASED" && exam.subjectId) {
+      const sub = subjects.find((s) => s.id === exam.subjectId);
+      if (sub?.teacherId === user?.id) return true;
+    }
+    return false;
+  };
 
   const [exams, setExams]       = useState<ExamRecord[]>([]);
   const [classes, setClasses]   = useState<ClassRecord[]>([]);
@@ -59,11 +72,14 @@ export default function TeacherClassTestsPage() {
   const [formStartDate, setFormStartDate] = useState("");
   const [formEndDate, setFormEndDate]     = useState("");
   const [formStatus, setFormStatus]       = useState<ExamStatus>("DRAFT");
+  const [formMaxMarks, setFormMaxMarks]   = useState("100");
+  const [formPassMarks, setFormPassMarks] = useState("");
   const [saving, setSaving]         = useState(false);
   const [saveError, setSaveError]   = useState("");
   const [deleting, setDeleting]     = useState<string | null>(null);
 
   const [meStudents, setMeStudents]     = useState<StudentRecord[]>([]);
+  const [meSubjects, setMeSubjects]     = useState<SubjectRecord[]>([]);
   const [meSubjectId, setMeSubjectId]   = useState("");
   const [meScores, setMeScores]         = useState<Record<string, string>>({});
   const [meSaving, setMeSaving]         = useState(false);
@@ -91,6 +107,7 @@ export default function TeacherClassTestsPage() {
     setEditTarget(null);
     setFormName(""); setFormClassId(""); setFormSubjectId("");
     setFormStartDate(""); setFormEndDate(""); setFormStatus("DRAFT");
+    setFormMaxMarks("100"); setFormPassMarks("");
     setSaveError(""); setShowDrawer(true);
   };
 
@@ -102,6 +119,8 @@ export default function TeacherClassTestsPage() {
     setFormStartDate(exam.startDate?.slice(0, 10) ?? "");
     setFormEndDate(exam.endDate?.slice(0, 10) ?? "");
     setFormStatus(exam.examStatus);
+    setFormMaxMarks(String(exam.maxMarks ?? 100));
+    setFormPassMarks(exam.passMarks != null ? String(exam.passMarks) : "");
     setSaveError(""); setShowDrawer(true);
   };
 
@@ -109,6 +128,8 @@ export default function TeacherClassTestsPage() {
     if (!formName.trim()) { setSaveError("Name is required"); return; }
     if (!formClassId) { setSaveError("Class is required"); return; }
     if (!formSubjectId) { setSaveError("Subject is required"); return; }
+    const maxMarks = Number(formMaxMarks) || 100;
+    const passMarks = formPassMarks ? Number(formPassMarks) : undefined;
     setSaving(true); setSaveError("");
     try {
       if (editTarget) {
@@ -117,6 +138,8 @@ export default function TeacherClassTestsPage() {
           startDate: formStartDate || null,
           endDate: formEndDate || null,
           examStatus: formStatus,
+          maxMarks,
+          passMarks,
         });
         setExams((prev) => prev.map((e) => e.id === updated.id ? { ...e, ...updated } : e));
       } else {
@@ -129,6 +152,8 @@ export default function TeacherClassTestsPage() {
           startDate: formStartDate || undefined,
           endDate: formEndDate || undefined,
           examStatus: formStatus,
+          maxMarks,
+          passMarks,
         });
         setExams((prev) => [...prev, created]);
       }
@@ -145,6 +170,17 @@ export default function TeacherClassTestsPage() {
     finally { setDeleting(null); }
   };
 
+  const handlePublish = async (exam: ExamRecord) => {
+    if (!window.confirm(`Publish "${exam.name}"? Parents will be able to see results.`)) return;
+    try {
+      const updated = await updateExam(cid, token, exam.id, {
+        examStatus: "PUBLISHED",
+        publishedDate: new Date().toISOString(),
+      });
+      setExams((prev) => prev.map((e) => e.id === updated.id ? { ...e, ...updated } : e));
+    } catch (e) { setError((e as Error).message); }
+  };
+
   const toggleExpand = async (examId: string) => {
     if (expandedId === examId) { setExpandedId(null); return; }
     setExpandedId(examId);
@@ -157,9 +193,13 @@ export default function TeacherClassTestsPage() {
       const clsId = r.length > 0 ? r[0].classId : (exam?.classId ?? "");
       const subId = r.length > 0 ? (r[0].subject?.id ?? "") : "";
       if (clsId) {
-        const students = await getStudents(cid, token, { classId: clsId, limit: 500 });
+        const [students, subData] = await Promise.all([
+          getStudents(cid, token, { classId: clsId, limit: 500 }),
+          getSubjects(cid, token, { classId: clsId, limit: 200 }),
+        ]);
         setMeStudents(students.data ?? []);
-        setMeSubjectId(subId);
+        setMeSubjects(subData.data ?? []);
+        setMeSubjectId(subId || subData.data?.[0]?.id || "");
         const scoreMap: Record<string, string> = {};
         for (const s of students.data ?? []) {
           const found = r.find((res) => res.student?.id === s.id);
@@ -167,7 +207,7 @@ export default function TeacherClassTestsPage() {
         }
         setMeScores(scoreMap);
       } else {
-        setMeStudents([]); setMeSubjectId(""); setMeScores({});
+        setMeStudents([]); setMeSubjects([]); setMeSubjectId(""); setMeScores({});
       }
     } catch { setResults([]); }
     finally { setLoadingResults(false); }
@@ -187,15 +227,19 @@ export default function TeacherClassTestsPage() {
         if (found) scoreMap[s.id] = String(found.score);
       }
       setMeStudents(stuData.data ?? []);
+      setMeSubjects(subData.data ?? []);
       setMeSubjectId(subData.data?.[0]?.id ?? "");
       setMeScores(scoreMap);
     } catch { /* ignore */ }
   };
 
   const handleMeSave = async (examId: string) => {
+    if (!meSubjectId) return;
+    const exam = exams.find((e) => e.id === examId);
+    const totalMarks = exam?.maxMarks ?? 100;
     const items = meStudents
       .filter((s) => meScores[s.id] !== "" && meScores[s.id] !== undefined)
-      .map((s) => ({ subjectId: meSubjectId, studentId: s.id, score: Number(meScores[s.id]), totalMarks: 100 }));
+      .map((s) => ({ subjectId: meSubjectId, studentId: s.id, score: Number(meScores[s.id]), totalMarks }));
     if (!items.length) return;
     setMeSaving(true);
     try {
@@ -267,14 +311,18 @@ export default function TeacherClassTestsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <button onClick={(e) => { e.stopPropagation(); openEdit(exam); }}
-                        className="p-1.5 rounded-lg text-gray-300 hover:text-blue-500 transition-colors" title="Edit">
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button onClick={(e) => { e.stopPropagation(); handleDelete(exam.id); }} disabled={isDeleting}
-                        className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 transition-colors" title="Delete">
-                        {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                      </button>
+                      {canEditExam(exam) && (
+                        <button onClick={(e) => { e.stopPropagation(); openEdit(exam); }}
+                          className="p-1.5 rounded-lg text-gray-300 hover:text-blue-500 transition-colors" title="Edit">
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                      )}
+                      {isAdmin && (
+                        <button onClick={(e) => { e.stopPropagation(); handleDelete(exam.id); }} disabled={isDeleting}
+                          className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 transition-colors" title="Delete">
+                          {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                        </button>
+                      )}
                       <button onClick={() => toggleExpand(exam.id)} className="p-1.5 text-gray-400">
                         {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </button>
@@ -289,6 +337,29 @@ export default function TeacherClassTestsPage() {
                       <div className="border-t border-gray-100 bg-gray-50/50 px-4 py-3 space-y-3">
                         {loadingResults ? (
                           <div className="flex justify-center py-6"><Loader2 className="w-4 h-4 animate-spin" /></div>
+                        ) : exam.examStatus === "PUBLISHED" ? (
+                          <div className="rounded-2xl px-4 py-2.5 flex items-center gap-2 text-sm bg-emerald-50 text-emerald-600">
+                            <CheckCircle2 className="w-4 h-4 shrink-0" />
+                            <span>Published{exam.publishedDate ? ` on ${fmt(exam.publishedDate)}` : ""} — parents can view results</span>
+                          </div>
+                        ) : exam.examStatus === "CANCELLED" ? (
+                          <div className="rounded-2xl px-4 py-2.5 flex items-center gap-2 text-sm bg-red-50 text-red-600">
+                            <Lock className="w-4 h-4 shrink-0" />
+                            <span>This exam has been cancelled</span>
+                          </div>
+                        ) : exam.examStatus !== "MARK_ENTRY" ? (
+                          <div className="rounded-2xl px-4 py-2.5 flex items-center justify-between gap-2 text-sm bg-amber-50 text-amber-700">
+                            <div className="flex items-center gap-2">
+                              <Lock className="w-4 h-4 shrink-0" />
+                              <span>Exam is <strong>draft</strong> — mark entry not open yet</span>
+                            </div>
+                            {canEditExam(exam) && (
+                              <button onClick={() => handlePublish(exam)}
+                                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shrink-0">
+                                Publish
+                              </button>
+                            )}
+                          </div>
                         ) : (
                           <>
                             <div className="flex items-center gap-2">
@@ -296,7 +367,19 @@ export default function TeacherClassTestsPage() {
                                 className="flex-1 px-3 py-1.5 border border-gray-200 rounded-xl text-xs bg-white focus:outline-none">
                                 <option value={exam.classId ?? ""}>{exam.class?.name ?? "Select class"}</option>
                               </select>
-                              <button onClick={() => handleMeSave(exam.id)} disabled={meSaving}
+                              <select value={meSubjectId} onChange={(e) => setMeSubjectId(e.target.value)}
+                                className="flex-1 px-3 py-1.5 border border-gray-200 rounded-xl text-xs bg-white focus:outline-none">
+                                <option value="">Select subject</option>
+                                {meSubjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                              </select>
+                              {canEditExam(exam) && exam._count?.results && exam._count.results > 0 && (
+                                <button onClick={() => handlePublish(exam)}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shrink-0">
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  Publish
+                                </button>
+                              )}
+                              <button onClick={() => handleMeSave(exam.id)} disabled={meSaving || !meSubjectId}
                                 className={cn(
                                   "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors",
                                   meSaved ? "bg-emerald-100 text-emerald-700" : "bg-emerald-600 text-white hover:bg-emerald-700",
@@ -312,7 +395,7 @@ export default function TeacherClassTestsPage() {
                               <div className="rounded-xl border border-gray-100 overflow-hidden bg-white">
                                 <div className="px-3 py-2 bg-gray-50 flex justify-between text-[10px] font-bold text-gray-400 uppercase border-b">
                                   <span>Student</span>
-                                  <span>Score / 100</span>
+                                  <span>Score / {exam.maxMarks ?? 100}</span>
                                 </div>
                                 <div className="divide-y divide-gray-50 max-h-72 overflow-y-auto">
                                   {meStudents.map((s) => (
@@ -321,7 +404,7 @@ export default function TeacherClassTestsPage() {
                                         <p className="text-sm font-semibold text-gray-900 truncate">{s.name}</p>
                                         <p className="text-xs text-gray-400">{s.adno}</p>
                                       </div>
-                                      <input type="number" min={0} max={100}
+                                      <input type="number" min={0} max={exam.maxMarks ?? 100}
                                         value={meScores[s.id] ?? ""}
                                         onChange={(e) => setMeScores((m) => ({ ...m, [s.id]: e.target.value }))}
                                         placeholder="—"
@@ -405,6 +488,20 @@ export default function TeacherClassTestsPage() {
                   <div>
                     <label className="block text-xs font-semibold text-gray-600 mb-1.5">End Date</label>
                     <input type="date" value={formEndDate} onChange={(e) => setFormEndDate(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">Max Marks</label>
+                    <input type="number" min={1} max={9999} value={formMaxMarks} onChange={(e) => setFormMaxMarks(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">Pass Marks</label>
+                    <input type="number" min={0} max={9999} value={formPassMarks} onChange={(e) => setFormPassMarks(e.target.value)}
+                      placeholder="Optional"
                       className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors" />
                   </div>
                 </div>
