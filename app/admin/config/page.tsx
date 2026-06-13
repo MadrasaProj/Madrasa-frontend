@@ -3,7 +3,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { getClientConfig, updateClientConfig, type ClientConfig } from "@/lib/config-api";
 import { useAuthStore } from "@/store/auth";
-import { Settings, Save, CheckCircle2, Loader2, AlertCircle, CalendarCheck } from "lucide-react";
+import { Settings, Save, CheckCircle2, Loader2, AlertCircle, CalendarCheck, Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -69,6 +69,12 @@ export default function AdminConfigPage() {
   const [savingAtt, setSavingAtt]     = useState(false);
   const [savedAtt, setSavedAtt]       = useState(false);
   const [attError, setAttError]       = useState("");
+  const [showCommAtt, setShowCommAtt] = useState(true);
+  const [savingCommAtt, setSavingCommAtt] = useState(false);
+  const [savedCommAtt, setSavedCommAtt]   = useState(false);
+  const [showCommTC, setShowCommTC]       = useState(true);
+  const [savingCommTC, setSavingCommTC]   = useState(false);
+  const [savedCommTC, setSavedCommTC]     = useState(false);
 
   useEffect(() => {
     if (!cid || !token) return;
@@ -76,6 +82,8 @@ export default function AdminConfigPage() {
       .then((data) => {
         setConfig(data);
         if (data.attendanceMode) setAttMode(data.attendanceMode);
+        if (data.showCommitteeAttendance !== undefined) setShowCommAtt(data.showCommitteeAttendance);
+        if (data.showCommitteeTeacherCheckin !== undefined) setShowCommTC(data.showCommitteeTeacherCheckin);
       })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
@@ -126,6 +134,30 @@ export default function AdminConfigPage() {
       setTimeout(() => setSavedAtt(false), 3000);
     } catch (e) { setAttError((e as Error).message); }
     finally { setSavingAtt(false); }
+  };
+
+  const handleSaveCommitteeAttendance = async () => {
+    if (!cid || !token) return;
+    setSavingCommAtt(true);
+    try {
+      await updateClientConfig(cid, token, { showCommitteeAttendance: showCommAtt });
+      setConfig((prev) => ({ ...prev, showCommitteeAttendance: showCommAtt }));
+      setSavedCommAtt(true);
+      setTimeout(() => setSavedCommAtt(false), 3000);
+    } catch (e) { /* ignore */ }
+    finally { setSavingCommAtt(false); }
+  };
+
+  const handleSaveCommitteeTeacherCheckin = async () => {
+    if (!cid || !token) return;
+    setSavingCommTC(true);
+    try {
+      await updateClientConfig(cid, token, { showCommitteeTeacherCheckin: showCommTC });
+      setConfig((prev) => ({ ...prev, showCommitteeTeacherCheckin: showCommTC }));
+      setSavedCommTC(true);
+      setTimeout(() => setSavedCommTC(false), 3000);
+    } catch (e) { /* ignore */ }
+    finally { setSavingCommTC(false); }
   };
 
   return (
@@ -222,6 +254,92 @@ export default function AdminConfigPage() {
               {savingAtt ? <Loader2 className="w-4 h-4 animate-spin" /> :
                savedAtt  ? <><CheckCircle2 className="w-4 h-4" /> Saved!</> :
                            <><Save className="w-4 h-4" /> Save Attendance Mode</>}
+            </button>
+          </motion.div>
+
+          {/* Committee Attendance Toggle */}
+          <motion.div
+            initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-2xl border border-gray-100 p-5"
+          >
+            <div className="flex items-center gap-2 mb-4">
+              {showCommAtt
+                ? <Eye className="w-4 h-4 text-emerald-600" />
+                : <EyeOff className="w-4 h-4 text-gray-400" />}
+              <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide">Committee View</p>
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Show Attendance to Committee</p>
+                <p className="text-xs text-gray-500 mt-0.5">Toggle visibility of student &amp; teacher attendance on the committee dashboard</p>
+              </div>
+              <button
+                onClick={() => setShowCommAtt((v) => !v)}
+                className={`relative w-12 h-6 rounded-full transition-colors duration-200 shrink-0 ${
+                  showCommAtt ? "bg-emerald-500" : "bg-gray-300"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
+                    showCommAtt ? "translate-x-6" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+            <button
+              onClick={handleSaveCommitteeAttendance}
+              disabled={savingCommAtt || showCommAtt === config.showCommitteeAttendance}
+              className={cn(
+                "flex items-center justify-center gap-2 w-full py-3 mt-4 rounded-xl text-sm font-bold transition-colors",
+                savedCommAtt ? "bg-emerald-100 text-emerald-700" : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60",
+              )}
+            >
+              {savingCommAtt ? <Loader2 className="w-4 h-4 animate-spin" /> :
+               savedCommAtt  ? <><CheckCircle2 className="w-4 h-4" /> Saved!</> :
+                               <><Save className="w-4 h-4" /> Save</>}
+            </button>
+          </motion.div>
+
+          {/* Committee Teacher Checkin Toggle */}
+          <motion.div
+            initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-2xl border border-gray-100 p-5"
+          >
+            <div className="flex items-center gap-2 mb-4">
+              {showCommTC
+                ? <Eye className="w-4 h-4 text-emerald-600" />
+                : <EyeOff className="w-4 h-4 text-gray-400" />}
+              <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide">Committee View</p>
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Show Teacher Check-in to Committee</p>
+                <p className="text-xs text-gray-500 mt-0.5">Toggle visibility of teacher check-in/check-out details on the committee dashboard</p>
+              </div>
+              <button
+                onClick={() => setShowCommTC((v) => !v)}
+                className={`relative w-12 h-6 rounded-full transition-colors duration-200 shrink-0 ${
+                  showCommTC ? "bg-emerald-500" : "bg-gray-300"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
+                    showCommTC ? "translate-x-6" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+            <button
+              onClick={handleSaveCommitteeTeacherCheckin}
+              disabled={savingCommTC || showCommTC === config.showCommitteeTeacherCheckin}
+              className={cn(
+                "flex items-center justify-center gap-2 w-full py-3 mt-4 rounded-xl text-sm font-bold transition-colors",
+                savedCommTC ? "bg-emerald-100 text-emerald-700" : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60",
+              )}
+            >
+              {savingCommTC ? <Loader2 className="w-4 h-4 animate-spin" /> :
+               savedCommTC  ? <><CheckCircle2 className="w-4 h-4" /> Saved!</> :
+                               <><Save className="w-4 h-4" /> Save</>}
             </button>
           </motion.div>
 

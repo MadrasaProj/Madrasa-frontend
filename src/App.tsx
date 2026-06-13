@@ -36,6 +36,7 @@ import AdminStudentsPage from "../app/admin/students/page";
 import AdminSubjectsPage from "../app/admin/subjects/page";
 import AdminSuperUsersPage from "../app/admin/super-users/page";
 import AdminTeachersPage from "../app/admin/teachers/page";
+import AdminTeacherAttendancePage from "../app/admin/teacher-attendance/page";
 // ClassReportPage is role-agnostic; teacher route reuses the same component
 const TeacherClassReportPage = AdminClassReportPage;
 
@@ -75,6 +76,7 @@ import CommitteeFinancePage from "../app/committee/finance/page";
 import CommitteeDashboard from "../app/committee/page";
 import CommitteeReportsPage from "../app/committee/reports/page";
 import CommitteeStudentsPage from "../app/committee/students/page";
+import CommitteeTeacherAttendancePage from "../app/committee/teacher-attendance/page";
 
 export default function App() {
   return (
@@ -107,6 +109,7 @@ export default function App() {
         <Route path="/admin/classes" element={<AdminClassesPage />} />
         <Route path="/admin/subjects" element={<AdminSubjectsPage />} />
         <Route path="/admin/teachers" element={<AdminTeachersPage />} />
+        <Route path="/admin/teacher-attendance" element={<AdminTeacherAttendancePage />} />
         <Route path="/admin/exams" element={<AdminExamsPage />} />
         <Route path="/admin/exams/class-test" element={<TeacherClassTestsPage />} />
         <Route path="/admin/exams/class-report" element={<AdminClassReportPage />} />
@@ -151,6 +154,7 @@ export default function App() {
         <Route path="/m/:slug/admin/classes" element={<AdminClassesPage />} />
         <Route path="/m/:slug/admin/subjects" element={<AdminSubjectsPage />} />
         <Route path="/m/:slug/admin/teachers" element={<AdminTeachersPage />} />
+        <Route path="/m/:slug/admin/teacher-attendance" element={<AdminTeacherAttendancePage />} />
         <Route path="/m/:slug/admin/exams" element={<AdminExamsPage />} />
         <Route path="/m/:slug/admin/exams/class-test" element={<TeacherClassTestsPage />} />
         <Route path="/m/:slug/admin/exams/class-report" element={<AdminClassReportPage />} />
@@ -227,6 +231,7 @@ export default function App() {
         <Route path="/committee/students" element={<CommitteeStudentsPage />} />
         <Route path="/committee/announcements" element={<CommitteeAnnouncementsPage />} />
         <Route path="/committee/reports" element={<CommitteeReportsPage />} />
+        <Route path="/committee/teacher-attendance" element={<CommitteeTeacherAttendancePage />} />
 
         {/* Committee — slug-prefixed */}
         <Route path="/m/:slug/committee" element={<CommitteeDashboard />} />
@@ -235,6 +240,7 @@ export default function App() {
         <Route path="/m/:slug/committee/students" element={<CommitteeStudentsPage />} />
         <Route path="/m/:slug/committee/announcements" element={<CommitteeAnnouncementsPage />} />
         <Route path="/m/:slug/committee/reports" element={<CommitteeReportsPage />} />
+        <Route path="/m/:slug/committee/teacher-attendance" element={<CommitteeTeacherAttendancePage />} />
 
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/super-admin/login" replace />} />

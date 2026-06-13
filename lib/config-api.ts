@@ -23,6 +23,8 @@ export interface ClientConfig {
   language?: string | null;
   currency?: string | null;
   attendanceMode?: "CLASS_BASED" | "PERIOD_BASED";
+  showCommitteeAttendance?: boolean;
+  showCommitteeTeacherCheckin?: boolean;
   principalName?: string | null;
   principalPhone?: string | null;
   principalEmail?: string | null;

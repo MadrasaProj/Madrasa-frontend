@@ -447,7 +447,7 @@ export default function ParentResultsPage() {
     if (!cid || !token || !effectiveId) { setLoading(false); return; }
     setLoading(true); setError(null);
     try {
-      const examData = await getExams(cid, token, { accademicYearId: ayId || undefined, limit: 50 })
+      const examData = await getExams(cid, token, { accademicYearId: ayId || undefined, studentId: effectiveId, limit: 50 })
         .catch(() => ({ data: [] as ExamRecord[] }));
       const published = (examData.data ?? []).filter((e) => e.examStatus === "PUBLISHED");
       setExams(published);
@@ -580,6 +580,12 @@ export default function ParentResultsPage() {
                         : "bg-white border-gray-200 text-gray-600",
                     )}>
                     {ex.name}
+                    {ex.type === "CLASS_TEST" && (
+                      <span className={cn(
+                        "ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full",
+                        activeExamId === ex.id ? "bg-emerald-700 text-emerald-100" : "bg-gray-100 text-gray-500",
+                      )}>CT</span>
+                    )}
                   </button>
                 ))}
               </div>

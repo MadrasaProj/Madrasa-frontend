@@ -183,6 +183,7 @@ const translations = {
     attendance: { en: "Attendance", ml: "ഹാജർ" },
     leaveRequests: { en: "Leave Requests", ml: "ലീവ് അപേക്ഷകൾ" },
     checkin: { en: "Check In", ml: "ചെക്ക് ഇൻ" },
+    teacherCheckin: { en: "Teacher Check-in", ml: "അധ്യാപക ചെക്ക് ഇൻ" },
     homework: { en: "Homework", ml: "ഹോംവർക്ക്" },
     diary: { en: "Diary", ml: "ഡയറി" },
     ibadah: { en: "Ibadah", ml: "ഇബാദത്ത്" },

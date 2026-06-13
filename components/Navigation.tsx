@@ -6,11 +6,14 @@ import {
   UserCircle, Home, GraduationCap, Moon, IndianRupee,
   BadgeCheck, FileBarChart2, Megaphone, UserCog, Activity, LogOut,
   Building2, ShieldCheck, UserCircle2, School, Clock, FilePen,
+  ClipboardCheck,
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { tenantLoginPath } from "@/lib/tenant-routing";
+import { useState, useEffect } from "react";
+import { getClientConfig, type ClientConfig } from "@/lib/config-api";
 
 type NavKey =
   | "dashboard" | "students" | "teachers" | "classes" | "subjects" | "fees"
@@ -18,7 +21,8 @@ type NavKey =
   | "homework" | "diary" | "ibadah" | "performance" | "home"
   | "leaveRequests"
   | "results" | "alerts" | "overview" | "finance" | "announcements" | "notifications"
-  | "madrasas" | "superUsers" | "platformReports" | "profile";
+  | "madrasas" | "superUsers" | "platformReports" | "profile"
+  | "teacherCheckin";
 
 const adminLinks = [
   { href: "/admin",                icon: LayoutDashboard, key: "dashboard"     as NavKey },
@@ -26,6 +30,7 @@ const adminLinks = [
   { href: "/admin/classes",        icon: School,          key: "classes"       as NavKey },
   { href: "/admin/subjects",       icon: BookOpen,        key: "subjects"      as NavKey },
   { href: "/admin/teachers",       icon: UserCog,         key: "teachers"      as NavKey },
+  { href: "/admin/teacher-attendance", icon: ClipboardCheck,  key: "teacherCheckin" as NavKey },
   { href: "/admin/attendance",        icon: ClipboardList,   key: "attendance"     as NavKey },
   { href: "/admin/leave-requests",    icon: FilePen,         key: "leaveRequests"  as NavKey },
   { href: "/admin/ibadah",            icon: Moon,            key: "ibadah"         as NavKey },
@@ -70,13 +75,14 @@ const parentLinks = [
 ];
 
 const committeeLinks = [
-  { href: "/committee",               icon: BarChart3,     key: "overview"      as NavKey },
-  { href: "/committee/finance",       icon: IndianRupee,   key: "finance"       as NavKey },
-  { href: "/committee/students",      icon: Users,         key: "students"      as NavKey },
-  { href: "/committee/attendance",    icon: ClipboardList, key: "attendance"    as NavKey },
-  { href: "/committee/reports",       icon: FileBarChart2, key: "reports"       as NavKey },
-  { href: "/committee/announcements", icon: Megaphone,     key: "announcements" as NavKey },
-  { href: "/committee/profile",       icon: UserCircle2,   key: "profile"       as NavKey },
+  { href: "/committee",                    icon: BarChart3,       key: "overview"       as NavKey },
+  { href: "/committee/finance",            icon: IndianRupee,     key: "finance"        as NavKey },
+  { href: "/committee/students",           icon: Users,           key: "students"       as NavKey },
+  { href: "/committee/attendance",         icon: ClipboardList,   key: "attendance"     as NavKey },
+  { href: "/committee/teacher-attendance", icon: ClipboardCheck,  key: "teacherCheckin" as NavKey },
+  { href: "/committee/reports",            icon: FileBarChart2,   key: "reports"        as NavKey },
+  { href: "/committee/announcements",      icon: Megaphone,       key: "announcements"  as NavKey },
+  { href: "/committee/profile",            icon: UserCircle2,     key: "profile"        as NavKey },
 ];
 
 const superAdminLinks = [
@@ -107,14 +113,31 @@ const ROOT_PATHS = ["/admin", "/teacher", "/parent", "/committee"];
 export function Sidebar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { user, activeClientId, logout } = useAuthStore();
+  const { user, activeClientId, accessToken, logout } = useAuthStore();
   const { lang } = useLanguageStore();
   const slugPrefix = useSlugPrefix();
+  const [commConfig, setCommConfig] = useState<Pick<ClientConfig, "showCommitteeAttendance" | "showCommitteeTeacherCheckin">>({});
+
+  useEffect(() => {
+    if (user?.role !== "committee" || !activeClientId || !accessToken) return;
+    getClientConfig(activeClientId, accessToken)
+      .then((cfg) => setCommConfig({ showCommitteeAttendance: cfg.showCommitteeAttendance, showCommitteeTeacherCheckin: cfg.showCommitteeTeacherCheckin }))
+      .catch(() => {});
+  }, [user?.role, activeClientId, accessToken]);
+
   if (!user) return null;
 
   const isSuperAdmin = user.actorType === "SUPER_ADMIN";
   const hasActiveClient = !!activeClientId;
-  const links = getLinksByRole(user.role, user.actorType, hasActiveClient);
+  let links = getLinksByRole(user.role, user.actorType, hasActiveClient);
+
+  if (user.role === "committee") {
+    links = links.filter((l) => {
+      if (l.key === "attendance" && commConfig.showCommitteeAttendance === false) return false;
+      if (l.key === "teacherCheckin" && commConfig.showCommitteeTeacherCheckin === false) return false;
+      return true;
+    });
+  }
 
   return (
     <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-gray-100 h-screen overflow-hidden fixed left-0 top-0 z-40">
@@ -195,14 +218,33 @@ export function Sidebar() {
 export function BottomNav() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { user, activeClientId, logout } = useAuthStore();
+  const { user, activeClientId, accessToken, logout } = useAuthStore();
   const { lang } = useLanguageStore();
   const slugPrefix = useSlugPrefix();
+  const [commConfig, setCommConfig] = useState<Pick<ClientConfig, "showCommitteeAttendance" | "showCommitteeTeacherCheckin">>({});
+
+  useEffect(() => {
+    if (user?.role !== "committee" || !activeClientId || !accessToken) return;
+    getClientConfig(activeClientId, accessToken)
+      .then((cfg) => setCommConfig({ showCommitteeAttendance: cfg.showCommitteeAttendance, showCommitteeTeacherCheckin: cfg.showCommitteeTeacherCheckin }))
+      .catch(() => {});
+  }, [user?.role, activeClientId, accessToken]);
+
   if (!user) return null;
 
   const isSuperAdmin = user.actorType === "SUPER_ADMIN";
   const hasActiveClient = !!activeClientId;
-  const links = getLinksByRole(user.role, user.actorType, hasActiveClient).slice(0, isSuperAdmin && !hasActiveClient ? 4 : 5);
+  let allLinks = getLinksByRole(user.role, user.actorType, hasActiveClient);
+
+  if (user.role === "committee") {
+    allLinks = allLinks.filter((l) => {
+      if (l.key === "attendance" && commConfig.showCommitteeAttendance === false) return false;
+      if (l.key === "teacherCheckin" && commConfig.showCommitteeTeacherCheckin === false) return false;
+      return true;
+    });
+  }
+
+  const links = allLinks.slice(0, isSuperAdmin && !hasActiveClient ? 4 : 5);
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-30 pb-safe">
