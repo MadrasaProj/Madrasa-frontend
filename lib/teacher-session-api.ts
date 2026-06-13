@@ -12,6 +12,7 @@ export interface TeacherSession {
   status: "CHECKED_IN" | "CHECKED_OUT";
   location: { lat: number; lng: number; address?: string } | null;
   date: string;
+  teacher?: { id: string; name: string; username: string };
 }
 
 export interface TeacherSessionHistory {
@@ -33,7 +34,7 @@ export const checkOut = (clientId: string, token: string) =>
   });
 
 export const getTodaySession = (clientId: string, token: string) =>
-  apiFetch<TeacherSession | null>(`${V2_BASE}/${clientId}/teacher-session/today`, token);
+  apiFetch<TeacherSession[]>(`${V2_BASE}/${clientId}/teacher-session/today`, token);
 
 export const getSessionHistory = (clientId: string, token: string, params?: { teacherId?: string; page?: number; limit?: number }) => {
   const q = new URLSearchParams();
@@ -42,4 +43,17 @@ export const getSessionHistory = (clientId: string, token: string, params?: { te
   if (params?.limit) q.set("limit", String(params.limit));
   const qs = q.toString();
   return apiFetch<TeacherSessionHistory>(`${V2_BASE}/${clientId}/teacher-session/history${qs ? `?${qs}` : ""}`, token);
+};
+
+export const getTodayAllSessions = (clientId: string, token: string) =>
+  apiFetch<TeacherSession[]>(`${V2_BASE}/${clientId}/teacher-session/today-all`, token);
+
+export const getSessionsByDate = (clientId: string, token: string, date: string) =>
+  apiFetch<TeacherSession[]>(`${V2_BASE}/${clientId}/teacher-session/today-all?date=${date}`, token);
+
+export const getSessionsByTeacher = (clientId: string, token: string, teacherId: string, from?: string, to?: string) => {
+  const q = new URLSearchParams({ teacherId });
+  if (from) q.set("from", from);
+  if (to)   q.set("to",   to);
+  return apiFetch<TeacherSession[]>(`${V2_BASE}/${clientId}/teacher-session/by-teacher?${q}`, token);
 };
