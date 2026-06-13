@@ -88,10 +88,10 @@ function CommitteeAttendanceContent() {
   const s = d.attendance;
   const st = d.attendance.staff;
   const totalToday = s.todayPresent + s.todayAbsent;
-  const todayPct = Math.round((s.todayPresent / totalToday) * 100);
-  const maxStudentWeek = Math.max(...s.weeklyTrend.map((w) => w.present + w.absent));
-  const staffTodayPct = Math.round((st.presentToday / st.totalStaff) * 100);
-  const maxStaffWeek = Math.max(...st.weeklyTrend.map((w) => w.present + w.absent));
+  const todayPct = totalToday === 0 ? 0 : Math.round((s.todayPresent / totalToday) * 100);
+  const maxStudentWeek = s.weeklyTrend.length === 0 ? 0 : Math.max(...s.weeklyTrend.map((w) => w.present + w.absent));
+  const staffTodayPct = st.totalStaff === 0 ? 0 : Math.round((st.presentToday / st.totalStaff) * 100);
+  const maxStaffWeek = st.weeklyTrend.length === 0 ? 0 : Math.max(...st.weeklyTrend.map((w) => w.present + w.absent));
 
   return (
     <DashboardLayout>
