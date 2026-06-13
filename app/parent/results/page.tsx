@@ -447,7 +447,7 @@ export default function ParentResultsPage() {
     if (!cid || !token || !effectiveId) { setLoading(false); return; }
     setLoading(true); setError(null);
     try {
-      const examData = await getExams(cid, token, { accademicYearId: ayId || undefined, limit: 50 })
+      const examData = await getExams(cid, token, { accademicYearId: ayId || undefined, studentId: effectiveId, limit: 50 })
         .catch(() => ({ data: [] as ExamRecord[] }));
       const published = (examData.data ?? []).filter((e) => e.examStatus === "PUBLISHED");
       setExams(published);
