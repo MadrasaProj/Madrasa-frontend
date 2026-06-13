@@ -64,10 +64,9 @@ function UserDrawer({
     }
   };
 
-  const [isMobile, setIsMobile] = useState(true);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" ? window.innerWidth < 768 : true);
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
@@ -81,9 +80,9 @@ function UserDrawer({
       />
       <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-none md:p-4">
         <motion.div
-          initial={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.95 }}
-          animate={isMobile ? { y: 0 } : { opacity: 1, scale: 1 }}
-          exit={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.95 }}
+          initial={isMobile ? { y: "100%", opacity: 1, scale: 1 } : { y: 0, opacity: 0, scale: 0.95 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          exit={isMobile ? { y: "100%", opacity: 1, scale: 1 } : { y: 0, opacity: 0, scale: 0.95 }}
           transition={isMobile ? { type: "spring", damping: 30, stiffness: 300 } : { duration: 0.2 }}
           className={cn(
             "w-full bg-white flex flex-col pointer-events-auto shadow-2xl relative",
@@ -223,7 +222,7 @@ export default function AdminSuperUsersPage() {
           <p className="text-sm text-gray-400">No admin users found.</p>
         </div>
       ) : (
-        <div className="max-w-4xl mx-auto w-full space-y-2 pb-20">
+        <div className="space-y-2 pb-20">
           {users.map((u) => (
             <motion.div
               key={u.id}
