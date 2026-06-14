@@ -28,6 +28,7 @@ import AdminNotificationsPage from "../app/admin/notifications/page";
 import AdminOtherPaymentsPage from "../app/admin/other-payments/page";
 import AdminDashboard from "../app/admin/page";
 import AdminPlatformReportsPage from "../app/admin/platform-reports/page";
+import AdminPostersPage from "../app/admin/posters/page";
 import AdminPresentPage from "../app/admin/present/page";
 import { default as AdminProfilePage, default as CommitteeProfilePage, default as ParentProfilePage, default as TeacherProfilePage } from "../app/admin/profile/page";
 import AdminReportsPage from "../app/admin/reports/page";
@@ -56,6 +57,8 @@ import TeacherDashboard from "../app/teacher/page";
 import TeacherFeesPage from "../app/teacher/fees/page";
 import TeacherPerformancePage from "../app/teacher/performance/page";
 import TeacherPresentPage from "../app/teacher/present/page";
+import TeacherPostersPage from "../app/teacher/posters/page";
+import TeacherPosterViewPage from "../app/teacher/posters/[id]/page";
 
 // ── Parent ────────────────────────────────────────────────────────────────────
 import ParentAttendancePage from "../app/parent/attendance/page";
@@ -67,6 +70,8 @@ import ParentIbadahPage from "../app/parent/ibadah/page";
 import ParentNotificationsPage from "../app/parent/notifications/page";
 import ParentDashboard from "../app/parent/page";
 import ParentResultsPage from "../app/parent/results/page";
+import ParentPostersPage from "../app/parent/posters/page";
+import ParentPosterViewPage from "../app/parent/posters/[id]/page";
 
 // ── Committee ─────────────────────────────────────────────────────────────────
 import IDCardsPage from "../app/admin/id-cards/IdCard";
@@ -120,6 +125,7 @@ export default function App() {
         <Route path="/admin/ibadah" element={<AdminIbadahPage />} />
         <Route path="/admin/ibadah-config" element={<AdminIbadahConfigPage />} />
         <Route path="/admin/id-cards" element={<IDCardsPage />} />
+        <Route path="/admin/posters" element={<AdminPostersPage />} />
         <Route path="/admin/logs" element={<AdminLogsPage />} />
 
         {/* Super Admin platform routes */}
@@ -184,6 +190,8 @@ export default function App() {
         <Route path="/teacher/exams/class-report" element={<TeacherClassReportPage />} />
         <Route path="/teacher/notifications" element={<TeacherNotificationsPage />} />
         <Route path="/teacher/performance" element={<TeacherPerformancePage />} />
+        <Route path="/teacher/posters" element={<TeacherPostersPage />} />
+        <Route path="/teacher/posters/:id" element={<TeacherPosterViewPage />} />
 
         {/* Teacher — slug-prefixed */}
         <Route path="/m/:slug/teacher" element={<TeacherDashboard />} />
@@ -202,6 +210,8 @@ export default function App() {
         <Route path="/m/:slug/teacher/exams/class-report" element={<TeacherClassReportPage />} />
         <Route path="/m/:slug/teacher/notifications" element={<TeacherNotificationsPage />} />
         <Route path="/m/:slug/teacher/performance" element={<TeacherPerformancePage />} />
+        <Route path="/m/:slug/teacher/posters" element={<TeacherPostersPage />} />
+        <Route path="/m/:slug/teacher/posters/:id" element={<TeacherPosterViewPage />} />
 
         {/* Parent */}
         <Route path="/parent" element={<ParentDashboard />} />
@@ -212,6 +222,8 @@ export default function App() {
         <Route path="/parent/results" element={<ParentResultsPage />} />
         <Route path="/parent/notifications" element={<ParentNotificationsPage />} />
         <Route path="/parent/diary" element={<ParentDiaryPage />} />
+        <Route path="/parent/posters" element={<ParentPostersPage />} />
+        <Route path="/parent/posters/:id" element={<ParentPosterViewPage />} />
 
         {/* Parent — slug-prefixed */}
         <Route path="/m/:slug/parent" element={<ParentDashboard />} />
@@ -223,6 +235,8 @@ export default function App() {
         <Route path="/m/:slug/parent/results" element={<ParentResultsPage />} />
         <Route path="/m/:slug/parent/notifications" element={<ParentNotificationsPage />} />
         <Route path="/m/:slug/parent/diary" element={<ParentDiaryPage />} />
+        <Route path="/m/:slug/parent/posters" element={<ParentPostersPage />} />
+        <Route path="/m/:slug/parent/posters/:id" element={<ParentPosterViewPage />} />
 
         {/* Committee */}
         <Route path="/committee" element={<CommitteeDashboard />} />

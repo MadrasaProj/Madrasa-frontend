@@ -6,7 +6,7 @@ import {
   UserCircle, Home, GraduationCap, Moon, IndianRupee,
   BadgeCheck, FileBarChart2, Megaphone, UserCog, Activity, LogOut,
   Building2, ShieldCheck, UserCircle2, School, Clock, FilePen,
-  ClipboardCheck,
+  ClipboardCheck, Image,
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
@@ -22,7 +22,7 @@ type NavKey =
   | "leaveRequests"
   | "results" | "alerts" | "overview" | "finance" | "announcements" | "notifications"
   | "madrasas" | "superUsers" | "platformReports" | "profile"
-  | "teacherCheckin";
+  | "teacherCheckin" | "posters";
 
 const adminLinks = [
   { href: "/admin",                icon: LayoutDashboard, key: "dashboard"     as NavKey },
@@ -36,6 +36,7 @@ const adminLinks = [
   { href: "/admin/ibadah",            icon: Moon,            key: "ibadah"         as NavKey },
   { href: "/admin/fees",           icon: CreditCard,      key: "fees"          as NavKey },
   { href: "/admin/id-cards",       icon: BadgeCheck,      key: "idCards"       as NavKey },
+  { href: "/admin/posters",        icon: Image,           key: "posters"       as NavKey },
   { href: "/admin/exams",          icon: GraduationCap,   key: "exams"         as NavKey },
   { href: "/admin/exams/class-test", icon: GraduationCap, key: "classTests"    as NavKey },
   { href: "/admin/reports",        icon: BarChart3,       key: "reports"       as NavKey },
@@ -90,6 +91,7 @@ const superAdminLinks = [
   { href: "/admin/madrasas",           icon: Building2,       key: "madrasas"        as NavKey },
   { href: "/admin/super-users",        icon: ShieldCheck,     key: "superUsers"      as NavKey },
   { href: "/admin/ibadah-config",      icon: Moon,            key: "ibadah"          as NavKey },
+  { href: "/admin/posters",            icon: Image,           key: "posters"         as NavKey },
   { href: "/admin/platform-reports",   icon: BarChart3,       key: "platformReports" as NavKey },
   { href: "/admin/profile",            icon: UserCircle2,     key: "profile"         as NavKey },
 ];
