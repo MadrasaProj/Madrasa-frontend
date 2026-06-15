@@ -224,7 +224,7 @@ export default function RoleLoginPage({
   };
 
   return (
-    <div className="min-h-screen bg-[#faf9f6] flex flex-col items-center justify-center p-4">
+    <div className="min-h-[100dvh] bg-[#faf9f6] flex flex-col items-center justify-center p-4">
       <div className="fixed top-4 right-4 z-50">
         <LanguageSwitcher />
       </div>

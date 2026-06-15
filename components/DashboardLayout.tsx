@@ -166,7 +166,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   if (!hasHydrated) {
     return (
-      <div className="min-h-screen bg-[#faf9f6] flex items-center justify-center text-sm text-gray-500">
+      <div className="min-h-[100dvh] bg-[#faf9f6] flex items-center justify-center text-sm text-gray-500">
         Loading...
       </div>
     );
@@ -188,7 +188,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     : `/${user.role}/notifications`;
 
   return (
-    <div className="min-h-screen bg-[#faf9f6]">
+    <div className="min-h-[100dvh] bg-[#faf9f6]">
       <Sidebar isOpen={isMobileSidebarOpen} onClose={() => setIsMobileSidebarOpen(false)} />
       <div className="lg:ml-64">
         <SuperAdminViewingBanner />

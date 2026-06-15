@@ -370,7 +370,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose?: () =>
       {/* Sidebar Container */}
       <aside
         className={cn(
-          "flex flex-col w-64 bg-white border-r border-gray-100 h-screen overflow-hidden fixed left-0 top-0 transition-transform duration-300",
+          "flex flex-col w-64 bg-white border-r border-gray-100 h-[100dvh] overflow-hidden fixed left-0 top-0 transition-transform duration-300",
           "lg:z-40 lg:translate-x-0 lg:flex", // Desktop styling
           isOpen ? "translate-x-0 z-50" : "-translate-x-full lg:translate-x-0" // Mobile styling
         )}
