@@ -205,6 +205,11 @@ const translations = {
     superUsers: { en: "Admin Users", ml: "അഡ്‌മിൻ യൂസേഴ്സ്" },
     platformReports: { en: "Platform Reports", ml: "പ്ലാറ്റ്ഫോം റിപ്പോർട്ടുകൾ" },
     profile: { en: "Profile", ml: "പ്രൊഫൈൽ" },
+    artsfest: { en: "Arts Fest", ml: "കലോത്സവം" },
+    academics: { en: "Academics", ml: "അക്കാദമിക്സ്" },
+    operations: { en: "Operations", ml: "പ്രവർത്തനങ്ങൾ" },
+    financeExtras: { en: "Finance & Extras", ml: "ധനകാര്യം & എക്സ്ട്രാസ്" },
+    settings: { en: "Settings", ml: "ക്രമീകരണങ്ങൾ" },
   },
 
   // ── Admin Dashboard ───────────────────────────────────────────────────────

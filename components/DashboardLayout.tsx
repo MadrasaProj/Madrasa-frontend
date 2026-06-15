@@ -1,6 +1,6 @@
 import { Sidebar, BottomNav } from "@/components/Navigation";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import { Bell, ShieldAlert, X, ChevronDown } from "lucide-react";
+import { Bell, ShieldAlert, X, ChevronDown, Menu } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useCallback, useEffect, useState } from "react";
 import { useAuthStore } from "@/store/auth";
@@ -106,6 +106,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
   const { user, activeClientId, activeTenantSlug, hasHydrated, accessToken, setAttendanceMode, logout } = useAuthStore();
   const { lang } = useLanguageStore();
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
   const loginRedirectPath = useCallback(() =>
     resolveLoginRedirectPath({
       pathname: window.location.pathname,
@@ -187,7 +189,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-[#faf9f6]">
-      <Sidebar />
+      <Sidebar isOpen={isMobileSidebarOpen} onClose={() => setIsMobileSidebarOpen(false)} />
       <div className="lg:ml-64">
         <SuperAdminViewingBanner />
 
@@ -196,7 +198,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           className="lg:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-100 px-4 py-0 flex items-center justify-between"
           style={{ minHeight: 56 }}
         >
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="p-1.5 text-gray-500 hover:bg-gray-100 active:bg-gray-200 rounded-xl active:scale-95 transition-all"
+              aria-label="Open menu"
+            >
+              <Menu className="w-5.5 h-5.5" />
+            </button>
             <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center shrink-0">
               <span className="text-white font-extrabold text-xs tracking-wide">SM</span>
             </div>
@@ -259,7 +268,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
         <main className="p-4 lg:p-8 pb-28 lg:pb-8">{children}</main>
       </div>
-      <BottomNav />
+      <BottomNav onOpenMenu={() => setIsMobileSidebarOpen(true)} />
     </div>
   );
 }
