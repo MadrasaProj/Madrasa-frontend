@@ -38,19 +38,7 @@ import {
   Lock,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-
-const STATUS_LABELS: Record<ExamStatus, string> = {
-  DRAFT: "Draft",
-  MARK_ENTRY: "Mark Entry",
-  PUBLISHED: "Published",
-  CANCELLED: "Cancelled",
-};
-const STATUS_COLORS: Record<ExamStatus, string> = {
-  DRAFT: "bg-gray-100 text-gray-600",
-  MARK_ENTRY: "bg-amber-100 text-amber-700",
-  PUBLISHED: "bg-emerald-100 text-emerald-700",
-  CANCELLED: "bg-red-100 text-red-500",
-};
+import { ExamStatusBadge, STATUS_LABELS } from "@/components/exam/ExamStatusBadge";
 
 function fmt(d?: string | null) {
   if (!d) return "—";
@@ -448,14 +436,7 @@ export default function TeacherClassTestsPage() {
                         <p className="font-semibold text-gray-900 text-sm">
                           {exam.name}
                         </p>
-                        <span
-                          className={cn(
-                            "text-[10px] font-bold px-2 py-0.5 rounded-full border",
-                            STATUS_COLORS[exam.examStatus],
-                          )}
-                        >
-                          {STATUS_LABELS[exam.examStatus]}
-                        </span>
+                        <ExamStatusBadge exam={exam} />
                       </div>
                       <div className="flex gap-3 mt-1 flex-wrap text-xs text-gray-500">
                         <span>{exam.class?.name ?? "—"}</span>
@@ -480,7 +461,7 @@ export default function TeacherClassTestsPage() {
                             e.stopPropagation();
                             openEdit(exam);
                           }}
-                          className="p-1.5 rounded-lg text-gray-300 hover:text-blue-500 transition-colors"
+                          className="p-1.5 rounded-lg text-gray-300 hover:text-emerald-600 transition-colors"
                           title="Edit"
                         >
                           <Pencil className="w-4 h-4" />

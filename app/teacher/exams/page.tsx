@@ -15,27 +15,14 @@ import {
   ClipboardCheck, Trophy, BookOpen
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import * as XLSX from "xlsx";
+import { ExamStatusBadge, getExamStatusInfo } from "@/components/exam/ExamStatusBadge";
+import { ExcelImportModal } from "@/components/exam/ExcelImportModal";
 
 type TabFilter = "ALL" | "UPCOMING" | "MARK_ENTRY" | "COMPLETED" | "PUBLISHED";
-
-const STATUS_LABELS: Record<string, string> = {
-  DRAFT:      "Draft",
-  MARK_ENTRY: "Mark Entry",
-  PUBLISHED:  "Published",
-  CANCELLED:  "Cancelled",
-};
 
 function fmt(d?: string | null) {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-}
-
-function getDaysRemaining(targetDateStr: string | null | undefined): number | null {
-  if (!targetDateStr) return null;
-  const diffTime = new Date(targetDateStr).getTime() - new Date().getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays;
 }
 
 export default function TeacherExamsPage() {
@@ -71,6 +58,7 @@ export default function TeacherExamsPage() {
   const [saving, setSaving]     = useState(false);
   const [saved, setSaved]       = useState(false);
   const [error, setError]       = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const [classSubjects, setClassSubjects] = useState<SubjectRecord[]>([]);
 
@@ -231,63 +219,7 @@ export default function TeacherExamsPage() {
     }
   };
 
-  const downloadExcelTemplate = () => {
-    if (!queryExamId || !queryClassId || !querySubjectId) return;
-    const activeSub = classSubjects.find((s) => s.id === querySubjectId);
-    const activeCls = teacherClasses.find((c) => c.id === queryClassId);
 
-    const headers = ["AdmissionNo", "StudentName", `${activeSub?.name ?? "Score"} (out of 100)`];
-    const dataRows = students.map((s) => [s.adno, s.name, scores[s.id] ?? ""]);
-
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
-    ws["!cols"] = [{ wch: 15 }, { wch: 30 }, { wch: 20 }];
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Marks");
-    XLSX.writeFile(wb, `${activeCls?.name ?? "class"}-${activeSub?.name ?? "subject"}-template.xlsx`);
-  };
-
-  const handleExcelImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setError(null);
-
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      try {
-        const data = new Uint8Array(ev.target?.result as ArrayBuffer);
-        const wb = XLSX.read(data, { type: "array" });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const raw = XLSX.utils.sheet_to_json<Record<string, string>>(ws, { defval: "" });
-
-        if (raw.length === 0) { setError("Template is empty."); return; }
-
-        const adnoToId = new Map(students.map((s) => [s.adno.trim().toLowerCase(), s.id]));
-        const scoreCol = Object.keys(raw[0]).find((k) => k.toLowerCase().includes("out of") || k.toLowerCase().includes("score")) ?? Object.keys(raw[0])[2];
-
-        const newScores = { ...scores };
-        let count = 0;
-
-        for (const row of raw) {
-          const adno = String(row["AdmissionNo"] ?? "").trim().toLowerCase();
-          const studentId = adnoToId.get(adno);
-          if (!studentId) continue;
-
-          const scoreVal = parseFloat(row[scoreCol]);
-          if (!isNaN(scoreVal) && scoreVal >= 0 && scoreVal <= 100) {
-            newScores[studentId] = String(scoreVal);
-            count++;
-          }
-        }
-
-        setScores(newScores);
-        alert(`Successfully imported ${count} marks from Excel. Click Save Marks to persist.`);
-      } catch {
-        setError("Failed to parse file. Ensure it is a valid template.");
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  };
 
   // ── Derived Stats & Filtering ──────────────────────────────────────────────
 
@@ -421,15 +353,11 @@ export default function TeacherExamsPage() {
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={downloadExcelTemplate}
-                  className="inline-flex items-center gap-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-bold text-xs px-4 py-2.5 rounded-xl transition-colors shadow-xs"
+                  onClick={() => setImportOpen(true)}
+                  className="inline-flex items-center gap-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm hover:scale-[1.01]"
                 >
-                  <Download className="w-4 h-4" /> Download Template
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> Import / Export Excel
                 </button>
-                <label className="inline-flex items-center gap-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-bold text-xs px-4 py-2.5 rounded-xl transition-colors shadow-xs cursor-pointer">
-                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> Import Excel
-                  <input type="file" accept=".xlsx,.xls" className="sr-only" onChange={handleExcelImport} />
-                </label>
               </div>
             </div>
           )}
@@ -604,6 +532,27 @@ export default function TeacherExamsPage() {
             </div>
           )}
 
+          {importOpen && queryExamId && queryClassId && querySubjectId && (
+            <ExcelImportModal
+              clientId={cid}
+              token={token}
+              examId={queryExamId}
+              classId={queryClassId}
+              accademicYearId={ayId}
+              subjects={classSubjects.find((s) => s.id === querySubjectId) ? [{
+                id: querySubjectId,
+                name: classSubjects.find((s) => s.id === querySubjectId)!.name,
+                maxMarks: activeExam?.maxMarks ?? 100
+              }] : []}
+              students={students.map((s) => ({ id: s.id, name: s.name, adno: s.adno }))}
+              onClose={() => setImportOpen(false)}
+              onSuccess={async () => {
+                setImportOpen(false);
+                await loadExamData();
+              }}
+            />
+          )}
+
         </div>
       </DashboardLayout>
     );
@@ -615,13 +564,11 @@ export default function TeacherExamsPage() {
     <DashboardLayout>
       <div className="px-4 py-3 lg:px-8 lg:py-6 space-y-6">
         
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Exams</h1>
-            <p className="text-sm text-gray-500 mt-1">View exam schedule and enter marks</p>
-          </div>
-        </div>
+        <PageHeader
+          title="Exams"
+          subtitle="View exam schedule and enter marks"
+          icon={GraduationCap}
+        />
 
         {/* Stat Cards Row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -680,58 +627,7 @@ export default function TeacherExamsPage() {
         ) : (
           <div className="grid grid-cols-1 gap-4">
             {filteredExams.map((exam) => {
-              // dynamic icons based on type/status
-              let displayStatus = exam.examStatus;
-              let statusLabel = STATUS_LABELS[exam.examStatus];
-              let subtextHtml = null;
-
-              if (exam.examStatus === "DRAFT" && exam.startDate && new Date(exam.startDate) > new Date()) {
-                displayStatus = "DRAFT";
-                statusLabel = "Upcoming";
-              }
-
-              // Card Status badges and countdown logic
-              let statusStyle = "bg-gray-100 text-gray-700 border-gray-200";
-              if (exam.examStatus === "PUBLISHED") {
-                statusStyle = "bg-teal-50 text-teal-700 border-teal-200";
-                subtextHtml = (
-                  <span>Results Published On <strong>{fmt(exam.publishedDate || exam.endDate)}</strong></span>
-                );
-              } else if (exam.examStatus === "MARK_ENTRY") {
-                const days = getDaysRemaining(exam.markEntryLastDate);
-                if (days !== null && days >= 0) {
-                  statusStyle = "bg-emerald-50 text-emerald-700 border-emerald-200";
-                  subtextHtml = (
-                    <span>
-                      Mark Entry Closes In <strong className="text-emerald-600">{days} Days</strong> ({fmt(exam.markEntryLastDate)})
-                    </span>
-                  );
-                } else {
-                  statusStyle = "bg-purple-50 text-purple-700 border-purple-200";
-                  statusLabel = "Completed";
-                  subtextHtml = (
-                    <span>Mark Entry Closed On <strong>{fmt(exam.markEntryLastDate)}</strong></span>
-                  );
-                }
-              } else {
-                // Draft/Upcoming
-                const days = getDaysRemaining(exam.startDate);
-                if (days !== null && days > 0) {
-                  statusStyle = "bg-amber-50 text-amber-700 border-amber-200";
-                  statusLabel = "Upcoming";
-                  subtextHtml = (
-                    <span>
-                      Exam Starts In <strong className="text-amber-600">{days} Days</strong> ({fmt(exam.startDate)})
-                    </span>
-                  );
-                } else {
-                  statusStyle = "bg-gray-100 text-gray-700 border-gray-200";
-                  statusLabel = "Draft";
-                  subtextHtml = (
-                    <span>Created Draft on <strong>{fmt(exam.startDate)}</strong></span>
-                  );
-                }
-              }
+              const { description } = getExamStatusInfo(exam);
 
               return (
                 <div key={exam.id} className="bg-white rounded-3xl border border-gray-100 p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm hover:shadow-md/50 transition-shadow">
@@ -742,9 +638,7 @@ export default function TeacherExamsPage() {
                     <div className="min-w-0 space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-bold text-gray-900 text-base leading-tight truncate">{exam.name}</h3>
-                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0", statusStyle)}>
-                          {statusLabel}
-                        </span>
+                        <ExamStatusBadge exam={exam} />
                       </div>
                       
                       {/* Dates details */}
@@ -767,8 +661,8 @@ export default function TeacherExamsPage() {
 
                   {/* Actions & subtexts */}
                   <div className="flex flex-col sm:flex-row md:flex-col sm:items-center md:items-end justify-between md:justify-center gap-3 shrink-0 border-t md:border-none pt-3 md:pt-0 border-gray-50">
-                    {subtextHtml && (
-                      <p className="text-xs text-gray-500">{subtextHtml}</p>
+                    {description && (
+                      <p className="text-xs text-gray-500">{description}</p>
                     )}
                     <div className="flex items-center gap-2 self-end sm:self-auto md:self-end">
                       {exam.examStatus === "PUBLISHED" ? (

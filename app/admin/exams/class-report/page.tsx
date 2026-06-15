@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { ClassResultTable } from "@/components/exam/ClassResultTable";
 import { RankPoster } from "@/components/exam/RankPoster";
 import { MarklistPoster } from "@/components/exam/MarklistPoster";
@@ -17,7 +18,7 @@ import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
   RefreshCw, Loader2, Trophy, FileSpreadsheet,
-  CheckCircle2, AlertCircle, ArrowLeft,
+  CheckCircle2, AlertCircle, ArrowLeft, GraduationCap
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -208,36 +209,33 @@ export default function ClassReportPage() {
     <DashboardLayout>
       <div className="max-w-[1400px] mx-auto px-4 py-6 space-y-6">
 
-        {/* Back + header */}
-        <div className="flex items-start gap-3">
-          <button onClick={() => backPath ? navigate(backPath) : navigate(-1)}
-            className="mt-1 p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors shrink-0">
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold text-gray-900">{cls.name} — {exam.name}</h1>
-            <p className="text-sm text-gray-500 mt-0.5">
-              {cls.classTeacher && `Class Teacher: ${cls.classTeacher.name} · `}
-              {exam.publishedDate ? `Published: ${fmt(exam.publishedDate)}` : exam.examStatus}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-            {canCompute && (
-              <>
+        <PageHeader
+          title={`${cls.name} — ${exam.name}`}
+          subtitle={
+            cls.classTeacher
+              ? `Class Teacher: ${cls.classTeacher.name} · ${exam.publishedDate ? `Published: ${fmt(exam.publishedDate)}` : exam.examStatus}`
+              : exam.publishedDate ? `Published: ${fmt(exam.publishedDate)}` : exam.examStatus
+          }
+          icon={GraduationCap}
+          back
+          backHref={backPath || undefined}
+          action={
+            canCompute && (
+              <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                 <button onClick={() => setImportOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                  <FileSpreadsheet className="w-4 h-4" />
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 bg-white hover:bg-gray-50 transition-colors shadow-xs">
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
                   Import Excel
                 </button>
                 <button onClick={handleCompute} disabled={computing}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium disabled:opacity-50 transition-colors">
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-50 transition-all shadow-sm shadow-emerald-100 hover:scale-[1.01]">
                   {computing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                   Compute Grades
                 </button>
-              </>
-            )}
-          </div>
-        </div>
+              </div>
+            )
+          }
+        />
 
         {/* Compute feedback */}
         <AnimatePresence>

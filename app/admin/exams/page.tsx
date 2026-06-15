@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { getExams, createExam, updateExam, deleteExam, type ExamRecord, type ExamStatus } from "@/lib/exams-api";
 import { getResults, bulkUpsertResults, type ResultRecord } from "@/lib/results-api";
 import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
@@ -12,25 +13,10 @@ import {
   Plus, Loader2, Trash2, ChevronDown, ChevronUp, Search,
   X, Calendar, Edit2, AlertTriangle, RefreshCw,
   AlertCircle, PenLine, Save, CheckCircle2, BarChart2,
-  GraduationCap, Award
+  GraduationCap, Award, Clock, ClipboardCheck, Trophy
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-const STATUS_LABELS: Record<ExamStatus, string> = {
-  DRAFT:      "Draft",
-  MARK_ENTRY: "Mark Entry",
-  PUBLISHED:  "Published",
-  CANCELLED:  "Cancelled",
-};
-
-const STATUS_COLORS: Record<ExamStatus, string> = {
-  DRAFT:      "bg-gray-100 text-gray-700 border-gray-200",
-  MARK_ENTRY: "bg-amber-50 text-amber-700 border-amber-200",
-  PUBLISHED:  "bg-emerald-50 text-emerald-700 border-emerald-200",
-  CANCELLED:  "bg-rose-50 text-rose-700 border-rose-200",
-};
+import { ExamStatusBadge, getExamStatusInfo } from "@/components/exam/ExamStatusBadge";
 
 type TabFilter = "ALL" | "DRAFT" | "MARK_ENTRY" | "PUBLISHED" | "CANCELLED";
 
@@ -323,24 +309,51 @@ export default function AdminExamsPage() {
     }
   });
 
+  const upcomingExams = exams.filter((e) => e.startDate && new Date(e.startDate) > new Date());
+  const markEntryOpenExams = exams.filter((e) => e.examStatus === "MARK_ENTRY" && (!e.markEntryLastDate || new Date(e.markEntryLastDate) >= new Date()));
+  const completedExams = exams.filter((e) => {
+    if (e.examStatus === "PUBLISHED") return false;
+    if (e.markEntryLastDate && new Date(e.markEntryLastDate) < new Date()) return true;
+    return false;
+  });
+  const publishedExams = exams.filter((e) => e.examStatus === "PUBLISHED");
+
   return (
     <DashboardLayout>
       <div className="px-4 py-3 lg:px-8 lg:py-6 space-y-6">
         
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Exams</h1>
-            <p className="text-sm text-gray-500 mt-1">Manage term examinations</p>
-          </div>
-          <div className="flex items-center gap-2">
+        <PageHeader
+          title="Exams"
+          subtitle="Manage term examinations"
+          icon={GraduationCap}
+          action={
             <button
               onClick={openCreateDrawer}
               className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-4 py-2.5 rounded-xl transition-all shadow-sm shadow-emerald-100 hover:scale-[1.01]"
             >
               <Plus className="w-4 h-4" /> Create Exam
             </button>
-          </div>
+          }
+        />
+
+        {/* Stat Cards Row */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            { label: "Upcoming Exams", value: upcomingExams.length, color: "bg-emerald-50 text-emerald-600 border border-emerald-100", icon: Clock },
+            { label: "Mark Entry Open", value: markEntryOpenExams.length, color: "bg-amber-50 text-amber-600 border border-amber-100", icon: PenLine },
+            { label: "Completed", value: completedExams.length, color: "bg-purple-50 text-purple-600 border border-purple-100", icon: ClipboardCheck },
+            { label: "Results Published", value: publishedExams.length, color: "bg-teal-50 text-teal-600 border border-teal-100", icon: Trophy }
+          ].map((st, i) => (
+            <div key={i} className="bg-white rounded-3xl border border-gray-100 p-5 flex items-center gap-4 shadow-xs">
+              <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-inner", st.color)}>
+                <st.icon className="w-5.5 h-5.5" />
+              </div>
+              <div>
+                <p className="text-2xl font-extrabold text-gray-900 leading-none">{st.value}</p>
+                <p className="text-[10px] text-gray-400 mt-1.5 uppercase font-bold tracking-wider">{st.label}</p>
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Global errors */}
@@ -407,12 +420,7 @@ export default function AdminExamsPage() {
           <div className="grid grid-cols-1 gap-4">
             {filteredExams.map((exam) => {
               const isExpanded = expandedId === exam.id;
-
-              // Smart status override for UI
-              let statusLabel = STATUS_LABELS[exam.examStatus];
-              if (exam.examStatus === "DRAFT" && exam.startDate && new Date(exam.startDate) > new Date()) {
-                statusLabel = "Scheduled";
-              }
+              const { description } = getExamStatusInfo(exam);
 
               return (
                 <div key={exam.id} className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md/50 transition-shadow">
@@ -426,9 +434,7 @@ export default function AdminExamsPage() {
                       <div className="min-w-0 space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-bold text-gray-900 text-base leading-tight truncate">{exam.name}</h3>
-                          <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0", STATUS_COLORS[exam.examStatus])}>
-                            {statusLabel}
-                          </span>
+                          <ExamStatusBadge exam={exam} />
                         </div>
                         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 mt-1">
                           <span className="flex items-center gap-1">
@@ -447,31 +453,36 @@ export default function AdminExamsPage() {
                       </div>
                     </div>
 
-                    {/* Quick actions & Dots Menu */}
-                    <div className="flex items-center justify-end gap-2 shrink-0 border-t md:border-none pt-3 md:pt-0 border-gray-50">
-                      <button
-                        onClick={() => openEditDrawer(exam)}
-                        className="px-4 py-2 border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold text-xs rounded-xl transition-colors inline-flex items-center gap-1.5"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" /> Edit
-                      </button>
-                      
-                      <button
-                        onClick={() => toggleExpand(exam.id)}
-                        className="px-3 py-2 border border-gray-200 hover:bg-gray-50 text-gray-600 font-bold text-xs rounded-xl transition-colors inline-flex items-center gap-1"
-                      >
-                        View Classes {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                      </button>
+                    {/* Quick actions & Subtext */}
+                    <div className="flex flex-col sm:flex-row md:flex-col sm:items-center md:items-end justify-between md:justify-center gap-3 shrink-0 border-t md:border-none pt-3 md:pt-0 border-gray-50">
+                      {description && (
+                        <p className="text-xs text-gray-500">{description}</p>
+                      )}
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => openEditDrawer(exam)}
+                          className="px-4 py-2 border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold text-xs rounded-xl transition-colors inline-flex items-center gap-1.5"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" /> Edit
+                        </button>
+                        
+                        <button
+                          onClick={() => toggleExpand(exam.id)}
+                          className="px-3 py-2 border border-gray-200 hover:bg-gray-50 text-gray-600 font-bold text-xs rounded-xl transition-colors inline-flex items-center gap-1"
+                        >
+                          View Classes {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                        </button>
 
-                      {/* Direct Delete button */}
-                      <button
-                        onClick={() => startDeleteExam(exam)}
-                        className="p-2 border border-gray-200 hover:bg-rose-50 hover:text-rose-600 text-gray-500 rounded-xl transition-colors"
-                        type="button"
-                        title="Delete Exam"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                        {/* Direct Delete button */}
+                        <button
+                          onClick={() => startDeleteExam(exam)}
+                          className="p-2 border border-gray-200 hover:bg-rose-50 hover:text-rose-600 text-gray-500 rounded-xl transition-colors"
+                          type="button"
+                          title="Delete Exam"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
 
