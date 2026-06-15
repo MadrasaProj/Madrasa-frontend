@@ -18,10 +18,19 @@ export default defineConfig({
         display: "standalone",
         orientation: "portrait",
         icons: [
-          { src: "/icons/icon.svg", sizes: "any", type: "image/svg+xml" },
+          {
+            src: "/icons/icon.svg",
+            sizes: "1080x1920",
+            type: "image/svg+xml",
+          },
+          {
+            src: "/icons/icon.svg",
+            sizes: "192x192",
+            type: "image/svg+xml",
+          },
           {
             src: "/icons/apple-touch-icon.svg",
-            sizes: "any",
+            sizes: "512x512",
             type: "image/svg+xml",
           },
         ],
