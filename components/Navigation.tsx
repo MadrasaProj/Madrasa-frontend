@@ -518,7 +518,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
   const links = showMore ? allLinks.slice(0, 4) : allLinks;
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-30 pb-safe">
+    <nav className="lg:hidden fixed bottom-0  left-0 right-0 bg-white border-t border-gray-100 z-30 pb-safe">
       <div className="flex items-stretch justify-around px-1">
         {links.map((l) => {
           const fullHref = l.isExternal ? l.href : (slugPrefix ? `${slugPrefix}${l.href}` : l.href);
