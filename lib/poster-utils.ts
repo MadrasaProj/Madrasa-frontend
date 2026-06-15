@@ -10,7 +10,7 @@ export async function captureElement(
   el: HTMLElement,
   options: { scale?: number; bg?: string | null } = {},
 ): Promise<HTMLCanvasElement> {
-  const html2canvas = (await import("html2canvas")).default;
+  const html2canvas = (await import("html2canvas-pro")).default;
   return html2canvas(el, {
     scale:           options.scale ?? 3,
     useCORS:         true,

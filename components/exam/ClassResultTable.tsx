@@ -76,7 +76,7 @@ function RankBadge({ rank }: { rank: number | null }) {
 // ── PDF / image export ────────────────────────────────────────────────────────
 
 async function exportAsImage(el: HTMLElement, filename: string, format: "png" | "jpeg" = "png") {
-  const html2canvas = (await import("html2canvas")).default;
+  const html2canvas = (await import("html2canvas-pro")).default;
   const canvas = await html2canvas(el, {
     scale: 2,
     useCORS: true,
