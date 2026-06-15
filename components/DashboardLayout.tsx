@@ -188,7 +188,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     : `/${user.role}/notifications`;
 
   return (
-    <div className="min-h-[100dvh] bg-[#faf9f6]">
+    <div className="min-h-[100dvh] h-[100dvh] bg-[#faf9f6]">
       <Sidebar isOpen={isMobileSidebarOpen} onClose={() => setIsMobileSidebarOpen(false)} />
       <div className="lg:ml-64">
         <SuperAdminViewingBanner />
