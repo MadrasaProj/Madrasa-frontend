@@ -6,8 +6,8 @@ import {
   getStudentFees, getPaymentReceipt,
   type StudentFeeSummary, type ReceiptData,
 } from "@/lib/fees-api";
-import { getStudent, type StudentRecord } from "@/lib/students-api";
 import { useAuthStore } from "@/store/auth";
+import type { StudentInfo } from "@/lib/auth-api";
 import { cn } from "@/lib/utils";
 import {
   IndianRupee, Loader2, CheckCircle, Receipt, Printer,
@@ -72,7 +72,7 @@ function ReceiptModal({ receipt, onClose }: { receipt: ReceiptData; onClose: () 
 
 interface ChildData {
   studentId: string;
-  student: StudentRecord | null;
+  student: StudentInfo | null;
   summary: StudentFeeSummary | null;
   error: string | null;
 }
@@ -89,6 +89,7 @@ export default function ParentFeesPage() {
   const cid   = user?.clientId ?? "";
   const token = accessToken ?? "";
   const ids   = user?.accessibleStudentIds ?? [];
+  const accessibleStudents = user?.accessibleStudents ?? [];
 
   const load = useCallback(async () => {
     if (!cid || !token || !ids.length) { setLoading(false); return; }
@@ -97,12 +98,10 @@ export default function ParentFeesPage() {
     const results = await Promise.all(
       ids.map(async (sid) => {
         try {
-          const [student, summary] = await Promise.all([
-            getStudent(cid, token, sid).catch(() => null),
-            getStudentFees(cid, token, sid).catch((e) => ({ error: (e as Error).message })),
-          ]);
-          if ("error" in summary) return { studentId: sid, student, summary: null, error: summary.error };
-          return { studentId: sid, student: student as StudentRecord, summary, error: null };
+          const studentInfo = accessibleStudents.find((s) => s.id === sid) ?? null;
+          const summary = await getStudentFees(cid, token, sid).catch((e) => ({ error: (e as Error).message }));
+          if ("error" in summary) return { studentId: sid, student: studentInfo, summary: null, error: summary.error };
+          return { studentId: sid, student: studentInfo, summary, error: null };
         } catch (e) {
           return { studentId: sid, student: null, summary: null, error: (e as Error).message };
         }
@@ -169,9 +168,9 @@ export default function ParentFeesPage() {
           ) : active?.summary ? (
             <>
               {/* Student name if single child */}
-              {children.length === 1 && active.student && (
-                <p className="text-sm text-gray-500 mb-4">{active.student.name} · {active.student.class?.name}</p>
-              )}
+{children.length === 1 && active.student && (
+  <p className="text-sm text-gray-500 mb-4">{active.student.name}{active.student.className ? ` · ${active.student.className}` : ""}</p>
+)}
 
               {/* Summary cards */}
               <div className="grid grid-cols-2 gap-3 mb-5">

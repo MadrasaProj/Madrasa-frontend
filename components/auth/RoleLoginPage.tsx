@@ -20,6 +20,7 @@ import {
   loginSuperAdmin,
   loginTeacher,
 } from "@/lib/auth-api";
+import { registerParentPushToken } from "@/lib/fcm-register";
 import { roleHomePath } from "@/lib/tenant-routing";
 import { normalizeUserSession, useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
@@ -203,6 +204,11 @@ export default function RoleLoginPage({
         normalized.user.tenantSlug = tenantSlug;
       }
       login(normalized);
+
+      // Register Firebase push token for parents after login
+      if (normalized.user.actorType === "PARENT") {
+        void registerParentPushToken();
+      }
 
       if (normalized.user.actorType === "SUPER_ADMIN") {
         navigate("/admin");
