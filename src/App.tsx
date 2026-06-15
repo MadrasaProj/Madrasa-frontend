@@ -1,6 +1,9 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import PwaRegister from "../components/PwaRegister";
 
+// ── TWA Landing ───────────────────────────────────────────────────────────────
+import TwaLandingPage from "../app/twa/page";
+
 // ── Auth / Login ──────────────────────────────────────────────────────────────
 import AdminLoginPage from "../app/m/[slug]/admin/login/page";
 import CommitteeLoginPage from "../app/m/[slug]/committee/login/page";
@@ -88,8 +91,9 @@ export default function App() {
     <>
       <PwaRegister />
       <Routes>
-        {/* Root redirect */}
-        <Route path="/" element={<Navigate to="/super-admin/login" replace />} />
+        {/* TWA Landing */}
+        <Route path="/" element={<TwaLandingPage />} />
+        <Route path="/twa" element={<TwaLandingPage />} />
 
         {/* Auth */}
         <Route path="/super-admin/login" element={<SuperAdminLoginPage />} />
@@ -257,7 +261,7 @@ export default function App() {
         <Route path="/m/:slug/committee/teacher-attendance" element={<CommitteeTeacherAttendancePage />} />
 
         {/* Catch-all */}
-        <Route path="*" element={<Navigate to="/super-admin/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
   );
