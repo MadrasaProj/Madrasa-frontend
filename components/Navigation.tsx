@@ -518,7 +518,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
   const links = showMore ? allLinks.slice(0, 4) : allLinks;
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-30 pb-safe">
+    <nav className="lg:hidden fixed bottom-0  left-0 right-0 bg-white border-t border-gray-100 z-30 pb-safe">
       <div className="flex items-stretch justify-around px-1">
         {links.map((l) => {
           const fullHref = l.isExternal ? l.href : (slugPrefix ? `${slugPrefix}${l.href}` : l.href);
@@ -561,7 +561,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
               <div className={cn("flex items-center justify-center rounded-xl transition-all", active ? "bg-emerald-50 w-10 h-7" : "w-10 h-7")}>
                 <Icon className={cn("w-5 h-5 shrink-0", active && "stroke-[2.5]")} />
               </div>
-              <span className={cn("text-[10px] font-semibold leading-none", active ? "text-emerald-600" : "text-gray-400")}>
+              <span className={cn("text-[10px] font-semibold leading-none text-center", active ? "text-emerald-600" : "text-gray-400")}>
                 {t("nav", l.key, lang)}
               </span>
             </Link>

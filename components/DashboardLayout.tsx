@@ -166,7 +166,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   if (!hasHydrated) {
     return (
-      <div className="min-h-[100dvh] bg-[#faf9f6] flex items-center justify-center text-sm text-gray-500">
+      <div className="min-h-screen bg-[#faf9f6] flex items-center justify-center text-sm text-gray-500">
         Loading...
       </div>
     );
@@ -188,7 +188,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     : `/${user.role}/notifications`;
 
   return (
-    <div className="min-h-[100dvh] h-[100dvh] bg-[#faf9f6]">
+    <>
+    <div className="min-h-[100svh] overflow-auto bg-[#faf9f6]">
       <Sidebar isOpen={isMobileSidebarOpen} onClose={() => setIsMobileSidebarOpen(false)} />
       <div className="lg:ml-64">
         <SuperAdminViewingBanner />
@@ -209,8 +210,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center shrink-0">
               <span className="text-white font-extrabold text-xs tracking-wide">SM</span>
             </div>
-            <div className="leading-tight">
-              <p className="font-bold text-gray-900 text-sm leading-none">
+            <div className="leading-tight sm:block hidden">
+              <p className="font-bold text-gray-900  text-sm leading-none">
                 {t("common", "appName", lang)}
               </p>
               <p className="text-[10px] text-emerald-600 font-semibold capitalize mt-0.5">
@@ -268,7 +269,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
         <main className="p-4 lg:p-8 pb-28 lg:pb-8">{children}</main>
       </div>
-      <BottomNav onOpenMenu={() => setIsMobileSidebarOpen(true)} />
     </div>
+      <BottomNav onOpenMenu={() => setIsMobileSidebarOpen(true)} />
+    
+    
+    </>
   );
 }
