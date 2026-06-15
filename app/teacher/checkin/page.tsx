@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
@@ -10,6 +10,7 @@ import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
   LogIn, LogOut, Loader2, Clock, MapPin, CheckCircle2, History, Plus,
+  MapPinOff,
 } from "lucide-react";
 
 function fmtTime(d: string) {
@@ -47,6 +48,7 @@ export default function TeacherCheckinPage() {
   const [error, setError]                 = useState<string | null>(null);
   const [location, setLocation]           = useState<{ latitude: number; longitude: number } | null>(null);
   const [locError, setLocError]           = useState<string | null>(null);
+  const [locLoading, setLocLoading]       = useState(false);
 
   const [history, setHistory] = useState<TeacherSession[]>([]);
 
@@ -66,19 +68,45 @@ export default function TeacherCheckinPage() {
 
   useEffect(() => { load(); }, [cid, token]); // eslint-disable-line
 
-  useEffect(() => {
-    if (!navigator.geolocation) { setLocError("Location not available"); return; }
+  const fetchLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      setLocError("Geolocation is not supported by your browser");
+      return;
+    }
+    setLocLoading(true);
+    setLocError(null);
     navigator.geolocation.getCurrentPosition(
-      (pos) => setLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
-      () => setLocError("Could not get location"),
-      { enableHighAccuracy: true, timeout: 10_000 },
+      (pos) => {
+        setLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+        setLocError(null);
+        setLocLoading(false);
+      },
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) {
+          setLocError("Location permission denied. Please enable location in your browser settings.");
+        } else if (err.code === err.TIMEOUT) {
+          setLocError("Location request timed out. Please try again.");
+        } else {
+          setLocError("Could not get your location. Please try again.");
+        }
+        setLocation(null);
+        setLocLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 },
     );
   }, []);
 
+  useEffect(() => { fetchLocation(); }, [fetchLocation]);
+
   const handleCheckIn = async () => {
+    if (!location) {
+      setLocError("Location is required for check-in. Please allow location access and try again.");
+      fetchLocation();
+      return;
+    }
     setActionLoading(true); setError(null);
     try {
-      const s = await checkIn(cid, token, location ?? undefined);
+      const s = await checkIn(cid, token, location);
       setTodaySessions((prev) => [s, ...prev]);
     } catch (e) { setError((e as Error).message); }
     finally { setActionLoading(false); }
@@ -141,9 +169,47 @@ export default function TeacherCheckinPage() {
                   ? `You had ${todayCount} session${todayCount > 1 ? "s" : ""} today. Tap to check in again.`
                   : "Tap below to start your session"}
               </p>
-              {locError && <p className="text-xs text-amber-500 mt-2">{locError}</p>}
-              <button onClick={handleCheckIn} disabled={actionLoading}
-                className="mt-6 inline-flex items-center gap-2 px-8 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm disabled:opacity-50 transition-colors shadow-lg shadow-emerald-200">
+
+              {/* Location status */}
+              <div className="mt-4">
+                {locLoading ? (
+                  <div className="flex items-center justify-center gap-2 text-xs text-blue-500">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Getting your location...
+                  </div>
+                ) : location ? (
+                  <div className="flex items-center justify-center gap-2 text-xs text-emerald-600">
+                    <MapPin className="w-3.5 h-3.5" />
+                    Location ready
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-center gap-2 text-xs text-red-500 font-semibold">
+                      <MapPinOff className="w-3.5 h-3.5" />
+                      Location is required for check-in
+                    </div>
+                    {locError && (
+                      <p className="text-xs text-amber-600 bg-amber-50 rounded-xl px-4 py-2">
+                        {locError}
+                      </p>
+                    )}
+                    <button
+                      onClick={fetchLocation}
+                      className="text-xs text-blue-600 underline hover:text-blue-800"
+                    >
+                      Retry location access
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <button onClick={handleCheckIn} disabled={actionLoading || locLoading}
+                className={cn(
+                  "mt-6 inline-flex items-center gap-2 px-8 py-3 rounded-2xl text-white font-bold text-sm transition-colors shadow-lg",
+                  location
+                    ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200 disabled:opacity-50"
+                    : "bg-gray-300 cursor-not-allowed shadow-gray-100",
+                )}>
                 {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                 Check In
               </button>
