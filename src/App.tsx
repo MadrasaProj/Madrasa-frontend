@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import PwaRegister from "../components/PwaRegister";
+import PwaInstallPrompt from "../components/PwaInstallPrompt";
 
 // ── TWA Landing ───────────────────────────────────────────────────────────────
 import TwaLandingPage from "../app/twa/page";
@@ -90,6 +91,7 @@ export default function App() {
   return (
     <>
       <PwaRegister />
+      <PwaInstallPrompt />
       <Routes>
         {/* TWA Landing */}
         <Route path="/" element={<TwaLandingPage />} />

@@ -1,19 +1,16 @@
-
 import { useEffect } from "react";
+import { registerSW } from "virtual:pwa-register";
 
 export default function PwaRegister() {
   useEffect(() => {
-    if (!("serviceWorker" in navigator)) return;
-
-    const register = async () => {
-      try {
-        await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-      } catch {
-        // no-op
-      }
-    };
-
-    void register();
+    registerSW({
+      onNeedRefresh() {
+        // Optional: show update available notification
+      },
+      onOfflineReady() {
+        // Optional: show offline ready notification
+      },
+    });
   }, []);
 
   return null;

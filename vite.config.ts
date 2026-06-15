@@ -17,6 +17,8 @@ export default defineConfig({
         background_color: "#faf9f6",
         display: "standalone",
         orientation: "portrait",
+        start_url: "/",
+        scope: "/",
         icons: [
           {
             src: "/icons/icon-192.png",
@@ -34,6 +36,24 @@ export default defineConfig({
             src: "/icons/icon.svg",
             sizes: "any",
             type: "image/svg+xml",
+          },
+        ],
+      },
+      workbox: {
+        clientsClaim: true,
+        skipWaiting: true,
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/api\./i,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "api-cache",
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 5 * 60,
+              },
+            },
           },
         ],
       },
