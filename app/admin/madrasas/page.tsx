@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
@@ -26,6 +26,8 @@ import {
   LogIn,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Plus,
   Activity,
   CheckCircle,
@@ -1131,6 +1133,10 @@ export default function AdminMadrasasPage() {
   );
   const [showNew, setShowNew] = useState(false);
 
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   useEffect(() => {
     if (!accessToken) return;
     listClients(accessToken)
@@ -1149,6 +1155,21 @@ export default function AdminMadrasasPage() {
     setClients((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
   };
 
+  const totalClients = clients.length;
+  const totalPages = Math.ceil(totalClients / pageSize);
+
+  // Auto adjustment for out of bound pages (e.g. if list shrinks)
+  useEffect(() => {
+    if (page > totalPages && totalPages > 0) {
+      setPage(totalPages);
+    }
+  }, [totalPages, page]);
+
+  // Paginated subset of clients
+  const paginatedClients = useMemo(() => {
+    return clients.slice((page - 1) * pageSize, page * pageSize);
+  }, [clients, page, pageSize]);
+
   return (
     <DashboardLayout>
       <PageHeader
@@ -1157,7 +1178,7 @@ export default function AdminMadrasasPage() {
         action={
           <button
             onClick={() => setShowNew(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-xl hover:bg-emerald-700 transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-xl hover:bg-emerald-700 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" /> New Madrasa
           </button>
@@ -1174,133 +1195,188 @@ export default function AdminMadrasasPage() {
           <p className="text-sm text-gray-400">No madrasas registered yet.</p>
           <button
             onClick={() => setShowNew(true)}
-            className="mt-3 px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-xl hover:bg-emerald-700 transition-all"
+            className="mt-3 px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-xl hover:bg-emerald-700 transition-all cursor-pointer"
           >
             Add First Madrasa
           </button>
         </div>
       ) : (
-        <div className="space-y-2 pb-20">
-          {clients.map((client) => {
-            const expired = isExpired(client.subscriptionEnd);
-            const isOpen = expanded === client.id;
-            return (
-              <motion.div
-                key={client.id}
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
-              >
-                {/* Client row */}
-                <div className="p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center shrink-0">
-                    <Building2 className="w-5 h-5 text-emerald-700" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-semibold text-gray-900 text-sm">
-                        {client.name}
-                      </p>
-                      <span className="text-xs font-mono text-gray-400">
-                        {client.slug}
-                      </span>
-                      <span
-                        className={cn(
-                          "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
-                          client.status === "ACTIVE"
-                            ? "bg-emerald-100 text-emerald-700"
-                            : client.status === "TRIAL"
-                              ? "bg-blue-100 text-blue-700"
-                              : "bg-gray-100 text-gray-500",
+        <div className="space-y-4 pb-20">
+          <div className="space-y-2">
+            {paginatedClients.map((client) => {
+              const expired = isExpired(client.subscriptionEnd);
+              const isOpen = expanded === client.id;
+              return (
+                <motion.div
+                  key={client.id}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+                >
+                  {/* Client row */}
+                  <div className="p-4 flex items-center gap-3">
+                    <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center shrink-0">
+                      <Building2 className="w-5 h-5 text-emerald-700" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-gray-900 text-sm">
+                          {client.name}
+                        </p>
+                        <span className="text-xs font-mono text-gray-400">
+                          {client.slug}
+                        </span>
+                        <span
+                          className={cn(
+                            "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                            client.status === "ACTIVE"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : client.status === "TRIAL"
+                                ? "bg-blue-100 text-blue-700"
+                                : "bg-gray-100 text-gray-500",
+                          )}
+                        >
+                          {client.status}
+                        </span>
+                        {expired && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-600">
+                            EXPIRED
+                          </span>
                         )}
-                      >
-                        {client.status}
-                      </span>
-                      {expired && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-600">
-                          EXPIRED
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-400">
-                      <span>{client._count?.students ?? 0} students</span>
-                      <span>{client._count?.users ?? 0} staff</span>
-                      {client.currentAcademicYear && (
-                        <span>{client.currentAcademicYear.name}</span>
-                      )}
-                      {client.city && <span>{client.city}</span>}
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      {client.isLoginEnabled ? (
-                        <span className="flex items-center gap-0.5 text-[10px] text-emerald-600 font-medium">
-                          <CheckCircle className="w-3 h-3" /> Login on
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
-                          <XCircle className="w-3 h-3" /> Login off
-                        </span>
-                      )}
-                      <span className="text-[10px] text-gray-400">·</span>
-                      <span className="text-[10px] text-gray-400">
-                        {client.attendanceMode === "PERIOD_BASED"
-                          ? "Period-based"
-                          : "Class-based"}{" "}
-                        attendance
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      onClick={() => setEditingClient(client)}
-                      className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-all"
-                      title="Edit madrasa"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleEnterClient(client.id, client.slug)}
-                      disabled={entering === client.id}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 transition-all"
-                    >
-                      {entering === client.id ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <LogIn className="w-3.5 h-3.5" />
-                      )}
-                      Enter
-                    </button>
-                    <button
-                      onClick={() => setExpanded(isOpen ? null : client.id)}
-                      className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-50 hover:text-gray-700 transition-all"
-                    >
-                      {isOpen ? (
-                        <ChevronUp className="w-4 h-4" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Expanded: payments + logs */}
-                <AnimatePresence>
-                  {isOpen && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden border-t border-gray-50"
-                    >
-                      <div className="px-4 pb-4">
-                        <ClientDetail client={client} token={accessToken!} />
                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            );
-          })}
+                      <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-400">
+                        <span>{client._count?.students ?? 0} students</span>
+                        <span>{client._count?.users ?? 0} staff</span>
+                        {client.currentAcademicYear && (
+                          <span>{client.currentAcademicYear.name}</span>
+                        )}
+                        {client.city && <span>{client.city}</span>}
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {client.isLoginEnabled ? (
+                          <span className="flex items-center gap-0.5 text-[10px] text-emerald-600 font-medium">
+                            <CheckCircle className="w-3 h-3" /> Login on
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
+                            <XCircle className="w-3 h-3" /> Login off
+                          </span>
+                        )}
+                        <span className="text-[10px] text-gray-400">·</span>
+                        <span className="text-[10px] text-gray-400">
+                          {client.attendanceMode === "PERIOD_BASED"
+                            ? "Period-based"
+                            : "Class-based"}{" "}
+                          attendance
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => setEditingClient(client)}
+                        className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-all cursor-pointer"
+                        title="Edit madrasa"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleEnterClient(client.id, client.slug)}
+                        disabled={entering === client.id}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 transition-all cursor-pointer"
+                      >
+                        {entering === client.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <LogIn className="w-3.5 h-3.5" />
+                        )}
+                        Enter
+                      </button>
+                      <button
+                        onClick={() => setExpanded(isOpen ? null : client.id)}
+                        className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-50 hover:text-gray-700 transition-all cursor-pointer"
+                      >
+                        {isOpen ? (
+                          <ChevronUp className="w-4 h-4" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Expanded: payments + logs */}
+                  <AnimatePresence>
+                    {isOpen && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden border-t border-gray-50"
+                      >
+                        <div className="px-4 pb-4">
+                          <ClientDetail client={client} token={accessToken!} />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          {/* Pagination bar */}
+          <div className="flex items-center justify-between mt-4 px-1 gap-3 flex-wrap bg-white border border-gray-100 rounded-2xl p-4">
+            {/* Left side: stats and page size */}
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-gray-400 whitespace-nowrap">
+                {totalClients} total
+              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-gray-400 hidden sm:inline">Show</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                >
+                  {[5, 10, 20, 50].map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs text-gray-400 hidden sm:inline">per page</span>
+              </div>
+            </div>
+
+            {/* Right side: navigation */}
+            {totalPages > 1 && (
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => p - 1)}
+                  className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center disabled:opacity-40 hover:bg-gray-50 transition-colors cursor-pointer"
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-sm text-gray-600 font-medium min-w-[5rem] text-center">
+                  {page} / {totalPages}
+                </span>
+                <button
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                  className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center disabled:opacity-40 hover:bg-gray-50 transition-colors cursor-pointer"
+                  aria-label="Next page"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -1324,7 +1400,10 @@ export default function AdminMadrasasPage() {
         {showNew && (
           <NewMadrasaDrawer
             token={accessToken!}
-            onCreated={(c) => setClients((prev) => [c, ...prev])}
+            onCreated={(c) => {
+              setClients((prev) => [c, ...prev]);
+              setPage(1); // Go to first page to see the new item
+            }}
             onClose={() => setShowNew(false)}
           />
         )}

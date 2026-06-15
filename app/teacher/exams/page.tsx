@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { getExams, type ExamRecord } from "@/lib/exams-api";
+import { getExams, type ExamRecord, type ExamStatus } from "@/lib/exams-api";
 import { getResults, bulkUpsertResults, type ResultRecord } from "@/lib/results-api";
 import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
 import { getSubjects, type SubjectRecord } from "@/lib/subjects-api";
@@ -11,51 +11,60 @@ import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
   GraduationCap, Save, Loader2, CheckCircle2, Lock, Calendar, AlertCircle, BarChart2,
+  Clock, Check, Award, ArrowLeft, Download, RotateCcw, PenLine, FileSpreadsheet, ChevronRight, Eye,
+  ClipboardCheck, Trophy, BookOpen
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import * as XLSX from "xlsx";
 
-function getGrade(score: number, totalMarks = 100) {
-  const pct = (score / totalMarks) * 100;
-  if (pct >= 90) return { label: "A+", color: "text-emerald-700 bg-emerald-50" };
-  if (pct >= 75) return { label: "A",  color: "text-blue-700 bg-blue-50" };
-  if (pct >= 60) return { label: "B",  color: "text-indigo-700 bg-indigo-50" };
-  if (pct >= 45) return { label: "C",  color: "text-yellow-700 bg-yellow-50" };
-  return { label: "F", color: "text-red-700 bg-red-50" };
-}
+type TabFilter = "ALL" | "UPCOMING" | "MARK_ENTRY" | "COMPLETED" | "PUBLISHED";
+
+const STATUS_LABELS: Record<string, string> = {
+  DRAFT:      "Draft",
+  MARK_ENTRY: "Mark Entry",
+  PUBLISHED:  "Published",
+  CANCELLED:  "Cancelled",
+};
 
 function fmt(d?: string | null) {
-  if (!d) return null;
+  if (!d) return "—";
   return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function getDaysRemaining(targetDateStr: string | null | undefined): number | null {
+  if (!targetDateStr) return null;
+  const diffTime = new Date(targetDateStr).getTime() - new Date().getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays;
 }
 
 export default function TeacherExamsPage() {
   const { user, accessToken } = useAuthStore();
   const navigate  = useNavigate();
   const location  = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const cid        = user?.clientId ?? "";
   const token      = accessToken ?? "";
   const ayId       = user?.defaultAcademicYearId ?? "";
   const teacherId  = user?.id ?? "";
-  const isPeriodBased = user?.attendanceMode === "PERIOD_BASED";
 
-  const goToClassReport = (examId: string, classId: string) => {
-    const back = location.pathname;
-    const base = location.pathname.replace(/\/exams.*/, "/exams");
-    navigate(`${base}/class-report?examId=${examId}&classId=${classId}&ayId=${ayId}&back=${encodeURIComponent(back)}`);
-  };
+  // UI Mode (list vs mark-entry)
+  const isMarkEntryView = searchParams.get("view") === "mark-entry";
+  const [selectedTab, setSelectedTab] = useState<TabFilter>("ALL");
+
+  // Selection states (from query params or fallback)
+  const queryExamId = searchParams.get("examId") ?? "";
+  const queryClassId = searchParams.get("classId") ?? "";
+  const querySubjectId = searchParams.get("subjectId") ?? "";
 
   // Data
   const [allClasses, setAllClasses]       = useState<ClassRecord[]>([]);
-  const [mySubjects, setMySubjects]       = useState<SubjectRecord[]>([]);  // teacher's assigned subjects
+  const [mySubjects, setMySubjects]       = useState<SubjectRecord[]>([]);
   const [exams, setExams]                 = useState<ExamRecord[]>([]);
   const [students, setStudents]           = useState<StudentRecord[]>([]);
   const [existingResults, setExistingResults] = useState<ResultRecord[]>([]);
   const [scores, setScores]               = useState<Record<string, string>>({});
-
-  // Selection
-  const [activeExamId, setActiveExamId]       = useState("");
-  const [activeClassId, setActiveClassId]     = useState("");
-  const [activeSubjectId, setActiveSubjectId] = useState("");
+  const [remarks, setRemarks]             = useState<Record<string, string>>({});
 
   // UI state
   const [loading, setLoading]   = useState(true);
@@ -63,19 +72,21 @@ export default function TeacherExamsPage() {
   const [saved, setSaved]       = useState(false);
   const [error, setError]       = useState<string | null>(null);
 
-  // ── Derived ──────────────────────────────────────────────────────────────────
+  const [classSubjects, setClassSubjects] = useState<SubjectRecord[]>([]);
 
-  // CLASS_BASED: teacher can only mark their own class (must be classTeacher).
-  // PERIOD_BASED: teacher can mark any class where they have subjects assigned.
+  // Derived arrays
   const myClassIds = new Set(mySubjects.map((s) => s.classId));
   const teacherClasses = allClasses.filter((c) => myClassIds.has(c.id) || c.classTeacherId === teacherId);
 
-  const [classSubjects, setClassSubjects] = useState<SubjectRecord[]>([]);
-
-  const activeExam = exams.find((e) => e.id === activeExamId);
+  const activeExam = exams.find((e) => e.id === queryExamId);
   const isLocked = !activeExam
     || activeExam.examStatus !== "MARK_ENTRY"
     || (!!activeExam.markEntryLastDate && new Date() > new Date(activeExam.markEntryLastDate));
+
+  const goToClassReport = (examId: string, classId: string) => {
+    const back = location.pathname + location.search;
+    navigate(`/teacher/exams/class-report?examId=${examId}&classId=${classId}&ayId=${ayId}&back=${encodeURIComponent(back)}`);
+  };
 
   // ── Initial load ─────────────────────────────────────────────────────────────
 
@@ -85,60 +96,66 @@ export default function TeacherExamsPage() {
 
     Promise.all([
       getMyClasses(cid, token),
-      // Load teacher's subjects (period-based: assigned to them; class-based: also needed to know classes)
       getSubjects(cid, token, { teacherId, limit: 500 }),
       getExams(cid, token, { accademicYearId: ayId || undefined, limit: 50 }),
     ])
       .then(([cls, subs, examData]) => {
         setAllClasses(cls);
         setMySubjects(subs.data ?? []);
-        setExams(examData.data ?? []);
+        const loadedExams = examData.data ?? [];
+        setExams(loadedExams);
 
-        // Auto-select first exam
-        if (examData.data?.[0]) setActiveExamId(examData.data[0].id);
-
-        // Auto-select: own class first (always works in both modes)
-        const firstClass = cls.find((c) => c.classTeacherId === teacherId);
-        if (firstClass) setActiveClassId(firstClass.id);
+        // Auto-initialize query params if not set
+        if (!queryExamId && loadedExams[0]) {
+          const firstClass = cls.find((c) => c.classTeacherId === teacherId) || cls[0];
+          const mine = (subs.data ?? []).filter((s) => s.classId === firstClass?.id);
+          setSearchParams((prev) => {
+            prev.set("examId", loadedExams[0].id);
+            if (firstClass) prev.set("classId", firstClass.id);
+            if (mine[0]) prev.set("subjectId", mine[0].id);
+            return prev;
+          });
+        }
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [cid, token, teacherId, ayId]);
+  }, [cid, token, teacherId, ayId, queryExamId, setSearchParams]);
 
   // ── Load subjects for selected class ─────────────────────────────────────────
 
   useEffect(() => {
-    if (!cid || !token || !activeClassId) return;
-    const cls = allClasses.find((c) => c.id === activeClassId);
+    if (!cid || !token || !queryClassId) return;
+    const cls = allClasses.find((c) => c.id === queryClassId);
     const isOwn = cls?.classTeacherId === teacherId;
 
     if (isOwn) {
-      // Class teacher (any attendance mode) → all subjects of this class
-      getSubjects(cid, token, { classId: activeClassId, limit: 200 })
+      getSubjects(cid, token, { classId: queryClassId, limit: 200 })
         .then((r) => {
-          setClassSubjects(r.data ?? []);
-          if (r.data?.[0]) setActiveSubjectId(r.data[0].id);
-          else setActiveSubjectId("");
+          const subs = r.data ?? [];
+          setClassSubjects(subs);
+          if (subs.length > 0 && !subs.some((s) => s.id === querySubjectId)) {
+            setSearchParams((prev) => { prev.set("subjectId", subs[0].id); return prev; });
+          }
         })
         .catch((e: Error) => setError(e.message));
     } else {
-      // Not class teacher → only their assigned subjects in this class
-      const mine = mySubjects.filter((s) => s.classId === activeClassId);
+      const mine = mySubjects.filter((s) => s.classId === queryClassId);
       setClassSubjects(mine);
-      if (mine[0]) setActiveSubjectId(mine[0].id);
-      else setActiveSubjectId("");
+      if (mine.length > 0 && !mine.some((s) => s.id === querySubjectId)) {
+        setSearchParams((prev) => { prev.set("subjectId", mine[0].id); return prev; });
+      }
     }
-  }, [activeClassId, allClasses, mySubjects, teacherId, isPeriodBased, cid, token]);
+  }, [queryClassId, allClasses, mySubjects, teacherId, cid, token, querySubjectId, setSearchParams]);
 
-  // ── Load students + existing results when exam/class/subject changes ──────────
+  // ── Load students + results when exam/class/subject changes ──────────────────
 
   const loadExamData = useCallback(async () => {
-    if (!cid || !token || !activeClassId || !activeExamId) return;
+    if (!cid || !token || !queryClassId || !queryExamId) return;
 
     const [stuData, resData] = await Promise.all([
-      getStudents(cid, token, { classId: activeClassId, limit: 200 }).catch(() => ({ data: [] as StudentRecord[] })),
-      activeSubjectId
-        ? getResults(cid, token, { examId: activeExamId, classId: activeClassId, limit: 500 }).catch(() => ({ data: [] as ResultRecord[] }))
+      getStudents(cid, token, { classId: queryClassId, limit: 200 }).catch(() => ({ data: [] as StudentRecord[] })),
+      querySubjectId
+        ? getResults(cid, token, { examId: queryExamId, classId: queryClassId, limit: 500 }).catch(() => ({ data: [] as ResultRecord[] }))
         : Promise.resolve({ data: [] as ResultRecord[] }),
     ]);
 
@@ -148,29 +165,36 @@ export default function TeacherExamsPage() {
     setExistingResults(resList);
 
     // Pre-fill scores for current subject only
-    if (activeSubjectId) {
+    if (querySubjectId) {
       const scoreMap: Record<string, string> = {};
+      const remarkMap: Record<string, string> = {};
       stuList.forEach((s) => {
-        const r = resList.find((r) => r.student?.id === s.id && r.subject?.id === activeSubjectId);
+        const r = resList.find((r) => r.student?.id === s.id && r.subject?.id === querySubjectId);
         scoreMap[s.id] = r != null ? String(r.score) : "";
+        remarkMap[s.id] = ""; // remarks computed in state
       });
       setScores(scoreMap);
+      setRemarks(remarkMap);
     }
-  }, [cid, token, activeClassId, activeExamId, activeSubjectId]);
+  }, [cid, token, queryClassId, queryExamId, querySubjectId]);
 
-  useEffect(() => { loadExamData(); }, [loadExamData]);
+  useEffect(() => {
+    if (isMarkEntryView) {
+      loadExamData();
+    }
+  }, [isMarkEntryView, loadExamData]);
 
-  // ── Save ─────────────────────────────────────────────────────────────────────
+  // ── Save Marks ───────────────────────────────────────────────────────────────
 
-  const handleSave = async () => {
-    if (!activeExamId || !activeSubjectId || !activeClassId || isLocked) return;
+  const handleSave = async (submit = false) => {
+    if (!queryExamId || !querySubjectId || !queryClassId || isLocked) return;
     setSaving(true);
     setError(null);
     try {
       const items = students
         .filter((s) => scores[s.id] !== "" && scores[s.id] !== undefined)
         .map((s) => ({
-          subjectId:  activeSubjectId,
+          subjectId:  querySubjectId,
           studentId:  s.id,
           score:      Number(scores[s.id]),
           totalMarks: 100,
@@ -182,251 +206,572 @@ export default function TeacherExamsPage() {
       }
 
       await bulkUpsertResults(cid, token, {
-        examId:          activeExamId,
-        classId:         activeClassId,
+        examId:          queryExamId,
+        classId:         queryClassId,
         accademicYearId: ayId,
         results:         items,
       });
 
       await loadExamData();
       setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    } catch (e) {
-      setError((e as Error).message);
+      setTimeout(() => {
+        setSaved(false);
+        if (submit) {
+          // Redirect back to list on submit
+          setSearchParams((prev) => {
+            prev.delete("view");
+            return prev;
+          });
+        }
+      }, 1500);
+    } catch (e: any) {
+      setError(e.message ?? "Save failed");
     } finally {
       setSaving(false);
     }
   };
 
-  // ── Stats ─────────────────────────────────────────────────────────────────────
+  const downloadExcelTemplate = () => {
+    if (!queryExamId || !queryClassId || !querySubjectId) return;
+    const activeSub = classSubjects.find((s) => s.id === querySubjectId);
+    const activeCls = teacherClasses.find((c) => c.id === queryClassId);
+
+    const headers = ["AdmissionNo", "StudentName", `${activeSub?.name ?? "Score"} (out of 100)`];
+    const dataRows = students.map((s) => [s.adno, s.name, scores[s.id] ?? ""]);
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
+    ws["!cols"] = [{ wch: 15 }, { wch: 30 }, { wch: 20 }];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Marks");
+    XLSX.writeFile(wb, `${activeCls?.name ?? "class"}-${activeSub?.name ?? "subject"}-template.xlsx`);
+  };
+
+  const handleExcelImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      try {
+        const data = new Uint8Array(ev.target?.result as ArrayBuffer);
+        const wb = XLSX.read(data, { type: "array" });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const raw = XLSX.utils.sheet_to_json<Record<string, string>>(ws, { defval: "" });
+
+        if (raw.length === 0) { setError("Template is empty."); return; }
+
+        const adnoToId = new Map(students.map((s) => [s.adno.trim().toLowerCase(), s.id]));
+        const scoreCol = Object.keys(raw[0]).find((k) => k.toLowerCase().includes("out of") || k.toLowerCase().includes("score")) ?? Object.keys(raw[0])[2];
+
+        const newScores = { ...scores };
+        let count = 0;
+
+        for (const row of raw) {
+          const adno = String(row["AdmissionNo"] ?? "").trim().toLowerCase();
+          const studentId = adnoToId.get(adno);
+          if (!studentId) continue;
+
+          const scoreVal = parseFloat(row[scoreCol]);
+          if (!isNaN(scoreVal) && scoreVal >= 0 && scoreVal <= 100) {
+            newScores[studentId] = String(scoreVal);
+            count++;
+          }
+        }
+
+        setScores(newScores);
+        alert(`Successfully imported ${count} marks from Excel. Click Save Marks to persist.`);
+      } catch {
+        setError("Failed to parse file. Ensure it is a valid template.");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  // ── Derived Stats & Filtering ──────────────────────────────────────────────
+
+  const upcomingExams = exams.filter((e) => e.startDate && new Date(e.startDate) > new Date());
+  const markEntryOpenExams = exams.filter((e) => e.examStatus === "MARK_ENTRY" && (!e.markEntryLastDate || new Date(e.markEntryLastDate) >= new Date()));
+  const completedExams = exams.filter((e) => {
+    if (e.examStatus === "PUBLISHED") return false;
+    if (e.markEntryLastDate && new Date(e.markEntryLastDate) < new Date()) return true;
+    return false;
+  });
+  const publishedExams = exams.filter((e) => e.examStatus === "PUBLISHED");
+
+  const filteredExams = exams.filter((exam) => {
+    switch (selectedTab) {
+      case "UPCOMING":
+        return upcomingExams.some((e) => e.id === exam.id);
+      case "MARK_ENTRY":
+        return markEntryOpenExams.some((e) => e.id === exam.id);
+      case "COMPLETED":
+        return completedExams.some((e) => e.id === exam.id);
+      case "PUBLISHED":
+        return publishedExams.some((e) => e.id === exam.id);
+      case "ALL":
+      default:
+        return true;
+    }
+  });
 
   const filled = Object.values(scores).filter((v) => v !== "").length;
-  const avg    = filled > 0
+  const avg = filled > 0
     ? Math.round(Object.values(scores).filter((v) => v !== "").reduce((s, v) => s + Number(v), 0) / filled)
     : 0;
 
-  // ── Render ────────────────────────────────────────────────────────────────────
+  // ── Render Loading ───────────────────────────────────────────────────────────
 
   if (loading) {
     return (
       <DashboardLayout>
-        <PageHeader title="Enter Marks" icon={GraduationCap} back backHref="/teacher" />
-        <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
-          <Loader2 className="w-5 h-5 animate-spin" />
+        <div className="flex items-center justify-center py-20 text-gray-400">
+          <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
         </div>
       </DashboardLayout>
     );
   }
 
-  return (
-    <DashboardLayout>
-      <PageHeader title="Enter Marks" icon={GraduationCap} back backHref="/teacher" />
+  // ── Render Mark Entry Grid View ──────────────────────────────────────────────
 
-      <div className="space-y-4 pb-24">
-
-        {/* Error */}
-        {error && (
-          <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" /> {error}
+  if (isMarkEntryView) {
+    return (
+      <DashboardLayout>
+        <div className="px-4 py-3 lg:px-8 lg:py-6 space-y-6">
+          
+          {/* Breadcrumb Header */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSearchParams((prev) => { prev.delete("view"); return prev; })}
+              className="p-2 border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors text-gray-600"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <div>
+              <div className="flex items-center gap-2 text-xs text-gray-400 font-bold uppercase tracking-wider">
+                <span>Exams</span>
+                <span>/</span>
+                <span>Mark Entry</span>
+              </div>
+              <h1 className="text-xl font-black text-gray-900 tracking-tight mt-0.5">Enter Marks</h1>
+            </div>
           </div>
-        )}
 
-        {/* ── Step 1: Select Exam ───────────────────────────────────────────── */}
-        <div>
-          <p className="text-xs font-bold text-gray-400 uppercase mb-2">Exam</p>
-          {exams.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-6">No exams this academic year</p>
-          ) : (
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {exams.map((ex) => (
-                <button key={ex.id} onClick={() => setActiveExamId(ex.id)}
-                  className={cn(
-                    "px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 transition-all flex items-center gap-1.5",
-                    activeExamId === ex.id ? "bg-emerald-600 text-white shadow-sm" : "bg-white border border-gray-200 text-gray-700",
-                  )}>
-                  {ex.name}
-                  {ex.examStatus === "MARK_ENTRY" && <span className="text-[10px] opacity-70">✏️</span>}
-                  {(ex.examStatus === "PUBLISHED" || ex.examStatus === "CANCELLED") && <span className="text-[10px] opacity-70">🔒</span>}
-                </button>
-              ))}
+          {/* Error notice */}
+          {error && (
+            <div className="bg-rose-50 border border-rose-100 text-rose-600 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" /> {error}
             </div>
           )}
+
+          {/* Selectors grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1.5">Select Exam</label>
+              <select
+                value={queryExamId}
+                onChange={(e) => setSearchParams((prev) => { prev.set("examId", e.target.value); return prev; })}
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 bg-white"
+              >
+                {exams.map((ex) => <option key={ex.id} value={ex.id}>{ex.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1.5">Select Class</label>
+              <select
+                value={queryClassId}
+                onChange={(e) => setSearchParams((prev) => { prev.set("classId", e.target.value); return prev; })}
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 bg-white"
+              >
+                {teacherClasses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1.5">Select Subject</label>
+              <select
+                value={querySubjectId}
+                onChange={(e) => setSearchParams((prev) => { prev.set("subjectId", e.target.value); return prev; })}
+                disabled={classSubjects.length === 0}
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 bg-white disabled:opacity-50"
+              >
+                {classSubjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* Mark entry period box & download template button */}
+          {activeExam && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-emerald-50/40 border border-emerald-100 rounded-3xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-100/50 flex items-center justify-center shrink-0 text-emerald-700">
+                  <Calendar className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-emerald-800 flex items-center gap-2">
+                    Mark Entry Period
+                    <span className={cn("px-2 py-0.5 rounded-full text-[9px] border font-black uppercase", isLocked ? "bg-rose-50 text-rose-700 border-rose-100" : "bg-emerald-50 text-emerald-700 border-emerald-100")}>
+                      {isLocked ? "Closed" : "Open"}
+                    </span>
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {activeExam.endDate ? fmt(new Date(new Date(activeExam.endDate).getTime() + 86400000).toISOString()) : "—"} – {fmt(activeExam.markEntryLastDate)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={downloadExcelTemplate}
+                  className="inline-flex items-center gap-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-bold text-xs px-4 py-2.5 rounded-xl transition-colors shadow-xs"
+                >
+                  <Download className="w-4 h-4" /> Download Template
+                </button>
+                <label className="inline-flex items-center gap-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-bold text-xs px-4 py-2.5 rounded-xl transition-colors shadow-xs cursor-pointer">
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> Import Excel
+                  <input type="file" accept=".xlsx,.xls" className="sr-only" onChange={handleExcelImport} />
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* Student list grid table */}
+          {students.length === 0 ? (
+            <div className="text-center py-20 bg-white border border-gray-100 rounded-3xl p-6">
+              <GraduationCap className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+              <p className="text-sm font-semibold text-gray-900">No students in this class</p>
+              <p className="text-xs text-gray-400 mt-1">Make sure you have students registered in this class.</p>
+            </div>
+          ) : (
+            <div className="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden flex flex-col">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                      <th className="px-6 py-4 w-12 text-center">#</th>
+                      <th className="px-4 py-4">Student Name</th>
+                      <th className="px-4 py-4 w-40">Admission No</th>
+                      <th className="px-4 py-4 w-32 text-center">Full Mark</th>
+                      <th className="px-4 py-4 w-44 text-center">Obtained Mark *</th>
+                      <th className="px-6 py-4">Remarks (Optional)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {students.map((s, idx) => {
+                      const score = scores[s.id] ?? "";
+                      const remark = remarks[s.id] ?? "";
+                      return (
+                        <tr key={s.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-6 py-3.5 text-center text-gray-400 font-medium">{idx + 1}</td>
+                          <td className="px-4 py-3.5">
+                            <p className="font-bold text-gray-900 leading-tight">{s.name}</p>
+                            <span className="text-[10px] text-gray-400 uppercase font-semibold">{s.gender ?? "Male"}</span>
+                          </td>
+                          <td className="px-4 py-3.5 font-mono text-xs font-semibold text-gray-700">{s.adno}</td>
+                          <td className="px-4 py-3.5 text-center text-gray-500 font-bold">100</td>
+                          <td className="px-4 py-3.5 text-center">
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              disabled={isLocked || saving}
+                              value={score}
+                              onChange={(e) => setScores((prev) => ({ ...prev, [s.id]: e.target.value }))}
+                              placeholder="—"
+                              className={cn(
+                                "w-24 text-center px-3 py-2 border rounded-xl text-sm font-black focus:outline-none transition-all",
+                                isLocked
+                                  ? "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed"
+                                  : "border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/20"
+                              )}
+                            />
+                          </td>
+                          <td className="px-6 py-3.5">
+                            <input
+                              type="text"
+                              disabled={isLocked || saving}
+                              value={remark}
+                              onChange={(e) => setRemarks((prev) => ({ ...prev, [s.id]: e.target.value }))}
+                              placeholder="Good progress, excellent..."
+                              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-emerald-500 transition-all bg-white"
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Bottom statistics bar */}
+              <div className="bg-gray-50 px-6 py-4 flex flex-wrap items-center justify-between border-t border-gray-100 gap-4">
+                <div className="flex items-center gap-6">
+                  <div className="text-xs">
+                    <span className="text-gray-400">Total Students:</span> <strong className="text-gray-900 font-bold ml-1">{students.length}</strong>
+                  </div>
+                  <div className="text-xs">
+                    <span className="text-emerald-500 font-semibold">Entered:</span> <strong className="text-emerald-700 font-black ml-1">{filled}</strong>
+                  </div>
+                  <div className="text-xs">
+                    <span className="text-amber-500 font-semibold font-mono">Remaining:</span> <strong className="text-amber-700 font-black ml-1">{students.length - filled}</strong>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      if (confirm("Reset entered marks?")) {
+                        const scoreMap: Record<string, string> = {};
+                        students.forEach((s) => {
+                          const r = existingResults.find((r) => r.student?.id === s.id && r.subject?.id === querySubjectId);
+                          scoreMap[s.id] = r != null ? String(r.score) : "";
+                        });
+                        setScores(scoreMap);
+                      }
+                    }}
+                    className="inline-flex items-center gap-1.5 border border-gray-200 hover:bg-gray-100 text-gray-600 font-bold text-xs px-4 py-2.5 rounded-xl transition-colors bg-white shadow-xs"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" /> Reset
+                  </button>
+                  <button
+                    onClick={() => handleSave(false)}
+                    disabled={saving || isLocked}
+                    className="inline-flex items-center gap-1.5 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs px-4 py-2.5 rounded-xl transition-colors shadow-xs"
+                  >
+                    {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    Save as Draft
+                  </button>
+                  <button
+                    onClick={() => handleSave(true)}
+                    disabled={saving || isLocked}
+                    className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-sm shadow-emerald-100 hover:scale-[1.01]"
+                  >
+                    {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                    Save &amp; Submit
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // ── Render Dashboard Exams List View ─────────────────────────────────────────
+
+  return (
+    <DashboardLayout>
+      <div className="px-4 py-3 lg:px-8 lg:py-6 space-y-6">
+        
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-black text-gray-900 tracking-tight">Exams</h1>
+            <p className="text-sm text-gray-500 mt-1">View exam schedule and enter marks</p>
+          </div>
         </div>
 
-        {/* Exam status banner */}
-        {activeExam && (
-          <div className={cn(
-            "rounded-2xl px-4 py-2.5 flex items-center gap-2 text-sm",
-            isLocked ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-700",
-          )}>
-            {isLocked ? <Lock className="w-4 h-4 shrink-0" /> : <Calendar className="w-4 h-4 shrink-0" />}
-            <div>
-              {activeExam.examStatus !== "MARK_ENTRY"
-                ? <span>Exam is <strong>{activeExam.examStatus.toLowerCase().replace("_", " ")}</strong> — mark entry not open</span>
-                : activeExam.markEntryLastDate && new Date() > new Date(activeExam.markEntryLastDate)
-                  ? <span>Deadline passed — <strong>{fmt(activeExam.markEntryLastDate)}</strong></span>
-                  : <span>Mark entry open · Deadline: <strong>{fmt(activeExam.markEntryLastDate) ?? "None"}</strong></span>}
-              {activeExam.startDate && (
-                <span className="ml-3 text-xs opacity-70">{fmt(activeExam.startDate)} – {fmt(activeExam.endDate)}</span>
-              )}
+        {/* Stat Cards Row */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            { label: "Upcoming Exams", value: upcomingExams.length, color: "bg-emerald-50 text-emerald-600 border border-emerald-100", icon: Clock },
+            { label: "Mark Entry Open", value: markEntryOpenExams.length, color: "bg-amber-50 text-amber-600 border border-amber-100", icon: PenLine },
+            { label: "Completed", value: completedExams.length, color: "bg-purple-50 text-purple-600 border border-purple-100", icon: ClipboardCheck },
+            { label: "Results Published", value: publishedExams.length, color: "bg-blue-50 text-blue-600 border border-blue-100", icon: Trophy }
+          ].map((st, i) => (
+            <div key={i} className="bg-white rounded-3xl border border-gray-100 p-5 flex items-center gap-4 shadow-xs">
+              <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-inner", st.color)}>
+                <st.icon className="w-5.5 h-5.5" />
+              </div>
+              <div>
+                <p className="text-2xl font-black text-gray-900 leading-none">{st.value}</p>
+                <p className="text-[10px] text-gray-400 mt-1.5 uppercase font-bold tracking-wider">{st.label}</p>
+              </div>
             </div>
-          </div>
-        )}
+          ))}
+        </div>
 
-        {/* ── Step 2: Select Class ──────────────────────────────────────────── */}
-        {teacherClasses.length > 0 && (
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-bold text-gray-400 uppercase">Your Class</p>
-              {activeExamId && activeClassId && (
-                <button
-                  onClick={() => goToClassReport(activeExamId, activeClassId)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors">
-                  <BarChart2 className="w-3.5 h-3.5" />
-                  View Report
-                </button>
-              )}
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              {teacherClasses.map((cls) => (
-                <button key={cls.id} onClick={() => setActiveClassId(cls.id)}
-                  className={cn(
-                    "px-4 py-2 rounded-xl text-sm font-semibold transition-all",
-                    activeClassId === cls.id ? "bg-emerald-600 text-white" : "bg-white border border-gray-200 text-gray-700",
-                  )}>
-                  {cls.name}
-                  {cls.classTeacherId === teacherId && (
-                    <span className="ml-1 text-[10px] opacity-70">★</span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Tab Filters */}
+        <div className="border-b border-gray-100 flex gap-1 overflow-x-auto no-scrollbar py-0.5">
+          {(["ALL", "UPCOMING", "MARK_ENTRY", "COMPLETED", "PUBLISHED"] as const).map((t) => {
+            const labels: Record<TabFilter, string> = {
+              ALL: "All Exams",
+              UPCOMING: "Upcoming",
+              MARK_ENTRY: "Mark Entry Open",
+              COMPLETED: "Completed",
+              PUBLISHED: "Published",
+            };
+            return (
+              <button
+                key={t}
+                onClick={() => setSelectedTab(t)}
+                className={cn(
+                  "px-4 py-2 text-xs lg:text-sm font-semibold rounded-t-xl transition-colors shrink-0 border-b-2 -mb-px",
+                  selectedTab === t
+                    ? "border-emerald-600 text-emerald-600 font-bold"
+                    : "border-transparent text-gray-500 hover:text-gray-900"
+                )}
+              >
+                {labels[t]}
+              </button>
+            );
+          })}
+        </div>
 
-        {teacherClasses.length === 0 && (
-          <div className="text-center py-10 text-gray-400 text-sm">
-            No classes assigned. Ask admin to assign you as class teacher or subject teacher.
+        {/* Exams List cards */}
+        {filteredExams.length === 0 ? (
+          <div className="text-center py-20 bg-white border border-gray-100 rounded-3xl p-6">
+            <GraduationCap className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+            <p className="text-sm font-semibold text-gray-900">No exams in this filter</p>
+            <p className="text-xs text-gray-400 mt-1">Any exams created by administration will be listed here.</p>
           </div>
-        )}
+        ) : (
+          <div className="grid grid-cols-1 gap-4">
+            {filteredExams.map((exam) => {
+              const isClassLevel = exam.classId !== null || exam.type !== "TERM_EXAM";
+              
+              // dynamic icons based on type/status
+              let displayStatus = exam.examStatus;
+              let statusLabel = STATUS_LABELS[exam.examStatus];
+              let subtextHtml = null;
 
-        {/* ── Step 3: Select Subject ────────────────────────────────────────── */}
-        {activeClassId && classSubjects.length > 0 && (
-          <div>
-            <p className="text-xs font-bold text-gray-400 uppercase mb-2">Subject</p>
-            <div className="flex gap-2 flex-wrap">
-              {classSubjects.map((sub) => (
-                <button key={sub.id} onClick={() => setActiveSubjectId(sub.id)}
-                  className={cn(
-                    "px-3 py-1.5 rounded-xl text-sm font-semibold transition-all",
-                    activeSubjectId === sub.id ? "bg-teal-600 text-white" : "bg-white border border-gray-200 text-gray-600",
-                  )}>
-                  {sub.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+              if (exam.examStatus === "DRAFT" && exam.startDate && new Date(exam.startDate) > new Date()) {
+                displayStatus = "DRAFT";
+                statusLabel = "Upcoming";
+              }
 
-        {activeClassId && classSubjects.length === 0 && (
-          <div className="bg-amber-50 text-amber-700 text-sm px-4 py-3 rounded-2xl">
-            No subjects assigned for this class. Ask admin to assign subjects.
-          </div>
-        )}
+              // Card Status badges and countdown logic
+              let statusStyle = "bg-gray-100 text-gray-700 border-gray-200";
+              if (exam.examStatus === "PUBLISHED") {
+                statusStyle = "bg-blue-50 text-blue-700 border-blue-200";
+                subtextHtml = (
+                  <span>Results Published On <strong>{fmt(exam.publishedDate || exam.endDate)}</strong></span>
+                );
+              } else if (exam.examStatus === "MARK_ENTRY") {
+                const days = getDaysRemaining(exam.markEntryLastDate);
+                if (days !== null && days >= 0) {
+                  statusStyle = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                  subtextHtml = (
+                    <span>
+                      Mark Entry Closes In <strong className="text-emerald-600">{days} Days</strong> ({fmt(exam.markEntryLastDate)})
+                    </span>
+                  );
+                } else {
+                  statusStyle = "bg-purple-50 text-purple-700 border-purple-200";
+                  statusLabel = "Completed";
+                  subtextHtml = (
+                    <span>Mark Entry Closed On <strong>{fmt(exam.markEntryLastDate)}</strong></span>
+                  );
+                }
+              } else {
+                // Draft/Upcoming
+                const days = getDaysRemaining(exam.startDate);
+                if (days !== null && days > 0) {
+                  statusStyle = "bg-amber-50 text-amber-700 border-amber-200";
+                  statusLabel = "Upcoming";
+                  subtextHtml = (
+                    <span>
+                      Exam Starts In <strong className="text-amber-600">{days} Days</strong> ({fmt(exam.startDate)})
+                    </span>
+                  );
+                } else {
+                  statusStyle = "bg-gray-100 text-gray-700 border-gray-200";
+                  statusLabel = "Draft";
+                  subtextHtml = (
+                    <span>Created Draft on <strong>{fmt(exam.startDate)}</strong></span>
+                  );
+                }
+              }
 
-        {/* ── Step 4: Students & Scores ─────────────────────────────────────── */}
-        {activeExamId && activeClassId && activeSubjectId && (
-          <>
-            {/* Stats */}
-            {students.length > 0 && (
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { label: "Students", value: students.length },
-                  { label: "Filled",   value: filled },
-                  { label: "Average",  value: filled > 0 ? avg : "—" },
-                ].map((s) => (
-                  <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-3 text-center">
-                    <p className="text-lg font-bold text-gray-900">{s.value}</p>
-                    <p className="text-[10px] text-gray-400">{s.label}</p>
+              const IconComponent = exam.type === "TERM_EXAM" ? GraduationCap : exam.type === "CLASS_TEST" ? BookOpen : ClipboardCheck;
+              const iconCircleColor = exam.type === "TERM_EXAM"
+                ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                : exam.type === "CLASS_TEST"
+                  ? "bg-blue-50 text-blue-600 border border-blue-100"
+                  : "bg-indigo-50 text-indigo-600 border border-indigo-100";
+
+              return (
+                <div key={exam.id} className="bg-white rounded-3xl border border-gray-100 p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm hover:shadow-md/50 transition-shadow">
+                  <div className="flex items-start gap-4 min-w-0">
+                    <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-inner", iconCircleColor)}>
+                      <IconComponent className="w-5.5 h-5.5" />
+                    </div>
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-bold text-gray-900 text-base leading-tight truncate">{exam.name}</h3>
+                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0", statusStyle)}>
+                          {statusLabel}
+                        </span>
+                        <span className={cn("text-[10px] font-bold px-2.5 py-0.5 rounded-full", isClassLevel ? "bg-blue-50 text-blue-700 border border-blue-100" : "bg-emerald-50 text-emerald-700 border border-emerald-100")}>
+                          {isClassLevel ? "Class Level" : "Madrasa Level"}
+                        </span>
+                      </div>
+                      
+                      {/* Dates details */}
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 pt-0.5">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                          Exam Period: {fmt(exam.startDate)} – {fmt(exam.endDate)}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <PenLine className="w-3.5 h-3.5 text-gray-400" />
+                          Mark Entry: {exam.endDate ? fmt(new Date(new Date(exam.endDate).getTime() + 86400000).toISOString()) : "—"} – {fmt(exam.markEntryLastDate)}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Award className="w-3.5 h-3.5 text-gray-400" />
+                          Result Publish: {fmt(exam.publishedDate)}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                ))}
-              </div>
-            )}
 
-            {students.length === 0 ? (
-              <p className="text-center py-10 text-gray-400 text-sm">No students in this class</p>
-            ) : (
-              <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                <div className="px-4 py-2.5 bg-gray-50 flex justify-between text-xs font-bold text-gray-400 uppercase tracking-wide">
-                  <span>Student</span>
-                  <span>Score / 100</span>
+                  {/* Actions & subtexts */}
+                  <div className="flex flex-col sm:flex-row md:flex-col sm:items-center md:items-end justify-between md:justify-center gap-3 shrink-0 border-t md:border-none pt-3 md:pt-0 border-gray-50">
+                    {subtextHtml && (
+                      <p className="text-xs text-gray-500">{subtextHtml}</p>
+                    )}
+                    <div className="flex items-center gap-2 self-end sm:self-auto md:self-end">
+                      {exam.examStatus === "PUBLISHED" ? (
+                        <>
+                          <button
+                            onClick={() => goToClassReport(exam.id, exam.classId || teacherClasses[0]?.id || "")}
+                            className="px-4 py-2 border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold text-xs rounded-xl transition-colors inline-flex items-center gap-1.5"
+                          >
+                            <Eye className="w-3.5 h-3.5" /> View Results
+                          </button>
+                        </>
+                      ) : exam.examStatus === "MARK_ENTRY" && (!exam.markEntryLastDate || new Date(exam.markEntryLastDate) >= new Date()) ? (
+                        <>
+                          <button
+                            onClick={() => setSearchParams((prev) => {
+                              prev.set("view", "mark-entry");
+                              prev.set("examId", exam.id);
+                              // Auto-select first class teacher option
+                              const firstCls = teacherClasses[0]?.id || "";
+                              if (firstCls) prev.set("classId", firstCls);
+                              return prev;
+                            })}
+                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm shadow-emerald-100 transition-colors inline-flex items-center gap-1.5"
+                          >
+                            <PenLine className="w-3.5 h-3.5" /> Enter Marks
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          disabled
+                          className="px-4 py-2 bg-gray-50 border border-gray-200 text-gray-400 font-bold text-xs rounded-xl transition-colors inline-flex items-center gap-1.5 cursor-not-allowed"
+                        >
+                          <Lock className="w-3.5 h-3.5" /> View Details
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="divide-y divide-gray-50">
-                  {students.map((s, i) => {
-                    const score = scores[s.id] ?? "";
-                    const grade = score !== "" ? getGrade(Number(score)) : null;
-                    // Check if already saved (from existing results)
-                    const saved = existingResults.find(
-                      (r) => r.student?.id === s.id && r.subject?.id === activeSubjectId,
-                    );
-                    return (
-                      <motion.div key={s.id}
-                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}
-                        className="flex items-center gap-3 px-4 py-3">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 truncate">{s.name}</p>
-                          <p className="text-xs text-gray-400">{s.adno}</p>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {saved && score === String(saved.score) && (
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                          )}
-                          {grade && (
-                            <span className={cn("text-xs font-bold px-2 py-0.5 rounded-lg", grade.color)}>
-                              {grade.label}
-                            </span>
-                          )}
-                          <input
-                            type="number" min={0} max={100} value={score}
-                            disabled={isLocked}
-                            onChange={(e) => {
-                              setError(null);
-                              setScores((prev) => ({ ...prev, [s.id]: e.target.value }));
-                            }}
-                            placeholder="—"
-                            className={cn(
-                              "w-16 text-center px-2 py-1.5 border rounded-xl text-sm font-bold focus:outline-none focus:border-emerald-400 transition-colors",
-                              isLocked
-                                ? "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed"
-                                : "border-gray-200 focus:border-emerald-400",
-                            )}
-                          />
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </>
+              );
+            })}
+          </div>
         )}
       </div>
-
-      {/* ── Save button ───────────────────────────────────────────────────────── */}
-      {activeExamId && activeClassId && activeSubjectId && students.length > 0 && !isLocked && (
-        <div className="fixed bottom-20 lg:bottom-6 left-0 right-0 px-4 max-w-2xl mx-auto">
-          <button onClick={handleSave} disabled={saving}
-            className={cn(
-              "w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl font-bold text-sm transition-all shadow-lg",
-              saved  ? "bg-emerald-100 text-emerald-700"
-                     : "bg-emerald-600 text-white hover:bg-emerald-700",
-            )}>
-            {saving ? <Loader2 className="w-5 h-5 animate-spin" /> :
-             saved  ? <><CheckCircle2 className="w-5 h-5" /> Marks Saved</> :
-                      <><Save className="w-5 h-5" /> Save Marks</>}
-          </button>
-        </div>
-      )}
     </DashboardLayout>
   );
 }

@@ -2,13 +2,13 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { getExams, type ExamRecord } from "@/lib/exams-api";
-import { getResults, getSummaries, type ResultRecord, type ExamSummary, GRADE_COLORS, TOTAL_GRADE_LABELS } from "@/lib/results-api";
+import { getResults, getSummaries, type ResultRecord, type ExamSummary, GRADE_COLORS, TOTAL_GRADE_LABELS, calcGradeFromConfig } from "@/lib/results-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
-import { downloadAsJPG, downloadAsPDF, shareAsJPG, downloadTransparentJPG, shareTransparentJPG } from "@/lib/poster-utils";
+import { downloadAsJPG, downloadAsPDF, shareAsJPG } from "@/lib/poster-utils";
 import {
   Medal, Loader2, AlertCircle, RefreshCw, GraduationCap, Trophy,
-  Download, Share2, Upload, X, FileText, ChevronRight,
+  Download, Share2, Upload, X, FileText, ChevronRight, ArrowLeft, Printer, Calendar, Award, BookOpen, User, ClipboardList
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -40,13 +40,6 @@ const RANK_HEADER: Record<number, { grad: string; badge: string }> = {
 };
 const DEFAULT_GRAD = "from-emerald-800 via-emerald-700 to-teal-700";
 const RANK_MEDALS  = ["🥇", "🥈", "🥉"];
-const RANK_LABELS  = ["1st Place", "2nd Place", "3rd Place"];
-
-const RANK_POSTER_GRADIENTS: Record<number, { bg: string; badge: string; text: string }> = {
-  1: { bg: "from-yellow-400 via-amber-300 to-yellow-500", badge: "bg-yellow-600",  text: "text-yellow-900"  },
-  2: { bg: "from-slate-400 via-gray-300 to-slate-500",   badge: "bg-slate-600",   text: "text-slate-900"   },
-  3: { bg: "from-amber-600 via-orange-400 to-amber-700", badge: "bg-amber-800",   text: "text-amber-900"   },
-};
 
 const STATUS_STYLE: Record<string, string> = {
   PASSED:   "bg-emerald-100 text-emerald-800 border-emerald-300",
@@ -55,7 +48,7 @@ const STATUS_STYLE: Record<string, string> = {
   WITHHELD: "bg-amber-100 text-amber-800 border-amber-300",
 };
 
-type Tab = "results" | "card" | "rank";
+type Tab = "overview" | "marks" | "subjects" | "share-card" | "share-poster";
 
 // ── Result Card (shareable poster) ────────────────────────────────────────────
 
@@ -110,43 +103,43 @@ function ParentResultCard({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* Controls */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 cursor-pointer transition-colors">
-          <Upload className="w-4 h-4" />
+      <div className="flex items-center gap-2 flex-wrap bg-white p-3 border border-gray-100 rounded-2xl shadow-xs">
+        <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 cursor-pointer transition-colors">
+          <Upload className="w-3.5 h-3.5" />
           {photo ? "Change Photo" : "Upload Photo"}
           <input type="file" accept="image/*" className="sr-only" onChange={handlePhoto} />
         </label>
         {photo && (
           <button onClick={() => setPhoto(null)} className="p-1.5 rounded-lg border border-gray-200 hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors">
-            <X className="w-4 h-4" />
+            <X className="w-3.5 h-3.5" />
           </button>
         )}
         <button onClick={() => run("jpg")} disabled={!!exporting}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
-          {exporting === "jpg" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
+          {exporting === "jpg" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
           JPG
         </button>
         <button onClick={() => run("pdf")} disabled={!!exporting}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
-          {exporting === "pdf" ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
+          {exporting === "pdf" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
           PDF
         </button>
         <button onClick={() => run("share")} disabled={!!exporting}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 transition-colors">
-          {exporting === "share" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
-          Share
+          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 transition-colors ml-auto">
+          {exporting === "share" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Share2 className="w-3.5 h-3.5" />}
+          Share Result
         </button>
       </div>
 
       {/* Poster */}
       <div ref={posterRef}
-        className="bg-white rounded-2xl overflow-hidden shadow-xl border border-gray-100 w-full max-w-sm mx-auto"
+        className="bg-white rounded-3xl overflow-hidden shadow-xl border border-gray-100 w-full max-w-sm mx-auto"
         style={{ fontFamily: "Arial, sans-serif" }}
       >
         {/* Header */}
-        <div className={cn("bg-gradient-to-br text-white text-center px-6 py-5 relative overflow-hidden", headerGrad)}>
+        <div className={cn("bg-gradient-to-br text-white text-center px-6 py-6 relative overflow-hidden", headerGrad)}>
           <div className="absolute inset-0 opacity-[0.08] pointer-events-none">
             <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-white" />
             <div className="absolute -bottom-8 -left-8 w-28 h-28 rounded-full bg-white" />
@@ -198,97 +191,55 @@ function ParentResultCard({
         <table className="w-full text-xs" style={{ borderCollapse: "collapse" }}>
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="text-left px-4 py-2 text-gray-500 font-semibold">Subject</th>
-              <th className="text-center px-2 py-2 text-gray-500 font-semibold whitespace-nowrap">Marks</th>
-              <th className="text-center px-2 py-2 text-gray-500 font-semibold">%</th>
-              <th className="text-center px-2 py-2 text-gray-500 font-semibold">Grade</th>
-              <th className="text-center px-1 py-2 text-gray-500 font-semibold">✓</th>
+              <th className="px-4 py-2.5 text-left font-bold text-gray-400 uppercase">Subject</th>
+              <th className="px-3 py-2.5 text-right font-bold text-gray-400 uppercase w-14">Max</th>
+              <th className="px-3 py-2.5 text-right font-bold text-gray-400 uppercase w-14">Marks</th>
+              <th className="px-4 py-2.5 text-center font-bold text-gray-400 uppercase w-14">Grade</th>
             </tr>
           </thead>
-          <tbody>
-            {results.map((r, i) => {
-              const grade     = r.grade ?? calcFallbackGrade(r.score, r.totalMarks);
-              const isPassed  = r.isPassed ?? gradeIsPassed(grade);
-              const pct       = r.percentage ?? (r.totalMarks > 0 ? (r.score / r.totalMarks) * 100 : 0);
-              const gradeClass = GRADE_COLORS[grade] ?? "text-gray-600 bg-gray-50 border-gray-200";
+          <tbody className="divide-y divide-gray-100">
+            {results.map((r) => {
+              const grade = r.grade ?? calcFallbackGrade(r.score, r.totalMarks);
+              const isPassed = r.isPassed ?? gradeIsPassed(grade);
               return (
-                <tr key={r.id} className={cn(
-                  "border-b border-gray-100",
-                  i % 2 === 0 ? "bg-white" : "bg-gray-50/40",
-                  !isPassed && "bg-red-50/30",
-                )}>
-                  <td className="px-4 py-2 text-gray-800 font-medium">{r.subject?.name ?? "—"}</td>
-                  <td className="px-2 py-2 text-center text-gray-700 font-mono whitespace-nowrap">
-                    {r.score}/{r.totalMarks}
-                  </td>
-                  <td className="px-2 py-2 text-center text-gray-600">{pct.toFixed(1)}%</td>
-                  <td className="px-2 py-2 text-center">
-                    <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-bold border", gradeClass)}>{grade}</span>
-                  </td>
-                  <td className="px-1 py-2 text-center">
-                    {isPassed
-                      ? <span className="text-emerald-600 font-bold">✓</span>
-                      : <span className="text-red-500 font-bold">✗</span>
-                    }
+                <tr key={r.id} className="hover:bg-gray-50/50">
+                  <td className="px-4 py-2.5 font-medium text-gray-800">{r.subject?.name ?? "Subject"}</td>
+                  <td className="px-3 py-2.5 text-right text-gray-400 font-semibold">{r.totalMarks}</td>
+                  <td className="px-3 py-2.5 text-right font-bold text-gray-900">{r.score}</td>
+                  <td className="px-4 py-2.5 text-center">
+                    <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-extrabold border", GRADE_COLORS[grade] ?? "bg-gray-50 text-gray-600 border-gray-200")}>
+                      {grade}
+                    </span>
                   </td>
                 </tr>
               );
             })}
           </tbody>
           <tfoot>
-            <tr className="bg-blue-50 border-t-2 border-blue-200">
-              <td className="px-4 py-2.5 font-bold text-blue-900 text-xs">Total</td>
-              <td className="px-2 py-2.5 text-center font-bold text-blue-900 font-mono text-xs whitespace-nowrap">
-                {totalScore.toFixed(0)}/{totalMax.toFixed(0)}
-              </td>
-              <td className="px-2 py-2.5 text-center font-bold text-blue-900 text-xs">
-                {totalPct.toFixed(1)}%
-              </td>
-              <td colSpan={2} className="px-2 py-2.5 text-center text-blue-700 text-[10px] font-semibold">
-                {totalGrade ? (TOTAL_GRADE_LABELS[totalGrade] ?? totalGrade) : ""}
-              </td>
+            <tr className="bg-emerald-50/50 border-t-2 border-emerald-100 font-bold text-gray-900">
+              <td className="px-4 py-3">TOTAL</td>
+              <td className="px-3 py-3 text-right text-gray-500">{totalMax}</td>
+              <td className="px-3 py-3 text-right text-emerald-700 font-black">{totalScore.toFixed(0)}</td>
+              <td className="px-4 py-3 text-center text-emerald-700 font-black">{totalPct.toFixed(1)}%</td>
             </tr>
           </tfoot>
         </table>
 
-        {/* Percentage bar + status badges */}
-        <div className="px-5 py-3 border-t border-gray-100 space-y-2.5">
-          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className={cn("h-full rounded-full transition-all",
-                totalPct >= 80 ? "bg-emerald-500" :
-                totalPct >= 60 ? "bg-blue-500"    :
-                totalPct >= 40 ? "bg-amber-500"   : "bg-red-500",
-              )}
-              style={{ width: `${Math.min(totalPct, 100)}%` }}
-            />
+        {/* Status banner */}
+        {finalStatus && (
+          <div className="bg-gray-50 px-5 py-4 border-t border-gray-100 flex items-center justify-between text-xs">
+            <span className="text-gray-400 font-medium">Result Status</span>
+            <span className={cn("px-3 py-1 rounded-full font-bold border uppercase", STATUS_STYLE[finalStatus])}>
+              {finalStatus}
+            </span>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {finalStatus && (
-              <span className={cn("px-3 py-1 rounded-full text-xs font-bold border", STATUS_STYLE[finalStatus])}>
-                {finalStatus}
-              </span>
-            )}
-            {totalGrade && (
-              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-800 border border-indigo-200">
-                {TOTAL_GRADE_LABELS[totalGrade] ?? totalGrade}
-              </span>
-            )}
-            <span className="text-xs font-bold text-gray-500 ml-auto">{totalPct.toFixed(2)}%</span>
-          </div>
-        </div>
-
-        {/* Footer watermark */}
-        <div className="px-5 py-2 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-          <span className="text-[9px] text-gray-400 uppercase tracking-widest font-medium">Al Madrasa Platform</span>
-          <span className="text-[9px] text-gray-400">{new Date().getFullYear()}</span>
-        </div>
+        )}
       </div>
     </div>
   );
 }
 
-// ── Rank Poster (for top 1/2/3) ───────────────────────────────────────────────
+// ── Parent Rank Card (shareable poster) ───────────────────────────────────────
 
 function ParentRankCard({
   studentName, studentAdo, studentGender, studentClass,
@@ -303,9 +254,13 @@ function ParentRankCard({
 }) {
   const posterRef = useRef<HTMLDivElement>(null);
   const [photo, setPhoto]         = useState<string | null>(null);
-  const [exporting, setExporting] = useState<"jpg" | "share" | null>(null);
-  const rank = summary.rank!;
-  const g    = RANK_POSTER_GRADIENTS[rank] ?? RANK_POSTER_GRADIENTS[3];
+  const [exporting, setExporting] = useState<"jpg" | "pdf" | "share" | null>(null);
+
+  const rank = summary.rank ?? 1;
+  const medal = RANK_MEDALS[rank - 1] ?? "🏆";
+  const bgGrad = rank === 1 ? "from-yellow-400 via-amber-300 to-yellow-500" : rank === 2 ? "from-slate-300 via-slate-200 to-slate-400" : "from-amber-600 via-orange-400 to-amber-700";
+  const badgeBg = rank === 1 ? "bg-yellow-800 text-yellow-100" : rank === 2 ? "bg-slate-700 text-slate-100" : "bg-amber-900 text-amber-100";
+  const textTitle = rank === 1 ? "text-yellow-950" : rank === 2 ? "text-slate-950" : "text-amber-950";
 
   const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -315,106 +270,110 @@ function ParentRankCard({
     reader.readAsDataURL(file);
   };
 
-  const stem = `rank-${rank}-${studentName}`.replace(/\s+/g, "-");
+  const stem = `rank-${studentName}`.replace(/\s+/g, "-");
 
-  const run = async (type: "jpg" | "share") => {
+  const run = async (type: "jpg" | "pdf" | "share") => {
     if (!posterRef.current) return;
     setExporting(type);
     try {
-      if (type === "jpg") {
-        await downloadTransparentJPG(posterRef.current, stem);
-      } else {
-        await shareTransparentJPG(
-          posterRef.current, `${stem}.jpg`,
-          `Congratulations ${studentName}!`,
-          `${studentName} secured ${RANK_LABELS[rank - 1]} in ${exam.name} · ${madrasaName}`,
-        );
-      }
+      if (type === "jpg")   await downloadAsJPG(posterRef.current, stem);
+      if (type === "pdf")   await downloadAsPDF(posterRef.current, stem);
+      if (type === "share") await shareAsJPG(
+        posterRef.current, `${stem}.jpg`,
+        `Rank Poster · ${studentName}`,
+        `${studentName} achieved Rank #${rank} in ${exam.name}!`,
+      );
     } catch (err) {
       console.error("Rank card export failed", err);
     } finally { setExporting(null); }
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2 flex-wrap">
-        <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 cursor-pointer transition-colors">
-          <Upload className="w-4 h-4" />
+    <div className="space-y-4">
+      {/* Controls */}
+      <div className="flex items-center gap-2 flex-wrap bg-white p-3 border border-gray-100 rounded-2xl shadow-xs">
+        <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 cursor-pointer transition-colors">
+          <Upload className="w-3.5 h-3.5" />
           {photo ? "Change Photo" : "Upload Photo"}
           <input type="file" accept="image/*" className="sr-only" onChange={handlePhoto} />
         </label>
         {photo && (
-          <button onClick={() => setPhoto(null)} className="p-1.5 rounded-lg border border-gray-200 hover:bg-red-50 text-gray-400 hover:text-red-500">
-            <X className="w-4 h-4" />
+          <button onClick={() => setPhoto(null)} className="p-1.5 rounded-lg border border-gray-200 hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors">
+            <X className="w-3.5 h-3.5" />
           </button>
         )}
         <button onClick={() => run("jpg")} disabled={!!exporting}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
-          {exporting === "jpg" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-          Download JPG
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
+          {exporting === "jpg" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+          JPG
+        </button>
+        <button onClick={() => run("pdf")} disabled={!!exporting}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
+          {exporting === "pdf" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
+          PDF
         </button>
         <button onClick={() => run("share")} disabled={!!exporting}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 transition-colors">
-          {exporting === "share" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
-          Share
+          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 transition-colors ml-auto">
+          {exporting === "share" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Share2 className="w-3.5 h-3.5" />}
+          Share Poster
         </button>
       </div>
 
+      {/* Poster design */}
       <div ref={posterRef}
-        className={cn("relative w-full max-w-sm mx-auto rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-b", g.bg)}
+        className={cn("bg-gradient-to-br p-6 rounded-3xl text-center shadow-2xl w-full max-w-sm mx-auto relative overflow-hidden", bgGrad)}
         style={{ fontFamily: "Arial, sans-serif" }}
       >
-        <div className="absolute -top-12 -right-12 w-40 h-40 rounded-full bg-white/10" />
-        <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-white/10" />
-        <div className="relative z-10 flex flex-col items-center px-8 py-8 gap-4">
-          <div className="flex flex-col items-center gap-1">
+        <div className="absolute inset-0 opacity-[0.05] pointer-events-none">
+          <div className="absolute top-10 left-10 w-40 h-40 rounded-full bg-white" />
+          <div className="absolute -bottom-20 -right-20 w-64 h-64 rounded-full bg-white" />
+        </div>
+
+        <div className="relative z-10 space-y-4">
+          <div>
             {madrasaLogo && (
-              <img src={madrasaLogo} alt="logo" className="h-10 w-auto object-contain" crossOrigin="anonymous" />
+              <img src={madrasaLogo} alt="" className="h-10 w-auto mx-auto mb-1.5 object-contain" crossOrigin="anonymous" />
             )}
-            <p className={cn("text-xs font-semibold uppercase tracking-widest opacity-80", g.text)}>{madrasaName}</p>
+            <p className={cn("text-[10px] font-black tracking-widest uppercase opacity-75", textTitle)}>{madrasaName}</p>
+            <p className={cn("text-xs font-bold mt-0.5 opacity-90", textTitle)}>{exam.name}</p>
           </div>
-          <div className="flex flex-col items-center">
-            <span className="text-6xl leading-none">{RANK_MEDALS[rank - 1]}</span>
-            <span className={cn("mt-2 px-4 py-1 rounded-full text-sm font-bold tracking-wider uppercase text-white shadow", g.badge)}>
-              {RANK_LABELS[rank - 1]}
+
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-white/30 backdrop-blur-md shadow-inner">
+            <span className="text-5xl leading-none">{medal}</span>
+          </div>
+
+          <div className="space-y-1">
+            <span className={cn("inline-block text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider", badgeBg)}>
+              Rank #{rank}
             </span>
+            <h3 className={cn("text-xl font-black tracking-tight pt-1", textTitle)}>CONGRATULATIONS</h3>
           </div>
-          <div className="w-28 h-28 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white/30 flex items-center justify-center">
-            {photo
-              ? <img src={photo} alt={studentName} className="w-full h-full object-cover" />
-              : <span className="text-5xl">{studentGender === "FEMALE" ? "👩" : "👨"}</span>
-            }
-          </div>
-          <div className="text-center">
-            <p className={cn("text-xl font-extrabold leading-tight", g.text)}>{studentName}</p>
-            <p className={cn("text-sm opacity-75 mt-0.5", g.text)}>{studentClass} · Reg: {studentAdo}</p>
-          </div>
-          <div className="w-full bg-white/30 rounded-xl px-4 py-3 text-center backdrop-blur-sm">
-            <p className={cn("text-xs font-semibold uppercase tracking-wide mb-2 opacity-70", g.text)}>{exam.name}</p>
-            <div className="flex justify-around">
-              {[
-                { label: "Score",  value: summary.totalPercentage != null ? `${summary.totalPercentage.toFixed(1)}%` : "—" },
-                { label: "Rank",   value: `#${rank}` },
-                { label: "Total",  value: summary.totalScore != null ? `${summary.totalScore.toFixed(0)}/${summary.totalMaxMarks?.toFixed(0)}` : "—" },
-              ].map(({ label, value }) => (
-                <div key={label}>
-                  <p className={cn("text-lg font-extrabold", g.text)}>{value}</p>
-                  <p className={cn("text-xs opacity-60", g.text)}>{label}</p>
-                </div>
-              ))}
+
+          {/* Student photo & info */}
+          <div className="bg-white/80 backdrop-blur-md rounded-2xl p-4 flex items-center gap-4 border border-white/40 max-w-xs mx-auto text-left shadow-md">
+            <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-100 border-2 border-white flex items-center justify-center shrink-0">
+              {photo
+                ? <img src={photo} alt={studentName} className="w-full h-full object-cover" />
+                : <span className="text-2xl">{studentGender === "FEMALE" ? "👩" : "👨"}</span>
+              }
+            </div>
+            <div className="min-w-0">
+              <p className="font-black text-gray-900 text-sm leading-tight truncate">{studentName}</p>
+              <p className="text-[10px] text-gray-500 font-semibold mt-0.5">Adm No: <span className="font-mono text-gray-700">{studentAdo}</span></p>
+              <p className="text-[10px] text-gray-500 font-semibold">Class: <span className="text-gray-700">{studentClass}</span></p>
             </div>
           </div>
-          <p className={cn("text-center text-sm font-semibold italic opacity-80", g.text)}>
-            🎉 Congratulations on this achievement!
-          </p>
-          <p className="text-xs text-white/60 font-medium mt-1">Powered by Al Madrasa Platform</p>
+
+          <div className={cn("text-[9px] font-bold opacity-60", textTitle)}>
+            Percentage: {summary.totalPercentage?.toFixed(2)}% · Total Score: {summary.totalScore}/{summary.totalMaxMarks}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+// ── Main Page Component ───────────────────────────────────────────────────────
 
 export default function ParentResultsPage() {
   const { user, accessToken, activeStudentId } = useAuthStore();
@@ -436,9 +395,9 @@ export default function ParentResultsPage() {
   const [loading,        setLoading]        = useState(true);
   const [loadingResults, setLoadingResults] = useState(false);
   const [error,          setError]          = useState<string | null>(null);
-  const [tab,            setTab]            = useState<Tab>("results");
+  const [tab,            setTab]            = useState<Tab>("marks");
 
-  // ── Student info from accessibleStudents (no extra API call needed) ──────────
+  // Load child details
   const students = user?.accessibleStudents ?? [];
   const activeStudent = students.find((s) => s.id === effectiveId);
 
@@ -452,11 +411,11 @@ export default function ParentResultsPage() {
       const published = (examData.data ?? []).filter((e) => e.examStatus === "PUBLISHED");
       setExams(published);
       if (published[0] && !activeExamId) setActiveExamId(published[0].id);
-    } catch (e) {
-      setError((e as Error).message);
+    } catch (e: any) {
+      setError(e.message ?? "Failed to load exams");
     }
     setLoading(false);
-  }, [cid, token, effectiveId, ayId]);
+  }, [cid, token, effectiveId, ayId, activeExamId]);
 
   useEffect(() => { loadExams(); }, [loadExams]);
 
@@ -477,307 +436,348 @@ export default function ParentResultsPage() {
     }).finally(() => setLoadingResults(false));
   }, [cid, token, effectiveId, activeExamId]);
 
-  // ── Derived ───────────────────────────────────────────────────────────────────
+  const activeExam   = exams.find((e) => e.id === activeExamId);
   const rank         = summary?.rank ?? null;
   const canRankCard  = rank !== null && rank <= 3;
-  const activeExam   = exams.find((e) => e.id === activeExamId);
   const totalObtained = summary?.totalScore ?? results.reduce((s, r) => s + r.score, 0);
   const totalMax      = summary?.totalMaxMarks ?? results.reduce((s, r) => s + r.totalMarks, 0);
   const overallPct    = summary?.totalPercentage ?? (totalMax > 0 ? (totalObtained / totalMax) * 100 : 0);
 
   // ── Tab definitions ───────────────────────────────────────────────────────────
   const tabs: { key: Tab; label: string }[] = [
-    { key: "results", label: "Results" },
-    { key: "card",    label: "Result Card" },
-    ...(canRankCard ? [{ key: "rank" as Tab, label: `Rank Poster ${RANK_MEDALS[rank! - 1]}` }] : []),
+    { key: "marks",    label: "Marks" },
+    { key: "overview", label: "Overview" },
+    { key: "subjects", label: "Subjects" },
+    { key: "share-card", label: "Result Card" },
+    ...(canRankCard ? [{ key: "share-poster" as Tab, label: `Rank Poster` }] : []),
   ];
 
   return (
     <DashboardLayout>
-      <PageHeader
-        title="Results"
-        icon={Medal}
-        back backHref="/parent"
-        action={
-          <button onClick={loadExams} className="p-2 rounded-xl bg-gray-100 text-gray-600 active:scale-95 transition-transform">
-            <RefreshCw className="w-4 h-4" />
+      <div className="px-4 py-3 lg:px-8 lg:py-6 space-y-6">
+
+        {/* Breadcrumb Header */}
+        <div className="flex items-center gap-3 print:hidden">
+          <button
+            onClick={() => window.history.back()}
+            className="p-2 border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors text-gray-600"
+          >
+            <ArrowLeft className="w-4 h-4" />
           </button>
-        }
-      />
-
-      {loading ? (
-        <div className="flex items-center justify-center py-20 text-gray-400">
-          <Loader2 className="w-5 h-5 animate-spin" />
+          <div>
+            <div className="flex items-center gap-2 text-xs text-gray-400 font-bold uppercase tracking-wider">
+              <span>Exams</span>
+              <span>/</span>
+              <span>{activeExam?.name ?? "Details"}</span>
+            </div>
+            <h1 className="text-xl font-black text-gray-900 tracking-tight mt-0.5">Exam Results</h1>
+          </div>
         </div>
-      ) : !effectiveId ? (
-        <div className="text-center py-20 text-gray-400 text-sm">No children linked to this account</div>
-      ) : error ? (
-        <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0" /> {error}
-        </div>
-      ) : (
-        <div className="space-y-4 pb-24">
 
-          {/* ── Multi-child selector ── */}
-          {ids.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {students.map((s) => (
-                <button key={s.id}
-                  onClick={() => { setSelectedChildId(s.id); setActiveExamId(""); setResults([]); setSummary(null); }}
-                  className={cn(
-                    "px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap border-2 transition-colors",
-                    selectedChildId === s.id
-                      ? "border-emerald-600 bg-emerald-50 text-emerald-700"
-                      : "border-gray-200 bg-white text-gray-600",
-                  )}>
-                  {s.name}
-                </button>
-              ))}
-            </div>
-          )}
+        {loading ? (
+          <div className="flex items-center justify-center py-20 text-gray-400">
+            <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+          </div>
+        ) : !effectiveId ? (
+          <div className="text-center py-16 bg-white border border-gray-100 rounded-3xl p-6">
+            <GraduationCap className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+            <p className="text-sm font-semibold text-gray-900">No children linked to this account</p>
+          </div>
+        ) : error ? (
+          <div className="bg-rose-50 border border-rose-100 text-rose-600 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" /> {error}
+          </div>
+        ) : (
+          <div className="space-y-6">
 
-          {/* ── Student info strip ── */}
-          {activeStudent && (
-            <div className="bg-white border border-gray-100 rounded-xl px-4 py-3">
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                <div className="flex gap-1.5">
-                  <span className="text-gray-400 shrink-0">Name</span>
-                  <span className="font-semibold text-gray-900 truncate">{activeStudent.name}</span>
-                </div>
-                <div className="flex gap-1.5">
-                  <span className="text-gray-400 shrink-0">Class</span>
-                  <span className="font-semibold text-gray-900">{activeStudent.className ?? "—"}</span>
-                </div>
-                <div className="flex gap-1.5">
-                  <span className="text-gray-400 shrink-0">Adm No</span>
-                  <span className="font-semibold text-gray-900 font-mono">{activeStudent.adno}</span>
-                </div>
-                {activeExam && (
-                  <div className="flex gap-1.5">
-                    <span className="text-gray-400 shrink-0">Exam</span>
-                    <span className="font-semibold text-gray-900 truncate">{activeExam.name}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ── Exam selector ── */}
-          {exams.length === 0 ? (
-            <div className="text-center py-16 text-gray-400 text-sm">
-              <GraduationCap className="w-10 h-10 mx-auto mb-3 text-gray-200" />
-              No published results yet
-            </div>
-          ) : (
-            <>
-              <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-                {exams.map((ex) => (
-                  <button key={ex.id} onClick={() => setActiveExamId(ex.id)}
+            {/* Child switcher */}
+            {ids.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto pb-1 print:hidden">
+                {students.map((s) => (
+                  <button key={s.id}
+                    onClick={() => { setSelectedChildId(s.id); setActiveExamId(""); setResults([]); setSummary(null); }}
                     className={cn(
-                      "px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-colors border",
-                      activeExamId === ex.id
-                        ? "bg-emerald-600 border-emerald-600 text-white"
-                        : "bg-white border-gray-200 text-gray-600",
+                      "px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors border",
+                      selectedChildId === s.id
+                        ? "border-emerald-600 bg-emerald-50 text-emerald-700"
+                        : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50",
                     )}>
-                    {ex.name}
-                    {ex.type === "CLASS_TEST" && (
-                      <span className={cn(
-                        "ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full",
-                        activeExamId === ex.id ? "bg-emerald-700 text-emerald-100" : "bg-gray-100 text-gray-500",
-                      )}>CT</span>
-                    )}
+                    {s.name}
                   </button>
                 ))}
               </div>
+            )}
 
-              {loadingResults ? (
-                <div className="flex items-center justify-center py-12 text-gray-400">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                </div>
-              ) : results.length === 0 ? (
-                <div className="text-center py-12 text-gray-400 text-sm">No results for this exam</div>
-              ) : (
-                <>
-                  {/* ── Summary cards ── */}
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="bg-white border border-gray-100 rounded-xl px-3 py-3 text-center">
-                      <p className={cn(
-                        "text-xl font-black",
-                        overallPct >= 80 ? "text-emerald-700" : overallPct >= 50 ? "text-amber-600" : "text-red-600",
-                      )}>
-                        {overallPct.toFixed(1)}%
-                      </p>
-                      <p className="text-[11px] text-gray-400 mt-0.5">Percentage</p>
+            {/* Top Summary Card (Screenshot 4) */}
+            {activeExam && activeStudent && (
+              <div className="bg-white border border-gray-100 rounded-3xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0 text-emerald-600 shadow-inner">
+                    <GraduationCap className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-lg font-black text-gray-900 leading-tight">{activeExam.name}</h2>
+                      <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-full">
+                        {activeExam.classId ? "Class Level" : "Madrasa Level"}
+                      </span>
                     </div>
-                    {rank !== null ? (
-                      <div className="bg-white border border-gray-100 rounded-xl px-3 py-3 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          {rank <= 3 && <span className="text-lg">{RANK_MEDALS[rank - 1]}</span>}
-                          <p className="text-xl font-black text-gray-900">#{rank}</p>
-                        </div>
-                        <p className="text-[11px] text-gray-400 mt-0.5">Class Rank</p>
-                      </div>
-                    ) : (
-                      <div className="bg-white border border-gray-100 rounded-xl px-3 py-3 text-center">
-                        <p className="text-xl font-black text-gray-900">{results.length}</p>
-                        <p className="text-[11px] text-gray-400 mt-0.5">Subjects</p>
-                      </div>
-                    )}
-                    {summary?.finalStatus ? (
-                      <div className={cn("rounded-xl px-3 py-3 text-center border", STATUS_STYLE[summary.finalStatus])}>
-                        <p className="text-sm font-black leading-tight">{summary.finalStatus}</p>
-                        <p className="text-[11px] opacity-70 mt-0.5">Status</p>
-                      </div>
-                    ) : (
-                      <div className="bg-white border border-gray-100 rounded-xl px-3 py-3 text-center">
-                        <p className="text-xl font-black text-gray-900">
-                          {totalObtained.toFixed(0)}<span className="text-xs text-gray-400">/{totalMax}</span>
-                        </p>
-                        <p className="text-[11px] text-gray-400 mt-0.5">Total Score</p>
-                      </div>
-                    )}
+                    <p className="text-xs text-gray-500 font-medium">
+                      For: <strong className="text-gray-800 font-bold">{activeStudent.name}</strong> ({activeStudent.className ?? "Class"})
+                    </p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-gray-400 pt-0.5">
+                      <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> Exam: {fmt(activeExam.startDate)} - {fmt(activeExam.endDate)}</span>
+                      <span className="flex items-center gap-1"><ClipboardList className="w-3.5 h-3.5" /> Mark Entry: {fmt(activeExam.markEntryLastDate)}</span>
+                      <span className="flex items-center gap-1"><Award className="w-3.5 h-3.5" /> Publish: {fmt(activeExam.publishedDate)}</span>
+                    </div>
                   </div>
+                </div>
 
-                  {/* ── Tabs ── */}
-                  <div className="flex gap-0 border-b border-gray-200 overflow-x-auto">
-                    {tabs.map(({ key, label }) => (
-                      <button key={key} onClick={() => setTab(key)}
-                        className={cn(
-                          "px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap",
-                          tab === key
-                            ? "text-emerald-700 border-emerald-600"
-                            : "text-gray-500 border-transparent hover:text-gray-700",
-                        )}>
-                        {label}
-                      </button>
-                    ))}
-                  </div>
+                <div className="flex items-center gap-2 self-end md:self-auto shrink-0 print:hidden">
+                  <select
+                    value={activeExamId}
+                    onChange={(e) => setActiveExamId(e.target.value)}
+                    className="px-3 py-1.5 border border-gray-200 rounded-xl text-xs bg-white focus:outline-none"
+                  >
+                    {exams.map((ex) => <option key={ex.id} value={ex.id}>{ex.name}</option>)}
+                  </select>
+                  <button onClick={loadExams} className="p-2 border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors bg-white">
+                    <RefreshCw className="w-4 h-4 text-gray-500" />
+                  </button>
+                </div>
+              </div>
+            )}
 
-                  <AnimatePresence mode="wait">
-                    <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            {/* Content Tabs */}
+            {exams.length === 0 ? (
+              <div className="text-center py-20 bg-white border border-gray-100 rounded-3xl p-6">
+                <Medal className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+                <p className="text-sm font-semibold text-gray-900">No published results yet</p>
+                <p className="text-xs text-gray-400 mt-1">Once examination results are published, they will appear here.</p>
+              </div>
+            ) : loadingResults ? (
+              <div className="flex items-center justify-center py-12 text-gray-400">
+                <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
+              </div>
+            ) : results.length === 0 ? (
+              <div className="text-center py-12 text-gray-400 text-xs">No marks records available for this exam.</div>
+            ) : (
+              <div className="space-y-6">
 
-                      {/* ── Results table ── */}
-                      {tab === "results" && (
-                        <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
-                          <div className="grid grid-cols-[1fr_auto_auto_auto_auto] bg-emerald-600 text-white text-xs font-bold uppercase tracking-wide">
-                            <div className="px-4 py-2.5">Subject</div>
-                            <div className="px-2 py-2.5 text-right w-12">Max</div>
-                            <div className="px-2 py-2.5 text-right w-14">Marks</div>
-                            <div className="px-2 py-2.5 text-center w-12">%</div>
-                            <div className="px-2 py-2.5 text-center w-14">Grade</div>
-                          </div>
-                          <div className="divide-y divide-gray-50">
-                            {results.map((r) => {
-                              const grade    = r.grade ?? calcFallbackGrade(r.score, r.totalMarks);
-                              const isPassed = r.isPassed ?? gradeIsPassed(grade);
-                              const pct      = r.percentage ?? (r.totalMarks > 0 ? (r.score / r.totalMarks) * 100 : 0);
-                              const gClass   = GRADE_COLORS[grade] ?? "text-gray-600 bg-gray-50 border-gray-200";
-                              return (
-                                <div key={r.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center">
-                                  <div className="px-4 py-3">
-                                    <p className="text-sm font-medium text-gray-900 leading-tight">{r.subject?.name ?? "Subject"}</p>
-                                    <p className={cn("text-[10px] font-semibold mt-0.5", isPassed ? "text-emerald-600" : "text-red-500")}>
-                                      {isPassed ? "PASS" : "FAIL"}
-                                    </p>
-                                  </div>
-                                  <div className="px-2 py-3 w-12 text-right text-sm text-gray-400">{r.totalMarks}</div>
-                                  <div className="px-2 py-3 w-14 text-right">
-                                    <span className={cn("text-sm font-bold", isPassed ? "text-gray-900" : "text-red-600")}>{r.score}</span>
-                                  </div>
-                                  <div className="px-2 py-3 w-12 text-center text-xs text-gray-500">{pct.toFixed(0)}%</div>
-                                  <div className="px-2 py-3 w-14 flex justify-center">
-                                    <span className={cn("text-xs font-bold px-2 py-0.5 rounded border", gClass)}>{grade}</span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                          {/* Total row */}
-                          <div className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center border-t-2 border-emerald-100 bg-emerald-50/60">
-                            <div className="px-4 py-3">
-                              <p className="text-sm font-bold text-gray-900">TOTAL</p>
-                              {summary?.totalGrade && (
-                                <p className="text-[10px] text-indigo-600 font-semibold mt-0.5">
-                                  {TOTAL_GRADE_LABELS[summary.totalGrade] ?? summary.totalGrade}
-                                </p>
-                              )}
-                            </div>
-                            <div className="px-2 py-3 w-12 text-right text-sm font-bold text-gray-700">{totalMax}</div>
-                            <div className="px-2 py-3 w-14 text-right text-sm font-bold text-emerald-700">{totalObtained.toFixed(0)}</div>
-                            <div className="px-2 py-3 w-12 text-center text-xs font-bold text-blue-700">{overallPct.toFixed(0)}%</div>
-                            <div className="px-2 py-3 w-14 text-center text-xs text-gray-400">—</div>
-                          </div>
-                          {/* Status footer */}
-                          {summary?.finalStatus && (
-                            <div className="px-4 py-3 border-t border-gray-100 flex items-center gap-2">
-                              <span className="text-xs text-gray-500">Final Result:</span>
-                              <span className={cn("px-3 py-1 rounded-full text-xs font-bold border", STATUS_STYLE[summary.finalStatus])}>
-                                {summary.finalStatus}
-                              </span>
-                              {rank && (
-                                <span className="ml-auto flex items-center gap-1 text-sm font-bold text-gray-700">
-                                  <Trophy className="w-4 h-4 text-amber-500" /> #{rank}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* ── Result Card tab ── */}
-                      {tab === "card" && activeExam && activeStudent && (
-                        <ParentResultCard
-                          studentName={activeStudent.name}
-                          studentAdo={activeStudent.adno}
-                          studentGender={activeStudent.gender ?? null}
-                          studentClass={activeStudent.className ?? "—"}
-                          results={results}
-                          summary={summary}
-                          exam={activeExam}
-                          madrasaName={madrasaName}
-                          madrasaLogo={madrasaLogo}
-                        />
-                      )}
-
-                      {/* ── Rank poster tab ── */}
-                      {tab === "rank" && canRankCard && summary && activeExam && activeStudent && (
-                        <div className="space-y-3">
-                          <p className="text-sm text-gray-500 text-center">
-                            🎉 Congratulations! Share this achievement poster.
-                          </p>
-                          <ParentRankCard
-                            studentName={activeStudent.name}
-                            studentAdo={activeStudent.adno}
-                            studentGender={activeStudent.gender ?? null}
-                            studentClass={activeStudent.className ?? "—"}
-                            summary={summary}
-                            exam={activeExam}
-                            madrasaName={madrasaName}
-                            madrasaLogo={madrasaLogo}
-                          />
-                        </div>
-                      )}
-
-                    </motion.div>
-                  </AnimatePresence>
-
-                  {/* Nudge for card tab */}
-                  {tab === "results" && (
+                {/* Tab selectors bar */}
+                <div className="border-b border-gray-100 flex gap-1 overflow-x-auto no-scrollbar py-0.5 print:hidden">
+                  {tabs.map(({ key, label }) => (
                     <button
-                      onClick={() => setTab("card")}
-                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-emerald-300 text-emerald-600 text-sm font-medium hover:bg-emerald-50 transition-colors"
+                      key={key}
+                      onClick={() => setTab(key)}
+                      className={cn(
+                        "px-4 py-2 text-xs lg:text-sm font-semibold rounded-t-xl transition-colors shrink-0 border-b-2 -mb-px",
+                        tab === key
+                          ? "border-emerald-600 text-emerald-600 font-bold"
+                          : "border-transparent text-gray-500 hover:text-gray-900"
+                      )}
                     >
-                      <Share2 className="w-4 h-4" />
-                      View & Share Result Card
-                      <ChevronRight className="w-4 h-4" />
+                      {label}
                     </button>
-                  )}
-                </>
-              )}
-            </>
-          )}
-        </div>
-      )}
+                  ))}
+                </div>
+
+                {/* Tab Contents */}
+                <AnimatePresence mode="wait">
+                  <motion.div key={tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
+
+                    {/* OVERVIEW TAB */}
+                    {tab === "overview" && activeExam && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-white border border-gray-100 rounded-3xl p-5 space-y-3 shadow-xs">
+                          <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2 border-b pb-2"><Calendar className="w-4 h-4 text-emerald-600" /> Date Details</h3>
+                          <div className="grid grid-cols-2 gap-3 text-xs leading-relaxed">
+                            <div>
+                              <p className="text-gray-400">Exam Period</p>
+                              <p className="font-bold text-gray-800">{fmt(activeExam.startDate)} – {fmt(activeExam.endDate)}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-400">Mark Entry Deadline</p>
+                              <p className="font-bold text-gray-800">{fmt(activeExam.markEntryLastDate)}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-400">Published On</p>
+                              <p className="font-bold text-gray-800">{fmt(activeExam.publishedDate)}</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="bg-white border border-gray-100 rounded-3xl p-5 space-y-3 shadow-xs">
+                          <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2 border-b pb-2"><Trophy className="w-4 h-4 text-emerald-600" /> Exam Rules</h3>
+                          <div className="grid grid-cols-2 gap-3 text-xs leading-relaxed">
+                            <div>
+                              <p className="text-gray-400">Maximum Marks</p>
+                              <p className="font-bold text-gray-800">{activeExam.maxMarks ?? 100}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-400">Pass Percentage</p>
+                              <p className="font-bold text-gray-800">40%</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-400">Academic Year</p>
+                              <p className="font-bold text-gray-800">{activeExam.accademicYear?.name ?? "Current"}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* MARKS TAB (Screenshot 4 design) */}
+                    {tab === "marks" && (
+                      <div className="space-y-6">
+                        
+                        {/* Summary metrics row of cards (Screenshot 4) */}
+                        <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
+                          {[
+                            { label: "Total Subjects", value: results.length, color: "text-gray-900" },
+                            { label: "Total Marks", value: totalMax, color: "text-gray-900" },
+                            { label: "Obtained Marks", value: totalObtained.toFixed(0), color: "text-emerald-700" },
+                            { label: "Percentage", value: `${overallPct.toFixed(2)}%`, color: "text-emerald-700" },
+                            { label: "Grade", value: summary?.totalGrade ? TOTAL_GRADE_LABELS[summary.totalGrade] : calcFallbackGrade(totalObtained, totalMax), color: "text-blue-700" },
+                            { label: "Rank in Class", value: rank ? `#${rank}` : "—", color: "text-indigo-700" }
+                          ].map((m, idx) => (
+                            <div key={idx} className="bg-white border border-gray-100 rounded-2xl p-4 text-center shadow-xs flex flex-col justify-center">
+                              <p className={cn("text-lg font-black tracking-tight", m.color)}>{m.value}</p>
+                              <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mt-1">{m.label}</p>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Subject wise marks table */}
+                        <div className="bg-white border border-gray-100 rounded-3xl overflow-hidden shadow-xs">
+                          {/* Table header with Download button */}
+                          <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100 print:hidden">
+                            <h3 className="font-bold text-gray-900 text-sm">Subject Wise Marks</h3>
+                            <button
+                              onClick={() => window.print()}
+                              className="inline-flex items-center gap-2 border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold text-xs px-3.5 py-2 rounded-xl transition-colors shadow-xs"
+                            >
+                              <Printer className="w-3.5 h-3.5" /> Download Mark List
+                            </button>
+                          </div>
+
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse text-xs md:text-sm">
+                              <thead>
+                                <tr className="bg-gray-50 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                                  <th className="px-6 py-3.5 w-12 text-center">#</th>
+                                  <th className="px-4 py-3.5">Subject</th>
+                                  <th className="px-4 py-3.5 w-32 text-center">Full Marks</th>
+                                  <th className="px-4 py-3.5 w-32 text-center">Pass Marks</th>
+                                  <th className="px-4 py-3.5 w-40 text-center">Obtained Marks</th>
+                                  <th className="px-6 py-3.5 w-32 text-center">Grade</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-50">
+                                {results.map((r, idx) => {
+                                  const grade = r.grade ?? calcFallbackGrade(r.score, r.totalMarks);
+                                  const isPassed = r.isPassed ?? gradeIsPassed(grade);
+                                  const pct = r.percentage ?? (r.totalMarks > 0 ? (r.score / r.totalMarks) * 100 : 0);
+                                  const gClass = GRADE_COLORS[grade] ?? "text-gray-600 bg-gray-50 border-gray-200";
+
+                                  return (
+                                    <tr key={r.id} className="hover:bg-gray-50/50 transition-colors">
+                                      <td className="px-6 py-3 text-center text-gray-400 font-medium">{idx + 1}</td>
+                                      <td className="px-4 py-3">
+                                        <p className="font-bold text-gray-900 leading-tight">{r.subject?.name ?? "Subject"}</p>
+                                        <span className={cn("text-[9px] font-bold tracking-wider uppercase", isPassed ? "text-emerald-600" : "text-rose-600")}>
+                                          {isPassed ? "Pass" : "Fail"}
+                                        </span>
+                                      </td>
+                                      <td className="px-4 py-3 text-center text-gray-500 font-semibold">{r.totalMarks}</td>
+                                      <td className="px-4 py-3 text-center text-gray-500 font-semibold">{activeExam?.passMarks ?? 40}</td>
+                                      <td className="px-4 py-3 text-center">
+                                        <span className={cn("font-bold text-sm", isPassed ? "text-gray-900" : "text-rose-600")}>
+                                          {r.score}
+                                        </span>
+                                      </td>
+                                      <td className="px-6 py-3 text-center">
+                                        <span className={cn("inline-block text-[10px] font-black px-2 py-0.5 rounded border text-center shrink-0 w-10", gClass)}>
+                                          {grade}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                              <tfoot>
+                                <tr className="bg-emerald-50/40 border-t-2 border-emerald-100 text-gray-900 font-bold">
+                                  <td className="px-6 py-3 text-center">—</td>
+                                  <td className="px-4 py-3">Total</td>
+                                  <td className="px-4 py-3 text-center">{totalMax}</td>
+                                  <td className="px-4 py-3 text-center">—</td>
+                                  <td className="px-4 py-3 text-center text-emerald-700 font-black text-sm">{totalObtained.toFixed(0)}</td>
+                                  <td className="px-6 py-3 text-center text-emerald-700 font-black text-sm">{overallPct.toFixed(2)}% ({summary?.totalGrade ? TOTAL_GRADE_LABELS[summary.totalGrade] : calcFallbackGrade(totalObtained, totalMax)})</td>
+                                </tr>
+                              </tfoot>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* SUBJECTS TAB */}
+                    {tab === "subjects" && (
+                      <div className="bg-white border border-gray-100 rounded-3xl p-5 shadow-xs">
+                        <h3 className="font-bold text-gray-900 text-sm border-b pb-2 mb-3">Course Curriculum</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {results.map((r, idx) => (
+                            <div key={r.id} className="p-3 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-bold text-gray-800">{r.subject?.name ?? "Subject"}</p>
+                                <p className="text-[10px] text-gray-400 mt-0.5">Maximum Marks: {r.totalMarks}</p>
+                              </div>
+                              <span className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-500">
+                                {idx + 1}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* SHARE CARD TAB */}
+                    {tab === "share-card" && activeExam && activeStudent && (
+                      <ParentResultCard
+                        studentName={activeStudent.name}
+                        studentAdo={activeStudent.adno}
+                        studentGender={activeStudent.gender ?? null}
+                        studentClass={activeStudent.className ?? "—"}
+                        results={results}
+                        summary={summary}
+                        exam={activeExam}
+                        madrasaName={madrasaName}
+                        madrasaLogo={madrasaLogo}
+                      />
+                    )}
+
+                    {/* SHARE POSTER TAB */}
+                    {tab === "share-poster" && canRankCard && summary && activeExam && activeStudent && (
+                      <ParentRankCard
+                        studentName={activeStudent.name}
+                        studentAdo={activeStudent.adno}
+                        studentGender={activeStudent.gender ?? null}
+                        studentClass={activeStudent.className ?? "—"}
+                        summary={summary}
+                        exam={activeExam}
+                        madrasaName={madrasaName}
+                        madrasaLogo={madrasaLogo}
+                      />
+                    )}
+
+                  </motion.div>
+                </AnimatePresence>
+
+              </div>
+            )}
+
+          </div>
+        )}
+      </div>
     </DashboardLayout>
   );
 }

@@ -132,8 +132,8 @@ export const useAuthStore = create<AuthStore>()(
           user,
           accessToken,
           isLoggedIn: true,
-          activeClientId: user.clientId ?? null,
-          activeTenantSlug: user.tenantSlug ?? null,
+          activeClientId: user.actorType === "SUPER_ADMIN" ? null : (user.clientId ?? null),
+          activeTenantSlug: user.actorType === "SUPER_ADMIN" ? null : (user.tenantSlug ?? null),
           activeStudentId:
             user.actorType === "PARENT" && user.accessibleStudentIds?.length
               ? user.accessibleStudentIds[0]

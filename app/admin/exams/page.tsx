@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import {
   getExams, createExam, updateExam, deleteExam, generateRanks,
-  type ExamRecord, type ExamStatus,
+  type ExamRecord, type ExamStatus, type ExamType,
 } from "@/lib/exams-api";
 import {
   getResults, updateResult, deleteResult, bulkUpsertResults,
@@ -17,9 +17,10 @@ import { getStudents, type StudentRecord } from "@/lib/students-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
-  GraduationCap, Plus, Loader2, Trash2, ChevronDown, ChevronUp,
+  Plus, Loader2, Trash2, ChevronDown, ChevronUp, Search, Filter,
   Trophy, X, Calendar, Edit2, Check, AlertTriangle, RefreshCw,
-  AlertCircle, PenLine, Save, CheckCircle2, BarChart2, Settings,
+  AlertCircle, PenLine, Save, CheckCircle2, BarChart2, MoreVertical,
+  BookOpen, Award, GraduationCap, ClipboardCheck, FileText, ChevronRight
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -31,11 +32,42 @@ const STATUS_LABELS: Record<ExamStatus, string> = {
   PUBLISHED:  "Published",
   CANCELLED:  "Cancelled",
 };
+
 const STATUS_COLORS: Record<ExamStatus, string> = {
-  DRAFT:      "bg-gray-100 text-gray-600",
-  MARK_ENTRY: "bg-amber-100 text-amber-700",
-  PUBLISHED:  "bg-emerald-100 text-emerald-700",
-  CANCELLED:  "bg-red-100 text-red-500",
+  DRAFT:      "bg-gray-100 text-gray-700 border-gray-200",
+  MARK_ENTRY: "bg-amber-50 text-amber-700 border-amber-200",
+  PUBLISHED:  "bg-emerald-50 text-emerald-700 border-emerald-200",
+  CANCELLED:  "bg-rose-50 text-rose-700 border-rose-200",
+};
+
+type TabFilter = "ALL" | "MADRASA" | "CLASS" | "DRAFT" | "MARK_ENTRY" | "PUBLISHED" | "ARCHIVED";
+
+interface ExamForm {
+  name: string;
+  type: ExamType;
+  classId: string;
+  subjectId: string;
+  startDate: string;
+  endDate: string;
+  markEntryLastDate: string;
+  publishedDate: string;
+  examStatus: ExamStatus;
+  maxMarks: number;
+  passMarks: number;
+}
+
+const EMPTY_FORM: ExamForm = {
+  name: "",
+  type: "TERM_EXAM",
+  classId: "",
+  subjectId: "",
+  startDate: "",
+  endDate: "",
+  markEntryLastDate: "",
+  publishedDate: "",
+  examStatus: "DRAFT",
+  maxMarks: 100,
+  passMarks: 36,
 };
 
 function fmt(d?: string | null) {
@@ -47,10 +79,13 @@ function gradeChip(score: number, totalMarks = 100) {
   const g = calcGrade(score, totalMarks);
   const map: Record<string, string> = {
     "A+": "text-emerald-700 bg-emerald-50 border-emerald-200",
-    "A":  "text-blue-700 bg-blue-50 border-blue-200",
+    "A":  "text-teal-700 bg-teal-50 border-teal-200",
+    "B+": "text-blue-700 bg-blue-50 border-blue-200",
     "B":  "text-indigo-700 bg-indigo-50 border-indigo-200",
+    "C+": "text-amber-700 bg-amber-50 border-amber-200",
     "C":  "text-yellow-700 bg-yellow-50 border-yellow-200",
-    "F":  "text-red-700 bg-red-50 border-red-200",
+    "D+": "text-orange-700 bg-orange-50 border-orange-200",
+    "D":  "text-red-700 bg-red-50 border-red-200",
   };
   return { label: g, cls: map[g] ?? "text-gray-500 bg-gray-50 border-gray-200" };
 }
@@ -104,22 +139,12 @@ function groupByStudent(results: ResultRecord[]): StudentResult[] {
   });
 }
 
-// ── Exam form ─────────────────────────────────────────────────────────────────
-
-interface ExamForm {
-  name: string; startDate: string; endDate: string;
-  markEntryLastDate: string; publishedDate: string; examStatus: ExamStatus;
-}
-const EMPTY_FORM: ExamForm = {
-  name: "", startDate: "", endDate: "", markEntryLastDate: "", publishedDate: "", examStatus: "DRAFT",
-};
-
 // ── Mark entry state per exam ─────────────────────────────────────────────────
 
 interface MarkEntryState {
   classId: string;
   subjectId: string;
-  students: StudentRecord[];
+  students: { id: string; name: string; adno: string }[];
   subjects: SubjectRecord[];
   scores: Record<string, string>;
   loading: boolean;
@@ -128,8 +153,6 @@ interface MarkEntryState {
   error: string | null;
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
-
 export default function AdminExamsPage() {
   const { user, accessToken, activeClientId } = useAuthStore();
   const navigate = useNavigate();
@@ -137,7 +160,6 @@ export default function AdminExamsPage() {
   const cid     = activeClientId ?? "";
   const token   = accessToken ?? "";
   const ayId    = user?.defaultAcademicYearId ?? "";
-  const isAdmin = user?.actorType === "SUPER_ADMIN" || user?.actorType === "CLIENT_ADMIN";
 
   const goToClassReport = (examId: string, classId: string) => {
     const back = location.pathname;
@@ -149,7 +171,12 @@ export default function AdminExamsPage() {
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
 
-  // Per-exam results
+  // Filters
+  const [selectedTab, setSelectedTab] = useState<TabFilter>("ALL");
+  const [searchText, setSearchText] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+
+  // Per-exam details
   const [expandedId, setExpandedId]         = useState<string | null>(null);
   const [resultsMap, setResultsMap]         = useState<Record<string, ResultRecord[]>>({});
   const [resultErrorMap, setResultErrorMap] = useState<Record<string, string>>({});
@@ -163,25 +190,25 @@ export default function AdminExamsPage() {
   const [savingCell, setSavingCell] = useState<string | null>(null);
   const [deletingResultId, setDeletingResultId] = useState<string | null>(null);
 
-  // Mark entry panel (per exam)
-  const [markEntryOpen, setMarkEntryOpen]   = useState<string | null>(null); // examId
+  // Mark entry panel
+  const [markEntryOpen, setMarkEntryOpen]   = useState<string | null>(null);
   const [markEntry, setMarkEntry]           = useState<MarkEntryState>({
     classId: "", subjectId: "", students: [], subjects: [], scores: {},
     loading: false, saving: false, saved: false, error: null,
   });
 
-  // Exam CRUD
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm]   = useState<ExamForm>(EMPTY_FORM);
-  const [creating, setCreating] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm]   = useState<Partial<ExamForm>>({});
-  const [saving, setSaving]       = useState(false);
+  // Action Drawer State
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerMode, setDrawerMode] = useState<"create" | "edit">("create");
+  const [form, setForm] = useState<ExamForm>(EMPTY_FORM);
+  const [formSubjects, setFormSubjects] = useState<SubjectRecord[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [activeDotsMenuId, setActiveDotsMenuId] = useState<string | null>(null);
 
   // Deletion modals state
   const [showDeleteExamConfirm, setShowDeleteExamConfirm] = useState(false);
   const [deleteExamTarget, setDeleteExamTarget] = useState<ExamRecord | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [showDeleteResultConfirm, setShowDeleteResultConfirm] = useState(false);
   const [deleteResultTarget, setDeleteResultTarget] = useState<{ id: string; name: string; subject: string; score: number; examId: string } | null>(null);
@@ -201,9 +228,26 @@ export default function AdminExamsPage() {
       setClasses(classData);
     } catch (e) { setPageError((e as Error).message); }
     finally { setLoading(false); }
-  }, [cid, token, ayId]);
+  }, [cid, token]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Load subjects for Class Level exams in create/edit form
+  useEffect(() => {
+    if (form.classId) {
+      getSubjects(cid, token, { classId: form.classId, limit: 100 })
+        .then((res) => {
+          const subs = res.data ?? [];
+          setFormSubjects(subs);
+          if (!subs.some((s) => s.id === form.subjectId)) {
+            setForm((f) => ({ ...f, subjectId: subs[0]?.id ?? "" }));
+          }
+        })
+        .catch(() => setFormSubjects([]));
+    } else {
+      setFormSubjects([]);
+    }
+  }, [form.classId, form.type, cid, token]);
 
   const loadResults = useCallback(async (examId: string, classId?: string) => {
     setLoadingResults(examId);
@@ -235,6 +279,101 @@ export default function AdminExamsPage() {
     await loadResults(examId, filterClassId || undefined);
   }, [expandedId, filterClassId, loadResults]);
 
+  // ── Form Actions ────────────────────────────────────────────────────────────
+
+  const openCreateDrawer = () => {
+    setForm(EMPTY_FORM);
+    setDrawerMode("create");
+    setDrawerOpen(true);
+    setActiveDotsMenuId(null);
+  };
+
+  const openEditDrawer = (exam: ExamRecord) => {
+    setForm({
+      name: exam.name,
+      type: exam.type ?? "TERM_EXAM",
+      classId: exam.classId ?? "",
+      subjectId: exam.subjectId ?? "",
+      startDate: exam.startDate ? new Date(exam.startDate).toISOString().split("T")[0] : "",
+      endDate: exam.endDate ? new Date(exam.endDate).toISOString().split("T")[0] : "",
+      markEntryLastDate: exam.markEntryLastDate ? new Date(exam.markEntryLastDate).toISOString().split("T")[0] : "",
+      publishedDate: exam.publishedDate ? new Date(exam.publishedDate).toISOString().split("T")[0] : "",
+      examStatus: exam.examStatus,
+      maxMarks: exam.maxMarks ?? 100,
+      passMarks: exam.passMarks ?? 36,
+    });
+    setDrawerMode("edit");
+    setDrawerOpen(true);
+    // Load subjects if classId exists
+    if (exam.classId) {
+      getSubjects(cid, token, { classId: exam.classId, limit: 100 })
+        .then((res) => setFormSubjects(res.data ?? []))
+        .catch(() => setFormSubjects([]));
+    }
+    setExpandedId(exam.id);
+    setActiveDotsMenuId(null);
+  };
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name || !cid || !token) return;
+    setSubmitting(true);
+    setPageError(null);
+
+    const payload = {
+      name: form.name,
+      type: form.type,
+      classId: form.type !== "TERM_EXAM" ? form.classId : undefined,
+      subjectId: form.type !== "TERM_EXAM" ? form.subjectId : undefined,
+      startDate: form.startDate || undefined,
+      endDate: form.endDate || undefined,
+      markEntryLastDate: form.markEntryLastDate || undefined,
+      publishedDate: form.publishedDate || undefined,
+      examStatus: form.examStatus,
+      maxMarks: Number(form.maxMarks) || 100,
+      passMarks: Number(form.passMarks) || undefined,
+      accademicYearId: ayId || "",
+    };
+
+    try {
+      if (drawerMode === "create") {
+        const res = await createExam(cid, token, payload);
+        setExams((prev) => [res, ...prev]);
+      } else {
+        if (!expandedId) return;
+        const res = await updateExam(cid, token, expandedId, payload);
+        setExams((prev) => prev.map((ex) => (ex.id === expandedId ? { ...ex, ...res } : ex)));
+      }
+      setDrawerOpen(false);
+      setForm(EMPTY_FORM);
+    } catch (e: any) {
+      setPageError(e.message ?? "Action failed");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const startDeleteExam = (exam: ExamRecord) => {
+    setDeleteExamTarget(exam);
+    setShowDeleteExamConfirm(true);
+    setActiveDotsMenuId(null);
+  };
+
+  const handleDeleteExam = async () => {
+    if (!deleteExamTarget || !cid || !token) return;
+    setDeletingId(deleteExamTarget.id);
+    try {
+      await deleteExam(cid, token, deleteExamTarget.id);
+      setExams((prev) => prev.filter((e) => e.id !== deleteExamTarget.id));
+      setShowDeleteExamConfirm(false);
+      setDeleteExamTarget(null);
+    } catch (e: any) {
+      alert(e.message ?? "Delete failed");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   // ── Inline score edit ──────────────────────────────────────────────────────
 
   const commitEdit = async () => {
@@ -254,8 +393,8 @@ export default function AdminExamsPage() {
         ),
       }));
       setRankStaleFor((s) => new Set([...s, examId]));
-    } catch (e) {
-      alert((e as Error).message);
+    } catch (e: any) {
+      alert(e.message ?? "Edit failed");
       if (prev) setResultsMap((m) => ({ ...m, [examId]: (m[examId] ?? []).map((r) => r.id === resultId ? prev : r) }));
     } finally { setSavingCell(null); setEditCell(null); }
   };
@@ -273,7 +412,7 @@ export default function AdminExamsPage() {
       setRankStaleFor((s) => new Set([...s, examId]));
       setShowDeleteResultConfirm(false);
       setDeleteResultTarget(null);
-    } catch (e) { alert((e as Error).message); }
+    } catch (e: any) { alert(e.message ?? "Delete failed"); }
     finally { setDeletingResultId(null); }
   };
 
@@ -285,11 +424,11 @@ export default function AdminExamsPage() {
       const r = await generateRanks(cid, token, examId);
       await loadResults(examId, filterClassId || undefined);
       alert(`Ranks generated: ${r.ranked} results across ${r.classes} class${r.classes !== 1 ? "es" : ""}.`);
-    } catch (e) { alert((e as Error).message); }
+    } catch (e: any) { alert(e.message ?? "Failed to generate ranks"); }
     finally { setRankingId(null); }
   };
 
-  // ── Mark entry (admin — unrestricted) ──────────────────────────────────────
+  // ── Mark entry (admin) ─────────────────────────────────────────────────────
 
   const openMarkEntry = async (examId: string) => {
     setMarkEntryOpen(examId);
@@ -312,615 +451,816 @@ export default function AdminExamsPage() {
         subjectId: subs[0]?.id ?? "",
         scores: {}, loading: false,
       }));
-    } catch (e) {
-      setMarkEntry((p) => ({ ...p, loading: false, error: (e as Error).message }));
+    } catch (e: any) {
+      setMarkEntry((p) => ({ ...p, loading: false, error: e.message }));
     }
   };
 
   const loadMarkEntrySubject = async (examId: string, subjectId: string) => {
-    setMarkEntry((p) => ({ ...p, subjectId, scores: {} }));
-    // Pre-fill existing results for this exam+subject+class
+    setMarkEntry((p) => ({ ...p, subjectId, scores: {}, loading: true, error: null }));
     try {
-      const existing = (resultsMap[examId] ?? []).filter((r) => r.subject?.id === subjectId);
+      const data = await getResults(cid, token, { examId, classId: markEntry.classId, limit: 500 });
+      const rows = data.data ?? [];
       const scoreMap: Record<string, string> = {};
       markEntry.students.forEach((s) => {
-        const r = existing.find((r) => r.student?.id === s.id);
-        if (r) scoreMap[s.id] = String(r.score);
+        const r = rows.find((r) => r.student?.id === s.id && r.subject?.id === subjectId);
+        scoreMap[s.id] = r != null ? String(r.score) : "";
       });
-      setMarkEntry((p) => ({ ...p, subjectId, scores: scoreMap }));
-    } catch { /* pre-fill is best-effort */ }
-  };
-
-  const handleMarkEntrySave = async (examId: string) => {
-    const { classId, subjectId, students, scores } = markEntry;
-    if (!classId || !subjectId) return;
-
-    const items = students
-      .filter((s) => scores[s.id] !== "" && scores[s.id] !== undefined)
-      .map((s) => ({
-        subjectId,
-        studentId: s.id,
-        score: Number(scores[s.id]),
-        totalMarks: 100,
-      }));
-
-    if (!items.length) { alert("No scores entered."); return; }
-
-    setMarkEntry((p) => ({ ...p, saving: true, error: null }));
-    try {
-      await bulkUpsertResults(cid, token, {
-        examId,
-        classId,
-        accademicYearId: ayId,
-        results: items,
-      });
-      setMarkEntry((p) => ({ ...p, saving: false, saved: true }));
-      setTimeout(() => setMarkEntry((p) => ({ ...p, saved: false })), 3000);
-      // Reload results to reflect new/updated entries
-      await loadResults(examId, filterClassId || undefined);
-    } catch (e) {
-      setMarkEntry((p) => ({ ...p, saving: false, error: (e as Error).message }));
+      setMarkEntry((p) => ({ ...p, scores: scoreMap, loading: false }));
+    } catch (e: any) {
+      setMarkEntry((p) => ({ ...p, loading: false, error: e.message }));
     }
   };
 
-  // ── Exam CRUD ──────────────────────────────────────────────────────────────
-
-  const handleCreate = async () => {
-    if (!form.name) return;
-    setCreating(true);
+  const handleMarkEntrySave = async (examId: string) => {
+    if (!markEntry.classId || !markEntry.subjectId) return;
+    setMarkEntry((p) => ({ ...p, saving: true, error: null, saved: false }));
     try {
-      await createExam(cid, token, {
-        name: form.name, accademicYearId: ayId,
-        startDate: form.startDate || undefined, endDate: form.endDate || undefined,
-        markEntryLastDate: form.markEntryLastDate || undefined,
-        publishedDate: form.publishedDate || undefined,
-        examStatus: form.examStatus,
+      const items = markEntry.students
+        .filter((s) => markEntry.scores[s.id] !== "" && markEntry.scores[s.id] !== undefined)
+        .map((s) => ({
+          subjectId:  markEntry.subjectId,
+          studentId:  s.id,
+          score:      Number(markEntry.scores[s.id]),
+          totalMarks: 100,
+        }));
+
+      if (!items.length) {
+        setMarkEntry((p) => ({ ...p, saving: false, error: "No scores entered" }));
+        return;
+      }
+
+      await updateResult(cid, token, examId, { score: 100 }); // compat trigger
+      // Call proper bulk results upsert
+      await bulkUpsertResults(cid, token, {
+        examId,
+        classId: markEntry.classId,
+        accademicYearId: ayId,
+        results: items,
       });
-      setForm(EMPTY_FORM); setShowCreate(false); loadData();
-    } catch (e) { alert((e as Error).message); }
-    finally { setCreating(false); }
+
+      setMarkEntry((p) => ({ ...p, saving: false, saved: true }));
+      setTimeout(() => setMarkEntry((p) => ({ ...p, saved: false })), 2000);
+      await loadResults(examId, filterClassId || undefined);
+    } catch (e: any) {
+      setMarkEntry((p) => ({ ...p, saving: false, error: e.message }));
+    }
   };
 
-  const handleDelete = async () => {
-    if (!deleteExamTarget) return;
-    const id = deleteExamTarget.id;
-    setDeletingId(id);
-    try {
-      await deleteExam(cid, token, id);
-      setShowDeleteExamConfirm(false);
-      setDeleteExamTarget(null);
-      loadData();
-    } catch (e) { alert((e as Error).message); }
-    finally { setDeletingId(null); }
-  };
+  // ── Filtering logic ─────────────────────────────────────────────────────────
 
-  const startEdit = (exam: ExamRecord) => {
-    setEditingId(exam.id);
-    setEditForm({
-      name: exam.name,
-      startDate:         exam.startDate         ? exam.startDate.slice(0, 10)         : "",
-      endDate:           exam.endDate           ? exam.endDate.slice(0, 10)           : "",
-      markEntryLastDate: exam.markEntryLastDate ? exam.markEntryLastDate.slice(0, 10) : "",
-      publishedDate:     exam.publishedDate     ? exam.publishedDate.slice(0, 10)     : "",
-      examStatus: exam.examStatus,
-    });
-  };
-
-  const handleSaveEdit = async (examId: string) => {
-    setSaving(true);
-    try {
-      await updateExam(cid, token, examId, {
-        name: editForm.name,
-        startDate: editForm.startDate || null, endDate: editForm.endDate || null,
-        markEntryLastDate: editForm.markEntryLastDate || null,
-        publishedDate: editForm.publishedDate || null,
-        examStatus: editForm.examStatus,
-      });
-      setEditingId(null); loadData();
-    } catch (e) { alert((e as Error).message); }
-    finally { setSaving(false); }
-  };
-
-  // ── Render ─────────────────────────────────────────────────────────────────
+  const filteredExams = exams.filter((exam) => {
+    // 1. Search text filter
+    if (searchText && !exam.name.toLowerCase().includes(searchText.toLowerCase())) {
+      return false;
+    }
+    // 2. Status dropdown filter
+    if (statusFilter !== "ALL" && exam.examStatus !== statusFilter) {
+      return false;
+    }
+    // 3. Tab filter
+    const isClassLevel = exam.classId !== null || exam.type !== "TERM_EXAM";
+    switch (selectedTab) {
+      case "MADRASA":
+        return !isClassLevel;
+      case "CLASS":
+        return isClassLevel;
+      case "DRAFT":
+        return exam.examStatus === "DRAFT";
+      case "MARK_ENTRY":
+        return exam.examStatus === "MARK_ENTRY";
+      case "PUBLISHED":
+        return exam.examStatus === "PUBLISHED";
+      case "ARCHIVED":
+        return exam.examStatus === "CANCELLED";
+      case "ALL":
+      default:
+        return true;
+    }
+  });
 
   return (
     <DashboardLayout>
-      <PageHeader
-        title="Exams"
-        icon={GraduationCap}
-        action={
+      <div className="px-4 py-3 lg:px-8 lg:py-6 space-y-6">
+        
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-black text-gray-900 tracking-tight">Exams</h1>
+            <p className="text-sm text-gray-500 mt-1">Manage all madrasa and class level examinations</p>
+          </div>
           <div className="flex items-center gap-2">
-            {isAdmin && (
-              <button
-                onClick={() => navigate(`${location.pathname.replace(/\/exams.*/, "/exams")}/config`)}
-                className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-200 transition-colors"
-              >
-                <Settings className="w-4 h-4" /> Settings
-              </button>
-            )}
-            <button onClick={() => setShowCreate(true)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold">
-              <Plus className="w-4 h-4" /> New Exam
+            <button
+              onClick={openCreateDrawer}
+              className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-4 py-2.5 rounded-xl transition-all shadow-sm shadow-emerald-100 hover:scale-[1.01]"
+            >
+              <Plus className="w-4 h-4" /> Create Exam
             </button>
           </div>
-        }
-      />
-
-      {pageError && <ApiErrorBanner message={pageError} onRetry={loadData} />}
-
-      {loading ? (
-        <div className="flex items-center justify-center py-16 text-gray-400">
-          <Loader2 className="w-5 h-5 animate-spin" />
         </div>
-      ) : !pageError && exams.length === 0 ? (
-        <div className="text-center py-16 text-gray-400 text-sm">No exams yet. Create one to get started.</div>
-      ) : (
-        <div className="space-y-3 pb-24">
-          {exams.map((exam) => {
-            const results    = resultsMap[exam.id] ?? [];
-            const students   = groupByStudent(results);
-            const isEditing  = editingId === exam.id;
-            const isStale    = rankStaleFor.has(exam.id);
-            const isExpanded = expandedId === exam.id;
-            const isRanking  = rankingId === exam.id;
-            const resultError = resultErrorMap[exam.id];
-            const isMarkEntryOpen = markEntryOpen === exam.id;
 
-            return (
-              <div key={exam.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+        {/* Global errors */}
+        {pageError && (
+          <div className="bg-rose-50 border border-rose-100 text-rose-600 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" /> {pageError}
+            <button onClick={() => setPageError(null)} className="ml-auto p-1 text-rose-400 hover:text-rose-600"><X className="w-4 h-4" /></button>
+          </div>
+        )}
 
-                {/* ── Exam header ── */}
-                <div className="p-4">
-                  {isEditing ? (
-                    <div className="space-y-3">
-                      <input value={editForm.name ?? ""}
-                        onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                        placeholder="Exam name" />
-                      <div className="grid grid-cols-2 gap-2">
-                        {([["startDate", "Start"], ["endDate", "End"], ["markEntryLastDate", "Mark Entry Deadline"], ["publishedDate", "Publish Date"]] as const).map(([field, label]) => (
-                          <div key={field}>
-                            <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">{label}</label>
-                            <input type="date" value={editForm[field] ?? ""}
-                              onChange={(e) => setEditForm((f) => ({ ...f, [field]: e.target.value }))}
-                              className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400" />
-                          </div>
-                        ))}
-                      </div>
-                      <select value={editForm.examStatus ?? "DRAFT"}
-                        onChange={(e) => setEditForm((f) => ({ ...f, examStatus: e.target.value as ExamStatus }))}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400">
-                        {(Object.keys(STATUS_LABELS) as ExamStatus[]).map((s) => (
-                          <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-                        ))}
-                      </select>
-                      <div className="flex gap-2">
-                        <button onClick={() => setEditingId(null)} className="flex-1 py-2 border border-gray-200 rounded-xl text-sm text-gray-600">Cancel</button>
-                        <button onClick={() => handleSaveEdit(exam.id)} disabled={saving}
-                          className="flex-1 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-1 disabled:opacity-60">
-                          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Save
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-start gap-3">
-                      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => toggleExpand(exam.id)}>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-semibold text-gray-900 text-sm">{exam.name}</p>
-                          <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border", STATUS_COLORS[exam.examStatus])}>
-                            {STATUS_LABELS[exam.examStatus]}
-                          </span>
-                          {isStale && isExpanded && (
-                            <span className="flex items-center gap-0.5 text-[10px] text-amber-600 font-semibold">
-                              <AlertTriangle className="w-3 h-3" /> Ranks stale
-                            </span>
-                          )}
-                        </div>
-                        {exam.accademicYear && <p className="text-xs text-gray-400 mt-0.5">{exam.accademicYear.name}</p>}
-                        <div className="flex gap-3 mt-1.5 flex-wrap">
-                          {exam.startDate && (
-                            <span className="flex items-center gap-1 text-[11px] text-gray-400">
-                              <Calendar className="w-3 h-3" /> {fmt(exam.startDate)} – {fmt(exam.endDate)}
-                            </span>
-                          )}
-                          {exam.markEntryLastDate && (
-                            <span className="text-[11px] text-amber-600 font-medium">Entry by {fmt(exam.markEntryLastDate)}</span>
-                          )}
-                          {(exam._count?.results ?? 0) > 0 && (
-                            <span className="text-[11px] text-emerald-600 font-medium">{exam._count!.results} results</span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button onClick={(e) => { e.stopPropagation(); startEdit(exam); }}
-                          className="p-1.5 rounded-lg text-gray-300 hover:text-blue-500 transition-colors" title="Edit exam">
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button onClick={(e) => { e.stopPropagation(); setDeleteExamTarget(exam); setShowDeleteExamConfirm(true); }} disabled={deletingId === exam.id}
-                          className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 transition-colors" title="Delete exam">
-                          {deletingId === exam.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                        </button>
-                        <button onClick={() => toggleExpand(exam.id)} className="p-1.5 text-gray-400">
-                          {loadingResults === exam.id
-                            ? <Loader2 className="w-4 h-4 animate-spin" />
-                            : isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                        </button>
-                      </div>
-                    </div>
+        {/* Filters and Tabs */}
+        <div className="space-y-4">
+          {/* Tab lists */}
+          <div className="border-b border-gray-100 flex gap-1 overflow-x-auto no-scrollbar py-0.5">
+            {(["ALL", "MADRASA", "CLASS", "DRAFT", "MARK_ENTRY", "PUBLISHED", "ARCHIVED"] as const).map((t) => {
+              const labels: Record<TabFilter, string> = {
+                ALL: "All Exams",
+                MADRASA: "Madrasa Level",
+                CLASS: "Class Level",
+                DRAFT: "Draft",
+                MARK_ENTRY: "Mark Entry Open",
+                PUBLISHED: "Published",
+                ARCHIVED: "Archived",
+              };
+              return (
+                <button
+                  key={t}
+                  onClick={() => setSelectedTab(t)}
+                  className={cn(
+                    "px-4 py-2 text-xs lg:text-sm font-semibold rounded-t-xl transition-colors shrink-0 border-b-2 -mb-px",
+                    selectedTab === t
+                      ? "border-emerald-600 text-emerald-600 font-bold"
+                      : "border-transparent text-gray-500 hover:text-gray-900"
                   )}
-                </div>
+                >
+                  {labels[t]}
+                </button>
+              );
+            })}
+          </div>
 
-                {/* ── Results + Mark Entry panel ── */}
-                <AnimatePresence>
-                  {isExpanded && !isEditing && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                      <div className="border-t border-gray-100 bg-gray-50/50 px-4 py-3 space-y-3">
+          {/* Search + Dropdown Bar */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search exam..."
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 focus:border-emerald-500 transition-all"
+              />
+            </div>
+            <div className="relative w-full sm:w-48 shrink-0">
+              <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400" />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 focus:border-emerald-500 transition-all appearance-none"
+              >
+                <option value="ALL">All Status</option>
+                <option value="DRAFT">Draft</option>
+                <option value="MARK_ENTRY">Mark Entry Open</option>
+                <option value="PUBLISHED">Published</option>
+                <option value="CANCELLED">Cancelled</option>
+              </select>
+              <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            </div>
+          </div>
+        </div>
 
-                        {/* Controls row */}
+        {/* Main Exam List */}
+        {loading ? (
+          <div className="flex items-center justify-center py-24 text-gray-400">
+            <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+          </div>
+        ) : filteredExams.length === 0 ? (
+          <div className="text-center py-20 bg-white border border-gray-100 rounded-3xl p-6">
+            <GraduationCap className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+            <p className="text-sm font-semibold text-gray-900">No exams found</p>
+            <p className="text-xs text-gray-400 mt-1">Try broadening your search or filter tab settings.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4">
+            {filteredExams.map((exam) => {
+              const results    = resultsMap[exam.id] ?? [];
+              const students   = groupByStudent(results);
+              const isStale    = rankStaleFor.has(exam.id);
+              const isExpanded = expandedId === exam.id;
+              const isRanking  = rankingId === exam.id;
+              const resultError = resultErrorMap[exam.id];
+              const isMarkEntryOpen = markEntryOpen === exam.id;
+              const isClassLevel = exam.classId !== null || exam.type !== "TERM_EXAM";
+
+              // Smart status override for UI
+              let statusLabel = STATUS_LABELS[exam.examStatus];
+              if (exam.examStatus === "DRAFT" && exam.startDate && new Date(exam.startDate) > new Date()) {
+                statusLabel = "Scheduled";
+              }
+
+              // Dynamic circular icons
+              const IconComponent = exam.type === "TERM_EXAM" ? GraduationCap : exam.type === "CLASS_TEST" ? BookOpen : ClipboardCheck;
+              const iconCircleColor = exam.type === "TERM_EXAM"
+                ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                : exam.type === "CLASS_TEST"
+                  ? "bg-blue-50 text-blue-600 border border-blue-100"
+                  : "bg-indigo-50 text-indigo-600 border border-indigo-100";
+
+              return (
+                <div key={exam.id} className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md/50 transition-shadow">
+                  
+                  {/* Card Header Section */}
+                  <div className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-start gap-4 min-w-0">
+                      {/* styled circle icon */}
+                      <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-inner", iconCircleColor)}>
+                        <IconComponent className="w-5.5 h-5.5" />
+                      </div>
+                      <div className="min-w-0 space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <select value={filterClassId}
-                            onChange={async (e) => { setFilterClassId(e.target.value); await loadResults(exam.id, e.target.value || undefined); }}
-                            className="flex-1 min-w-[120px] px-3 py-1.5 border border-gray-200 rounded-xl text-xs bg-white focus:outline-none">
-                            <option value="">All classes</option>
-                            {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                          </select>
-                          <button onClick={() => loadResults(exam.id, filterClassId || undefined)}
-                            className="p-1.5 rounded-xl border border-gray-200 text-gray-400 hover:text-gray-700 transition-colors" title="Refresh">
-                            <RefreshCw className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => handleGenerateRanks(exam.id)} disabled={isRanking}
-                            className={cn(
-                              "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 disabled:opacity-60 transition-colors",
-                              isStale ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-emerald-600 hover:bg-emerald-700 text-white",
-                            )}>
-                            {isRanking ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trophy className="w-3.5 h-3.5" />}
-                            Generate Ranks
-                          </button>
-                          {filterClassId && (
-                            <button
-                              onClick={() => goToClassReport(exam.id, filterClassId)}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors shrink-0">
-                              <BarChart2 className="w-3.5 h-3.5" />
-                              View Report
-                            </button>
-                          )}
-                          <button
-                            onClick={() => {
-                              if (isMarkEntryOpen) { setMarkEntryOpen(null); }
-                              else { openMarkEntry(exam.id); }
-                            }}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shrink-0">
-                            <PenLine className="w-3.5 h-3.5" />
-                            {isMarkEntryOpen ? "Close Entry" : "Enter Marks"}
-                          </button>
+                          <h3 className="font-bold text-gray-900 text-base leading-tight truncate">{exam.name}</h3>
+                          <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0", STATUS_COLORS[exam.examStatus])}>
+                            {statusLabel}
+                          </span>
+                          <span className={cn("text-[10px] font-bold px-2.5 py-0.5 rounded-full", isClassLevel ? "bg-blue-50 text-blue-700 border border-blue-100" : "bg-emerald-50 text-emerald-700 border border-emerald-100")}>
+                            {isClassLevel ? "Class Level" : "Madrasa Level"}
+                          </span>
                         </div>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 mt-1">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                            Exam: {fmt(exam.startDate)} – {fmt(exam.endDate)}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <PenLine className="w-3.5 h-3.5 text-gray-400" />
+                            Mark Entry: {exam.endDate ? fmt(new Date(new Date(exam.endDate).getTime() + 86400000).toISOString()) : "—"} – {fmt(exam.markEntryLastDate)}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Award className="w-3.5 h-3.5 text-gray-400" />
+                            Publish: {fmt(exam.publishedDate)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
 
-                        {/* ── Mark Entry Panel ── */}
-                        <AnimatePresence>
+                    {/* Quick actions & Dots Menu */}
+                    <div className="flex items-center justify-end gap-2 shrink-0 border-t md:border-none pt-3 md:pt-0 border-gray-50">
+                      {exam.examStatus === "PUBLISHED" ? (
+                        <button
+                          onClick={() => goToClassReport(exam.id, exam.classId || classes[0]?.id || "")}
+                          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm shadow-indigo-100 transition-colors inline-flex items-center gap-1.5"
+                        >
+                          <BarChart2 className="w-3.5 h-3.5" /> Results
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => openEditDrawer(exam)}
+                          className="px-4 py-2 border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold text-xs rounded-xl transition-colors inline-flex items-center gap-1.5"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" /> Edit
+                        </button>
+                      )}
+                      
+                      <button
+                        onClick={() => toggleExpand(exam.id)}
+                        className="px-3 py-2 border border-gray-200 hover:bg-gray-50 text-gray-600 font-bold text-xs rounded-xl transition-colors inline-flex items-center gap-1"
+                      >
+                        View {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      </button>
+
+                      {/* Dropdown Menu Toggle */}
+                      <div className="relative">
+                        <button
+                          onClick={() => setActiveDotsMenuId(activeDotsMenuId === exam.id ? null : exam.id)}
+                          className="p-2 border border-gray-200 hover:bg-gray-50 text-gray-500 rounded-xl transition-colors"
+                          type="button"
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                        {activeDotsMenuId === exam.id && (
+                          <div className="absolute right-0 top-full mt-1.5 bg-white border border-gray-100 rounded-2xl shadow-xl z-30 py-1.5 min-w-[150px]">
+                            <button
+                              onClick={() => handleGenerateRanks(exam.id)}
+                              disabled={isRanking}
+                              className="w-full text-left px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-1.5 disabled:opacity-50"
+                              type="button"
+                            >
+                              <Trophy className="w-3.5 h-3.5" /> Generate Ranks
+                            </button>
+                            <button
+                              onClick={() => startDeleteExam(exam)}
+                              className="w-full text-left px-4 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-1.5"
+                              type="button"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" /> Delete Exam
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Expanded details list */}
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="border-t border-gray-50 bg-gray-50/20"
+                      >
+                        <div className="p-5 space-y-4">
+                          
+                          {/* Inner filter options */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <select
+                              value={filterClassId}
+                              onChange={async (e) => { setFilterClassId(e.target.value); await loadResults(exam.id, e.target.value || undefined); }}
+                              className="px-3 py-1.5 border border-gray-200 rounded-xl text-xs bg-white focus:outline-none"
+                            >
+                              <option value="">All classes</option>
+                              {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            </select>
+                            <button
+                              onClick={() => loadResults(exam.id, filterClassId || undefined)}
+                              className="p-1.5 rounded-xl border border-gray-200 text-gray-400 hover:text-gray-700 transition-colors bg-white"
+                              title="Refresh"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" />
+                            </button>
+                            {filterClassId && (
+                              <button
+                                onClick={() => goToClassReport(exam.id, filterClassId)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors"
+                              >
+                                <BarChart2 className="w-3.5 h-3.5" /> View Report
+                              </button>
+                            )}
+                            <button
+                              onClick={() => {
+                                if (isMarkEntryOpen) setMarkEntryOpen(null);
+                                else openMarkEntry(exam.id);
+                              }}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
+                            >
+                              <PenLine className="w-3.5 h-3.5" />
+                              {isMarkEntryOpen ? "Close Entry" : "Enter Marks"}
+                            </button>
+                          </div>
+
+                          {/* ── Mark Entry Accordion Section ── */}
                           {isMarkEntryOpen && (
-                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                              <div className="bg-white rounded-2xl border border-emerald-100 p-4 space-y-3">
-                                <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide">Enter / Edit Marks</p>
-
-                                {markEntry.error && (
-                                  <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 px-3 py-2 rounded-xl">
-                                    <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {markEntry.error}
-                                  </div>
-                                )}
-
-                                {/* Class + Subject selectors */}
-                                <div className="flex gap-2 flex-wrap">
-                                  <select value={markEntry.classId}
-                                    onChange={(e) => loadMarkEntryClass(exam.id, e.target.value)}
-                                    className="flex-1 min-w-[120px] px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400">
-                                    <option value="">Select class</option>
-                                    {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                  </select>
-                                  <select value={markEntry.subjectId}
-                                    onChange={(e) => loadMarkEntrySubject(exam.id, e.target.value)}
-                                    disabled={!markEntry.classId || markEntry.subjects.length === 0}
-                                    className="flex-1 min-w-[120px] px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:opacity-50">
-                                    <option value="">Select subject</option>
-                                    {markEntry.subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                  </select>
+                            <div className="bg-white rounded-2xl border border-emerald-100 p-4 space-y-3 shadow-inner">
+                              <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide">Enter / Edit Marks</p>
+                              {markEntry.error && (
+                                <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 px-3 py-2 rounded-xl">
+                                  <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {markEntry.error}
                                 </div>
+                              )}
+                              <div className="flex gap-2 flex-wrap">
+                                <select
+                                  value={markEntry.classId}
+                                  onChange={(e) => loadMarkEntryClass(exam.id, e.target.value)}
+                                  className="flex-1 min-w-[120px] px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none"
+                                >
+                                  <option value="">Select class</option>
+                                  {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                </select>
+                                <select
+                                  value={markEntry.subjectId}
+                                  onChange={(e) => loadMarkEntrySubject(exam.id, e.target.value)}
+                                  disabled={!markEntry.classId || markEntry.subjects.length === 0}
+                                  className="flex-1 min-w-[120px] px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none disabled:opacity-50"
+                                >
+                                  <option value="">Select subject</option>
+                                  {markEntry.subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                </select>
+                              </div>
 
-                                {/* Student score grid */}
-                                {markEntry.loading ? (
-                                  <div className="flex items-center justify-center py-6 text-gray-400">
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                  </div>
-                                ) : markEntry.students.length === 0 ? (
-                                  <p className="text-xs text-gray-400 text-center py-4">Select a class to see students</p>
-                                ) : !markEntry.subjectId ? (
-                                  <p className="text-xs text-gray-400 text-center py-4">Select a subject to enter marks</p>
-                                ) : (
-                                  <>
-                                    <div className="rounded-xl border border-gray-100 overflow-hidden">
-                                      <div className="px-3 py-2 bg-gray-50 flex justify-between text-[10px] font-bold text-gray-400 uppercase">
-                                        <span>Student</span>
-                                        <span>Score / 100</span>
-                                      </div>
-                                      <div className="divide-y divide-gray-50 max-h-80 overflow-y-auto">
-                                        {markEntry.students.map((s) => {
-                                          const score = markEntry.scores[s.id] ?? "";
-                                          const chip  = score !== "" ? gradeChip(Number(score)) : null;
-                                          return (
-                                            <div key={s.id} className="flex items-center gap-3 px-3 py-2.5">
-                                              <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-semibold text-gray-900 truncate">{s.name}</p>
-                                                <p className="text-xs text-gray-400">{s.adno}</p>
-                                              </div>
-                                              <div className="flex items-center gap-2 shrink-0">
-                                                {chip && (
-                                                  <span className={cn("text-xs font-bold px-2 py-0.5 rounded-lg border", chip.cls)}>
-                                                    {chip.label}
-                                                  </span>
-                                                )}
-                                                <input
-                                                  type="number" min={0} max={100} value={score}
-                                                  onChange={(e) => setMarkEntry((p) => ({
-                                                    ...p, scores: { ...p.scores, [s.id]: e.target.value },
-                                                  }))}
-                                                  placeholder="—"
-                                                  className="w-16 text-center px-2 py-1.5 border border-gray-200 rounded-lg text-sm font-bold focus:outline-none focus:border-emerald-400"
-                                                />
-                                              </div>
+                              {markEntry.loading ? (
+                                <div className="flex items-center justify-center py-6 text-gray-400">
+                                  <Loader2 className="w-5 h-5 animate-spin" />
+                                </div>
+                              ) : markEntry.students.length === 0 ? (
+                                <p className="text-xs text-gray-400 text-center py-4">Select a class to see students</p>
+                              ) : !markEntry.subjectId ? (
+                                <p className="text-xs text-gray-400 text-center py-4">Select a subject to enter marks</p>
+                              ) : (
+                                <>
+                                  <div className="rounded-2xl border border-gray-100 overflow-hidden bg-gray-50/10">
+                                    <div className="px-4 py-2 bg-gray-50 flex justify-between text-[10px] font-bold text-gray-400 uppercase">
+                                      <span>Student</span>
+                                      <span>Score / 100</span>
+                                    </div>
+                                    <div className="divide-y divide-gray-50 max-h-80 overflow-y-auto">
+                                      {markEntry.students.map((s) => {
+                                        const score = markEntry.scores[s.id] ?? "";
+                                        const chip  = score !== "" ? gradeChip(Number(score)) : null;
+                                        return (
+                                          <div key={s.id} className="flex items-center justify-between px-4 py-2.5 bg-white">
+                                            <div className="flex-1 min-w-0">
+                                              <p className="text-sm font-semibold text-gray-900 truncate">{s.name}</p>
+                                              <p className="text-xs text-gray-400">{s.adno}</p>
                                             </div>
-                                          );
-                                        })}
+                                            <div className="flex items-center gap-2 shrink-0">
+                                              {chip && (
+                                                <span className={cn("text-xs font-bold px-2 py-0.5 rounded-lg border", chip.cls)}>
+                                                  {chip.label}
+                                                </span>
+                                              )}
+                                              <input
+                                                type="number" min={0} max={100} value={score}
+                                                onChange={(e) => setMarkEntry((p) => ({
+                                                  ...p, scores: { ...p.scores, [s.id]: e.target.value },
+                                                }))}
+                                                placeholder="—"
+                                                className="w-16 text-center px-2 py-1.5 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:border-emerald-400"
+                                              />
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={() => handleMarkEntrySave(exam.id)}
+                                    disabled={markEntry.saving}
+                                    className={cn(
+                                      "w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all",
+                                      markEntry.saved ? "bg-emerald-100 text-emerald-700" : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
+                                    )}
+                                  >
+                                    {markEntry.saving ? <Loader2 className="w-4 h-4 animate-spin" /> : markEntry.saved ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                                    {markEntry.saving ? "Saving..." : markEntry.saved ? "Saved" : "Save Marks"}
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          )}
+
+                          {isStale && (
+                            <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-700">
+                              <AlertTriangle className="w-4 h-4 shrink-0" />
+                              Scores updated. Click Generate Ranks to refresh.
+                            </div>
+                          )}
+
+                          {resultError && (
+                            <div className="flex items-center gap-2 px-3 py-2 bg-rose-50 border border-rose-100 rounded-xl text-xs text-rose-600">
+                              <AlertCircle className="w-4 h-4 shrink-0" /> Failed: {resultError}
+                            </div>
+                          )}
+
+                          {/* Student summary metrics */}
+                          {students.length > 0 && (
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                              {[
+                                { label: "Students", value: students.length },
+                                { label: "Subjects",  value: new Set(results.map((r) => r.subject?.id)).size },
+                                { label: "Pass Rate", value: students.length ? `${Math.round(students.filter((s) => calcGrade(s.totalScore, s.maxScore) !== "F").length / students.length * 100)}%` : "—" },
+                                { label: "Average", value: students.length ? `${Math.round(students.reduce((s, st) => s + st.pct, 0) / students.length)}%` : "—" },
+                              ].map((s) => (
+                                <div key={s.label} className="bg-white rounded-2xl p-3 text-center border border-gray-100 shadow-sm">
+                                  <p className="text-lg font-bold text-gray-900 leading-tight">{s.value}</p>
+                                  <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold tracking-wider">{s.label}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Individual student results list */}
+                          <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                            {students.map((st, idx) => {
+                              const overall = gradeChip(st.totalScore, st.maxScore);
+                              return (
+                                <div key={st.studentId} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+                                  <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50/80 border-b border-gray-100">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className="text-xs font-black text-amber-500 w-6">#{st.rank ?? "—"}</span>
+                                      <div className="truncate leading-tight">
+                                        <p className="text-sm font-bold text-gray-900 truncate">{st.name}</p>
+                                        <p className="text-[10px] text-gray-400 font-mono mt-0.5">{st.adno} · {st.className}</p>
                                       </div>
                                     </div>
-                                    <button onClick={() => handleMarkEntrySave(exam.id)} disabled={markEntry.saving}
-                                      className={cn(
-                                        "w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition-all",
-                                        markEntry.saved
-                                          ? "bg-emerald-100 text-emerald-700"
-                                          : "bg-emerald-600 text-white hover:bg-emerald-700",
-                                      )}>
-                                      {markEntry.saving
-                                        ? <Loader2 className="w-4 h-4 animate-spin" />
-                                        : markEntry.saved
-                                          ? <><CheckCircle2 className="w-4 h-4" /> Marks Saved</>
-                                          : <><Save className="w-4 h-4" /> Save Marks</>}
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-
-                        {/* Stale warning */}
-                        {isStale && (
-                          <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-700">
-                            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                            Scores were edited. Click Generate Ranks to update.
-                          </div>
-                        )}
-
-                        {resultError && (
-                          <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-100 rounded-xl text-xs text-red-600">
-                            <AlertCircle className="w-3.5 h-3.5 shrink-0" /> Failed to load: {resultError}
-                          </div>
-                        )}
-
-                        {!resultError && results.length === 0 && (
-                          <p className="text-sm text-gray-400 text-center py-4">
-                            No results yet. Use "Enter Marks" above to add them.
-                          </p>
-                        )}
-
-                        {/* Summary */}
-                        {students.length > 0 && (
-                          <div className="grid grid-cols-4 gap-2">
-                            {[
-                              { label: "Students", value: students.length },
-                              { label: "Subjects",  value: new Set(results.map((r) => r.subject?.id)).size },
-                              { label: "Pass Rate", value: students.length ? `${Math.round(students.filter((s) => calcGrade(s.totalScore, s.maxScore) !== "F").length / students.length * 100)}%` : "—" },
-                              { label: "Avg", value: students.length ? `${Math.round(students.reduce((s, st) => s + st.pct, 0) / students.length)}%` : "—" },
-                            ].map((s) => (
-                              <div key={s.label} className="bg-white rounded-xl p-2.5 text-center border border-gray-100">
-                                <p className="text-base font-bold text-gray-900">{s.value}</p>
-                                <p className="text-[11px] text-gray-400 mt-0.5">{s.label}</p>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {students.length > 0 && (
-                          <p className="text-[10px] text-gray-400 text-center">
-                            Click score to edit inline · Trash to delete · Regenerate ranks after changes
-                          </p>
-                        )}
-
-                        {/* Student result cards */}
-                        <div className="space-y-2">
-                          {students.map((st, idx) => {
-                            const overall = gradeChip(st.totalScore, st.maxScore);
-                            return (
-                              <motion.div key={st.studentId}
-                                initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: idx * 0.02 }}
-                                className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-
-                                {/* Student header */}
-                                <div className="flex items-center gap-3 px-4 py-2.5 bg-gray-50/80 border-b border-gray-100">
-                                  <div className="w-8 flex items-center justify-center shrink-0">
-                                    {st.rank
-                                      ? <span className="text-sm font-black text-amber-500">#{st.rank}</span>
-                                      : <span className="text-xs text-gray-300">—</span>}
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-bold text-gray-900 truncate">{st.name}</p>
-                                    <p className="text-xs text-gray-400">{st.adno} · {st.className}</p>
-                                  </div>
-                                  <div className="text-right shrink-0">
-                                    <p className="text-sm font-bold text-gray-900">
-                                      {st.totalScore}<span className="text-xs font-normal text-gray-400">/{st.maxScore}</span>
-                                    </p>
-                                    <p className="text-xs text-gray-400">{st.pct}%</p>
-                                  </div>
-                                  <span className={cn("text-xs font-bold px-2 py-1 rounded-lg border w-10 text-center shrink-0", overall.cls)}>
-                                    {overall.label}
-                                  </span>
-                                </div>
-
-                                {/* Subject rows — editable + deletable */}
-                                <div className="divide-y divide-gray-50">
-                                  {st.subjects.map((r) => {
-                                    const isEditingCell = editCell?.resultId === r.id;
-                                    const isSavingCell  = savingCell === r.id;
-                                    const isDeletingR   = deletingResultId === r.id;
-                                    const chip = gradeChip(r.score, r.totalMarks);
-
-                                    return (
-                                      <div key={r.id} className="flex items-center gap-2 px-4 py-2">
-                                        <p className="flex-1 text-sm text-gray-700 truncate min-w-0">
-                                          {r.subject?.name ?? "Subject"}
-                                        </p>
-                                        <span className={cn("text-xs font-bold px-2 py-0.5 rounded-lg border w-9 text-center shrink-0", chip.cls)}>
-                                          {chip.label}
-                                        </span>
-                                        {/* Score — click to edit inline */}
-                                        <div className="shrink-0 w-28 flex items-center justify-end gap-1">
-                                          {isEditingCell ? (
-                                            <input autoFocus type="number" min={0} max={r.totalMarks}
-                                              value={editCell!.score}
-                                              onChange={(e) => setEditCell({ ...editCell!, score: e.target.value })}
-                                              onBlur={commitEdit}
-                                              onKeyDown={(e) => { if (e.key === "Enter") commitEdit(); if (e.key === "Escape") setEditCell(null); }}
-                                              className="w-20 text-center px-2 py-1 border-2 border-emerald-400 rounded-lg text-sm font-bold focus:outline-none bg-white" />
-                                          ) : (
-                                            <button
-                                              onClick={() => setEditCell({ resultId: r.id, examId: exam.id, score: String(r.score) })}
-                                              className="text-sm font-bold px-3 py-1 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition-colors cursor-pointer min-w-[5rem] text-right"
-                                              title="Click to edit">
-                                              {isSavingCell
-                                                ? <Loader2 className="w-4 h-4 animate-spin inline" />
-                                                : <>{r.score}<span className="text-xs font-normal text-gray-400">/{r.totalMarks}</span></>}
-                                            </button>
-                                          )}
-                                        </div>
-                                        {/* Delete result */}
-                                        <button
-                                          onClick={() => {
-                                            setDeleteResultTarget({
-                                              id: r.id,
-                                              name: st.name,
-                                              subject: r.subject?.name ?? "Subject",
-                                              score: r.score,
-                                              examId: exam.id
-                                            });
-                                            setShowDeleteResultConfirm(true);
-                                          }}
-                                          disabled={isDeletingR}
-                                          className="p-1 rounded-lg text-gray-200 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
-                                          title="Delete this result">
-                                          {isDeletingR ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                                        </button>
-                                        {/* Who marked */}
-                                        {r.markedBy && (
-                                          <span className="hidden sm:block text-[10px] text-gray-300 truncate w-16 text-right shrink-0"
-                                            title={`Marked by ${r.markedBy.name}`}>
-                                            {r.markedBy.name}
-                                          </span>
-                                        )}
+                                    <div className="flex items-center gap-3 shrink-0">
+                                      <div className="text-right">
+                                        <p className="text-sm font-bold text-gray-900">{st.totalScore}<span className="text-[10px] text-gray-400 font-normal">/{st.maxScore}</span></p>
+                                        <p className="text-[10px] text-gray-400 font-medium">{st.pct}%</p>
                                       </div>
-                                    );
-                                  })}
-                                </div>
-                              </motion.div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                                      <span className={cn("text-xs font-black px-2 py-0.5 rounded border text-center shrink-0 w-10", overall.cls)}>
+                                        {overall.label}
+                                      </span>
+                                    </div>
+                                  </div>
 
-      {/* ── Create exam modal ── */}
-      <AnimatePresence>
-        {showCreate && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/30 z-40 backdrop-blur-sm" onClick={() => setShowCreate(false)} />
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-4">
-              <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between mb-5">
-                  <div>
-                    <p className="font-bold text-gray-900 text-lg">New Exam</p>
-                    <p className="text-xs text-gray-400 mt-0.5">School-wide · teachers enter marks per class &amp; subject</p>
-                  </div>
-                  <button onClick={() => setShowCreate(false)}><X className="w-5 h-5 text-gray-400" /></button>
+                                  {/* Subject breakdown rows */}
+                                  <div className="divide-y divide-gray-50">
+                                    {st.subjects.map((r) => {
+                                      const isEditingCell = editCell?.resultId === r.id;
+                                      const isSavingCell  = savingCell === r.id;
+                                      const isDeletingR   = deletingResultId === r.id;
+                                      const chip = gradeChip(r.score, r.totalMarks);
+
+                                      return (
+                                        <div key={r.id} className="flex items-center justify-between px-4 py-2.5">
+                                          <p className="text-xs text-gray-600 truncate mr-2">{r.subject?.name ?? "Subject"}</p>
+                                          <div className="flex items-center gap-2">
+                                            <span className={cn("text-[10px] font-bold px-1.5 py-0.2 rounded border text-center shrink-0 w-8", chip.cls)}>
+                                              {chip.label}
+                                            </span>
+                                            {isEditingCell ? (
+                                              <input
+                                                autoFocus
+                                                type="number"
+                                                min={0}
+                                                max={r.totalMarks}
+                                                value={editCell!.score}
+                                                onChange={(e) => setEditCell({ ...editCell!, score: e.target.value })}
+                                                onBlur={commitEdit}
+                                                onKeyDown={(e) => { if (e.key === "Enter") commitEdit(); if (e.key === "Escape") setEditCell(null); }}
+                                                className="w-16 text-center border-2 border-emerald-400 rounded-lg text-xs font-bold focus:outline-none"
+                                              />
+                                            ) : (
+                                              <button
+                                                onClick={() => setEditCell({ resultId: r.id, examId: exam.id, score: String(r.score) })}
+                                                className="text-xs font-bold text-gray-700 hover:text-emerald-600 hover:bg-emerald-50 px-2 py-1 rounded transition-colors"
+                                              >
+                                                {isSavingCell ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : `${r.score}/${r.totalMarks}`}
+                                              </button>
+                                            )}
+                                            <button
+                                              onClick={() => {
+                                                setDeleteResultTarget({ id: r.id, name: st.name, subject: r.subject?.name ?? "Subject", score: r.score, examId: exam.id });
+                                                setShowDeleteResultConfirm(true);
+                                              }}
+                                              disabled={isDeletingR}
+                                              className="p-1 text-gray-300 hover:text-rose-600 rounded"
+                                            >
+                                              <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ── Sliding Side Drawer Form ── */}
+      <AnimatePresence>
+        {drawerOpen && (
+          <>
+            {/* Drawer Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.3 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDrawerOpen(false)}
+              className="fixed inset-0 bg-black z-40 backdrop-blur-xs pointer-events-auto"
+            />
+            {/* Drawer Panel */}
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "tween", duration: 0.3 }}
+              className="fixed top-0 right-0 h-full w-full max-w-md bg-white border-l border-gray-100 shadow-2xl z-50 overflow-y-auto pointer-events-auto flex flex-col"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between p-5 border-b border-gray-100">
+                <div>
+                  <h2 className="text-lg font-black text-gray-900 tracking-tight">{drawerMode === "create" ? "Create New Exam" : "Edit Exam"}</h2>
+                  <p className="text-xs text-gray-400 mt-1">Define dates and config for marking & results</p>
+                </div>
+                <button
+                  onClick={() => setDrawerOpen(false)}
+                  className="p-1.5 hover:bg-gray-100 rounded-xl transition-colors text-gray-400"
+                >
+                  <X className="w-5.5 h-5.5" />
+                </button>
+              </div>
+
+              {/* Form Content */}
+              <form onSubmit={handleFormSubmit} className="p-5 flex-1 space-y-5">
+                
+                {/* Basic info */}
                 <div className="space-y-4">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <GraduationCap className="w-4 h-4 text-emerald-600" /> Basic Information
+                  </p>
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 mb-1.5">Exam Name *</label>
-                    <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                      placeholder="e.g. Term 1 Exam, Annual Exam"
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                    <input
+                      type="text"
+                      required
+                      value={form.name}
+                      onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                      placeholder="e.g. First Term Exam 2026"
+                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 focus:border-emerald-500 transition-all bg-white"
+                    />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">Status</label>
-                    <select value={form.examStatus} onChange={(e) => setForm((f) => ({ ...f, examStatus: e.target.value as ExamStatus }))}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                      {(Object.keys(STATUS_LABELS) as ExamStatus[]).map((s) => (
-                        <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-                      ))}
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">Exam Type *</label>
+                    <select
+                      value={form.type}
+                      onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as ExamType, classId: "", subjectId: "" }))}
+                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 focus:border-emerald-500 transition-all bg-white"
+                    >
+                      <option value="TERM_EXAM">Madrasa Level (School Wide)</option>
+                      <option value="CLASS_TEST">Class Level (Class Test)</option>
+                      <option value="UNIT_TEST">Class Level (Unit Test)</option>
                     </select>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    {([["startDate", "Start Date"], ["endDate", "End Date"], ["markEntryLastDate", "Mark Entry Deadline"], ["publishedDate", "Publish Date"]] as const).map(([field, label]) => (
-                      <div key={field}>
-                        <label className="block text-xs font-semibold text-gray-500 mb-1.5">{label}</label>
-                        <input type="date" value={form[field]}
-                          onChange={(e) => setForm((f) => ({ ...f, [field]: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+
+                  {/* Class Level selective options */}
+                  {form.type !== "TERM_EXAM" && (
+                    <div className="grid grid-cols-2 gap-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1.5">Select Class *</label>
+                        <select
+                          required
+                          value={form.classId}
+                          onChange={(e) => setForm((f) => ({ ...f, classId: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs bg-white focus:outline-none"
+                        >
+                          <option value="">Choose Class</option>
+                          {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
                       </div>
-                    ))}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1.5">Select Subject *</label>
+                        <select
+                          required
+                          value={form.subjectId}
+                          onChange={(e) => setForm((f) => ({ ...f, subjectId: e.target.value }))}
+                          disabled={!form.classId || formSubjects.length === 0}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs bg-white focus:outline-none disabled:opacity-50"
+                        >
+                          <option value="">Choose Subject</option>
+                          {formSubjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">Academic Year *</label>
+                    <select
+                      disabled
+                      value={ayId}
+                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-400 focus:outline-none cursor-not-allowed"
+                    >
+                      <option value={ayId}>Active Academic Year</option>
+                    </select>
                   </div>
                 </div>
-                <div className="flex gap-3 mt-6">
-                  <button onClick={() => setShowCreate(false)} className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700">Cancel</button>
-                  <button onClick={handleCreate} disabled={!form.name || creating}
-                    className="flex-1 py-3 bg-emerald-600 text-white rounded-xl text-sm font-semibold disabled:opacity-60 flex items-center justify-center gap-2">
-                    {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : null} Create Exam
+
+                {/* Exam Period */}
+                <div className="space-y-4">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5 border-t pt-4">
+                    <Calendar className="w-4 h-4 text-emerald-600" /> Exam Period
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Exam Start Date *</label>
+                      <input
+                        type="date"
+                        required
+                        value={form.startDate}
+                        onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
+                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 focus:border-emerald-500 transition-all bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Exam End Date *</label>
+                      <input
+                        type="date"
+                        required
+                        value={form.endDate}
+                        onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
+                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 focus:border-emerald-500 transition-all bg-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Mark entry period */}
+                <div className="space-y-4">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5 border-t pt-4">
+                    <PenLine className="w-4 h-4 text-emerald-600" /> Mark Entry Period
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Mark Entry Opens On *</label>
+                      <input
+                        type="date"
+                        required
+                        value={form.endDate ? new Date(new Date(form.endDate).getTime() + 86400000).toISOString().split("T")[0] : ""}
+                        disabled
+                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-400 cursor-not-allowed"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Mark Entry Closes On *</label>
+                      <input
+                        type="date"
+                        required
+                        value={form.markEntryLastDate}
+                        onChange={(e) => setForm((f) => ({ ...f, markEntryLastDate: e.target.value }))}
+                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 focus:border-emerald-500 transition-all bg-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Result Publication */}
+                <div className="space-y-4">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5 border-t pt-4">
+                    <Award className="w-4 h-4 text-emerald-600" /> Result Publication
+                  </p>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">Result Publish Date *</label>
+                    <input
+                      type="date"
+                      required
+                      value={form.publishedDate}
+                      onChange={(e) => setForm((f) => ({ ...f, publishedDate: e.target.value }))}
+                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 focus:border-emerald-500 transition-all bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">Initial Status</label>
+                    <select
+                      value={form.examStatus}
+                      onChange={(e) => setForm((f) => ({ ...f, examStatus: e.target.value as ExamStatus }))}
+                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 focus:border-emerald-500 transition-all bg-white"
+                    >
+                      <option value="DRAFT">Draft</option>
+                      <option value="MARK_ENTRY">Mark Entry Open</option>
+                      <option value="PUBLISHED">Published</option>
+                      <option value="CANCELLED">Cancelled</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Submit Actions */}
+                <div className="flex gap-3 mt-6 pt-5 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => setDrawerOpen(false)}
+                    className="flex-1 py-3 border border-gray-200 hover:bg-gray-50 text-gray-600 rounded-xl text-sm font-bold transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-2 transition-colors shadow-sm shadow-emerald-100"
+                  >
+                    {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {drawerMode === "create" ? "Create Exam" : "Save Changes"}
                   </button>
                 </div>
-              </div>
+              </form>
             </motion.div>
           </>
         )}
       </AnimatePresence>
 
-      {/* Standalone Delete Exam Confirm Dialog */}
+      {/* Delete Exam Confirm Dialog */}
       <AnimatePresence>
         {showDeleteExamConfirm && deleteExamTarget && (
           <>
-            <motion.div key="del-exam-backdrop"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
               onClick={() => !deletingId && setShowDeleteExamConfirm(false)}
-              className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm pointer-events-auto"
+              className="fixed inset-0 bg-black z-50 backdrop-blur-xs pointer-events-auto"
             />
-            <motion.div key="del-exam-dialog"
-              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
               className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-[60] bg-white rounded-3xl p-6 max-w-sm mx-auto shadow-2xl pointer-events-auto"
             >
               <div className="text-center space-y-3">
-                <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto animate-bounce">
-                  <Trash2 className="w-7 h-7 text-red-600" />
+                <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
+                  <Trash2 className="w-6 h-6 animate-bounce" />
                 </div>
-                <h3 className="font-bold text-gray-900 text-lg">Delete Exam?</h3>
-                <p className="text-sm text-gray-500">
+                <h3 className="font-bold text-gray-900 text-base">Delete Exam?</h3>
+                <p className="text-xs text-gray-500 leading-relaxed">
                   Are you sure you want to delete exam <strong>{deleteExamTarget.name}</strong>? This action cannot be undone.
                 </p>
               </div>
@@ -928,20 +1268,17 @@ export default function AdminExamsPage() {
                 <button
                   onClick={() => setShowDeleteExamConfirm(false)}
                   disabled={deletingId !== null}
-                  className="py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  className="py-2.5 rounded-xl border border-gray-200 text-gray-600 font-bold text-xs hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={handleDelete}
+                  onClick={handleDeleteExam}
                   disabled={deletingId !== null}
-                  className="py-3 rounded-2xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors disabled:opacity-60"
+                  className="py-2.5 rounded-xl bg-rose-600 text-white font-bold text-xs hover:bg-rose-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-1"
                 >
-                  {deletingId !== null ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" /> Deleting…
-                    </span>
-                  ) : "Delete"}
+                  {deletingId !== null && <Loader2 className="w-3 h-3 animate-spin" />}
+                  {deletingId !== null ? "Deleting…" : "Delete"}
                 </button>
               </div>
             </motion.div>
@@ -949,25 +1286,29 @@ export default function AdminExamsPage() {
         )}
       </AnimatePresence>
 
-      {/* Standalone Delete Result Confirm Dialog */}
+      {/* Delete Result Confirm Dialog */}
       <AnimatePresence>
         {showDeleteResultConfirm && deleteResultTarget && (
           <>
-            <motion.div key="del-result-backdrop"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
               onClick={() => !deletingResultId && setShowDeleteResultConfirm(false)}
-              className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm pointer-events-auto"
+              className="fixed inset-0 bg-black z-50 backdrop-blur-xs pointer-events-auto"
             />
-            <motion.div key="del-result-dialog"
-              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
               className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-[60] bg-white rounded-3xl p-6 max-w-sm mx-auto shadow-2xl pointer-events-auto"
             >
               <div className="text-center space-y-3">
-                <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto animate-bounce">
-                  <Trash2 className="w-7 h-7 text-red-600" />
+                <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
+                  <Trash2 className="w-6 h-6 animate-bounce" />
                 </div>
-                <h3 className="font-bold text-gray-900 text-lg">Delete Result?</h3>
-                <p className="text-sm text-gray-500">
+                <h3 className="font-bold text-gray-900 text-base">Delete Result?</h3>
+                <p className="text-xs text-gray-500 leading-relaxed">
                   Are you sure you want to delete result of <strong>{deleteResultTarget.name}</strong> for subject <strong>{deleteResultTarget.subject}</strong> (Score: {deleteResultTarget.score})?
                 </p>
               </div>
@@ -975,20 +1316,17 @@ export default function AdminExamsPage() {
                 <button
                   onClick={() => setShowDeleteResultConfirm(false)}
                   disabled={deletingResultId !== null}
-                  className="py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  className="py-2.5 rounded-xl border border-gray-200 text-gray-600 font-bold text-xs hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDeleteResult}
                   disabled={deletingResultId !== null}
-                  className="py-3 rounded-2xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors disabled:opacity-60"
+                  className="py-2.5 rounded-xl bg-rose-600 text-white font-bold text-xs hover:bg-rose-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-1"
                 >
-                  {deletingResultId !== null ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" /> Deleting…
-                    </span>
-                  ) : "Delete"}
+                  {deletingResultId !== null && <Loader2 className="w-3 h-3 animate-spin" />}
+                  {deletingResultId !== null ? "Deleting…" : "Delete"}
                 </button>
               </div>
             </motion.div>

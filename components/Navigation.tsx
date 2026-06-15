@@ -231,7 +231,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose?: () =>
 
   const isSuperAdmin = user.actorType === "SUPER_ADMIN";
   const hasActiveClient = !!activeClientId;
-  const isAdminView = user.role === "admin" || (isSuperAdmin && hasActiveClient);
+  const isAdminView = (user.role === "admin" && !isSuperAdmin) || (isSuperAdmin && hasActiveClient);
 
   const adminCats = isAdminView ? getAdminCategories(user.role, user.actorType) : [];
   

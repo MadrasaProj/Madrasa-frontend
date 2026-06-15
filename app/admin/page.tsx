@@ -19,201 +19,12 @@ import {
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-const isExpired = (d?: string) => !!d && new Date(d) < new Date();
-
-// ── Madrasas DataTable ────────────────────────────────────────────────────────
-
-const MADRASA_COLUMNS: Column<ClientListItem>[] = [
-  {
-    key: "name",
-    header: "Madrasa",
-    sortable: true,
-    render: (c) => (
-      <div className="flex items-center gap-2.5">
-        <div className="w-8 h-8 bg-indigo-100 rounded-xl flex items-center justify-center shrink-0">
-          <Building2 className="w-4 h-4 text-indigo-700" />
-        </div>
-        <div>
-          <p className="font-semibold text-gray-900 text-sm leading-tight">{c.name}</p>
-          <p className="text-xs font-mono text-gray-400">{c.slug}</p>
-        </div>
-      </div>
-    ),
-  },
-  {
-    key: "status",
-    header: "Status",
-    sortable: true,
-    render: (c) => {
-      const expired = isExpired(c.subscriptionEnd);
-      return (
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className={cn(
-            "text-[10px] font-bold px-2 py-0.5 rounded-full",
-            c.status === "ACTIVE" ? "bg-emerald-100 text-emerald-700"
-              : c.status === "TRIAL" ? "bg-blue-100 text-blue-700"
-              : "bg-gray-100 text-gray-500",
-          )}>
-            {c.status}
-          </span>
-          {expired && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-600">EXPIRED</span>}
-        </div>
-      );
-    },
-    className: "hidden sm:table-cell",
-    headerClass: "hidden sm:table-cell",
-  },
-  {
-    key: "_count.students",
-    header: "Students",
-    sortable: true,
-    render: (c) => <span className="text-sm font-semibold text-gray-700">{c._count?.students ?? 0}</span>,
-    className: "hidden md:table-cell text-right",
-    headerClass: "hidden md:table-cell text-right",
-  },
-  {
-    key: "_count.users",
-    header: "Staff",
-    sortable: true,
-    render: (c) => <span className="text-sm font-semibold text-gray-700">{c._count?.users ?? 0}</span>,
-    className: "hidden md:table-cell text-right",
-    headerClass: "hidden md:table-cell text-right",
-  },
-  {
-    key: "city",
-    header: "Location",
-    render: (c) => c.city
-      ? <span className="text-sm text-gray-500">{c.city}</span>
-      : <span className="text-gray-300">—</span>,
-    className: "hidden lg:table-cell",
-    headerClass: "hidden lg:table-cell",
-  },
-  {
-    key: "isLoginEnabled",
-    header: "Login",
-    render: (c) => c.isLoginEnabled
-      ? <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium"><CheckCircle className="w-3.5 h-3.5" /> On</span>
-      : <span className="flex items-center gap-1 text-xs text-gray-400"><XCircle className="w-3.5 h-3.5" /> Off</span>,
-    className: "hidden sm:table-cell",
-    headerClass: "hidden sm:table-cell",
-  },
-];
-
-function MadrasaTable({
-  clients, loading, entering, sortKey, sortDir, onSort, onEnter,
-}: {
-  clients: ClientListItem[];
-  loading: boolean;
-  entering: string | null;
-  sortKey: string | undefined;
-  sortDir: SortDir;
-  onSort: (k: string, d: SortDir) => void;
-  onEnter: (clientId: string, slug: string) => void;
-}) {
-  const sorted = useMemo(() => {
-    if (!sortKey) return clients;
-    return [...clients].sort((a, b) => {
-      let av: any = sortKey.includes(".")
-        ? sortKey.split(".").reduce((o: any, k) => o?.[k], a)
-        : (a as any)[sortKey];
-      let bv: any = sortKey.includes(".")
-        ? sortKey.split(".").reduce((o: any, k) => o?.[k], b)
-        : (b as any)[sortKey];
-      av = av ?? "";
-      bv = bv ?? "";
-      const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv));
-      return sortDir === "asc" ? cmp : -cmp;
-    });
-  }, [clients, sortKey, sortDir]);
-
-  const columns: Column<ClientListItem>[] = useMemo(() => [
-    ...MADRASA_COLUMNS,
-    {
-      key: "actions",
-      header: "",
-      render: (c) => (
-        <button
-          onClick={(e) => { e.stopPropagation(); onEnter(c.id, c.slug); }}
-          disabled={entering === c.id}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60 transition-all"
-        >
-          {entering === c.id
-            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            : <LogIn className="w-3.5 h-3.5" />}
-          Enter
-        </button>
-      ),
-      className: "text-right",
-    },
-  ], [entering, onEnter]); // eslint-disable-line
-
-  return (
-    <DataTable
-      columns={columns}
-      data={sorted}
-      keyExtractor={(c) => c.id}
-      loading={loading}
-      emptyIcon={Building2}
-      emptyMessage="No madrasas registered yet"
-      onSort={onSort}
-      sortKey={sortKey}
-      sortDir={sortDir}
-      mobileRender={(c) => {
-        const expired = isExpired(c.subscriptionEnd);
-        return (
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center shrink-0">
-              <Building2 className="w-5 h-5 text-indigo-700" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <p className="font-semibold text-gray-900 text-sm">{c.name}</p>
-                <span className="text-xs font-mono text-gray-400">{c.slug}</span>
-                <span className={cn(
-                  "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
-                  c.status === "ACTIVE" ? "bg-emerald-100 text-emerald-700"
-                    : c.status === "TRIAL" ? "bg-blue-100 text-blue-700"
-                    : "bg-gray-100 text-gray-500",
-                )}>
-                  {c.status}
-                </span>
-                {expired && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-600">EXPIRED</span>}
-              </div>
-              <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-400">
-                <span>{c._count?.students ?? 0} students</span>
-                <span>{c._count?.users ?? 0} staff</span>
-                {c.city && <span>{c.city}</span>}
-                {c.isLoginEnabled
-                  ? <span className="flex items-center gap-0.5 text-emerald-600 font-medium"><CheckCircle className="w-3 h-3" /> Login on</span>
-                  : <span className="flex items-center gap-0.5 text-gray-400"><XCircle className="w-3 h-3" /> Login off</span>}
-              </div>
-            </div>
-            <button
-              onClick={(e) => { e.stopPropagation(); onEnter(c.id, c.slug); }}
-              disabled={entering === c.id}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60 transition-all shrink-0"
-            >
-              {entering === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogIn className="w-3.5 h-3.5" />}
-              Enter
-            </button>
-          </div>
-        );
-      }}
-    />
-  );
-}
-
-// ── Platform Overview (Super Admin without active client) ─────────────────────
-
 function PlatformOverview() {
-  const { user, accessToken, switchToClient } = useAuthStore();
+  const { user, accessToken } = useAuthStore();
   const navigate = useNavigate();
   const [clients, setClients] = useState<ClientListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [entering, setEntering] = useState<string | null>(null);
-  const [sortKey, setSortKey] = useState<string | undefined>(undefined);
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   const loadClients = () => {
     if (!accessToken) return;
@@ -233,12 +44,6 @@ function PlatformOverview() {
   const activeClients = clients.filter((c) => c.status === "ACTIVE").length;
   const totalStudents = clients.reduce((s, c) => s + (c._count?.students ?? 0), 0);
   const totalStaff = clients.reduce((s, c) => s + (c._count?.users ?? 0), 0);
-
-  const handleEnter = (clientId: string, slug: string) => {
-    setEntering(clientId);
-    switchToClient(clientId, slug);
-    navigate(`/m/${slug}/admin`);
-  };
 
   const statCards = [
     { label: "Total Madrasas",  value: loading ? "…" : totalClients,  },
@@ -289,18 +94,6 @@ function PlatformOverview() {
           </motion.div>
         ))}
       </div>
-
-      {/* Madrasa list — quick switch */}
-      <SectionHeader title="Madrasas" className="mb-3" />
-      <MadrasaTable
-        clients={clients}
-        loading={loading}
-        entering={entering}
-        sortKey={sortKey}
-        sortDir={sortDir}
-        onSort={(k, d) => { setSortKey(k); setSortDir(d); }}
-        onEnter={handleEnter}
-      />
     </>
   );
 }
