@@ -102,7 +102,7 @@ export default function TeacherExamsPage() {
       .then(([cls, subs, examData]) => {
         setAllClasses(cls);
         setMySubjects(subs.data ?? []);
-        const loadedExams = examData.data ?? [];
+        const loadedExams = (examData.data ?? []).filter((e) => e.type === "TERM_EXAM" || !e.type);
         setExams(loadedExams);
 
         // Auto-initialize query params if not set
@@ -354,7 +354,7 @@ export default function TeacherExamsPage() {
                 <span>/</span>
                 <span>Mark Entry</span>
               </div>
-              <h1 className="text-xl font-black text-gray-900 tracking-tight mt-0.5">Enter Marks</h1>
+              <h1 className="text-xl font-extrabold text-gray-900 tracking-tight mt-0.5">Enter Marks</h1>
             </div>
           </div>
 
@@ -410,7 +410,7 @@ export default function TeacherExamsPage() {
                 <div>
                   <p className="text-xs font-bold text-emerald-800 flex items-center gap-2">
                     Mark Entry Period
-                    <span className={cn("px-2 py-0.5 rounded-full text-[9px] border font-black uppercase", isLocked ? "bg-rose-50 text-rose-700 border-rose-100" : "bg-emerald-50 text-emerald-700 border-emerald-100")}>
+                    <span className={cn("px-2 py-0.5 rounded-full text-[9px] border font-extrabold uppercase", isLocked ? "bg-rose-50 text-rose-700 border-rose-100" : "bg-emerald-50 text-emerald-700 border-emerald-100")}>
                       {isLocked ? "Closed" : "Open"}
                     </span>
                   </p>
@@ -442,8 +442,9 @@ export default function TeacherExamsPage() {
               <p className="text-xs text-gray-400 mt-1">Make sure you have students registered in this class.</p>
             </div>
           ) : (
-            <div className="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden flex flex-col">
-              <div className="overflow-x-auto">
+            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+              {/* Desktop Table View */}
+              <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full text-left border-collapse text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
@@ -478,7 +479,7 @@ export default function TeacherExamsPage() {
                               onChange={(e) => setScores((prev) => ({ ...prev, [s.id]: e.target.value }))}
                               placeholder="—"
                               className={cn(
-                                "w-24 text-center px-3 py-2 border rounded-xl text-sm font-black focus:outline-none transition-all",
+                                "w-24 text-center px-3 py-2 border rounded-xl text-sm font-bold focus:outline-none transition-all",
                                 isLocked
                                   ? "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed"
                                   : "border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/20"
@@ -502,6 +503,57 @@ export default function TeacherExamsPage() {
                 </table>
               </div>
 
+              {/* Mobile Card-Based List View */}
+              <div className="block sm:hidden divide-y divide-gray-100 max-h-[60vh] overflow-y-auto">
+                {students.map((s, idx) => {
+                  const score = scores[s.id] ?? "";
+                  const remark = remarks[s.id] ?? "";
+                  return (
+                    <div key={s.id} className="p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-gray-400 font-bold">#{idx + 1}</span>
+                            <p className="font-bold text-gray-900 text-sm leading-snug truncate">{s.name}</p>
+                          </div>
+                          <p className="text-[11px] text-gray-400 mt-0.5">
+                            AdNo: <span className="font-semibold font-mono text-gray-600">{s.adno}</span> · {s.gender ?? "Male"}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-xs text-gray-400 font-medium mr-1">/100</span>
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            disabled={isLocked || saving}
+                            value={score}
+                            onChange={(e) => setScores((prev) => ({ ...prev, [s.id]: e.target.value }))}
+                            placeholder="—"
+                            className={cn(
+                              "w-16 text-center py-1.5 px-2 border rounded-xl text-sm font-bold focus:outline-none transition-all",
+                              isLocked
+                                ? "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed"
+                                : "border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/20"
+                            )}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <input
+                          type="text"
+                          disabled={isLocked || saving}
+                          value={remark}
+                          onChange={(e) => setRemarks((prev) => ({ ...prev, [s.id]: e.target.value }))}
+                          placeholder="Add remark..."
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-emerald-500 transition-all bg-white"
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
               {/* Bottom statistics bar */}
               <div className="bg-gray-50 px-6 py-4 flex flex-wrap items-center justify-between border-t border-gray-100 gap-4">
                 <div className="flex items-center gap-6">
@@ -509,10 +561,10 @@ export default function TeacherExamsPage() {
                     <span className="text-gray-400">Total Students:</span> <strong className="text-gray-900 font-bold ml-1">{students.length}</strong>
                   </div>
                   <div className="text-xs">
-                    <span className="text-emerald-500 font-semibold">Entered:</span> <strong className="text-emerald-700 font-black ml-1">{filled}</strong>
+                    <span className="text-emerald-500 font-semibold">Entered:</span> <strong className="text-emerald-700 font-extrabold ml-1">{filled}</strong>
                   </div>
                   <div className="text-xs">
-                    <span className="text-amber-500 font-semibold font-mono">Remaining:</span> <strong className="text-amber-700 font-black ml-1">{students.length - filled}</strong>
+                    <span className="text-amber-500 font-semibold font-mono">Remaining:</span> <strong className="text-amber-700 font-extrabold ml-1">{students.length - filled}</strong>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -566,7 +618,7 @@ export default function TeacherExamsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-black text-gray-900 tracking-tight">Exams</h1>
+            <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Exams</h1>
             <p className="text-sm text-gray-500 mt-1">View exam schedule and enter marks</p>
           </div>
         </div>
@@ -577,14 +629,14 @@ export default function TeacherExamsPage() {
             { label: "Upcoming Exams", value: upcomingExams.length, color: "bg-emerald-50 text-emerald-600 border border-emerald-100", icon: Clock },
             { label: "Mark Entry Open", value: markEntryOpenExams.length, color: "bg-amber-50 text-amber-600 border border-amber-100", icon: PenLine },
             { label: "Completed", value: completedExams.length, color: "bg-purple-50 text-purple-600 border border-purple-100", icon: ClipboardCheck },
-            { label: "Results Published", value: publishedExams.length, color: "bg-blue-50 text-blue-600 border border-blue-100", icon: Trophy }
+            { label: "Results Published", value: publishedExams.length, color: "bg-teal-50 text-teal-600 border border-teal-100", icon: Trophy }
           ].map((st, i) => (
             <div key={i} className="bg-white rounded-3xl border border-gray-100 p-5 flex items-center gap-4 shadow-xs">
               <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-inner", st.color)}>
                 <st.icon className="w-5.5 h-5.5" />
               </div>
               <div>
-                <p className="text-2xl font-black text-gray-900 leading-none">{st.value}</p>
+                <p className="text-2xl font-extrabold text-gray-900 leading-none">{st.value}</p>
                 <p className="text-[10px] text-gray-400 mt-1.5 uppercase font-bold tracking-wider">{st.label}</p>
               </div>
             </div>
@@ -628,8 +680,6 @@ export default function TeacherExamsPage() {
         ) : (
           <div className="grid grid-cols-1 gap-4">
             {filteredExams.map((exam) => {
-              const isClassLevel = exam.classId !== null || exam.type !== "TERM_EXAM";
-              
               // dynamic icons based on type/status
               let displayStatus = exam.examStatus;
               let statusLabel = STATUS_LABELS[exam.examStatus];
@@ -643,7 +693,7 @@ export default function TeacherExamsPage() {
               // Card Status badges and countdown logic
               let statusStyle = "bg-gray-100 text-gray-700 border-gray-200";
               if (exam.examStatus === "PUBLISHED") {
-                statusStyle = "bg-blue-50 text-blue-700 border-blue-200";
+                statusStyle = "bg-teal-50 text-teal-700 border-teal-200";
                 subtextHtml = (
                   <span>Results Published On <strong>{fmt(exam.publishedDate || exam.endDate)}</strong></span>
                 );
@@ -683,27 +733,17 @@ export default function TeacherExamsPage() {
                 }
               }
 
-              const IconComponent = exam.type === "TERM_EXAM" ? GraduationCap : exam.type === "CLASS_TEST" ? BookOpen : ClipboardCheck;
-              const iconCircleColor = exam.type === "TERM_EXAM"
-                ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                : exam.type === "CLASS_TEST"
-                  ? "bg-blue-50 text-blue-600 border border-blue-100"
-                  : "bg-indigo-50 text-indigo-600 border border-indigo-100";
-
               return (
                 <div key={exam.id} className="bg-white rounded-3xl border border-gray-100 p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm hover:shadow-md/50 transition-shadow">
                   <div className="flex items-start gap-4 min-w-0">
-                    <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-inner", iconCircleColor)}>
-                      <IconComponent className="w-5.5 h-5.5" />
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0 shadow-inner">
+                      <GraduationCap className="w-5.5 h-5.5" />
                     </div>
                     <div className="min-w-0 space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-bold text-gray-900 text-base leading-tight truncate">{exam.name}</h3>
                         <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0", statusStyle)}>
                           {statusLabel}
-                        </span>
-                        <span className={cn("text-[10px] font-bold px-2.5 py-0.5 rounded-full", isClassLevel ? "bg-blue-50 text-blue-700 border border-blue-100" : "bg-emerald-50 text-emerald-700 border border-emerald-100")}>
-                          {isClassLevel ? "Class Level" : "Madrasa Level"}
                         </span>
                       </div>
                       

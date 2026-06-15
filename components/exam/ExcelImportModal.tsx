@@ -43,7 +43,7 @@ export function ExcelImportModal({
     const range = XLSX.utils.decode_range(ws["!ref"] ?? "A1");
     for (let c = range.s.c; c <= range.e.c; c++) {
       const cell = ws[XLSX.utils.encode_cell({ r: 0, c })];
-      if (cell) cell.s = { font: { bold: true }, fill: { fgColor: { rgb: "1E40AF" } }, font2: { color: { rgb: "FFFFFF" } } };
+      if (cell) cell.s = { font: { bold: true }, fill: { fgColor: { rgb: "047857" } }, font2: { color: { rgb: "FFFFFF" } } };
     }
 
     const wb = XLSX.utils.book_new();
@@ -141,7 +141,7 @@ export function ExcelImportModal({
           <div>
             <p className="text-sm font-medium text-gray-700 mb-2">Step 1 — Download template</p>
             <button onClick={downloadTemplate}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm font-medium transition-colors">
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-sm font-medium transition-colors">
               <FileDown className="w-4 h-4" />
               Download Template (.xlsx)
             </button>
@@ -155,7 +155,7 @@ export function ExcelImportModal({
             <p className="text-sm font-medium text-gray-700 mb-2">Step 2 — Fill & upload</p>
             <label className={cn(
               "flex flex-col items-center justify-center gap-2 w-full h-28 rounded-xl border-2 border-dashed cursor-pointer transition-colors",
-              rows ? "border-emerald-300 bg-emerald-50" : "border-gray-200 hover:border-blue-300 hover:bg-blue-50",
+              rows ? "border-emerald-300 bg-emerald-50" : "border-gray-200 hover:border-emerald-300 hover:bg-emerald-50",
             )}>
               {rows ? (
                 <>
@@ -198,7 +198,7 @@ export function ExcelImportModal({
           <button
             onClick={handleSubmit}
             disabled={!rows || saving}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium disabled:opacity-50 transition-colors">
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium disabled:opacity-50 transition-colors">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
             {saving ? "Uploading…" : "Upload Marks"}
           </button>

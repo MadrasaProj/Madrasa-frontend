@@ -113,7 +113,7 @@ export function RankPoster({ row, report, madrasaName, madrasaLogo }: Props) {
           Download JPG
         </button>
         <button onClick={() => run("share")} disabled={!!exporting}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 transition-colors">
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 transition-colors">
           {exporting === "share" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
           Share
         </button>

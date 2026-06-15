@@ -44,7 +44,7 @@ const RANK_MEDALS  = ["🥇", "🥈", "🥉"];
 const STATUS_STYLE: Record<string, string> = {
   PASSED:   "bg-emerald-100 text-emerald-800 border-emerald-300",
   FAILED:   "bg-red-100 text-red-800 border-red-300",
-  PROMOTED: "bg-blue-100 text-blue-800 border-blue-300",
+  PROMOTED: "bg-teal-100 text-teal-800 border-teal-300",
   WITHHELD: "bg-amber-100 text-amber-800 border-amber-300",
 };
 
@@ -219,8 +219,8 @@ function ParentResultCard({
             <tr className="bg-emerald-50/50 border-t-2 border-emerald-100 font-bold text-gray-900">
               <td className="px-4 py-3">TOTAL</td>
               <td className="px-3 py-3 text-right text-gray-500">{totalMax}</td>
-              <td className="px-3 py-3 text-right text-emerald-700 font-black">{totalScore.toFixed(0)}</td>
-              <td className="px-4 py-3 text-center text-emerald-700 font-black">{totalPct.toFixed(1)}%</td>
+              <td className="px-3 py-3 text-right text-emerald-700 font-extrabold">{totalScore.toFixed(0)}</td>
+              <td className="px-4 py-3 text-center text-emerald-700 font-extrabold">{totalPct.toFixed(1)}%</td>
             </tr>
           </tfoot>
         </table>
@@ -334,7 +334,7 @@ function ParentRankCard({
             {madrasaLogo && (
               <img src={madrasaLogo} alt="" className="h-10 w-auto mx-auto mb-1.5 object-contain" crossOrigin="anonymous" />
             )}
-            <p className={cn("text-[10px] font-black tracking-widest uppercase opacity-75", textTitle)}>{madrasaName}</p>
+            <p className={cn("text-[10px] font-extrabold tracking-widest uppercase opacity-75", textTitle)}>{madrasaName}</p>
             <p className={cn("text-xs font-bold mt-0.5 opacity-90", textTitle)}>{exam.name}</p>
           </div>
 
@@ -343,10 +343,10 @@ function ParentRankCard({
           </div>
 
           <div className="space-y-1">
-            <span className={cn("inline-block text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider", badgeBg)}>
+            <span className={cn("inline-block text-xs font-extrabold px-3 py-1 rounded-full uppercase tracking-wider", badgeBg)}>
               Rank #{rank}
             </span>
-            <h3 className={cn("text-xl font-black tracking-tight pt-1", textTitle)}>CONGRATULATIONS</h3>
+            <h3 className={cn("text-xl font-extrabold tracking-tight pt-1", textTitle)}>CONGRATULATIONS</h3>
           </div>
 
           {/* Student photo & info */}
@@ -358,7 +358,7 @@ function ParentRankCard({
               }
             </div>
             <div className="min-w-0">
-              <p className="font-black text-gray-900 text-sm leading-tight truncate">{studentName}</p>
+              <p className="font-extrabold text-gray-900 text-sm leading-tight truncate">{studentName}</p>
               <p className="text-[10px] text-gray-500 font-semibold mt-0.5">Adm No: <span className="font-mono text-gray-700">{studentAdo}</span></p>
               <p className="text-[10px] text-gray-500 font-semibold">Class: <span className="text-gray-700">{studentClass}</span></p>
             </div>
@@ -470,7 +470,7 @@ export default function ParentResultsPage() {
               <span>/</span>
               <span>{activeExam?.name ?? "Details"}</span>
             </div>
-            <h1 className="text-xl font-black text-gray-900 tracking-tight mt-0.5">Exam Results</h1>
+            <h1 className="text-xl font-extrabold text-gray-900 tracking-tight mt-0.5">Exam Results</h1>
           </div>
         </div>
 
@@ -479,7 +479,7 @@ export default function ParentResultsPage() {
             <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
           </div>
         ) : !effectiveId ? (
-          <div className="text-center py-16 bg-white border border-gray-100 rounded-3xl p-6">
+          <div className="text-center py-16 bg-white border border-gray-100 rounded-2xl p-6">
             <GraduationCap className="w-12 h-12 text-gray-200 mx-auto mb-3" />
             <p className="text-sm font-semibold text-gray-900">No children linked to this account</p>
           </div>
@@ -510,14 +510,14 @@ export default function ParentResultsPage() {
 
             {/* Top Summary Card (Screenshot 4) */}
             {activeExam && activeStudent && (
-              <div className="bg-white border border-gray-100 rounded-3xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0 text-emerald-600 shadow-inner">
                     <GraduationCap className="w-6 h-6" />
                   </div>
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="text-lg font-black text-gray-900 leading-tight">{activeExam.name}</h2>
+                      <h2 className="text-lg font-extrabold text-gray-900 leading-tight">{activeExam.name}</h2>
                       <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-full">
                         {activeExam.classId ? "Class Level" : "Madrasa Level"}
                       </span>
@@ -550,7 +550,7 @@ export default function ParentResultsPage() {
 
             {/* Content Tabs */}
             {exams.length === 0 ? (
-              <div className="text-center py-20 bg-white border border-gray-100 rounded-3xl p-6">
+              <div className="text-center py-20 bg-white border border-gray-100 rounded-2xl p-6">
                 <Medal className="w-12 h-12 text-gray-200 mx-auto mb-3" />
                 <p className="text-sm font-semibold text-gray-900">No published results yet</p>
                 <p className="text-xs text-gray-400 mt-1">Once examination results are published, they will appear here.</p>
@@ -589,7 +589,7 @@ export default function ParentResultsPage() {
                     {/* OVERVIEW TAB */}
                     {tab === "overview" && activeExam && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="bg-white border border-gray-100 rounded-3xl p-5 space-y-3 shadow-xs">
+                        <div className="bg-white border border-gray-100 rounded-2xl p-5 space-y-3 shadow-xs">
                           <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2 border-b pb-2"><Calendar className="w-4 h-4 text-emerald-600" /> Date Details</h3>
                           <div className="grid grid-cols-2 gap-3 text-xs leading-relaxed">
                             <div>
@@ -606,7 +606,7 @@ export default function ParentResultsPage() {
                             </div>
                           </div>
                         </div>
-                        <div className="bg-white border border-gray-100 rounded-3xl p-5 space-y-3 shadow-xs">
+                        <div className="bg-white border border-gray-100 rounded-2xl p-5 space-y-3 shadow-xs">
                           <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2 border-b pb-2"><Trophy className="w-4 h-4 text-emerald-600" /> Exam Rules</h3>
                           <div className="grid grid-cols-2 gap-3 text-xs leading-relaxed">
                             <div>
@@ -637,18 +637,18 @@ export default function ParentResultsPage() {
                             { label: "Total Marks", value: totalMax, color: "text-gray-900" },
                             { label: "Obtained Marks", value: totalObtained.toFixed(0), color: "text-emerald-700" },
                             { label: "Percentage", value: `${overallPct.toFixed(2)}%`, color: "text-emerald-700" },
-                            { label: "Grade", value: summary?.totalGrade ? TOTAL_GRADE_LABELS[summary.totalGrade] : calcFallbackGrade(totalObtained, totalMax), color: "text-blue-700" },
-                            { label: "Rank in Class", value: rank ? `#${rank}` : "—", color: "text-indigo-700" }
+                            { label: "Grade", value: summary?.totalGrade ? TOTAL_GRADE_LABELS[summary.totalGrade] : calcFallbackGrade(totalObtained, totalMax), color: "text-emerald-700" },
+                            { label: "Rank in Class", value: rank ? `#${rank}` : "—", color: "text-emerald-700" }
                           ].map((m, idx) => (
                             <div key={idx} className="bg-white border border-gray-100 rounded-2xl p-4 text-center shadow-xs flex flex-col justify-center">
-                              <p className={cn("text-lg font-black tracking-tight", m.color)}>{m.value}</p>
+                              <p className={cn("text-lg font-extrabold tracking-tight", m.color)}>{m.value}</p>
                               <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mt-1">{m.label}</p>
                             </div>
                           ))}
                         </div>
 
                         {/* Subject wise marks table */}
-                        <div className="bg-white border border-gray-100 rounded-3xl overflow-hidden shadow-xs">
+                        <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-xs">
                           {/* Table header with Download button */}
                           <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100 print:hidden">
                             <h3 className="font-bold text-gray-900 text-sm">Subject Wise Marks</h3>
@@ -660,7 +660,8 @@ export default function ParentResultsPage() {
                             </button>
                           </div>
 
-                          <div className="overflow-x-auto">
+                          {/* Desktop Table View */}
+                          <div className="hidden sm:block overflow-x-auto">
                             <table className="w-full text-left border-collapse text-xs md:text-sm">
                               <thead>
                                 <tr className="bg-gray-50 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
@@ -676,7 +677,6 @@ export default function ParentResultsPage() {
                                 {results.map((r, idx) => {
                                   const grade = r.grade ?? calcFallbackGrade(r.score, r.totalMarks);
                                   const isPassed = r.isPassed ?? gradeIsPassed(grade);
-                                  const pct = r.percentage ?? (r.totalMarks > 0 ? (r.score / r.totalMarks) * 100 : 0);
                                   const gClass = GRADE_COLORS[grade] ?? "text-gray-600 bg-gray-50 border-gray-200";
 
                                   return (
@@ -696,7 +696,7 @@ export default function ParentResultsPage() {
                                         </span>
                                       </td>
                                       <td className="px-6 py-3 text-center">
-                                        <span className={cn("inline-block text-[10px] font-black px-2 py-0.5 rounded border text-center shrink-0 w-10", gClass)}>
+                                        <span className={cn("inline-block text-[10px] font-extrabold px-2 py-0.5 rounded border text-center shrink-0 w-10", gClass)}>
                                           {grade}
                                         </span>
                                       </td>
@@ -710,11 +710,58 @@ export default function ParentResultsPage() {
                                   <td className="px-4 py-3">Total</td>
                                   <td className="px-4 py-3 text-center">{totalMax}</td>
                                   <td className="px-4 py-3 text-center">—</td>
-                                  <td className="px-4 py-3 text-center text-emerald-700 font-black text-sm">{totalObtained.toFixed(0)}</td>
-                                  <td className="px-6 py-3 text-center text-emerald-700 font-black text-sm">{overallPct.toFixed(2)}% ({summary?.totalGrade ? TOTAL_GRADE_LABELS[summary.totalGrade] : calcFallbackGrade(totalObtained, totalMax)})</td>
+                                  <td className="px-4 py-3 text-center text-emerald-700 font-extrabold text-sm">{totalObtained.toFixed(0)}</td>
+                                  <td className="px-6 py-3 text-center text-emerald-700 font-extrabold text-sm">{overallPct.toFixed(2)}% ({summary?.totalGrade ? TOTAL_GRADE_LABELS[summary.totalGrade] : calcFallbackGrade(totalObtained, totalMax)})</td>
                                 </tr>
                               </tfoot>
                             </table>
+                          </div>
+
+                          {/* Mobile Cards View */}
+                          <div className="block sm:hidden divide-y divide-gray-100">
+                            {results.map((r, idx) => {
+                              const grade = r.grade ?? calcFallbackGrade(r.score, r.totalMarks);
+                              const isPassed = r.isPassed ?? gradeIsPassed(grade);
+                              const gClass = GRADE_COLORS[grade] ?? "text-gray-600 bg-gray-50 border-gray-200";
+
+                              return (
+                                <div key={r.id} className="p-4 flex items-center justify-between gap-3">
+                                  <div className="min-w-0 space-y-0.5">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[10px] text-gray-400 font-bold">#{idx + 1}</span>
+                                      <p className="font-bold text-gray-900 text-sm">{r.subject?.name ?? "Subject"}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                                      <span>Max: {r.totalMarks}</span>
+                                      <span>·</span>
+                                      <span>Pass: {activeExam?.passMarks ?? 40}</span>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-3 shrink-0">
+                                    <div className="text-right">
+                                      <p className={cn("text-base font-extrabold", isPassed ? "text-gray-900" : "text-rose-600")}>{r.score}</p>
+                                      <span className={cn("text-[9px] font-bold tracking-wider uppercase leading-none block mt-0.5", isPassed ? "text-emerald-600" : "text-rose-600")}>
+                                        {isPassed ? "Pass" : "Fail"}
+                                      </span>
+                                    </div>
+                                    <span className={cn("inline-block text-[10px] font-extrabold px-2 py-0.5 rounded border text-center w-10 shrink-0", gClass)}>
+                                      {grade}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            
+                            {/* Total summary card on mobile */}
+                            <div className="p-4 bg-emerald-50/20 flex items-center justify-between text-xs font-bold text-gray-900">
+                              <span>Total ({results.length} Subjects)</span>
+                              <div className="text-right">
+                                <span className="text-sm font-extrabold text-emerald-700">{totalObtained.toFixed(0)}/{totalMax}</span>
+                                <span className="block text-[10px] text-emerald-600 font-extrabold mt-0.5">
+                                  {overallPct.toFixed(2)}% ({summary?.totalGrade ? TOTAL_GRADE_LABELS[summary.totalGrade] : calcFallbackGrade(totalObtained, totalMax)})
+                                </span>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -722,7 +769,7 @@ export default function ParentResultsPage() {
 
                     {/* SUBJECTS TAB */}
                     {tab === "subjects" && (
-                      <div className="bg-white border border-gray-100 rounded-3xl p-5 shadow-xs">
+                      <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs">
                         <h3 className="font-bold text-gray-900 text-sm border-b pb-2 mb-3">Course Curriculum</h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           {results.map((r, idx) => (

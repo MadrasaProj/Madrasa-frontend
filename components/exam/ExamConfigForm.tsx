@@ -23,8 +23,8 @@ const DEFAULT_GRADES = [
 const GRADE_COLORS: Record<string, string> = {
   "A+": "text-emerald-700 bg-emerald-50 border-emerald-200",
   "A":  "text-teal-700 bg-teal-50 border-teal-200",
-  "B+": "text-blue-700 bg-blue-50 border-blue-200",
-  "B":  "text-indigo-700 bg-indigo-50 border-indigo-200",
+  "B+": "text-cyan-700 bg-cyan-50 border-cyan-200",
+  "B":  "text-purple-700 bg-purple-50 border-purple-200",
   "C+": "text-amber-700 bg-amber-50 border-amber-200",
   "C":  "text-yellow-700 bg-yellow-50 border-yellow-200",
   "D+": "text-orange-700 bg-orange-50 border-orange-200",
@@ -157,7 +157,7 @@ export function ExamConfigForm({
   if (loading) {
     return (
       <div className="flex items-center justify-center h-48">
-        <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+        <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
       </div>
     );
   }
@@ -185,7 +185,7 @@ export function ExamConfigForm({
       {isSubjectMode && (
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
           <div className="flex items-center gap-2.5 px-5 py-4 border-b border-gray-100">
-            <Settings2 className="w-4 h-4 text-blue-600" />
+            <Settings2 className="w-4 h-4 text-emerald-600" />
             <h2 className="font-semibold text-gray-800">Subject Override</h2>
             <span className="text-xs text-gray-400 ml-1">Saved for all exams</span>
           </div>
@@ -201,7 +201,7 @@ export function ExamConfigForm({
               value={subjectOverrideMax}
               onChange={(e) => setSubjectOverrideMax(e.target.value === "" ? "" : Number(e.target.value))}
               placeholder={String(defaultMax)}
-              className="w-32 px-3 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-32 px-3 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
             />
           </div>
         </div>
@@ -210,7 +210,7 @@ export function ExamConfigForm({
       {!isSubjectMode && (
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
           <div className="flex items-center gap-2.5 px-5 py-4 border-b border-gray-100">
-            <Settings2 className="w-4 h-4 text-blue-600" />
+            <Settings2 className="w-4 h-4 text-emerald-600" />
             <h2 className="font-semibold text-gray-800">Status Labels</h2>
             <span className="text-xs text-gray-400 ml-1">Shown on result cards and mark lists</span>
           </div>
@@ -218,7 +218,7 @@ export function ExamConfigForm({
             {[
               { id: "passed",   label: "Passed Label",   value: passedLabel,   set: setPassedLabel,   color: "text-emerald-600" },
               { id: "failed",   label: "Failed Label",   value: failedLabel,   set: setFailedLabel,   color: "text-red-600"     },
-              { id: "promoted", label: "Promoted Label", value: promotedLabel, set: setPromotedLabel, color: "text-blue-600"    },
+              { id: "promoted", label: "Promoted Label", value: promotedLabel, set: setPromotedLabel, color: "text-emerald-600"    },
               { id: "withheld", label: "With Held Label",value: withheldLabel, set: setWithheldLabel, color: "text-amber-600"   },
             ].map(({ id, label, value, set, color }) => (
               <div key={id}>
@@ -228,7 +228,7 @@ export function ExamConfigForm({
                   value={value}
                   onChange={(e) => set(e.target.value)}
                   className={cn(
-                    "w-full px-3 py-2 rounded-lg border border-gray-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500",
+                    "w-full px-3 py-2 rounded-lg border border-gray-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500",
                     color,
                   )}
                 />
@@ -241,7 +241,7 @@ export function ExamConfigForm({
       {!isSubjectMode && (
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
           <div className="flex items-center gap-2.5 px-5 py-4 border-b border-gray-100">
-            <SlidersHorizontal className="w-4 h-4 text-blue-600" />
+            <SlidersHorizontal className="w-4 h-4 text-emerald-600" />
             <h2 className="font-semibold text-gray-800">Display Settings</h2>
           </div>
           <div className="px-5 py-4 space-y-4">
@@ -256,7 +256,7 @@ export function ExamConfigForm({
                   max={9999}
                   value={defaultMax}
                   onChange={(e) => setDefaultMax(Number(e.target.value))}
-                  className="w-32 px-3 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-32 px-3 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                 />
                 <span className="text-xs text-gray-400">Applied when no per-subject override is set</span>
               </div>
@@ -335,7 +335,7 @@ export function ExamConfigForm({
                             value={row.min}
                             onChange={(e) => updateGradeMin(row.label, Number(e.target.value))}
                             className={cn(
-                              "w-20 px-2.5 py-1.5 rounded-lg border text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500",
+                              "w-20 px-2.5 py-1.5 rounded-lg border text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500",
                               invalid ? "border-red-300 bg-red-50" : "border-gray-200",
                             )}
                           />

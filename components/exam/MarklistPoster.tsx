@@ -12,7 +12,7 @@ const RANK_HEADER: Record<number, { grad: string; accent: string }> = {
   2: { grad: "from-slate-400 via-slate-300 to-slate-500",    accent: "bg-slate-600"   },
   3: { grad: "from-amber-500 via-orange-400 to-amber-600",   accent: "bg-amber-700"   },
 };
-const DEFAULT_GRAD = "from-blue-800 via-blue-700 to-indigo-800";
+const DEFAULT_GRAD = "from-emerald-800 via-emerald-700 to-teal-850";
 
 const RANK_LABELS: Record<number, string> = { 1: "1st", 2: "2nd", 3: "3rd" };
 const RANK_MEDALS = ["🥇", "🥈", "🥉"];
@@ -20,7 +20,7 @@ const RANK_MEDALS = ["🥇", "🥈", "🥉"];
 const STATUS_STYLE: Record<string, string> = {
   PASSED:   "bg-emerald-100 text-emerald-800 border-emerald-300",
   FAILED:   "bg-red-100    text-red-800    border-red-300",
-  PROMOTED: "bg-blue-100   text-blue-800   border-blue-300",
+  PROMOTED: "bg-teal-100   text-teal-800   border-teal-300",
   WITHHELD: "bg-amber-100  text-amber-800  border-amber-300",
 };
 
@@ -45,7 +45,7 @@ export function MarklistPoster({ row, report, madrasaName, madrasaLogo }: Props)
   const [exporting, setExporting] = useState<"jpg" | "pdf" | "share" | null>(null);
 
   const headerGrad  = rank >= 1 && rank <= 3 ? RANK_HEADER[rank].grad : DEFAULT_GRAD;
-  const accentClass = rank >= 1 && rank <= 3 ? RANK_HEADER[rank].accent : "bg-blue-700";
+  const accentClass = rank >= 1 && rank <= 3 ? RANK_HEADER[rank].accent : "bg-emerald-700";
 
   const statusLabels: Record<string, string> = {
     PASSED:   config.passedLabel,
@@ -111,7 +111,7 @@ export function MarklistPoster({ row, report, madrasaName, madrasaLogo }: Props)
           PDF
         </button>
         <button onClick={() => run("share")} disabled={!!exporting}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 transition-colors">
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 transition-colors">
           {exporting === "share" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
           Share
         </button>
@@ -233,17 +233,17 @@ export function MarklistPoster({ row, report, madrasaName, madrasaLogo }: Props)
           {/* Total row */}
           {summary.totalScore != null && (
             <tfoot>
-              <tr className="bg-gradient-to-r from-blue-50 to-indigo-50 border-t-2 border-blue-200">
-                <td className="px-3 py-2.5 font-black text-blue-900 text-xs">TOTAL</td>
+              <tr className="bg-gradient-to-r from-emerald-50 to-teal-50 border-t-2 border-emerald-205">
+                <td className="px-3 py-2.5 font-black text-emerald-900 text-xs">TOTAL</td>
                 {!config.hideMarks && (
-                  <td className="px-2 py-2.5 text-center font-black text-blue-900 font-mono text-xs whitespace-nowrap">
+                  <td className="px-2 py-2.5 text-center font-black text-emerald-900 font-mono text-xs whitespace-nowrap">
                     {summary.totalScore.toFixed(0)}/{summary.totalMaxMarks?.toFixed(0)}
                   </td>
                 )}
-                <td className="px-2 py-2.5 text-center font-black text-blue-900 text-xs">
+                <td className="px-2 py-2.5 text-center font-black text-emerald-900 text-xs">
                   {summary.totalPercentage?.toFixed(1)}%
                 </td>
-                <td colSpan={2} className="px-2 py-2.5 text-center text-blue-700 text-[10px] font-bold">
+                <td colSpan={2} className="px-2 py-2.5 text-center text-emerald-700 text-[10px] font-bold">
                   {summary.totalGrade ? TOTAL_GRADE_LABELS[summary.totalGrade] : ""}
                 </td>
               </tr>
@@ -259,7 +259,7 @@ export function MarklistPoster({ row, report, madrasaName, madrasaLogo }: Props)
               <div
                 className={cn("h-full rounded-full",
                   summary.totalPercentage >= 80 ? "bg-emerald-500" :
-                  summary.totalPercentage >= 60 ? "bg-blue-500"    :
+                  summary.totalPercentage >= 60 ? "bg-teal-500"    :
                   summary.totalPercentage >= 40 ? "bg-amber-500"   : "bg-red-500",
                 )}
                 style={{ width: `${Math.min(summary.totalPercentage, 100)}%` }}

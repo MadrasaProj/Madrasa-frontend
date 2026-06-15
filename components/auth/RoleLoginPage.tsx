@@ -132,6 +132,45 @@ export default function RoleLoginPage({
     e.preventDefault();
     setError("");
     setInfo("");
+
+    // Client-side validations
+    if (type === "PARENT") {
+      const phoneRegex = /^\+?[0-9]{7,15}$/;
+      const trimmedPhone = parentPhone.trim();
+      if (!trimmedPhone) {
+        setError(t("authErrors", "parentPhoneRequired", lang));
+        return;
+      }
+      if (!phoneRegex.test(trimmedPhone)) {
+        setError("Please enter a valid phone number (digits and optional + prefix only, 7-15 digits)");
+        return;
+      }
+    } else if (type === "CLIENT_ADMIN") {
+      const trimmedIdentifier = identifier.trim();
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      const phoneRegex = /^\+?[0-9]{7,15}$/;
+      
+      const isEmail = emailRegex.test(trimmedIdentifier);
+      const isPhone = phoneRegex.test(trimmedIdentifier);
+      
+      if (!isEmail && !isPhone) {
+        setError("Please enter a valid email address or phone number");
+        return;
+      }
+    } else {
+      // Teacher, Committee, Super Admin
+      const trimmedIdentifier = identifier.trim();
+      const identifierRegex = /^[a-zA-Z0-9._%+-@]+$/;
+      if (!trimmedIdentifier) {
+        setError("Identifier is required");
+        return;
+      }
+      if (!identifierRegex.test(trimmedIdentifier)) {
+        setError("Identifier contains invalid characters");
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {

@@ -182,7 +182,7 @@ export default function ClassReportPage() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
         </div>
       </DashboardLayout>
     );
@@ -230,7 +230,7 @@ export default function ClassReportPage() {
                   Import Excel
                 </button>
                 <button onClick={handleCompute} disabled={computing}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium disabled:opacity-50 transition-colors">
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium disabled:opacity-50 transition-colors">
                   {computing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                   Compute Grades
                 </button>
@@ -265,8 +265,8 @@ export default function ClassReportPage() {
             { label: "Total Students", value: stats.totalStudents, color: "text-gray-800",    bg: "bg-gray-50" },
             { label: "Passed",         value: stats.passedCount,   color: "text-emerald-700", bg: "bg-emerald-50" },
             { label: "Failed",         value: stats.failedCount,   color: "text-red-700",     bg: "bg-red-50" },
-            { label: "Ranked",         value: stats.rankedCount,   color: "text-blue-700",    bg: "bg-blue-50" },
-            { label: "Class Average",  value: `${stats.classAverage.toFixed(1)}%`, color: "text-blue-700", bg: "bg-blue-50" },
+            { label: "Ranked",         value: stats.rankedCount,   color: "text-emerald-700", bg: "bg-emerald-50" },
+            { label: "Class Average",  value: `${stats.classAverage.toFixed(1)}%`, color: "text-teal-700", bg: "bg-teal-50" },
           ].map(({ label, value, color, bg }) => (
             <div key={label} className={cn("rounded-xl p-4 text-center", bg)}>
               <div className={cn("text-2xl font-bold", color)}>{value}</div>
@@ -287,7 +287,7 @@ export default function ClassReportPage() {
               className={cn(
                 "px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap",
                 tab === key
-                  ? "text-blue-700 border-blue-600"
+                  ? "text-emerald-600 border-emerald-600"
                   : "text-gray-500 border-transparent hover:text-gray-700",
               )}>
               {label}
@@ -379,8 +379,8 @@ function MarklistTab({ report, marklistStudId, setMarklistStudId, madrasaName, m
             className={cn(
               "px-3 py-1.5 rounded-lg text-sm font-medium border transition-all",
               marklistStudId === r.student.id
-                ? "border-blue-600 bg-blue-50 text-blue-700"
-                : "border-gray-200 bg-white text-gray-700 hover:border-blue-300",
+                ? "border-emerald-600 bg-emerald-50 text-emerald-700"
+                : "border-gray-200 bg-white text-gray-700 hover:border-emerald-300",
             )}
           >
             {r.summary.rank === 1 ? "🥇 " : r.summary.rank === 2 ? "🥈 " : r.summary.rank === 3 ? "🥉 " : ""}
@@ -486,7 +486,7 @@ function StatusTab({ report, statusMap, setStatusMap, savingId, savingAll, statu
                         ...m,
                         [row.student.id]: { ...(m[row.student.id] ?? {}), finalStatus: e.target.value as ResultStatus },
                       }))}
-                      className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-full max-w-36"
+                      className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 w-full max-w-36"
                     >
                       <option value="">— Select —</option>
                       {statusOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -499,7 +499,7 @@ function StatusTab({ report, statusMap, setStatusMap, savingId, savingAll, statu
                         ...m,
                         [row.student.id]: { ...(m[row.student.id] ?? {}), totalGrade: (e.target.value || null) as TotalGrade | null },
                       }))}
-                      className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-full max-w-40"
+                      className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 w-full max-w-40"
                     >
                       <option value="">— Optional —</option>
                       {TOTAL_GRADE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -509,7 +509,7 @@ function StatusTab({ report, statusMap, setStatusMap, savingId, savingAll, statu
                     <button
                       onClick={() => onSave(row)}
                       disabled={!entry?.finalStatus || isSaving}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium disabled:opacity-40 transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium disabled:opacity-40 transition-colors"
                     >
                       {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
                       Save
@@ -577,8 +577,8 @@ function PostersTab({ rankedStudents, report, posterStudentId, setPosterStudentI
                 className={cn(
                   "px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all",
                   posterStudentId === r.student.id
-                    ? "border-blue-600 bg-blue-50 text-blue-700"
-                    : "border-gray-200 bg-white text-gray-700 hover:border-blue-300",
+                    ? "border-emerald-600 bg-emerald-50 text-emerald-700"
+                    : "border-gray-200 bg-white text-gray-700 hover:border-emerald-300",
                 )}
               >
                 {r.summary.rank === 1 ? "🥇" : r.summary.rank === 2 ? "🥈" : "🥉"} {r.student.name}
