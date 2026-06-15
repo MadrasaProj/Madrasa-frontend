@@ -210,8 +210,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center shrink-0">
               <span className="text-white font-extrabold text-xs tracking-wide">SM</span>
             </div>
-            <div className="leading-tight">
-              <p className="font-bold text-gray-900 text-sm leading-none">
+            <div className="leading-tight sm:block hidden">
+              <p className="font-bold text-gray-900  text-sm leading-none">
                 {t("common", "appName", lang)}
               </p>
               <p className="text-[10px] text-emerald-600 font-semibold capitalize mt-0.5">

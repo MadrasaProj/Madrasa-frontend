@@ -561,7 +561,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
               <div className={cn("flex items-center justify-center rounded-xl transition-all", active ? "bg-emerald-50 w-10 h-7" : "w-10 h-7")}>
                 <Icon className={cn("w-5 h-5 shrink-0", active && "stroke-[2.5]")} />
               </div>
-              <span className={cn("text-[10px] font-semibold leading-none", active ? "text-emerald-600" : "text-gray-400")}>
+              <span className={cn("text-[10px] font-semibold leading-none text-center", active ? "text-emerald-600" : "text-gray-400")}>
                 {t("nav", l.key, lang)}
               </span>
             </Link>
