@@ -8,12 +8,12 @@ import {
 } from "firebase/messaging";
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: "AIzaSyACABU-YpnQQ1rQBq5W-7r_itBYhPKWauk",
+  authDomain: "madrasa-app-push-notification.firebaseapp.com",
+  projectId: "madrasa-app-push-notification",
+  storageBucket: "madrasa-app-push-notification.firebasestorage.app",
+  messagingSenderId: "140700185441",
+  appId: "1:140700185441:web:cec6824f02e0656025cb20",
 };
 
 let app: FirebaseApp | null = null;
@@ -82,7 +82,7 @@ export async function requestFcmToken(
   }
 
   try {
-    const vKey = vapidKey ?? import.meta.env.VITE_FIREBASE_VAPID_KEY;
+    const vKey = vapidKey ?? "BLefby21O0x24Kf2RF8ghutZX7yizb2eI-JZR7Nn76poxn2e_QbyvyJe7f8dIM5Hun5hTFI4QM-ufIGO7NRNAWc";
     console.log("[FCM] Requesting token, vapidKey present:", !!vKey, "swReg:", !!swReg);
     const token = await getToken(msg, {
       vapidKey: vKey,

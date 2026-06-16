@@ -13,12 +13,12 @@ export default function PwaRegister() {
 
         // Firebase Messaging service worker — pass full config via URL params
         const p = new URLSearchParams({
-          apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "",
-          authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "",
-          projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "",
-          storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "",
-          messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
-          appId: import.meta.env.VITE_FIREBASE_APP_ID || "",
+          apiKey: "AIzaSyACABU-YpnQQ1rQBq5W-7r_itBYhPKWauk",
+          authDomain: "madrasa-app-push-notification.firebaseapp.com",
+          projectId: "madrasa-app-push-notification",
+          storageBucket: "madrasa-app-push-notification.firebasestorage.app",
+          messagingSenderId: "140700185441",
+          appId: "1:140700185441:web:cec6824f02e0656025cb20",
         });
         const fcmSwUrl = `/firebase-messaging-sw.js?${p.toString()}`;
         console.log("[PWA] Registering FCM service worker...");
