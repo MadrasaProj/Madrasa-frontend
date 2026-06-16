@@ -33,8 +33,7 @@ import { cn } from "@/lib/utils";
 
 import { Group, Leafer, Image as LeaferImage, Rect, Text } from "leafer-ui";
 
-import "@leafer-in/export";
-
+ 
 interface StudentInfo {
   id: string;
 

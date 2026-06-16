@@ -4,7 +4,6 @@ import { getPoster, type PosterRecord } from "@/lib/posters-api";
 import { useAuthStore } from "@/store/auth";
 import { Download, Loader2, Type, ImageIcon, Upload } from "lucide-react";
 import CropperModal from "./CropperModal";
-import '@leafer-in/export' // 引入导出元素插件
 
 type LayerItem = {
   path: number[];
@@ -194,16 +193,14 @@ export default function PosterViewer({ posterId }: PosterViewerProps) {
     const leafer = leaferRef.current;
     if (!leafer) return;
     try {
-      const result = await leafer.export("png");
+      const result = await leafer.export("png",{pixelRatio:2,quality:1}); 
       if (!result) return;
-      const blob = result.data instanceof Blob ? result.data : new Blob([result.data], { type: "image/png" });
-      const url = URL.createObjectURL(blob);
+         
       const a = document.createElement("a");
-      a.href = url;
+      a.href = result.data;
       a.download = `${poster?.title ?? "poster"}.png`;
       a.click();
-      URL.revokeObjectURL(url);
-    } catch {
+     } catch {
       alert("Failed to export image");
     }
   };
@@ -254,39 +251,29 @@ export default function PosterViewer({ posterId }: PosterViewerProps) {
           />
         </div>
 
-        {layers.length > 0 && (
-          <div className="w-72 shrink-0">
-            <h3 className="text-sm font-semibold mb-2 text-gray-700">Active Inputs</h3>
-            <div className="space-y-2 max-h-[500px] overflow-y-auto">
+
+
+
+ {layers.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-20 p-3">
+          <div className="mx-auto max-w-2xl rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl p-4">
+            <div className="flex flex-wrap gap-3">
               {layers.map((layer) => (
-                <div
-                  key={layer.path.join(",")}
-                  className="p-2 rounded-lg border border-emerald-200 bg-emerald-50 text-xs"
-                >
-                  <div className="flex items-center gap-1 mb-1">
-                    {layer.tag === "Text" ? (
-                      <Type className="w-3 h-3 text-emerald-600" />
-                    ) : (
-                      <ImageIcon className="w-3 h-3 text-emerald-600" />
-                    )}
-                    <span className="font-mono text-[10px] px-1 py-0.5 rounded bg-gray-100 text-gray-500">
-                      {layer.tag}
-                    </span>
-                    {layer.label && (
-                      <span className="text-gray-600 truncate">{layer.label}</span>
-                    )}
-                  </div>
+                <div key={layer.path.join(",")} className="flex-1 min-w-[160px]">
+                  <label className="block text-[11px] font-medium text-white/70 mb-1 truncate">
+                    {layer.label || layer.tag}
+                  </label>
                   {layer.tag === "Text" && layer.text !== undefined ? (
                     <input
                       type="text"
                       value={layer.text}
                       onChange={(e) => updateText(layer, e.target.value)}
-                      className="w-full border rounded px-1.5 py-1 text-xs"
+                      className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/40 focus:bg-white/20 transition-colors"
                     />
                   ) : layer.tag.includes("Image") ? (
-                    <label className="flex items-center gap-1.5 cursor-pointer text-emerald-700 hover:text-emerald-900">
-                      <Upload className="w-3 h-3" />
-                      <span className="text-xs">Choose image</span>
+                    <label className="flex items-center gap-2 cursor-pointer text-white/80 hover:text-white bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg px-3 py-2 text-sm transition-colors">
+                      <Upload className="w-4 h-4" />
+                      <span>Choose image</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -302,7 +289,9 @@ export default function PosterViewer({ posterId }: PosterViewerProps) {
               ))}
             </div>
           </div>
-        )}
+        </div>
+      )}
+        
       </div>
     </div>
   );

@@ -70,6 +70,7 @@ const parentLinks = [
   { href: "/parent/diary",         icon: FileText,        key: "diary"        as NavKey },
   { href: "/parent/ibadah",        icon: Moon,            key: "ibadah"       as NavKey },
   { href: "/parent/fees",          icon: CreditCard,      key: "fees"         as NavKey },
+  { href: "/parent/posters",       icon: Image,           key: "posters"      as NavKey },
   { href: "/parent/results",       icon: GraduationCap,   key: "results"      as NavKey },
   { href: "/parent/notifications", icon: Bell,            key: "notifications"as NavKey },
   { href: "/parent/profile",       icon: UserCircle2,     key: "profile"      as NavKey },

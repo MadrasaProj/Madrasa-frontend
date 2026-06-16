@@ -9,10 +9,10 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@leafer-in/editor": "^2.1.6",
-    "@leafer-in/export": "^2.1.6",
-    "@leafer-in/view": "^2.1.6",
-    "@leafer-in/viewport": "^2.1.6",
+    "@leafer-in/editor": "2.1.6",
+    "@leafer-in/export": "2.1.6",
+    "@leafer-in/view": "2.1.6",
+    "@leafer-in/viewport": "2.1.6",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
@@ -31,7 +31,7 @@
     "framer-motion": "^12.36.0",
     "html2canvas-pro": "^2.0.4",
     "jspdf": "^4.2.1",
-    "leafer-ui": "^2.1.4",
+    "leafer-ui": "^2.1.6",
     "lucide-react": "^0.577.0",
     "react": "19.2.3",
     "react-cropper": "^2.3.3",

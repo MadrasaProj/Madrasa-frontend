@@ -9,8 +9,7 @@ import {
 import { App, Frame } from "leafer-ui";
 import { MoveEvent, ZoomEvent } from "@leafer-ui/core";
 import "@leafer-in/viewport";
-import "@leafer-in/export";
-
+ 
 function collectFontFamilies(obj: unknown, families = new Set<string>()): Set<string> {
   if (!obj || typeof obj !== "object") return families;
   for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
