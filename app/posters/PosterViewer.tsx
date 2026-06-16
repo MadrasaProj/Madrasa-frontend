@@ -256,7 +256,7 @@ export default function PosterViewer({ posterId }: PosterViewerProps) {
 
  {layers.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-20 p-3">
-          <div className="mx-auto max-w-2xl rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl p-4">
+          <div className="mx-auto max-w-2xl rounded-2xl bg-black/60 backdrop-blur-xl border border-white/10 shadow-2xl p-4">
             <div className="flex flex-wrap gap-3">
               {layers.map((layer) => (
                 <div key={layer.path.join(",")} className="flex-1 min-w-[160px]">
