@@ -71,7 +71,7 @@ export function ActionCard({ title, description, icon: Icon, onClick, color = "e
     <button
       onClick={onClick}
       className={cn(
-        "bg-white rounded-2xl p-4 lg:p-5 shadow-sm border text-left w-full card-hover active:scale-95 transition-all",
+        "bg-white rounded-2xl p-4 lg:p-5 shadow-sm border text-left w-full h-full card-hover active:scale-95 transition-all",
         c.border
       )}
     >
