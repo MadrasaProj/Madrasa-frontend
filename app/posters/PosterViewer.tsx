@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Leafer, Frame } from "leafer-ui";
 import { getPoster, type PosterRecord } from "@/lib/posters-api";
 import { useAuthStore } from "@/store/auth";
-import { Download, Loader2, Type, ImageIcon, Upload } from "lucide-react";
+import { Download, Loader2, Type, ImageIcon, Upload, X } from "lucide-react";
 import CropperModal from "./CropperModal";
 
 type LayerItem = {
@@ -29,15 +30,21 @@ async function loadGoogleFonts(families: Set<string>): Promise<void> {
       (l) => (l as HTMLLinkElement).href,
     ),
   );
+  const linkPromises: Promise<void>[] = [];
   for (const family of families) {
     const url = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:wght@100;200;300;400;500;600;700;800;900&display=swap`;
     if (!existing.has(url)) {
-      const link = document.createElement("link");
-      link.rel = "stylesheet";
-      link.href = url;
-      document.head.appendChild(link);
+      linkPromises.push(new Promise<void>((resolve) => {
+        const link = document.createElement("link");
+        link.rel = "stylesheet";
+        link.href = url;
+        link.onload = () => resolve();
+        link.onerror = () => resolve();
+        document.head.appendChild(link);
+      }));
     }
   }
+  if (linkPromises.length > 0) await Promise.all(linkPromises);
   await document.fonts.ready;
 }
 
@@ -90,14 +97,18 @@ interface CropperState {
 
 interface PosterViewerProps {
   posterId: string;
+  fullScreen?: boolean;
 }
 
-export default function PosterViewer({ posterId }: PosterViewerProps) {
+export default function PosterViewer({ posterId, fullScreen }: PosterViewerProps) {
   const { user } = useAuthStore();
   const clientId = user?.clientId ?? "";
+  const navigate = useNavigate();
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const leaferRef = useRef<Leafer | null>(null);
+  const fullScreenRef = useRef(fullScreen);
+  fullScreenRef.current = fullScreen;
 
   const [poster, setPoster] = useState<PosterRecord | null>(null);
   const [sceneData, setSceneData] = useState<Record<string, unknown> | null>(null);
@@ -139,22 +150,50 @@ export default function PosterViewer({ posterId }: PosterViewerProps) {
 
   useEffect(() => {
     if (!fontsReady || !canvasRef.current || !sceneData || !frameSize) return;
+    if (leaferRef.current) {
+      while (leaferRef.current.children.length > 0) {
+        leaferRef.current.children[0].remove();
+      }
+    }
 
     const el = canvasRef.current;
+    const isFull = fullScreenRef.current;
+
+    if (!leaferRef.current) {
+      if (isFull) {
+        leaferRef.current = new Leafer({ view: el, width: el.clientWidth, height: el.clientHeight, fill: "#fff" });
+      } else {
+        const scale = Math.min(el.clientWidth / frameSize.w, el.clientHeight / frameSize.h);
+        leaferRef.current = new Leafer({ view: el, width: Math.floor(frameSize.w * scale), height: Math.floor(frameSize.h * scale), fill: "#fff" });
+      }
+    }
+
+    const leafer = leaferRef.current;
     const scale = Math.min(el.clientWidth / frameSize.w, el.clientHeight / frameSize.h);
-    const w = Math.floor(frameSize.w * scale);
-    const h = Math.floor(frameSize.h * scale);
 
-    const leafer = new Leafer({ view: el, width: w, height: h, fill: "#fff" });
-    leafer.zoomLayer.scale = { x: scale, y: scale } as any;
-    const copy = JSON.parse(JSON.stringify(sceneData));
-    copy.x = 0;
-    copy.y = 0;
-    leafer.add((Frame as any).one(copy));
-    leaferRef.current = leafer;
-
-    return () => { leafer.destroy(); leaferRef.current = null; };
+    if (isFull) {
+      const offsetX = (el.clientWidth - frameSize.w * scale) / 2;
+      const offsetY = (el.clientHeight - frameSize.h * scale) / 2;
+      leafer.zoomLayer.scale = { x: scale, y: scale } as any;
+      const copy = JSON.parse(JSON.stringify(sceneData));
+      copy.x = offsetX / scale;
+      copy.y = offsetY / scale;
+      leafer.add((Frame as any).one(copy));
+    } else {
+      leafer.zoomLayer.scale = { x: scale, y: scale } as any;
+      const copy = JSON.parse(JSON.stringify(sceneData));
+      copy.x = 0;
+      copy.y = 0;
+      leafer.add((Frame as any).one(copy));
+    }
   }, [fontsReady, sceneData, frameSize]);
+
+  useEffect(() => {
+    return () => {
+      leaferRef.current?.destroy();
+      leaferRef.current = null;
+    };
+  }, []);
 
   const updateText = (layer: LayerItem, value: string) => {
     if (!sceneData) return;
@@ -207,14 +246,87 @@ export default function PosterViewer({ posterId }: PosterViewerProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20 text-gray-400">
+      <div className={`flex items-center justify-center ${fullScreen ? "h-screen bg-black" : "py-20"} text-gray-400`}>
         <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading poster...
       </div>
     );
   }
 
   if (!poster) {
-    return <div className="text-center py-20 text-gray-400">Poster not found.</div>;
+    return <div className={`text-center ${fullScreen ? "h-screen bg-black flex items-center justify-center" : "py-20"} text-gray-400`}>Poster not found.</div>;
+  }
+
+  if (fullScreen) {
+    return (
+      <div className="h-screen w-screen overflow-hidden bg-black relative">
+        {cropper && (
+          <CropperModal
+            file={cropper.file}
+            aspectRatio={cropper.layer.width / cropper.layer.height}
+            onCrop={(dataUrl) => applyCroppedImage(dataUrl, cropper.layer)}
+            onCancel={() => setCropper(null)}
+          />
+        )}
+
+        <button
+          onClick={() => navigate(-1)}
+          className="absolute top-4 left-4 z-20 w-10 h-10 rounded-full bg-black/40 flex items-center justify-center text-white hover:bg-black/60 transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <div className="absolute top-4 right-4 z-20 flex items-center gap-3">
+          <h1 className="text-white text-lg font-semibold drop-shadow-md">{poster.title}</h1>
+          <button
+            onClick={handleDownload}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium"
+          >
+            <Download className="w-4 h-4" />
+            Download PNG
+          </button>
+        </div>
+
+        <div ref={canvasRef} className="absolute inset-0" />
+
+        {layers.length > 0 && (
+          <div className="fixed bottom-0 left-0 right-0 z-20 p-3">
+            <div className="mx-auto max-w-2xl rounded-2xl bg-black/60 backdrop-blur-xl border border-white/10 shadow-2xl p-4">
+              <div className="flex flex-wrap gap-3">
+                {layers.map((layer) => (
+                  <div key={layer.path.join(",")} className="flex-1 min-w-[160px]">
+                    <label className="block text-[11px] font-medium text-white/70 mb-1 truncate">
+                      {layer.label || layer.tag}
+                    </label>
+                    {layer.tag === "Text" && layer.text !== undefined ? (
+                      <input
+                        type="text"
+                        value={layer.text}
+                        onChange={(e) => updateText(layer, e.target.value)}
+                        className="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/40 focus:bg-white/20 transition-colors"
+                      />
+                    ) : layer.tag.includes("Image") ? (
+                      <label className="flex items-center gap-2 cursor-pointer text-white/80 hover:text-white bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg px-3 py-2 text-sm transition-colors">
+                        <Upload className="w-4 h-4" />
+                        <span>Choose image</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) setCropper({ file, layer });
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
