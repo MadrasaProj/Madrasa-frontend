@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { Leafer, Frame } from "leafer-ui";
 import { getPoster, type PosterRecord } from "@/lib/posters-api";
 import { useAuthStore } from "@/store/auth";
-import { Download, Loader2, Type, ImageIcon, Upload, X } from "lucide-react";
+import { Download, Type, ImageIcon, Upload, X } from "lucide-react";
 import CropperModal from "./CropperModal";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 type LayerItem = {
   path: number[];
@@ -247,7 +248,7 @@ export default function PosterViewer({ posterId, fullScreen }: PosterViewerProps
   if (loading) {
     return (
       <div className={`flex items-center justify-center ${fullScreen ? "h-screen bg-black" : "py-20"} text-gray-400`}>
-        <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading poster...
+        <Skeleton className="w-full max-w-lg aspect-video rounded-2xl" />
       </div>
     );
   }

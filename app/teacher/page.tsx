@@ -9,7 +9,7 @@ import { useAuthStore } from "@/store/auth";
 import { useNavigate } from "react-router-dom";
 import {
   ClipboardList, BookOpen, FileText, Moon, GraduationCap,
-  Star, Bell, Users, TrendingUp, Loader2,
+  Star, Bell, Users, TrendingUp,
 } from "lucide-react";
 import { motion } from "framer-motion";
 

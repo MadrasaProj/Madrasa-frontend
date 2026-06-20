@@ -12,6 +12,7 @@ import { useAuthStore } from "@/store/auth";
 import { motion, AnimatePresence } from "framer-motion";
 import { User, Phone, Calendar, Loader2, GraduationCap, Hash, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PageSkeleton } from "@/components/ui/Skeleton";
 
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE:      "bg-emerald-100 text-emerald-700",
@@ -154,9 +155,7 @@ export default function StudentDetailPage() {
     return (
       <DashboardLayout>
         <PageHeader title="Student Profile" back />
-        <div className="flex items-center justify-center gap-2 py-20 text-gray-400">
-          <Loader2 className="w-5 h-5 animate-spin" /> Loading…
-        </div>
+        <PageSkeleton />
       </DashboardLayout>
     );
   }

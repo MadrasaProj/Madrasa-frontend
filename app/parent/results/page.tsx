@@ -5,6 +5,7 @@ import { getExams, type ExamRecord } from "@/lib/exams-api";
 import { getResults, getSummaries, type ResultRecord, type ExamSummary, GRADE_COLORS, TOTAL_GRADE_LABELS, calcGradeFromConfig } from "@/lib/results-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { downloadAsJPG, downloadAsPDF, shareAsJPG } from "@/lib/poster-utils";
 import {
   Medal, Loader2, AlertCircle, RefreshCw, GraduationCap, Trophy,
@@ -475,8 +476,24 @@ export default function ParentResultsPage() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-20 text-gray-400">
-            <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-9 w-9 rounded-xl shrink-0" />
+              <div className="space-y-1.5">
+                <Skeleton className="h-3 w-24 rounded-full" />
+                <Skeleton className="h-6 w-40 rounded-lg" />
+              </div>
+            </div>
+            <Skeleton className="h-24 rounded-2xl" />
+            <div className="flex gap-1">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-9 w-24 rounded-xl" />
+              ))}
+            </div>
+            <div className="space-y-4">
+              <Skeleton className="h-48 rounded-2xl" />
+              <Skeleton className="h-64 rounded-2xl" />
+            </div>
           </div>
         ) : !effectiveId ? (
           <div className="text-center py-16 bg-white border border-gray-100 rounded-2xl p-6">
@@ -556,8 +573,13 @@ export default function ParentResultsPage() {
                 <p className="text-xs text-gray-400 mt-1">Once examination results are published, they will appear here.</p>
               </div>
             ) : loadingResults ? (
-              <div className="flex items-center justify-center py-12 text-gray-400">
-                <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <Skeleton key={i} className="h-20 rounded-2xl" />
+                  ))}
+                </div>
+                <Skeleton className="h-64 rounded-2xl" />
               </div>
             ) : results.length === 0 ? (
               <div className="text-center py-12 text-gray-400 text-xs">No marks records available for this exam.</div>

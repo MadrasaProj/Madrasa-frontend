@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { SkeletonList } from "@/components/ui/Skeleton";
 import { ClassDivisionsPicker } from "@/components/ui/ClassDivisionsPicker";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -1186,9 +1187,7 @@ export default function AdminMadrasasPage() {
       />
 
       {loading ? (
-        <div className="flex items-center gap-2 text-gray-400 text-sm py-12 justify-center">
-          <Loader2 className="w-4 h-4 animate-spin" /> Loading madrasas...
-        </div>
+        <SkeletonList count={5} />
       ) : clients.length === 0 ? (
         <div className="text-center py-12">
           <Building2 className="w-12 h-12 text-gray-200 mx-auto mb-3" />

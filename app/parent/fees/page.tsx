@@ -9,6 +9,7 @@ import {
 import { useAuthStore } from "@/store/auth";
 import type { StudentInfo } from "@/lib/auth-api";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/Skeleton";
 import {
   IndianRupee, Loader2, CheckCircle, Receipt, Printer,
   AlertCircle, RefreshCw,
@@ -134,8 +135,18 @@ export default function ParentFeesPage() {
       {error && <ApiErrorBanner message={error} onRetry={load} />}
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
-          <Loader2 className="w-5 h-5 animate-spin" />
+        <div className="space-y-5">
+          <div className="grid grid-cols-2 gap-3">
+            {[1, 2].map((i) => (
+              <Skeleton key={i} className="h-24 rounded-2xl" />
+            ))}
+          </div>
+          <Skeleton className="h-5 w-40 rounded-lg" />
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-32 rounded-2xl" />
+            ))}
+          </div>
         </div>
       ) : !ids.length ? (
         <div className="text-center py-16 text-gray-400 text-sm">No children linked to this account</div>
@@ -279,8 +290,10 @@ export default function ParentFeesPage() {
               )}
             </>
           ) : (
-            <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
-              <Loader2 className="w-4 h-4 animate-spin" />
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-28 rounded-2xl" />
+              ))}
             </div>
           )}
         </>

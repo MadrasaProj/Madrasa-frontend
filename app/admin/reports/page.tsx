@@ -10,13 +10,14 @@ import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
   BarChart3, Users, IndianRupee, ClipboardList, BookOpen,
-  Loader2, RefreshCw, TrendingUp,
+  RefreshCw, TrendingUp,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import {
   BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
+import { PageSkeleton } from "@/components/ui/Skeleton";
 
 const GENDER_COLORS = { MALE: "#3b82f6", FEMALE: "#f472b6", OTHER: "#a78bfa" };
 const STATUS_COLORS: Record<string, string> = {
@@ -104,9 +105,7 @@ export default function AdminReportsPage() {
       {error && <ApiErrorBanner message={error} onRetry={load} />}
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
-          <Loader2 className="w-5 h-5 animate-spin" />
-        </div>
+        <PageSkeleton />
       ) : (
         <div className="space-y-5 pb-20">
 

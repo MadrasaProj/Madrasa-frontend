@@ -13,6 +13,7 @@ import {
   type PosterCreatorRef,
 } from "./PosterCreator";
 import { ArrowLeft, Plus, Pencil, Trash2, Loader2 } from "lucide-react";
+import { SkeletonGrid } from "@/components/ui/Skeleton";
 
 type View = "list" | "create" | "edit";
 
@@ -166,10 +167,7 @@ export default function AdminPostersPage() {
         </div>
 
         {loading ? (
-          <div className="flex items-center gap-2 text-gray-500 text-sm py-10">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            Loading posters...
-          </div>
+          <SkeletonGrid count={3} className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" />
         ) : posters.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
             <p className="text-sm">No posters yet.</p>

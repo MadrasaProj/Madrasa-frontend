@@ -12,8 +12,9 @@ import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
   CalendarDays, ChevronLeft, ChevronRight, ClipboardCheck,
-  Loader2, Search, User,
+  Search, User,
 } from "lucide-react";
+import { SkeletonList } from "@/components/ui/Skeleton";
 
 function todayISO() {
   return new Date().toISOString().split("T")[0];
@@ -182,7 +183,7 @@ export function TeacherAttendanceContent({ backHref }: TeacherAttendanceContentP
           </div>
 
           {dayLoading ? (
-            <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>
+            <SkeletonList count={4} />
           ) : dayError ? (
             <ApiErrorBanner message={dayError} onRetry={loadDay} />
           ) : (
@@ -264,7 +265,7 @@ export function TeacherAttendanceContent({ backHref }: TeacherAttendanceContentP
           {!selectedTeacherId ? (
             <div className="py-16 text-center text-sm text-gray-400">Select a teacher to view their attendance</div>
           ) : teacherLoading ? (
-            <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>
+            <SkeletonList count={4} />
           ) : teacherError ? (
             <ApiErrorBanner message={teacherError} onRetry={loadTeacher} />
           ) : (

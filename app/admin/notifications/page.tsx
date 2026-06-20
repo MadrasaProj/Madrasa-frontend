@@ -14,6 +14,7 @@ import {
   BookOpen, ClipboardList, GraduationCap, CreditCard, FileText, Users,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { SkeletonList } from "@/components/ui/Skeleton";
 
 const TYPE_CONFIG: Record<NotificationType, { label: string; icon: React.ElementType; color: string; bg: string }> = {
   ANNOUNCEMENT:       { label: "Announcement",    icon: Bell,          color: "text-indigo-700", bg: "bg-indigo-100" },
@@ -147,9 +148,7 @@ export default function AdminNotificationsPage() {
       {error && <ApiErrorBanner message={error} onRetry={loadSent} />}
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
-          <Loader2 className="w-5 h-5 animate-spin" />
-        </div>
+        <SkeletonList count={4} />
       ) : sent.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm">No notifications sent yet</div>
       ) : (

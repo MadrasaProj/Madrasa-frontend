@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { Skeleton, SkeletonList } from "@/components/ui/Skeleton";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth";
@@ -52,27 +53,6 @@ function monthLabel(key: string, locale: string) {
     month: "long",
     year: "numeric",
   });
-}
-
-// ── Skeleton ─────────────────────────────────────────────────────────────────
-
-function Skeleton({ className }: { className?: string }) {
-  return <div className={cn("animate-pulse bg-gray-100 rounded-xl", className)} />;
-}
-
-function LoadingSkeleton() {
-  return (
-    <div className="space-y-4">
-      <Skeleton className="h-36 rounded-3xl" />
-      <div className="grid grid-cols-3 gap-3">
-        <Skeleton className="h-20" />
-        <Skeleton className="h-20" />
-        <Skeleton className="h-20" />
-      </div>
-      <Skeleton className="h-5 w-24 mt-2" />
-      {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16" />)}
-    </div>
-  );
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -173,7 +153,18 @@ export default function ParentAttendancePage() {
         back
       />
 
-      {loading && <LoadingSkeleton />}
+      {loading && (
+        <div className="space-y-4">
+          <Skeleton className="h-36 rounded-3xl" />
+          <div className="grid grid-cols-3 gap-3">
+            <Skeleton className="h-20" />
+            <Skeleton className="h-20" />
+            <Skeleton className="h-20" />
+          </div>
+          <Skeleton className="h-5 w-24 mt-2" />
+          <SkeletonList count={5} />
+        </div>
+      )}
 
       {error && <ApiErrorBanner message={error} onRetry={loadData} />}
 

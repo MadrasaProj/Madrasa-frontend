@@ -9,9 +9,10 @@ import {
 } from "@/lib/notifications-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/Skeleton";
 import {
   Bell, BookOpen, ClipboardList, GraduationCap, CreditCard,
-  FileText, Loader2, RefreshCw, CheckCheck, ExternalLink,
+  FileText, RefreshCw, CheckCheck, ExternalLink,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -93,8 +94,10 @@ export default function ParentNotificationsPage() {
       {error && <ApiErrorBanner message={error} onRetry={load} />}
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
-          <Loader2 className="w-5 h-5 animate-spin" />
+        <div className="space-y-2">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Skeleton key={i} className="h-24 rounded-2xl" />
+          ))}
         </div>
       ) : notifs.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm">

@@ -4,8 +4,9 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { TeacherAttendanceContent } from "@/components/shared/TeacherAttendanceContent";
 import { getClientConfig } from "@/lib/config-api";
 import { useAuthStore } from "@/store/auth";
-import { Loader2, ShieldOff } from "lucide-react";
+import { ShieldOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function CommitteeTeacherAttendancePage() {
   const { accessToken, activeClientId } = useAuthStore();
@@ -24,7 +25,11 @@ export default function CommitteeTeacherAttendancePage() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
+        <div className="space-y-4 pt-4">
+          <Skeleton className="h-12 w-60 rounded-xl" />
+          <Skeleton className="h-12 rounded-xl" />
+          <Skeleton className="h-48 rounded-2xl" />
+        </div>
       </DashboardLayout>
     );
   }

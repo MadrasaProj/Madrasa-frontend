@@ -6,8 +6,9 @@ import { listDiary, type DiaryEntry } from "@/lib/diary-api";
 import { getDiaryEvents, type DiaryEventNotification, type NotificationType } from "@/lib/notifications-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/Skeleton";
 import {
-  FileText, ChevronLeft, ChevronRight, Loader2, Bell,
+  FileText, ChevronLeft, ChevronRight, Bell,
   BookOpen, ClipboardList, GraduationCap, CreditCard,
 } from "lucide-react";
 
@@ -106,8 +107,22 @@ export default function ParentDiaryPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
-          <Loader2 className="w-5 h-5 animate-spin" />
+        <div className="space-y-5">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-11 w-11 rounded-xl shrink-0" />
+            <Skeleton className="h-10 flex-1 rounded-xl" />
+            <Skeleton className="h-11 w-11 rounded-xl shrink-0" />
+          </div>
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-28 rounded-2xl" />
+            ))}
+          </div>
+          <div className="space-y-3">
+            {[1, 2].map((i) => (
+              <Skeleton key={i} className="h-24 rounded-2xl" />
+            ))}
+          </div>
         </div>
       ) : !hasContent ? (
         <div className="text-center py-16 text-gray-400">

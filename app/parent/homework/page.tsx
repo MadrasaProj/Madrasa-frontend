@@ -11,6 +11,7 @@ import {
 import { getStudent, type StudentRecord } from "@/lib/students-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/Skeleton";
 import {
   BookOpen,
   Loader2,
@@ -156,8 +157,22 @@ export default function ParentHomeworkPage() {
       />
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
-          <Loader2 className="w-5 h-5 animate-spin" />
+        <div className="space-y-5">
+          <div className="grid grid-cols-3 gap-2">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-20 rounded-2xl" />
+            ))}
+          </div>
+          <div className="flex gap-1.5">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-8 w-16 rounded-lg" />
+            ))}
+          </div>
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-36 rounded-2xl" />
+            ))}
+          </div>
         </div>
       ) : !effectiveId ? (
         <div className="text-center py-16 text-gray-400 text-sm">
@@ -356,8 +371,10 @@ export default function ParentHomeworkPage() {
               </div>
             </>
           ) : (
-            <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
-              <Loader2 className="w-4 h-4 animate-spin" />
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-32 rounded-2xl" />
+              ))}
             </div>
           )}
         </>

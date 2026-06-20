@@ -1,5 +1,6 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { motion } from "framer-motion";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useLanguageStore } from "@/store/language";
 import { useAuthStore } from "@/store/auth";
 import { useState, useEffect } from "react";
@@ -129,13 +130,13 @@ export default function BestPerformancePage() {
             {Array.from({ length: 5 }).map((_, i) => (
               <div
                 key={i}
-                className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm animate-pulse"
+                className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-gray-200 rounded-full" />
+                  <Skeleton className="w-10 h-10 rounded-full" />
                   <div className="flex-1 space-y-2">
-                    <div className="h-4 bg-gray-200 rounded w-1/3" />
-                    <div className="h-3 bg-gray-100 rounded w-2/3" />
+                    <Skeleton className="h-4 w-1/3" />
+                    <Skeleton className="h-3 w-2/3" />
                   </div>
                 </div>
               </div>

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
+import { Skeleton } from "@/components/ui/Skeleton";
 import {
   checkIn, checkOut, getTodaySession, getSessionHistory,
   type TeacherSession,
@@ -131,7 +132,19 @@ export default function TeacherCheckinPage() {
       {error && <ApiErrorBanner message={error} onRetry={load} />}
 
       {loading ? (
-        <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
+        <div className="max-w-md mx-auto space-y-6 px-4">
+          <Skeleton className="h-64 rounded-3xl" />
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-36" />
+            {Array.from({ length: 2 }).map((_, i) => (
+              <Skeleton key={i} className="h-16 rounded-2xl" />
+            ))}
+          </div>
+          <div className="space-y-3">
+            <Skeleton className="h-5 w-20" />
+            <Skeleton className="h-32 rounded-2xl" />
+          </div>
+        </div>
       ) : (
         <div className="max-w-md mx-auto space-y-6 px-4">
           {/* Status card */}

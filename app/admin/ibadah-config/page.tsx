@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { PageSkeleton } from "@/components/ui/Skeleton";
 
 type CustomItem = IbadahConfig["customItems"][number];
 
@@ -192,9 +193,7 @@ export default function IbadahConfigPage() {
       />
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
-          <Loader2 className="w-5 h-5 animate-spin" />
-        </div>
+        <PageSkeleton />
       ) : (
         <div className="space-y-5 max-w-2xl pb-28">
           {error && (

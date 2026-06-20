@@ -23,6 +23,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PageSkeleton } from "@/components/ui/Skeleton";
 
 type CustomItem = IbadahConfig["customItems"][number];
 
@@ -202,9 +203,7 @@ export default function SuperAdminIbadahPage() {
       />
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
-          <Loader2 className="w-5 h-5 animate-spin" />
-        </div>
+        <PageSkeleton />
       ) : error ? (
         <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" /> {error}

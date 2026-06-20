@@ -6,12 +6,12 @@ import { useAuthStore } from "@/store/auth";
 import { motion } from "framer-motion";
 import {
   Activity,
-  Loader2,
   RefreshCw,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SkeletonList } from "@/components/ui/Skeleton";
 
 const ACTOR_COLORS: Record<string, string> = {
   SUPER_ADMIN: "bg-blue-100 text-blue-700",
@@ -147,9 +147,7 @@ export default function ActivityLogsPage() {
 
       {/* Log list */}
       {loading ? (
-        <div className="flex items-center gap-2 text-gray-400 text-sm py-12 justify-center">
-          <Loader2 className="w-4 h-4 animate-spin" /> Loading logs...
-        </div>
+        <SkeletonList count={4} />
       ) : logs.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <Activity className="w-10 h-10 mx-auto mb-3 opacity-30" />

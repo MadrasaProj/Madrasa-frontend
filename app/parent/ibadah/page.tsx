@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 const PRAYERS = ["fajr", "dhuhr", "asr", "maghrib", "isha"] as const;
 type Prayer = typeof PRAYERS[number];
@@ -203,8 +204,15 @@ export default function ParentIbadahPage() {
       />
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
-          <Loader2 className="w-5 h-5 animate-spin" />
+        <div className="space-y-4">
+          <Skeleton className="h-16 rounded-2xl" />
+          <Skeleton className="h-28 rounded-2xl" />
+          <div className="flex gap-1">
+            {[1, 2].map((i) => (
+              <Skeleton key={i} className="h-10 flex-1 rounded-xl" />
+            ))}
+          </div>
+          <Skeleton className="h-64 rounded-2xl" />
         </div>
       ) : !activeId ? (
         <div className="text-center py-16 text-gray-400 text-sm">No children linked to this account</div>

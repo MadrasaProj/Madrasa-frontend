@@ -13,6 +13,7 @@ import {
   ClipboardList, ChevronLeft, ChevronRight, Save, Loader2,
   Users, AlertCircle, AlertTriangle, CheckCircle2,
 } from "lucide-react";
+import { Skeleton, SkeletonList } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -341,8 +342,10 @@ export default function TeacherAttendancePage() {
       {/* Class tabs */}
       <div className="flex gap-2 overflow-x-auto pb-1 mb-4 scrollbar-hide">
         {classesLoading ? (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-100 text-xs text-gray-400">
-            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading classes…
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-9 w-28 rounded-xl shrink-0" />
+            ))}
           </div>
         ) : classes.length === 0 ? (
           <p className="text-xs text-gray-400 px-3 py-2">No classes found</p>
@@ -458,8 +461,22 @@ export default function TeacherAttendancePage() {
       {/* Student list */}
       {activeClassId && (
         loading ? (
-          <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
-            <Loader2 className="w-5 h-5 animate-spin" /> Loading…
+          <div className="space-y-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-2xl border border-gray-100 p-3.5 flex items-center gap-3">
+                <Skeleton className="w-10 h-10 rounded-xl shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-4 w-2/5" />
+                  <Skeleton className="h-3 w-1/4" />
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Skeleton className="w-7 h-7 rounded-lg" />
+                  <Skeleton className="w-7 h-7 rounded-lg" />
+                  <Skeleton className="w-7 h-7 rounded-lg" />
+                  <Skeleton className="w-7 h-7 rounded-lg" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : error ? (
           <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">

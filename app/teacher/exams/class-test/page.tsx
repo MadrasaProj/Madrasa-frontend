@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
+import { Skeleton } from "@/components/ui/Skeleton";
 import {
   getExams,
   createExam,
@@ -409,8 +410,18 @@ export default function TeacherClassTestsPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+        <div className="space-y-3 pb-24">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-5 w-1/2" />
+                  <Skeleton className="h-3 w-2/3" />
+                </div>
+                <Skeleton className="h-8 w-8 rounded-lg shrink-0" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : exams.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm">

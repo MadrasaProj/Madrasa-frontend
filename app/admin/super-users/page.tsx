@@ -12,6 +12,7 @@ import { useAuthStore } from "@/store/auth";
 import { Shield, ShieldCheck, UserPlus, Trash2, Pencil, Loader2, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { SkeletonList } from "@/components/ui/Skeleton";
 
 // ── Add / Edit Drawer ──────────────────────────────────────────────────────────
 
@@ -213,9 +214,7 @@ export default function AdminSuperUsersPage() {
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-gray-400 text-sm py-12 justify-center">
-          <Loader2 className="w-4 h-4 animate-spin" /> Loading users...
-        </div>
+        <SkeletonList count={3} />
       ) : users.length === 0 ? (
         <div className="text-center py-12">
           <ShieldCheck className="w-12 h-12 text-gray-200 mx-auto mb-3" />

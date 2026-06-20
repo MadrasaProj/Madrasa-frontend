@@ -15,6 +15,7 @@ import {
   GraduationCap, CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SkeletonList } from "@/components/ui/Skeleton";
 
 const STATUS_CONFIG: Record<string, { label: string; short: string; bg: string; text: string }> = {
   PRESENT: { label: "Present", short: "P", bg: "bg-emerald-100", text: "text-emerald-700" },
@@ -312,9 +313,7 @@ export default function AdminAttendancePage() {
       {/* Student list */}
       {activeClassId && (
         loading ? (
-          <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
-            <Loader2 className="w-5 h-5 animate-spin" /> Loading…
-          </div>
+          <div className="space-y-2"><SkeletonList count={4} /></div>
         ) : error ? (
           <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl">{error}</div>
         ) : students.length === 0 ? (

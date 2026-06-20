@@ -6,10 +6,11 @@ import { useCommitteeData } from "@/lib/use-committee-data";
 import {
   Users, GraduationCap, CreditCard, TrendingUp,
   CheckCircle2, AlertCircle, Bell, BarChart3,
-  IndianRupee, ClipboardList, BookOpen, Loader2,
+  IndianRupee, ClipboardList, BookOpen,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 function ProgressBar({ value, color = "bg-emerald-500" }: { value: number; color?: string }) {
   const safe = Math.min(100, Math.max(0, value || 0));
@@ -88,9 +89,11 @@ export default function CommitteeDashboard() {
       </motion.div>
 
       {d.loading && (
-        <div className="flex items-center justify-center gap-2 py-6 text-gray-400">
-          <Loader2 className="w-4 h-4 animate-spin" />
-          <span className="text-sm">{ml ? "ലോഡ് ചെയ്യുന്നു..." : "Loading..."}</span>
+        <div className="space-y-3 mb-5">
+          <Skeleton className="h-24 rounded-3xl" />
+          <Skeleton className="h-40 rounded-2xl" />
+          <Skeleton className="h-40 rounded-2xl" />
+          <Skeleton className="h-32 rounded-2xl" />
         </div>
       )}
 

@@ -21,6 +21,7 @@ import {
   CheckCircle2, AlertCircle, ArrowLeft, GraduationCap
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { PageSkeleton } from "@/components/ui/Skeleton";
 
 type Tab = "table" | "marklist" | "status" | "posters";
 
@@ -182,9 +183,7 @@ export default function ClassReportPage() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-        </div>
+        <PageSkeleton />
       </DashboardLayout>
     );
   }

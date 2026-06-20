@@ -9,7 +9,8 @@ import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { UserX, Loader2, RefreshCw } from "lucide-react";
+import { UserX, RefreshCw } from "lucide-react";
+import { SkeletonList } from "@/components/ui/Skeleton";
 
 function todayISO() {
   return new Date().toISOString().split("T")[0];
@@ -114,9 +115,7 @@ export default function AdminAbsentPage() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 py-16 text-sm text-gray-400">
-          <Loader2 className="w-4 h-4 animate-spin" /> Loading…
-        </div>
+        <SkeletonList count={4} />
       ) : error ? (
         <div className="px-4 py-4 text-sm text-red-600 bg-red-50 rounded-2xl">
           {error}

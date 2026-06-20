@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
+import { Skeleton } from "@/components/ui/Skeleton"
 
 export type SortDir = "asc" | "desc"
 
@@ -167,7 +168,7 @@ export function DataTable<T>({
                 <tr key={i} className="border-b border-gray-50">
                   {columns.map((col) => (
                     <td key={col.key} className={cn("px-4 py-3", col.className)}>
-                      <div className="h-4 bg-gray-100 rounded animate-pulse" />
+                      <Skeleton className="h-4" />
                     </td>
                   ))}
                 </tr>
@@ -202,12 +203,12 @@ export function DataTable<T>({
       <div className="md:hidden space-y-3">
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl p-4 border border-gray-100 animate-pulse">
+            <div key={i} className="bg-white rounded-2xl p-4 border border-gray-100">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-gray-100 shrink-0" />
+                <Skeleton className="w-12 h-12 rounded-2xl shrink-0" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-gray-100 rounded w-3/4" />
-                  <div className="h-3 bg-gray-100 rounded w-1/2" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
                 </div>
               </div>
             </div>

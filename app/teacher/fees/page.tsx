@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
+import { Skeleton } from "@/components/ui/Skeleton";
 import {
   getFeeTypes, getPayments, updatePayment, getPaymentReceipt,
   cancelPayment as cancelPaymentApi,
@@ -199,8 +200,29 @@ export default function TeacherFeesPage() {
       {error && <ApiErrorBanner message={error} onRetry={loadPayments} />}
 
       {typesLoading ? (
-        <div className="flex items-center justify-center py-16 text-gray-400">
-          <Loader2 className="w-5 h-5 animate-spin" />
+        <div className="space-y-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-28 rounded-2xl" />
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-10 flex-1 rounded-xl" />
+            <Skeleton className="h-10 w-48 rounded-xl" />
+          </div>
+          <div className="space-y-0 divide-y divide-gray-50 rounded-2xl border border-gray-100 overflow-hidden">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 px-4 py-3.5">
+                <Skeleton className="w-9 h-9 rounded-xl shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-2/3" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+                <Skeleton className="h-4 w-16 shrink-0" />
+                <Skeleton className="h-6 w-16 rounded-full shrink-0" />
+              </div>
+            ))}
+          </div>
         </div>
       ) : (
         <>

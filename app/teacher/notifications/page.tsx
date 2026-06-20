@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
+import { SkeletonList } from "@/components/ui/Skeleton";
 import {
   getNotifications, markNotificationRead,
   type NotificationRecord,
@@ -10,7 +11,7 @@ import {
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
-  Bell, Loader2, ExternalLink,
+  Bell, ExternalLink,
   BookOpen, ClipboardList, GraduationCap, CreditCard,
 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -75,8 +76,8 @@ export default function TeacherNotificationsPage() {
       {error && <ApiErrorBanner message={error} onRetry={load} />}
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
-          <Loader2 className="w-5 h-5 animate-spin" />
+        <div className="space-y-2 pb-20">
+          <SkeletonList count={5} />
         </div>
       ) : notifs.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm">No notifications</div>

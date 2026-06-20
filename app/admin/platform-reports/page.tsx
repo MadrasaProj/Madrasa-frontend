@@ -8,9 +8,10 @@ import {
   type ClientListItem,
 } from "@/lib/super-admin-api";
 import { useAuthStore } from "@/store/auth";
-import { BarChart3, Loader2, Building2, Users, AlertTriangle, RefreshCw } from "lucide-react";
+import { BarChart3, Building2, Users, AlertTriangle, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { SkeletonGrid } from "@/components/ui/Skeleton";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -141,9 +142,7 @@ export default function AdminPlatformReportsPage() {
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-gray-400 text-sm py-12 justify-center">
-          <Loader2 className="w-4 h-4 animate-spin" /> Loading platform data...
-        </div>
+        <SkeletonGrid count={4} className="grid-cols-2 lg:grid-cols-4 gap-3" />
       ) : stats ? (
         <div className="space-y-6 pb-20">
           {/* Top stat cards */}

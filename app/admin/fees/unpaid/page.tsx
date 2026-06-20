@@ -7,6 +7,7 @@ import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import { AlertCircle, Loader2, CheckCircle, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { SkeletonList } from "@/components/ui/Skeleton";
 
 const PAYMENT_METHODS = ["CASH", "BANK_TRANSFER", "UPI", "CHEQUE", "OTHER"] as const;
 
@@ -98,7 +99,7 @@ export default function AdminFeesUnpaidPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 py-12 text-gray-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
+        <SkeletonList count={4} />
       ) : error ? (
         <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl">{error}</div>
       ) : (

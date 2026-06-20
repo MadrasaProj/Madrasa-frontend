@@ -15,6 +15,7 @@ import {
   ClipboardCheck, Trophy, BookOpen
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { ExamStatusBadge, getExamStatusInfo } from "@/components/exam/ExamStatusBadge";
 import { ExcelImportModal } from "@/components/exam/ExcelImportModal";
 
@@ -258,8 +259,27 @@ export default function TeacherExamsPage() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center py-20 text-gray-400">
-          <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+        <div className="px-4 py-3 lg:px-8 lg:py-6 space-y-6">
+          <PageHeader
+            title="Exams"
+            subtitle="View exam schedule and enter marks"
+            icon={GraduationCap}
+          />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 rounded-3xl" />
+            ))}
+          </div>
+          <div className="flex gap-1">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-9 w-24 rounded-t-xl" />
+            ))}
+          </div>
+          <div className="grid grid-cols-1 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-32 rounded-3xl" />
+            ))}
+          </div>
         </div>
       </DashboardLayout>
     );

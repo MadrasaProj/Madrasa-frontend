@@ -15,6 +15,7 @@ import {
   Loader2, CheckCircle2, XCircle, AlertCircle,
   Search, ChevronDown, ChevronUp, UserCheck,
 } from "lucide-react";
+import { SkeletonList } from "@/components/ui/Skeleton";
 
 const REASON_CONFIG: Record<LeaveReasonType, { label: string; color: string; bg: string }> = {
   LEAVE: { label: "Leave", color: "text-amber-600", bg: "bg-amber-50" },
@@ -117,9 +118,7 @@ export default function AdminLeaveRequestsPage() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-          </div>
+          <SkeletonList count={3} />
         ) : filtered.length === 0 ? (
           <div className="text-center py-12 text-gray-400">
             <AlertCircle className="w-8 h-8 mx-auto mb-2" />

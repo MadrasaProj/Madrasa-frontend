@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { listHomework, getSubmissions, type HomeworkAssignment, type SubmissionsResponse } from "@/lib/homework-api";
 import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
 import { useAuthStore } from "@/store/auth";
@@ -71,8 +72,23 @@ export default function TeacherHomeworkListPage() {
       {error && <ApiErrorBanner message={error} onRetry={loadData} />}
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
-          <Loader2 className="w-5 h-5 animate-spin" />
+        <div className="space-y-4">
+          <div className="flex gap-2 flex-wrap">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-8 w-20 rounded-xl" />
+            ))}
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-20 rounded-2xl" />
+            ))}
+          </div>
+          <Skeleton className="h-4 w-24" />
+          <div className="space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-20 rounded-2xl" />
+            ))}
+          </div>
         </div>
       ) : (
         <>

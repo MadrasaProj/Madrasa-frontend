@@ -9,6 +9,7 @@ import { getSubjects, type SubjectRecord } from "@/lib/subjects-api";
 import { getStudents } from "@/lib/students-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/Skeleton";
 import {
   Plus, Loader2, Trash2, ChevronDown, ChevronUp, Search,
   X, Calendar, Edit2, AlertTriangle, RefreshCw,
@@ -408,8 +409,20 @@ export default function AdminExamsPage() {
 
         {/* Main Exam List */}
         {loading ? (
-          <div className="flex items-center justify-center py-24 text-gray-400">
-            <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-28 rounded-3xl" />
+              ))}
+            </div>
+            <Skeleton className="h-10 w-80 rounded-xl" />
+            <Skeleton className="h-4 w-32 rounded-lg" />
+            <Skeleton className="h-12 rounded-xl" />
+            <div className="space-y-4">
+              {Array.from({ length: 2 }).map((_, i) => (
+                <Skeleton key={i} className="h-40 rounded-3xl" />
+              ))}
+            </div>
           </div>
         ) : filteredExams.length === 0 ? (
           <div className="text-center py-20 bg-white border border-gray-100 rounded-3xl p-6">
