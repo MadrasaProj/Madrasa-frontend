@@ -78,6 +78,7 @@ import ParentPosterViewPage from "../app/parent/posters/[id]/page";
 
 // ── Committee ─────────────────────────────────────────────────────────────────
 import IDCardsPage from "../app/admin/id-cards/IdCard";
+import AdminBestPerformancePage from "../app/committee/best-performance/page";
 import CommitteeAnnouncementsPage from "../app/committee/announcements/page";
 import CommitteeAttendancePage from "../app/committee/attendance/page";
 import CommitteeFinancePage from "../app/committee/finance/page";
@@ -85,6 +86,7 @@ import CommitteeDashboard from "../app/committee/page";
 import CommitteeReportsPage from "../app/committee/reports/page";
 import CommitteeStudentsPage from "../app/committee/students/page";
 import CommitteeTeacherAttendancePage from "../app/committee/teacher-attendance/page";
+import CommitteeBestPerformancePage from "../app/committee/best-performance/page";
 
 export default function App() {
   return (
@@ -131,6 +133,7 @@ export default function App() {
         <Route path="/admin/id-cards" element={<IDCardsPage />} />
         <Route path="/admin/posters" element={<AdminPostersPage />} />
         <Route path="/admin/logs" element={<AdminLogsPage />} />
+        <Route path="/admin/best-performance" element={<AdminBestPerformancePage />} />
 
         {/* Super Admin platform routes */}
         <Route path="/admin/madrasas" element={<AdminMadrasasPage />} />
@@ -176,6 +179,7 @@ export default function App() {
         <Route path="/m/:slug/admin/id-cards" element={<IDCardsPage />} />
        
         <Route path="/m/:slug/admin/logs" element={<AdminLogsPage />} />
+        <Route path="/m/:slug/admin/best-performance" element={<AdminBestPerformancePage />} />
 
         {/* Teacher */}
         <Route path="/teacher" element={<TeacherDashboard />} />
@@ -250,6 +254,7 @@ export default function App() {
         <Route path="/committee/announcements" element={<CommitteeAnnouncementsPage />} />
         <Route path="/committee/reports" element={<CommitteeReportsPage />} />
         <Route path="/committee/teacher-attendance" element={<CommitteeTeacherAttendancePage />} />
+        <Route path="/committee/best-performance" element={<CommitteeBestPerformancePage />} />
 
         {/* Committee — slug-prefixed */}
         <Route path="/m/:slug/committee" element={<CommitteeDashboard />} />
@@ -259,6 +264,7 @@ export default function App() {
         <Route path="/m/:slug/committee/announcements" element={<CommitteeAnnouncementsPage />} />
         <Route path="/m/:slug/committee/reports" element={<CommitteeReportsPage />} />
         <Route path="/m/:slug/committee/teacher-attendance" element={<CommitteeTeacherAttendancePage />} />
+        <Route path="/m/:slug/committee/best-performance" element={<CommitteeBestPerformancePage />} />
 
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -210,6 +210,7 @@ const translations = {
     operations: { en: "Operations", ml: "പ്രവർത്തനങ്ങൾ" },
     financeExtras: { en: "Finance & Extras", ml: "ധനകാര്യം & എക്സ്ട്രാസ്" },
     settings: { en: "Settings", ml: "ക്രമീകരണങ്ങൾ" },
+    bestPerformance: { en: "Best Performance", ml: "മികച്ച പ്രകടനം" },
   },
 
   // ── Admin Dashboard ───────────────────────────────────────────────────────

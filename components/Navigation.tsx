@@ -24,7 +24,8 @@ type NavKey =
   | "leaveRequests"
   | "results" | "alerts" | "overview" | "finance" | "announcements" | "notifications"
   | "madrasas" | "superUsers" | "platformReports" | "profile"
-  | "teacherCheckin" | "posters" | "artsfest" | "academics" | "operations" | "financeExtras" | "settings";
+  | "teacherCheckin" | "posters" | "artsfest" | "academics" | "operations" | "financeExtras" | "settings"
+  | "bestPerformance";
 
 const adminLinks = [
   { href: "/admin",                icon: LayoutDashboard, key: "dashboard"     as NavKey },
@@ -45,6 +46,7 @@ const adminLinks = [
   { href: "/admin/logs",           icon: Activity,        key: "logs"          as NavKey },
   { href: "/admin/notifications",  icon: Bell,            key: "notifications" as NavKey },
   { href: "/admin/config",         icon: Settings,        key: "config"        as NavKey },
+  { href: "/admin/best-performance", icon: Trophy,       key: "bestPerformance" as NavKey },
   { href: "/admin/profile",        icon: UserCircle2,     key: "profile"       as NavKey },
 ];
 
@@ -86,6 +88,7 @@ const committeeLinks = [
   { href: "/committee/teacher-attendance", icon: ClipboardCheck,  key: "teacherCheckin" as NavKey },
   { href: "/committee/reports",            icon: FileBarChart2,   key: "reports"        as NavKey },
   { href: "/committee/announcements",      icon: Megaphone,       key: "announcements"  as NavKey },
+  { href: "/committee/best-performance",   icon: Trophy,          key: "bestPerformance" as NavKey },
   { href: "/committee/profile",            icon: UserCircle2,     key: "profile"        as NavKey },
 ];
 
@@ -157,7 +160,7 @@ const getAdminCategories = (role: string, actorType?: string) => {
       id: "operations",
       titleKey: "operations" as NavKey,
       icon: ClipboardList,
-      links: links.filter(l => ["attendance", "teacherCheckin", "leaveRequests", "ibadah"].includes(l.key))
+      links: links.filter(l => ["attendance", "teacherCheckin", "leaveRequests", "ibadah", "bestPerformance"].includes(l.key))
     },
     {
       id: "finance",
