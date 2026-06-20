@@ -4,6 +4,37 @@
  * across Firefox, Chrome, Safari, and mobile WebViews.
  */
 
+// ── Cover image extraction ─────────────────────────────────────────────────────
+
+export function getCoverImageUrl(sceneData: unknown): string | null {
+  if (!sceneData || typeof sceneData !== "object") return null;
+  const obj = sceneData as Record<string, unknown>;
+
+  if (obj.tag === "Image" && typeof obj.url === "string") return obj.url;
+
+  const fill = obj.fill;
+  if (fill && typeof fill === "object") {
+    const fillObj = fill as Record<string, unknown>;
+    if (fillObj.type === "image" && typeof fillObj.url === "string") return fillObj.url;
+    if (Array.isArray(fill)) {
+      for (const f of fill) {
+        if (f && typeof f === "object" && (f as Record<string, unknown>).type === "image" && typeof (f as Record<string, unknown>).url === "string")
+          return (f as Record<string, unknown>).url as string;
+      }
+    }
+  }
+
+  const children = obj.children;
+  if (Array.isArray(children)) {
+    for (const child of children) {
+      const url = getCoverImageUrl(child);
+      if (url) return url;
+    }
+  }
+
+  return null;
+}
+
 // ── Core capture ──────────────────────────────────────────────────────────────
 
 export async function captureElement(

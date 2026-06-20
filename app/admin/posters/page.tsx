@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { useAuthStore } from "@/store/auth";
+import { getCoverImageUrl } from "@/lib/poster-utils";
 import {
   getPosters,
   createPoster,
@@ -185,7 +186,15 @@ export default function AdminPostersPage() {
                 key={poster.id}
                 className="border rounded-xl bg-white overflow-hidden"
               >
-                <div className="aspect-video bg-gray-100" />
+                <div className="aspect-video bg-gray-100">
+                  {getCoverImageUrl(poster.sceneData) && (
+                    <img
+                      src={getCoverImageUrl(poster.sceneData)!}
+                      alt={poster.title}
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                </div>
                 <div className="p-3 flex items-center justify-between">
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{poster.title}</p>

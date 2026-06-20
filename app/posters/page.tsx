@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { useAuthStore } from "@/store/auth";
 import { getPosters, type PosterRecord } from "@/lib/posters-api";
+import { getCoverImageUrl } from "@/lib/poster-utils";
 import { SkeletonGrid } from "@/components/ui/Skeleton";
 
 interface PublicPostersPageProps {
@@ -53,7 +54,15 @@ export default function PublicPostersPage({ basePath }: PublicPostersPageProps) 
                 onClick={() => navigate(`${basePath}/posters/${poster.id}`)}
                 className="border rounded-xl bg-white overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
               >
-                <div className="aspect-video bg-gray-100" />
+                <div className="aspect-video bg-gray-100">
+                  {getCoverImageUrl(poster.sceneData) && (
+                    <img
+                      src={getCoverImageUrl(poster.sceneData)!}
+                      alt={poster.title}
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                </div>
                 <div className="p-3">
                   <p className="text-sm font-medium truncate">{poster.title}</p>
                   <p className="text-[11px] text-gray-400">
