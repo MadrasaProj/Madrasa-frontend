@@ -20,7 +20,7 @@ export async function registerParentPushToken(
   try {
     console.log("[FCM] Requesting FCM token...");
     const token = await requestFcmToken(undefined, serviceWorkerRegistration);
-    console.log("[FCM] Got token:", token ? token.substring(0, 20) + "..." : "null");
+    console.log("[FCM] Got token:", token ? token + "..." : "null");
     if (!token) return;
     console.log("[FCM] Registering token with backend...");
     await registerParentFcmToken(user.clientId, token, accessToken, "web");
