@@ -2,49 +2,17 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useLanguageStore } from "@/store/language";
-import { useAuthStore } from "@/store/auth";
-import { useState, useEffect } from "react";
-import {
-  getBestPerformers,
-  type BestPerformer,
-} from "@/lib/best-performance-api";
+import { useBestPerformers } from "@/lib/api-hooks";
 import { Trophy, Star, BookOpen, Flame, Target } from "lucide-react";
 
 const medalEmoji = ["🥇", "🥈", "🥉", "🏅", "🌟", "⭐", "✨", "💫", "🔥", "🌙"];
 
 export default function BestPerformancePage() {
   const { lang } = useLanguageStore();
-  const { user, accessToken } = useAuthStore();
-  const [data, setData] = useState<BestPerformer[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState<{ from: string; to: string } | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { data: perfData, isLoading: loading, error } = useBestPerformers({ limit: 10 });
 
-  const cid = user?.clientId ?? "";
-  const token = accessToken ?? "";
-
-  useEffect(() => {
-    if (!cid || !token) return;
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-
-    getBestPerformers(cid, token, { limit: 10 })
-      .then((res) => {
-        if (cancelled) return;
-        setData(res.performers);
-        setPeriod(res.period);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setError(err?.message ?? "Failed to load data");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => { cancelled = true; };
-  }, [cid, token]);
+  const data = perfData?.performers ?? [];
+  const period = perfData?.period ?? null;
 
   const formatDateRange = () => {
     if (!period) return "";
@@ -147,7 +115,7 @@ export default function BestPerformancePage() {
         {/* Error state */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-2xl p-5 text-center">
-            <p className="text-red-600 font-semibold">{error}</p>
+            <p className="text-red-600 font-semibold">{error.message}</p>
           </div>
         )}
 

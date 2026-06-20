@@ -4,22 +4,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
-import {
-  getExams,
-  createExam,
-  updateExam,
-  deleteExam,
-  type ExamRecord,
-  type ExamStatus,
-} from "@/lib/exams-api";
-import {
-  getResults,
-  bulkUpsertResults,
-  type ResultRecord,
-} from "@/lib/results-api";
-import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
-import { getSubjects, type SubjectRecord } from "@/lib/subjects-api";
-import { getStudents, type StudentRecord } from "@/lib/students-api";
+import { useExams, useCreateExam, useUpdateExam, useDeleteExam, useClasses, useSubjects, useStudents, useResults, useBulkUpsertResults } from "@/lib/api-hooks";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
@@ -40,6 +25,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ExamStatusBadge, STATUS_LABELS } from "@/components/exam/ExamStatusBadge";
+import type { ExamRecord, ExamStatus } from "@/lib/exams-api";
 
 function fmt(d?: string | null) {
   if (!d) return "—";
@@ -50,12 +36,11 @@ function fmt(d?: string | null) {
 }
 
 export default function TeacherClassTestsPage() {
-  const { user, accessToken, activeClientId } = useAuthStore();
+  const { user, accessToken } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
-  const cid = activeClientId ?? "";
-  const token = accessToken ?? "";
   const ayId = user?.defaultAcademicYearId ?? "";
+  const cid = user?.clientId ?? "";
 
   const [isMobile, setIsMobile] = useState(true);
   useEffect(() => {
@@ -70,27 +55,51 @@ export default function TeacherClassTestsPage() {
   const isAdmin =
     user?.actorType === "SUPER_ADMIN" || user?.actorType === "CLIENT_ADMIN";
 
+  const [filterClassId, setFilterClassId] = useState("");
+
+  const { data: classes = [], isLoading: classesLoading } = useClasses();
+  const { data: subjectsData } = useSubjects({});
+  const subjects = subjectsData?.data ?? [];
+
+  const isPeriodBased = user?.attendanceMode === "PERIOD_BASED";
+  const teacherId = user?.id ?? "";
+
+  const myClassIds = new Set(
+    subjects.filter((s: any) => s.teacherId === teacherId).map((s: any) => s.classId),
+  );
+  const teacherClasses = isPeriodBased
+    ? classes.filter(
+        (c: any) => myClassIds.has(c.id) || c.classTeacherId === teacherId,
+      )
+    : classes.filter((c: any) => c.classTeacherId === teacherId);
+
+  const { data: examsData, isLoading: loading } = useExams({
+    type: "CLASS_TEST",
+    limit: 100,
+    classId: filterClassId || undefined,
+  });
+
+  const exams = examsData?.data ?? [];
+  const [error, setError] = useState<string | null>(null);
+
+  const createMutation = useCreateExam();
+  const updateMutation = useUpdateExam();
+  const deleteMutation = useDeleteExam();
+  const bulkUpsertMutation = useBulkUpsertResults();
+
   const canEditExam = (exam: ExamRecord) => {
     if (isAdmin) return true;
-    const cls = classes.find((c) => c.id === exam.classId);
+    const cls = classes.find((c: any) => c.id === exam.classId);
     if (!cls) return false;
     if (cls.classTeacherId === user?.id) return true;
     if (user?.attendanceMode === "PERIOD_BASED" && exam.subjectId) {
-      const sub = subjects.find((s) => s.id === exam.subjectId);
+      const sub = subjects.find((s: any) => s.id === exam.subjectId);
       if (sub?.teacherId === user?.id) return true;
     }
     return false;
   };
 
-  const [exams, setExams] = useState<ExamRecord[]>([]);
-  const [classes, setClasses] = useState<ClassRecord[]>([]);
-  const [subjects, setSubjects] = useState<SubjectRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [filterClassId, setFilterClassId] = useState("");
-
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [results, setResults] = useState<ResultRecord[]>([]);
   const [loadingResults, setLoadingResults] = useState(false);
 
   const [showDrawer, setShowDrawer] = useState(false);
@@ -103,59 +112,23 @@ export default function TeacherClassTestsPage() {
   const [formStatus, setFormStatus] = useState<ExamStatus>("DRAFT");
   const [formMaxMarks, setFormMaxMarks] = useState("100");
   const [formPassMarks, setFormPassMarks] = useState("");
-  const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  const [meStudents, setMeStudents] = useState<StudentRecord[]>([]);
-  const [meSubjects, setMeSubjects] = useState<SubjectRecord[]>([]);
+  const [meStudents, setMeStudents] = useState<any[]>([]);
+  const [meSubjects, setMeSubjects] = useState<any[]>([]);
   const [meSubjectId, setMeSubjectId] = useState("");
   const [meScores, setMeScores] = useState<Record<string, string>>({});
   const [meSaving, setMeSaving] = useState(false);
   const [meSaved, setMeSaved] = useState(false);
 
-  const isPeriodBased = user?.attendanceMode === "PERIOD_BASED";
-  const teacherId = user?.id ?? "";
+  const isSaving = createMutation.isPending || updateMutation.isPending;
 
-  const myClassIds = new Set(
-    subjects.filter((s) => s.teacherId === teacherId).map((s) => s.classId),
+  // Results for expanded exam
+  const { data: resultsData } = useResults(
+    expandedId ? { examId: expandedId, limit: 2000 } : {} as any,
   );
-  const teacherClasses = isPeriodBased
-    ? classes.filter(
-        (c) => myClassIds.has(c.id) || c.classTeacherId === teacherId,
-      )
-    : classes.filter((c) => c.classTeacherId === teacherId);
-
-  const load = useCallback(
-    async (clsId?: string) => {
-      if (!cid || !token) return;
-      setLoading(true);
-      setError(null);
-      try {
-        const [examData, clsData, subData] = await Promise.all([
-          getExams(cid, token, {
-            type: "CLASS_TEST",
-            limit: 100,
-            classId: clsId || undefined,
-          }),
-          getMyClasses(cid, token),
-          getSubjects(cid, token, {}),
-        ]);
-        setExams(examData.data ?? []);
-        setClasses(clsData);
-        setSubjects(subData.data ?? []);
-      } catch (e) {
-        setError((e as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [cid, token],
-  );
-
-  useEffect(() => {
-    load(filterClassId);
-  }, [load]);
+  const results = resultsData?.data ?? [];
 
   const openAdd = () => {
     setEditTarget(null);
@@ -185,166 +158,97 @@ export default function TeacherClassTestsPage() {
     setShowDrawer(true);
   };
 
-  const handleSave = async () => {
-    if (!formName.trim()) {
-      setSaveError("Name is required");
-      return;
-    }
-    if (!formClassId) {
-      setSaveError("Class is required");
-      return;
-    }
-    if (!formSubjectId) {
-      setSaveError("Subject is required");
-      return;
-    }
+  const handleSave = () => {
+    if (!formName.trim()) { setSaveError("Name is required"); return; }
+    if (!formClassId) { setSaveError("Class is required"); return; }
+    if (!formSubjectId) { setSaveError("Subject is required"); return; }
     const maxMarks = Number(formMaxMarks) || 100;
     const passMarks = formPassMarks ? Number(formPassMarks) : undefined;
-    setSaving(true);
     setSaveError("");
-    try {
-      if (editTarget) {
-        const updated = await updateExam(cid, token, editTarget.id, {
-          name: formName.trim(),
-          startDate: formStartDate || null,
-          endDate: formEndDate || null,
-          examStatus: formStatus,
-          maxMarks,
-          passMarks,
-        });
-        setExams((prev) =>
-          prev.map((e) => (e.id === updated.id ? { ...e, ...updated } : e)),
-        );
-      } else {
-        const created = await createExam(cid, token, {
-          name: formName.trim(),
-          accademicYearId: ayId,
-          type: "CLASS_TEST",
-          classId: formClassId,
-          subjectId: formSubjectId,
-          startDate: formStartDate || undefined,
-          endDate: formEndDate || undefined,
-          examStatus: formStatus,
-          maxMarks,
-          passMarks,
-        });
-        setExams((prev) => [...prev, created]);
-      }
-      setShowDrawer(false);
-    } catch (e) {
-      setSaveError((e as Error).message);
-    } finally {
-      setSaving(false);
+
+    if (editTarget) {
+      updateMutation.mutate(
+        { id: editTarget.id, data: { name: formName.trim(), startDate: formStartDate || null, endDate: formEndDate || null, examStatus: formStatus, maxMarks, passMarks } },
+        { onSuccess: () => setShowDrawer(false), onError: (e: any) => setSaveError(e.message) },
+      );
+    } else {
+      createMutation.mutate(
+        { name: formName.trim(), accademicYearId: ayId, type: "CLASS_TEST", classId: formClassId, subjectId: formSubjectId, startDate: formStartDate || undefined, endDate: formEndDate || undefined, examStatus: formStatus, maxMarks, passMarks },
+        { onSuccess: () => setShowDrawer(false), onError: (e: any) => setSaveError(e.message) },
+      );
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!deleteTarget) return;
     const id = deleteTarget.id;
     setDeleting(id);
-    try {
-      await deleteExam(cid, token, id);
-      setExams((prev) => prev.filter((e) => e.id !== id));
-      setShowDeleteConfirm(false);
-      setDeleteTarget(null);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setDeleting(null);
-    }
+    deleteMutation.mutate(id, {
+      onSuccess: () => {
+        setShowDeleteConfirm(false);
+        setDeleteTarget(null);
+        setDeleting(null);
+      },
+      onError: (e: any) => { setError(e.message); setDeleting(null); },
+    });
   };
 
-  const handlePublish = async (exam: ExamRecord) => {
-    if (
-      !window.confirm(
-        `Publish "${exam.name}"? Parents will be able to see results.`,
-      )
-    )
-      return;
-    try {
-      const updated = await updateExam(cid, token, exam.id, {
-        examStatus: "PUBLISHED",
-        publishedDate: new Date().toISOString(),
-      });
-      setExams((prev) =>
-        prev.map((e) => (e.id === updated.id ? { ...e, ...updated } : e)),
-      );
-    } catch (e) {
-      setError((e as Error).message);
-    }
+  const handlePublish = (exam: ExamRecord) => {
+    if (!window.confirm(`Publish "${exam.name}"? Parents will be able to see results.`)) return;
+    updateMutation.mutate(
+      { id: exam.id, data: { examStatus: "PUBLISHED", publishedDate: new Date().toISOString() } },
+      { onError: (e: any) => setError(e.message) },
+    );
   };
 
-  const toggleExpand = async (examId: string) => {
+  const toggleExpand = (examId: string) => {
     if (expandedId === examId) {
       setExpandedId(null);
       return;
     }
     setExpandedId(examId);
     setLoadingResults(true);
-    try {
-      const data = await getResults(cid, token, { examId, limit: 2000 });
-      setResults(data.data ?? []);
-      const r = data.data ?? [];
-      const exam = exams.find((e) => e.id === examId);
-      const clsId = r.length > 0 ? r[0].classId : (exam?.classId ?? "");
-      const subId = r.length > 0 ? (r[0].subject?.id ?? "") : "";
-      if (clsId) {
-        const [students, subData] = await Promise.all([
-          getStudents(cid, token, { classId: clsId, limit: 500 }),
-          getSubjects(cid, token, { classId: clsId, limit: 200 }),
-        ]);
-        setMeStudents(students.data ?? []);
-        setMeSubjects(subData.data ?? []);
-        setMeSubjectId(subId || subData.data?.[0]?.id || "");
-        const scoreMap: Record<string, string> = {};
-        for (const s of students.data ?? []) {
-          const found = r.find((res) => res.student?.id === s.id);
-          if (found) scoreMap[s.id] = String(found.score);
-        }
-        setMeScores(scoreMap);
-      } else {
-        setMeStudents([]);
-        setMeSubjects([]);
-        setMeSubjectId("");
-        setMeScores({});
-      }
-    } catch {
-      setResults([]);
-    } finally {
+    const exam = exams.find((e) => e.id === examId);
+    const clsId = exam?.classId ?? "";
+    if (clsId) {
+      Promise.all([
+        fetchStudents(clsId),
+        fetchSubjects(clsId),
+      ]).then(([stuData, subData]) => {
+        setMeStudents(stuData ?? []);
+        setMeSubjects(subData ?? []);
+        setMeSubjectId(subData?.[0]?.id ?? "");
+        setLoadingResults(false);
+      }).catch(() => setLoadingResults(false));
+    } else {
+      setMeStudents([]);
+      setMeSubjects([]);
+      setMeSubjectId("");
       setLoadingResults(false);
     }
   };
 
-  const loadMeStudents = async (examId: string, classId: string) => {
-    setMeSaving(false);
-    setMeSaved(false);
+  const fetchStudents = async (clsId: string) => {
     try {
-      const subData = await getSubjects(cid, token, { classId, limit: 200 });
-      const stuData = await getStudents(cid, token, { classId, limit: 500 });
-      const existing = results.filter((r) =>
-        subData.data?.some((s) => s.id === r.subject?.id),
-      );
-      const scoreMap: Record<string, string> = {};
-      for (const s of stuData.data ?? []) {
-        const found = existing.find((r) => r.student?.id === s.id);
-        if (found) scoreMap[s.id] = String(found.score);
-      }
-      setMeStudents(stuData.data ?? []);
-      setMeSubjects(subData.data ?? []);
-      setMeSubjectId(subData.data?.[0]?.id ?? "");
-      setMeScores(scoreMap);
-    } catch {
-      /* ignore */
-    }
+      const { getStudents } = await import("@/lib/students-api");
+      return (await getStudents(cid, accessToken!, { classId: clsId, limit: 500 })).data ?? [];
+    } catch { return []; }
+  };
+  
+  const fetchSubjects = async (clsId: string) => {
+    try {
+      const { getSubjects } = await import("@/lib/subjects-api");
+      return (await getSubjects(cid, accessToken!, { classId: clsId, limit: 200 })).data ?? [];
+    } catch { return []; }
   };
 
-  const handleMeSave = async (examId: string) => {
+  const handleMeSave = (examId: string) => {
     if (!meSubjectId) return;
     const exam = exams.find((e) => e.id === examId);
     const totalMarks = exam?.maxMarks ?? 100;
     const items = meStudents
-      .filter((s) => meScores[s.id] !== "" && meScores[s.id] !== undefined)
-      .map((s) => ({
+      .filter((s: any) => meScores[s.id] !== "" && meScores[s.id] !== undefined)
+      .map((s: any) => ({
         subjectId: meSubjectId,
         studentId: s.id,
         score: Number(meScores[s.id]),
@@ -352,22 +256,44 @@ export default function TeacherClassTestsPage() {
       }));
     if (!items.length) return;
     setMeSaving(true);
-    try {
-      await bulkUpsertResults(cid, token, {
+    bulkUpsertMutation.mutate(
+      {
         examId,
-        classId:
-          filterClassId || (exams.find((e) => e.id === examId)?.classId ?? ""),
+        classId: filterClassId || (exams.find((e) => e.id === examId)?.classId ?? ""),
         accademicYearId: ayId,
         results: items,
-      });
-      setMeSaved(true);
-      setTimeout(() => setMeSaved(false), 3000);
-      const data = await getResults(cid, token, { examId, limit: 2000 });
-      setResults(data.data ?? []);
+      },
+      {
+        onSuccess: () => {
+          setMeSaved(true);
+          setMeSaving(false);
+          setTimeout(() => setMeSaved(false), 3000);
+        },
+        onError: () => { setMeSaving(false); },
+      },
+    );
+  };
+
+  const loadMeStudents = async (examId: string, classId: string) => {
+    setMeSaving(false);
+    setMeSaved(false);
+    try {
+      const subData = await fetchSubjects(classId);
+      const stuData = await fetchStudents(classId);
+      const existing = results.filter((r: any) =>
+        subData.some((s: any) => s.id === r.subject?.id),
+      );
+      const scoreMap: Record<string, string> = {};
+      for (const s of stuData) {
+        const found = existing.find((r: any) => r.student?.id === s.id);
+        if (found) scoreMap[s.id] = String(found.score);
+      }
+      setMeStudents(stuData);
+      setMeSubjects(subData);
+      setMeSubjectId(subData[0]?.id ?? "");
+      setMeScores(scoreMap);
     } catch {
       /* ignore */
-    } finally {
-      setMeSaving(false);
     }
   };
 
@@ -388,7 +314,7 @@ export default function TeacherClassTestsPage() {
       />
 
       {error && (
-        <ApiErrorBanner message={error} onRetry={() => load(filterClassId)} />
+        <ApiErrorBanner message={error} />
       )}
 
       <div className="flex gap-3 mb-4">
@@ -396,7 +322,6 @@ export default function TeacherClassTestsPage() {
           value={filterClassId}
           onChange={(e) => {
             setFilterClassId(e.target.value);
-            load(e.target.value);
           }}
           className="w-full max-w-xs px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
         >
@@ -678,7 +603,7 @@ export default function TeacherClassTestsPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => !saving && setShowDrawer(false)}
+              onClick={() => !isSaving && setShowDrawer(false)}
               className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
             />
             <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-none md:p-4">
@@ -707,8 +632,8 @@ export default function TeacherClassTestsPage() {
                     {editTarget ? "Edit Class Test" : "New Class Test"}
                   </h2>
                   <button
-                    onClick={() => !saving && setShowDrawer(false)}
-                    disabled={saving}
+                    onClick={() => !isSaving && setShowDrawer(false)}
+                    disabled={isSaving}
                     className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200"
                   >
                     <X className="w-4 h-4" />
@@ -863,18 +788,18 @@ export default function TeacherClassTestsPage() {
                 </div>
                 <div className="px-5 py-4 border-t border-gray-100 flex gap-3 shrink-0">
                   <button
-                    onClick={() => !saving && setShowDrawer(false)}
-                    disabled={saving}
+                    onClick={() => !isSaving && setShowDrawer(false)}
+                    disabled={isSaving}
                     className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 disabled:opacity-50"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleSave}
-                    disabled={saving}
+                    disabled={isSaving}
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 disabled:opacity-50"
                   >
-                    {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
                     {editTarget ? "Save Changes" : "Create Test"}
                   </button>
                 </div>

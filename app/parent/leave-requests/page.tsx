@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
@@ -8,9 +8,8 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth";
+import { useMyLeaveRequests, useCreateLeaveRequest } from "@/lib/api-hooks";
 import {
-  createLeaveRequest,
-  getMyLeaveRequests,
   type LeaveRequest,
   type LeaveReasonType,
   type LeaveRequestStatus,
@@ -31,62 +30,47 @@ const REASON_CONFIG: Record<LeaveReasonType, { label: string; labelMl: string; c
 };
 
 export default function ParentLeaveRequestsPage() {
-  const { user, accessToken, activeClientId, activeStudentId } = useAuthStore();
+  const { user, activeStudentId } = useAuthStore();
   const { lang } = useLanguageStore();
-  const cid = activeClientId ?? "";
-  const token = accessToken ?? "";
   const studentId = activeStudentId ?? user?.accessibleStudentIds?.[0] ?? "";
 
-  const [requests, setRequests] = useState<LeaveRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: lrData,
+    isLoading: loading,
+    error,
+    refetch: loadRequests,
+  } = useMyLeaveRequests({ studentId });
+
+  const createMutation = useCreateLeaveRequest();
+
+  const requests: LeaveRequest[] = lrData?.requests ?? [];
 
   const [showForm, setShowForm] = useState(false);
   const [reasonType, setReasonType] = useState<LeaveReasonType>("LEAVE");
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [submitting, setSubmitting] = useState(false);
 
-  const loadRequests = async () => {
-    if (!cid || !token || !studentId) return;
-    setLoading(true);
-    try {
-      const res = await getMyLeaveRequests(cid, token, { studentId });
-      setRequests(res.requests);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadRequests();
-  }, [cid, token, studentId]);
-
-  const handleSubmit = async () => {
-    if (!cid || !token || !studentId || !description || !startDate) return;
-    setSubmitting(true);
-    try {
-      await createLeaveRequest(cid, token, {
+  const handleSubmit = () => {
+    if (!studentId || !description || !startDate) return;
+    createMutation.mutate(
+      {
         studentId,
         reasonType,
         description,
         startDate,
         endDate: endDate || undefined,
-      });
-      setReasonType("LEAVE");
-      setDescription("");
-      setStartDate("");
-      setEndDate("");
-      setShowForm(false);
-      loadRequests();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setSubmitting(false);
-    }
+      },
+      {
+        onSuccess: () => {
+          setReasonType("LEAVE");
+          setDescription("");
+          setStartDate("");
+          setEndDate("");
+          setShowForm(false);
+        },
+      },
+    );
   };
 
   const today = new Date().toISOString().split("T")[0];
@@ -116,7 +100,7 @@ export default function ParentLeaveRequestsPage() {
           </button>
         </div>
 
-        {error && <ApiErrorBanner message={error} />}
+        {error && <ApiErrorBanner message={error.message} />}
 
         <div className="space-y-3">
           {loading ? (
@@ -255,10 +239,10 @@ export default function ParentLeaveRequestsPage() {
                   </button>
                   <button
                     onClick={handleSubmit}
-                    disabled={submitting || !description || !startDate}
+                    disabled={createMutation.isPending || !description || !startDate}
                     className="flex-[2] py-3 rounded-xl bg-emerald-600 text-white text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-1.5"
                   >
-                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                     Submit
                   </button>
                 </div>

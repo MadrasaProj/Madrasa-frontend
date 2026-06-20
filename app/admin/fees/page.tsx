@@ -1,25 +1,19 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import {
-  getFeeTypes,
-  getPayments,
-  createFeeType,
-  recordPayment,
-  updatePayment,
-  generatePayments,
-  getPaymentReceipt,
-  getFeeSummary,
-  cancelPayment as cancelPaymentApi,
-  undoCancelPayment as undoCancelPaymentApi,
+  useFeeTypes, useCreateFeeType, usePayments, useRecordPayment,
+  useUpdatePayment, usePaymentReceipt, useFeeSummary,
+  useCancelPayment, useUndoCancelPayment, useGeneratePayments, useClasses,
+} from "@/lib/api-hooks";
+import {
   type FeeType,
   type FeePayment,
   type ReceiptData,
   type FeePaymentStatus,
   type CreateFeeTypePayload,
 } from "@/lib/fees-api";
-import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
@@ -28,7 +22,6 @@ import {
   Loader2,
   Receipt,
   CheckCircle,
-  Clock,
   AlertCircle,
   RefreshCw,
   Printer,
@@ -36,7 +29,6 @@ import {
   X,
   XCircle,
   Users,
-  Zap,
   Pencil,
   Save,
 } from "lucide-react";
@@ -205,38 +197,62 @@ function ReceiptModal({
 
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function AdminFeesPage() {
-  const { user, accessToken, activeClientId } = useAuthStore();
-  const cid = activeClientId ?? "";
-  const token = accessToken ?? "";
+  const { user } = useAuthStore();
 
-  const [feeTypes, setFeeTypes] = useState<FeeType[]>([]);
-  const [activeTypeId, setActiveTypeId] = useState<string | null>(null); // null = all
-  const [typesLoading, setTypesLoading] = useState(true);
+  const { data: feeTypes = [], isLoading: typesLoading } = useFeeTypes(
+    user?.defaultAcademicYearId ?? undefined,
+  );
 
-  const [payments, setPayments] = useState<FeePayment[]>([]);
-  const [payTotal, setPayTotal] = useState(0);
-  const [payLoading, setPayLoading] = useState(false);
+  const [activeTypeId, setActiveTypeId] = useState<string | null>(null);
   const [paySkip, setPaySkip] = useState(0);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-
-  const [classes, setClasses] = useState<ClassRecord[]>([]);
   const [tab, setTab] = useState<"records" | "reports">("records");
+
+  // Records tab payments
+  const { data: paymentsData, isLoading: payLoading } = usePayments({
+    feeTypeId: activeTypeId ?? undefined,
+    status: statusFilter !== "all" ? (statusFilter as FeePaymentStatus) : undefined,
+    skip: paySkip,
+    take: 30,
+  });
+  const payments = paymentsData?.payments ?? [];
+  const payTotal = paymentsData?.total ?? 0;
+
+  const { data: classes = [] } = useClasses();
+
+  // Reports tab data
+  const [reportFeeTypeId, setReportFeeTypeId] = useState<string>("");
+  const [reportClassId, setReportClassId] = useState<string>("");
+  const { data: summary } = useFeeSummary(user?.defaultAcademicYearId ?? undefined);
+  const { data: reportPayData, isLoading: reportPayLoading } = usePayments({
+    feeTypeId: reportFeeTypeId || undefined,
+    classId: reportClassId || undefined,
+    academicYearId: user?.defaultAcademicYearId ?? undefined,
+    take: 500,
+  });
+  const reportPayments = reportPayData?.payments ?? [];
+
+  // Mutation hooks
+  const createFeeTypeMutation = useCreateFeeType();
+  const recordPaymentMutation = useRecordPayment();
+  const updatePaymentMutation = useUpdatePayment();
+  const cancelPaymentMutation = useCancelPayment();
+  const undoCancelMutation = useUndoCancelPayment();
+  const generatePaymentsMutation = useGeneratePayments();
 
   // Inline mark-paid state
   const [recording, setRecording] = useState<string | null>(null);
   const [payMethod, setPayMethod] = useState("CASH");
   const [payRef, setPayRef] = useState("");
-  const [saving, setSaving] = useState(false);
 
   // Cancel state
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [cancellingNote, setCancellingNote] = useState("");
-  const [cancellingSave, setCancellingSave] = useState(false);
 
   // Receipt
-  const [receipt, setReceipt] = useState<ReceiptData | null>(null);
-  const [loadingReceipt, setLoadingReceipt] = useState<string | null>(null);
+  const [receiptId, setReceiptId] = useState<string | null>(null);
+  const { data: receipt, isFetching: loadingReceipt } = usePaymentReceipt(receiptId ?? "");
 
   // Generate
   const [generating, setGenerating] = useState<string | null>(null);
@@ -245,8 +261,16 @@ export default function AdminFeesPage() {
   const [editingAmount, setEditingAmount] = useState<string | null>(null);
   const [customAmount, setCustomAmount] = useState("");
 
-  // Error
-  const [error, setError] = useState<string | null>(null);
+  // Global error aggregation
+  const queryErrors = [
+    createFeeTypeMutation.error?.message,
+    recordPaymentMutation.error?.message,
+    updatePaymentMutation.error?.message,
+    cancelPaymentMutation.error?.message,
+    undoCancelMutation.error?.message,
+    generatePaymentsMutation.error?.message,
+  ].filter(Boolean);
+  const error = queryErrors.length > 0 ? queryErrors.join("; ") : null;
 
   // Create modal
   const [showCreate, setShowCreate] = useState(false);
@@ -254,104 +278,9 @@ export default function AdminFeesPage() {
     kind: "ONE_TIME",
     amount: 0,
   });
-  const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  // Load fee types
-  const loadTypes = useCallback(async () => {
-    if (!cid || !token) return;
-    setTypesLoading(true);
-    setError(null);
-    try {
-      const data = await getFeeTypes(
-        cid,
-        token,
-        user?.defaultAcademicYearId ?? undefined,
-      );
-      setFeeTypes(data);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setTypesLoading(false);
-    }
-  }, [cid, token, user?.defaultAcademicYearId]);
-
-  useEffect(() => {
-    if (!cid || !token) return;
-    loadTypes();
-    getAllClasses(cid, token)
-      .then(setClasses)
-      .catch(() => {});
-  }, [cid, token, loadTypes]);
-
-  // Load payments
-  const loadPayments = useCallback(async () => {
-    if (!cid || !token) return;
-    setPayLoading(true);
-    try {
-      const res = await getPayments(cid, token, {
-        feeTypeId: activeTypeId ?? undefined,
-        status:
-          statusFilter !== "all"
-            ? (statusFilter as FeePaymentStatus)
-            : undefined,
-        skip: paySkip,
-        take: 30,
-      });
-      setPayments(res.payments);
-      setPayTotal(res.total);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setPayLoading(false);
-    }
-  }, [cid, token, activeTypeId, statusFilter, paySkip]);
-
-  useEffect(() => {
-    if (tab === "records") loadPayments();
-  }, [tab, loadPayments]);
-
-  // Stats / Report
-  const [summary, setSummary] = useState<{
-    byStatus: any[];
-    byFeeType: any[];
-  } | null>(null);
-  const [reportFeeTypeId, setReportFeeTypeId] = useState<string>("");
-  const [reportClassId, setReportClassId] = useState<string>("");
-  const [reportPayments, setReportPayments] = useState<FeePayment[]>([]);
-  const [reportPayLoading, setReportPayLoading] = useState(false);
-
-  const loadReportData = useCallback(async () => {
-    if (!cid || !token) return;
-    setReportPayLoading(true);
-    try {
-      const [summaryData, payRes] = await Promise.all([
-        getFeeSummary(
-          cid,
-          token,
-          user?.defaultAcademicYearId ?? undefined,
-        ),
-        getPayments(cid, token, {
-          feeTypeId: reportFeeTypeId || undefined,
-          classId: reportClassId || undefined,
-          academicYearId: user?.defaultAcademicYearId ?? undefined,
-          take: 500,
-        }),
-      ]);
-      setSummary(summaryData);
-      setReportPayments(payRes.payments);
-    } catch {
-      /* silent */
-    } finally {
-      setReportPayLoading(false);
-    }
-  }, [cid, token, user?.defaultAcademicYearId, reportFeeTypeId, reportClassId]);
-
-  useEffect(() => {
-    if (tab === "reports") loadReportData();
-  }, [tab, loadReportData]);
-
-  const activeType = feeTypes.find((f) => f.id === activeTypeId) ?? null;
+  const activeType = feeTypes.find((f: FeeType) => f.id === activeTypeId) ?? null;
   const activePalette = activeType
     ? PALETTE[feeTypes.indexOf(activeType) % PALETTE.length]
     : PALETTE[0];
@@ -381,148 +310,112 @@ export default function AdminFeesPage() {
       )
     : payments;
 
-  const markPaid = async (p: FeePayment) => {
-    setSaving(true);
-    try {
-      if (p.virtual) {
-        await recordPayment(cid, token, {
-          studentId: p.student.id,
-          feeTypeId: p.feeType.id,
-          dueDate: p.dueDate,
-          dueAmount: Number(p.dueAmount),
-          paidAmount: Number(p.dueAmount),
-          method: payMethod as any,
-          reference: payRef || undefined,
-          status: "PAID",
-        });
-      } else {
-        await updatePayment(cid, token, p.id, {
-          paidAmount: Number(p.dueAmount),
-          method: payMethod as any,
-          reference: payRef || undefined,
-          status: "PAID",
-        });
-      }
-      setRecording(null);
-      setPayRef("");
-      loadPayments();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const cancelPayment = async (p: FeePayment) => {
-    setCancellingSave(true);
-    try {
-      if (p.virtual) {
-        await recordPayment(cid, token, {
-          studentId: p.student.id,
-          feeTypeId: p.feeType.id,
-          dueDate: p.dueDate,
-          dueAmount: Number(p.dueAmount),
-          paidAmount: 0,
-          status: "WAIVED",
-          notes: cancellingNote || undefined,
-        });
-      } else {
-        await cancelPaymentApi(cid, token, p.id, cancellingNote || undefined);
-      }
-      setCancelling(null);
-      setCancellingNote("");
-      loadPayments();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setCancellingSave(false);
-    }
-  };
-
-  const saveDiscount = async (p: FeePayment) => {
-    if (!customAmount || isNaN(Number(customAmount))) return;
-    setSaving(true);
-    try {
-      if (p.virtual) {
-        await recordPayment(cid, token, {
-          studentId: p.student.id,
-          feeTypeId: p.feeType.id,
-          dueDate: p.dueDate,
-          dueAmount: Number(customAmount),
-          paidAmount: 0,
-          status: "PENDING",
-        });
-      } else {
-        await updatePayment(cid, token, p.id, {
-          dueAmount: Number(customAmount),
-        });
-      }
-      setEditingAmount(null);
-      loadPayments();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const undoCancel = async (p: FeePayment) => {
-    setCancellingSave(true);
-    try {
-      await undoCancelPaymentApi(cid, token, p.id);
-      loadPayments();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setCancellingSave(false);
-    }
-  };
-
-  const showReceiptFor = async (id: string) => {
-    setLoadingReceipt(id);
-    try {
-      setReceipt(await getPaymentReceipt(cid, token, id));
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoadingReceipt(null);
-    }
-  };
-
-  const handleGenerate = async (ft: FeeType) => {
-    setGenerating(ft.id);
-    setError(null);
-    try {
-      const res = await generatePayments(cid, token, {
-        feeTypeId: ft.id,
-        academicYearId: user?.defaultAcademicYearId ?? undefined,
+  const markPaid = useCallback((p: FeePayment) => {
+    if (p.virtual) {
+      recordPaymentMutation.mutate({
+        studentId: p.student.id,
+        feeTypeId: p.feeType.id,
+        dueDate: p.dueDate,
+        dueAmount: Number(p.dueAmount),
+        paidAmount: Number(p.dueAmount),
+        method: payMethod as any,
+        reference: payRef || undefined,
+        status: "PAID",
+      }, {
+        onSuccess: () => { setRecording(null); setPayRef(""); },
       });
-      if (activeTypeId === ft.id) loadPayments();
-      alert(
-        `Generated ${res.generated} payment records${res.message ? ` — ${res.message}` : ""}`,
-      );
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setGenerating(null);
+    } else {
+      updatePaymentMutation.mutate({
+        id: p.id,
+        data: {
+          paidAmount: Number(p.dueAmount),
+          method: payMethod as any,
+          reference: payRef || undefined,
+          status: "PAID",
+        },
+      }, {
+        onSuccess: () => { setRecording(null); setPayRef(""); },
+      });
     }
-  };
+  }, [payMethod, payRef, recordPaymentMutation, updatePaymentMutation]);
 
-  const handleCreate = async () => {
-    if (!newFee.name || !newFee.amount) return;
-    setCreating(true);
-    setCreateError(null);
-    try {
-      await createFeeType(cid, token, newFee as CreateFeeTypePayload);
-      setShowCreate(false);
-      setNewFee({ kind: "ONE_TIME", amount: 0 });
-      loadTypes();
-    } catch (e) {
-      setCreateError((e as Error).message);
-    } finally {
-      setCreating(false);
+  const cancelPayment = useCallback((p: FeePayment) => {
+    if (p.virtual) {
+      recordPaymentMutation.mutate({
+        studentId: p.student.id,
+        feeTypeId: p.feeType.id,
+        dueDate: p.dueDate,
+        dueAmount: Number(p.dueAmount),
+        paidAmount: 0,
+        status: "WAIVED",
+        notes: cancellingNote || undefined,
+      }, {
+        onSuccess: () => { setCancelling(null); setCancellingNote(""); },
+      });
+    } else {
+      cancelPaymentMutation.mutate({
+        id: p.id,
+        reason: cancellingNote || undefined,
+      }, {
+        onSuccess: () => { setCancelling(null); setCancellingNote(""); },
+      });
     }
-  };
+  }, [cancellingNote, recordPaymentMutation, cancelPaymentMutation]);
+
+  const saveDiscount = useCallback((p: FeePayment) => {
+    if (!customAmount || isNaN(Number(customAmount))) return;
+    if (p.virtual) {
+      recordPaymentMutation.mutate({
+        studentId: p.student.id,
+        feeTypeId: p.feeType.id,
+        dueDate: p.dueDate,
+        dueAmount: Number(customAmount),
+        paidAmount: 0,
+        status: "PENDING",
+      }, {
+        onSuccess: () => { setEditingAmount(null); },
+      });
+    } else {
+      updatePaymentMutation.mutate({
+        id: p.id,
+        data: { dueAmount: Number(customAmount) },
+      }, {
+        onSuccess: () => { setEditingAmount(null); },
+      });
+    }
+  }, [customAmount, recordPaymentMutation, updatePaymentMutation]);
+
+  const undoCancel = useCallback((p: FeePayment) => {
+    undoCancelMutation.mutate(p.id);
+  }, [undoCancelMutation]);
+
+  const handleGenerate = useCallback((ft: FeeType) => {
+    setGenerating(ft.id);
+    generatePaymentsMutation.mutate({
+      feeTypeId: ft.id,
+      academicYearId: user?.defaultAcademicYearId ?? undefined,
+    }, {
+      onSuccess: (res: any) => {
+        setGenerating(null);
+        alert(`Generated ${res.generated} payment records${res.message ? ` — ${res.message}` : ""}`);
+      },
+      onError: () => { setGenerating(null); },
+    });
+  }, [user?.defaultAcademicYearId, generatePaymentsMutation]);
+
+  const handleCreate = useCallback(() => {
+    if (!newFee.name || !newFee.amount) return;
+    setCreateError(null);
+    createFeeTypeMutation.mutate(newFee as CreateFeeTypePayload, {
+      onSuccess: () => {
+        setShowCreate(false);
+        setNewFee({ kind: "ONE_TIME", amount: 0 });
+      },
+      onError: (e) => {
+        setCreateError(e.message);
+      },
+    });
+  }, [newFee, createFeeTypeMutation]);
 
   const cancellingPayment = cancelling
     ? payments.find((p) => p.id === cancelling) ?? null
@@ -559,10 +452,7 @@ export default function AdminFeesPage() {
       />
 
       {error && (
-        <ApiErrorBanner
-          message={error}
-          onRetry={tab === "records" ? loadPayments : loadReportData}
-        />
+        <ApiErrorBanner message={error} />
       )}
 
       {typesLoading ? (
@@ -828,7 +718,7 @@ export default function AdminFeesPage() {
                         {payTotal} total
                       </p>
                       <button
-                        onClick={loadPayments}
+                        onClick={() => window.location.reload()}
                         className="text-xs text-gray-400 flex items-center gap-1"
                       >
                         <RefreshCw className="w-3 h-3" /> Refresh
@@ -902,11 +792,11 @@ export default function AdminFeesPage() {
                                 {isPaid ? (
                                   <>
                                     <button
-                                      onClick={() => showReceiptFor(p.id)}
-                                      disabled={loadingReceipt === p.id}
+                                      onClick={() => setReceiptId(p.id)}
+                                      disabled={loadingReceipt && receiptId === p.id}
                                       className="shrink-0 p-1"
                                     >
-                                      {loadingReceipt === p.id ? (
+                                      {(loadingReceipt && receiptId === p.id) ? (
                                         <Loader2 className="w-4 h-4 text-gray-300 animate-spin" />
                                       ) : (
                                         <Receipt className="w-4 h-4 text-gray-300 hover:text-blue-500 transition-colors" />
@@ -933,14 +823,14 @@ export default function AdminFeesPage() {
                                 ) : p.status === "WAIVED" ? (
                                   <button
                                     onClick={() => undoCancel(p)}
-                                    disabled={cancellingSave}
+                                    disabled={undoCancelMutation.isPending}
                                     className="shrink-0 p-1"
                                     title="Undo cancel"
                                   >
                                     <RefreshCw
                                       className={cn(
                                         "w-4 h-4 transition-colors",
-                                        cancellingSave
+                                        undoCancelMutation.isPending
                                           ? "text-gray-300 animate-spin"
                                           : "text-gray-300 hover:text-amber-500",
                                       )}
@@ -1047,10 +937,10 @@ export default function AdminFeesPage() {
                                         </button>
                                         <button
                                           onClick={() => markPaid(p)}
-                                          disabled={saving}
+                                          disabled={recordPaymentMutation.isPending || updatePaymentMutation.isPending}
                                           className="flex-1 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold disabled:opacity-60 flex items-center justify-center gap-1"
                                         >
-                                          {saving ? (
+                                          {(recordPaymentMutation.isPending || updatePaymentMutation.isPending) ? (
                                             <Loader2 className="w-3 h-3 animate-spin" />
                                           ) : (
                                             <CheckCircle className="w-3 h-3" />
@@ -1092,10 +982,10 @@ export default function AdminFeesPage() {
                                         </button>
                                         <button
                                           onClick={() => saveDiscount(p)}
-                                          disabled={saving}
+                                          disabled={recordPaymentMutation.isPending || updatePaymentMutation.isPending}
                                           className="flex-1 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold disabled:opacity-60 flex items-center justify-center gap-1"
                                         >
-                                          {saving ? (
+                                          {(recordPaymentMutation.isPending || updatePaymentMutation.isPending) ? (
                                             <Loader2 className="w-3 h-3 animate-spin" />
                                           ) : (
                                             <Save className="w-3 h-3" />
@@ -1514,10 +1404,10 @@ export default function AdminFeesPage() {
                 <div className="px-5 pb-5">
                   <button
                     onClick={handleCreate}
-                    disabled={creating || !newFee.name || !newFee.amount}
+                    disabled={createFeeTypeMutation.isPending || !newFee.name || !newFee.amount}
                     className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl disabled:opacity-60 flex items-center justify-center gap-2"
                   >
-                    {creating ? (
+                    {createFeeTypeMutation.isPending ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <Plus className="w-4 h-4" />
@@ -1531,8 +1421,8 @@ export default function AdminFeesPage() {
         )}
       </AnimatePresence>
 
-      {receipt && (
-        <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
+      {receiptId && receipt && (
+        <ReceiptModal receipt={receipt} onClose={() => setReceiptId(null)} />
       )}
 
       {/* Cancel fee modal */}
@@ -1626,10 +1516,10 @@ export default function AdminFeesPage() {
                   </button>
                   <button
                     onClick={() => cancelPayment(cancellingPayment)}
-                    disabled={cancellingSave}
+                    disabled={cancelPaymentMutation.isPending || recordPaymentMutation.isPending}
                     className="flex-1 py-3 rounded-xl bg-red-600 text-white text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5"
                   >
-                    {cancellingSave ? (
+                    {(cancelPaymentMutation.isPending || recordPaymentMutation.isPending) ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <XCircle className="w-4 h-4" />

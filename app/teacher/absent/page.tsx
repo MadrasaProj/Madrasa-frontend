@@ -1,13 +1,12 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { getClassAttendance, type ClassAttendanceRecord } from "@/lib/attendance-api";
-import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
+import { useClassAttendance, useClasses } from "@/lib/api-hooks";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { UserX, RefreshCw, Bell } from "lucide-react";
+import { UserX, Bell } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
 
 function todayISO() {
@@ -26,49 +25,29 @@ const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }>
 
 export default function TeacherAbsentPage() {
   const { lang } = useLanguageStore();
-  const { user, accessToken } = useAuthStore();
-
-  const [classes, setClasses]           = useState<ClassRecord[]>([]);
-  const [selectedClass, setSelectedClass] = useState<ClassRecord | null>(null);
-  const [records, setRecords]           = useState<ClassAttendanceRecord[]>([]);
-  const [loading, setLoading]           = useState(true);
-  const [error, setError]               = useState<string | null>(null);
+  const { user } = useAuthStore();
 
   const today = todayISO();
 
-  useEffect(() => {
-    if (!user?.clientId || !accessToken) return;
-    const ac = new AbortController();
-    getMyClasses(user.clientId, accessToken, ac.signal)
-      .then((data) => {
-        setClasses(data);
-        if (data.length > 0) setSelectedClass(data[0]);
-      })
-      .catch(() => {});
-    return () => ac.abort();
-  }, [user?.clientId, accessToken]);
+  const { data: classes = [], isLoading: classesLoading } = useClasses();
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
 
-  const loadAttendance = useCallback(async (cls: ClassRecord) => {
-    if (!user?.clientId || !accessToken) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await getClassAttendance(user.clientId, accessToken, {
-        date: today,
-        classId: cls.id,
-        ...(user.defaultAcademicYearId ? { academicYearId: user.defaultAcademicYearId } : {}),
-      });
-      setRecords(res.records);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.clientId, user?.defaultAcademicYearId, accessToken, today]);
+  const selectedClass = selectedClassId ? classes.find((c) => c.id === selectedClassId) ?? null : null;
 
-  useEffect(() => {
-    if (selectedClass) loadAttendance(selectedClass);
-  }, [selectedClass, loadAttendance]);
+  const { data: attendanceRes, isLoading: loading, error: queryError } = useClassAttendance({
+    date: today,
+    classId: selectedClassId ?? "",
+    academicYearId: user?.defaultAcademicYearId ?? undefined,
+    take: 500,
+  });
+
+  const error = queryError ? (queryError as Error).message : null;
+  const records = attendanceRes?.records ?? [];
+
+  // Set first class as default when loaded
+  if (classes.length > 0 && !selectedClassId) {
+    setSelectedClassId(classes[0].id);
+  }
 
   // Non-present = absent + late + excused
   const nonPresent = records.filter((r) => r.status !== "PRESENT");
@@ -88,10 +67,10 @@ export default function TeacherAbsentPage() {
         {classes.map((cls) => (
           <button
             key={cls.id}
-            onClick={() => setSelectedClass(cls)}
+            onClick={() => setSelectedClassId(cls.id)}
             className={cn(
               "px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 transition-all",
-              selectedClass?.id === cls.id
+              selectedClassId === cls.id
                 ? "bg-red-600 text-white shadow-sm"
                 : "bg-white border border-gray-200 text-gray-600"
             )}
@@ -160,14 +139,7 @@ export default function TeacherAbsentPage() {
         )}
       </div>
 
-      {!loading && !error && (
-        <button
-          onClick={() => selectedClass && loadAttendance(selectedClass)}
-          className="mt-3 flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 mx-auto"
-        >
-          <RefreshCw className="w-3 h-3" /> Refresh
-        </button>
-      )}
+
     </DashboardLayout>
   );
 }

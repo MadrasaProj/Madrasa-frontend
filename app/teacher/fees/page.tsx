@@ -1,21 +1,16 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
-import {
-  getFeeTypes, getPayments, updatePayment, getPaymentReceipt,
-  cancelPayment as cancelPaymentApi,
-  undoCancelPayment as undoCancelPaymentApi,
-  type FeeType, type FeePayment, type ReceiptData,
-  type FeePaymentStatus,
-} from "@/lib/fees-api";
+import { useFeeTypes, usePayments, useUpdatePayment, usePaymentReceipt, useCancelPayment, useUndoCancelPayment } from "@/lib/api-hooks";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
   CreditCard, Loader2, Receipt, CheckCircle, Search, RefreshCw, Printer, XCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import type { ReceiptData, FeePaymentStatus } from "@/lib/fees-api";
 
 const PALETTE = [
   { bg: "bg-emerald-600", light: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700" },
@@ -83,17 +78,9 @@ function ReceiptModal({ receipt, onClose }: { receipt: ReceiptData; onClose: () 
 }
 
 export default function TeacherFeesPage() {
-  const { user, accessToken, activeClientId } = useAuthStore();
-  const cid = activeClientId ?? "";
-  const token = accessToken ?? "";
+  const { user } = useAuthStore();
 
-  const [feeTypes, setFeeTypes] = useState<FeeType[]>([]);
   const [activeTypeId, setActiveTypeId] = useState<string | null>(null);
-  const [typesLoading, setTypesLoading] = useState(true);
-
-  const [payments, setPayments] = useState<FeePayment[]>([]);
-  const [payTotal, setPayTotal] = useState(0);
-  const [payLoading, setPayLoading] = useState(false);
   const [paySkip, setPaySkip] = useState(0);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -101,103 +88,93 @@ export default function TeacherFeesPage() {
   const [recording, setRecording] = useState<string | null>(null);
   const [payMethod, setPayMethod] = useState("CASH");
   const [payRef, setPayRef] = useState("");
-  const [saving, setSaving] = useState(false);
 
+  const [receiptId, setReceiptId] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
-  const [loadingReceipt, setLoadingReceipt] = useState<string | null>(null);
 
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [cancellingNote, setCancellingNote] = useState("");
-  const [cancellingSave, setCancellingSave] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
 
-  const loadTypes = useCallback(async () => {
-    if (!cid || !token) return;
-    setTypesLoading(true); setError(null);
-    try { setFeeTypes(await getFeeTypes(cid, token, user?.defaultAcademicYearId ?? undefined)); }
-    catch (e) { setError((e as Error).message); }
-    finally { setTypesLoading(false); }
-  }, [cid, token, user?.defaultAcademicYearId]);
+  const { data: feeTypes = [], isLoading: typesLoading } = useFeeTypes(user?.defaultAcademicYearId ?? undefined);
+  const { data: paymentsData, isLoading: payLoading } = usePayments({
+    feeTypeId: activeTypeId ?? undefined,
+    status: statusFilter !== "all" ? (statusFilter as FeePaymentStatus) : undefined,
+    skip: paySkip,
+    take: 30,
+  });
 
-  useEffect(() => { if (cid && token) loadTypes(); }, [cid, token, loadTypes]);
+  const payments = paymentsData?.payments ?? [];
+  const payTotal = paymentsData?.total ?? 0;
 
-  const loadPayments = useCallback(async () => {
-    if (!cid || !token) return;
-    setPayLoading(true);
-    try {
-      const res = await getPayments(cid, token, {
-        feeTypeId: activeTypeId ?? undefined,
-        status: statusFilter !== "all" ? (statusFilter as FeePaymentStatus) : undefined,
-        skip: paySkip, take: 30,
-      });
-      setPayments(res.payments); setPayTotal(res.total);
-    } catch (e) { setError((e as Error).message); }
-    finally { setPayLoading(false); }
-  }, [cid, token, activeTypeId, statusFilter, paySkip]);
+  const { data: receiptData } = usePaymentReceipt(receiptId ?? "");
 
-  useEffect(() => { loadPayments(); }, [loadPayments]);
+  const updateMutation = useUpdatePayment();
+  const cancelMutation = useCancelPayment();
+  const undoCancelMutation = useUndoCancelPayment();
 
-  const activeType = feeTypes.find((f) => f.id === activeTypeId) ?? null;
+  const activeType = feeTypes.find((f: any) => f.id === activeTypeId) ?? null;
+
+  // Sync receipt data when query returns
+  useEffect(() => {
+    if (receiptData && receiptId) setReceipt(receiptData);
+  }, [receiptData, receiptId]);
 
   const filtered = search
     ? payments.filter((p) => p.student.name.toLowerCase().includes(search.toLowerCase()) || p.student.adno.includes(search))
     : payments;
 
-  const markPaid = async (p: FeePayment) => {
-    setSaving(true);
-    try {
-      await updatePayment(cid, token, p.id, {
-        paidAmount: Number(p.dueAmount), method: payMethod as any,
-        reference: payRef || undefined, status: "PAID", paidAt: new Date().toISOString(),
-      });
-      setRecording(null); setPayRef(""); loadPayments();
-    } catch (e) { setError((e as Error).message); }
-    finally { setSaving(false); }
+  const markPaid = (p: any) => {
+    updateMutation.mutate(
+      {
+        id: p.id,
+        data: {
+          paidAmount: Number(p.dueAmount), method: payMethod as any,
+          reference: payRef || undefined, status: "PAID", paidAt: new Date().toISOString(),
+        },
+      },
+      {
+        onSuccess: () => { setRecording(null); setPayRef(""); },
+        onError: (e: any) => setError(e.message),
+      },
+    );
   };
 
-  const showReceiptFor = async (id: string) => {
-    setLoadingReceipt(id);
-    try { setReceipt(await getPaymentReceipt(cid, token, id)); }
-    catch (e) { setError((e as Error).message); }
-    finally { setLoadingReceipt(null); }
+  const showReceiptFor = (id: string) => {
+    setReceiptId(id);
+    if (receiptData) setReceipt(receiptData);
   };
 
-  const cancelPayment = async (p: FeePayment) => {
-    setCancellingSave(true);
-    try {
-      await cancelPaymentApi(cid, token, p.id, cancellingNote || undefined);
-      setCancelling(null);
-      setCancellingNote("");
-      loadPayments();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setCancellingSave(false);
-    }
+  const cancelPayment = (p: any) => {
+    cancelMutation.mutate(
+      { id: p.id, reason: cancellingNote || undefined },
+      {
+        onSuccess: () => {
+          setCancelling(null);
+          setCancellingNote("");
+        },
+        onError: (e: any) => setError(e.message),
+      },
+    );
   };
 
-  const undoCancel = async (p: FeePayment) => {
-    setCancellingSave(true);
-    try {
-      await undoCancelPaymentApi(cid, token, p.id);
-      loadPayments();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setCancellingSave(false);
-    }
+  const undoCancel = (p: any) => {
+    undoCancelMutation.mutate(p.id, {
+      onError: (e: any) => setError(e.message),
+    });
   };
 
+  const cancellingSave = cancelMutation.isPending || undoCancelMutation.isPending;
   const cancellingPayment = cancelling
-    ? payments.find((p) => p.id === cancelling) ?? null
+    ? payments.find((p: any) => p.id === cancelling) ?? null
     : null;
 
   return (
     <DashboardLayout>
       <PageHeader title="Fees & Payments" subtitle="View and record payments" icon={CreditCard} />
 
-      {error && <ApiErrorBanner message={error} onRetry={loadPayments} />}
+      {error && <ApiErrorBanner message={error} />}
 
       {typesLoading ? (
         <div className="space-y-5">
@@ -290,9 +267,9 @@ export default function TeacherFeesPage() {
                   <p className="text-xs font-semibold text-gray-500">
                     {activeType ? activeType.name : "All Fee Types"} — {payTotal} total
                   </p>
-                  <button onClick={loadPayments} className="text-xs text-gray-400 flex items-center gap-1">
-                    <RefreshCw className="w-3 h-3" /> Refresh
-                  </button>
+                  <span className="text-xs text-gray-400 flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3" /> Auto-refreshes
+                  </span>
                 </div>
 
                 <div className="divide-y divide-gray-50">
@@ -329,8 +306,8 @@ export default function TeacherFeesPage() {
                             </span>
                             {isPaid ? (
                               <>
-                                <button onClick={() => showReceiptFor(p.id)} disabled={loadingReceipt === p.id} className="shrink-0 p-1" title="View receipt">
-                                  {loadingReceipt === p.id ? (
+                                <button onClick={() => showReceiptFor(p.id)} className="shrink-0 p-1" title="View receipt">
+                                  {receiptId === p.id && !receipt ? (
                                     <Loader2 className="w-4 h-4 text-gray-300 animate-spin" />
                                   ) : (
                                     <Receipt className="w-4 h-4 text-gray-300 hover:text-blue-500 transition-colors" />
@@ -412,9 +389,9 @@ export default function TeacherFeesPage() {
                                   </div>
                                   <div className="flex gap-2">
                                     <button onClick={() => setRecording(null)} className="flex-1 py-2 rounded-xl border text-xs font-semibold text-gray-600">Cancel</button>
-                                    <button onClick={() => markPaid(p)} disabled={saving}
+                                    <button onClick={() => markPaid(p)} disabled={updateMutation.isPending}
                                       className="flex-1 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold disabled:opacity-60 flex items-center justify-center gap-1">
-                                      {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
+                                      {updateMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
                                       Mark Paid
                                     </button>
                                   </div>

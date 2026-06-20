@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect } from "react"; // eslint-disable-line @typescript-eslint/no-unused-vars
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
-  getClassAttendance,
   type ClassAttendanceRecord,
 } from "@/lib/attendance-api";
+import { useClassAttendance } from "@/lib/api-hooks";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
@@ -26,38 +26,19 @@ function fmtDate(d: string) {
 
 export default function AdminPresentPage() {
   const { lang } = useLanguageStore();
-  const { user, accessToken, activeClientId } = useAuthStore();
-
-  const [records, setRecords] = useState<ClassAttendanceRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuthStore();
 
   const today = todayISO();
 
-  const load = async () => {
-    if (!activeClientId || !accessToken) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await getClassAttendance(activeClientId, accessToken, {
-        date: today,
-        take: 500,
-        ...(user?.defaultAcademicYearId
-          ? { academicYearId: user.defaultAcademicYearId }
-          : {}),
-      });
-      setRecords(res.records);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: attendanceData, isLoading: loading, error: attendanceError, refetch } = useClassAttendance({
+    date: today,
+    take: 500,
+    ...(user?.defaultAcademicYearId
+      ? { academicYearId: user.defaultAcademicYearId }
+      : {}),
+  });
 
-  useEffect(() => {
-    load();
-  }, [activeClientId, accessToken]); // eslint-disable-line react-hooks/exhaustive-deps
-
+  const records = attendanceData?.records ?? [];
   const present = records.filter((r) => r.status === "PRESENT");
 
   // Group by class name
@@ -80,8 +61,7 @@ export default function AdminPresentPage() {
         backHref="/admin"
       />
 
-      {/* Summary bar */}
-      {!loading && !error && (
+      {!loading && !attendanceError && (
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <span className="text-2xl font-bold text-emerald-700">
@@ -92,7 +72,7 @@ export default function AdminPresentPage() {
             </span>
           </div>
           <button
-            onClick={load}
+            onClick={() => refetch()}
             className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600"
           >
             <RefreshCw className="w-3 h-3" /> Refresh
@@ -102,9 +82,9 @@ export default function AdminPresentPage() {
 
       {loading ? (
         <SkeletonList count={4} />
-      ) : error ? (
+      ) : attendanceError ? (
         <div className="px-4 py-4 text-sm text-red-600 bg-red-50 rounded-2xl">
-          {error}
+          {attendanceError.message}
         </div>
       ) : present.length === 0 ? (
         <div className="py-12 text-center text-sm text-gray-400">

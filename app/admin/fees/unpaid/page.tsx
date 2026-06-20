@@ -1,9 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { getPayments, updatePayment, type FeePayment, type FeePaymentStatus } from "@/lib/fees-api";
-import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
-import { useAuthStore } from "@/store/auth";
+import { usePayments, useUpdatePayment, useClasses } from "@/lib/api-hooks";
+import { type FeePayment, type FeePaymentStatus } from "@/lib/fees-api";
 import { cn } from "@/lib/utils";
 import { AlertCircle, Loader2, CheckCircle, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -12,65 +11,41 @@ import { SkeletonList } from "@/components/ui/Skeleton";
 const PAYMENT_METHODS = ["CASH", "BANK_TRANSFER", "UPI", "CHEQUE", "OTHER"] as const;
 
 export default function AdminFeesUnpaidPage() {
-  const { user, accessToken, activeClientId } = useAuthStore();
-  const [payments, setPayments]     = useState<FeePayment[]>([]);
-  const [total, setTotal]           = useState(0);
   const [skip, setSkip]             = useState(0);
   const [filterClass, setFilterClass] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("PENDING");
-  const [classes, setClasses]       = useState<ClassRecord[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState<string | null>(null);
 
   // Quick-record state
   const [recording, setRecording]   = useState<string | null>(null); // paymentId
   const [method, setMethod]         = useState("CASH");
   const [reference, setReference]   = useState("");
-  const [saving, setSaving]         = useState(false);
 
-  const cid = activeClientId ?? "";
-  const token = accessToken ?? "";
+  const { data: classes = [] } = useClasses();
+  const { data: paymentsData, isLoading, error } = usePayments({
+    status: filterStatus as FeePaymentStatus || undefined,
+    classId: filterClass || undefined,
+    skip, take: 30,
+  });
+  const payments = paymentsData?.payments ?? [];
+  const total = paymentsData?.total ?? 0;
 
-  useEffect(() => {
-    if (!cid || !token) return;
-    const ac = new AbortController();
-    getAllClasses(cid, token, ac.signal).then(setClasses).catch(() => {});
-    return () => ac.abort();
-  }, [cid, token]);
+  const updatePaymentMutation = useUpdatePayment();
 
-  const load = useCallback(async () => {
-    if (!cid || !token) return;
-    setLoading(true); setError(null);
-    try {
-      const res = await getPayments(cid, token, {
-        status: filterStatus as FeePaymentStatus || undefined,
-        classId: filterClass || undefined,
-        skip, take: 30,
-      });
-      setPayments(res.payments);
-      setTotal(res.total);
-    } catch (err) { setError((err as Error).message); }
-    finally { setLoading(false); }
-  }, [cid, token, filterStatus, filterClass, skip]);
-
-  useEffect(() => { load(); }, [load]);
-
-  const markPaid = async (p: FeePayment) => {
-    setSaving(true);
-    try {
-      await updatePayment(cid, token, p.id, {
+  const markPaid = useCallback(async (p: FeePayment) => {
+    updatePaymentMutation.mutate({
+      id: p.id,
+      data: {
         paidAmount: Number(p.dueAmount),
         method: method as any,
         reference: reference || undefined,
         status: "PAID",
         paidAt: new Date().toISOString(),
-      });
-      setRecording(null);
-      setReference("");
-      load();
-    } catch (err) { alert((err as Error).message); }
-    finally { setSaving(false); }
-  };
+      },
+    }, {
+      onSuccess: () => { setRecording(null); setReference(""); },
+      onError: (err) => { alert(err.message); },
+    });
+  }, [method, reference, updatePaymentMutation]);
 
   const STATUS_COLOR: Record<string, string> = {
     PENDING: "bg-amber-50 text-amber-700",
@@ -98,10 +73,10 @@ export default function AdminFeesUnpaidPage() {
         </select>
       </div>
 
-      {loading ? (
+      {isLoading ? (
         <SkeletonList count={4} />
       ) : error ? (
-        <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl">{error}</div>
+        <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl">{error.message}</div>
       ) : (
         <>
           <p className="text-xs text-gray-400 mb-3">{total} total · showing {payments.length}</p>
@@ -146,9 +121,9 @@ export default function AdminFeesUnpaidPage() {
                           <div className="flex gap-2">
                             <button onClick={() => setRecording(null)}
                               className="flex-1 py-2 rounded-xl border text-xs font-semibold text-gray-600">Cancel</button>
-                            <button onClick={() => markPaid(p)} disabled={saving}
+                            <button onClick={() => markPaid(p)} disabled={updatePaymentMutation.isPending}
                               className="flex-1 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold disabled:opacity-60 flex items-center justify-center gap-1">
-                              {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />} Mark Paid
+                              {updatePaymentMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />} Mark Paid
                             </button>
                           </div>
                         </div>

@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { getClientConfig, updateClientConfig, type ClientConfig } from "@/lib/config-api";
+import { useClientConfig, useUpdateClientConfig } from "@/lib/api-hooks";
+import type { ClientConfig } from "@/lib/config-api";
 import { useAuthStore } from "@/store/auth";
 import { Settings, Save, CheckCircle2, Loader2, AlertCircle, CalendarCheck, Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
@@ -57,12 +58,11 @@ const SECTIONS: { title: string; fields: Field[] }[] = [
 ];
 
 export default function AdminConfigPage() {
-  const { user, accessToken, activeClientId, setAttendanceMode } = useAuthStore();
-  const cid   = activeClientId ?? "";
-  const token = accessToken ?? "";
+  const { user, setAttendanceMode } = useAuthStore();
+  const { data: configData, isLoading: loading } = useClientConfig();
+  const updateConfig = useUpdateClientConfig();
 
   const [config, setConfig]           = useState<Partial<ClientConfig>>({});
-  const [loading, setLoading]         = useState(true);
   const [saving, setSaving]           = useState(false);
   const [saved, setSaved]             = useState(false);
   const [error, setError]             = useState("");
@@ -78,27 +78,22 @@ export default function AdminConfigPage() {
   const [savedCommTC, setSavedCommTC]     = useState(false);
 
   useEffect(() => {
-    if (!cid || !token) return;
-    getClientConfig(cid, token)
-      .then((data) => {
-        setConfig(data);
-        if (data.attendanceMode) setAttMode(data.attendanceMode);
-        if (data.showCommitteeAttendance !== undefined) setShowCommAtt(data.showCommitteeAttendance);
-        if (data.showCommitteeTeacherCheckin !== undefined) setShowCommTC(data.showCommitteeTeacherCheckin);
-      })
-      .catch((e) => setError((e as Error).message))
-      .finally(() => setLoading(false));
-  }, [cid, token]);
+    if (configData) {
+      setConfig(configData);
+      if (configData.attendanceMode) setAttMode(configData.attendanceMode);
+      if (configData.showCommitteeAttendance !== undefined) setShowCommAtt(configData.showCommitteeAttendance);
+      if (configData.showCommitteeTeacherCheckin !== undefined) setShowCommTC(configData.showCommitteeTeacherCheckin);
+    }
+  }, [configData]);
 
   const handleChange = (key: keyof ClientConfig, value: string) => {
     setConfig((prev) => ({ ...prev, [key]: value || null }));
   };
 
   const handleSave = async () => {
-    if (!cid || !token) return;
     setSaving(true); setError("");
     try {
-      const updated = await updateClientConfig(cid, token, {
+      await updateConfig.mutateAsync({
         name:            config.name,
         arabicName:      config.arabicName,
         phone:           config.phone,
@@ -118,7 +113,6 @@ export default function AdminConfigPage() {
         currency:        config.currency,
         logo:            config.logo,
       });
-      setConfig(updated);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (e) { setError((e as Error).message); }
@@ -126,10 +120,9 @@ export default function AdminConfigPage() {
   };
 
   const handleSaveAttendanceMode = async () => {
-    if (!cid || !token) return;
     setSavingAtt(true); setAttError("");
     try {
-      await updateClientConfig(cid, token, { attendanceMode: attMode });
+      await updateConfig.mutateAsync({ attendanceMode: attMode });
       setAttendanceMode(attMode);
       setSavedAtt(true);
       setTimeout(() => setSavedAtt(false), 3000);
@@ -138,10 +131,9 @@ export default function AdminConfigPage() {
   };
 
   const handleSaveCommitteeAttendance = async () => {
-    if (!cid || !token) return;
     setSavingCommAtt(true);
     try {
-      await updateClientConfig(cid, token, { showCommitteeAttendance: showCommAtt });
+      await updateConfig.mutateAsync({ showCommitteeAttendance: showCommAtt });
       setConfig((prev) => ({ ...prev, showCommitteeAttendance: showCommAtt }));
       setSavedCommAtt(true);
       setTimeout(() => setSavedCommAtt(false), 3000);
@@ -150,10 +142,9 @@ export default function AdminConfigPage() {
   };
 
   const handleSaveCommitteeTeacherCheckin = async () => {
-    if (!cid || !token) return;
     setSavingCommTC(true);
     try {
-      await updateClientConfig(cid, token, { showCommitteeTeacherCheckin: showCommTC });
+      await updateConfig.mutateAsync({ showCommitteeTeacherCheckin: showCommTC });
       setConfig((prev) => ({ ...prev, showCommitteeTeacherCheckin: showCommTC }));
       setSavedCommTC(true);
       setTimeout(() => setSavedCommTC(false), 3000);

@@ -1,8 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { getClassAttendance, type ClassAttendanceRecord } from "@/lib/attendance-api";
-import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
+import { useClassAttendance, useClasses } from "@/lib/api-hooks";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
@@ -20,51 +19,29 @@ function fmtDate(d: string) {
 
 export default function TeacherPresentPage() {
   const { lang } = useLanguageStore();
-  const { user, accessToken } = useAuthStore();
-
-  const [classes, setClasses]           = useState<ClassRecord[]>([]);
-  const [selectedClass, setSelectedClass] = useState<ClassRecord | null>(null);
-  const [records, setRecords]           = useState<ClassAttendanceRecord[]>([]);
-  const [loading, setLoading]           = useState(true);
-  const [error, setError]               = useState<string | null>(null);
+  const { user } = useAuthStore();
 
   const today = todayISO();
 
-  // Load teacher's classes once
-  useEffect(() => {
-    if (!user?.clientId || !accessToken) return;
-    const ac = new AbortController();
-    getMyClasses(user.clientId, accessToken, ac.signal)
-      .then((data) => {
-        setClasses(data);
-        if (data.length > 0) setSelectedClass(data[0]);
-      })
-      .catch(() => {});
-    return () => ac.abort();
-  }, [user?.clientId, accessToken]);
+  const { data: classes = [], isLoading: classesLoading } = useClasses();
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
 
-  // Load attendance when class changes
-  const loadAttendance = useCallback(async (cls: ClassRecord) => {
-    if (!user?.clientId || !accessToken) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await getClassAttendance(user.clientId, accessToken, {
-        date: today,
-        classId: cls.id,
-        ...(user.defaultAcademicYearId ? { academicYearId: user.defaultAcademicYearId } : {}),
-      });
-      setRecords(res.records);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.clientId, user?.defaultAcademicYearId, accessToken, today]);
+  const selectedClass = selectedClassId ? classes.find((c) => c.id === selectedClassId) ?? null : null;
 
-  useEffect(() => {
-    if (selectedClass) loadAttendance(selectedClass);
-  }, [selectedClass, loadAttendance]);
+  const { data: attendanceRes, isLoading: loading, error: queryError } = useClassAttendance({
+    date: today,
+    classId: selectedClassId ?? "",
+    academicYearId: user?.defaultAcademicYearId ?? undefined,
+    take: 500,
+  });
+
+  const error = queryError ? (queryError as Error).message : null;
+  const records = attendanceRes?.records ?? [];
+
+  // Set first class as default when loaded
+  if (classes.length > 0 && !selectedClassId) {
+    setSelectedClassId(classes[0].id);
+  }
 
   const present = records.filter((r) => r.status === "PRESENT");
 
@@ -79,22 +56,24 @@ export default function TeacherPresentPage() {
       />
 
       {/* Class selector */}
-      <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide">
-        {classes.map((cls) => (
-          <button
-            key={cls.id}
-            onClick={() => setSelectedClass(cls)}
-            className={cn(
-              "px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 transition-all",
-              selectedClass?.id === cls.id
-                ? "bg-emerald-600 text-white shadow-sm"
-                : "bg-white border border-gray-200 text-gray-600"
-            )}
-          >
-            {cls.name}
-          </button>
-        ))}
-      </div>
+      {classesLoading ? null : (
+        <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide">
+          {classes.map((cls) => (
+            <button
+              key={cls.id}
+              onClick={() => setSelectedClassId(cls.id)}
+              className={cn(
+                "px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 transition-all",
+                selectedClassId === cls.id
+                  ? "bg-emerald-600 text-white shadow-sm"
+                  : "bg-white border border-gray-200 text-gray-600"
+              )}
+            >
+              {cls.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Summary badge */}
       {!loading && !error && (
@@ -103,12 +82,6 @@ export default function TeacherPresentPage() {
             <span className="text-emerald-700 font-bold text-lg">{present.length}</span>
             {" "}{t("teacherPages", "totalPresent", lang)}
           </p>
-          <button
-            onClick={() => selectedClass && loadAttendance(selectedClass)}
-            className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600"
-          >
-            <RefreshCw className="w-3 h-3" /> Refresh
-          </button>
         </div>
       )}
 

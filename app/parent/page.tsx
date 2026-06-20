@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { ActionCard } from "@/components/ui/Cards";
 import { SectionHeader } from "@/components/ui/PageHeader";
 import { useAuthStore } from "@/store/auth";
 import { useNavigate } from "react-router-dom";
-import { getUnreadCount } from "@/lib/notifications-api";
+import { useUnreadCount } from "@/lib/api-hooks";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import {
@@ -18,25 +17,12 @@ import {
 import { motion } from "framer-motion";
 
 export default function ParentDashboard() {
-  const { user, accessToken } = useAuthStore();
+  const { user } = useAuthStore();
   const { lang } = useLanguageStore();
   const navigate = useNavigate();
-  const cid = user?.clientId ?? "";
-  const token = accessToken ?? "";
 
-  const [unread, setUnread] = useState(0);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!cid || !token) {
-      setLoading(false);
-      return;
-    }
-    getUnreadCount(cid, token)
-      .then((r) => setUnread(r.count))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [cid, token]);
+  const { data: unreadData } = useUnreadCount();
+  const unread = unreadData?.count ?? 0;
 
   const childCount = user?.accessibleStudentIds?.length ?? 0;
 

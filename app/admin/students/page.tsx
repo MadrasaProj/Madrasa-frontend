@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
@@ -10,14 +10,19 @@ import {
   type ParseResult,
 } from "@/components/ui/ImportModal";
 import {
-  getStudents,
   createStudent,
-  updateStudent,
-  deleteStudent,
   type StudentRecord,
   type CreateStudentPayload,
 } from "@/lib/students-api";
-import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
+import { type ClassRecord } from "@/lib/classes-api";
+import {
+  useStudents,
+  useCreateStudent,
+  useUpdateStudent,
+  useDeleteStudent,
+  useClasses,
+} from "@/lib/api-hooks";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
@@ -224,100 +229,56 @@ export default function AdminStudentsPage() {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  const [students, setStudents] = useState<StudentRecord[]>([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [classes, setClasses] = useState<ClassRecord[]>([]);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activeClassId, setActiveClassId] = useState<string | "all">("all");
   const [gender, setGender] = useState<"all" | "MALE" | "FEMALE">("all");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Drawer state: null = closed, "add" = adding, StudentRecord = editing
   const [drawer, setDrawer] = useState<null | "add" | StudentRecord>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [deleting, setDeleting] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<StudentRecord | null>(null);
 
   const [showImport, setShowImport] = useState(false);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load classes once
-  useEffect(() => {
-    if (!activeClientId || !accessToken) return;
-    const ac = new AbortController();
-    getAllClasses(activeClientId, accessToken, ac.signal)
-      .then(setClasses)
-      .catch((e) => {
-        setError((e as Error).message);
-      });
-    return () => ac.abort();
-  }, [activeClientId, accessToken]);
+  const queryClient = useQueryClient();
 
-  const loadStudents = useCallback(
-    async (
-      pg: number,
-      srch: string,
-      clsId: string,
-      gen: "all" | "MALE" | "FEMALE",
-      lim: number,
-      sb?: string,
-      sd?: "asc" | "desc",
-    ) => {
-      if (!activeClientId || !accessToken) return;
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await getStudents(activeClientId, accessToken, {
-          page: pg,
-          limit: lim,
-          search: srch || undefined,
-          classId: clsId !== "all" ? clsId : undefined,
-          gender: gen !== "all" ? gen : undefined,
-          status: "ACTIVE",
-          sortBy: sb,
-          sortOrder: sd,
-        });
-        setStudents(res.data);
-        setTotal(res.total);
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [activeClientId, accessToken],
-  );
+  const {
+    data: studentsData,
+    isLoading: loading,
+    error: studentsError,
+    refetch: refetchStudents,
+  } = useStudents({
+    page,
+    limit: pageSize,
+    search: debouncedSearch || undefined,
+    classId: activeClassId !== "all" ? activeClassId : undefined,
+    gender: gender !== "all" ? gender : undefined,
+    status: "ACTIVE",
+    sortBy,
+    sortOrder: sortDir,
+  });
+  const students = studentsData?.data ?? [];
+  const total = studentsData?.total ?? 0;
 
-  useEffect(() => {
-    loadStudents(
-      page,
-      search,
-      activeClassId,
-      gender,
-      pageSize,
-      sortBy,
-      sortDir,
-    );
-  }, [page, activeClassId, gender, pageSize, sortBy, sortDir, loadStudents]); // eslint-disable-line
+  const { data: classes = [] } = useClasses();
+
+  const createMutation = useCreateStudent();
+  const updateMutation = useUpdateStudent();
+  const deleteMutation = useDeleteStudent();
 
   const handleSearch = (val: string) => {
     setSearch(val);
     setPage(1);
     if (searchTimer.current) clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(
-      () =>
-        loadStudents(1, val, activeClassId, gender, pageSize, sortBy, sortDir),
-      400,
-    );
+    searchTimer.current = setTimeout(() => setDebouncedSearch(val), 400);
   };
 
   const handleSort = (key: string, dir: "asc" | "desc") => {
@@ -328,85 +289,95 @@ export default function AdminStudentsPage() {
 
   const openAdd = () => {
     setForm(EMPTY_FORM);
-    setSubmitError(null);
     setFieldErrors({});
+    createMutation.reset();
+    updateMutation.reset();
     setDrawer("add");
   };
 
   const openEdit = (student: StudentRecord) => {
     setForm(studentToForm(student));
-    setSubmitError(null);
     setFieldErrors({});
+    createMutation.reset();
+    updateMutation.reset();
     setDrawer(student);
   };
 
-  const handleSubmit = async () => {
-    if (!activeClientId || !accessToken) return;
-    setSubmitting(true);
-    setSubmitError(null);
-    try {
-      const payload: CreateStudentPayload = {
-        name: form.name.trim(),
-        uid: form.uid.trim() || null,
-        adno: form.adno.trim(),
-        ...(form.classId ? { classId: form.classId } : {}),
-        gender: form.gender,
-        ...(form.dateOfBirth ? { dateOfBirth: form.dateOfBirth } : {}),
-        ...(form.guardianName
-          ? { guardianName: form.guardianName.trim() }
-          : {}),
-        ...(form.parentPhone ? { parentPhone: form.parentPhone.trim() } : {}),
-        ...(form.parentAltPhone
-          ? { parentAltPhone: form.parentAltPhone.trim() }
-          : {}),
-        ...(form.parentEmail ? { parentEmail: form.parentEmail.trim() } : {}),
-        ...(form.relationToStudent
-          ? { relationToStudent: form.relationToStudent }
-          : {}),
-        ...(form.parentPassword ? { parentPassword: form.parentPassword } : {}),
-        ...(user?.defaultAcademicYearId
-          ? { accademicYearId: user.defaultAcademicYearId }
-          : {}),
-      };
+  const handleSubmit = () => {
+    const payload: CreateStudentPayload = {
+      name: form.name.trim(),
+      uid: form.uid.trim() || null,
+      adno: form.adno.trim(),
+      ...(form.classId ? { classId: form.classId } : {}),
+      gender: form.gender,
+      ...(form.dateOfBirth ? { dateOfBirth: form.dateOfBirth } : {}),
+      ...(form.guardianName
+        ? { guardianName: form.guardianName.trim() }
+        : {}),
+      ...(form.parentPhone ? { parentPhone: form.parentPhone.trim() } : {}),
+      ...(form.parentAltPhone
+        ? { parentAltPhone: form.parentAltPhone.trim() }
+        : {}),
+      ...(form.parentEmail ? { parentEmail: form.parentEmail.trim() } : {}),
+      ...(form.relationToStudent
+        ? { relationToStudent: form.relationToStudent }
+        : {}),
+      ...(form.parentPassword ? { parentPassword: form.parentPassword } : {}),
+      ...(user?.defaultAcademicYearId
+        ? { accademicYearId: user.defaultAcademicYearId }
+        : {}),
+    };
 
-      if (typeof drawer === "object" && drawer !== null) {
-        await updateStudent(activeClientId, accessToken, drawer.id, payload);
-      } else {
-        await createStudent(activeClientId, accessToken, payload);
-      }
-
-      setDrawer(null);
-      setPage(1);
-      loadStudents(1, search, activeClassId, gender, pageSize, sortBy, sortDir);
-    } catch (err) {
-      const apiErr = err as import("@/lib/students-api").StudentsApiError;
-      setSubmitError(apiErr.message);
-      if (apiErr.fieldErrors) setFieldErrors(apiErr.fieldErrors);
-    } finally {
-      setSubmitting(false);
+    if (typeof drawer === "object" && drawer !== null) {
+      updateMutation.mutate(
+        { id: drawer.id, data: payload },
+        {
+          onSuccess: () => {
+            setDrawer(null);
+            setPage(1);
+          },
+          onError: (err) => {
+            const apiErr = err as import("@/lib/students-api").StudentsApiError;
+            if (apiErr.fieldErrors) setFieldErrors(apiErr.fieldErrors);
+          },
+        },
+      );
+    } else {
+      createMutation.mutate(payload, {
+        onSuccess: () => {
+          setDrawer(null);
+          setPage(1);
+        },
+        onError: (err) => {
+          const apiErr = err as import("@/lib/students-api").StudentsApiError;
+          if (apiErr.fieldErrors) setFieldErrors(apiErr.fieldErrors);
+        },
+      });
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!deleteTarget) return;
-    setDeleting(deleteTarget.id);
-    try {
-      await deleteStudent(activeClientId!, accessToken!, deleteTarget.id);
-      setDrawer(null);
-      setShowDeleteConfirm(false);
-      setPage(1);
-      loadStudents(1, search, activeClassId, gender, pageSize, sortBy, sortDir);
-    } catch (err: any) {
-      setError(err?.message ?? "Failed to delete student.");
-      setShowDeleteConfirm(false);
-    } finally {
-      setDeleting(null);
-    }
+    deleteMutation.mutate(deleteTarget.id, {
+      onSuccess: () => {
+        setDrawer(null);
+        setShowDeleteConfirm(false);
+        setPage(1);
+      },
+      onError: () => {
+        setShowDeleteConfirm(false);
+      },
+    });
   };
 
   const totalPages = Math.ceil(total / pageSize);
   const isEditing = typeof drawer === "object" && drawer !== null;
   const canWrite = user?.actorType !== "TEAM_LEADER";
+
+  const submitError =
+    createMutation.error?.message || updateMutation.error?.message || null;
+  const submitting = createMutation.isPending || updateMutation.isPending;
+  const deleting = deleteMutation.isPending ? deleteMutation.variables ?? null : null;
 
   // Import config (bound to current auth + classes)
   const importConfig = useMemo<ImportConfig<CreateStudentPayload>>(
@@ -578,20 +549,10 @@ export default function AdminStudentsPage() {
         }
       />
 
-      {error && (
+      {studentsError && (
         <ApiErrorBanner
-          message={error}
-          onRetry={() =>
-            loadStudents(
-              page,
-              search,
-              activeClassId,
-              gender,
-              pageSize,
-              sortBy,
-              sortDir,
-            )
-          }
+          message={studentsError.message}
+          onRetry={() => refetchStudents()}
         />
       )}
 
@@ -649,7 +610,7 @@ export default function AdminStudentsPage() {
         data={students}
         keyExtractor={(s) => s.id}
         loading={loading}
-        error={error}
+        error={studentsError?.message ?? null}
         emptyIcon={Users}
         emptyMessage={t("adminPages", "noStudentsFound", lang)}
         emptySubtext={t("adminPages", "tryAdjustFilter", lang)}
@@ -1064,15 +1025,7 @@ export default function AdminStudentsPage() {
         config={importConfig}
         onComplete={() => {
           setPage(1);
-          loadStudents(
-            1,
-            search,
-            activeClassId,
-            gender,
-            pageSize,
-            sortBy,
-            sortDir,
-          );
+          queryClient.invalidateQueries({ queryKey: ["students"] });
         }}
         onClose={() => setShowImport(false)}
       />

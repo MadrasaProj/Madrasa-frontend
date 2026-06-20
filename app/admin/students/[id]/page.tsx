@@ -3,11 +3,12 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader, SectionHeader } from "@/components/ui/PageHeader";
 import {
-  getStudent, updateStudent, deleteStudent,
-  type StudentRecord, type CreateStudentPayload,
+  type StudentRecord,
+  type CreateStudentPayload,
 } from "@/lib/students-api";
-import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
-import { getStudentAttendance, type StudentAttendanceResponse } from "@/lib/attendance-api";
+import { type ClassRecord } from "@/lib/classes-api";
+import { type StudentAttendanceResponse } from "@/lib/attendance-api";
+import { useStudent, useUpdateStudent, useDeleteStudent, useClasses, useStudentAttendance } from "@/lib/api-hooks";
 import { useAuthStore } from "@/store/auth";
 import { motion, AnimatePresence } from "framer-motion";
 import { User, Phone, Calendar, Loader2, GraduationCap, Hash, Pencil, Trash2 } from "lucide-react";
@@ -52,24 +53,34 @@ export default function StudentDetailPage() {
   const { pathname } = useLocation();
   const slugMatch = pathname.match(/^\/m\/([^/]+)\//);
   const slugPrefix = slugMatch ? `/m/${slugMatch[1]}` : "";
-  const { user, accessToken, activeClientId } = useAuthStore();
+  const { user } = useAuthStore();
   const canWrite = user?.actorType !== "TEAM_LEADER";
 
-  const [student, setStudent]             = useState<StudentRecord | null>(null);
-  const [attendance, setAttendance]       = useState<StudentAttendanceResponse | null>(null);
-  const [classes, setClasses]             = useState<ClassRecord[]>([]);
-  const [loadingStudent, setLoadingStudent] = useState(true);
-  const [loadingAtt, setLoadingAtt]       = useState(true);
-  const [error, setError]                 = useState<string | null>(null);
+  const {
+    data: student,
+    isLoading: loadingStudent,
+    error: studentError,
+  } = useStudent(id!);
 
-  const [showEdit, setShowEdit]     = useState(false);
-  const [form, setForm]             = useState<FormState | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const {
+    data: attendance,
+    isLoading: loadingAtt,
+  } = useStudentAttendance({
+    studentId: id!,
+    ...(user?.defaultAcademicYearId ? { academicYearId: user.defaultAcademicYearId } : {}),
+    take: 365,
+  });
+
+  const { data: classes = [] } = useClasses();
+
+  const updateMutation = useUpdateStudent();
+  const deleteMutation = useDeleteStudent();
+
+  const [showEdit, setShowEdit] = useState(false);
+  const [form, setForm] = useState<FormState | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleting, setDeleting]           = useState(false);
 
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" ? window.innerWidth < 768 : true);
   useEffect(() => {
@@ -78,77 +89,50 @@ export default function StudentDetailPage() {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  useEffect(() => {
-    if (!activeClientId || !accessToken) return;
-    const ac = new AbortController();
-
-    getStudent(activeClientId, accessToken, id!, ac.signal)
-      .then((s) => { setStudent(s); })
-      .catch((e) => setError((e as Error).message))
-      .finally(() => setLoadingStudent(false));
-
-    getStudentAttendance(activeClientId, accessToken, id!,
-      { ...(user?.defaultAcademicYearId ? { academicYearId: user.defaultAcademicYearId } : {}), take: 365 },
-      ac.signal)
-      .then(setAttendance)
-      .finally(() => setLoadingAtt(false));
-
-    getAllClasses(activeClientId, accessToken, ac.signal)
-      .then(setClasses)
-      .catch(() => {});
-
-    return () => ac.abort();
-  }, [activeClientId, user?.defaultAcademicYearId, accessToken, id]);
-
   const openEdit = () => {
     if (!student) return;
     setForm(studentToForm(student));
-    setSubmitError(null);
     setFieldErrors({});
+    updateMutation.reset();
     setShowEdit(true);
   };
 
-  const handleSave = async () => {
-    if (!activeClientId || !accessToken || !student || !form) return;
-    setSubmitting(true); setSubmitError(null);
-    try {
-      const payload: Partial<CreateStudentPayload> = {
-        name: form.name.trim(),
-        uid: form.uid.trim() || null,
-        adno: form.adno.trim(),
-        ...(form.classId ? { classId: form.classId } : { classId: undefined }),
-        gender: form.gender,
-        ...(form.dateOfBirth ? { dateOfBirth: form.dateOfBirth } : {}),
-        ...(form.guardianName ? { guardianName: form.guardianName.trim() } : {}),
-        ...(form.parentPhone ? { parentPhone: form.parentPhone.trim() } : {}),
-        ...(form.parentAltPhone ? { parentAltPhone: form.parentAltPhone.trim() } : {}),
-        ...(form.parentEmail ? { parentEmail: form.parentEmail.trim() } : {}),
-        ...(form.relationToStudent ? { relationToStudent: form.relationToStudent } : {}),
-        ...(form.parentPassword ? { parentPassword: form.parentPassword } : {}),
-      };
-      const updated = await updateStudent(activeClientId, accessToken, student.id, payload);
-      setStudent(updated);
-      setShowEdit(false);
-    } catch (e) {
-      const apiErr = e as import("@/lib/students-api").StudentsApiError;
-      setSubmitError(apiErr.message);
-      if (apiErr.fieldErrors) setFieldErrors(apiErr.fieldErrors);
-    } finally {
-      setSubmitting(false);
-    }
+  const handleSave = () => {
+    if (!student || !form) return;
+    const payload: Partial<CreateStudentPayload> = {
+      name: form.name.trim(),
+      uid: form.uid.trim() || null,
+      adno: form.adno.trim(),
+      ...(form.classId ? { classId: form.classId } : { classId: undefined }),
+      gender: form.gender,
+      ...(form.dateOfBirth ? { dateOfBirth: form.dateOfBirth } : {}),
+      ...(form.guardianName ? { guardianName: form.guardianName.trim() } : {}),
+      ...(form.parentPhone ? { parentPhone: form.parentPhone.trim() } : {}),
+      ...(form.parentAltPhone ? { parentAltPhone: form.parentAltPhone.trim() } : {}),
+      ...(form.parentEmail ? { parentEmail: form.parentEmail.trim() } : {}),
+      ...(form.relationToStudent ? { relationToStudent: form.relationToStudent } : {}),
+      ...(form.parentPassword ? { parentPassword: form.parentPassword } : {}),
+    };
+    updateMutation.mutate(
+      { id: student.id, data: payload },
+      {
+        onSuccess: () => setShowEdit(false),
+        onError: (e) => {
+          const apiErr = e as import("@/lib/students-api").StudentsApiError;
+          if (apiErr.fieldErrors) setFieldErrors(apiErr.fieldErrors);
+        },
+      },
+    );
   };
 
-  const handleDelete = async () => {
-    if (!activeClientId || !accessToken || !student) return;
-    setDeleting(true);
-    try {
-      await deleteStudent(activeClientId, accessToken, student.id);
-      navigate(`${slugPrefix}/admin/students`);
-    } catch (e) {
-      setConfirmDelete(false);
-      setDeleting(false);
-      setError((e as Error).message);
-    }
+  const handleDelete = () => {
+    if (!student) return;
+    deleteMutation.mutate(student.id, {
+      onSuccess: () => navigate(`${slugPrefix}/admin/students`),
+      onError: () => {
+        setConfirmDelete(false);
+      },
+    });
   };
 
   if (loadingStudent) {
@@ -160,13 +144,13 @@ export default function StudentDetailPage() {
     );
   }
 
-  if (!student || error) {
+  if (!student || studentError) {
     return (
       <DashboardLayout>
         <PageHeader title="Student Not Found" back />
         <div className="text-center py-20 text-gray-400">
           <User className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p className="font-semibold text-lg">{error ?? "Student not found"}</p>
+          <p className="font-semibold text-lg">{studentError?.message ?? "Student not found"}</p>
           <button onClick={() => navigate(-1)} className="mt-4 text-emerald-600 font-semibold text-sm underline">
             Go back
           </button>
@@ -353,8 +337,8 @@ export default function StudentDetailPage() {
               </div>
 
               <div className="overflow-y-auto flex-1 px-5 py-4 space-y-6 pb-8">
-                {submitError && (
-                  <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl">{submitError}</div>
+                {updateMutation.error && (
+                  <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl">{updateMutation.error.message}</div>
                 )}
 
                 {/* Student Info */}
@@ -449,10 +433,10 @@ export default function StudentDetailPage() {
                 </button>
                 <button
                   onClick={handleSave}
-                  disabled={submitting || !form.name.trim() || !form.adno.trim()}
+                  disabled={updateMutation.isPending || !form.name.trim() || !form.adno.trim()}
                   className="flex-1 bg-emerald-600 text-white font-bold py-3.5 rounded-2xl text-sm active:scale-[0.98] transition-transform shadow-lg shadow-emerald-200 disabled:opacity-60"
                 >
-                  {submitting ? (
+                  {updateMutation.isPending ? (
                     <span className="flex items-center justify-center gap-2">
                       <Loader2 className="w-4 h-4 animate-spin" /> Saving…
                     </span>
@@ -471,7 +455,7 @@ export default function StudentDetailPage() {
           <>
             <motion.div key="del-backdrop"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => !deleting && setConfirmDelete(false)}
+              onClick={() => !deleteMutation.isPending && setConfirmDelete(false)}
               className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
             />
             <motion.div key="del-dialog"
@@ -490,17 +474,17 @@ export default function StudentDetailPage() {
               <div className="grid grid-cols-2 gap-3 mt-6">
                 <button
                   onClick={() => setConfirmDelete(false)}
-                  disabled={deleting}
+                  disabled={deleteMutation.isPending}
                   className="py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDelete}
-                  disabled={deleting}
+                  disabled={deleteMutation.isPending}
                   className="py-3 rounded-2xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors disabled:opacity-60"
                 >
-                  {deleting ? (
+                  {deleteMutation.isPending ? (
                     <span className="flex items-center justify-center gap-2">
                       <Loader2 className="w-4 h-4 animate-spin" /> Deleting…
                     </span>

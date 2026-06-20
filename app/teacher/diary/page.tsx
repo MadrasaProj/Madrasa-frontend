@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { listDiary, upsertDiary, deleteDiary, type DiaryEntry } from "@/lib/diary-api";
-import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
+import { useDiary, useUpsertDiary, useDeleteDiary, useClasses } from "@/lib/api-hooks";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
@@ -12,56 +11,38 @@ import {
   ChevronLeft, ChevronRight, Calendar,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import type { DiaryEntry } from "@/lib/diary-api";
 
 function fmt(d: Date) { return d.toISOString().split("T")[0]; }
 
 export default function TeacherDiaryPage() {
-  const { user, accessToken } = useAuthStore();
-  const cid   = user?.clientId ?? "";
-  const token = accessToken ?? "";
-
-  const [classes, setClasses]       = useState<ClassRecord[]>([]);
-  const [activeClassId, setActiveClassId] = useState("");
-  const [date, setDate]             = useState(fmt(new Date()));
-  const [title, setTitle]           = useState("");
-  const [content, setContent]       = useState("");
-  const [history, setHistory]       = useState<DiaryEntry[]>([]);
-  const [currentEntry, setCurrentEntry] = useState<DiaryEntry | null>(null);
-  const [loadingClasses, setLoadingClasses] = useState(true);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-  const [saving, setSaving]         = useState(false);
-  const [saved, setSaved]           = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [error, setError]           = useState<string | null>(null);
-
+  const { user } = useAuthStore();
   const teacherId = user?.id ?? "";
 
-  // Load classes — teacher only sees classes where they are classTeacher
-  useEffect(() => {
-    if (!cid || !token) return;
-    getMyClasses(cid, token)
-      .then((cls) => {
-        const ownClasses = cls.filter((c) => c.classTeacherId === teacherId);
-        setClasses(ownClasses);
-        if (ownClasses.length > 0) setActiveClassId(ownClasses[0].id);
-      })
-      .catch((e: unknown) => { setError((e as Error).message); })
-      .finally(() => setLoadingClasses(false));
-  }, [cid, token]); // eslint-disable-line
+  const { data: classes = [], isLoading: classesLoading } = useClasses();
+  const ownClasses = classes.filter((c) => c.classTeacherId === teacherId);
 
-  // Load history when class changes
-  const loadHistory = useCallback(async () => {
-    if (!cid || !token || !activeClassId) return;
-    setLoadingHistory(true);
-    setError(null);
-    try {
-      const entries = await listDiary(cid, token, { classId: activeClassId });
-      setHistory(entries);
-    } catch (e) { setError((e as Error).message); }
-    finally { setLoadingHistory(false); }
-  }, [cid, token, activeClassId]);
+  const [activeClassId, setActiveClassId] = useState("");
+  const [date, setDate] = useState(fmt(new Date()));
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [currentEntry, setCurrentEntry] = useState<DiaryEntry | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => { loadHistory(); }, [loadHistory]);
+  // Set first class
+  if (ownClasses.length > 0 && !activeClassId) {
+    setActiveClassId(ownClasses[0].id);
+  }
+
+  const { data: history = [], isLoading: historyLoading } = useDiary(
+    activeClassId ? { classId: activeClassId } : undefined,
+  );
+  const loadingHistory = historyLoading;
+
+  const upsertMutation = useUpsertDiary();
+  const deleteMutation = useDeleteDiary();
 
   // When date changes, check for existing entry
   useEffect(() => {
@@ -70,7 +51,7 @@ export default function TeacherDiaryPage() {
       setTitle(""); setContent("");
       return;
     }
-    const existing = history.find((e) => e.date.split("T")[0] === date && e.classId === activeClassId);
+    const existing = history.find((e: DiaryEntry) => e.date.split("T")[0] === date && e.classId === activeClassId);
     if (existing) {
       setCurrentEntry(existing);
       setTitle(existing.title);
@@ -81,35 +62,38 @@ export default function TeacherDiaryPage() {
     }
   }, [date, activeClassId, history]);
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!activeClassId || !title.trim() || !content.trim()) return;
-    setSaving(true);
-    try {
-      const entry = await upsertDiary(cid, token, {
+    upsertMutation.mutate(
+      {
         classId: activeClassId,
         date,
         title,
         content,
         academicYearId: user?.defaultAcademicYearId ?? undefined,
-      });
-      setCurrentEntry(entry);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-      loadHistory();
-    } catch (e) { setError((e as Error).message); }
-    finally { setSaving(false); }
+      },
+      {
+        onSuccess: (entry) => {
+          setCurrentEntry(entry);
+          setSaved(true);
+          setTimeout(() => setSaved(false), 3000);
+        },
+        onError: (e) => setError((e as Error).message),
+      },
+    );
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: string) => {
     setDeletingId(id);
-    try {
-      await deleteDiary(cid, token, id);
-      if (currentEntry?.id === id) {
-        setCurrentEntry(null); setTitle(""); setContent("");
-      }
-      loadHistory();
-    } catch (e) { setError((e as Error).message); }
-    finally { setDeletingId(null); }
+    deleteMutation.mutate(id, {
+      onSuccess: () => {
+        if (currentEntry?.id === id) {
+          setCurrentEntry(null); setTitle(""); setContent("");
+        }
+        setDeletingId(null);
+      },
+      onError: (e) => { setError((e as Error).message); setDeletingId(null); },
+    });
   };
 
   const prevDay = () => { const d = new Date(date); d.setDate(d.getDate() - 1); setDate(fmt(d)); };
@@ -118,7 +102,7 @@ export default function TeacherDiaryPage() {
     if (d <= new Date()) setDate(fmt(d));
   };
 
-  const activeClass = classes.find((c) => c.id === activeClassId);
+  const activeClass = ownClasses.find((c) => c.id === activeClassId);
 
   return (
     <DashboardLayout>
@@ -129,9 +113,9 @@ export default function TeacherDiaryPage() {
         back backHref="/teacher"
       />
 
-      {error && <ApiErrorBanner message={error} onRetry={loadHistory} />}
+      {error && <ApiErrorBanner message={error} />}
 
-      {loadingClasses ? (
+      {classesLoading ? (
         <div className="space-y-4">
           <div className="flex gap-2 flex-wrap">
             {Array.from({ length: 2 }).map((_, i) => (
@@ -153,13 +137,13 @@ export default function TeacherDiaryPage() {
             ))}
           </div>
         </div>
-      ) : classes.length === 0 ? (
+      ) : ownClasses.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm">No classes assigned</div>
       ) : (
         <>
           {/* Class selector */}
           <div className="flex gap-2 mb-4 flex-wrap">
-            {classes.map((cls) => (
+            {ownClasses.map((cls) => (
               <button
                 key={cls.id}
                 onClick={() => setActiveClassId(cls.id)}
@@ -219,13 +203,13 @@ export default function TeacherDiaryPage() {
             </div>
             <button
               onClick={handleSave}
-              disabled={saving || !title.trim() || !content.trim()}
+              disabled={upsertMutation.isPending || !title.trim() || !content.trim()}
               className={cn(
                 "w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition-all",
                 saved ? "bg-emerald-100 text-emerald-700" : "bg-emerald-600 text-white disabled:opacity-60",
               )}
             >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> :
+              {upsertMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> :
                saved  ? <><CheckCircle2 className="w-4 h-4" /> Saved!</> :
                         <><Save className="w-4 h-4" /> {currentEntry ? "Update Entry" : "Save Entry"}</>}
             </button>

@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { getPayments, getPaymentReceipt, type FeePayment, type ReceiptData } from "@/lib/fees-api";
-import { useAuthStore } from "@/store/auth";
+import { usePayments, usePaymentReceipt } from "@/lib/api-hooks";
+import { type FeePayment, type ReceiptData } from "@/lib/fees-api";
 import { cn } from "@/lib/utils";
 import { CheckCircle, Loader2, Receipt, Search, Printer } from "lucide-react";
 import { motion } from "framer-motion";
@@ -50,38 +50,15 @@ function ReceiptModal({ receipt, onClose }: { receipt: ReceiptData; onClose: () 
 }
 
 export default function AdminFeesPaidPage() {
-  const { user, accessToken, activeClientId } = useAuthStore();
-  const [payments, setPayments]     = useState<FeePayment[]>([]);
-  const [total, setTotal]           = useState(0);
-  const [skip, setSkip]             = useState(0);
-  const [search, setSearch]         = useState("");
-  const [loading, setLoading]       = useState(true);
-  const [receipt, setReceipt]       = useState<ReceiptData | null>(null);
-  const [loadingReceipt, setLoadingReceipt] = useState<string | null>(null);
-  const [error, setError]           = useState<string | null>(null);
+  const [skip, setSkip]     = useState(0);
+  const [search, setSearch] = useState("");
+  const [receiptId, setReceiptId] = useState<string | null>(null);
 
-  const cid = activeClientId ?? "";
-  const token = accessToken ?? "";
+  const { data: paymentsData, isLoading, error } = usePayments({ status: "PAID", skip, take: 30 });
+  const payments = paymentsData?.payments ?? [];
+  const total = paymentsData?.total ?? 0;
 
-  const load = useCallback(async () => {
-    if (!cid || !token) return;
-    setLoading(true); setError(null);
-    try {
-      const res = await getPayments(cid, token, { status: "PAID", skip, take: 30 });
-      setPayments(res.payments);
-      setTotal(res.total);
-    } catch (err) { setError((err as Error).message); }
-    finally { setLoading(false); }
-  }, [cid, token, skip]);
-
-  useEffect(() => { load(); }, [load]);
-
-  const showReceipt = async (id: string) => {
-    setLoadingReceipt(id);
-    try { setReceipt(await getPaymentReceipt(cid, token, id)); }
-    catch (err) { alert((err as Error).message); }
-    finally { setLoadingReceipt(null); }
-  };
+  const { data: receipt, isFetching: loadingReceipt } = usePaymentReceipt(receiptId ?? "");
 
   const filtered = search
     ? payments.filter((p) => p.student.name.toLowerCase().includes(search.toLowerCase()) || p.student.adno.includes(search))
@@ -98,10 +75,10 @@ export default function AdminFeesPaidPage() {
           className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none text-sm" />
       </div>
 
-      {loading ? (
+      {isLoading ? (
         <SkeletonList count={4} />
       ) : error ? (
-        <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl">{error}</div>
+        <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl">{error.message}</div>
       ) : (
         <>
           <div className="space-y-2">
@@ -117,9 +94,9 @@ export default function AdminFeesPaidPage() {
                 </div>
                 <div className="text-right shrink-0">
                   <p className="font-bold text-emerald-700">₹{Number(p.paidAmount ?? p.dueAmount).toLocaleString()}</p>
-                  <button onClick={() => showReceipt(p.id)} disabled={loadingReceipt === p.id}
+                  <button onClick={() => setReceiptId(p.id)} disabled={loadingReceipt && receiptId === p.id}
                     className="text-xs text-gray-500 flex items-center gap-1 mt-1 ml-auto">
-                    {loadingReceipt === p.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Receipt className="w-3 h-3" />} Receipt
+                    {(loadingReceipt && receiptId === p.id) ? <Loader2 className="w-3 h-3 animate-spin" /> : <Receipt className="w-3 h-3" />} Receipt
                   </button>
                 </div>
               </div>
@@ -136,7 +113,7 @@ export default function AdminFeesPaidPage() {
           )}
         </>
       )}
-      {receipt && <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />}
+      {receiptId && receipt && <ReceiptModal receipt={receipt} onClose={() => setReceiptId(null)} />}
     </DashboardLayout>
   );
 }

@@ -1,14 +1,14 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader, SectionHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { DataTable, type Column, type SortDir } from "@/components/ui/DataTable";
 import {
-  getTeachers, createTeacher, updateTeacher, deleteTeacher,
-  type TeacherRecord, type UpdateTeacherPayload,
+  type TeacherRecord,
+  type UpdateTeacherPayload,
 } from "@/lib/teachers-api";
-import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
-import { getSubjects, type SubjectRecord } from "@/lib/subjects-api";
+import { type SubjectRecord } from "@/lib/subjects-api";
+import { useTeachers, useCreateTeacher, useUpdateTeacher, useDeleteTeacher, useClasses, useSubjects } from "@/lib/api-hooks";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
@@ -21,9 +21,7 @@ const DEFAULT_PAGE_SIZE = 20;
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
 export default function AdminTeachersPage() {
-  const { user, accessToken, activeClientId } = useAuthStore();
-  const cid   = activeClientId ?? "";
-  const token = accessToken ?? "";
+  const { user } = useAuthStore();
   const isPeriodBased = user?.attendanceMode === "PERIOD_BASED";
 
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" ? window.innerWidth < 768 : true);
@@ -34,16 +32,40 @@ export default function AdminTeachersPage() {
   }, []);
 
   // ── List state ─────────────────────────────────────────────────────────────
-  const [teachers, setTeachers] = useState<TeacherRecord[]>([]);
-  const [total, setTotal]       = useState(0);
   const [page, setPage]         = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [search, setSearch]     = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sortBy, setSortBy]     = useState<string | undefined>(undefined);
   const [sortDir, setSortDir]   = useState<SortDir>("asc");
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState<string | null>(null);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const {
+    data: teachersData,
+    isLoading: loading,
+    error: teachersError,
+    refetch: refetchTeachers,
+  } = useTeachers({
+    search: debouncedSearch || undefined,
+    page,
+    limit: pageSize,
+    sortBy,
+    sortOrder: sortDir,
+  });
+  const teachers = teachersData?.data ?? [];
+  const total = teachersData?.total ?? teachersData?.data?.length ?? 0;
+
+  const { data: allClasses = [] } = useClasses();
+  const { data: subjectsData } = useSubjects(isPeriodBased ? {} : { classId: "__none__" });
+  const allSubjects = isPeriodBased ? (subjectsData?.data ?? []) : [];
+
+  const createMutation = useCreateTeacher();
+  const updateMutation = useUpdateTeacher();
+  const deleteMutation = useDeleteTeacher();
+
+  const saveError = createMutation.error?.message || updateMutation.error?.message || "";
+  const saving = createMutation.isPending || updateMutation.isPending;
+  const deleting = deleteMutation.isPending;
 
   // ── Form state ─────────────────────────────────────────────────────────────
   const [showDrawer, setShowDrawer] = useState(false);
@@ -57,47 +79,17 @@ export default function AdminTeachersPage() {
   const [fSubjectIds, setFSubjectIds] = useState<Set<string>>(new Set());
   const [showPw, setShowPw]         = useState(false);
   const [showNewPw, setShowNewPw]   = useState(false);
-  const [saving, setSaving]         = useState(false);
-  const [saveError, setSaveError]   = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleting, setDeleting]     = useState(false);
 
-  // ── Assignment data (loaded on edit open) ──────────────────────────────────
-  const [allClasses, setAllClasses]   = useState<ClassRecord[]>([]);
-  const [allSubjects, setAllSubjects] = useState<SubjectRecord[]>([]);
-  const [loadingAssign, setLoadingAssign] = useState(false);
-  const [assignError, setAssignError] = useState("");
+  // ── Assignment filters (inline) ─────────────────────────────────────────────
   const [subjectSearch, setSubjectSearch] = useState("");
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
-  // ── Load teachers ──────────────────────────────────────────────────────────
-  const load = useCallback(async (
-    srch: string, pg: number, lim: number, sb?: string, sd?: SortDir,
-  ) => {
-    if (!cid || !token) return;
-    setLoading(true); setError(null);
-    try {
-      const data = await getTeachers(cid, token, {
-        search: srch || undefined, page: pg, limit: lim,
-        sortBy: sb, sortOrder: sd,
-      });
-      setTeachers(data.data ?? []);
-      setTotal(data.total ?? data.data?.length ?? 0);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [cid, token]);
-
-  useEffect(() => {
-    load(search, page, pageSize, sortBy, sortDir);
-  }, [page, pageSize, sortBy, sortDir, load]); // eslint-disable-line
-
+  // ── Search ─────────────────────────────────────────────────────────────────
   const handleSearch = (val: string) => {
     setSearch(val); setPage(1);
     if (searchTimer.current) clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => load(val, 1, pageSize, sortBy, sortDir), 400);
+    searchTimer.current = setTimeout(() => setDebouncedSearch(val), 400);
   };
 
   const handleSort = (key: string, dir: SortDir) => {
@@ -108,28 +100,26 @@ export default function AdminTeachersPage() {
   const resetForm = () => {
     setFName(""); setFUsername(""); setFPassword(""); setFNewPassword("");
     setFStatus("ACTIVE"); setFClassIds(new Set()); setFSubjectIds(new Set());
-    setSaveError(""); setShowPw(false); setShowNewPw(false);
-    setAllClasses([]); setAllSubjects([]); setAssignError("");
+    setShowPw(false); setShowNewPw(false);
     setSubjectSearch(""); setExpandedGroups(new Set());
-    setShowDeleteConfirm(false); setDeleting(false);
+    setShowDeleteConfirm(false);
+    createMutation.reset();
+    updateMutation.reset();
+    deleteMutation.reset();
   };
 
-  const handleDelete = async () => {
-    if (!editTarget || !cid || !token) return;
-    setDeleting(true);
-    setSaveError("");
-    try {
-      await deleteTeacher(cid, token, editTarget.id);
-      setShowDeleteConfirm(false);
-      setShowDrawer(false);
-      setPage(1);
-      load(search, 1, pageSize, sortBy, sortDir);
-    } catch (e) {
-      setSaveError((e as Error).message);
-      setShowDeleteConfirm(false);
-    } finally {
-      setDeleting(false);
-    }
+  const handleDelete = () => {
+    if (!editTarget) return;
+    deleteMutation.mutate(editTarget.id, {
+      onSuccess: () => {
+        setShowDeleteConfirm(false);
+        setShowDrawer(false);
+        setPage(1);
+      },
+      onError: () => {
+        setShowDeleteConfirm(false);
+      },
+    });
   };
 
   const openAdd = () => {
@@ -147,57 +137,51 @@ export default function AdminTeachersPage() {
     setFStatus((t.status as "ACTIVE" | "INACTIVE") ?? "ACTIVE");
     setFClassIds(new Set(t.classes?.map((c) => c.id) ?? []));
     setFSubjectIds(teacherSubjectIds);
-    setSaveError(""); setShowPw(false); setShowNewPw(false);
-    setAllClasses([]); setAllSubjects([]); setAssignError("");
-    setSubjectSearch(""); setExpandedGroups(new Set());
-    setShowDrawer(true);
+    setShowPw(false); setShowNewPw(false);
+    setSubjectSearch(""); setShowDeleteConfirm(false);
+    createMutation.reset();
+    updateMutation.reset();
+    deleteMutation.reset();
 
-    setLoadingAssign(true);
-    try {
-      const [cls, subjs] = await Promise.all([
-        getAllClasses(cid, token),
-        isPeriodBased ? getSubjects(cid, token, {}).then((r) => r.data) : Promise.resolve([]),
-      ]);
-      setAllClasses(cls);
-      setAllSubjects(subjs);
-      // Auto-expand groups that have pre-selected subjects
-      const preExpanded = new Set(
-        subjs.filter((s) => teacherSubjectIds.has(s.id)).map((s) => s.classId ?? "__none__"),
-      );
-      setExpandedGroups(preExpanded);
-    } catch (e) {
-      setAssignError((e as Error).message);
-    } finally {
-      setLoadingAssign(false);
-    }
+    // Auto-expand groups that have pre-selected subjects
+    const preExpanded = new Set(
+      allSubjects.filter((s) => teacherSubjectIds.has(s.id)).map((s) => s.classId ?? "__none__"),
+    );
+    setExpandedGroups(preExpanded);
+
+    setShowDrawer(true);
   };
 
   // ── Save (single call for everything) ─────────────────────────────────────
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!fName.trim() || !fUsername.trim() || (!editTarget && !fPassword)) return;
-    setSaveError(""); setSaving(true);
-    try {
-      if (editTarget) {
-        const payload: UpdateTeacherPayload = {
-          name: fName.trim(),
-          status: fStatus,
-          classIds: [...fClassIds],
-        };
-        if (fNewPassword.trim()) payload.password = fNewPassword.trim();
-        if (isPeriodBased) payload.subjectIds = [...fSubjectIds];
-        await updateTeacher(cid, token, editTarget.id, payload);
-      } else {
-        await createTeacher(cid, token, {
-          name: fName.trim(), username: fUsername.trim(), password: fPassword,
-        });
-      }
-      setShowDrawer(false);
-      setPage(1);
-      load(search, 1, pageSize, sortBy, sortDir);
-    } catch (e) {
-      setSaveError((e as Error).message);
-    } finally {
-      setSaving(false);
+    if (editTarget) {
+      const payload: UpdateTeacherPayload = {
+        name: fName.trim(),
+        status: fStatus,
+        classIds: [...fClassIds],
+      };
+      if (fNewPassword.trim()) payload.password = fNewPassword.trim();
+      if (isPeriodBased) payload.subjectIds = [...fSubjectIds];
+      updateMutation.mutate(
+        { id: editTarget.id, data: payload },
+        {
+          onSuccess: () => {
+            setShowDrawer(false);
+            setPage(1);
+          },
+        },
+      );
+    } else {
+      createMutation.mutate(
+        { name: fName.trim(), username: fUsername.trim(), password: fPassword },
+        {
+          onSuccess: () => {
+            setShowDrawer(false);
+            setPage(1);
+          },
+        },
+      );
     }
   };
 
@@ -358,7 +342,7 @@ export default function AdminTeachersPage() {
         }
       />
 
-      {error && <ApiErrorBanner message={error} onRetry={() => load(search, page, pageSize, sortBy, sortDir)} />}
+      {teachersError && <ApiErrorBanner message={teachersError.message} onRetry={() => refetchTeachers()} />}
 
       <div className="relative mb-5">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -375,7 +359,7 @@ export default function AdminTeachersPage() {
         data={teachers}
         keyExtractor={(t) => t.id}
         loading={loading}
-        error={error}
+        error={teachersError?.message ?? null}
         emptyIcon={Users}
         emptyMessage="No teachers found"
         onSort={handleSort}
@@ -586,17 +570,7 @@ export default function AdminTeachersPage() {
                   <>
                     <div className="border-t border-dashed border-gray-200 pt-1" />
 
-                    {assignError && (
-                      <div className="bg-red-50 text-red-600 text-sm px-4 py-2 rounded-xl">{assignError}</div>
-                    )}
-
-                    {loadingAssign ? (
-                      <div className="flex items-center gap-2 py-6 text-gray-400 text-sm justify-center">
-                        <Loader2 className="w-4 h-4 animate-spin" /> Loading…
-                      </div>
-                    ) : (
-                      <>
-                        {/* Class — multi-select checkboxes */}
+                      {/* Class — multi-select checkboxes */}
                         <div>
                           <SectionHeader title="Class Teacher" className="mb-1" />
                           <p className="text-xs text-gray-400 mb-3">
@@ -753,8 +727,6 @@ export default function AdminTeachersPage() {
                         )}
                       </>
                     )}
-                  </>
-                )}
               </div>
 
               {/* Footer */}
@@ -770,7 +742,7 @@ export default function AdminTeachersPage() {
                 )}
                 <button
                   onClick={handleSave}
-                  disabled={saving || !fName.trim() || !fUsername.trim() || (!editTarget && !fPassword) || (editTarget !== null && loadingAssign)}
+                  disabled={saving || !fName.trim() || !fUsername.trim() || (!editTarget && !fPassword)}
                   className="w-full bg-emerald-600 text-white font-bold py-3.5 rounded-2xl text-sm shadow-lg shadow-emerald-200 disabled:opacity-60 active:scale-[0.98] transition-transform"
                 >
                   {saving ? (

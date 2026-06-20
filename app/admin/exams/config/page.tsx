@@ -2,14 +2,10 @@ import { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { ExamConfigForm } from "@/components/exam/ExamConfigForm";
-import { useAuthStore } from "@/store/auth";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
 
 export default function ExamConfigPage() {
   const navigate = useNavigate();
-  const { user, accessToken, activeClientId } = useAuthStore();
-  const cid   = activeClientId ?? user?.clientId ?? "";
-  const token = accessToken ?? "";
 
   const [saving, setSaving] = useState(false);
   const saveFnRef = useRef<(() => Promise<void>) | null>(null);
@@ -42,7 +38,7 @@ export default function ExamConfigPage() {
           </div>
         </div>
 
-        <ExamConfigForm clientId={cid} token={token} onSaveRequested={handleSaveRequested} />
+        <ExamConfigForm onSaveRequested={handleSaveRequested} />
 
         <div className="flex justify-end gap-3 mt-6 pb-6">
           <button onClick={() => navigate(-1)}

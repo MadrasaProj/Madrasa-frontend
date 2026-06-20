@@ -1,15 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { useAuthStore } from "@/store/auth";
 import {
-  getPendingLeaveRequests,
-  reviewLeaveRequest,
-  type LeaveRequest,
-  type LeaveReasonType,
+  usePendingLeaveRequests, useReviewLeaveRequest,
+} from "@/lib/api-hooks";
+import {
+  type LeaveRequest, type LeaveReasonType,
 } from "@/lib/leave-requests-api";
 import {
   Loader2, CheckCircle2, XCircle, AlertCircle,
@@ -29,49 +28,25 @@ const STATUS_STYLES: Record<string, { border: string }> = {
 };
 
 export default function AdminLeaveRequestsPage() {
-  const { user, accessToken, activeClientId } = useAuthStore();
-  const cid = activeClientId ?? "";
-  const token = accessToken ?? "";
-
-  const [requests, setRequests] = useState<LeaveRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("PENDING");
   const [search, setSearch] = useState("");
 
   const [expanded, setExpanded] = useState<string | null>(null);
   const [reviewNote, setReviewNote] = useState("");
-  const [reviewingSave, setReviewingSave] = useState(false);
 
-  const loadRequests = async () => {
-    if (!cid || !token) return;
-    setLoading(true);
-    try {
-      const res = await getPendingLeaveRequests(cid, token, { status: filter });
-      setRequests(res.requests);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data, isLoading, error } = usePendingLeaveRequests({ status: filter });
+  const requests = data?.requests ?? [];
 
-  useEffect(() => {
-    loadRequests();
-  }, [cid, token, filter]);
+  const reviewMutation = useReviewLeaveRequest();
 
-  const handleReview = async (id: string, status: "APPROVED" | "REJECTED") => {
-    setReviewingSave(true);
-    try {
-      await reviewLeaveRequest(cid, token, id, { status, reviewNote: reviewNote || undefined });
-      setExpanded(null);
-      setReviewNote("");
-      loadRequests();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setReviewingSave(false);
-    }
+  const handleReview = (id: string, status: "APPROVED" | "REJECTED") => {
+    reviewMutation.mutate({
+      id,
+      data: { status, reviewNote: reviewNote || undefined },
+    }, {
+      onSuccess: () => { setExpanded(null); setReviewNote(""); },
+      onError: (e) => { }, // error shown via global error state
+    });
   };
 
   const filtered = search
@@ -89,7 +64,7 @@ export default function AdminLeaveRequestsPage() {
           subtitle="Review and manage leave applications"
         />
 
-        {error && <ApiErrorBanner message={error} />}
+        {error && <ApiErrorBanner message={error.message} />}
 
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
           <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
@@ -117,7 +92,7 @@ export default function AdminLeaveRequestsPage() {
           </div>
         </div>
 
-        {loading ? (
+        {isLoading ? (
           <SkeletonList count={3} />
         ) : filtered.length === 0 ? (
           <div className="text-center py-12 text-gray-400">
@@ -193,18 +168,18 @@ export default function AdminLeaveRequestsPage() {
                             <div className="flex gap-2">
                               <button
                                 onClick={() => handleReview(r.id, "REJECTED")}
-                                disabled={reviewingSave}
+                                disabled={reviewMutation.isPending}
                                 className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5"
                               >
-                                {reviewingSave ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                                {reviewMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
                                 Reject
                               </button>
                               <button
                                 onClick={() => handleReview(r.id, "APPROVED")}
-                                disabled={reviewingSave}
+                                disabled={reviewMutation.isPending}
                                 className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5"
                               >
-                                {reviewingSave ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                                {reviewMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                                 Approve
                               </button>
                             </div>

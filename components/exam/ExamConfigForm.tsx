@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import {
-  getExamConfig, updateExamConfig,
-  type ExamConfig, type GradeConfig,
-} from "@/lib/exams-api";
+import { useExamConfig, useUpdateExamConfig } from "@/lib/api-hooks";
+import { type ExamConfig, type GradeConfig } from "@/lib/exams-api";
 import {
   Loader2, CheckCircle2, AlertCircle,
   Eye, EyeOff, Settings2, SlidersHorizontal,
@@ -45,22 +43,18 @@ export function rowsToGradeConfig(rows: { label: string; min: number }[]): Grade
 }
 
 interface ExamConfigFormProps {
-  clientId: string;
-  token: string;
+  clientId?: string;
+  token?: string;
   embedded?: boolean;
   subjectId?: string;
   onSaved?: () => void;
   onSaveRequested?: (saveFn: () => Promise<void>) => void;
-  /** Reports current subject-level config whenever it changes */
   onConfigChange?: (config: { maxMarks: number | null; gradeConfig: GradeConfig }) => void;
-  /** Initial max marks override value */
   initialMaxMarks?: number | null;
-  /** Initial grade config override */
   initialGradeConfig?: GradeConfig | null;
 }
 
 export function ExamConfigForm({
-  clientId, token,
   embedded = false,
   subjectId,
   onSaved,
@@ -69,11 +63,9 @@ export function ExamConfigForm({
   initialMaxMarks,
   initialGradeConfig,
 }: ExamConfigFormProps) {
-  const [config,  setConfig]  = useState<ExamConfig | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving,  setSaving]  = useState(false);
-  const [error,   setError]   = useState<string | null>(null);
-  const [msg,     setMsg]     = useState<string | null>(null);
+  const { data: config, isLoading: loading, error } = useExamConfig();
+  const updateMutation = useUpdateExamConfig();
+  const [msg, setMsg] = useState<string | null>(null);
 
   const [passedLabel,   setPassedLabel]   = useState("Passed");
   const [failedLabel,   setFailedLabel]   = useState("Failed");
@@ -84,6 +76,7 @@ export function ExamConfigForm({
   const [gradeRows,     setGradeRows]     = useState<{ label: string; min: number }[]>(
     DEFAULT_GRADES.map((g) => ({ label: g.label, min: g.defaultMin })),
   );
+  const [initDone, setInitDone] = useState(false);
 
   const [subjectOverrideMax, setSubjectOverrideMax] = useState<number | "">(
     initialMaxMarks != null ? initialMaxMarks : "",
@@ -91,27 +84,21 @@ export function ExamConfigForm({
 
   const isSubjectMode = !!subjectId;
 
-  useEffect(() => {
-    if (!clientId || !token) return;
-    setLoading(true);
-    getExamConfig(clientId, token)
-      .then((cfg) => {
-        setConfig(cfg);
-        setPassedLabel(cfg.passedLabel);
-        setFailedLabel(cfg.failedLabel);
-        setPromotedLabel(cfg.promotedLabel);
-        setWithheldLabel(cfg.withheldLabel);
-        setHideMarks(cfg.hideMarks);
-        setDefaultMax(cfg.defaultMaxMarks);
-        if (initialGradeConfig) {
-          setGradeRows(gradeConfigToRows(initialGradeConfig));
-        } else {
-          setGradeRows(gradeConfigToRows(cfg.gradeConfig));
-        }
-      })
-      .catch((e) => setError(e.message ?? "Failed to load config"))
-      .finally(() => setLoading(false));
-  }, [clientId, token]);
+  // Sync fetched config into local editing state once
+  if (config && !initDone) {
+    setPassedLabel(config.passedLabel);
+    setFailedLabel(config.failedLabel);
+    setPromotedLabel(config.promotedLabel);
+    setWithheldLabel(config.withheldLabel);
+    setHideMarks(config.hideMarks);
+    setDefaultMax(config.defaultMaxMarks);
+    if (initialGradeConfig) {
+      setGradeRows(gradeConfigToRows(initialGradeConfig));
+    } else {
+      setGradeRows(gradeConfigToRows(config.gradeConfig));
+    }
+    setInitDone(true);
+  }
 
   useEffect(() => {
     if (!onSaveRequested) return;
@@ -128,22 +115,25 @@ export function ExamConfigForm({
 
   const handleSave = async () => {
     if (isSubjectMode) return;
-    setSaving(true);
     setMsg(null);
-    try {
-      await updateExamConfig(clientId, token, {
+    return new Promise<void>((resolve, reject) => {
+      updateMutation.mutate({
         passedLabel, failedLabel, promotedLabel, withheldLabel,
         hideMarks,
         defaultMaxMarks: defaultMax,
         gradeConfig: rowsToGradeConfig(gradeRows),
+      }, {
+        onSuccess: () => {
+          setMsg("Configuration saved successfully");
+          onSaved?.();
+          resolve();
+        },
+        onError: (e: any) => {
+          setMsg(`Error: ${e.message}`);
+          reject(e);
+        },
       });
-      setMsg("Configuration saved successfully");
-      onSaved?.();
-    } catch (e: any) {
-      setMsg(`Error: ${e.message}`);
-    } finally {
-      setSaving(false);
-    }
+    });
   };
 
   const updateGradeMin = (label: string, value: number) => {
@@ -164,7 +154,7 @@ export function ExamConfigForm({
 
   if (error && !config) {
     return (
-      <div className="bg-red-50 text-red-700 px-4 py-3 rounded-xl text-sm">{error}</div>
+      <div className="bg-red-50 text-red-700 px-4 py-3 rounded-xl text-sm">{error.message}</div>
     );
   }
 

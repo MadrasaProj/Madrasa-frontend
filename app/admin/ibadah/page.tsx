@@ -2,9 +2,8 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
-import { getClassIbadah, type IbadahConfig, type IbadahRecord } from "@/lib/ibadah-api";
-import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
-import { getStudents, type StudentRecord } from "@/lib/students-api";
+import { useClassIbadah, useClasses, useStudents } from "@/lib/api-hooks";
+import { type IbadahConfig, type IbadahRecord } from "@/lib/ibadah-api";
 import { useAuthStore } from "@/store/auth";
 import {
   Moon, BookOpen, ChevronLeft, ChevronRight, Settings,
@@ -63,85 +62,85 @@ function countBadgeColor(count: number, total: number) {
 }
 
 export default function AdminIbadahPage() {
-  const { user, accessToken, activeClientId } = useAuthStore();
-  const cid          = activeClientId ?? user?.clientId ?? "";
-  const token        = accessToken ?? "";
+  const { user } = useAuthStore();
   const isSuperAdmin = user?.actorType === "SUPER_ADMIN";
   const navigate     = useNavigate();
 
-  const [classes, setClasses]             = useState<ClassRecord[]>([]);
   const [activeClassId, setActiveClassId] = useState<string | null>(null);
   const [date, setDate]                   = useState(fmt(new Date()));
   const [viewMode, setViewMode]           = useState<ViewMode>("daily");
 
-  // Daily state
-  const [rows, setRows]       = useState<StudentRow[]>([]);
-  const [config, setConfig]   = useState<IbadahConfig | null>(null);
+  // Daily section state
   const [activeSection, setActiveSection] = useState<Section>("prayers");
 
   // Weekly state
-  const [weeklyLogs, setWeeklyLogs]         = useState<IbadahRecord[]>([]);
-  const [weeklyStudents, setWeeklyStudents] = useState<StudentRecord[]>([]);
   const [expandedCell, setExpandedCell]     = useState<string | null>(null);
 
-  const [loadingClasses, setLoadingClasses] = useState(true);
-  const [loadingIbadah, setLoadingIbadah]   = useState(false);
-  const [error, setError]                   = useState<string | null>(null);
+  const { data: classesData = [], isLoading: loadingClasses } = useClasses();
 
-  useEffect(() => {
-    if (!cid || !token) return;
-    const ac = new AbortController();
-    setLoadingClasses(true);
-    getAllClasses(cid, token, ac.signal)
-      .then((cls) => { setClasses(cls); if (cls.length > 0) setActiveClassId(cls[0].id); })
-      .catch((e) => { setError((e as Error).message); })
-      .finally(() => setLoadingClasses(false));
-    return () => ac.abort();
-  }, [cid, token]);
+  // Set first class as default
+  const needsDefaultClass = classesData && classesData.length > 0 && !activeClassId;
+  if (needsDefaultClass) {
+    setActiveClassId(classesData[0].id);
+  }
 
-  const loadDailyIbadah = useCallback(async () => {
-    if (!cid || !token || !activeClassId) return;
-    setLoadingIbadah(true); setError(null);
-    try {
-      const data = await getClassIbadah(cid, token, { classId: activeClassId, date });
-      setConfig(data.config);
-      setRows(data.logs.map((r) => ({
-        studentId: r.studentId, name: r.student.name, adno: r.student.adno,
-        fajr: r.fajr, dhuhr: r.dhuhr, asr: r.asr, maghrib: r.maghrib, isha: r.isha,
-        quranPages: r.quranPages,
-        customData: (r.customData as Record<string, boolean | number>) ?? {},
-      })));
-    } catch (e) { setError((e as Error).message); }
-    finally { setLoadingIbadah(false); }
-  }, [cid, token, activeClassId, date]);
+  const classes = classesData;
 
-  const loadWeeklyIbadah = useCallback(async () => {
-    if (!cid || !token || !activeClassId) return;
-    setLoadingIbadah(true); setError(null);
-    const dates = getLast7Days(date);
-    try {
-      const [ibadahData, studentsData] = await Promise.all([
-        getClassIbadah(cid, token, { classId: activeClassId, from: dates[0], to: dates[6] }),
-        getStudents(cid, token, { classId: activeClassId, limit: 200 }),
-      ]);
-      setConfig(ibadahData.config);
-      setWeeklyLogs(ibadahData.logs);
-      setWeeklyStudents(studentsData.data ?? []);
-    } catch (e) { setError((e as Error).message); }
-    finally { setLoadingIbadah(false); }
-  }, [cid, token, activeClassId, date]);
+  const weekDates = useMemo(() => getLast7Days(date), [date]);
 
-  useEffect(() => {
-    if (viewMode === "daily") loadDailyIbadah();
-    else loadWeeklyIbadah();
-  }, [viewMode, loadDailyIbadah, loadWeeklyIbadah]);
+  // Daily ibadah query
+  const {
+    data: dailyData,
+    isLoading: loadingDaily,
+    error: dailyError,
+  } = useClassIbadah({
+    classId: activeClassId ?? undefined,
+    date,
+  });
+
+  // Weekly ibadah query
+  const {
+    data: weeklyIbadahData,
+    isLoading: loadingWeekly,
+    error: weeklyError,
+  } = useClassIbadah({
+    classId: activeClassId ?? undefined,
+    from: weekDates[0],
+    to: weekDates[6],
+  });
+
+  // Weekly students query
+  const {
+    data: weeklyStudentsData,
+    isLoading: loadingWeeklyStudents,
+  } = useStudents({
+    classId: activeClassId ?? undefined,
+    limit: 200,
+  });
+
+  const loadingIbadah = viewMode === "daily" ? loadingDaily : (loadingWeekly || loadingWeeklyStudents);
+  const error = dailyError ?? weeklyError;
+
+  // Derive daily rows from query
+  const rows: StudentRow[] = useMemo(() => {
+    if (!dailyData) return [];
+    return dailyData.logs.map((r: IbadahRecord) => ({
+      studentId: r.studentId, name: r.student.name, adno: r.student.adno,
+      fajr: r.fajr, dhuhr: r.dhuhr, asr: r.asr, maghrib: r.maghrib, isha: r.isha,
+      quranPages: r.quranPages,
+      customData: (r.customData as Record<string, boolean | number>) ?? {},
+    }));
+  }, [dailyData]);
+
+  const config: IbadahConfig | null = viewMode === "daily" ? (dailyData?.config ?? null) : (weeklyIbadahData?.config ?? null);
+  const weeklyLogs: IbadahRecord[] = weeklyIbadahData?.logs ?? [];
+  const weeklyStudents = weeklyStudentsData?.data ?? [];
 
   const activePrayers = useMemo(
     () => config ? ALL_PRAYERS.filter((p) => config[p.configKey] !== false) : ALL_PRAYERS,
     [config],
   );
   const customItems = config?.customItems ?? [];
-  const weekDates = useMemo(() => getLast7Days(date), [date]);
 
   const logMap = useMemo(() => {
     const map = new Map<string, Map<string, IbadahRecord>>();
@@ -196,7 +195,7 @@ export default function AdminIbadahPage() {
         }
       />
 
-      {error && <ApiErrorBanner message={error} onRetry={viewMode === "daily" ? loadDailyIbadah : loadWeeklyIbadah} />}
+      {error && <ApiErrorBanner message={error.message} />}
 
       <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-2.5 mb-4 flex items-center gap-2 text-xs text-blue-700">
         <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-blue-500" />

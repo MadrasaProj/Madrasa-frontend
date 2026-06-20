@@ -1,18 +1,16 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { getExams, createExam, updateExam, deleteExam, type ExamRecord, type ExamStatus } from "@/lib/exams-api";
-import { getResults, bulkUpsertResults, type ResultRecord } from "@/lib/results-api";
-import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
-import { getSubjects, type SubjectRecord } from "@/lib/subjects-api";
-import { getStudents } from "@/lib/students-api";
+import { useExams, useCreateExam, useUpdateExam, useDeleteExam, useClasses, useSubjects, useStudents, useResults, useBulkUpsertResults } from "@/lib/api-hooks";
+import { type ExamRecord, type ExamStatus } from "@/lib/exams-api";
+import { type SubjectRecord } from "@/lib/subjects-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
   Plus, Loader2, Trash2, ChevronDown, ChevronUp, Search,
-  X, Calendar, Edit2, AlertTriangle, RefreshCw,
+  X, Calendar, Edit2, RefreshCw,
   AlertCircle, PenLine, Save, CheckCircle2, BarChart2,
   GraduationCap, Award, Clock, ClipboardCheck, Trophy
 } from "lucide-react";
@@ -63,11 +61,9 @@ interface MarkEntryState {
 }
 
 export default function AdminExamsPage() {
-  const { user, accessToken, activeClientId } = useAuthStore();
+  const { user } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
-  const cid     = activeClientId ?? "";
-  const token   = accessToken ?? "";
   const ayId    = user?.defaultAcademicYearId ?? "";
 
   const goToClassReport = (examId: string, classId: string) => {
@@ -75,10 +71,11 @@ export default function AdminExamsPage() {
     navigate(`${location.pathname.replace(/\/exams.*/, "/exams")}/class-report?examId=${examId}&classId=${classId}&ayId=${ayId}&back=${encodeURIComponent(back)}`);
   };
 
-  const [exams, setExams]     = useState<ExamRecord[]>([]);
-  const [classes, setClasses] = useState<ClassRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [pageError, setPageError] = useState<string | null>(null);
+  const { data: examData, isLoading: loading, error: pageError } = useExams({ limit: 100 });
+  const exams = (examData?.data ?? []).filter((e) => e.type === "TERM_EXAM" || !e.type);
+
+  const { data: classesData = [] } = useClasses();
+  const classes = classesData;
 
   // Filters
   const [selectedTab, setSelectedTab] = useState<TabFilter>("ALL");
@@ -86,46 +83,25 @@ export default function AdminExamsPage() {
 
   // Expanded card state
   const [expandedId, setExpandedId]         = useState<string | null>(null);
-  const [loadingResults, setLoadingResults] = useState<string | null>(null);
 
   // Mark entry panel
   const [markEntryOpen, setMarkEntryOpen]   = useState<string | null>(null);
-  const [markEntry, setMarkEntry]           = useState<MarkEntryState>({
-    classId: "", subjectId: "", students: [], subjects: [], scores: {},
-    loading: false, saving: false, saved: false, error: null,
-  });
+  const [expandedEntryClassId, setExpandedEntryClassId] = useState<string | null>(null);
+
+  // Mutation hooks
+  const createExamMutation = useCreateExam();
+  const updateExamMutation = useUpdateExam();
+  const deleteExamMutation = useDeleteExam();
+  const bulkUpsertMutation = useBulkUpsertResults();
 
   // Action Drawer State
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState<"create" | "edit">("create");
   const [form, setForm] = useState<ExamForm>(EMPTY_FORM);
-  const [submitting, setSubmitting] = useState(false);
 
   // Deletion modals state
   const [showDeleteExamConfirm, setShowDeleteExamConfirm] = useState(false);
   const [deleteExamTarget, setDeleteExamTarget] = useState<ExamRecord | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  // ── Load ───────────────────────────────────────────────────────────────────
-
-  const loadData = useCallback(async () => {
-    if (!cid || !token) return;
-    setPageError(null);
-    setLoading(true);
-    try {
-      const [examData, classData] = await Promise.all([
-        getExams(cid, token, { limit: 100 }),
-        getAllClasses(cid, token),
-      ]);
-      // Only display TERM_EXAMs (school wide term exams) on the main page
-      const termExams = (examData.data ?? []).filter((e) => e.type === "TERM_EXAM" || !e.type);
-      setExams(termExams);
-      setClasses(classData);
-    } catch (e: any) { setPageError(e.message ?? "Load failed"); }
-    finally { setLoading(false); }
-  }, [cid, token]);
-
-  useEffect(() => { loadData(); }, [loadData]);
 
   const toggleExpand = useCallback((examId: string) => {
     if (expandedId === examId) { setExpandedId(null); setMarkEntryOpen(null); return; }
@@ -156,11 +132,9 @@ export default function AdminExamsPage() {
     setExpandedId(exam.id);
   };
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
+  const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !cid || !token) return;
-    setSubmitting(true);
-    setPageError(null);
+    if (!form.name) return;
 
     const payload = {
       name: form.name,
@@ -175,21 +149,15 @@ export default function AdminExamsPage() {
       accademicYearId: ayId || "",
     };
 
-    try {
-      if (drawerMode === "create") {
-        const res = await createExam(cid, token, payload);
-        setExams((prev) => [res, ...prev]);
-      } else {
-        if (!expandedId) return;
-        const res = await updateExam(cid, token, expandedId, payload);
-        setExams((prev) => prev.map((ex) => (ex.id === expandedId ? { ...ex, ...res } : ex)));
-      }
-      setDrawerOpen(false);
-      setForm(EMPTY_FORM);
-    } catch (e: any) {
-      setPageError(e.message ?? "Action failed");
-    } finally {
-      setSubmitting(false);
+    if (drawerMode === "create") {
+      createExamMutation.mutate(payload, {
+        onSuccess: () => { setDrawerOpen(false); setForm(EMPTY_FORM); },
+      });
+    } else {
+      if (!expandedId) return;
+      updateExamMutation.mutate({ id: expandedId, data: payload }, {
+        onSuccess: () => { setDrawerOpen(false); setForm(EMPTY_FORM); },
+      });
     }
   };
 
@@ -198,93 +166,24 @@ export default function AdminExamsPage() {
     setShowDeleteExamConfirm(true);
   };
 
-  const handleDeleteExam = async () => {
-    if (!deleteExamTarget || !cid || !token) return;
-    setDeletingId(deleteExamTarget.id);
-    try {
-      await deleteExam(cid, token, deleteExamTarget.id);
-      setExams((prev) => prev.filter((e) => e.id !== deleteExamTarget.id));
-      setShowDeleteExamConfirm(false);
-      setDeleteExamTarget(null);
-    } catch (e: any) {
-      alert(e.message ?? "Delete failed");
-    } finally {
-      setDeletingId(null);
-    }
+  const handleDeleteExam = () => {
+    if (!deleteExamTarget) return;
+    deleteExamMutation.mutate(deleteExamTarget.id, {
+      onSuccess: () => {
+        setShowDeleteExamConfirm(false);
+        setDeleteExamTarget(null);
+      },
+      onError: (e: any) => {
+        alert(e.message ?? "Delete failed");
+      },
+    });
   };
 
   // ── Mark entry (admin) ─────────────────────────────────────────────────────
 
-  const openMarkEntry = async (examId: string, classId: string) => {
+  const openMarkEntry = (examId: string, classId: string) => {
     setMarkEntryOpen(examId);
-    await loadMarkEntryClass(examId, classId);
-  };
-
-  const loadMarkEntryClass = async (examId: string, classId: string) => {
-    setMarkEntry((p) => ({ ...p, classId, subjectId: "", students: [], subjects: [], scores: {}, loading: true, error: null }));
-    try {
-      const [subData, stuData] = await Promise.all([
-        getSubjects(cid, token, { classId, limit: 200 }),
-        getStudents(cid, token, { classId, limit: 500 }),
-      ]);
-      const subs = subData.data ?? [];
-      const stus = stuData.data ?? [];
-      setMarkEntry((p) => ({
-        ...p, classId, students: stus, subjects: subs,
-        subjectId: subs[0]?.id ?? "",
-        scores: {}, loading: false,
-      }));
-    } catch (e: any) {
-      setMarkEntry((p) => ({ ...p, loading: false, error: e.message }));
-    }
-  };
-
-  const loadMarkEntrySubject = async (examId: string, subjectId: string) => {
-    setMarkEntry((p) => ({ ...p, subjectId, scores: {}, loading: true, error: null }));
-    try {
-      const data = await getResults(cid, token, { examId, classId: markEntry.classId, limit: 500 });
-      const rows = data.data ?? [];
-      const scoreMap: Record<string, string> = {};
-      markEntry.students.forEach((s) => {
-        const r = rows.find((r) => r.student?.id === s.id && r.subject?.id === subjectId);
-        scoreMap[s.id] = r != null ? String(r.score) : "";
-      });
-      setMarkEntry((p) => ({ ...p, scores: scoreMap, loading: false }));
-    } catch (e: any) {
-      setMarkEntry((p) => ({ ...p, loading: false, error: e.message }));
-    }
-  };
-
-  const handleMarkEntrySave = async (examId: string) => {
-    if (!markEntry.classId || !markEntry.subjectId) return;
-    setMarkEntry((p) => ({ ...p, saving: true, error: null, saved: false }));
-    try {
-      const items = markEntry.students
-        .filter((s) => markEntry.scores[s.id] !== "" && markEntry.scores[s.id] !== undefined)
-        .map((s) => ({
-          subjectId:  markEntry.subjectId,
-          studentId:  s.id,
-          score:      Number(markEntry.scores[s.id]),
-          totalMarks: 100,
-        }));
-
-      if (!items.length) {
-        setMarkEntry((p) => ({ ...p, saving: false, error: "No scores entered" }));
-        return;
-      }
-
-      await bulkUpsertResults(cid, token, {
-        examId,
-        classId: markEntry.classId,
-        accademicYearId: ayId,
-        results: items,
-      });
-
-      setMarkEntry((p) => ({ ...p, saving: false, saved: true }));
-      setTimeout(() => setMarkEntry((p) => ({ ...p, saved: false })), 2000);
-    } catch (e: any) {
-      setMarkEntry((p) => ({ ...p, saving: false, error: e.message }));
-    }
+    setExpandedEntryClassId(classId);
   };
 
   // ── Filtering logic ─────────────────────────────────────────────────────────
@@ -360,8 +259,17 @@ export default function AdminExamsPage() {
         {/* Global errors */}
         {pageError && (
           <div className="bg-rose-50 border border-rose-100 text-rose-600 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" /> {pageError}
-            <button onClick={() => setPageError(null)} className="ml-auto p-1 text-rose-400 hover:text-rose-600"><X className="w-4 h-4" /></button>
+            <AlertCircle className="w-4 h-4 shrink-0" /> {pageError.message}
+          </div>
+        )}
+        {createExamMutation.error && (
+          <div className="bg-rose-50 border border-rose-100 text-rose-600 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" /> {createExamMutation.error.message}
+          </div>
+        )}
+        {updateExamMutation.error && (
+          <div className="bg-rose-50 border border-rose-100 text-rose-600 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" /> {updateExamMutation.error.message}
           </div>
         )}
 
@@ -529,7 +437,7 @@ export default function AdminExamsPage() {
                                   </button>
                                   <button
                                     onClick={() => {
-                                      if (markEntryOpen === exam.id && markEntry.classId === cls.id) {
+                                      if (markEntryOpen === exam.id && expandedEntryClassId === cls.id) {
                                         setMarkEntryOpen(null);
                                       } else {
                                         openMarkEntry(exam.id, cls.id);
@@ -547,86 +455,13 @@ export default function AdminExamsPage() {
 
                           {/* Inline Mark Entry (if open for a class) */}
                           {markEntryOpen === exam.id && (
-                            <div className="bg-white rounded-3xl border border-emerald-100 p-5 space-y-4 shadow-sm">
-                              <div className="flex items-center justify-between border-b pb-2">
-                                <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide">
-                                  Mark Entry · {classes.find((c) => c.id === markEntry.classId)?.name}
-                                </p>
-                                <button onClick={() => setMarkEntryOpen(null)} className="text-gray-400 hover:text-gray-600">
-                                  <X className="w-4.5 h-4.5" />
-                                </button>
-                              </div>
-
-                              {markEntry.error && (
-                                <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 px-3 py-2 rounded-xl">
-                                  <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {markEntry.error}
-                                </div>
-                              )}
-
-                              <div>
-                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1.5">Select Subject</label>
-                                <select
-                                  value={markEntry.subjectId}
-                                  onChange={(e) => loadMarkEntrySubject(exam.id, e.target.value)}
-                                  disabled={!markEntry.classId || markEntry.subjects.length === 0}
-                                  className="w-full sm:w-64 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none disabled:opacity-50"
-                                >
-                                  <option value="">Select subject</option>
-                                  {markEntry.subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                </select>
-                              </div>
-
-                              {markEntry.loading ? (
-                                <div className="flex items-center justify-center py-6 text-gray-400">
-                                  <Loader2 className="w-5 h-5 animate-spin" />
-                                </div>
-                              ) : markEntry.students.length === 0 ? (
-                                <p className="text-xs text-gray-400 text-center py-4">No students in this class</p>
-                              ) : !markEntry.subjectId ? (
-                                <p className="text-xs text-gray-400 text-center py-4">Select a subject to enter marks</p>
-                              ) : (
-                                <>
-                                  <div className="rounded-2xl border border-gray-100 overflow-hidden">
-                                    <div className="px-4 py-2 bg-gray-50 flex justify-between text-[10px] font-bold text-gray-400 uppercase">
-                                      <span>Student</span>
-                                      <span>Score / 100</span>
-                                    </div>
-                                    <div className="divide-y divide-gray-50 max-h-60 overflow-y-auto">
-                                      {markEntry.students.map((s) => {
-                                        const score = markEntry.scores[s.id] ?? "";
-                                        return (
-                                          <div key={s.id} className="flex items-center justify-between px-4 py-2 bg-white">
-                                            <div className="flex-1 min-w-0">
-                                              <p className="text-sm font-semibold text-gray-900 truncate">{s.name}</p>
-                                              <p className="text-xs text-gray-400">{s.adno}</p>
-                                            </div>
-                                            <input
-                                              type="number" min={0} max={100} value={score}
-                                              onChange={(e) => setMarkEntry((p) => ({
-                                                ...p, scores: { ...p.scores, [s.id]: e.target.value },
-                                              }))}
-                                              placeholder="—"
-                                              className="w-16 text-center px-2 py-1.5 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:border-emerald-400"
-                                            />
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  </div>
-                                  <button
-                                    onClick={() => handleMarkEntrySave(exam.id)}
-                                    disabled={markEntry.saving}
-                                    className={cn(
-                                      "w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all",
-                                      markEntry.saved ? "bg-emerald-100 text-emerald-700" : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
-                                    )}
-                                  >
-                                    {markEntry.saving ? <Loader2 className="w-4 h-4 animate-spin" /> : markEntry.saved ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                                    {markEntry.saving ? "Saving..." : markEntry.saved ? "Saved" : "Save Marks"}
-                                  </button>
-                                </>
-                              )}
-                            </div>
+                            <MarkEntryInline
+                              examId={exam.id}
+                              classId={expandedEntryClassId!}
+                              ayId={ayId}
+                              classLabel={classes.find((c) => c.id === expandedEntryClassId)?.name ?? ""}
+                              onClose={() => { setMarkEntryOpen(null); setExpandedEntryClassId(null); }}
+                            />
                           )}
 
                         </div>
@@ -804,10 +639,10 @@ export default function AdminExamsPage() {
                   </button>
                   <button
                     type="submit"
-                    disabled={submitting}
+                    disabled={createExamMutation.isPending || updateExamMutation.isPending}
                     className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-2 transition-colors shadow-sm shadow-emerald-100"
                   >
-                    {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {(createExamMutation.isPending || updateExamMutation.isPending) && <Loader2 className="w-4 h-4 animate-spin" />}
                     {drawerMode === "create" ? "Create Exam" : "Save Changes"}
                   </button>
                 </div>
@@ -825,7 +660,7 @@ export default function AdminExamsPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.5 }}
               exit={{ opacity: 0 }}
-              onClick={() => !deletingId && setShowDeleteExamConfirm(false)}
+              onClick={() => !deleteExamMutation.isPending && setShowDeleteExamConfirm(false)}
               className="fixed inset-0 bg-black z-50 backdrop-blur-xs pointer-events-auto"
             />
             <motion.div
@@ -846,18 +681,18 @@ export default function AdminExamsPage() {
               <div className="grid grid-cols-2 gap-3 mt-6">
                 <button
                   onClick={() => setShowDeleteExamConfirm(false)}
-                  disabled={deletingId !== null}
+                  disabled={deleteExamMutation.isPending}
                   className="py-2.5 rounded-xl border border-gray-200 text-gray-600 font-bold text-xs hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDeleteExam}
-                  disabled={deletingId !== null}
+                  disabled={deleteExamMutation.isPending}
                   className="py-2.5 rounded-xl bg-rose-600 text-white font-bold text-xs hover:bg-rose-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-1"
                 >
-                  {deletingId !== null && <Loader2 className="w-3 h-3 animate-spin" />}
-                  {deletingId !== null ? "Deleting…" : "Delete"}
+                  {deleteExamMutation.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
+                  {deleteExamMutation.isPending ? "Deleting…" : "Delete"}
                 </button>
               </div>
             </motion.div>
@@ -865,5 +700,162 @@ export default function AdminExamsPage() {
         )}
       </AnimatePresence>
     </DashboardLayout>
+  );
+}
+
+// ── Mark Entry Inline Component ──────────────────────────────────────────────
+
+function MarkEntryInline({
+  examId, classId, ayId, classLabel, onClose,
+}: {
+  examId: string;
+  classId: string;
+  ayId: string;
+  classLabel: string;
+  onClose: () => void;
+}) {
+  const [subjectId, setSubjectId] = useState("");
+
+  const { data: subData, isLoading: subsLoading } = useSubjects({ classId, limit: 200 });
+  const { data: stuData, isLoading: stusLoading } = useStudents({ classId, limit: 500 });
+  const resultsQuery = useResults(
+    subjectId ? { examId, classId, limit: 500 } : { examId: "", classId: "", limit: 0 },
+  );
+
+  const bulkUpsertMutation = useBulkUpsertResults();
+
+  const subjects = subData?.data ?? [];
+  const students = stuData?.data ?? [];
+
+  const [scores, setScores] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  // Pre-populate scores when subject or results change
+  useEffect(() => {
+    if (!resultsQuery.data || !subjectId) return;
+    const rows = resultsQuery.data.data ?? [];
+    const scoreMap: Record<string, string> = {};
+    students.forEach((s) => {
+      const r = rows.find((r: any) => r.student?.id === s.id && r.subject?.id === subjectId);
+      scoreMap[s.id] = r != null ? String(r.score) : "";
+    });
+    setScores(scoreMap);
+  }, [resultsQuery.data, subjectId, students]);
+
+  const loading = subsLoading || stusLoading;
+
+  const handleSave = () => {
+    const items = students
+      .filter((s) => scores[s.id] !== "" && scores[s.id] !== undefined)
+      .map((s) => ({
+        subjectId: subjectId,
+        studentId: s.id,
+        score: Number(scores[s.id]),
+        totalMarks: 100,
+      }));
+
+    if (!items.length) return;
+
+    setSaving(true);
+    bulkUpsertMutation.mutate(
+      {
+        examId,
+        classId,
+        accademicYearId: ayId,
+        results: items,
+      },
+      {
+        onSuccess: () => {
+          setSaving(false);
+          setSaved(true);
+          setTimeout(() => setSaved(false), 2000);
+        },
+        onError: () => {
+          setSaving(false);
+        },
+      },
+    );
+  };
+
+  return (
+    <div className="bg-white rounded-3xl border border-emerald-100 p-5 space-y-4 shadow-sm">
+      <div className="flex items-center justify-between border-b pb-2">
+        <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide">
+          Mark Entry · {classLabel}
+        </p>
+        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <X className="w-4.5 h-4.5" />
+        </button>
+      </div>
+
+      {bulkUpsertMutation.error && (
+        <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 px-3 py-2 rounded-xl">
+          <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {bulkUpsertMutation.error.message}
+        </div>
+      )}
+
+      <div>
+        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1.5">Select Subject</label>
+        <select
+          value={subjectId}
+          onChange={(e) => setSubjectId(e.target.value)}
+          disabled={subjects.length === 0}
+          className="w-full sm:w-64 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none disabled:opacity-50"
+        >
+          <option value="">Select subject</option>
+          {subjects.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-6 text-gray-400">
+          <Loader2 className="w-5 h-5 animate-spin" />
+        </div>
+      ) : students.length === 0 ? (
+        <p className="text-xs text-gray-400 text-center py-4">No students in this class</p>
+      ) : !subjectId ? (
+        <p className="text-xs text-gray-400 text-center py-4">Select a subject to enter marks</p>
+      ) : (
+        <>
+          <div className="rounded-2xl border border-gray-100 overflow-hidden">
+            <div className="px-4 py-2 bg-gray-50 flex justify-between text-[10px] font-bold text-gray-400 uppercase">
+              <span>Student</span>
+              <span>Score / 100</span>
+            </div>
+            <div className="divide-y divide-gray-50 max-h-60 overflow-y-auto">
+              {students.map((s: any) => {
+                const score = scores[s.id] ?? "";
+                return (
+                  <div key={s.id} className="flex items-center justify-between px-4 py-2 bg-white">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">{s.name}</p>
+                      <p className="text-xs text-gray-400">{s.adno}</p>
+                    </div>
+                    <input
+                      type="number" min={0} max={100} value={score}
+                      onChange={(e) => setScores((p) => ({ ...p, [s.id]: e.target.value }))}
+                      placeholder="—"
+                      className="w-16 text-center px-2 py-1.5 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:border-emerald-400"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className={cn(
+              "w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all",
+              saved ? "bg-emerald-100 text-emerald-700" : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
+            )}
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+            {saving ? "Saving..." : saved ? "Saved" : "Save Marks"}
+          </button>
+        </>
+      )}
+    </div>
   );
 }

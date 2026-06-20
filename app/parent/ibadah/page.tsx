@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
-  getStudentIbadah, upsertStudentIbadah,
-  type StudentIbadahResponse, type IbadahConfig, type StudentIbadahLog,
+  type IbadahConfig, type StudentIbadahLog,
 } from "@/lib/ibadah-api";
+import { useStudentIbadah, useUpsertStudentIbadah } from "@/lib/api-hooks";
 import { useAuthStore } from "@/store/auth";
 import {
   Moon, Calendar, Loader2, AlertCircle,
@@ -57,43 +57,27 @@ function logToForm(log: StudentIbadahLog): FormState {
 }
 
 export default function ParentIbadahPage() {
-  const { user, accessToken, activeStudentId } = useAuthStore();
-  const cid      = user?.clientId ?? "";
-  const token    = accessToken ?? "";
+  const { user, activeStudentId } = useAuthStore();
   const ids      = user?.accessibleStudentIds ?? [];
   const activeId = activeStudentId ?? ids[0] ?? "";
 
-  const [ibadah, setIbadah]           = useState<StudentIbadahResponse | null>(null);
-  const [loading, setLoading]         = useState(true);
-  const [error, setError]             = useState<string | null>(null);
+  const {
+    data: ibadah,
+    isLoading: loading,
+    error,
+  } = useStudentIbadah({ studentId: activeId, limit: 90 });
+
+  const upsertMutation = useUpsertStudentIbadah();
+
   const [date, setDate]               = useState(fmt(new Date()));
   const [form, setForm]               = useState<FormState>(getEmptyForm());
-  const [saving, setSaving]           = useState(false);
   const [saved, setSaved]             = useState(false);
-  const [saveError, setSaveError]     = useState<string | null>(null);
   const [view, setView]               = useState<"form" | "history">("form");
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    if (!cid || !token || !activeId) { setLoading(false); return; }
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getStudentIbadah(cid, token, activeId, { limit: 90 });
-      setIbadah(data);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [cid, token, activeId]);
-
-  useEffect(() => { load(); }, [load]);
 
   // Reset save state when date changes
   useEffect(() => {
     setSaved(false);
-    setSaveError(null);
   }, [date]);
 
   // Pre-fill form from existing log when date or ibadah changes
@@ -154,41 +138,31 @@ export default function ParentIbadahPage() {
     setSaved(false);
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!activeId) return;
-    setSaving(true);
-    setSaveError(null);
-    try {
-      const saved = await upsertStudentIbadah(cid, token, activeId, {
-        date,
-        fajr:    form.fajr,
-        dhuhr:   form.dhuhr,
-        asr:     form.asr,
-        maghrib: form.maghrib,
-        isha:    form.isha,
-        quranPages: form.quranPages,
-        customData: Object.keys(form.customData).length > 0 ? form.customData : undefined,
-        notes:   form.notes || undefined,
-        academicYearId: user?.defaultAcademicYearId ?? undefined,
-      });
-      // Update local log list
-      setIbadah((prev) => {
-        if (!prev) return prev;
-        const exists = prev.logs.findIndex((l) => l.date.startsWith(date));
-        const updated = { ...saved, date: saved.date };
-        const logs =
-          exists >= 0
-            ? prev.logs.map((l, i) => (i === exists ? updated : l))
-            : [updated, ...prev.logs].sort((a, b) => b.date.localeCompare(a.date));
-        return { ...prev, logs };
-      });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    } catch (e) {
-      setSaveError((e as Error).message);
-    } finally {
-      setSaving(false);
-    }
+    upsertMutation.mutate(
+      {
+        studentId: activeId,
+        payload: {
+          date,
+          fajr:    form.fajr,
+          dhuhr:   form.dhuhr,
+          asr:     form.asr,
+          maghrib: form.maghrib,
+          isha:    form.isha,
+          quranPages: form.quranPages,
+          customData: Object.keys(form.customData).length > 0 ? form.customData : undefined,
+          notes:   form.notes || undefined,
+          academicYearId: user?.defaultAcademicYearId ?? undefined,
+        },
+      },
+      {
+        onSuccess: () => {
+          setSaved(true);
+          setTimeout(() => setSaved(false), 3000);
+        },
+      },
+    );
   };
 
   const prayerCount = activePrayers.filter((p) => form[p]).length;
@@ -218,7 +192,7 @@ export default function ParentIbadahPage() {
         <div className="text-center py-16 text-gray-400 text-sm">No children linked to this account</div>
       ) : error ? (
         <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0" /> {error}
+          <AlertCircle className="w-4 h-4 shrink-0" /> {error.message}
         </div>
       ) : ibadah ? (
         <>
@@ -464,9 +438,9 @@ export default function ParentIbadahPage() {
               </div>
 
               {/* Save error */}
-              {saveError && (
+              {upsertMutation.error && (
                 <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" /> {saveError}
+                  <AlertCircle className="w-4 h-4 shrink-0" /> {upsertMutation.error.message}
                 </div>
               )}
 
@@ -474,7 +448,7 @@ export default function ParentIbadahPage() {
               <div className="sticky bottom-20 lg:bottom-6">
                 <button
                   onClick={handleSave}
-                  disabled={saving}
+                  disabled={upsertMutation.isPending}
                   className={cn(
                     "w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl font-bold text-sm transition-all shadow-lg",
                     saved
@@ -482,7 +456,7 @@ export default function ParentIbadahPage() {
                       : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60",
                   )}
                 >
-                  {saving ? (
+                  {upsertMutation.isPending ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
                   ) : saved ? (
                     <><CheckCircle2 className="w-5 h-5" /> Saved!</>

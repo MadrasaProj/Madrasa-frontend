@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
-import { listDiary, type DiaryEntry } from "@/lib/diary-api";
-import { getDiaryEvents, type DiaryEventNotification, type NotificationType } from "@/lib/notifications-api";
+import { useDiary, useDiaryEvents } from "@/lib/api-hooks";
+import { type DiaryEntry } from "@/lib/diary-api";
+import { type DiaryEventNotification, type NotificationType } from "@/lib/notifications-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -28,39 +29,28 @@ const TYPE_CONFIG: Record<NotificationType, { label: string; icon: React.Element
 };
 
 export default function ParentDiaryPage() {
-  const { user, accessToken, activeClientId, activeStudentId } = useAuthStore();
-  const cid   = activeClientId ?? "";
-  const token = accessToken ?? "";
+  const { user, activeClientId, activeStudentId } = useAuthStore();
 
-  // Get active student info from accessible students
   const students = user?.accessibleStudents ?? [];
   const activeStudent = students.find((s) => s.id === activeStudentId) ?? students[0];
   const classId = (activeStudent as any)?.classId ?? "";
 
   const [date, setDate] = useState(fmt(new Date()));
-  const [entries, setEntries] = useState<DiaryEntry[]>([]);
-  const [events, setEvents] = useState<DiaryEventNotification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async (d: string) => {
-    if (!cid || !token || !classId) return;
-    setLoading(true); setError(null);
-    try {
-      const [diaryData, eventsData] = await Promise.all([
-        listDiary(cid, token, { classId, studentId: activeStudent?.id, from: d, to: d }),
-        getDiaryEvents(cid, token, { from: d, to: d, classId }),
-      ]);
-      setEntries(diaryData);
-      setEvents(eventsData);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [cid, token, classId, activeStudent]);
+  const {
+    data: entries = [],
+    isLoading: diaryLoading,
+    error: diaryError,
+  } = useDiary({ classId, studentId: activeStudent?.id, from: date, to: date });
 
-  useEffect(() => { load(date); }, [date, load]);
+  const {
+    data: events = [],
+    isLoading: eventsLoading,
+    error: eventsError,
+  } = useDiaryEvents({ from: date, to: date, classId });
+
+  const loading = diaryLoading || eventsLoading;
+  const error = diaryError?.message || eventsError?.message || null;
 
   const prevDay = () => { const d = new Date(date); d.setDate(d.getDate() - 1); setDate(fmt(d)); };
   const nextDay = () => {
@@ -80,7 +70,7 @@ export default function ParentDiaryPage() {
         backHref="/parent"
       />
 
-      {error && <ApiErrorBanner message={error} onRetry={() => load(date)} />}
+      {error && <ApiErrorBanner message={error} onRetry={() => {}} />}
 
       {/* Date nav */}
       <div className="flex items-center gap-3 mb-5">

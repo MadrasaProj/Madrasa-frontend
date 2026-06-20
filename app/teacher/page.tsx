@@ -1,10 +1,7 @@
-import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { ActionCard } from "@/components/ui/Cards";
 import { SectionHeader } from "@/components/ui/PageHeader";
-import { listHomework } from "@/lib/homework-api";
-import { getAttendanceSummary } from "@/lib/reports-api";
-import { getUnreadCount } from "@/lib/notifications-api";
+import { useHomework, useAttendanceSummary, useUnreadCount } from "@/lib/api-hooks";
 import { useAuthStore } from "@/store/auth";
 import { useNavigate } from "react-router-dom";
 import {
@@ -14,28 +11,19 @@ import {
 import { motion } from "framer-motion";
 
 export default function TeacherDashboard() {
-  const { user, accessToken } = useAuthStore();
+  const { user } = useAuthStore();
   const navigate = useNavigate();
-  const cid   = user?.clientId ?? "";
-  const token = accessToken ?? "";
 
-  const [stats, setStats]   = useState({ hw: 0, att: 0, unread: 0 });
-  const [loading, setLoading] = useState(true);
+  const { data: hw = [], isLoading: hwLoading } = useHomework();
+  const { data: attSummary, isLoading: attLoading } = useAttendanceSummary();
+  const { data: unreadData, isLoading: unreadLoading } = useUnreadCount();
 
-  useEffect(() => {
-    if (!cid || !token) return;
-    Promise.all([
-      listHomework(cid, token).catch(() => [] as any[]),
-      getAttendanceSummary(cid, token).catch(() => null),
-      getUnreadCount(cid, token).catch(() => ({ count: 0 })),
-    ]).then(([hw, att, notif]) => {
-      setStats({
-        hw: hw.length,
-        att: att?.rate ?? 0,
-        unread: notif.count,
-      });
-    }).finally(() => setLoading(false));
-  }, [cid, token]);
+  const loading = hwLoading || attLoading || unreadLoading;
+  const stats = {
+    hw: hw?.length ?? 0,
+    att: attSummary?.rate ?? 0,
+    unread: unreadData?.count ?? 0,
+  };
 
   const today = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
 

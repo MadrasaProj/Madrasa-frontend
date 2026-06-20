@@ -1,13 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { SkeletonList } from "@/components/ui/Skeleton";
-import {
-  getNotifications, markNotificationRead,
-  type NotificationRecord,
-} from "@/lib/notifications-api";
+import { useNotifications, useMarkNotificationRead } from "@/lib/api-hooks";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
@@ -15,6 +11,7 @@ import {
   BookOpen, ClipboardList, GraduationCap, CreditCard,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import type { NotificationRecord } from "@/lib/notifications-api";
 
 const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
   ANNOUNCEMENT:      { icon: Bell,          color: "text-indigo-700", bg: "bg-indigo-100" },
@@ -26,41 +23,26 @@ const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: 
 };
 
 export default function TeacherNotificationsPage() {
-  const { user, accessToken } = useAuthStore();
-  const cid   = user?.clientId ?? "";
-  const token = accessToken ?? "";
+  const { user } = useAuthStore();
   const navigate = useNavigate();
 
-  const [notifs, setNotifs]       = useState<NotificationRecord[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState<string | null>(null);
+  const { data: notifData, isLoading: loading, error: queryError } = useNotifications({ take: 50 });
+  const markReadMutation = useMarkNotificationRead();
 
-  const load = useCallback(async () => {
-    if (!cid || !token) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getNotifications(cid, token, { take: 50 });
-      setNotifs(data.notifications ?? []);
-    } catch (e) { setError((e as Error).message); }
-    finally { setLoading(false); }
-  }, [cid, token]);
+  const notifs = notifData?.notifications ?? [];
+  const error = queryError ? (queryError as Error).message : null;
 
-  useEffect(() => { load(); }, [load]);
-
-  const handleClick = async (n: NotificationRecord) => {
+  const handleClick = (n: NotificationRecord) => {
     if (!n.isRead) {
-      await markNotificationRead(cid, token, n.id).catch(() => {});
-      setNotifs((prev) => prev.map((x) => x.id === n.id ? { ...x, isRead: true } : x));
+      markReadMutation.mutate(n.id);
     }
     if (n.actionUrl) {
       navigate(n.actionUrl);
     }
   };
 
-  const handleRead = async (id: string) => {
-    await markNotificationRead(cid, token, id).catch(() => {});
-    setNotifs((prev) => prev.map((n) => n.id === id ? { ...n, isRead: true } : n));
+  const handleRead = (id: string) => {
+    markReadMutation.mutate(id);
   };
 
   const unread = notifs.filter((n) => !n.isRead).length;
@@ -73,7 +55,7 @@ export default function TeacherNotificationsPage() {
         icon={Bell}
       />
 
-      {error && <ApiErrorBanner message={error} onRetry={load} />}
+      {error && <ApiErrorBanner message={error} />}
 
       {loading ? (
         <div className="space-y-2 pb-20">

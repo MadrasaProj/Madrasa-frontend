@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
@@ -8,10 +8,9 @@ import { Skeleton, SkeletonList } from "@/components/ui/Skeleton";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth";
+import { useStudentAttendance } from "@/lib/api-hooks";
 import { AlertCircle, CalendarDays, CheckCircle2, XCircle, Clock, FileX } from "lucide-react";
 import {
-  getStudentAttendance,
-  type StudentAttendanceResponse,
   type AttendanceStatus,
 } from "@/lib/attendance-api";
 
@@ -59,40 +58,21 @@ function monthLabel(key: string, locale: string) {
 
 export default function ParentAttendancePage() {
   const { lang } = useLanguageStore();
-  const { user, accessToken, activeStudentId } = useAuthStore();
+  const { user, activeStudentId } = useAuthStore();
 
   const locale = lang === "ml" ? "ml-IN" : "en-US";
   const effectiveId = activeStudentId ?? (user?.accessibleStudentIds?.[0] ?? "");
   const activeStudent = user?.accessibleStudents?.find((s) => s.id === effectiveId);
 
-  const [data, setData]       = useState<StudentAttendanceResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState<string | null>(null);
-
-  const [retryKey, setRetryKey] = useState(0);
-  const loadData = () => setRetryKey((k) => k + 1);
-
-  useEffect(() => {
-    if (!effectiveId || !accessToken || !user?.clientId) return;
-
-    const controller = new AbortController();
-    let mounted = true;
-    setLoading(true);
-    setError(null);
-
-    getStudentAttendance(
-      user.clientId,
-      accessToken,
-      effectiveId,
-      user.defaultAcademicYearId ? { academicYearId: user.defaultAcademicYearId } : undefined,
-      controller.signal,
-    )
-      .then((res)  => { if (mounted) setData(res); })
-      .catch((err: Error) => { if (!mounted) return; if (err.name !== "AbortError") setError(err.message); })
-      .finally(()  => { if (mounted) setLoading(false); });
-
-    return () => { mounted = false; controller.abort(); };
-  }, [effectiveId, accessToken, user?.clientId, retryKey]);
+  const {
+    data,
+    isLoading: loading,
+    error,
+    refetch: loadData,
+  } = useStudentAttendance({
+    studentId: effectiveId,
+    academicYearId: user?.defaultAcademicYearId ?? undefined,
+  });
 
   // ── Stats ──────────────────────────────────────────────────────────────────
 
@@ -166,7 +146,7 @@ export default function ParentAttendancePage() {
         </div>
       )}
 
-      {error && <ApiErrorBanner message={error} onRetry={loadData} />}
+      {error && <ApiErrorBanner message={error.message} onRetry={() => loadData()} />}
 
       {!loading && !error && data && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">

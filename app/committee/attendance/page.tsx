@@ -1,25 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { getClientConfig } from "@/lib/config-api";
+import { useClientConfig } from "@/lib/api-hooks";
 import { useAuthStore } from "@/store/auth";
 import { ShieldOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function CommitteeAttendancePage() {
-  const { accessToken, activeClientId } = useAuthStore();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [allowed, setAllowed] = useState(true);
-
-  useEffect(() => {
-    if (!activeClientId || !accessToken) { setLoading(false); return; }
-    getClientConfig(activeClientId, accessToken)
-      .then((cfg) => { if (cfg.showCommitteeAttendance === false) setAllowed(false); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [activeClientId, accessToken]);
+  const { data: config, isLoading: loading } = useClientConfig();
+  const allowed = !config || config.showCommitteeAttendance !== false;
 
   if (loading) {
     return (

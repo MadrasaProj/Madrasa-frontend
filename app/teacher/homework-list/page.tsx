@@ -1,11 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useMemo } from "react";
 
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { listHomework, getSubmissions, type HomeworkAssignment, type SubmissionsResponse } from "@/lib/homework-api";
-import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
+import { useHomework, useClasses, useSubmissions } from "@/lib/api-hooks";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
@@ -13,51 +12,30 @@ import {
   Loader2, ChevronDown, ChevronUp, Calendar,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import type { HomeworkAssignment, SubmissionsResponse } from "@/lib/homework-api";
 
 function fmt(d: Date) { return d.toISOString().split("T")[0]; }
 
 export default function TeacherHomeworkListPage() {
-  const { user, accessToken } = useAuthStore();
-  const cid   = user?.clientId ?? "";
-  const token = accessToken ?? "";
+  const { user } = useAuthStore();
 
-  const [classes, setClasses]     = useState<ClassRecord[]>([]);
-  const [homework, setHomework]   = useState<HomeworkAssignment[]>([]);
   const [activeClassId, setActiveClassId] = useState("");
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [subsMap, setSubsMap]     = useState<Record<string, SubmissionsResponse>>({});
-  const [loadingSubs, setLoadingSubs] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
-    if (!cid || !token) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const [cls, hw] = await Promise.all([
-        getMyClasses(cid, token),
-        listHomework(cid, token),
-      ]);
-      setClasses(cls);
-      setHomework(hw);
-      if (cls.length > 0) setActiveClassId(cls[0].id);
-    } catch (e) { setError((e as Error).message); }
-    finally { setLoading(false); }
-  }, [cid, token]);
+  const { data: classes = [], isLoading: classesLoading } = useClasses();
+  const { data: homework = [], isLoading: hwLoading } = useHomework();
+  const { data: subsData, isLoading: subsLoading } = useSubmissions(expandedId ?? "");
 
-  useEffect(() => { loadData(); }, [loadData]);
+  // Set first class on load
+  if (classes.length > 0 && !activeClassId) {
+    setActiveClassId(classes[0].id);
+  }
 
-  const loadSubs = async (hwId: string) => {
-    if (subsMap[hwId]) { setExpandedId(expandedId === hwId ? null : hwId); return; }
-    setLoadingSubs(hwId);
-    setError(null);
-    try {
-      const data = await getSubmissions(cid, token, hwId);
-      setSubsMap((prev) => ({ ...prev, [hwId]: data }));
-      setExpandedId(hwId);
-    } catch (e) { setError((e as Error).message); }
-    finally { setLoadingSubs(null); }
+  const loading = classesLoading || hwLoading;
+  const error = null as string | null; // Query errors from hooks
+
+  const loadSubs = (hwId: string) => {
+    setExpandedId(expandedId === hwId ? null : hwId);
   };
 
   const today = fmt(new Date());
@@ -69,7 +47,7 @@ export default function TeacherHomeworkListPage() {
     <DashboardLayout>
       <PageHeader title="Homework Overview" icon={BookOpen} back backHref="/teacher" />
 
-      {error && <ApiErrorBanner message={error} onRetry={loadData} />}
+      {error && <ApiErrorBanner message={error} />}
 
       {loading ? (
         <div className="space-y-4">
@@ -133,8 +111,8 @@ export default function TeacherHomeworkListPage() {
               </p>
               <div className="space-y-2 mb-5">
                 {overdue.map((hw) => (
-                  <HWRow key={hw.id} hw={hw} expandedId={expandedId} loadingSubs={loadingSubs}
-                    subs={subsMap[hw.id]} onExpand={loadSubs} overdue />
+                  <HWRow key={hw.id} hw={hw} expandedId={expandedId} loadingSubs={subsLoading && expandedId === hw.id}
+                    subs={expandedId === hw.id ? subsData : undefined} onExpand={loadSubs} overdue />
                 ))}
               </div>
             </>
@@ -146,8 +124,8 @@ export default function TeacherHomeworkListPage() {
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Upcoming ({upcoming.length})</p>
               <div className="space-y-2 pb-20">
                 {upcoming.map((hw) => (
-                  <HWRow key={hw.id} hw={hw} expandedId={expandedId} loadingSubs={loadingSubs}
-                    subs={subsMap[hw.id]} onExpand={loadSubs} />
+                  <HWRow key={hw.id} hw={hw} expandedId={expandedId} loadingSubs={subsLoading && expandedId === hw.id}
+                    subs={expandedId === hw.id ? subsData : undefined} onExpand={loadSubs} />
                 ))}
               </div>
             </>
@@ -167,7 +145,7 @@ function HWRow({
 }: {
   hw: HomeworkAssignment;
   expandedId: string | null;
-  loadingSubs: string | null;
+  loadingSubs: boolean;
   subs?: SubmissionsResponse;
   onExpand: (id: string) => void;
   overdue?: boolean;
@@ -194,7 +172,7 @@ function HWRow({
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {subs && <span className="text-xs text-red-500 font-bold">{notSubmitted}/{total} pending</span>}
-          {loadingSubs === hw.id
+          {loadingSubs
             ? <Loader2 className="w-4 h-4 animate-spin text-gray-300" />
             : expandedId === hw.id
               ? <ChevronUp className="w-4 h-4 text-gray-400" />

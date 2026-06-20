@@ -1,13 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { getResults, type ResultRecord } from "@/lib/results-api";
-import { getExams, type ExamRecord } from "@/lib/exams-api";
-import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
-import { getHomeworkSummary } from "@/lib/reports-api";
+import { useResults, useExams, useClasses, useHomeworkSummary } from "@/lib/api-hooks";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
-import { Star, TrendingUp, BookOpen, RefreshCw } from "lucide-react";
+import { Star, TrendingUp, BookOpen } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { motion } from "framer-motion";
 import {
@@ -30,65 +27,33 @@ function getGrade(score: number) {
 }
 
 export default function TeacherPerformancePage() {
-  const { user, accessToken } = useAuthStore();
-  const cid = user?.clientId ?? "";
-  const token = accessToken ?? "";
+  const { user } = useAuthStore();
   const ayId = user?.defaultAcademicYearId ?? "";
 
-  const [classes, setClasses] = useState<ClassRecord[]>([]);
-  const [exams, setExams] = useState<ExamRecord[]>([]);
-  const [results, setResults] = useState<ResultRecord[]>([]);
-  const [hwSummary, setHwSummary] = useState<{
-    completionRate: number;
-    totalAssignments: number;
-  } | null>(null);
   const [activeClassId, setActiveClassId] = useState("");
   const [activeExamId, setActiveExamId] = useState("");
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!cid || !token) return;
-    Promise.all([
-      getMyClasses(cid, token),
-      getHomeworkSummary(cid, token).catch(() => null),
-    ])
-      .then(([cls, hw]) => {
-        setClasses(cls);
-        setHwSummary(
-          hw
-            ? {
-                completionRate: hw.completionRate,
-                totalAssignments: hw.totalAssignments,
-              }
-            : null,
-        );
-        if (cls.length > 0) setActiveClassId(cls[0].id);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [cid, token]);
+  const { data: classes = [], isLoading: classesLoading } = useClasses();
+  const { data: hwSummaryData } = useHomeworkSummary();
+  const { data: examsData } = useExams(activeClassId ? { accademicYearId: ayId || undefined, limit: 20 } : undefined);
+  const { data: resultsData } = useResults(
+    activeExamId && activeClassId ? { examId: activeExamId, classId: activeClassId, limit: 100 } : {} as any,
+  );
 
-  useEffect(() => {
-    if (!cid || !token || !activeClassId) return;
-    getExams(cid, token, { accademicYearId: ayId || undefined, limit: 20 })
-      .then((data) => {
-        setExams(data.data ?? []);
-        const first = data.data?.[0];
-        if (first) setActiveExamId(first.id);
-      })
-      .catch(() => {});
-  }, [cid, token, activeClassId, ayId]);
+  const loading = classesLoading;
+  const hwSummary = hwSummaryData ? { completionRate: hwSummaryData.completionRate, totalAssignments: hwSummaryData.totalAssignments } : null;
+  const exams = examsData?.data ?? [];
+  const results = resultsData?.data ?? [];
 
-  useEffect(() => {
-    if (!cid || !token || !activeExamId) return;
-    getResults(cid, token, {
-      examId: activeExamId,
-      classId: activeClassId,
-      limit: 100,
-    })
-      .then((data) => setResults(data.data ?? []))
-      .catch(() => {});
-  }, [cid, token, activeExamId, activeClassId]);
+  // Set first class
+  if (classes.length > 0 && !activeClassId) {
+    setActiveClassId(classes[0].id);
+  }
+
+  // Set first exam
+  if (exams.length > 0 && !activeExamId) {
+    setActiveExamId(exams[0].id);
+  }
 
   const gradeData = ["A+", "A", "B", "C", "F"].map((g) => ({
     grade: g,

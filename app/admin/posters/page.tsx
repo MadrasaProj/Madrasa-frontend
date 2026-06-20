@@ -1,13 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { useAuthStore } from "@/store/auth";
-import {
-  getPosters,
-  createPoster,
-  updatePoster,
-  deletePoster,
-  type PosterRecord,
-} from "@/lib/posters-api";
+import { usePosters, useCreatePoster, useUpdatePoster, useDeletePoster } from "@/lib/api-hooks";
 import {
   PosterCreator,
   type PosterCreatorRef,
@@ -18,35 +11,18 @@ import { SkeletonGrid } from "@/components/ui/Skeleton";
 type View = "list" | "create" | "edit";
 
 export default function AdminPostersPage() {
-  const { user, accessToken } = useAuthStore();
-  const clientId = user?.clientId ?? "";
-  const token = accessToken ?? "";
+  const { data: postersData, isLoading: loading } = usePosters({ limit: 100 });
+  const posters = postersData?.data ?? [];
+  const createPosterMutation = useCreatePoster();
+  const updatePosterMutation = useUpdatePoster();
+  const deletePosterMutation = useDeletePoster();
 
   const [view, setView] = useState<View>("list");
-  const [posters, setPosters] = useState<PosterRecord[]>([]);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [editingPoster, setEditingPoster] = useState<PosterRecord | null>(null);
+  const [editingPoster, setEditingPoster] = useState<any>(null);
   const [title, setTitle] = useState("Untitled Poster");
 
   const creatorRef = useRef<PosterCreatorRef>(null);
-
-  const loadPosters = useCallback(async () => {
-    if (!clientId) return;
-    setLoading(true);
-    try {
-      const res = await getPosters(clientId, { limit: 100 });
-      setPosters(res.data);
-    } catch {
-      setPosters([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [clientId]);
-
-  useEffect(() => {
-    loadPosters();
-  }, [loadPosters]);
 
   const handleCreate = () => {
     setEditingPoster(null);
@@ -54,20 +30,17 @@ export default function AdminPostersPage() {
     setView("create");
   };
 
-  const handleEdit = (poster: PosterRecord) => {
+  const handleEdit = (poster: any) => {
     setEditingPoster(poster);
     setTitle(poster.title);
     setView("edit");
   };
 
-  const handleDelete = async (poster: PosterRecord) => {
+  const handleDelete = async (poster: any) => {
     if (!confirm(`Delete "${poster.title}"?`)) return;
-    try {
-      await deletePoster(clientId, token, poster.id);
-      setPosters((prev) => prev.filter((p) => p.id !== poster.id));
-    } catch {
-      alert("Failed to delete poster");
-    }
+    deletePosterMutation.mutate(poster.id, {
+      onError: () => alert("Failed to delete poster"),
+    });
   };
 
   const handleSave = async () => {
@@ -79,19 +52,15 @@ export default function AdminPostersPage() {
     setSaving(true);
     try {
       if (view === "edit" && editingPoster) {
-        const updated = await updatePoster(clientId, token, editingPoster.id, {
-          title,
-          sceneData,
+        await updatePosterMutation.mutateAsync({
+          posterId: editingPoster.id,
+          data: { title, sceneData },
         });
-        setPosters((prev) =>
-          prev.map((p) => (p.id === updated.id ? updated : p))
-        );
       } else {
-        const created = await createPoster(clientId, token, {
+        await createPosterMutation.mutateAsync({
           title,
           sceneData,
         });
-        setPosters((prev) => [created, ...prev]);
       }
       setView("list");
     } catch {

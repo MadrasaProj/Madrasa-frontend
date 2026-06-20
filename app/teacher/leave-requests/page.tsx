@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
@@ -6,16 +6,12 @@ import { SkeletonList } from "@/components/ui/Skeleton";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth";
-import {
-  getPendingLeaveRequests,
-  reviewLeaveRequest,
-  type LeaveRequest,
-  type LeaveReasonType,
-} from "@/lib/leave-requests-api";
+import { usePendingLeaveRequests, useReviewLeaveRequest } from "@/lib/api-hooks";
 import {
   Loader2, CheckCircle2, XCircle, AlertCircle,
   Search, ChevronDown, ChevronUp, UserCheck,
 } from "lucide-react";
+import type { LeaveReasonType } from "@/lib/leave-requests-api";
 
 const REASON_CONFIG: Record<LeaveReasonType, { label: string; color: string; bg: string }> = {
   LEAVE: { label: "Leave", color: "text-amber-600", bg: "bg-amber-50" },
@@ -29,49 +25,31 @@ const STATUS_STYLES: Record<string, { border: string }> = {
 };
 
 export default function TeacherLeaveRequestsPage() {
-  const { user, accessToken, activeClientId } = useAuthStore();
-  const cid = activeClientId ?? "";
-  const token = accessToken ?? "";
+  const { user } = useAuthStore();
 
-  const [requests, setRequests] = useState<LeaveRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("PENDING");
   const [search, setSearch] = useState("");
 
   const [expanded, setExpanded] = useState<string | null>(null);
   const [reviewNote, setReviewNote] = useState("");
-  const [reviewingSave, setReviewingSave] = useState(false);
 
-  const loadRequests = async () => {
-    if (!cid || !token) return;
-    setLoading(true);
-    try {
-      const res = await getPendingLeaveRequests(cid, token, { status: filter });
-      setRequests(res.requests);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: requestsData, isLoading: loading, error: queryError } = usePendingLeaveRequests({ status: filter });
+  const reviewMutation = useReviewLeaveRequest();
 
-  useEffect(() => {
-    loadRequests();
-  }, [cid, token, filter]);
+  const requests = requestsData?.requests ?? [];
+  const error = queryError ? (queryError as Error).message : null;
+  const reviewingSave = reviewMutation.isPending;
 
-  const handleReview = async (id: string, status: "APPROVED" | "REJECTED") => {
-    setReviewingSave(true);
-    try {
-      await reviewLeaveRequest(cid, token, id, { status, reviewNote: reviewNote || undefined });
-      setExpanded(null);
-      setReviewNote("");
-      loadRequests();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setReviewingSave(false);
-    }
+  const handleReview = (id: string, status: "APPROVED" | "REJECTED") => {
+    reviewMutation.mutate(
+      { id, data: { status, reviewNote: reviewNote || undefined } },
+      {
+        onSuccess: () => {
+          setExpanded(null);
+          setReviewNote("");
+        },
+      },
+    );
   };
 
   const filtered = search

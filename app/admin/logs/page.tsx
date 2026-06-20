@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { getActivityLogs, type ActivityLogItem } from "@/lib/super-admin-api";
+import { useActivityLogs } from "@/lib/api-hooks";
 import { useAuthStore } from "@/store/auth";
 import { motion } from "framer-motion";
 import {
@@ -57,39 +57,26 @@ const ALL_ACTORS = [
 const TAKE = 30;
 
 export default function ActivityLogsPage() {
-  const { user, accessToken, activeClientId } = useAuthStore();
+  const { user, activeClientId } = useAuthStore();
   const cid = activeClientId ?? "";
-  const token = accessToken ?? "";
 
-  const [logs, setLogs] = useState<ActivityLogItem[]>([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
-  const [loading, setLoading] = useState(false);
   const [actorType, setActorType] = useState("");
   const [action, setAction] = useState("");
 
-  const load = useCallback(() => {
-    if (!cid || !token) return;
-    setLoading(true);
-    getActivityLogs(cid, token, {
-      actorType: actorType || undefined,
-      action: action || undefined,
-      skip: page * TAKE,
-      take: TAKE,
-    })
-      .then((r) => {
-        setLogs(r.data);
-        setTotal(r.total);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [cid, token, actorType, action, page]);
+  const { data: logsResponse, isLoading: loading, refetch } = useActivityLogs(cid, {
+    actorType: actorType || undefined,
+    action: action || undefined,
+    skip: page * TAKE,
+    take: TAKE,
+  });
 
   useEffect(() => {
-    load();
-  }, [load]);
+    refetch();
+  }, [actorType, action, page]);
 
-  const totalPages = Math.ceil(total / TAKE);
+  const totalPages = Math.ceil((logsResponse?.total ?? 0) / TAKE);
+  const logs = logsResponse?.data ?? [];
 
   return (
     <DashboardLayout>
@@ -133,7 +120,7 @@ export default function ActivityLogsPage() {
           Clear
         </button>
         <button
-          onClick={load}
+          onClick={() => refetch()}
           className="ml-auto flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition-all"
         >
           <RefreshCw className="w-3.5 h-3.5" /> Refresh
@@ -142,7 +129,7 @@ export default function ActivityLogsPage() {
 
       {/* Summary */}
       <p className="text-xs text-gray-400 mb-3">
-        {total} total entries{actorType || action ? " (filtered)" : ""}
+        {logsResponse?.total ?? 0} total entries{actorType || action ? " (filtered)" : ""}
       </p>
 
       {/* Log list */}

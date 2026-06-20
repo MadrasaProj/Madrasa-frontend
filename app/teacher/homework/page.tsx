@@ -1,14 +1,12 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import {
-  listHomework, createHomework, deleteHomework, updateHomework,
-  getSubmissions, bulkUpdateSubmissions,
-  type HomeworkAssignment, type HomeworkStatus, type SubmissionsResponse,
-} from "@/lib/homework-api";
-import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
-import { getSubjects, type SubjectRecord } from "@/lib/subjects-api";
+  useHomework, useCreateHomework, useUpdateHomework, useDeleteHomework,
+  useSubmissions, useBulkUpdateSubmissions, useClasses,
+} from "@/lib/api-hooks";
+import { useSubjects } from "@/lib/api-hooks";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
@@ -18,6 +16,7 @@ import {
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { motion, AnimatePresence } from "framer-motion";
+import type { HomeworkStatus, SubmissionsResponse } from "@/lib/homework-api";
 
 type Tab = "assign" | "check" | "pending";
 
@@ -30,19 +29,12 @@ const STATUS_CONFIG = {
 function fmt(d: Date) { return d.toISOString().split("T")[0]; }
 
 export default function TeacherHomeworkPage() {
-  const { user, accessToken } = useAuthStore();
-  const cid          = user?.clientId ?? "";
-  const token        = accessToken ?? "";
+  const { user } = useAuthStore();
   const teacherId    = user?.id ?? "";
   const isPeriodBased = user?.attendanceMode === "PERIOD_BASED";
 
   const [activeTab, setActiveTab] = useState<Tab>("check");
-  const [classes, setClasses]     = useState<ClassRecord[]>([]);
-  const [homework, setHomework]   = useState<HomeworkAssignment[]>([]);
-  const [loading, setLoading]     = useState(true);
   const [expandedHw, setExpandedHw] = useState<string | null>(null);
-  const [submissions, setSubmissions] = useState<Record<string, SubmissionsResponse>>({});
-  const [loadingSubs, setLoadingSubs] = useState<string | null>(null);
   const [savingSubs, setSavingSubs]   = useState(false);
   const [localStatus, setLocalStatus] = useState<Record<string, Record<string, HomeworkStatus>>>({});
   const [deletingId, setDeletingId]   = useState<string | null>(null);
@@ -54,17 +46,14 @@ export default function TeacherHomeworkPage() {
   const [desc, setDesc]               = useState("");
   const [dueDate, setDueDate]         = useState(fmt(new Date(Date.now() + 86400_000)));
   const [subjectId, setSubjectId]     = useState("");
-  const [classSubjects, setClassSubjects] = useState<SubjectRecord[]>([]);
-  const [creating, setCreating]       = useState(false);
 
   // Edit homework form
   const [showEditDrawer, setShowEditDrawer] = useState(false);
-  const [editTarget, setEditTarget]         = useState<HomeworkAssignment | null>(null);
+  const [editTarget, setEditTarget]         = useState<any | null>(null);
   const [editTitle, setEditTitle]           = useState("");
   const [editDesc, setEditDesc]             = useState("");
   const [editDueDate, setEditDueDate]       = useState("");
   const [editSubjectId, setEditSubjectId]   = useState("");
-  const [updating, setUpdating]             = useState(false);
 
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" ? window.innerWidth < 768 : true);
   useEffect(() => {
@@ -73,142 +62,141 @@ export default function TeacherHomeworkPage() {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Load classes + homework
+  const { data: classes = [], isLoading: classesLoading } = useClasses();
+  const { data: homework = [], isLoading: hwLoading } = useHomework();
+  const { data: classSubjectsData, isLoading: subjectsLoading } = useSubjects(classId ? { classId, ...(isPeriodBased ? { teacherId } : {}) } : undefined);
+  const classSubjects = classSubjectsData?.data ?? [];
+  
+  // Set classId when classes load
   useEffect(() => {
-    if (!cid || !token) return;
-    const ac = new AbortController();
-    setError(null);
-    Promise.all([
-      getMyClasses(cid, token, ac.signal),
-      listHomework(cid, token),
-    ]).then(([cls, hw]) => {
-      // Filter to accessible classes:
-      // CLASS_BASED: only classes where teacher is classTeacher
-      // PERIOD_BASED: classes where teacher has subjects (loaded later per class)
+    if (classes.length > 0 && !classId) {
       const accessible = isPeriodBased
-        ? cls  // show all; subject filter handles access
-        : cls.filter((c) => c.classTeacherId === teacherId);
-      setClasses(accessible);
-      setHomework(hw);
+        ? classes
+        : classes.filter((c) => c.classTeacherId === teacherId);
       if (accessible.length > 0) setClassId(accessible[0].id);
-    }).catch((e) => { setError((e as Error).message); }).finally(() => setLoading(false));
-    return () => ac.abort();
-  }, [cid, token]); // eslint-disable-line
+    }
+  }, [classes, classId, isPeriodBased, teacherId]);
 
-  // Load subjects when classId changes
+  // Set subjectId when subjects load
   useEffect(() => {
-    if (!cid || !token || !classId) return;
-    setSubjectId("");
-    setClassSubjects([]);
-    const params = isPeriodBased
-      ? { classId, teacherId }   // only teacher's subjects
-      : { classId };             // all subjects of teacher's class
-    getSubjects(cid, token, params)
-      .then((r) => {
-        setClassSubjects(r.data);
-        if (r.data.length > 0) setSubjectId(r.data[0].id);
-      })
-      .catch(() => {});
-  }, [classId, cid, token]); // eslint-disable-line
+    if (classSubjects.length > 0 && !subjectId) {
+      setSubjectId(classSubjects[0].id);
+    }
+  }, [classSubjects, subjectId]);
 
-  const reload = useCallback(async () => {
-    const hw = await listHomework(cid, token).catch((e) => { setError((e as Error).message); return [] as HomeworkAssignment[]; });
-    setHomework(hw);
-  }, [cid, token]);
+  // Submissions - only load when a homework is expanded
+  const { data: submissionsData, isLoading: subsLoading } = useSubmissions(expandedHw ?? "");
 
-  const loadSubmissions = async (hwId: string) => {
-    if (submissions[hwId]) { setExpandedHw(expandedHw === hwId ? null : hwId); return; }
-    setLoadingSubs(hwId);
-    try {
-      const data = await getSubmissions(cid, token, hwId);
-      setSubmissions((prev) => ({ ...prev, [hwId]: data }));
+  // Build a lookup for submissions (current expanded one only)
+  const submissions = useMemo(() => {
+    const map: Record<string, SubmissionsResponse> = {};
+    if (expandedHw && submissionsData) {
+      map[expandedHw] = submissionsData;
+    }
+    return map;
+  }, [expandedHw, submissionsData]);
+
+  // Seed localStatus from submissions data
+  useEffect(() => {
+    if (submissionsData && expandedHw) {
       setLocalStatus((prev) => ({
         ...prev,
-        [hwId]: Object.fromEntries(data.submissions.map((s) => [s.student!.id, s.status])),
+        [expandedHw]: Object.fromEntries(submissionsData.submissions.map((s: any) => [s.student!.id, s.status])),
       }));
-      setExpandedHw(hwId);
-    } catch (e) { setError((e as Error).message); }
-    finally { setLoadingSubs(null); }
+    }
+  }, [submissionsData, expandedHw]);
+
+  // Mutations
+  const createMutation = useCreateHomework();
+  const updateMutation = useUpdateHomework();
+  const deleteMutation = useDeleteHomework();
+  const bulkSubMutation = useBulkUpdateSubmissions();
+
+  const loading = classesLoading || hwLoading;
+
+  const loadSubmissions = (hwId: string) => {
+    setExpandedHw(expandedHw === hwId ? null : hwId);
   };
 
-  const saveSubmissions = async (hwId: string) => {
+  const saveSubmissions = (hwId: string) => {
     const statuses = localStatus[hwId];
     if (!statuses) return;
     setSavingSubs(true);
-    try {
-      await bulkUpdateSubmissions(cid, token, hwId,
-        Object.entries(statuses).map(([studentId, status]) => ({ studentId, status })),
-      );
-      // Refresh submissions
-      const data = await getSubmissions(cid, token, hwId);
-      setSubmissions((prev) => ({ ...prev, [hwId]: data }));
-    } catch (e) { setError((e as Error).message); }
-    finally { setSavingSubs(false); }
+    bulkSubMutation.mutate(
+      {
+        homeworkId: hwId,
+        submissions: Object.entries(statuses).map(([studentId, status]) => ({ studentId, status })),
+      },
+      {
+        onSuccess: () => {
+          setSavingSubs(false);
+        },
+        onError: (e) => {
+          setError((e as Error).message);
+          setSavingSubs(false);
+        },
+      },
+    );
   };
 
-  const handleCreate = async () => {
+  const handleCreate = () => {
     if (!classId || !title || !dueDate || !subjectId) return;
-    setCreating(true);
-    try {
-      await createHomework(cid, token, {
+    createMutation.mutate(
+      {
         classId,
         subjectId,
         title,
         description: desc || undefined,
         dueDate,
         academicYearId: user?.defaultAcademicYearId ?? undefined,
-      });
-      setTitle(""); setDesc("");
-      await reload();
-      setActiveTab("check");
-    } catch (e) { setError((e as Error).message); }
-    finally { setCreating(false); }
+      },
+      {
+        onSuccess: () => {
+          setTitle(""); setDesc("");
+          setActiveTab("check");
+        },
+        onError: (e) => setError((e as Error).message),
+      },
+    );
   };
 
-  const openEdit = async (hw: HomeworkAssignment) => {
+  const openEdit = (hw: any) => {
     setEditTarget(hw);
     setEditTitle(hw.title);
     setEditDesc(hw.description ?? "");
     setEditDueDate(hw.dueDate.split("T")[0]);
     setEditSubjectId(hw.subjectId ?? "");
-    if (cid && token && hw.classId) {
-      const params = isPeriodBased
-        ? { classId: hw.classId, teacherId }
-        : { classId: hw.classId };
-      getSubjects(cid, token, params)
-        .then((r) => {
-          setClassSubjects(r.data);
-        })
-        .catch(() => {});
-    }
     setShowEditDrawer(true);
   };
 
-  const handleUpdate = async () => {
+  const handleUpdate = () => {
     if (!editTarget || !editTitle || !editDueDate || !editSubjectId) return;
-    setUpdating(true);
-    try {
-      await updateHomework(cid, token, editTarget.id, {
-        title: editTitle,
-        description: editDesc || undefined,
-        dueDate: editDueDate,
-        subjectId: editSubjectId,
-      });
-      setShowEditDrawer(false);
-      setEditTarget(null);
-      await reload();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setUpdating(false);
-    }
+    updateMutation.mutate(
+      {
+        id: editTarget.id,
+        data: {
+          title: editTitle,
+          description: editDesc || undefined,
+          dueDate: editDueDate,
+          subjectId: editSubjectId,
+        },
+      },
+      {
+        onSuccess: () => {
+          setShowEditDrawer(false);
+          setEditTarget(null);
+        },
+        onError: (e) => setError((e as Error).message),
+      },
+    );
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: string) => {
     setDeletingId(id);
-    try { await deleteHomework(cid, token, id); await reload(); }
-    catch (e) { setError((e as Error).message); }
-    finally { setDeletingId(null); }
+    deleteMutation.mutate(id, {
+      onSuccess: () => setDeletingId(null),
+      onError: (e) => { setError((e as Error).message); setDeletingId(null); },
+    });
   };
 
   const today = fmt(new Date());
@@ -321,10 +309,10 @@ export default function TeacherHomeworkPage() {
 
               <button
                 onClick={handleCreate}
-                disabled={!classId || !subjectId || !title || !dueDate || creating}
+                disabled={!classId || !subjectId || !title || !dueDate || createMutation.isPending}
                 className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold text-sm disabled:opacity-60 flex items-center justify-center gap-2"
               >
-                {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                 Create Assignment
               </button>
             </div>
@@ -392,7 +380,7 @@ export default function TeacherHomeworkPage() {
                             ? <Loader2 className="w-4 h-4 animate-spin" />
                             : <Trash2 className="w-4 h-4" />}
                         </button>
-                        {loadingSubs === hw.id
+                        {subsLoading && expandedHw === hw.id
                           ? <Loader2 className="w-4 h-4 animate-spin text-gray-300" />
                           : expandedHw === hw.id
                             ? <ChevronUp className="w-4 h-4 text-gray-400" />
@@ -506,7 +494,7 @@ export default function TeacherHomeworkPage() {
           <>
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => !updating && setShowEditDrawer(false)}
+              onClick={() => !updateMutation.isPending && setShowEditDrawer(false)}
               className="fixed inset-0 bg-black/30 z-40 backdrop-blur-sm"
             />
             <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-none md:p-4">
@@ -573,10 +561,10 @@ export default function TeacherHomeworkPage() {
                 </button>
                 <button
                   onClick={handleUpdate}
-                  disabled={!editTitle || !editDueDate || !editSubjectId || updating}
+                  disabled={!editTitle || !editDueDate || !editSubjectId || updateMutation.isPending}
                   className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-semibold text-sm disabled:opacity-60 flex items-center justify-center gap-2"
                 >
-                  {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                   Save Changes
                 </button>
               </div>

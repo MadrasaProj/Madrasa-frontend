@@ -1,14 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import {
-  getStudentHomework,
-  parentSubmitHomework,
-  type StudentHomeworkResponse,
   type HomeworkStatus,
 } from "@/lib/homework-api";
-import { getStudent, type StudentRecord } from "@/lib/students-api";
+import { useStudentHomework, useParentSubmitHomework } from "@/lib/api-hooks";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -54,89 +51,34 @@ function urgencyColor(dueDate: string, status: HomeworkStatus): string {
   return "border-gray-100";
 }
 
-interface ChildData {
-  studentId: string;
-  student: StudentRecord | null;
-  hw: StudentHomeworkResponse | null;
-  error: string | null;
-}
-
 export default function ParentHomeworkPage() {
-  const { user, accessToken, activeStudentId } = useAuthStore();
-  const cid = user?.clientId ?? "";
-  const token = accessToken ?? "";
+  const { user, activeStudentId } = useAuthStore();
   const ids = user?.accessibleStudentIds ?? [];
   const effectiveId = activeStudentId ?? ids[0] ?? "";
 
-  const [active, setActive] = useState<ChildData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<HomeworkStatus | "all">("all");
-  const [submittingId, setSubmittingId] = useState<string | null>(null);
+  const {
+    data: hw,
+    isLoading: loading,
+    error,
+    refetch,
+  } = useStudentHomework(effectiveId);
 
-  const handleSubmitHomework = async (submissionId: string) => {
-    if (!cid || !token) return;
-    setSubmittingId(submissionId);
-    try {
-      await parentSubmitHomework(cid, token, submissionId);
-      await load();
-    } catch (e) {
-      alert((e as Error).message);
-    } finally {
-      setSubmittingId(null);
-    }
+  const submitMutation = useParentSubmitHomework();
+
+  const [filter, setFilter] = useState<HomeworkStatus | "all">("all");
+
+  const handleSubmitHomework = (submissionId: string) => {
+    submitMutation.mutate(submissionId);
   };
 
-  const load = useCallback(async () => {
-    if (!cid || !token || !effectiveId) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const [student, hw] = await Promise.all([
-        getStudent(cid, token, effectiveId).catch(() => null),
-        getStudentHomework(cid, token, effectiveId).catch((e: Error) => ({
-          error: e.message,
-        })),
-      ]);
-      if ("error" in hw) {
-        setActive({
-          studentId: effectiveId,
-          student: student as StudentRecord,
-          hw: null,
-          error: (hw as any).error,
-        });
-      } else {
-        setActive({
-          studentId: effectiveId,
-          student: student as StudentRecord,
-          hw,
-          error: null,
-        });
-      }
-    } catch (e) {
-      setActive({
-        studentId: effectiveId,
-        student: null,
-        hw: null,
-        error: (e as Error).message,
-      });
-    }
-    setLoading(false);
-  }, [cid, token, effectiveId]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
   const filtered =
-    active?.hw?.homework.filter(
-      (hw) => filter === "all" || hw.submission.status === filter,
+    hw?.homework.filter(
+      (h) => filter === "all" || h.submission.status === filter,
     ) ?? [];
 
   const pendingCount =
-    active?.hw?.homework.filter(
-      (hw) => hw.submission.status === "NOT_SUBMITTED",
+    hw?.homework.filter(
+      (h) => h.submission.status === "NOT_SUBMITTED",
     ).length ?? 0;
 
   return (
@@ -148,7 +90,7 @@ export default function ParentHomeworkPage() {
         backHref="/parent"
         action={
           <button
-            onClick={load}
+            onClick={() => refetch()}
             className="p-2 rounded-xl bg-gray-100 text-gray-600"
           >
             <RefreshCw className="w-4 h-4" />
@@ -180,9 +122,9 @@ export default function ParentHomeworkPage() {
         </div>
       ) : (
         <>
-          {active?.error ? (
-            <ApiErrorBanner message={active.error} onRetry={load} />
-          ) : active?.hw ? (
+          {error ? (
+            <ApiErrorBanner message={error.message} onRetry={() => refetch()} />
+          ) : hw ? (
             <>
               {/* Summary bar */}
               {pendingCount > 0 && (
@@ -199,7 +141,7 @@ export default function ParentHomeworkPage() {
               <div className="grid grid-cols-3 gap-2 mb-5">
                 {(["NOT_SUBMITTED", "SUBMITTED", "CHECKED"] as const).map(
                   (s: HomeworkStatus) => {
-                    const count = active.hw!.homework.filter(
+                    const count = hw.homework.filter(
                       (hw) => hw.submission.status === s,
                     ).length;
                     const cfg = STATUS_CONFIG[s];
@@ -353,10 +295,10 @@ export default function ParentHomeworkPage() {
                         {sub.status === "NOT_SUBMITTED" && (
                           <button
                             onClick={() => handleSubmitHomework(sub.id)}
-                            disabled={submittingId === sub.id}
+                            disabled={submitMutation.isPending}
                             className="mt-3 w-full py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-[0.98]"
                           >
-                            {submittingId === sub.id ? (
+                            {submitMutation.isPending ? (
                               <Loader2 className="w-3.5 h-3.5 animate-spin" />
                             ) : (
                               <CheckCircle2 className="w-3.5 h-3.5" />

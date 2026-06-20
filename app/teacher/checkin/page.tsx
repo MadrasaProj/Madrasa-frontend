@@ -1,18 +1,16 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
-import {
-  checkIn, checkOut, getTodaySession, getSessionHistory,
-  type TeacherSession,
-} from "@/lib/teacher-session-api";
+import { useTodaySession, useSessionHistory, useCheckIn, useCheckOut } from "@/lib/api-hooks";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
   LogIn, LogOut, Loader2, Clock, MapPin, CheckCircle2, History, Plus,
   MapPinOff,
 } from "lucide-react";
+import type { TeacherSession } from "@/lib/teacher-session-api";
 
 function fmtTime(d: string) {
   return new Date(d).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
@@ -39,35 +37,24 @@ function groupByDate(sessions: TeacherSession[]) {
 }
 
 export default function TeacherCheckinPage() {
-  const { user, accessToken, activeClientId } = useAuthStore();
-  const cid   = activeClientId ?? "";
-  const token = accessToken ?? "";
+  const { user } = useAuthStore();
 
-  const [todaySessions, setTodaySessions] = useState<TeacherSession[]>([]);
-  const [loading, setLoading]             = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [error, setError]                 = useState<string | null>(null);
+  const { data: todaySessions = [], isLoading: loading, error: queryError } = useTodaySession();
+  const { data: historyData } = useSessionHistory({ limit: 30 });
+  const history = historyData?.data ?? [];
+
+  const checkInMutation = useCheckIn();
+  const checkOutMutation = useCheckOut();
+
+  const error = queryError ? (queryError as Error)?.message : (checkInMutation.error as Error)?.message ?? (checkOutMutation.error as Error)?.message ?? null;
+
   const [location, setLocation]           = useState<{ latitude: number; longitude: number } | null>(null);
   const [locError, setLocError]           = useState<string | null>(null);
   const [locLoading, setLocLoading]       = useState(false);
 
-  const [history, setHistory] = useState<TeacherSession[]>([]);
+  const activeSession = todaySessions.find((s: TeacherSession) => s.status === "CHECKED_IN") ?? null;
 
-  const activeSession = todaySessions.find((s) => s.status === "CHECKED_IN") ?? null;
-
-  const load = () => {
-    if (!cid || !token) return;
-    setLoading(true);
-    Promise.all([
-      getTodaySession(cid, token),
-      getSessionHistory(cid, token, { limit: 30 }),
-    ])
-      .then(([sessions, h]) => { setTodaySessions(sessions); setHistory(h.data ?? []); })
-      .catch((e) => setError((e as Error).message))
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => { load(); }, [cid, token]); // eslint-disable-line
+  const actionLoading = checkInMutation.isPending || checkOutMutation.isPending;
 
   const fetchLocation = useCallback(() => {
     if (!navigator.geolocation) {
@@ -105,21 +92,11 @@ export default function TeacherCheckinPage() {
       fetchLocation();
       return;
     }
-    setActionLoading(true); setError(null);
-    try {
-      const s = await checkIn(cid, token, location);
-      setTodaySessions((prev) => [s, ...prev]);
-    } catch (e) { setError((e as Error).message); }
-    finally { setActionLoading(false); }
+    checkInMutation.mutate(location);
   };
 
   const handleCheckOut = async () => {
-    setActionLoading(true); setError(null);
-    try {
-      const s = await checkOut(cid, token);
-      setTodaySessions((prev) => prev.map((sess) => sess.id === s.id ? s : sess));
-    } catch (e) { setError((e as Error).message); }
-    finally { setActionLoading(false); }
+    checkOutMutation.mutate();
   };
 
   const historyGrouped = groupByDate(history);
@@ -129,7 +106,7 @@ export default function TeacherCheckinPage() {
     <DashboardLayout>
       <PageHeader title="Check In / Out" icon={Clock} />
 
-      {error && <ApiErrorBanner message={error} onRetry={load} />}
+      {error && <ApiErrorBanner message={error} />}
 
       {loading ? (
         <div className="max-w-md mx-auto space-y-6 px-4">

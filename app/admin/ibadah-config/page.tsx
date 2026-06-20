@@ -1,11 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
-  getSuperAdminIbadahConfig,
-  updateSuperAdminIbadahConfig,
-  type IbadahConfig,
-} from "@/lib/ibadah-api";
+  useSuperAdminIbadahConfig, useUpdateSuperAdminIbadahConfig,
+} from "@/lib/api-hooks";
+import { type IbadahConfig } from "@/lib/ibadah-api";
 import { useAuthStore } from "@/store/auth";
 import {
   Moon, Save, CheckCircle2, Loader2, AlertCircle,
@@ -49,17 +48,32 @@ function validateKey(key: string): string | null {
 }
 
 export default function IbadahConfigPage() {
-  const { accessToken, user } = useAuthStore();
-  const token = accessToken ?? "";
+  const { user } = useAuthStore();
   const isSuperAdmin = user?.actorType === "SUPER_ADMIN";
 
-  const [config, setConfig]         = useState<IbadahConfig | null>(null);
-  const [loading, setLoading]       = useState(true);
-  const [saving, setSaving]         = useState(false);
-  const [saved, setSaved]           = useState(false);
-  const [error, setError]           = useState<string | null>(null);
-  const [toggles, setToggles]       = useState<Partial<Record<keyof IbadahConfig, boolean>>>({});
+  const { data: config, isLoading: loading, error: fetchErr } = useSuperAdminIbadahConfig();
+  const updateConfigMutation = useUpdateSuperAdminIbadahConfig();
+  const [saved, setSaved] = useState(false);
+
+  // Local editing state — sync from fetched config on load
+  const [toggles, setToggles] = useState<Partial<Record<keyof IbadahConfig, boolean>>>({});
   const [customItems, setCustomItems] = useState<CustomItem[]>([]);
+  const [initDone, setInitDone] = useState(false);
+
+  // Sync fetched config into local editing state once
+  if (config && !initDone) {
+    setToggles({
+      enableFajr:       config.enableFajr,
+      enableDhuhr:      config.enableDhuhr,
+      enableAsr:        config.enableAsr,
+      enableMaghrib:    config.enableMaghrib,
+      enableIsha:       config.enableIsha,
+      enableQuranPages: config.enableQuranPages,
+    });
+    setCustomItems(Array.isArray(config.customItems) ? config.customItems : []);
+    setInitDone(true);
+  }
+
   const [addingItem, setAddingItem] = useState(false);
   const [newItem, setNewItem]       = useState<CustomItem>({ ...EMPTY_ITEM });
   const [newItemError, setNewItemError] = useState<string | null>(null);
@@ -67,53 +81,21 @@ export default function IbadahConfigPage() {
   const [editItem, setEditItem]     = useState<CustomItem>({ ...EMPTY_ITEM });
   const [editItemError, setEditItemError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    if (!token) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const cfg = await getSuperAdminIbadahConfig(token);
-      setConfig(cfg);
-      setToggles({
-        enableFajr:       cfg.enableFajr,
-        enableDhuhr:      cfg.enableDhuhr,
-        enableAsr:        cfg.enableAsr,
-        enableMaghrib:    cfg.enableMaghrib,
-        enableIsha:       cfg.enableIsha,
-        enableQuranPages: cfg.enableQuranPages,
-      });
-      setCustomItems(Array.isArray(cfg.customItems) ? cfg.customItems : []);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
-
-  useEffect(() => { load(); }, [load]);
-
-  const handleSave = async () => {
-    if (!token) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const updated = await updateSuperAdminIbadahConfig(token, {
-        enableFajr:       toggles.enableFajr,
-        enableDhuhr:      toggles.enableDhuhr,
-        enableAsr:        toggles.enableAsr,
-        enableMaghrib:    toggles.enableMaghrib,
-        enableIsha:       toggles.enableIsha,
-        enableQuranPages: toggles.enableQuranPages,
-        customItems,
-      });
-      setConfig(updated);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setSaving(false);
-    }
+  const handleSave = () => {
+    updateConfigMutation.mutate({
+      enableFajr:       toggles.enableFajr,
+      enableDhuhr:      toggles.enableDhuhr,
+      enableAsr:        toggles.enableAsr,
+      enableMaghrib:    toggles.enableMaghrib,
+      enableIsha:       toggles.enableIsha,
+      enableQuranPages: toggles.enableQuranPages,
+      customItems: customItems as any,
+    }, {
+      onSuccess: () => {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
+      },
+    });
   };
 
   const handleAddItem = () => {
@@ -196,9 +178,14 @@ export default function IbadahConfigPage() {
         <PageSkeleton />
       ) : (
         <div className="space-y-5 max-w-2xl pb-28">
-          {error && (
+          {fetchErr && (
             <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" /> {error}
+              <AlertCircle className="w-4 h-4 shrink-0" /> {fetchErr.message}
+            </div>
+          )}
+          {updateConfigMutation.error && (
+            <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" /> {updateConfigMutation.error.message}
             </div>
           )}
 
@@ -354,7 +341,7 @@ export default function IbadahConfigPage() {
           <div className="sticky bottom-20 lg:bottom-6">
             <button
               onClick={handleSave}
-              disabled={saving}
+              disabled={updateConfigMutation.isPending}
               className={cn(
                 "w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl font-bold text-sm transition-all shadow-lg",
                 saved
@@ -362,7 +349,7 @@ export default function IbadahConfigPage() {
                   : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60",
               )}
             >
-              {saving ? (
+              {updateConfigMutation.isPending ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : saved ? (
                 <><CheckCircle2 className="w-5 h-5" /> Saved!</>

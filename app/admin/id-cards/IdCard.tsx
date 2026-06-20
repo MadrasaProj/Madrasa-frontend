@@ -6,11 +6,11 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 
 import { PageHeader } from "@/components/ui/PageHeader";
 
-import { getStudents, StudentRecord } from "@/lib/students-api";
+import { useStudents, useClasses, useClientConfig } from "@/lib/api-hooks";
 
-import { ClassRecord, getAllClasses } from "@/lib/classes-api";
+import type { StudentRecord } from "@/lib/students-api";
 
-import { getClientConfig, ClientConfig } from "@/lib/config-api";
+import type { ClientConfig } from "@/lib/config-api";
 
 import { useAuthStore } from "@/store/auth";
 
@@ -670,39 +670,45 @@ function filterStudents(
 export default function IDCardsPage() {
   const { lang } = useLanguageStore();
 
-  const { user, accessToken, activeClientId } = useAuthStore();
+  const { user, activeClientId } = useAuthStore();
 
   const cid = activeClientId ?? "";
 
-  const token = accessToken ?? "";
-
   const madrasaName = user?.madrasaName;
+
+  const { data: studentsResponse, isLoading: loading } = useStudents({ limit: 500 });
+  const { data: classesData } = useClasses();
+  const { data: configData } = useClientConfig();
 
   const canvasRef = useRef<HTMLDivElement>(null);
 
-  const [students, setStudents] = useState<StudentInfo[]>([]);
-
-  const [classes, setClasses] = useState<ClassRecord[]>([]);
-
-  const [loading, setLoading] = useState(true);
-
   const [selectedId, setSelectedId] = useState<string | null>(null);
-
   const [search, setSearch] = useState("");
-
   const [classFilter, setClassFilter] = useState("All");
-
   const [genderFilter, setGenderFilter] = useState("All");
-
   const [theme, setTheme] = useState<ThemeId>("classic");
-
   const [showMobileList, setShowMobileList] = useState(false);
-
   const [bgImage, setBgImage] = useState<string | null>(null);
-
   const [avatars, setAvatars] = useState<Record<string, string>>({});
 
-  const [clientConfig, setClientConfig] = useState<ClientConfig | null>(null);
+  const students: StudentInfo[] = useMemo(() => {
+    const raw = studentsResponse?.data ?? [];
+    return raw.map((s: StudentRecord) => ({
+      id: s.id,
+      name: s.name,
+      adno: s.adno,
+      gender: s.gender ?? "",
+      dateOfBirth: s.dateOfBirth
+        ? new Date(s.dateOfBirth).toLocaleDateString("en-GB")
+        : "",
+      parentPhone: s.parentPhone ?? "",
+      guardianName: s.guardianName ?? "",
+      className: s.class?.name ?? "",
+    }));
+  }, [studentsResponse]);
+
+  const classes = classesData ?? [];
+  const clientConfig = configData ?? null;
 
   const selected = useMemo(
     () => students.find((s) => s.id === selectedId) ?? null,
@@ -721,61 +727,6 @@ export default function IDCardsPage() {
 
     [classes],
   );
-
-  useEffect(() => {
-    if (!cid || !token) return;
-
-    const ac = new AbortController();
-
-    setLoading(true);
-
-    Promise.all([
-      getStudents(cid, token, { limit: 500, signal: ac.signal }).catch(() => ({
-        data: [] as StudentRecord[],
-        total: 0,
-        page: 1,
-        limit: 500,
-      })),
-
-      getAllClasses(cid, token, ac.signal).catch(() => [] as ClassRecord[]),
-
-      getClientConfig(cid, token).catch(() => null as unknown as ClientConfig),
-    ]).then(([stuData, classData, config]) => {
-      const mapped: StudentInfo[] = (stuData.data ?? []).map((s) => ({
-        id: s.id,
-
-        name: s.name,
-
-        adno: s.adno,
-
-        gender: s.gender ?? "",
-
-        dateOfBirth: s.dateOfBirth
-          ? new Date(s.dateOfBirth).toLocaleDateString("en-GB")
-          : "",
-
-        parentPhone: s.parentPhone ?? "",
-
-        guardianName: s.guardianName ?? "",
-
-        className: s.class?.name ?? "",
-      }));
-
-      setStudents(mapped);
-
-      setClasses(classData);
-
-      setClientConfig(config ?? null);
-
-      if (mapped.length > 0 && !selectedId) {
-        setSelectedId(mapped[0].id);
-      }
-
-      setLoading(false);
-    });
-
-    return () => ac.abort();
-  }, [cid, token]);
 
   const handleExport = async () => {
     const leafer = (canvasRef.current as any)?.__leafer as Leafer | undefined;

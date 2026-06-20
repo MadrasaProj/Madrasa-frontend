@@ -1,13 +1,7 @@
-import { useState, useEffect } from "react";
+import { useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import {
-  getPlatformStats,
-  listClients,
-  type PlatformStats,
-  type ClientListItem,
-} from "@/lib/super-admin-api";
-import { useAuthStore } from "@/store/auth";
+import { usePlatformStats } from "@/lib/api-hooks";
 import { BarChart3, Building2, Users, AlertTriangle, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -34,30 +28,6 @@ const STATUS_TEXT: Record<string, string> = {
 
 // ── Derived stats from client list ────────────────────────────────────────────
 
-function deriveFromClients(clients: ClientListItem[]): PlatformStats {
-  const now = new Date();
-  const thirtyDays = new Date(now.getTime() + 30 * 86400000);
-  return {
-    totalClients: clients.length,
-    activeClients: clients.filter((c) => c.status === "ACTIVE").length,
-    trialClients: clients.filter((c) => c.status === "TRIAL").length,
-    suspendedClients: clients.filter((c) => c.status === "SUSPENDED").length,
-    totalStudents: clients.reduce((s, c) => s + (c._count?.students ?? 0), 0),
-    totalStaff: clients.reduce((s, c) => s + (c._count?.users ?? 0), 0),
-    totalRevenue: 0,
-    clientSummaries: clients.map((c) => ({
-      id: c.id,
-      name: c.name,
-      slug: c.slug,
-      status: c.status,
-      students: c._count?.students ?? 0,
-      staff: c._count?.users ?? 0,
-      lastLoginAt: c.lastLoginAt,
-      subscriptionEnd: c.subscriptionEnd,
-    })),
-  };
-}
-
 // ── Stat Card ─────────────────────────────────────────────────────────────────
 
 function StatCard({ label, value, icon: Icon, color }: {
@@ -79,27 +49,7 @@ function StatCard({ label, value, icon: Icon, color }: {
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function AdminPlatformReportsPage() {
-  const { accessToken } = useAuthStore();
-  const [stats, setStats] = useState<PlatformStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  const load = () => {
-    if (!accessToken) return;
-    setLoading(true);
-    setError("");
-    getPlatformStats(accessToken)
-      .then((s) => setStats(s))
-      .catch(() => {
-        // Fallback to listClients-derived stats
-        listClients(accessToken)
-          .then((r) => setStats(deriveFromClients(r.data)))
-          .catch((e) => setError(e?.message ?? "Failed to load platform data."));
-      })
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => { load(); }, [accessToken]);
+  const { data: stats, isLoading: loading, error, refetch } = usePlatformStats();
 
   const now = new Date();
   const soonExpiring = stats?.clientSummaries.filter((c) => {
@@ -128,7 +78,7 @@ export default function AdminPlatformReportsPage() {
         icon={BarChart3}
         action={
           <button
-            onClick={load}
+            onClick={() => refetch()}
             disabled={loading}
             className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-xl hover:bg-gray-200 transition-all disabled:opacity-60"
           >
@@ -138,7 +88,7 @@ export default function AdminPlatformReportsPage() {
       />
 
       {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">{error}</div>
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">{(error as Error)?.message ?? "Failed to load platform data."}</div>
       )}
 
       {loading ? (

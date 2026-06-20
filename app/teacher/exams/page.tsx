@@ -2,11 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { getExams, type ExamRecord, type ExamStatus } from "@/lib/exams-api";
-import { getResults, bulkUpsertResults, type ResultRecord } from "@/lib/results-api";
-import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
-import { getSubjects, type SubjectRecord } from "@/lib/subjects-api";
-import { getStudents, type StudentRecord } from "@/lib/students-api";
+import { useExams, useSubjects, useClasses, useResults, useBulkUpsertResults, useStudents } from "@/lib/api-hooks";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
@@ -18,6 +14,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ExamStatusBadge, getExamStatusInfo } from "@/components/exam/ExamStatusBadge";
 import { ExcelImportModal } from "@/components/exam/ExcelImportModal";
+import type { ExamRecord, ExamStatus } from "@/lib/exams-api";
 
 type TabFilter = "ALL" | "UPCOMING" | "MARK_ENTRY" | "COMPLETED" | "PUBLISHED";
 
@@ -31,8 +28,6 @@ export default function TeacherExamsPage() {
   const navigate  = useNavigate();
   const location  = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const cid        = user?.clientId ?? "";
-  const token      = accessToken ?? "";
   const ayId       = user?.defaultAcademicYearId ?? "";
   const teacherId  = user?.id ?? "";
 
@@ -45,14 +40,25 @@ export default function TeacherExamsPage() {
   const queryClassId = searchParams.get("classId") ?? "";
   const querySubjectId = searchParams.get("subjectId") ?? "";
 
-  // Data
-  const [allClasses, setAllClasses]       = useState<ClassRecord[]>([]);
-  const [mySubjects, setMySubjects]       = useState<SubjectRecord[]>([]);
-  const [exams, setExams]                 = useState<ExamRecord[]>([]);
-  const [students, setStudents]           = useState<StudentRecord[]>([]);
-  const [existingResults, setExistingResults] = useState<ResultRecord[]>([]);
-  const [scores, setScores]               = useState<Record<string, string>>({});
-  const [remarks, setRemarks]             = useState<Record<string, string>>({});
+  // Data hooks
+  const { data: allClasses = [], isLoading: classesLoading } = useClasses();
+  const { data: mySubjectsData } = useSubjects({ teacherId, limit: 500 });
+  const { data: examsData } = useExams({ accademicYearId: ayId || undefined, limit: 50 });
+  const { data: classSubjectsData } = useSubjects(queryClassId && classesLoading === false ? { classId: queryClassId, limit: 200 } : {});
+  const { data: studentsData } = useStudents(queryClassId && isMarkEntryView ? { classId: queryClassId, limit: 200 } : { classId: "" });
+  const { data: resultsData } = useResults(
+    isMarkEntryView && queryExamId && queryClassId
+      ? { examId: queryExamId, classId: queryClassId, limit: 500 }
+      : {} as any,
+  );
+
+  const bulkUpsertMutation = useBulkUpsertResults();
+
+  const mySubjects = mySubjectsData?.data ?? [];
+  const exams = (examsData?.data ?? []).filter((e: ExamRecord) => e.type === "TERM_EXAM" || !e.type);
+  const classSubjects = classSubjectsData?.data ?? [];
+  const students = studentsData?.data ?? [];
+  const existingResults = resultsData?.data ?? [];
 
   // UI state
   const [loading, setLoading]   = useState(true);
@@ -61,163 +67,86 @@ export default function TeacherExamsPage() {
   const [error, setError]       = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
 
-  const [classSubjects, setClassSubjects] = useState<SubjectRecord[]>([]);
+  const [scores, setScores]               = useState<Record<string, string>>({});
+  const [remarks, setRemarks]             = useState<Record<string, string>>({});
 
   // Derived arrays
-  const myClassIds = new Set(mySubjects.map((s) => s.classId));
-  const teacherClasses = allClasses.filter((c) => myClassIds.has(c.id) || c.classTeacherId === teacherId);
+  const myClassIds = new Set(mySubjects.map((s: any) => s.classId));
+  const teacherClasses = allClasses.filter((c: any) => myClassIds.has(c.id) || c.classTeacherId === teacherId);
 
-  const activeExam = exams.find((e) => e.id === queryExamId);
+  const activeExam = exams.find((e: ExamRecord) => e.id === queryExamId);
   const isLocked = !activeExam
     || activeExam.examStatus !== "MARK_ENTRY"
     || (!!activeExam.markEntryLastDate && new Date() > new Date(activeExam.markEntryLastDate));
+
+  // Auto-initialize query params
+  useEffect(() => {
+    if (exams.length > 0 && !queryExamId) {
+      const firstClass = allClasses.find((c: any) => c.classTeacherId === teacherId) || allClasses[0];
+      const mine = (mySubjects).filter((s: any) => s.classId === firstClass?.id);
+      setSearchParams((prev) => {
+        prev.set("examId", exams[0].id);
+        if (firstClass) prev.set("classId", firstClass.id);
+        if (mine[0]) prev.set("subjectId", mine[0].id);
+        return prev;
+      });
+    }
+    setLoading(false);
+  }, [exams, classesLoading]);
 
   const goToClassReport = (examId: string, classId: string) => {
     const back = location.pathname + location.search;
     navigate(`/teacher/exams/class-report?examId=${examId}&classId=${classId}&ayId=${ayId}&back=${encodeURIComponent(back)}`);
   };
 
-  // ── Initial load ─────────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (!cid || !token || !teacherId) return;
-    setLoading(true);
-
-    Promise.all([
-      getMyClasses(cid, token),
-      getSubjects(cid, token, { teacherId, limit: 500 }),
-      getExams(cid, token, { accademicYearId: ayId || undefined, limit: 50 }),
-    ])
-      .then(([cls, subs, examData]) => {
-        setAllClasses(cls);
-        setMySubjects(subs.data ?? []);
-        const loadedExams = (examData.data ?? []).filter((e) => e.type === "TERM_EXAM" || !e.type);
-        setExams(loadedExams);
-
-        // Auto-initialize query params if not set
-        if (!queryExamId && loadedExams[0]) {
-          const firstClass = cls.find((c) => c.classTeacherId === teacherId) || cls[0];
-          const mine = (subs.data ?? []).filter((s) => s.classId === firstClass?.id);
-          setSearchParams((prev) => {
-            prev.set("examId", loadedExams[0].id);
-            if (firstClass) prev.set("classId", firstClass.id);
-            if (mine[0]) prev.set("subjectId", mine[0].id);
-            return prev;
-          });
-        }
-      })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, [cid, token, teacherId, ayId, queryExamId, setSearchParams]);
-
-  // ── Load subjects for selected class ─────────────────────────────────────────
-
-  useEffect(() => {
-    if (!cid || !token || !queryClassId) return;
-    const cls = allClasses.find((c) => c.id === queryClassId);
-    const isOwn = cls?.classTeacherId === teacherId;
-
-    if (isOwn) {
-      getSubjects(cid, token, { classId: queryClassId, limit: 200 })
-        .then((r) => {
-          const subs = r.data ?? [];
-          setClassSubjects(subs);
-          if (subs.length > 0 && !subs.some((s) => s.id === querySubjectId)) {
-            setSearchParams((prev) => { prev.set("subjectId", subs[0].id); return prev; });
-          }
-        })
-        .catch((e: Error) => setError(e.message));
-    } else {
-      const mine = mySubjects.filter((s) => s.classId === queryClassId);
-      setClassSubjects(mine);
-      if (mine.length > 0 && !mine.some((s) => s.id === querySubjectId)) {
-        setSearchParams((prev) => { prev.set("subjectId", mine[0].id); return prev; });
-      }
-    }
-  }, [queryClassId, allClasses, mySubjects, teacherId, cid, token, querySubjectId, setSearchParams]);
-
-  // ── Load students + results when exam/class/subject changes ──────────────────
-
-  const loadExamData = useCallback(async () => {
-    if (!cid || !token || !queryClassId || !queryExamId) return;
-
-    const [stuData, resData] = await Promise.all([
-      getStudents(cid, token, { classId: queryClassId, limit: 200 }).catch(() => ({ data: [] as StudentRecord[] })),
-      querySubjectId
-        ? getResults(cid, token, { examId: queryExamId, classId: queryClassId, limit: 500 }).catch(() => ({ data: [] as ResultRecord[] }))
-        : Promise.resolve({ data: [] as ResultRecord[] }),
-    ]);
-
-    const stuList = stuData.data ?? [];
-    const resList = resData.data ?? [];
-    setStudents(stuList);
-    setExistingResults(resList);
-
-    // Pre-fill scores for current subject only
-    if (querySubjectId) {
-      const scoreMap: Record<string, string> = {};
-      const remarkMap: Record<string, string> = {};
-      stuList.forEach((s) => {
-        const r = resList.find((r) => r.student?.id === s.id && r.subject?.id === querySubjectId);
-        scoreMap[s.id] = r != null ? String(r.score) : "";
-        remarkMap[s.id] = ""; // remarks computed in state
-      });
-      setScores(scoreMap);
-      setRemarks(remarkMap);
-    }
-  }, [cid, token, queryClassId, queryExamId, querySubjectId]);
-
-  useEffect(() => {
-    if (isMarkEntryView) {
-      loadExamData();
-    }
-  }, [isMarkEntryView, loadExamData]);
-
   // ── Save Marks ───────────────────────────────────────────────────────────────
 
-  const handleSave = async (submit = false) => {
+  const handleSave = (submit = false) => {
     if (!queryExamId || !querySubjectId || !queryClassId || isLocked) return;
     setSaving(true);
     setError(null);
-    try {
-      const items = students
-        .filter((s) => scores[s.id] !== "" && scores[s.id] !== undefined)
-        .map((s) => ({
-          subjectId:  querySubjectId,
-          studentId:  s.id,
-          score:      Number(scores[s.id]),
-          totalMarks: 100,
-        }));
+    const items = students
+      .filter((s: any) => scores[s.id] !== "" && scores[s.id] !== undefined)
+      .map((s: any) => ({
+        subjectId:  querySubjectId,
+        studentId:  s.id,
+        score:      Number(scores[s.id]),
+        totalMarks: 100,
+      }));
 
-      if (!items.length) {
-        setError("No scores entered");
-        return;
-      }
-
-      await bulkUpsertResults(cid, token, {
-        examId:          queryExamId,
-        classId:         queryClassId,
-        accademicYearId: ayId,
-        results:         items,
-      });
-
-      await loadExamData();
-      setSaved(true);
-      setTimeout(() => {
-        setSaved(false);
-        if (submit) {
-          // Redirect back to list on submit
-          setSearchParams((prev) => {
-            prev.delete("view");
-            return prev;
-          });
-        }
-      }, 1500);
-    } catch (e: any) {
-      setError(e.message ?? "Save failed");
-    } finally {
+    if (!items.length) {
+      setError("No scores entered");
       setSaving(false);
+      return;
     }
+
+    bulkUpsertMutation.mutate(
+      {
+        examId: queryExamId,
+        classId: queryClassId,
+        accademicYearId: ayId,
+        results: items,
+      },
+      {
+        onSuccess: () => {
+          setSaved(true);
+          setSaving(false);
+          setTimeout(() => {
+            setSaved(false);
+            if (submit) {
+              setSearchParams((prev) => {
+                prev.delete("view");
+                return prev;
+              });
+            }
+          }, 1500);
+        },
+        onError: (e: any) => {
+          setError(e.message ?? "Save failed");
+          setSaving(false);
+        },
+      },
+    );
   };
 
 
@@ -554,8 +483,8 @@ export default function TeacherExamsPage() {
 
           {importOpen && queryExamId && queryClassId && querySubjectId && (
             <ExcelImportModal
-              clientId={cid}
-              token={token}
+              clientId={user?.clientId ?? ""}
+              token={accessToken ?? ""}
               examId={queryExamId}
               classId={queryClassId}
               accademicYearId={ayId}
@@ -568,7 +497,6 @@ export default function TeacherExamsPage() {
               onClose={() => setImportOpen(false)}
               onSuccess={async () => {
                 setImportOpen(false);
-                await loadExamData();
               }}
             />
           )}

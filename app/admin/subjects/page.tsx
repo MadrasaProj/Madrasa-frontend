@@ -1,14 +1,20 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import {
-  getSubjects, createSubject, updateSubject, deleteSubject, bulkAssignTeacher,
   type SubjectRecord,
 } from "@/lib/subjects-api";
-import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
-import { getTeachers, type TeacherRecord } from "@/lib/teachers-api";
+import {
+  useSubjects,
+  useCreateSubject,
+  useUpdateSubject,
+  useDeleteSubject,
+  useBulkAssignTeacher,
+  useClasses,
+  useTeachers,
+} from "@/lib/api-hooks";
 import { ExamConfigForm } from "@/components/exam/ExamConfigForm";
 import { useAuthStore } from "@/store/auth";
 import { useLocation } from "react-router-dom";
@@ -37,9 +43,7 @@ function subjectToForm(s: SubjectRecord): FormState {
 }
 
 export default function AdminSubjectsPage() {
-  const { user, accessToken, activeClientId } = useAuthStore();
-  const cid   = activeClientId ?? "";
-  const token = accessToken ?? "";
+  const { user, activeClientId, accessToken } = useAuthStore();
   const location = useLocation();
 
   const isPeriodBased = user?.attendanceMode === "PERIOD_BASED";
@@ -55,23 +59,37 @@ export default function AdminSubjectsPage() {
 
   const defaultClassId = new URLSearchParams(location.search).get("classId") ?? "";
 
-  const [subjects, setSubjects]           = useState<SubjectRecord[]>([]);
-  const [loading, setLoading]             = useState(true);
-  const [error, setError]                 = useState<string | null>(null);
   const [filterClassId, setFilterClassId] = useState(defaultClassId);
   const [search, setSearch]               = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [classes, setClasses]             = useState<ClassRecord[]>([]);
-  const [teachers, setTeachers]           = useState<TeacherRecord[]>([]);
+
+  const {
+    data: subjectsData,
+    isLoading: loading,
+    error: subjectsError,
+    refetch: refetchSubjects,
+  } = useSubjects({ classId: filterClassId || undefined, search: debouncedSearch || undefined });
+  const subjects = subjectsData?.data ?? [];
+
+  const { data: classes = [] } = useClasses();
+  const { data: teachersData } = useTeachers();
+  const teachers = teachersData?.data ?? [];
+
+  const createMutation = useCreateSubject();
+  const updateMutation = useUpdateSubject();
+  const deleteMutation = useDeleteSubject();
+  const bulkAssignMutation = useBulkAssignTeacher();
+
+  const saving = createMutation.isPending || updateMutation.isPending;
+  const saveError = createMutation.error?.message || updateMutation.error?.message || "";
+  const deleting = deleteMutation.isPending ? deleteMutation.variables ?? null : null;
 
   const [showDrawer, setShowDrawer]   = useState(false);
   const [editTarget, setEditTarget]   = useState<SubjectRecord | null>(null);
   const [form, setForm]               = useState<FormState>(EMPTY_FORM);
-  const [saving, setSaving]           = useState(false);
-  const [saveError, setSaveError]     = useState("");
   const [showExamConfig, setShowExamConfig] = useState(false);
   const subjectExamConfig = useRef<{ maxMarks: number | null; gradeConfig: Record<string, { min: number }> } | null>(null);
-  const [deleting, setDeleting]       = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SubjectRecord | null>(null);
 
@@ -79,113 +97,84 @@ export default function AdminSubjectsPage() {
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkClassId, setBulkClassId]     = useState("");
   const [bulkTeacherId, setBulkTeacherId] = useState("");
-  const [bulkSaving, setBulkSaving]       = useState(false);
-  const [bulkError, setBulkError]         = useState("");
-
-  const load = useCallback(async (clsId?: string, srch?: string) => {
-    if (!cid || !token) return;
-    setLoading(true); setError(null);
-    try {
-      const [subs, cls, tch] = await Promise.all([
-        getSubjects(cid, token, { classId: clsId || undefined, search: srch || undefined }),
-        getAllClasses(cid, token),
-        getTeachers(cid, token),
-      ]);
-      setSubjects(subs.data);
-      setClasses(cls);
-      setTeachers(tch.data ?? []);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [cid, token]);
-
-  useEffect(() => { load(filterClassId, search); }, [load]); // eslint-disable-line
 
   const handleFilterClass = (id: string) => {
     setFilterClassId(id);
-    load(id, search);
   };
 
   const handleSearch = (val: string) => {
     setSearch(val);
     if (searchTimer.current) clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => load(filterClassId, val), 400);
+    searchTimer.current = setTimeout(() => setDebouncedSearch(val), 400);
   };
 
   const openAdd = () => {
     setEditTarget(null);
     setForm({ ...EMPTY_FORM, classId: filterClassId });
-    setSaveError(""); setShowExamConfig(false); setShowDrawer(true);
-  };
-
-  const openEdit = (s: SubjectRecord) => {
-    setEditTarget(s); setForm(subjectToForm(s)); setSaveError("");
-    subjectExamConfig.current = null;
-    setShowExamConfig(!!(s.maxMarks || s.gradeConfig));
+    setShowExamConfig(false);
+    createMutation.reset();
+    updateMutation.reset();
     setShowDrawer(true);
   };
 
-  const handleSave = async () => {
-    if (!form.name.trim()) { setSaveError("Subject name is required"); return; }
-    if (!editTarget && !form.classId) { setSaveError("Class is required"); return; }
-    setSaving(true); setSaveError("");
-    try {
-      if (editTarget) {
-        const examConfig = subjectExamConfig.current;
-        const updated = await updateSubject(cid, token, editTarget.id, {
-          name: form.name.trim(),
-          teacherId: isPeriodBased ? (form.teacherId || null) : undefined,
-          status: form.status,
-          ...(examConfig && { maxMarks: examConfig.maxMarks, gradeConfig: examConfig.gradeConfig }),
-        });
-        setSubjects((prev) => prev.map((s) => (s.id === updated.id ? { ...s, ...updated } : s)));
-      } else {
-        const created = await createSubject(cid, token, {
+  const openEdit = (s: SubjectRecord) => {
+    setEditTarget(s); setForm(subjectToForm(s));
+    subjectExamConfig.current = null;
+    setShowExamConfig(!!(s.maxMarks || s.gradeConfig));
+    createMutation.reset();
+    updateMutation.reset();
+    setShowDrawer(true);
+  };
+
+  const handleSave = () => {
+    if (!form.name.trim()) return;
+    if (!editTarget && !form.classId) return;
+    if (editTarget) {
+      const examConfig = subjectExamConfig.current;
+      updateMutation.mutate(
+        {
+          subjectId: editTarget.id,
+          data: {
+            name: form.name.trim(),
+            teacherId: isPeriodBased ? (form.teacherId || null) : undefined,
+            status: form.status,
+            ...(examConfig && { maxMarks: examConfig.maxMarks, gradeConfig: examConfig.gradeConfig }),
+          },
+        },
+        { onSuccess: () => setShowDrawer(false) },
+      );
+    } else {
+      createMutation.mutate(
+        {
           name: form.name.trim(),
           classId: form.classId,
           teacherId: isPeriodBased && form.teacherId ? form.teacherId : undefined,
-        });
-        setSubjects((prev) => [...prev, created]);
-      }
-      setShowDrawer(false);
-    } catch (e) {
-      setSaveError((e as Error).message);
-    } finally {
-      setSaving(false);
+        },
+        { onSuccess: () => setShowDrawer(false) },
+      );
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!deleteTarget) return;
-    setDeleting(deleteTarget.id);
-    try {
-      await deleteSubject(cid, token, deleteTarget.id);
-      setSubjects((prev) => prev.filter((sub) => sub.id !== deleteTarget.id));
-      setShowDeleteConfirm(false);
-    } catch (e) {
-      setError((e as Error).message);
-      setShowDeleteConfirm(false);
-    } finally {
-      setDeleting(null);
-    }
+    deleteMutation.mutate(deleteTarget.id, {
+      onSuccess: () => setShowDeleteConfirm(false),
+      onError: () => setShowDeleteConfirm(false),
+    });
   };
 
-  const handleBulkAssign = async () => {
-    if (!bulkClassId || !bulkTeacherId) { setBulkError("Select both class and teacher"); return; }
-    setBulkSaving(true); setBulkError("");
-    try {
-      const result = await bulkAssignTeacher(cid, token, { classId: bulkClassId, teacherId: bulkTeacherId });
-      setShowBulkModal(false);
-      setBulkClassId(""); setBulkTeacherId("");
-      load(filterClassId, search);
-      alert(`Assigned teacher to ${result.updated} subjects`);
-    } catch (e) {
-      setBulkError((e as Error).message);
-    } finally {
-      setBulkSaving(false);
-    }
+  const handleBulkAssign = () => {
+    if (!bulkClassId || !bulkTeacherId) return;
+    bulkAssignMutation.mutate(
+      { classId: bulkClassId, teacherId: bulkTeacherId },
+      {
+        onSuccess: (result) => {
+          setShowBulkModal(false);
+          setBulkClassId(""); setBulkTeacherId("");
+          alert(`Assigned teacher to ${result.updated} subjects`);
+        },
+      },
+    );
   };
 
   const columns: Column<SubjectRecord>[] = [
@@ -283,7 +272,7 @@ export default function AdminSubjectsPage() {
             <div className="flex items-center gap-2">
               {isPeriodBased && (
                 <button
-                  onClick={() => { setBulkError(""); setBulkClassId(filterClassId); setShowBulkModal(true); }}
+                   onClick={() => { bulkAssignMutation.reset(); setBulkClassId(filterClassId); setShowBulkModal(true); }}
                   className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 px-3 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
                 >
                   <Users className="w-4 h-4" />
@@ -301,7 +290,7 @@ export default function AdminSubjectsPage() {
         }
       />
 
-      {error && <ApiErrorBanner message={error} onRetry={() => load(filterClassId, search)} />}
+      {subjectsError && <ApiErrorBanner message={subjectsError.message} onRetry={() => refetchSubjects()} />}
 
       {/* Search + class filter */}
       <div className="flex gap-3 mb-4">
@@ -485,8 +474,8 @@ export default function AdminSubjectsPage() {
                     {showExamConfig && (
                       <div className="mt-3">
                         <ExamConfigForm
-                          clientId={cid}
-                          token={token}
+                          clientId={activeClientId ?? ""}
+                          token={accessToken ?? ""}
                           embedded
                           subjectId={editTarget.id}
                           initialMaxMarks={editTarget.maxMarks}
@@ -529,7 +518,7 @@ export default function AdminSubjectsPage() {
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
-              onClick={() => !bulkSaving && setShowBulkModal(false)}
+              onClick={() => !bulkAssignMutation.isPending && setShowBulkModal(false)}
             />
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
@@ -545,8 +534,8 @@ export default function AdminSubjectsPage() {
                 </div>
                 <p className="text-xs text-gray-500">Assigns one teacher to all active subjects in the selected class.</p>
 
-                {bulkError && (
-                  <div className="bg-red-50 text-red-600 text-sm px-3 py-2 rounded-xl">{bulkError}</div>
+                {bulkAssignMutation.error && (
+                  <div className="bg-red-50 text-red-600 text-sm px-3 py-2 rounded-xl">{bulkAssignMutation.error.message}</div>
                 )}
 
                 <div>
@@ -568,13 +557,13 @@ export default function AdminSubjectsPage() {
                 </div>
 
                 <div className="flex gap-3">
-                  <button onClick={() => setShowBulkModal(false)} disabled={bulkSaving}
+                  <button onClick={() => setShowBulkModal(false)} disabled={bulkAssignMutation.isPending}
                     className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 disabled:opacity-50">
                     Cancel
                   </button>
-                  <button onClick={handleBulkAssign} disabled={bulkSaving}
+                  <button onClick={handleBulkAssign} disabled={bulkAssignMutation.isPending}
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 disabled:opacity-50">
-                    {bulkSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {bulkAssignMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                     Assign
                   </button>
                  </div>

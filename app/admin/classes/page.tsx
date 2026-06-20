@@ -1,13 +1,21 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import {
-  getAllClasses, createClass, updateClass, deleteClass,
-  type ClassRecord, type CreateClassPayload, type UpdateClassPayload,
+  type ClassRecord,
+  type CreateClassPayload,
+  type UpdateClassPayload,
 } from "@/lib/classes-api";
-import { getTeachers, type TeacherRecord } from "@/lib/teachers-api";
+import { type TeacherRecord } from "@/lib/teachers-api";
+import {
+  useClasses,
+  useCreateClass,
+  useUpdateClass,
+  useDeleteClass,
+  useTeachers,
+} from "@/lib/api-hooks";
 import { useAuthStore } from "@/store/auth";
 import { useNavigate } from "react-router-dom";
 import {
@@ -33,9 +41,7 @@ function classToForm(c: ClassRecord): FormState {
 }
 
 export default function AdminClassesPage() {
-  const { user, accessToken, activeClientId } = useAuthStore();
-  const cid   = activeClientId ?? "";
-  const token = accessToken ?? "";
+  const { user } = useAuthStore();
   const navigate = useNavigate();
 
   const [isMobile, setIsMobile] = useState(true);
@@ -48,97 +54,87 @@ export default function AdminClassesPage() {
 
   const isAdmin = user?.actorType === "CLIENT_ADMIN" || user?.actorType === "SUPER_ADMIN";
 
-  const [classes, setClasses]   = useState<ClassRecord[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState<string | null>(null);
-  const [search, setSearch]     = useState("");
-  const searchTimer             = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [teachers, setTeachers] = useState<TeacherRecord[]>([]);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const {
+    data: classes = [],
+    isLoading: loading,
+    error: classesError,
+    refetch: refetchClasses,
+  } = useClasses({ search: debouncedSearch || undefined });
+
+  const { data: teachersData } = useTeachers();
+  const teachers = teachersData?.data ?? [];
+
+  const createMutation = useCreateClass();
+  const updateMutation = useUpdateClass();
+  const deleteMutation = useDeleteClass();
+
+  const saving = createMutation.isPending || updateMutation.isPending;
+  const saveError = createMutation.error?.message || updateMutation.error?.message || "";
+  const deleting = deleteMutation.isPending ? deleteMutation.variables ?? null : null;
 
   const [showDrawer, setShowDrawer] = useState(false);
   const [editTarget, setEditTarget] = useState<ClassRecord | null>(null);
   const [form, setForm]             = useState<FormState>(EMPTY_FORM);
-  const [saving, setSaving]         = useState(false);
-  const [saveError, setSaveError]   = useState("");
-  const [deleting, setDeleting]     = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget]           = useState<ClassRecord | null>(null);
-
-  const load = useCallback(async (srch?: string) => {
-    if (!cid || !token) return;
-    setLoading(true); setError(null);
-    try {
-      const [cls, tch] = await Promise.all([
-        getAllClasses(cid, token, { search: srch }),
-        getTeachers(cid, token),
-      ]);
-      setClasses(cls);
-      setTeachers(tch.data ?? []);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [cid, token]);
-
-  useEffect(() => { load(); }, [load]);
 
   const handleSearch = (val: string) => {
     setSearch(val);
     if (searchTimer.current) clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => load(val), 400);
+    searchTimer.current = setTimeout(() => setDebouncedSearch(val), 400);
   };
 
   const openAdd = () => {
     setEditTarget(null);
     setForm(EMPTY_FORM);
-    setSaveError(""); setShowDrawer(true);
+    createMutation.reset();
+    updateMutation.reset();
+    setShowDrawer(true);
   };
 
   const openEdit = (c: ClassRecord) => {
-    setEditTarget(c); setForm(classToForm(c)); setSaveError(""); setShowDrawer(true);
+    setEditTarget(c); setForm(classToForm(c));
+    createMutation.reset();
+    updateMutation.reset();
+    setShowDrawer(true);
   };
 
-  const handleSave = async () => {
-    if (!form.name.trim()) { setSaveError("Class name is required"); return; }
-    setSaving(true); setSaveError("");
-    try {
-      if (editTarget) {
-        const updated = await updateClass(cid, token, editTarget.id, {
-          name: form.name.trim(),
-          classTeacherId: form.classTeacherId || null,
-          status: form.status,
-        } as UpdateClassPayload);
-        setClasses((prev) => prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c)));
-      } else {
-        const created = await createClass(cid, token, {
+  const handleSave = () => {
+    if (!form.name.trim()) return;
+    if (editTarget) {
+      updateMutation.mutate(
+        {
+          classId: editTarget.id,
+          data: {
+            name: form.name.trim(),
+            classTeacherId: form.classTeacherId || null,
+            status: form.status,
+          } as UpdateClassPayload,
+        },
+        { onSuccess: () => setShowDrawer(false) },
+      );
+    } else {
+      createMutation.mutate(
+        {
           name: form.name.trim(),
           classTeacherId: form.classTeacherId || null,
           accademicYearId: user?.defaultAcademicYearId ?? undefined,
-        } as CreateClassPayload);
-        setClasses((prev) => [...prev, created]);
-      }
-      setShowDrawer(false);
-    } catch (e) {
-      setSaveError((e as Error).message);
-    } finally {
-      setSaving(false);
+        } as CreateClassPayload,
+        { onSuccess: () => setShowDrawer(false) },
+      );
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!deleteTarget) return;
-    setDeleting(deleteTarget.id);
-    try {
-      await deleteClass(cid, token, deleteTarget.id);
-      setClasses((prev) => prev.filter((c) => c.id !== deleteTarget.id));
-      setShowDeleteConfirm(false);
-    } catch (e) {
-      setError((e as Error).message);
-      setShowDeleteConfirm(false);
-    } finally {
-      setDeleting(null);
-    }
+    deleteMutation.mutate(deleteTarget.id, {
+      onSuccess: () => setShowDeleteConfirm(false),
+      onError: () => setShowDeleteConfirm(false),
+    });
   };
 
   const columns: Column<ClassRecord>[] = [
@@ -245,7 +241,7 @@ export default function AdminClassesPage() {
         }
       />
 
-      {error && <ApiErrorBanner message={error} onRetry={() => load(search)} />}
+      {classesError && <ApiErrorBanner message={classesError.message} onRetry={() => refetchClasses()} />}
 
       {/* Search */}
       <div className="relative mb-4">

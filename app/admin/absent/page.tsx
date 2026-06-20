@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
-  getClassAttendance,
   type ClassAttendanceRecord,
 } from "@/lib/attendance-api";
+import { useClassAttendance } from "@/lib/api-hooks";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
@@ -36,38 +35,19 @@ const STATUS_STYLE: Record<
 
 export default function AdminAbsentPage() {
   const { lang } = useLanguageStore();
-  const { user, accessToken, activeClientId } = useAuthStore();
-
-  const [records, setRecords] = useState<ClassAttendanceRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuthStore();
 
   const today = todayISO();
 
-  const load = async () => {
-    if (!activeClientId || !accessToken) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await getClassAttendance(activeClientId, accessToken, {
-        date: today,
-        take: 500,
-        ...(user?.defaultAcademicYearId
-          ? { academicYearId: user.defaultAcademicYearId }
-          : {}),
-      });
-      setRecords(res.records);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: attendanceData, isLoading: loading, error: attendanceError, refetch } = useClassAttendance({
+    date: today,
+    take: 500,
+    ...(user?.defaultAcademicYearId
+      ? { academicYearId: user.defaultAcademicYearId }
+      : {}),
+  });
 
-  useEffect(() => {
-    load();
-  }, [activeClientId, accessToken]); // eslint-disable-line react-hooks/exhaustive-deps
-
+  const records = attendanceData?.records ?? [];
   const nonPresent = records.filter((r) => r.status !== "PRESENT");
 
   const byClass = nonPresent.reduce<Record<string, ClassAttendanceRecord[]>>(
@@ -94,7 +74,7 @@ export default function AdminAbsentPage() {
       />
 
       {/* Summary pills */}
-      {!loading && !error && (
+      {!loading && !attendanceError && (
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           <div className="flex items-center gap-1.5 bg-red-50 text-red-700 text-xs font-bold px-3 py-1.5 rounded-xl">
             <span className="text-base font-bold">{absentCount}</span> Absent
@@ -106,7 +86,7 @@ export default function AdminAbsentPage() {
             <span className="text-base font-bold">{excusedCount}</span> Excused
           </div>
           <button
-            onClick={load}
+            onClick={() => refetch()}
             className="ml-auto flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600"
           >
             <RefreshCw className="w-3 h-3" /> Refresh
@@ -116,9 +96,9 @@ export default function AdminAbsentPage() {
 
       {loading ? (
         <SkeletonList count={4} />
-      ) : error ? (
+      ) : attendanceError ? (
         <div className="px-4 py-4 text-sm text-red-600 bg-red-50 rounded-2xl">
-          {error}
+          {attendanceError.message}
         </div>
       ) : nonPresent.length === 0 ? (
         <div className="py-12 text-center text-sm text-gray-400">

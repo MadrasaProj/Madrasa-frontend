@@ -2,13 +2,12 @@ import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
-  listSuperAdminUsers,
-  createSuperAdminUser,
-  updateSuperAdminUser,
-  deleteSuperAdminUser,
-  type SuperAdminUser,
-} from "@/lib/super-admin-api";
-import { useAuthStore } from "@/store/auth";
+  useSuperAdminUsers,
+  useCreateSuperAdminUser,
+  useUpdateSuperAdminUser,
+  useDeleteSuperAdminUser,
+} from "@/lib/api-hooks";
+import type { SuperAdminUser } from "@/lib/super-admin-api";
 import { Shield, ShieldCheck, UserPlus, Trash2, Pencil, Loader2, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -21,21 +20,21 @@ type Mode = "add" | "edit";
 function UserDrawer({
   mode,
   user,
-  token,
-  onSaved,
   onClose,
 }: {
   mode: Mode;
   user?: SuperAdminUser;
-  token: string;
-  onSaved: (u: SuperAdminUser) => void;
   onClose: () => void;
 }) {
+  const createMutation = useCreateSuperAdminUser();
+  const updateMutation = useUpdateSuperAdminUser();
+
   const [name, setName] = useState(user?.name ?? "");
   const [identifier, setIdentifier] = useState(user?.identifier ?? "");
   const [password, setPassword] = useState("");
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  const saving = createMutation.isPending || updateMutation.isPending;
 
   const inputCls = "w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400";
   const labelCls = "text-xs text-gray-500 mb-1 block font-medium";
@@ -45,23 +44,19 @@ function UserDrawer({
     if (mode === "add" && (!identifier || !password)) {
       setError("Username and password are required."); return;
     }
-    setSaving(true);
     setError("");
-    try {
-      let saved: SuperAdminUser;
-      if (mode === "add") {
-        saved = await createSuperAdminUser({ name, identifier, password }, token);
-      } else {
-        const dto: { name?: string; password?: string } = { name };
-        if (password) dto.password = password;
-        saved = await updateSuperAdminUser(user!.id, dto, token);
-      }
-      onSaved(saved);
-      onClose();
-    } catch (e: any) {
-      setError(e?.message ?? "Operation failed.");
-    } finally {
-      setSaving(false);
+    if (mode === "add") {
+      createMutation.mutate(
+        { name, identifier, password },
+        { onSuccess: () => onClose(), onError: (e: any) => setError(e?.message ?? "Operation failed.") },
+      );
+    } else {
+      const dto: { name?: string; password?: string } = { name };
+      if (password) dto.password = password;
+      updateMutation.mutate(
+        { userId: user!.id, dto },
+        { onSuccess: () => onClose(), onError: (e: any) => setError(e?.message ?? "Operation failed.") },
+      );
     }
   };
 
@@ -149,46 +144,18 @@ function UserDrawer({
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function AdminSuperUsersPage() {
-  const { accessToken } = useAuthStore();
-  const [users, setUsers] = useState<SuperAdminUser[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const { data: usersData, isLoading: loading, error: loadError } = useSuperAdminUsers();
+  const deleteMutation = useDeleteSuperAdminUser();
+
+  const users = usersData?.data ?? [];
   const [drawer, setDrawer] = useState<{ mode: Mode; user?: SuperAdminUser } | null>(null);
-  const [deleting, setDeleting] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!accessToken) return;
-    listSuperAdminUsers(accessToken)
-      .then((r) => setUsers(r.data))
-      .catch((e) => setError(e?.message ?? "Failed to load users."))
-      .finally(() => setLoading(false));
-  }, [accessToken]);
-
-  const handleSaved = (saved: SuperAdminUser) => {
-    setUsers((prev) => {
-      const idx = prev.findIndex((u) => u.id === saved.id);
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx] = saved;
-        return next;
-      }
-      return [saved, ...prev];
+  const handleDelete = (userId: string) => {
+    deleteMutation.mutate(userId, {
+      onSuccess: () => setConfirmDelete(null),
+      onError: (e: any) => { /* error shown by hook */ },
     });
-  };
-
-  const handleDelete = async (userId: string) => {
-    if (!accessToken) return;
-    setDeleting(userId);
-    try {
-      await deleteSuperAdminUser(userId, accessToken);
-      setUsers((prev) => prev.filter((u) => u.id !== userId));
-    } catch (e: any) {
-      setError(e?.message ?? "Delete failed.");
-    } finally {
-      setDeleting(null);
-      setConfirmDelete(null);
-    }
   };
 
   const fmtDate = (d: string) =>
@@ -209,8 +176,8 @@ export default function AdminSuperUsersPage() {
         }
       />
 
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">{error}</div>
+      {loadError && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">{(loadError as Error)?.message ?? "Failed to load users."}</div>
       )}
 
       {loading ? (
@@ -261,10 +228,10 @@ export default function AdminSuperUsersPage() {
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => handleDelete(u.id)}
-                        disabled={deleting === u.id}
+                        disabled={deleteMutation.isPending}
                         className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-red-600 text-white hover:bg-red-700 disabled:opacity-60 transition-all"
                       >
-                        {deleting === u.id ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                        {deleteMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
                         Confirm
                       </button>
                       <button
@@ -294,8 +261,6 @@ export default function AdminSuperUsersPage() {
           <UserDrawer
             mode={drawer.mode}
             user={drawer.user}
-            token={accessToken!}
-            onSaved={handleSaved}
             onClose={() => setDrawer(null)}
           />
         )}

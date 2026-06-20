@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
@@ -9,16 +9,17 @@ import { MarklistPoster } from "@/components/exam/MarklistPoster";
 import { ResultAnnouncementPoster } from "@/components/exam/ResultAnnouncementPoster";
 import { ExcelImportModal } from "@/components/exam/ExcelImportModal";
 import {
-  getClassReport, computeSummary, setFinalStatus,
+  useClassReport, useComputeSummary, useSetFinalStatus, useStudents,
+} from "@/lib/api-hooks";
+import {
   type ClassReport, type ClassReportRow, type ResultStatus, type TotalGrade,
   TOTAL_GRADE_LABELS,
 } from "@/lib/results-api";
-import { getStudents, type StudentRecord } from "@/lib/students-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
   RefreshCw, Loader2, Trophy, FileSpreadsheet,
-  CheckCircle2, AlertCircle, ArrowLeft, GraduationCap
+  CheckCircle2, AlertCircle, GraduationCap
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PageSkeleton } from "@/components/ui/Skeleton";
@@ -49,24 +50,24 @@ export default function ClassReportPage() {
   const examId   = params.get("examId") ?? "";
   const classId  = params.get("classId") ?? "";
   const ayId     = params.get("ayId") ?? "";
-  const backPath = params.get("back"); // null → navigate(-1), string → navigate(url)
+  const backPath = params.get("back");
 
-  const { user, accessToken, activeClientId } = useAuthStore();
-  const cid    = activeClientId ?? user?.clientId ?? "";
-  const token  = accessToken ?? "";
+  const { user, activeClientId, accessToken } = useAuthStore();
+  const cid = activeClientId ?? "";
+  const token = accessToken ?? "";
   const isAdmin      = user?.actorType === "SUPER_ADMIN" || user?.actorType === "CLIENT_ADMIN";
   const isTeacher    = user?.actorType === "TEACHER";
   const canCompute   = isAdmin || isTeacher;
 
-  const [report,    setReport]    = useState<ClassReport | null>(null);
-  const [students,  setStudents]  = useState<StudentRecord[]>([]);
-  const [loading,   setLoading]   = useState(true);
-  const [error,     setError]     = useState<string | null>(null);
+  const { data: report, isLoading: loading, error } = useClassReport({ examId, classId });
+  const { data: studentsData } = useStudents({ classId, limit: 500 });
+  const students = studentsData?.data ?? [];
+
   const [tab,            setTab]            = useState<Tab>("table");
   const [marklistStudId, setMarklistStudId] = useState<string | null>(null);
 
   // Compute
-  const [computing, setComputing] = useState(false);
+  const computeMutation = useComputeSummary();
   const [computeMsg, setComputeMsg] = useState<string | null>(null);
 
   // Import modal
@@ -74,6 +75,8 @@ export default function ClassReportPage() {
 
   // Status editing
   const [statusMap,  setStatusMap]  = useState<Record<string, { finalStatus: ResultStatus; totalGrade?: TotalGrade | null }>>({});
+  const [statusInit, setStatusInit] = useState(false);
+  const setFinalStatusMutation = useSetFinalStatus();
   const [savingId,   setSavingId]   = useState<string | null>(null);
   const [statusMsg,  setStatusMsg]  = useState<string | null>(null);
 
@@ -83,100 +86,87 @@ export default function ClassReportPage() {
   // Save-all status
   const [savingAll, setSavingAll] = useState(false);
 
-  // ── Load ───────────────────────────────────────────────────────────────────
-
-  const load = useCallback(async (silent = false) => {
-    if (!cid || !token || !examId || !classId) return;
-    if (!silent) { setLoading(true); setError(null); }
-    try {
-      const [rep, studs] = await Promise.all([
-        getClassReport(cid, token, { examId, classId }),
-        getStudents(cid, token, { classId, limit: 500 }).catch(() => ({ data: [] as StudentRecord[] })),
-      ]);
-      setReport(rep);
-      setStudents(studs.data ?? []);
-
-      // Pre-populate status map from loaded data
-      const map: typeof statusMap = {};
-      for (const r of rep.students) {
-        if (r.summary.finalStatus) {
-          map[r.student.id] = {
-            finalStatus: r.summary.finalStatus,
-            totalGrade:  r.summary.totalGrade ?? null,
-          };
-        }
+  // Pre-populate status map from loaded data (once)
+  if (report && !statusInit) {
+    const map: typeof statusMap = {};
+    for (const r of report.students) {
+      if (r.summary.finalStatus) {
+        map[r.student.id] = {
+          finalStatus: r.summary.finalStatus,
+          totalGrade:  r.summary.totalGrade ?? null,
+        };
       }
-      setStatusMap(map);
-    } catch (e: any) {
-      if (!silent) setError(e.message ?? "Failed to load report");
-    } finally {
-      if (!silent) setLoading(false);
     }
-  }, [cid, token, examId, classId]);
-
-  useEffect(() => { load(); }, [load]);
+    setStatusMap(map);
+    setStatusInit(true);
+  }
 
   // ── Compute grades ─────────────────────────────────────────────────────────
 
-  const handleCompute = async () => {
-    if (!report || computing) return;
-    setComputing(true);
+  const handleCompute = () => {
+    if (!report) return;
     setComputeMsg(null);
-    try {
-      const res = await computeSummary(cid, token, { examId, classId, accademicYearId: ayId || undefined });
-      setComputeMsg(`Computed ${res.computed} results · ${res.ranked} students ranked`);
-      await load(true);
-    } catch (e: any) {
-      setComputeMsg(`Error: ${e.message}`);
-    } finally {
-      setComputing(false);
-    }
+    computeMutation.mutate(
+      { examId, classId, accademicYearId: ayId || undefined },
+      {
+        onSuccess: (res: any) => {
+          setComputeMsg(`Computed ${res.computed} results · ${res.ranked} students ranked`);
+        },
+        onError: (e: any) => {
+          setComputeMsg(`Error: ${e.message}`);
+        },
+      },
+    );
   };
 
   // ── Set final status ───────────────────────────────────────────────────────
 
-  const handleSaveAll = async () => {
+  const handleSaveAll = () => {
     if (!report || savingAll) return;
     setSavingAll(true);
     setStatusMsg(null);
     let saved = 0;
-    try {
-      for (const row of report.students) {
-        const entry = statusMap[row.student.id];
-        if (!entry?.finalStatus) continue;
-        await setFinalStatus(cid, token, row.student.id, examId, {
-          finalStatus: entry.finalStatus,
-          totalGrade:  entry.totalGrade ?? null,
-        });
-        saved++;
+    const rows = report.students.filter((r) => statusMap[r.student.id]?.finalStatus);
+    if (rows.length === 0) { setSavingAll(false); return; }
+
+    const saveNext = (idx: number) => {
+      if (idx >= rows.length) {
+        setStatusMsg(`Saved status for ${saved} student${saved !== 1 ? "s" : ""}`);
+        setSavingAll(false);
+        return;
       }
-      setStatusMsg(`Saved status for ${saved} student${saved !== 1 ? "s" : ""}`);
-      await load(true);
-    } catch (e: any) {
-      setStatusMsg(`Error: ${e.message}`);
-    } finally {
-      setSavingAll(false);
-    }
+      const row = rows[idx];
+      const entry = statusMap[row.student.id];
+      setFinalStatusMutation.mutate(
+        { studentId: row.student.id, examId, data: { finalStatus: entry!.finalStatus, totalGrade: entry!.totalGrade ?? null } },
+        {
+          onSuccess: () => { saved++; saveNext(idx + 1); },
+          onError: (e: any) => { setStatusMsg(`Error: ${e.message}`); setSavingAll(false); },
+        },
+      );
+    };
+    saveNext(0);
   };
 
-  const handleSaveStatus = async (row: ClassReportRow) => {
+  const handleSaveStatus = useCallback((row: ClassReportRow) => {
     const entry = statusMap[row.student.id];
     if (!entry?.finalStatus) return;
     setSavingId(row.student.id);
     setStatusMsg(null);
-    try {
-      await setFinalStatus(cid, token, row.student.id, examId, {
-        finalStatus: entry.finalStatus,
-        totalGrade:  entry.totalGrade ?? null,
-      });
-      setStatusMsg(`Status saved for ${row.student.name}`);
-      await load(true);
-    } catch (e: any) {
-      setStatusMsg(`Error: ${e.message}`);
-    } finally {
-      setSavingId(null);
-    }
-  };
+    setFinalStatusMutation.mutate(
+      { studentId: row.student.id, examId, data: { finalStatus: entry.finalStatus, totalGrade: entry.totalGrade ?? null } },
+      {
+        onSuccess: () => {
+          setStatusMsg(`Status saved for ${row.student.name}`);
+          setSavingId(null);
+        },
+        onError: (e: any) => {
+          setStatusMsg(`Error: ${e.message}`);
+          setSavingId(null);
+        },
+      },
+    );
+  }, [examId, statusMap, setFinalStatusMutation]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -191,7 +181,7 @@ export default function ClassReportPage() {
   if (error) {
     return (
       <DashboardLayout>
-        <ApiErrorBanner message={error} onRetry={() => load()} />
+        <ApiErrorBanner message={error.message} />
       </DashboardLayout>
     );
   }
@@ -226,9 +216,9 @@ export default function ClassReportPage() {
                   <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
                   Import Excel
                 </button>
-                <button onClick={handleCompute} disabled={computing}
+                <button onClick={handleCompute} disabled={computeMutation.isPending}
                   className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-50 transition-all shadow-sm shadow-emerald-100 hover:scale-[1.01]">
-                  {computing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                  {computeMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                   Compute Grades
                 </button>
               </div>
@@ -344,9 +334,8 @@ export default function ClassReportPage() {
           subjects={subjects}
           students={students.map((s) => ({ id: s.id, name: s.name, adno: s.adno }))}
           onClose={() => setImportOpen(false)}
-          onSuccess={async (saved) => {
+          onSuccess={() => {
             setImportOpen(false);
-            await load(true);
           }}
         />
       )}

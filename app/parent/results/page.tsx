@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { getExams, type ExamRecord } from "@/lib/exams-api";
-import { getResults, getSummaries, type ResultRecord, type ExamSummary, GRADE_COLORS, TOTAL_GRADE_LABELS, calcGradeFromConfig } from "@/lib/results-api";
+import { type ExamRecord } from "@/lib/exams-api";
+import { type ResultRecord, type ExamSummary, GRADE_COLORS, TOTAL_GRADE_LABELS, calcGradeFromConfig } from "@/lib/results-api";
+import { useExams, useResults, useSummaries } from "@/lib/api-hooks";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -377,65 +377,53 @@ function ParentRankCard({
 // ── Main Page Component ───────────────────────────────────────────────────────
 
 export default function ParentResultsPage() {
-  const { user, accessToken, activeStudentId } = useAuthStore();
-  const cid   = user?.clientId ?? "";
-  const token = accessToken ?? "";
+  const { user, activeStudentId } = useAuthStore();
   const ids   = user?.accessibleStudentIds ?? [];
   const ayId  = user?.defaultAcademicYearId ?? "";
   const madrasaName = user?.madrasaName ?? user?.name ?? "My Madrasa";
   const madrasaLogo = user?.madrasaLogo ?? null;
 
-  // multi-child support
   const [selectedChildId, setSelectedChildId] = useState<string>(() => activeStudentId ?? ids[0] ?? "");
   const effectiveId = selectedChildId || ids[0] || "";
 
-  const [exams,          setExams]          = useState<ExamRecord[]>([]);
-  const [activeExamId,   setActiveExamId]   = useState("");
-  const [results,        setResults]        = useState<ResultRecord[]>([]);
-  const [summary,        setSummary]        = useState<ExamSummary | null>(null);
-  const [loading,        setLoading]        = useState(true);
-  const [loadingResults, setLoadingResults] = useState(false);
-  const [error,          setError]          = useState<string | null>(null);
-  const [tab,            setTab]            = useState<Tab>("marks");
+  const [activeExamId, setActiveExamId] = useState("");
+  const [tab, setTab] = useState<Tab>("marks");
 
-  // Load child details
   const students = user?.accessibleStudents ?? [];
   const activeStudent = students.find((s) => s.id === effectiveId);
 
-  // ── Load published exams ──────────────────────────────────────────────────────
-  const loadExams = useCallback(async () => {
-    if (!cid || !token || !effectiveId) { setLoading(false); return; }
-    setLoading(true); setError(null);
-    try {
-      const examData = await getExams(cid, token, { accademicYearId: ayId || undefined, studentId: effectiveId, limit: 50 })
-        .catch(() => ({ data: [] as ExamRecord[] }));
-      const published = (examData.data ?? []).filter((e) => e.examStatus === "PUBLISHED");
-      setExams(published);
-      if (published[0] && !activeExamId) setActiveExamId(published[0].id);
-    } catch (e: any) {
-      setError(e.message ?? "Failed to load exams");
-    }
-    setLoading(false);
-  }, [cid, token, effectiveId, ayId, activeExamId]);
+  const {
+    data: examsData,
+    isLoading: loading,
+    error: examsError,
+    refetch: refetchExams,
+  } = useExams({ accademicYearId: ayId || undefined, studentId: effectiveId, limit: 50 });
 
-  useEffect(() => { loadExams(); }, [loadExams]);
+  const {
+    data: resultsData,
+    isLoading: loadingResultsRaw,
+  } = useResults({ examId: activeExamId || undefined, studentId: effectiveId || undefined, limit: 50 });
 
-  // ── Load results + summary when exam changes ──────────────────────────────────
+  const {
+    data: summariesData,
+    isLoading: loadingSummaries,
+  } = useSummaries({ examId: activeExamId || undefined, studentId: effectiveId || undefined, limit: 1 });
+
+  const loadingResults = loadingResultsRaw || loadingSummaries;
+
+  const allExams = examsData?.data ?? [];
+  const exams = allExams.filter((e: ExamRecord) => e.examStatus === "PUBLISHED");
+  const results = resultsData?.data ?? [];
+  const summary = summariesData?.data?.[0] ?? null;
+  const error = examsError?.message ?? null;
+
+  const loadExams = () => refetchExams();
+
   useEffect(() => {
-    if (!cid || !token || !effectiveId || !activeExamId) return;
-    setLoadingResults(true);
-    setSummary(null);
-    setResults([]);
-    Promise.all([
-      getResults(cid, token, { examId: activeExamId, studentId: effectiveId, limit: 50 })
-        .catch(() => ({ data: [] as ResultRecord[] })),
-      getSummaries(cid, token, { examId: activeExamId, studentId: effectiveId, limit: 1 })
-        .catch(() => ({ data: [] as ExamSummary[] })),
-    ]).then(([resData, sumData]) => {
-      setResults(resData.data ?? []);
-      setSummary(sumData.data?.[0] ?? null);
-    }).finally(() => setLoadingResults(false));
-  }, [cid, token, effectiveId, activeExamId]);
+    if (exams.length > 0 && !activeExamId) {
+      setActiveExamId(exams[0].id);
+    }
+  }, [exams, activeExamId]);
 
   const activeExam   = exams.find((e) => e.id === activeExamId);
   const rank         = summary?.rank ?? null;
@@ -502,7 +490,7 @@ export default function ParentResultsPage() {
           </div>
         ) : error ? (
           <div className="bg-rose-50 border border-rose-100 text-rose-600 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" /> {error}
+            <AlertCircle className="w-4 h-4 shrink-0" /> {examsError?.message}
           </div>
         ) : (
           <div className="space-y-6">
@@ -512,7 +500,7 @@ export default function ParentResultsPage() {
               <div className="flex gap-2 overflow-x-auto pb-1 print:hidden">
                 {students.map((s) => (
                   <button key={s.id}
-                    onClick={() => { setSelectedChildId(s.id); setActiveExamId(""); setResults([]); setSummary(null); }}
+                    onClick={() => { setSelectedChildId(s.id); setActiveExamId(""); }}
                     className={cn(
                       "px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors border",
                       selectedChildId === s.id

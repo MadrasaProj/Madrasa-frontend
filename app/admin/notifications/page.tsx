@@ -3,11 +3,9 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import {
-  getSentNotifications, createNotification, deleteNotification, updateNotification,
-  type NotificationRecord, type NotificationType,
-} from "@/lib/notifications-api";
-import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
-import { useAuthStore } from "@/store/auth";
+  useSentNotifications, useCreateNotification, useDeleteNotification, useUpdateNotification, useClasses,
+} from "@/lib/api-hooks";
+import { type NotificationRecord, type NotificationType } from "@/lib/notifications-api";
 import { cn } from "@/lib/utils";
 import {
   Bell, Plus, Send, Trash2, Loader2, X, Pencil, ExternalLink,
@@ -28,18 +26,17 @@ const TYPE_CONFIG: Record<NotificationType, { label: string; icon: React.Element
 const ROLES = ["CLIENT_ADMIN", "TEACHER", "PARENT"];
 
 export default function AdminNotificationsPage() {
-  const { user, accessToken, activeClientId } = useAuthStore();
-  const cid   = activeClientId ?? "";
-  const token = accessToken ?? "";
-
-  const [sent, setSent]           = useState<NotificationRecord[]>([]);
-  const [total, setTotal]         = useState(0);
-  const [classes, setClasses]     = useState<ClassRecord[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState<string | null>(null);
   const [showCompose, setShowCompose] = useState(false);
-  const [deletingId, setDeletingId]   = useState<string | null>(null);
   const [editTarget, setEditTarget]   = useState<NotificationRecord | null>(null);
+
+  const { data: classes = [] } = useClasses();
+  const { data: sentData, isLoading, error } = useSentNotifications({ take: 50 });
+  const sent = sentData?.notifications ?? [];
+  const total = sentData?.total ?? 0;
+
+  const createMutation = useCreateNotification();
+  const updateMutation = useUpdateNotification();
+  const deleteMutation = useDeleteNotification();
 
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" ? window.innerWidth < 768 : true);
   useEffect(() => {
@@ -55,7 +52,6 @@ export default function AdminNotificationsPage() {
   const [cRoles, setCRoles]       = useState<string[]>(["PARENT"]);
   const [cClassIds, setCClassIds] = useState<string[]>([]);
   const [cEventDate, setCEventDate] = useState("");
-  const [sending, setSending]     = useState(false);
   const [sendError, setSendError] = useState("");
 
   const handleComposeClick = () => {
@@ -77,55 +73,37 @@ export default function AdminNotificationsPage() {
     setShowCompose(true);
   };
 
-  const loadSent = useCallback(async () => {
-    if (!cid || !token) return;
-    setError(null); setLoading(true);
-    try {
-      const data = await getSentNotifications(cid, token, { take: 50 });
-      setSent(data.notifications ?? []);
-      setTotal(data.total ?? 0);
-    } catch (e) { setError((e as Error).message); }
-    finally { setLoading(false); }
-  }, [cid, token]);
-
-  useEffect(() => {
-    if (!cid || !token) return;
-    loadSent();
-    getAllClasses(cid, token).then(setClasses).catch((e) => { setError((e as Error).message); });
-  }, [cid, token, loadSent]);
-
-  const handleSend = async () => {
+  const handleSend = () => {
     if (!cTitle || !cBody || !cRoles.length) return;
-    setSendError(""); setSending(true);
-    try {
-      if (editTarget) {
-        await updateNotification(cid, token, editTarget.id, {
-          title: cTitle, body: cBody, type: cType,
-          targetRoles: cRoles,
-          targetClassIds: cClassIds.length ? cClassIds : undefined,
-          eventDate: cEventDate || undefined,
-        });
-      } else {
-        await createNotification(cid, token, {
-          title: cTitle, body: cBody, type: cType,
-          targetRoles: cRoles,
-          targetClassIds: cClassIds.length ? cClassIds : undefined,
-          eventDate: cEventDate || undefined,
-        });
-      }
+    setSendError("");
+    const payload = {
+      title: cTitle, body: cBody, type: cType,
+      targetRoles: cRoles,
+      targetClassIds: cClassIds.length ? cClassIds : undefined,
+      eventDate: cEventDate || undefined,
+    };
+    const onSuccess = () => {
       setShowCompose(false);
       setEditTarget(null);
       setCTitle(""); setCBody(""); setCRoles(["PARENT"]); setCClassIds([]); setCEventDate("");
-      loadSent();
-    } catch (e) { setSendError((e as Error).message); }
-    finally { setSending(false); }
+    };
+    if (editTarget) {
+      updateMutation.mutate(
+        { id: editTarget.id, data: payload },
+        { onSuccess, onError: (e) => setSendError(e.message) },
+      );
+    } else {
+      createMutation.mutate(
+        payload,
+        { onSuccess, onError: (e) => setSendError(e.message) },
+      );
+    }
   };
 
-  const handleDelete = async (id: string) => {
-    setDeletingId(id);
-    try { await deleteNotification(cid, token, id); loadSent(); }
-    catch (e) { alert((e as Error).message); }
-    finally { setDeletingId(null); }
+  const handleDelete = (id: string) => {
+    deleteMutation.mutate(id, {
+      onError: (e) => alert(e.message),
+    });
   };
 
   const toggleRole = (r: string) =>
@@ -145,9 +123,9 @@ export default function AdminNotificationsPage() {
         }
       />
 
-      {error && <ApiErrorBanner message={error} onRetry={loadSent} />}
+      {error && <ApiErrorBanner message={error.message} />}
 
-      {loading ? (
+      {isLoading ? (
         <SkeletonList count={4} />
       ) : sent.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm">No notifications sent yet</div>
@@ -195,9 +173,9 @@ export default function AdminNotificationsPage() {
                       className="p-1 text-gray-300 hover:text-emerald-600 transition-colors">
                       <Pencil className="w-4.5 h-4.5" />
                     </button>
-                    <button onClick={() => handleDelete(n.id)} disabled={deletingId === n.id}
+                    <button onClick={() => handleDelete(n.id)} disabled={deleteMutation.isPending}
                       className="p-1 text-gray-300 hover:text-red-500 transition-colors">
-                      {deletingId === n.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                      {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
@@ -298,9 +276,9 @@ export default function AdminNotificationsPage() {
               <div className="px-5 py-4 border-t border-gray-100 shrink-0 flex gap-3">
                 <button onClick={() => setShowCompose(false)}
                   className="flex-1 py-3.5 border border-gray-200 rounded-2xl text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all">Cancel</button>
-                <button onClick={handleSend} disabled={!cTitle || !cBody || !cRoles.length || sending}
+                <button onClick={handleSend} disabled={!cTitle || !cBody || !cRoles.length || createMutation.isPending || updateMutation.isPending}
                   className="flex-1 py-3.5 bg-emerald-600 text-white rounded-2xl text-sm font-semibold disabled:opacity-60 flex items-center justify-center gap-2">
-                  {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  {(createMutation.isPending || updateMutation.isPending) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   Send
                 </button>
               </div>

@@ -1,23 +1,25 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
-  listClients,
-  listClientPayments,
-  recordClientPayment,
-  updateClient,
-  getClientLogs,
-  createClient,
-  type ClientListItem,
-  type ClientPayment,
-  type ActivityLogItem,
-  type CreateClientDto,
-  type UpdateClientDto,
-} from "@/lib/super-admin-api";
+  useSuperAdminClients,
+  useUpdateClient,
+  useCreateClient,
+  useClientPayments,
+  useRecordClientPayment,
+  useClientLogs,
+} from "@/lib/api-hooks";
 import {
   getAllClasses,
   type ClassRecord,
 } from "@/lib/classes-api";
+import type {
+  ClientListItem,
+  ClientPayment,
+  ActivityLogItem,
+  CreateClientDto,
+  UpdateClientDto,
+} from "@/lib/super-admin-api";
 import { useAuthStore } from "@/store/auth";
 import { useNavigate } from "react-router-dom";
 import {
@@ -69,15 +71,13 @@ const STATUS_COLORS: Record<string, string> = {
 
 function EditMadrasaDrawer({
   client,
-  token,
-  onSaved,
   onClose,
 }: {
   client: ClientListItem;
-  token: string;
-  onSaved: (updated: ClientListItem) => void;
   onClose: () => void;
 }) {
+  const { accessToken } = useAuthStore();
+  const updateClientMutation = useUpdateClient();
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" ? window.innerWidth < 768 : true);
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -106,7 +106,7 @@ function EditMadrasaDrawer({
   const [classesLoading, setClassesLoading] = useState(true);
 
   useEffect(() => {
-    getAllClasses(client.id, token)
+    getAllClasses(client.id, accessToken!)
       .then((classes) => {
         setExistingClasses(classes);
         const map: Record<number, string[]> = {};
@@ -118,7 +118,7 @@ function EditMadrasaDrawer({
       })
       .catch(() => {})
       .finally(() => setClassesLoading(false));
-  }, [client.id, token]);
+  }, [client.id, accessToken]);
 
   const set = (k: string, v: any) =>
     setForm((f) => ({ ...f, [k]: v }));
@@ -132,13 +132,11 @@ function EditMadrasaDrawer({
     setError("");
     setSuccess(false);
     try {
-      // Build full desired state from active existing classes + any overrides
       const byLevel: Record<number, string[]> = {};
       for (const c of existingClasses) {
         if (c.status !== 'ACTIVE' || c.classLevel == null || !c.division) continue;
         (byLevel[c.classLevel] ??= []).push(c.division);
       }
-      // Merge editDivisions overrides into the map (including empty = removed)
       for (const [lvlStr, divs] of Object.entries(editDivisions)) {
         byLevel[Number(lvlStr)] = divs;
       }
@@ -163,10 +161,8 @@ function EditMadrasaDrawer({
         classLevels: allLevels.length > 0 ? allLevels : undefined,
         divisions: Object.keys(divisions).length > 0 || hasRemovals ? divisions : undefined,
       };
-      const updated = await updateClient(client.id, dto, token);
-      const merged: ClientListItem = { ...client, ...updated };
+      await updateClientMutation.mutateAsync({ clientId: client.id, dto });
       setSuccess(true);
-      onSaved(merged);
       setTimeout(onClose, 800);
     } catch (e: unknown) {
       setError((e as Error)?.message ?? "Failed to save changes.");
@@ -444,18 +440,18 @@ function EditMadrasaDrawer({
 
 function ClientDetail({
   client,
-  token,
 }: {
   client: ClientListItem;
-  token: string;
 }) {
   const [tab, setTab] = useState<"payments" | "logs">("payments");
-  const [payments, setPayments] = useState<ClientPayment[]>([]);
-  const [logs, setLogs] = useState<ActivityLogItem[]>([]);
-  const [loadingP, setLoadingP] = useState(false);
-  const [loadingL, setLoadingL] = useState(false);
   const [showAddPayment, setShowAddPayment] = useState(false);
-  const [saving, setSaving] = useState(false);
+
+  const { data: paymentsData, isLoading: loadingP } = useClientPayments(client.id);
+  const { data: logsData, isLoading: loadingL } = useClientLogs(client.id);
+  const recordPaymentMutation = useRecordClientPayment();
+
+  const payments = paymentsData?.data ?? [];
+  const logs = logsData?.data ?? [];
 
   const [form, setForm] = useState({
     amount: "",
@@ -467,38 +463,16 @@ function ClientDetail({
     notes: "",
   });
 
-  const loadPayments = useCallback(() => {
-    setLoadingP(true);
-    listClientPayments(client.id, token)
-      .then((r) => setPayments(r.data))
-      .catch(() => {})
-      .finally(() => setLoadingP(false));
-  }, [client.id, token]);
-
-  const loadLogs = useCallback(() => {
-    setLoadingL(true);
-    getClientLogs(client.id, token)
-      .then((r) => setLogs(r.data))
-      .catch(() => {})
-      .finally(() => setLoadingL(false));
-  }, [client.id, token]);
-
-  useEffect(() => {
-    loadPayments();
-  }, [loadPayments]);
-
   const handleTabChange = (t: "payments" | "logs") => {
     setTab(t);
-    if (t === "logs" && logs.length === 0) loadLogs();
   };
 
-  const handleRecordPayment = async () => {
+  const handleRecordPayment = () => {
     if (!form.amount || Number(form.amount) <= 0) return;
-    setSaving(true);
-    try {
-      await recordClientPayment(
-        client.id,
-        {
+    recordPaymentMutation.mutate(
+      {
+        clientId: client.id,
+        dto: {
           amount: Number(form.amount),
           paidAt: form.paidAt,
           periodStart: form.periodStart,
@@ -507,16 +481,14 @@ function ClientDetail({
           reference: form.reference || undefined,
           notes: form.notes || undefined,
         },
-        token,
-      );
-      setShowAddPayment(false);
-      setForm((f) => ({ ...f, amount: "", reference: "", notes: "" }));
-      loadPayments();
-    } catch {
-      // silent — payment errors shown by lack of new entry
-    } finally {
-      setSaving(false);
-    }
+      },
+      {
+        onSuccess: () => {
+          setShowAddPayment(false);
+          setForm((f) => ({ ...f, amount: "", reference: "", notes: "" }));
+        },
+      },
+    );
   };
 
   return (
@@ -668,10 +640,10 @@ function ClientDetail({
               </button>
               <button
                 onClick={handleRecordPayment}
-                disabled={saving || !form.amount}
+                disabled={recordPaymentMutation.isPending || !form.amount}
                 className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all disabled:opacity-60"
               >
-                {saving ? (
+                {recordPaymentMutation.isPending ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 ) : (
                   <Plus className="w-3.5 h-3.5" />
@@ -791,14 +763,11 @@ function slugify(s: string) {
 }
 
 function NewMadrasaDrawer({
-  token,
-  onCreated,
   onClose,
 }: {
-  token: string;
-  onCreated: (c: ClientListItem) => void;
   onClose: () => void;
 }) {
+  const createClientMutation = useCreateClient();
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" ? window.innerWidth < 768 : true);
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -842,8 +811,7 @@ function NewMadrasaDrawer({
         divisions[String(lvl)] = levelDivisions[lvl];
       }
       const payload = { ...form, classLevels: classLevels.length > 0 ? classLevels : undefined, divisions: Object.keys(divisions).length > 0 ? divisions : undefined };
-      const created = await createClient(payload, token);
-      onCreated(created);
+      await createClientMutation.mutateAsync(payload);
       onClose();
     } catch (e: unknown) {
       setError((e as Error)?.message ?? "Failed to create madrasa.");
@@ -1123,10 +1091,10 @@ function NewMadrasaDrawer({
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function AdminMadrasasPage() {
-  const { accessToken, switchToClient } = useAuthStore();
+  const { switchToClient } = useAuthStore();
   const navigate = useNavigate();
-  const [clients, setClients] = useState<ClientListItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: clientsData, isLoading: loading } = useSuperAdminClients();
+
   const [entering, setEntering] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [editingClient, setEditingClient] = useState<ClientListItem | null>(
@@ -1134,26 +1102,15 @@ export default function AdminMadrasasPage() {
   );
   const [showNew, setShowNew] = useState(false);
 
-  // Pagination states
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  useEffect(() => {
-    if (!accessToken) return;
-    listClients(accessToken)
-      .then((r) => setClients(r.data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [accessToken]);
+  const clients = clientsData?.data ?? [];
 
   const handleEnterClient = (clientId: string, slug: string) => {
     setEntering(clientId);
     switchToClient(clientId, slug);
     navigate(`/m/${slug}/admin`);
-  };
-
-  const handleSaved = (updated: ClientListItem) => {
-    setClients((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
   };
 
   const totalClients = clients.length;
@@ -1314,7 +1271,7 @@ export default function AdminMadrasasPage() {
                         className="overflow-hidden border-t border-gray-50"
                       >
                         <div className="px-4 pb-4">
-                          <ClientDetail client={client} token={accessToken!} />
+                          <ClientDetail client={client} />
                         </div>
                       </motion.div>
                     )}
@@ -1385,10 +1342,6 @@ export default function AdminMadrasasPage() {
           <EditMadrasaDrawer
             key={editingClient.id}
             client={editingClient}
-            token={accessToken!}
-            onSaved={(updated) => {
-              handleSaved(updated);
-            }}
             onClose={() => setEditingClient(null)}
           />
         )}
@@ -1398,11 +1351,6 @@ export default function AdminMadrasasPage() {
       <AnimatePresence>
         {showNew && (
           <NewMadrasaDrawer
-            token={accessToken!}
-            onCreated={(c) => {
-              setClients((prev) => [c, ...prev]);
-              setPage(1); // Go to first page to see the new item
-            }}
             onClose={() => setShowNew(false)}
           />
         )}

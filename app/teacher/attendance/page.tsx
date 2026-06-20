@@ -1,21 +1,18 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
-import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
-import { getStudents } from "@/lib/students-api";
-import {
-  getClassAttendance, bulkUpsertAttendance,
-  type AttendanceStatus, type ClassAttendanceRecord,
-} from "@/lib/attendance-api";
+import { useClasses, useClassAttendance, useBulkUpsertAttendance } from "@/lib/api-hooks";
+import { useStudents } from "@/lib/api-hooks";
 import { useAuthStore } from "@/store/auth";
 import {
   ClipboardList, ChevronLeft, ChevronRight, Save, Loader2,
   Users, AlertCircle, AlertTriangle, CheckCircle2,
 } from "lucide-react";
-import { Skeleton, SkeletonList } from "@/components/ui/Skeleton";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import type { AttendanceStatus } from "@/lib/attendance-api";
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -91,87 +88,74 @@ function OtherClassConfirmModal({
 // ── Main component ─────────────────────────────────────────────────────────
 
 export default function TeacherAttendancePage() {
-  const { user, accessToken } = useAuthStore();
-  const cid   = user?.clientId ?? "";
-  const token = accessToken ?? "";
+  const { user } = useAuthStore();
 
-  const [classes,        setClasses]        = useState<ClassRecord[]>([]);
-  const [classesLoading, setClassesLoading] = useState(true);
-  const [activeClassId,  setActiveClassId]  = useState<string | null>(null);
-  const [date,           setDate]           = useState(todayISO());
-  const [students,       setStudents]       = useState<{ id: string; name: string; adno: string; gender?: string }[]>([]);
-  const [records,        setRecords]        = useState<Map<string, LocalRecord>>(new Map());
-  const [loading,        setLoading]        = useState(false);
-  const [error,          setError]          = useState<string | null>(null);
-  const [saving,         setSaving]         = useState(false);
-  const [saveError,      setSaveError]      = useState<string | null>(null);
-  const [saveSuccess,    setSaveSuccess]    = useState(false);
-  const [confirmSave,    setConfirmSave]    = useState(false);
+  const { data: classes = [], isLoading: classesLoading, error: classesError } = useClasses();
+  const [activeClassId, setActiveClassId] = useState<string | null>(null);
+  const [date, setDate] = useState(todayISO());
+
+  // Set first class on load
+  if (classes.length > 0 && !activeClassId) {
+    setActiveClassId(classes[0].id);
+  }
+
+  const { data: attendanceRes, isLoading: attendanceLoading, error: attendanceError } = useClassAttendance({
+    date,
+    classId: activeClassId ?? "",
+    academicYearId: user?.defaultAcademicYearId ?? undefined,
+    take: 500,
+  });
+
+  const { data: studentsRes, isLoading: studentsLoading } = useStudents({
+    classId: activeClassId ?? "",
+    status: "ACTIVE",
+    limit: 500,
+  });
+
+  const loading = classesLoading || (attendanceLoading && studentsLoading);
+  const error = classesError ? (classesError as Error).message : attendanceError ? (attendanceError as Error).message : null;
+
+  // Build local records from attendance data + students data
+  const [records, setRecords] = useState<Map<string, LocalRecord>>(new Map());
+  const [students, setStudents] = useState<{ id: string; name: string; adno: string; gender?: string }[]>([]);
+  const [recordsInitialized, setRecordsInitialized] = useState(false);
+
+  useEffect(() => {
+    const studentsList = studentsRes?.data ?? [];
+    const attendanceRecords = attendanceRes?.records ?? [];
+    if (studentsList.length === 0 && attendanceRecords.length === 0) return;
+    
+    setStudents(studentsList.map((s) => ({ id: s.id, name: s.name, adno: s.adno, gender: s.gender ?? undefined })));
+    
+    const hasExistingRecords = attendanceRecords.length > 0;
+    const map = new Map<string, LocalRecord>();
+    for (const s of studentsList) {
+      map.set(s.id, {
+        status: hasExistingRecords ? null : "PRESENT",
+        notes: "",
+        dirty: !hasExistingRecords,
+      });
+    }
+    for (const rec of attendanceRecords) {
+      map.set(rec.student.id, {
+        attendanceId: rec.id,
+        status: rec.status,
+        notes: rec.notes ?? "",
+        dirty: false,
+      });
+    }
+    setRecords(map);
+    setRecordsInitialized(true);
+  }, [attendanceRes, studentsRes, date, activeClassId]);
+
+  const bulkUpsertMutation = useBulkUpsertAttendance();
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [confirmSave, setConfirmSave] = useState(false);
 
   const saveSuccessTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (saveSuccessTimer.current) clearTimeout(saveSuccessTimer.current); }, []);
-
-  // Load all classes, own class first (backend already sorts for TEACHER role)
-  useEffect(() => {
-    if (!cid || !token) { setClassesLoading(false); return; }
-    const ac = new AbortController();
-    setClassesLoading(true);
-    getAllClasses(cid, token, ac.signal)
-      .then((cls) => {
-        setClasses(cls);
-        if (cls.length > 0) setActiveClassId(cls[0].id);
-      })
-      .catch((e) => { setError((e as Error).message); })
-      .finally(() => setClassesLoading(false));
-    return () => ac.abort();
-  }, [cid, token]);
-
-  // Load students + existing attendance whenever class or date changes
-  const loadAttendance = useCallback(async (classId: string, dateStr: string) => {
-    if (!cid || !token || !classId) return;
-    setLoading(true); setError(null);
-    try {
-      const [attendanceRes, studentsRes] = await Promise.all([
-        getClassAttendance(cid, token, {
-          date: dateStr, classId,
-          ...(user?.defaultAcademicYearId ? { academicYearId: user.defaultAcademicYearId } : {}),
-          take: 500,
-        }),
-        getStudents(cid, token, { classId, status: "ACTIVE", limit: 500 }),
-      ]);
-
-      const map = new Map<string, LocalRecord>();
-      const hasExistingRecords = attendanceRes.records && attendanceRes.records.length > 0;
-      for (const s of studentsRes.data) {
-        map.set(s.id, {
-          status: hasExistingRecords ? null : "PRESENT",
-          notes: "",
-          dirty: !hasExistingRecords,
-        });
-      }
-      for (const rec of attendanceRes.records) {
-        map.set(rec.student.id, {
-          attendanceId: rec.id,
-          status: rec.status,
-          notes: rec.notes ?? "",
-          dirty: false,
-        });
-      }
-      setStudents(
-        studentsRes.data.map((s) => ({ id: s.id, name: s.name, adno: s.adno, gender: s.gender ?? undefined })),
-      );
-      setRecords(map);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [cid, token, user?.defaultAcademicYearId]);
-
-  useEffect(() => {
-    if (activeClassId) loadAttendance(activeClassId, date);
-    else { setStudents([]); setRecords(new Map()); }
-  }, [activeClassId, date, loadAttendance]);
 
   const setStatus = (studentId: string, status: ActiveStatus) => {
     setRecords((prev) => {
@@ -223,50 +207,53 @@ export default function TeacherAttendancePage() {
     ? Math.round((summary.PRESENT / records.size) * 100)
     : 0;
 
-  const doSave = useCallback(async () => {
-    if (!activeClassId || !cid || !token) return;
+  const doSave = () => {
+    if (!activeClassId || !user?.clientId) return;
     setSaving(true); setSaveError(null);
-    try {
-      const entries: { studentId: string; status: AttendanceStatus; notes?: string }[] = [];
-      for (const [sid, rec] of records) {
-        if (rec.status !== null) {
-          entries.push({
-            studentId: sid,
-            status: rec.status,
-            ...(rec.notes ? { notes: rec.notes } : {}),
-          });
-        }
+    const entries: { studentId: string; status: AttendanceStatus; notes?: string }[] = [];
+    for (const [sid, rec] of records) {
+      if (rec.status !== null) {
+        entries.push({
+          studentId: sid,
+          status: rec.status,
+          ...(rec.notes ? { notes: rec.notes } : {}),
+        });
       }
-      if (entries.length === 0) { setSaving(false); return; }
+    }
+    if (entries.length === 0) { setSaving(false); return; }
 
-      await bulkUpsertAttendance(cid, token, {
+    bulkUpsertMutation.mutate(
+      {
         classId: activeClassId,
         date,
         ...(user?.defaultAcademicYearId ? { academicYearId: user.defaultAcademicYearId } : {}),
         records: entries,
-      });
+      },
+      {
+        onSuccess: () => {
+          setRecords((prev) => {
+            const next = new Map(prev);
+            for (const [sid, rec] of next) next.set(sid, { ...rec, dirty: false });
+            return next;
+          });
+          setSaveSuccess(true);
+          if (saveSuccessTimer.current) clearTimeout(saveSuccessTimer.current);
+          saveSuccessTimer.current = setTimeout(() => setSaveSuccess(false), 3000);
+          setSaving(false);
+        },
+        onError: (e) => {
+          setSaveError((e as Error).message);
+          setSaving(false);
+        },
+      },
+    );
+  };
 
-      setRecords((prev) => {
-        const next = new Map(prev);
-        for (const [sid, rec] of next) next.set(sid, { ...rec, dirty: false });
-        return next;
-      });
-      setSaveSuccess(true);
-      if (saveSuccessTimer.current) clearTimeout(saveSuccessTimer.current);
-      saveSuccessTimer.current = setTimeout(() => setSaveSuccess(false), 3000);
-      await loadAttendance(activeClassId, date);
-    } catch (e) {
-      setSaveError((e as Error).message);
-    } finally {
-      setSaving(false);
-    }
-  }, [activeClassId, cid, token, date, records, user?.defaultAcademicYearId, loadAttendance]);
-
-  const handleSave = useCallback(async () => {
+  const handleSave = () => {
     if (!activeClassId) return;
     if (!isOwnClass) { setConfirmSave(true); return; }
-    await doSave();
-  }, [activeClassId, isOwnClass, doSave]);
+    doSave();
+  };
 
   const changeDate = (delta: number) => {
     const d = new Date(date);
@@ -312,7 +299,7 @@ export default function TeacherAttendancePage() {
         }
       />
 
-      {error && <ApiErrorBanner message={error} onRetry={() => activeClassId ? loadAttendance(activeClassId, date) : undefined} />}
+      {error && <ApiErrorBanner message={error} />}
 
       {/* Date nav */}
       <div className="flex items-center justify-between bg-white rounded-2xl border border-gray-100 px-4 py-3 mb-4">

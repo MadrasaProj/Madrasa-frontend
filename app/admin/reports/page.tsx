@@ -1,21 +1,19 @@
-import { useState, useEffect, useCallback } from "react";
+import { useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import {
-  getStudentStats, getFeeSummary, getAttendanceSummary, getHomeworkSummary,
-  type StudentStats, type FeeSummary, type AttendanceSummary, type HomeworkSummary,
-} from "@/lib/reports-api";
+  useStudentStats, useReportFeeSummary, useAttendanceSummary, useHomeworkSummary,
+} from "@/lib/api-hooks";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
   BarChart3, Users, IndianRupee, ClipboardList, BookOpen,
-  RefreshCw, TrendingUp,
+  RefreshCw,
 } from "lucide-react";
-import { motion } from "framer-motion";
 import {
   BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis,
-  CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { PageSkeleton } from "@/components/ui/Skeleton";
 
@@ -33,38 +31,20 @@ const ATT_COLORS: Record<string, string> = {
 };
 
 export default function AdminReportsPage() {
-  const { user, accessToken, activeClientId } = useAuthStore();
-  const cid   = activeClientId ?? "";
-  const token = accessToken ?? "";
+  const { user } = useAuthStore();
   const ayId  = user?.defaultAcademicYearId ?? "";
 
-  const [students, setStudents]     = useState<StudentStats | null>(null);
-  const [fees, setFees]             = useState<FeeSummary | null>(null);
-  const [attendance, setAttendance] = useState<AttendanceSummary | null>(null);
-  const [homework, setHomework]     = useState<HomeworkSummary | null>(null);
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState<string | null>(null);
+  const { data: students, isLoading: sLoading, error: sErr } = useStudentStats();
+  const { data: fees, isLoading: fLoading, error: fErr } = useReportFeeSummary(ayId || undefined);
+  const { data: attendance, isLoading: aLoading, error: aErr } = useAttendanceSummary();
+  const { data: homework, isLoading: hLoading, error: hErr } = useHomeworkSummary();
 
-  const load = useCallback(async () => {
-    if (!cid || !token) return;
-    setError(null); setLoading(true);
-    try {
-      const [s, f, a, h] = await Promise.all([
-        getStudentStats(cid, token).catch((e) => { setError((e as Error).message); return null; }),
-        getFeeSummary(cid, token, ayId || undefined).catch((e) => { setError((e as Error).message); return null; }),
-        getAttendanceSummary(cid, token).catch((e) => { setError((e as Error).message); return null; }),
-        getHomeworkSummary(cid, token).catch((e) => { setError((e as Error).message); return null; }),
-      ]);
-      setStudents(s);
-      setFees(f);
-      setAttendance(a);
-      setHomework(h);
-    } finally {
-      setLoading(false);
-    }
-  }, [cid, token, ayId]);
-
-  useEffect(() => { load(); }, [load]);
+  const loading = sLoading || fLoading || aLoading || hLoading;
+  const error = sErr?.message ?? fErr?.message ?? aErr?.message ?? hErr?.message ?? null;
+  const refetchAll = () => {
+    // Individual refetches are handled by each hook if needed; reload page for simplicity
+    window.location.reload();
+  };
 
   const genderData = students?.byGender.map((g) => ({
     name: g.gender,
@@ -96,13 +76,13 @@ export default function AdminReportsPage() {
         title="Reports & Analytics"
         icon={BarChart3}
         action={
-          <button onClick={load} className="p-2 rounded-xl bg-gray-100 text-gray-600">
+          <button onClick={refetchAll} className="p-2 rounded-xl bg-gray-100 text-gray-600">
             <RefreshCw className="w-4 h-4" />
           </button>
         }
       />
 
-      {error && <ApiErrorBanner message={error} onRetry={load} />}
+      {error && <ApiErrorBanner message={error} />}
 
       {loading ? (
         <PageSkeleton />

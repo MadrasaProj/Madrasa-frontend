@@ -4,11 +4,12 @@ import { ActionCard } from "@/components/ui/Cards";
 import { SectionHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { DataTable, type Column, type SortDir } from "@/components/ui/DataTable";
-import { getStudentStats, getFeeSummary, getAttendanceSummary } from "@/lib/reports-api";
 import {
-  listClients,
-  type ClientListItem,
-} from "@/lib/super-admin-api";
+  useStudentStats,
+  useReportFeeSummary,
+  useAttendanceSummary,
+  useSuperAdminClients,
+} from "@/lib/api-hooks";
 import { useAuthStore } from "@/store/auth";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
@@ -20,26 +21,11 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 function PlatformOverview() {
-  const { user, accessToken } = useAuthStore();
+  const { user } = useAuthStore();
   const navigate = useNavigate();
-  const [clients, setClients] = useState<ClientListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: clientsData, isLoading: loading, error } = useSuperAdminClients();
 
-  const loadClients = () => {
-    if (!accessToken) return;
-    setError(null);
-    setLoading(true);
-    listClients(accessToken)
-      .then((r) => setClients(r.data))
-      .catch((e) => { setError((e as Error).message); })
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    loadClients();
-  }, [accessToken]); // eslint-disable-line
-
+  const clients = clientsData?.data ?? [];
   const totalClients = clients.length;
   const activeClients = clients.filter((c) => c.status === "ACTIVE").length;
   const totalStudents = clients.reduce((s, c) => s + (c._count?.students ?? 0), 0);
@@ -61,7 +47,7 @@ function PlatformOverview() {
 
   return (
     <>
-      {error && <ApiErrorBanner message={error} onRetry={loadClients} />}
+      {error && <ApiErrorBanner message={(error as Error).message} />}
 
       {/* Stats banner */}
       <div className="mb-5">
@@ -101,36 +87,31 @@ function PlatformOverview() {
 // ── Madrasa Admin Dashboard ────────────────────────────────────────────────────
 
 function MadrasaAdminDashboard() {
-  const { user, accessToken, activeClientId } = useAuthStore();
+  const { user, activeClientId } = useAuthStore();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const slugMatch = pathname.match(/^\/m\/([^/]+)\//);
   const slugPrefix = slugMatch ? `/m/${slugMatch[1]}` : "";
 
-  const cid   = activeClientId ?? "";
-  const token = accessToken ?? "";
   const ayId  = user?.defaultAcademicYearId ?? "";
 
-  const [stats, setStats] = useState({ totalStudents: 0, activeStudents: 0, collectionPct: 0, attRate: 0 });
-  const [loading, setLoading] = useState(true);
+  const { data: stu, isLoading: statsLoading } = useStudentStats();
+  const { data: fee } = useReportFeeSummary(ayId || undefined);
+  const { data: att } = useAttendanceSummary();
 
-  useEffect(() => {
-    if (!cid || !token) return;
-    Promise.all([
-      getStudentStats(cid, token).catch(() => null),
-      getFeeSummary(cid, token, ayId || undefined).catch(() => null),
-      getAttendanceSummary(cid, token).catch(() => null),
-    ]).then(([stu, fee, att]) => {
-      setStats({
-        totalStudents: stu?.total ?? 0,
-        activeStudents: stu?.byStatus.find((s: any) => s.status === "ACTIVE")?._count.id ?? 0,
-        collectionPct: fee
-          ? (() => { const c = Number(fee.totalCollected); const p = Number(fee.totalPending); const t = c + p; return t > 0 ? Math.round((c / t) * 100) : 0; })()
-          : 0,
-        attRate: att?.rate ?? 0,
-      });
-    }).finally(() => setLoading(false));
-  }, [cid, token, ayId]);
+  const loading = statsLoading;
+
+  const stats = useMemo(() => {
+    const collectionPct = fee
+      ? (() => { const c = Number(fee.totalCollected); const p = Number(fee.totalPending); const t = c + p; return t > 0 ? Math.round((c / t) * 100) : 0; })()
+      : 0;
+    return {
+      totalStudents: stu?.total ?? 0,
+      activeStudents: stu?.byStatus.find((s: any) => s.status === "ACTIVE")?._count.id ?? 0,
+      collectionPct,
+      attRate: att?.rate ?? 0,
+    };
+  }, [stu, fee, att]);
 
   const statCards = [
     { label: "Total Students",  value: stats.totalStudents,       color: "text-blue-600" },

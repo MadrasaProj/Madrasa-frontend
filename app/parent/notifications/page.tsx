@@ -4,9 +4,9 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import {
-  getNotifications, markNotificationRead,
   type NotificationRecord,
 } from "@/lib/notifications-api";
+import { useNotifications, useMarkNotificationRead, useUnreadCount } from "@/lib/api-hooks";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -26,50 +26,39 @@ const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: 
 };
 
 export default function ParentNotificationsPage() {
-  const { user, accessToken } = useAuthStore();
-  const cid   = user?.clientId ?? "";
-  const token = accessToken ?? "";
+  const { user } = useAuthStore();
   const navigate = useNavigate();
 
-  const [notifs, setNotifs]   = useState<NotificationRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState<string | null>(null);
+  const {
+    data: notifData,
+    isLoading: loading,
+    error,
+    refetch: load,
+  } = useNotifications({ take: 60 });
 
-  const load = useCallback(async () => {
-    if (!cid || !token) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getNotifications(cid, token, { take: 60 });
-      setNotifs(data.notifications ?? []);
-    } catch (e) { setError((e as Error).message); }
-    finally { setLoading(false); }
-  }, [cid, token]);
+  const { data: unreadData } = useUnreadCount();
+  const markReadMutation = useMarkNotificationRead();
 
-  useEffect(() => { load(); }, [load]);
+  const notifs: NotificationRecord[] = notifData?.notifications ?? [];
+  const unread = unreadData?.count ?? 0;
 
-  const handleClick = async (n: NotificationRecord) => {
+  const handleClick = (n: NotificationRecord) => {
     if (!n.isRead) {
-      await markNotificationRead(cid, token, n.id).catch(() => {});
-      setNotifs((prev) => prev.map((x) => x.id === n.id ? { ...x, isRead: true } : x));
+      markReadMutation.mutate(n.id);
     }
     if (n.actionUrl) {
       navigate(n.actionUrl);
     }
   };
 
-  const handleRead = async (id: string) => {
-    await markNotificationRead(cid, token, id).catch(() => {});
-    setNotifs((prev) => prev.map((n) => n.id === id ? { ...n, isRead: true } : n));
+  const handleRead = (id: string) => {
+    markReadMutation.mutate(id);
   };
 
-  const markAllRead = async () => {
-    const unread = notifs.filter((n) => !n.isRead);
-    await Promise.all(unread.map((n) => markNotificationRead(cid, token, n.id).catch(() => {})));
-    setNotifs((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  const markAllRead = () => {
+    const unreadNotifs = notifs.filter((n) => !n.isRead);
+    unreadNotifs.forEach((n) => markReadMutation.mutate(n.id));
   };
-
-  const unread = notifs.filter((n) => !n.isRead).length;
 
   return (
     <DashboardLayout>
@@ -84,14 +73,14 @@ export default function ParentNotificationsPage() {
                 <CheckCheck className="w-4 h-4" />
               </button>
             )}
-            <button onClick={load} className="p-2 rounded-xl bg-gray-100 text-gray-600">
+            <button onClick={() => load()} className="p-2 rounded-xl bg-gray-100 text-gray-600">
               <RefreshCw className="w-4 h-4" />
             </button>
           </div>
         }
       />
 
-      {error && <ApiErrorBanner message={error} onRetry={load} />}
+      {error && <ApiErrorBanner message={error.message} onRetry={() => load()} />}
 
       {loading ? (
         <div className="space-y-2">

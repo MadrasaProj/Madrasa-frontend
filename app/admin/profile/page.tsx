@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { updateProfile } from "@/lib/super-admin-api";
+import { useUpdateProfile } from "@/lib/api-hooks";
 import { useAuthStore } from "@/store/auth";
 import { UserCircle2, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
@@ -28,14 +28,14 @@ const ROLE_LABEL: Record<string, string> = {
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
-  const { user, accessToken, updateUser } = useAuthStore();
+  const { user, updateUser } = useAuthStore();
+  const updateProfileMutation = useUpdateProfile();
 
   const [name, setName] = useState(user?.name ?? "");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
 
@@ -65,21 +65,20 @@ export default function ProfilePage() {
       return;
     }
 
-    setSaving(true);
-    try {
-      await updateProfile(accessToken!, dto);
-      setSuccess("Profile updated successfully.");
-      if (dto.name) {
-        updateUser({ name: dto.name });
-      }
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to update profile.");
-    } finally {
-      setSaving(false);
-    }
+    updateProfileMutation.mutate(dto, {
+      onSuccess: () => {
+        setSuccess("Profile updated successfully.");
+        if (dto.name) {
+          updateUser({ name: dto.name });
+        }
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+      },
+      onError: (e: any) => {
+        setError(e?.message ?? "Failed to update profile.");
+      },
+    });
   };
 
   const actorType = user?.actorType ?? "CLIENT_ADMIN";
@@ -192,10 +191,10 @@ export default function ProfilePage() {
         {/* Save button */}
         <button
           onClick={handleSave}
-          disabled={saving}
+          disabled={updateProfileMutation.isPending}
           className="w-full flex items-center justify-center gap-2 py-3.5 text-sm font-semibold bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-all disabled:opacity-60"
         >
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+          {updateProfileMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
           Save Changes
         </button>
       </div>

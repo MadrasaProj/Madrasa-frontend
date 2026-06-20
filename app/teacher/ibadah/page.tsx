@@ -1,17 +1,18 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { getClassIbadah, type IbadahConfig, type IbadahRecord } from "@/lib/ibadah-api";
-import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
-import { getStudents, type StudentRecord } from "@/lib/students-api";
+import { useClassIbadah, useClasses } from "@/lib/api-hooks";
+import { useStudents } from "@/lib/api-hooks";
 import { useAuthStore } from "@/store/auth";
 import {
   Moon, BookOpen, ChevronLeft, ChevronRight,
   Loader2, AlertCircle, CheckCircle2, Calendar, List,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { IbadahConfig, IbadahRecord } from "@/lib/ibadah-api";
+import type { StudentRecord } from "@/lib/students-api";
 
 type Section = "prayers" | "quran" | "custom";
 type ViewMode = "daily" | "weekly";
@@ -67,12 +68,9 @@ function countBadgeColor(count: number, total: number) {
 }
 
 export default function TeacherIbadahPage() {
-  const { user, accessToken } = useAuthStore();
-  const cid       = user?.clientId ?? "";
-  const token     = accessToken ?? "";
+  const { user } = useAuthStore();
   const teacherId = user?.id ?? "";
 
-  const [classes, setClasses]               = useState<ClassRecord[]>([]);
   const [activeClassId, setActiveClassId]   = useState<string | null>(null);
   const [date, setDate]                     = useState(fmt(new Date()));
   const [viewMode, setViewMode]             = useState<ViewMode>("daily");
@@ -84,68 +82,61 @@ export default function TeacherIbadahPage() {
 
   // Weekly view state
   const [weeklyLogs, setWeeklyLogs]       = useState<IbadahRecord[]>([]);
-  const [weeklyStudents, setWeeklyStudents] = useState<StudentRecord[]>([]);
   const [expandedCell, setExpandedCell]   = useState<string | null>(null); // "studentId|date"
 
-  const [loadingClasses, setLoadingClasses] = useState(true);
-  const [loadingIbadah, setLoadingIbadah]   = useState(false);
   const [error, setError]                   = useState<string | null>(null);
 
-  // Load own classes only
-  useEffect(() => {
-    if (!cid || !token) return;
-    const ac = new AbortController();
-    setLoadingClasses(true);
-    getMyClasses(cid, token, ac.signal)
-      .then((cls) => {
-        const own = cls.filter((c) => c.classTeacherId === teacherId);
-        setClasses(own);
-        if (own.length > 0) setActiveClassId(own[0].id);
-      })
-      .catch((e) => { setError((e as Error).message); })
-      .finally(() => setLoadingClasses(false));
-    return () => ac.abort();
-  }, [cid, token]); // eslint-disable-line
+  const { data: classes = [], isLoading: classesLoading } = useClasses();
 
-  // Daily load
-  const loadDailyIbadah = useCallback(async () => {
-    if (!cid || !token || !activeClassId) return;
-    setLoadingIbadah(true); setError(null);
-    try {
-      const data = await getClassIbadah(cid, token, { classId: activeClassId, date });
-      setConfig(data.config);
-      setRows(data.logs.map((r) => ({
+  const ownClasses = classes.filter((c) => c.classTeacherId === teacherId);
+
+  // Set first class
+  if (ownClasses.length > 0 && !activeClassId) {
+    setActiveClassId(ownClasses[0].id);
+  }
+
+  const weekDates = useMemo(() => getLast7Days(date), [date]);
+  const from = weekDates[0], to = weekDates[6];
+
+  // Daily ibadah query
+  const { data: dailyIbadahData, isLoading: dailyLoading } = useClassIbadah(
+    viewMode === "daily" && activeClassId ? { classId: activeClassId, date } : undefined as any,
+  );
+
+  // Weekly ibadah query
+  const { data: weeklyIbadahData, isLoading: weeklyIbadahLoading } = useClassIbadah(
+    viewMode === "weekly" && activeClassId ? { classId: activeClassId, from, to } : undefined as any,
+  );
+
+  // Weekly students
+  const { data: weeklyStudentsData } = useStudents(
+    viewMode === "weekly" && activeClassId ? { classId: activeClassId, limit: 200 } : { classId: "" },
+  );
+
+  const loadingIbadah = viewMode === "daily" ? dailyLoading : weeklyIbadahLoading;
+
+  // Update daily data
+  useEffect(() => {
+    if (viewMode === "daily" && dailyIbadahData) {
+      setConfig(dailyIbadahData.config);
+      setRows(dailyIbadahData.logs.map((r) => ({
         studentId: r.studentId, name: r.student.name, adno: r.student.adno,
         fajr: r.fajr, dhuhr: r.dhuhr, asr: r.asr, maghrib: r.maghrib, isha: r.isha,
         quranPages: r.quranPages,
         customData: (r.customData as Record<string, boolean | number>) ?? {},
       })));
-    } catch (e) { setError((e as Error).message); }
-    finally { setLoadingIbadah(false); }
-  }, [cid, token, activeClassId, date]);
+    }
+  }, [viewMode, dailyIbadahData]);
 
-  // Weekly load
-  const loadWeeklyIbadah = useCallback(async () => {
-    if (!cid || !token || !activeClassId) return;
-    setLoadingIbadah(true); setError(null);
-    const dates = getLast7Days(date);
-    const from = dates[0], to = dates[dates.length - 1];
-    try {
-      const [ibadahData, studentsData] = await Promise.all([
-        getClassIbadah(cid, token, { classId: activeClassId, from, to }),
-        getStudents(cid, token, { classId: activeClassId, limit: 200 }),
-      ]);
-      setConfig(ibadahData.config);
-      setWeeklyLogs(ibadahData.logs);
-      setWeeklyStudents(studentsData.data ?? []);
-    } catch (e) { setError((e as Error).message); }
-    finally { setLoadingIbadah(false); }
-  }, [cid, token, activeClassId, date]);
-
+  // Update weekly data
   useEffect(() => {
-    if (viewMode === "daily") loadDailyIbadah();
-    else loadWeeklyIbadah();
-  }, [viewMode, loadDailyIbadah, loadWeeklyIbadah]);
+    if (viewMode === "weekly" && weeklyIbadahData) {
+      setConfig(weeklyIbadahData.config);
+      setWeeklyLogs(weeklyIbadahData.logs);
+    }
+  }, [viewMode, weeklyIbadahData]);
+
+  const weeklyStudents = weeklyStudentsData?.data ?? [];
 
   const activePrayers = useMemo(
     () => config ? ALL_PRAYERS.filter((p) => config[p.configKey] !== false) : ALL_PRAYERS,
@@ -165,8 +156,6 @@ export default function TeacherIbadahPage() {
     if (d <= new Date()) setDate(fmt(d));
   };
 
-  const weekDates = useMemo(() => getLast7Days(date), [date]);
-
   // Build log map for weekly view: studentId → date → log
   const logMap = useMemo(() => {
     const map = new Map<string, Map<string, IbadahRecord>>();
@@ -184,7 +173,7 @@ export default function TeacherIbadahPage() {
     { key: "custom"  as Section, label: "Custom",  show: customItems.length > 0 },
   ] as { key: Section; label: string; show: boolean }[]).filter((s) => s.show);
 
-  const activeClass = classes.find((c) => c.id === activeClassId);
+  const activeClass = ownClasses.find((c) => c.id === activeClassId);
 
   return (
     <DashboardLayout>
@@ -195,7 +184,7 @@ export default function TeacherIbadahPage() {
         back backHref="/teacher"
       />
 
-      {error && <ApiErrorBanner message={error} onRetry={viewMode === "daily" ? loadDailyIbadah : loadWeeklyIbadah} />}
+      {error && <ApiErrorBanner message={error} />}
 
       {/* Read-only notice */}
       <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-2.5 mb-4 flex items-center gap-2 text-xs text-blue-700">
@@ -203,7 +192,7 @@ export default function TeacherIbadahPage() {
         Parents submit ibadah for their children. You can view records here.
       </div>
 
-      {loadingClasses ? (
+      {classesLoading ? (
         <div className="space-y-4">
           <div className="flex gap-2 flex-wrap">
             {Array.from({ length: 2 }).map((_, i) => (
@@ -221,14 +210,14 @@ export default function TeacherIbadahPage() {
           </div>
           <Skeleton className="h-64 rounded-2xl" />
         </div>
-      ) : classes.length === 0 ? (
+      ) : ownClasses.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm">No classes assigned to you</div>
       ) : (
         <>
           {/* Class + View toggle row */}
           <div className="flex items-start gap-3 mb-4 flex-wrap">
             <div className="flex gap-2 flex-wrap flex-1">
-              {classes.map((cls) => (
+              {ownClasses.map((cls) => (
                 <button key={cls.id} onClick={() => setActiveClassId(cls.id)}
                   className={cn("px-4 py-2 rounded-xl text-sm font-semibold transition-all",
                     activeClassId === cls.id ? "bg-emerald-600 text-white" : "bg-white border border-gray-200 text-gray-700")}>
