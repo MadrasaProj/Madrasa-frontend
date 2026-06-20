@@ -277,7 +277,7 @@ export default function PosterViewer({ posterId, fullScreen }: PosterViewerProps
         </button>
 
         <div className="absolute top-4 right-4 z-20 flex items-center gap-3">
-          <h1 className="text-white text-lg font-semibold drop-shadow-md">{poster.title}</h1>
+          <h1 className="text-gray-600 text-lg font-semibold drop-shadow-md">{poster.title}</h1>
           <button
             onClick={handleDownload}
             className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium"
