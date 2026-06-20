@@ -14,6 +14,7 @@ export interface NotificationRecord {
   type: NotificationType;
   targetRoles: string[];
   targetClassIds: string[];
+  actionUrl?: string | null;
   createdAt: string;
   isRead: boolean;
   readAt: string | null;
@@ -59,6 +60,7 @@ export interface DiaryEventNotification {
   type: NotificationType;
   eventDate: string;
   targetClassIds: string[];
+  actionUrl?: string | null;
   createdAt: string;
 }
 

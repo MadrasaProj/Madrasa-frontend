@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
@@ -10,7 +11,7 @@ import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
   Bell, BookOpen, ClipboardList, GraduationCap, CreditCard,
-  FileText, Loader2, RefreshCw, CheckCheck,
+  FileText, Loader2, RefreshCw, CheckCheck, ExternalLink,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -27,6 +28,7 @@ export default function ParentNotificationsPage() {
   const { user, accessToken } = useAuthStore();
   const cid   = user?.clientId ?? "";
   const token = accessToken ?? "";
+  const navigate = useNavigate();
 
   const [notifs, setNotifs]   = useState<NotificationRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,6 +46,16 @@ export default function ParentNotificationsPage() {
   }, [cid, token]);
 
   useEffect(() => { load(); }, [load]);
+
+  const handleClick = async (n: NotificationRecord) => {
+    if (!n.isRead) {
+      await markNotificationRead(cid, token, n.id).catch(() => {});
+      setNotifs((prev) => prev.map((x) => x.id === n.id ? { ...x, isRead: true } : x));
+    }
+    if (n.actionUrl) {
+      navigate(n.actionUrl);
+    }
+  };
 
   const handleRead = async (id: string) => {
     await markNotificationRead(cid, token, id).catch(() => {});
@@ -99,10 +111,10 @@ export default function ParentNotificationsPage() {
                 key={n.id}
                 initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
                 className={cn(
-                  "rounded-2xl border p-4 cursor-pointer transition-all",
-                  n.isRead ? "bg-white border-gray-100" : "bg-blue-50/40 border-blue-200",
+                  "rounded-2xl border p-4 cursor-pointer transition-all active:scale-[0.98]",
+                  n.isRead ? "bg-white border-gray-100 hover:border-gray-200" : "bg-blue-50/40 border-blue-200 hover:border-blue-300",
                 )}
-                onClick={() => !n.isRead && handleRead(n.id)}
+                onClick={() => handleClick(n)}
               >
                 <div className="flex items-start gap-3">
                   <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", cfg.bg)}>
@@ -114,6 +126,7 @@ export default function ParentNotificationsPage() {
                         {n.title}
                       </p>
                       <div className="flex items-center gap-1.5 shrink-0">
+                        {n.actionUrl && <ExternalLink className="w-3.5 h-3.5 text-blue-500" />}
                         {!n.isRead && <span className="w-2.5 h-2.5 bg-blue-500 rounded-full" />}
                         <span className="text-[10px] text-gray-400">
                           {new Date(n.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}

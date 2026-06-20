@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
@@ -9,7 +10,7 @@ import {
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
-  Bell, Loader2,
+  Bell, Loader2, ExternalLink,
   BookOpen, ClipboardList, GraduationCap, CreditCard,
 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -27,6 +28,7 @@ export default function TeacherNotificationsPage() {
   const { user, accessToken } = useAuthStore();
   const cid   = user?.clientId ?? "";
   const token = accessToken ?? "";
+  const navigate = useNavigate();
 
   const [notifs, setNotifs]       = useState<NotificationRecord[]>([]);
   const [loading, setLoading]     = useState(true);
@@ -44,6 +46,16 @@ export default function TeacherNotificationsPage() {
   }, [cid, token]);
 
   useEffect(() => { load(); }, [load]);
+
+  const handleClick = async (n: NotificationRecord) => {
+    if (!n.isRead) {
+      await markNotificationRead(cid, token, n.id).catch(() => {});
+      setNotifs((prev) => prev.map((x) => x.id === n.id ? { ...x, isRead: true } : x));
+    }
+    if (n.actionUrl) {
+      navigate(n.actionUrl);
+    }
+  };
 
   const handleRead = async (id: string) => {
     await markNotificationRead(cid, token, id).catch(() => {});
@@ -77,8 +89,9 @@ export default function TeacherNotificationsPage() {
               <motion.div
                 key={n.id}
                 initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-                className={cn("rounded-2xl border p-4 transition-all", n.isRead ? "bg-white border-gray-100" : "bg-blue-50/40 border-blue-100")}
-                onClick={() => !n.isRead && handleRead(n.id)}
+                className={cn("rounded-2xl border p-4 transition-all cursor-pointer active:scale-[0.98]",
+                  n.isRead ? "bg-white border-gray-100 hover:border-gray-200" : "bg-blue-50/40 border-blue-100 hover:border-blue-300")}
+                onClick={() => handleClick(n)}
               >
                 <div className="flex items-start gap-3">
                   <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0", cfg.bg)}>
@@ -87,6 +100,7 @@ export default function TeacherNotificationsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-semibold text-gray-900 text-sm">{n.title}</p>
+                      {n.actionUrl && <ExternalLink className="w-3.5 h-3.5 text-blue-500 shrink-0" />}
                       {!n.isRead && <span className="w-2 h-2 bg-blue-500 rounded-full shrink-0" />}
                     </div>
                     <p className="text-xs text-gray-500 mt-0.5">{n.body}</p>

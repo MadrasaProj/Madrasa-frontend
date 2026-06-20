@@ -41,14 +41,21 @@ export default function PwaRegister() {
     const unsubscribe = onForegroundMessage((payload) => {
       if (Notification.permission !== "granted") return;
       const title = payload.notification?.title || "Smart Madrasa";
+      const targetUrl = payload.data?.url;
       const options: NotificationOptions = {
         body: payload.notification?.body || "",
         icon: "/icons/icon-192.png",
         badge: "/icons/icon-192.png",
         data: payload.data || {},
       };
-      // eslint-disable-next-line no-new
-      new Notification(title, options);
+      const notif = new Notification(title, options);
+      if (targetUrl) {
+        notif.onclick = () => {
+          notif.close();
+          window.focus();
+          window.location.href = targetUrl;
+        };
+      }
     });
 
     return () => {

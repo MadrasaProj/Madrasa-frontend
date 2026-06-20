@@ -10,7 +10,7 @@ import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
-  Bell, Plus, Send, Trash2, Loader2, X, Pencil,
+  Bell, Plus, Send, Trash2, Loader2, X, Pencil, ExternalLink,
   BookOpen, ClipboardList, GraduationCap, CreditCard, FileText, Users,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -170,6 +170,12 @@ export default function AdminNotificationsPage() {
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-gray-900 text-sm">{n.title}</p>
                     <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{n.body}</p>
+                    {n.actionUrl && (
+                      <div className="flex items-center gap-1 mt-1 text-[10px] text-blue-600">
+                        <ExternalLink className="w-3 h-3" />
+                        <span className="truncate">{n.actionUrl}</span>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                       <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-lg", cfg.bg, cfg.color)}>
                         {cfg.label}
