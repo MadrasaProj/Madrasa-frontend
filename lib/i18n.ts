@@ -171,6 +171,7 @@ const translations = {
     students: { en: "Students", ml: "വിദ്യാർത്ഥികൾ" },
     fees: { en: "Fees", ml: "ഫീസ്" },
     otherPayments: { en: "Other Payments", ml: "മറ്റു പേയ്‌മെന്റുകൾ" },
+    feeTypes: { en: "Fee Types", ml: "ഫീസ് തരങ്ങൾ" },
     idCards: { en: "ID Cards", ml: "ഐഡി കാർഡുകൾ" },
     exams: { en: "Exams", ml: "പരീക്ഷകൾ" },
     classTests: { en: "Class Tests", ml: "ക്ലാസ് ടെസ്റ്റ്" },

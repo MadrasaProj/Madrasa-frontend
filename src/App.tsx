@@ -21,6 +21,7 @@ import AdminClassReportPage from "../app/admin/exams/class-report/page";
 import AdminExamConfigPage from "../app/admin/exams/config/page";
 import AdminExamsPage from "../app/admin/exams/page";
 import AdminFeesPage from "../app/admin/fees/page";
+import AdminFeesTypesPage from "../app/admin/fees/types/page";
 import AdminFeesPaidPage from "../app/admin/fees/paid/page";
 import AdminFeesUnpaidPage from "../app/admin/fees/unpaid/page";
 import AdminIbadahConfigPage from "../app/admin/ibadah-config/page";
@@ -114,6 +115,7 @@ export default function App() {
         <Route path="/admin/present" element={<AdminPresentPage />} />
         <Route path="/admin/absent" element={<AdminAbsentPage />} />
         <Route path="/admin/fees" element={<AdminFeesPage />} />
+        <Route path="/admin/fees/types" element={<AdminFeesTypesPage />} />
         <Route path="/admin/fees/paid" element={<AdminFeesPaidPage />} />
         <Route path="/admin/fees/unpaid" element={<AdminFeesUnpaidPage />} />
         <Route path="/admin/other-payments" element={<AdminOtherPaymentsPage />} />
@@ -161,6 +163,7 @@ export default function App() {
         <Route path="/m/:slug/admin/present" element={<AdminPresentPage />} />
         <Route path="/m/:slug/admin/absent" element={<AdminAbsentPage />} />
         <Route path="/m/:slug/admin/fees" element={<AdminFeesPage />} />
+        <Route path="/m/:slug/admin/fees/types" element={<AdminFeesTypesPage />} />
         <Route path="/m/:slug/admin/fees/paid" element={<AdminFeesPaidPage />} />
         <Route path="/m/:slug/admin/fees/unpaid" element={<AdminFeesUnpaidPage />} />
         <Route path="/m/:slug/admin/other-payments" element={<AdminOtherPaymentsPage />} />

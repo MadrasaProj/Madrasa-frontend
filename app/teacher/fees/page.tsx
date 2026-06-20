@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
@@ -13,20 +14,9 @@ import {
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
-  CreditCard, Loader2, Receipt, CheckCircle, Search, RefreshCw, Printer, XCircle,
+  CreditCard, Loader2, Receipt, CheckCircle, Search, RefreshCw, Printer, XCircle, ChevronDown,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-
-const PALETTE = [
-  { bg: "bg-emerald-600", light: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700" },
-  { bg: "bg-blue-600", light: "bg-blue-50", border: "border-blue-200", text: "text-blue-700" },
-  { bg: "bg-sky-600", light: "bg-sky-50", border: "border-sky-200", text: "text-sky-700" },
-  { bg: "bg-rose-600", light: "bg-rose-50", border: "border-rose-200", text: "text-rose-700" },
-  { bg: "bg-orange-500", light: "bg-orange-50", border: "border-orange-200", text: "text-orange-700" },
-  { bg: "bg-teal-600", light: "bg-teal-50", border: "border-teal-200", text: "text-teal-700" },
-  { bg: "bg-indigo-600", light: "bg-indigo-50", border: "border-indigo-200", text: "text-indigo-700" },
-  { bg: "bg-amber-500", light: "bg-amber-50", border: "border-amber-200", text: "text-amber-700" },
-];
 
 const STATUS_META: Record<FeePaymentStatus, { label: string; color: string; bg: string }> = {
   PENDING: { label: "Pending", color: "text-amber-700", bg: "bg-amber-50" },
@@ -111,6 +101,10 @@ export default function TeacherFeesPage() {
   const [cancellingSave, setCancellingSave] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
+  const [typeDropdownOpen, setTypeDropdownOpen] = useState(false);
+  const typeDropdownRef = useRef<HTMLDivElement | null>(null);
+  const chevronBtnRef = useRef<HTMLButtonElement | null>(null);
+  const [chevronRect, setChevronRect] = useState<{ top: number; right: number } | null>(null);
 
   const loadTypes = useCallback(async () => {
     if (!cid || !token) return;
@@ -137,6 +131,52 @@ export default function TeacherFeesPage() {
   }, [cid, token, activeTypeId, statusFilter, paySkip]);
 
   useEffect(() => { loadPayments(); }, [loadPayments]);
+
+  useEffect(() => {
+    if (!typeDropdownOpen) return;
+    const onClick = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (
+        typeDropdownRef.current && !typeDropdownRef.current.contains(t) &&
+        !(t as HTMLElement).closest?.("[data-fee-dropdown-panel]")
+      ) {
+        setTypeDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [typeDropdownOpen]);
+
+  useEffect(() => {
+    if (!typeDropdownOpen) return;
+    const updatePos = () => {
+      const r = chevronBtnRef.current?.getBoundingClientRect();
+      if (r) setChevronRect({ top: r.bottom + 8, right: window.innerWidth - r.right });
+    };
+    updatePos();
+    window.addEventListener("scroll", updatePos, true);
+    window.addEventListener("resize", updatePos);
+    return () => {
+      window.removeEventListener("scroll", updatePos, true);
+      window.removeEventListener("resize", updatePos);
+    };
+  }, [typeDropdownOpen]);
+
+  const toggleTypeDropdown = () => {
+    if (!typeDropdownOpen && chevronBtnRef.current) {
+      const r = chevronBtnRef.current.getBoundingClientRect();
+      setChevronRect({ top: r.bottom + 8, right: window.innerWidth - r.right });
+    }
+    setTypeDropdownOpen((o) => !o);
+  };
+
+  const selectType = (id: string | null) => {
+    setActiveTypeId(id);
+    setPaySkip(0);
+    setStatusFilter("all");
+    setSearch("");
+    setTypeDropdownOpen(false);
+  };
 
   const activeType = feeTypes.find((f) => f.id === activeTypeId) ?? null;
 
@@ -201,10 +241,11 @@ export default function TeacherFeesPage() {
 
       {typesLoading ? (
         <div className="space-y-5">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="flex items-center gap-1.5 mb-5">
             {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-28 rounded-2xl" />
+              <Skeleton key={i} className="h-10 w-24 rounded-full shrink-0" />
             ))}
+            <Skeleton className="h-10 w-10 rounded-full shrink-0" />
           </div>
           <div className="flex gap-2">
             <Skeleton className="h-10 flex-1 rounded-xl" />
@@ -226,40 +267,81 @@ export default function TeacherFeesPage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-5">
-            <button onClick={() => { setActiveTypeId(null); setPaySkip(0); setStatusFilter("all"); setSearch(""); }}
-              className={cn("text-left p-4 rounded-2xl border-2 transition-all",
-                activeTypeId === null ? "bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-100" : "bg-white border-gray-100 hover:border-gray-200 text-gray-700")}>
-              <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center mb-2",
-                activeTypeId === null ? "bg-white/20" : "bg-gray-100")}>
-                <CreditCard className={cn("w-4 h-4", activeTypeId === null ? "text-white" : "text-gray-500")} />
-              </div>
-              <p className="text-xs font-bold truncate mb-1">All Fees</p>
-              <p className={cn("text-[10px]", activeTypeId === null ? "text-gray-300" : "text-gray-400")}>
-                {feeTypes.length} type{feeTypes.length !== 1 ? "s" : ""}
-              </p>
+          <div className="flex items-center gap-1.5 mb-5 overflow-x-auto pb-1">
+            <button onClick={() => selectType(null)}
+              className={cn("h-10 px-4 rounded-md text-xs font-semibold whitespace-nowrap transition-all shrink-0 inline-flex items-center gap-1.5",
+                activeTypeId === null
+                  ? "bg-emerald-600 text-white shadow-sm shadow-emerald-200"
+                  : " text-gray-600 hover:bg-gray-200")}>
+              <CreditCard className="w-3.5 h-3.5" />
+              All Fees
             </button>
 
-            {feeTypes.map((ft, i) => {
-              const pal = PALETTE[i % PALETTE.length];
+            {feeTypes.map((ft) => {
               const isActive = ft.id === activeTypeId;
               return (
-                <button key={ft.id} onClick={() => { setActiveTypeId(ft.id); setPaySkip(0); setStatusFilter("all"); setSearch(""); }}
-                  className={cn("text-left p-4 rounded-2xl border-2 transition-all",
-                    isActive ? `${pal.light} ${pal.border}` : "bg-white border-gray-100 hover:border-gray-200")}>
-                  <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center mb-2", pal.bg)}>
-                    <CreditCard className="w-4 h-4 text-white" />
-                  </div>
-                  <p className={cn("text-xs font-bold truncate mb-1", isActive ? pal.text : "text-gray-700")}>{ft.name}</p>
-                  <p className="text-base font-bold text-gray-900">₹{Number(ft.amount).toLocaleString()}</p>
-                  <div className="flex items-center justify-between mt-1">
-                    <p className="text-[10px] text-gray-400">{ft.kind === "RECURRING" ? `${ft.frequency ?? "recurring"}` : "one-time"}</p>
-                    {ft._count && <p className="text-[10px] text-gray-400">{ft._count.payments} records</p>}
-                  </div>
+                <button key={ft.id} onClick={() => selectType(ft.id)}
+                  className={cn("h-10 px-4 rounded-md text-xs font-semibold whitespace-nowrap transition-all shrink-0 inline-flex items-center gap-1.5",
+                    isActive
+                      ? "bg-emerald-600 text-white shadow-sm shadow-emerald-200"
+                      : "bg-gray-50 text-gray-600 hover:bg-gray-100")}>
+                  <CreditCard className="w-3.5 h-3.5" />
+                  {ft.name}
                 </button>
               );
             })}
+
+            <div className="sticky right-0 z-10 flex items-center   bg-gradient-to-l from-white via-white/95 to-transparent">
+              <button ref={chevronBtnRef} onClick={toggleTypeDropdown}
+                className="h-10 w-10 rounded-full inline-flex items-center justify-center transition-all text-gray-500 hover:text-gray-700"
+                title="All fee types"
+                aria-label="All fee types"
+                aria-expanded={typeDropdownOpen}>
+                <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", typeDropdownOpen && "rotate-180")} />
+              </button>
+            </div>
           </div>
+
+          {typeDropdownOpen && chevronRect && createPortal(
+            <AnimatePresence>
+              <motion.div
+                key="fee-dropdown"
+                data-fee-dropdown-panel
+                ref={typeDropdownRef}
+                initial={{ opacity: 0, y: -4, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -4, scale: 0.98 }}
+                transition={{ duration: 0.12 }}
+                style={{ position: "fixed", top: chevronRect.top, right: chevronRect.right }}
+                className="z-50 w-72 bg-white rounded-2xl shadow-xl shadow-gray-300/50 ring-1 ring-gray-100 overflow-hidden">
+                <div className="px-3 py-2 bg-gray-50">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">All Fee Types</p>
+                </div>
+                <div className="max-h-80 overflow-y-auto py-1">
+                  <button onClick={() => selectType(null)}
+                    className={cn("w-full flex items-center gap-2.5 px-3 py-2.5 text-xs hover:bg-gray-50 text-left",
+                      activeTypeId === null && "bg-emerald-50 text-emerald-700 font-semibold")}>
+                    <CreditCard className={cn("w-4 h-4 shrink-0", activeTypeId === null ? "text-emerald-600" : "text-gray-400")} />
+                    <span className="flex-1 truncate">All Fees</span>
+                    <span className="text-[10px] text-gray-400">{feeTypes.length} types</span>
+                  </button>
+                  {feeTypes.map((ft) => {
+                    const isActive = ft.id === activeTypeId;
+                    return (
+                      <button key={ft.id} onClick={() => selectType(ft.id)}
+                        className={cn("w-full flex items-center gap-2.5 px-3 py-2.5 text-xs hover:bg-gray-50 text-left",
+                          isActive && "bg-emerald-50 text-emerald-700 font-semibold")}>
+                        <CreditCard className={cn("w-4 h-4 shrink-0", isActive ? "text-emerald-600" : "text-gray-400")} />
+                        <span className="flex-1 truncate">{ft.name}</span>
+                        <span className="text-[10px] text-gray-400 shrink-0">₹{Number(ft.amount).toLocaleString()}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            </AnimatePresence>,
+            document.body,
+          )}
 
           <div className="flex gap-2 mb-3">
             <div className="relative flex-1">

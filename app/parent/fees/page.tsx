@@ -275,14 +275,12 @@ export default function ParentFeesPage() {
               {active.summary.feeTypes.length > 0 && (
                 <>
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-6 mb-3">Applicable Fees</p>
-                  <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2">
                     {active.summary.feeTypes.map((ft) => (
-                      <div key={ft.id} className="bg-white rounded-2xl border border-gray-100 px-4 py-3 flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-semibold text-gray-900">{ft.name}</p>
-                          <p className="text-xs text-gray-400 capitalize">{ft.kind.toLowerCase()}{ft.frequency ? ` · ${ft.frequency}` : ""}</p>
-                        </div>
-                        <p className="font-bold text-gray-800">₹{Number(ft.amount).toLocaleString()}</p>
+                      <div key={ft.id} className="h-10 px-4 rounded-md inline-flex items-center gap-1.5 bg-gray-50 text-gray-600 text-xs font-semibold">
+                        <IndianRupee className="w-3.5 h-3.5" />
+                        {ft.name}
+                        <span className="text-gray-400 ml-1">₹{Number(ft.amount).toLocaleString()}</span>
                       </div>
                     ))}
                   </div>

@@ -25,7 +25,7 @@ type NavKey =
   | "results" | "alerts" | "overview" | "finance" | "announcements" | "notifications"
   | "madrasas" | "superUsers" | "platformReports" | "profile"
   | "teacherCheckin" | "posters" | "artsfest" | "academics" | "operations" | "financeExtras" | "settings"
-  | "bestPerformance";
+  | "bestPerformance" | "feeTypes";
 
 const adminLinks = [
   { href: "/admin",                icon: LayoutDashboard, key: "dashboard"     as NavKey },
@@ -37,7 +37,8 @@ const adminLinks = [
   { href: "/admin/attendance",        icon: ClipboardList,   key: "attendance"     as NavKey },
   { href: "/admin/leave-requests",    icon: FilePen,         key: "leaveRequests"  as NavKey },
   { href: "/admin/ibadah",            icon: Moon,            key: "ibadah"         as NavKey },
-  { href: "/admin/fees",           icon: CreditCard,      key: "fees"          as NavKey },
+  { href: "/admin/fees",           icon: CreditCard,      key: "fees"          as NavKey, exact: true },
+  { href: "/admin/fees/types",     icon: CreditCard,      key: "feeTypes"      as NavKey },
   { href: "/admin/id-cards",       icon: BadgeCheck,      key: "idCards"       as NavKey },
   { href: "/admin/posters",        icon: Image,           key: "posters"       as NavKey },
   { href: "/admin/exams",          icon: GraduationCap,   key: "exams"         as NavKey, exact: true },
@@ -167,7 +168,7 @@ const getAdminCategories = (role: string, actorType?: string) => {
       id: "finance",
       titleKey: "financeExtras" as NavKey,
       icon: CreditCard,
-      links: links.filter(l => ["fees", "idCards", "posters", "artsfest"].includes(l.key))
+      links: links.filter(l => ["fees", "feeTypes", "idCards", "posters", "artsfest"].includes(l.key))
     },
     {
       id: "settings",

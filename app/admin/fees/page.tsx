@@ -1,14 +1,13 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import {
   getFeeTypes,
   getPayments,
-  createFeeType,
   recordPayment,
   updatePayment,
-  generatePayments,
   getPaymentReceipt,
   getFeeSummary,
   cancelPayment as cancelPaymentApi,
@@ -17,28 +16,24 @@ import {
   type FeePayment,
   type ReceiptData,
   type FeePaymentStatus,
-  type CreateFeeTypePayload,
 } from "@/lib/fees-api";
 import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
   CreditCard,
-  Plus,
   Loader2,
   Receipt,
   CheckCircle,
-  Clock,
-  AlertCircle,
   RefreshCw,
   Printer,
   Search,
-  X,
   XCircle,
   Users,
   Zap,
   Pencil,
   Save,
+  ChevronDown,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -50,58 +45,6 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-
-// ── Palette for fee type cards ─────────────────────────────────────────────
-const PALETTE = [
-  {
-    bg: "bg-emerald-600",
-    light: "bg-emerald-50",
-    border: "border-emerald-200",
-    text: "text-emerald-700",
-  },
-  {
-    bg: "bg-blue-600",
-    light: "bg-blue-50",
-    border: "border-blue-200",
-    text: "text-blue-700",
-  },
-  {
-    bg: "bg-sky-600",
-    light: "bg-sky-50",
-    border: "border-sky-200",
-    text: "text-sky-700",
-  },
-  {
-    bg: "bg-rose-600",
-    light: "bg-rose-50",
-    border: "border-rose-200",
-    text: "text-rose-700",
-  },
-  {
-    bg: "bg-orange-500",
-    light: "bg-orange-50",
-    border: "border-orange-200",
-    text: "text-orange-700",
-  },
-  {
-    bg: "bg-teal-600",
-    light: "bg-teal-50",
-    border: "border-teal-200",
-    text: "text-teal-700",
-  },
-  {
-    bg: "bg-indigo-600",
-    light: "bg-indigo-50",
-    border: "border-indigo-200",
-    text: "text-indigo-700",
-  },
-  {
-    bg: "bg-amber-500",
-    light: "bg-amber-50",
-    border: "border-amber-200",
-    text: "text-amber-700",
-  },
-];
 
 const STATUS_META: Record<
   FeePaymentStatus,
@@ -238,24 +181,12 @@ export default function AdminFeesPage() {
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
   const [loadingReceipt, setLoadingReceipt] = useState<string | null>(null);
 
-  // Generate
-  const [generating, setGenerating] = useState<string | null>(null);
-
   // Overwrite amount / discount state
   const [editingAmount, setEditingAmount] = useState<string | null>(null);
   const [customAmount, setCustomAmount] = useState("");
 
   // Error
   const [error, setError] = useState<string | null>(null);
-
-  // Create modal
-  const [showCreate, setShowCreate] = useState(false);
-  const [newFee, setNewFee] = useState<Partial<CreateFeeTypePayload>>({
-    kind: "ONE_TIME",
-    amount: 0,
-  });
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
 
   // Load fee types
   const loadTypes = useCallback(async () => {
@@ -351,10 +282,58 @@ export default function AdminFeesPage() {
     if (tab === "reports") loadReportData();
   }, [tab, loadReportData]);
 
+  const [typeDropdownOpen, setTypeDropdownOpen] = useState(false);
+  const typeDropdownRef = useRef<HTMLDivElement | null>(null);
+  const chevronBtnRef = useRef<HTMLButtonElement | null>(null);
+  const [chevronRect, setChevronRect] = useState<{ top: number; right: number } | null>(null);
+
+  useEffect(() => {
+    if (!typeDropdownOpen) return;
+    const onClick = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (
+        typeDropdownRef.current && !typeDropdownRef.current.contains(t) &&
+        !(t as HTMLElement).closest?.("[data-fee-dropdown-panel]")
+      ) {
+        setTypeDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [typeDropdownOpen]);
+
+  useEffect(() => {
+    if (!typeDropdownOpen) return;
+    const updatePos = () => {
+      const r = chevronBtnRef.current?.getBoundingClientRect();
+      if (r) setChevronRect({ top: r.bottom + 8, right: window.innerWidth - r.right });
+    };
+    updatePos();
+    window.addEventListener("scroll", updatePos, true);
+    window.addEventListener("resize", updatePos);
+    return () => {
+      window.removeEventListener("scroll", updatePos, true);
+      window.removeEventListener("resize", updatePos);
+    };
+  }, [typeDropdownOpen]);
+
+  const toggleTypeDropdown = () => {
+    if (!typeDropdownOpen && chevronBtnRef.current) {
+      const r = chevronBtnRef.current.getBoundingClientRect();
+      setChevronRect({ top: r.bottom + 8, right: window.innerWidth - r.right });
+    }
+    setTypeDropdownOpen((o) => !o);
+  };
+
+  const selectType = (id: string | null) => {
+    setActiveTypeId(id);
+    setPaySkip(0);
+    setStatusFilter("all");
+    setSearch("");
+    setTypeDropdownOpen(false);
+  };
+
   const activeType = feeTypes.find((f) => f.id === activeTypeId) ?? null;
-  const activePalette = activeType
-    ? PALETTE[feeTypes.indexOf(activeType) % PALETTE.length]
-    : PALETTE[0];
 
   const paidPayments = payments.filter((p) => p.status === "PAID");
   const pendingPayments = payments.filter(
@@ -489,40 +468,6 @@ export default function AdminFeesPage() {
     }
   };
 
-  const handleGenerate = async (ft: FeeType) => {
-    setGenerating(ft.id);
-    setError(null);
-    try {
-      const res = await generatePayments(cid, token, {
-        feeTypeId: ft.id,
-        academicYearId: user?.defaultAcademicYearId ?? undefined,
-      });
-      if (activeTypeId === ft.id) loadPayments();
-      alert(
-        `Generated ${res.generated} payment records${res.message ? ` — ${res.message}` : ""}`,
-      );
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setGenerating(null);
-    }
-  };
-
-  const handleCreate = async () => {
-    if (!newFee.name || !newFee.amount) return;
-    setCreating(true);
-    setCreateError(null);
-    try {
-      await createFeeType(cid, token, newFee as CreateFeeTypePayload);
-      setShowCreate(false);
-      setNewFee({ kind: "ONE_TIME", amount: 0 });
-      loadTypes();
-    } catch (e) {
-      setCreateError((e as Error).message);
-    } finally {
-      setCreating(false);
-    }
-  };
 
   const cancellingPayment = cancelling
     ? payments.find((p) => p.id === cancelling) ?? null
@@ -546,15 +491,12 @@ export default function AdminFeesPage() {
         subtitle="All fee types, campaigns, and payment records"
         icon={CreditCard}
         action={
-          <button
-            onClick={() => {
-              setShowCreate(true);
-              setCreateError(null);
-            }}
-            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold"
+          <a
+            href="/admin/fees/types"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-all"
           >
-            <Plus className="w-4 h-4" /> New Fee Type
-          </button>
+            <Zap className="w-4 h-4" /> Manage Types
+          </a>
         }
       />
 
@@ -573,128 +515,97 @@ export default function AdminFeesPage() {
         <div className="text-center py-16 text-gray-400">
           <CreditCard className="w-10 h-10 mx-auto mb-3 opacity-30" />
           <p className="text-sm">
-            No fee types yet. Create one to start collecting.
+            No fee types yet.{" "}
+            <a href="/admin/fees/types" className="text-emerald-600 underline">Create one</a> to start collecting.
           </p>
-          <button
-            onClick={() => {
-              setShowCreate(true);
-              setCreateError(null);
-            }}
-            className="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold inline-flex items-center gap-1.5"
-          >
-            <Plus className="w-4 h-4" /> Create Fee Type
-          </button>
         </div>
       ) : (
         <>
-          {/* Fee type cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-5">
-            {/* All card */}
-            <button
-              onClick={() => {
-                setActiveTypeId(null);
-                setPaySkip(0);
-                setStatusFilter("all");
-                setSearch("");
-              }}
-              className={cn(
-                "text-left p-4 rounded-2xl border-2 transition-all",
+          {/* Fee type buttons */}
+          <div className="flex items-center gap-1.5 mb-5 overflow-x-auto pb-1">
+            <button onClick={() => selectType(null)}
+              className={cn("h-10 px-4 rounded-md text-xs font-semibold whitespace-nowrap transition-all shrink-0 inline-flex items-center gap-1.5",
                 activeTypeId === null
-                  ? "bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-100"
-                  : "bg-white border-gray-100 hover:border-gray-200 text-gray-700",
-              )}
-            >
-              <div
-                className={cn(
-                  "w-8 h-8 rounded-xl flex items-center justify-center mb-2",
-                  activeTypeId === null ? "bg-white/20" : "bg-gray-100",
-                )}
-              >
-                <Users
-                  className={cn(
-                    "w-4 h-4",
-                    activeTypeId === null ? "text-white" : "text-gray-500",
-                  )}
-                />
-              </div>
-              <p className="text-xs font-bold truncate mb-1">All Fees</p>
-              <p
-                className={cn(
-                  "text-[10px]",
-                  activeTypeId === null ? "text-gray-300" : "text-gray-400",
-                )}
-              >
-                {feeTypes.length} type{feeTypes.length !== 1 ? "s" : ""}
-              </p>
+                  ? "bg-emerald-600 text-white shadow-sm shadow-emerald-200"
+                  : "  text-gray-600 hover:bg-gray-200")}>
+              <Users className="w-3.5 h-3.5" />
+              All Fees
             </button>
 
-            {feeTypes.map((ft, i) => {
-              const pal = PALETTE[i % PALETTE.length];
+            {feeTypes.map((ft) => {
               const isActive = ft.id === activeTypeId;
               return (
-                <button
-                  key={ft.id}
-                  onClick={() => {
-                    setActiveTypeId(ft.id);
-                    setPaySkip(0);
-                    setStatusFilter("all");
-                    setSearch("");
-                  }}
-                  className={cn(
-                    "text-left p-4 rounded-2xl border-2 transition-all",
+                <button key={ft.id} onClick={() => selectType(ft.id)}
+                  className={cn("h-10 px-4 rounded-md text-xs font-semibold whitespace-nowrap transition-all shrink-0 inline-flex items-center gap-1.5",
                     isActive
-                      ? `${pal.light} ${pal.border}`
-                      : "bg-white border-gray-100 hover:border-gray-200",
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "w-8 h-8 rounded-xl flex items-center justify-center mb-2",
-                      pal.bg,
-                    )}
-                  >
-                    <CreditCard className="w-4 h-4 text-white" />
-                  </div>
-                  <p
-                    className={cn(
-                      "text-xs font-bold truncate mb-1",
-                      isActive ? pal.text : "text-gray-700",
-                    )}
-                  >
-                    {ft.name}
-                  </p>
-                  <p className="text-base font-bold text-gray-900">
-                    ₹{Number(ft.amount).toLocaleString()}
-                  </p>
-                  <div className="flex items-center justify-between mt-1">
-                    <p className="text-[10px] text-gray-400">
-                      {ft.kind === "RECURRING"
-                        ? `${ft.frequency ?? "recurring"}`
-                        : "one-time"}
-                    </p>
-                    {ft._count && (
-                      <p className="text-[10px] text-gray-400">
-                        {ft._count.payments} records
-                      </p>
-                    )}
-                  </div>
+                      ? "bg-emerald-600 text-white shadow-sm shadow-emerald-200"
+                      : "bg-gray-50 text-gray-600 hover:bg-gray-100")}>
+                  <CreditCard className="w-3.5 h-3.5" />
+                  {ft.name}
                 </button>
               );
             })}
+
+            <div className="sticky right-0 z-10 flex items-center pl-8 bg-gradient-to-l from-white via-white/95 to-transparent">
+              <button ref={chevronBtnRef} onClick={toggleTypeDropdown}
+                className="h-10 w-10 rounded-full inline-flex items-center justify-center transition-all text-gray-500 hover:text-gray-700"
+                title="All fee types"
+                aria-label="All fee types"
+                aria-expanded={typeDropdownOpen}>
+                <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", typeDropdownOpen && "rotate-180")} />
+              </button>
+            </div>
           </div>
+
+          {typeDropdownOpen && chevronRect && createPortal(
+            <AnimatePresence>
+              <motion.div
+                key="fee-dropdown"
+                data-fee-dropdown-panel
+                ref={typeDropdownRef}
+                initial={{ opacity: 0, y: -4, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -4, scale: 0.98 }}
+                transition={{ duration: 0.12 }}
+                style={{ position: "fixed", top: chevronRect.top, right: chevronRect.right }}
+                className="z-50 w-72 bg-white rounded-2xl shadow-xl shadow-gray-300/50 ring-1 ring-gray-100 overflow-hidden">
+                <div className="px-3 py-2 bg-gray-50">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">All Fee Types</p>
+                </div>
+                <div className="max-h-80 overflow-y-auto py-1">
+                  <button onClick={() => selectType(null)}
+                    className={cn("w-full flex items-center gap-2.5 px-3 py-2.5 text-xs hover:bg-gray-50 text-left",
+                      activeTypeId === null && "bg-emerald-50 text-emerald-700 font-semibold")}>
+                    <Users className={cn("w-4 h-4 shrink-0", activeTypeId === null ? "text-emerald-600" : "text-gray-400")} />
+                    <span className="flex-1 truncate">All Fees</span>
+                    <span className="text-[10px] text-gray-400">{feeTypes.length} types</span>
+                  </button>
+                  {feeTypes.map((ft) => {
+                    const isActive = ft.id === activeTypeId;
+                    return (
+                      <button key={ft.id} onClick={() => selectType(ft.id)}
+                        className={cn("w-full flex items-center gap-2.5 px-3 py-2.5 text-xs hover:bg-gray-50 text-left",
+                          isActive && "bg-emerald-50 text-emerald-700 font-semibold")}>
+                        <CreditCard className={cn("w-4 h-4 shrink-0", isActive ? "text-emerald-600" : "text-gray-400")} />
+                        <span className="flex-1 truncate">{ft.name}</span>
+                        <span className="text-[10px] text-gray-400 shrink-0">₹{Number(ft.amount).toLocaleString()}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            </AnimatePresence>,
+            document.body,
+          )}
 
           {/* Selected type stats strip */}
           {activeType && (
             <div
-              className={cn(
-                "rounded-2xl p-4 mb-5 border-2",
-                activePalette.light,
-                activePalette.border,
-              )}
+              className="rounded-2xl p-4 mb-5 border-2 bg-emerald-50 border-emerald-200"
             >
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <p className={cn("font-bold", activePalette.text)}>
+                  <p className="font-bold text-emerald-700">
                     {activeType.name}
                   </p>
                   {activeType.description && (
@@ -753,7 +664,7 @@ export default function AdminFeesPage() {
                       initial={{ width: 0 }}
                       animate={{ width: `${pctCollected}%` }}
                       transition={{ duration: 0.5, ease: "easeOut" }}
-                      className={cn("h-full rounded-full", activePalette.bg)}
+                      className="h-full rounded-full bg-emerald-600"
                     />
                   </div>
                 </div>
@@ -1318,218 +1229,6 @@ export default function AdminFeesPage() {
           )}
         </>
       )}
-
-      {/* ── Create fee type modal ── */}
-      <AnimatePresence>
-        {showCreate && (
-          <>
-            <motion.div
-              key="bd"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
-              onClick={() => setShowCreate(false)}
-            />
-            <motion.div
-              key="modal"
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-              onClick={() => setShowCreate(false)}
-            >
-              <div className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-md shadow-xl max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-center justify-between px-5 py-4 border-b">
-                  <p className="font-bold text-gray-900">New Fee Type</p>
-                  <button onClick={() => setShowCreate(false)}>
-                    <X className="w-5 h-5 text-gray-400" />
-                  </button>
-                </div>
-                <div className="px-5 py-4 space-y-4">
-                  {createError && (
-                    <div className="bg-red-50 text-red-600 text-sm px-3 py-2 rounded-xl">
-                      {createError}
-                    </div>
-                  )}
-                  <div>
-                    <label className="text-xs font-semibold text-gray-600 mb-1.5 block">
-                      Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={newFee.name ?? ""}
-                      placeholder="e.g. Monthly Fee, SKSBV Fund"
-                      onChange={(e) =>
-                        setNewFee((n) => ({ ...n, name: e.target.value }))
-                      }
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-gray-600 mb-1.5 block">
-                      Amount (₹) *
-                    </label>
-                    <input
-                      type="number"
-                      value={newFee.amount ?? ""}
-                      placeholder="500"
-                      onChange={(e) =>
-                        setNewFee((n) => ({
-                          ...n,
-                          amount: Number(e.target.value),
-                        }))
-                      }
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-gray-600 mb-1.5 block">
-                      Description (optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={newFee.description ?? ""}
-                      placeholder="Details…"
-                      onChange={(e) =>
-                        setNewFee((n) => ({
-                          ...n,
-                          description: e.target.value,
-                        }))
-                      }
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-gray-600 mb-1.5 block">
-                      Type
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {(["ONE_TIME", "RECURRING"] as const).map((k) => (
-                        <label
-                          key={k}
-                          className={cn(
-                            "flex items-center justify-center gap-2 py-3 rounded-2xl border text-sm font-semibold cursor-pointer transition-all",
-                            newFee.kind === k
-                              ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-                              : "border-gray-200 bg-gray-50 text-gray-700",
-                          )}
-                        >
-                          <input
-                            type="radio"
-                            className="sr-only"
-                            checked={newFee.kind === k}
-                            onChange={() =>
-                              setNewFee((n) => ({ ...n, kind: k }))
-                            }
-                          />
-                          {k === "ONE_TIME" ? "One Time" : "Recurring"}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                  {newFee.kind === "RECURRING" && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs font-semibold text-gray-600 mb-1.5 block">
-                          Frequency
-                        </label>
-                        <select
-                          value={newFee.frequency ?? "monthly"}
-                          onChange={(e) =>
-                            setNewFee((n) => ({
-                              ...n,
-                              frequency: e.target.value,
-                            }))
-                          }
-                          className="w-full px-3 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm"
-                        >
-                          {["monthly", "quarterly", "yearly"].map((f) => (
-                            <option key={f} value={f}>
-                              {f}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-xs font-semibold text-gray-600 mb-1.5 block">
-                          Due Day
-                        </label>
-                        <input
-                          type="number"
-                          min={1}
-                          max={31}
-                          placeholder="5"
-                          value={newFee.dueDay ?? ""}
-                          onChange={(e) =>
-                            setNewFee((n) => ({
-                              ...n,
-                              dueDay: Number(e.target.value),
-                            }))
-                          }
-                          className="w-full px-3 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm focus:outline-none"
-                        />
-                      </div>
-                    </div>
-                  )}
-                  {classes.length > 0 && (
-                    <div>
-                      <label className="text-xs font-semibold text-gray-600 mb-1.5 block">
-                        Target Classes (leave empty = all classes)
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {classes.map((c) => {
-                          const selected = (
-                            newFee.targetClassIds ?? []
-                          ).includes(c.id);
-                          return (
-                            <button
-                              key={c.id}
-                              type="button"
-                              onClick={() =>
-                                setNewFee((n) => ({
-                                  ...n,
-                                  targetClassIds: selected
-                                    ? (n.targetClassIds ?? []).filter(
-                                        (id) => id !== c.id,
-                                      )
-                                    : [...(n.targetClassIds ?? []), c.id],
-                                }))
-                              }
-                              className={cn(
-                                "px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all",
-                                selected
-                                  ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-                                  : "border-gray-200 text-gray-600",
-                              )}
-                            >
-                              {c.name}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="px-5 pb-5">
-                  <button
-                    onClick={handleCreate}
-                    disabled={creating || !newFee.name || !newFee.amount}
-                    className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl disabled:opacity-60 flex items-center justify-center gap-2"
-                  >
-                    {creating ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Plus className="w-4 h-4" />
-                    )}
-                    Create Fee Type
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
 
       {receipt && (
         <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
