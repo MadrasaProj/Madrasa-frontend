@@ -40,7 +40,7 @@ const adminLinks = [
   { href: "/admin/fees",           icon: CreditCard,      key: "fees"          as NavKey },
   { href: "/admin/id-cards",       icon: BadgeCheck,      key: "idCards"       as NavKey },
   { href: "/admin/posters",        icon: Image,           key: "posters"       as NavKey },
-  { href: "/admin/exams",          icon: GraduationCap,   key: "exams"         as NavKey },
+  { href: "/admin/exams",          icon: GraduationCap,   key: "exams"         as NavKey, exact: true },
   { href: "/admin/exams/class-test", icon: GraduationCap, key: "classTests"    as NavKey },
   { href: "/admin/reports",        icon: BarChart3,       key: "reports"       as NavKey },
   { href: "/admin/logs",           icon: Activity,        key: "logs"          as NavKey },
@@ -59,7 +59,7 @@ const teacherLinks = [
   { href: "/teacher/diary",        icon: FileText,        key: "diary"        as NavKey },
   { href: "/teacher/ibadah",       icon: Moon,            key: "ibadah"       as NavKey },
   { href: "/teacher/fees",         icon: CreditCard,      key: "fees"         as NavKey },
-  { href: "/teacher/exams",        icon: GraduationCap,   key: "exams"        as NavKey },
+  { href: "/teacher/exams",        icon: GraduationCap,   key: "exams"        as NavKey, exact: true },
   { href: "/teacher/exams/class-test", icon: GraduationCap, key: "classTests" as NavKey },
   { href: "/teacher/performance",  icon: Star,            key: "performance"  as NavKey },
   { href: "/teacher/notifications",icon: Bell,            key: "notifications"as NavKey },
@@ -107,6 +107,7 @@ interface NavLink {
   icon: any;
   key: NavKey;
   isExternal?: boolean;
+  exact?: boolean;
 }
 
 const getArtsfestLink = (role: string, actorType?: string): NavLink => {
@@ -193,9 +194,13 @@ function useSlugPrefix(): string {
 
 const ROOT_PATHS = ["/admin", "/teacher", "/parent", "/committee"];
 
-const isLinkActive = (pathname: string, fullHref: string, slugPrefix: string) => {
+const isLinkActive = (pathname: string, fullHref: string, slugPrefix: string, exact?: boolean) => {
   const normPath = pathname.replace(/\/$/, "");
   const normHref = fullHref.replace(/\/$/, "");
+  
+  if (exact) {
+    return normPath === normHref;
+  }
   
   const basePaths = ["/admin", "/teacher", "/parent", "/committee"];
   const basePathsWithSlug = slugPrefix ? basePaths.map(p => `${slugPrefix}${p}`) : [];
@@ -253,7 +258,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose?: () =>
     adminCats.forEach((cat) => {
       const hasActive = cat.links.some((l) => {
         const fullHref = l.isExternal ? l.href : (slugPrefix ? `${slugPrefix}${l.href}` : l.href);
-        return !l.isExternal && isLinkActive(pathname, fullHref, slugPrefix);
+        return !l.isExternal && isLinkActive(pathname, fullHref, slugPrefix, l.exact);
       });
       if (hasActive) {
         initial[cat.id] = true;
@@ -274,7 +279,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose?: () =>
     adminCats.forEach((cat) => {
       const hasActive = cat.links.some((l) => {
         const fullHref = l.isExternal ? l.href : (slugPrefix ? `${slugPrefix}${l.href}` : l.href);
-        return !l.isExternal && isLinkActive(pathname, fullHref, slugPrefix);
+        return !l.isExternal && isLinkActive(pathname, fullHref, slugPrefix, l.exact);
       });
       if (hasActive) {
         setExpandedCategories((prev) => {
@@ -318,7 +323,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose?: () =>
     const Icon = l.icon;
     const isCheckin = l.key === "checkin";
     const fullHref = l.isExternal ? l.href : (slugPrefix ? `${slugPrefix}${l.href}` : l.href);
-    const active = !l.isExternal && isLinkActive(pathname, fullHref, slugPrefix);
+    const active = !l.isExternal && isLinkActive(pathname, fullHref, slugPrefix, l.exact);
 
     const linkClasses = cn(
       "flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none",
@@ -430,7 +435,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose?: () =>
                 const CatIcon = cat.icon;
                 const hasActiveLink = cat.links.some((l) => {
                   const fullHref = l.isExternal ? l.href : (slugPrefix ? `${slugPrefix}${l.href}` : l.href);
-                  return !l.isExternal && isLinkActive(pathname, fullHref, slugPrefix);
+                  return !l.isExternal && isLinkActive(pathname, fullHref, slugPrefix, l.exact);
                 });
 
                 return (

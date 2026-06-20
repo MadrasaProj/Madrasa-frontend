@@ -55,10 +55,10 @@ export default function TeacherDashboard() {
   return (
     <DashboardLayout>
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-5">
-        <div className="bg-gradient-to-r from-blue-700 to-indigo-600 rounded-3xl p-5 text-white">
-          <p className="text-blue-200 text-xs font-semibold uppercase tracking-widest mb-1">Teacher Portal</p>
+        <div className="bg-gradient-to-r from-emerald-700 to-green-600 rounded-3xl p-5 text-white">
+          <p className="text-emerald-200 text-xs font-semibold uppercase tracking-widest mb-1">Teacher Portal</p>
           <h1 className="text-xl font-bold">{user?.name ?? "Teacher"}</h1>
-          <p className="text-blue-200 text-sm mt-1">{today}</p>
+          <p className="text-emerald-200 text-sm mt-1">{today}</p>
           {!loading && (
             <div className="grid grid-cols-3 gap-2 mt-4">
               {[
@@ -68,7 +68,7 @@ export default function TeacherDashboard() {
               ].map((s) => (
                 <div key={s.label} className="bg-white/15 rounded-2xl p-2.5 text-center">
                   <p className="text-lg font-black">{s.value}</p>
-                  <p className="text-[10px] text-blue-200">{s.label}</p>
+                  <p className="text-[10px] text-emerald-200">{s.label}</p>
                 </div>
               ))}
             </div>
