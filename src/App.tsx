@@ -60,6 +60,7 @@ import TeacherNotificationsPage from "../app/teacher/notifications/page";
 import TeacherDashboard from "../app/teacher/page";
 import TeacherFeesPage from "../app/teacher/fees/page";
 import TeacherPerformancePage from "../app/teacher/performance/page";
+import TeacherBestPerformancePage from "../app/teacher/best-performance/page";
 import TeacherPresentPage from "../app/teacher/present/page";
 import TeacherPostersPage from "../app/teacher/posters/page";
 import TeacherPosterViewPage from "../app/teacher/posters/[id]/page";
@@ -74,6 +75,7 @@ import ParentIbadahPage from "../app/parent/ibadah/page";
 import ParentNotificationsPage from "../app/parent/notifications/page";
 import ParentDashboard from "../app/parent/page";
 import ParentResultsPage from "../app/parent/results/page";
+import ParentBestPerformancePage from "../app/parent/best-performance/page";
 import ParentPostersPage from "../app/parent/posters/page";
 import ParentPosterViewPage from "../app/parent/posters/[id]/page";
 
@@ -201,6 +203,7 @@ export default function App() {
         <Route path="/teacher/exams/class-report" element={<TeacherClassReportPage />} />
         <Route path="/teacher/notifications" element={<TeacherNotificationsPage />} />
         <Route path="/teacher/performance" element={<TeacherPerformancePage />} />
+        <Route path="/teacher/best-performance" element={<TeacherBestPerformancePage />} />
         <Route path="/teacher/posters" element={<TeacherPostersPage />} />
         <Route path="/teacher/posters/:id" element={<TeacherPosterViewPage />} />
 
@@ -221,6 +224,7 @@ export default function App() {
         <Route path="/m/:slug/teacher/exams/class-report" element={<TeacherClassReportPage />} />
         <Route path="/m/:slug/teacher/notifications" element={<TeacherNotificationsPage />} />
         <Route path="/m/:slug/teacher/performance" element={<TeacherPerformancePage />} />
+        <Route path="/m/:slug/teacher/best-performance" element={<TeacherBestPerformancePage />} />
         <Route path="/m/:slug/teacher/posters" element={<TeacherPostersPage />} />
         <Route path="/m/:slug/teacher/posters/:id" element={<TeacherPosterViewPage />} />
 
@@ -232,6 +236,7 @@ export default function App() {
         <Route path="/parent/ibadah" element={<ParentIbadahPage />} />
         <Route path="/parent/results" element={<ParentResultsPage />} />
         <Route path="/parent/notifications" element={<ParentNotificationsPage />} />
+        <Route path="/parent/best-performance" element={<ParentBestPerformancePage />} />
         <Route path="/parent/diary" element={<ParentDiaryPage />} />
         <Route path="/parent/posters" element={<ParentPostersPage />} />
         <Route path="/parent/posters/:id" element={<ParentPosterViewPage />} />
@@ -245,6 +250,7 @@ export default function App() {
         <Route path="/m/:slug/parent/ibadah" element={<ParentIbadahPage />} />
         <Route path="/m/:slug/parent/results" element={<ParentResultsPage />} />
         <Route path="/m/:slug/parent/notifications" element={<ParentNotificationsPage />} />
+        <Route path="/m/:slug/parent/best-performance" element={<ParentBestPerformancePage />} />
         <Route path="/m/:slug/parent/diary" element={<ParentDiaryPage />} />
         <Route path="/m/:slug/parent/posters" element={<ParentPostersPage />} />
         <Route path="/m/:slug/parent/posters/:id" element={<ParentPosterViewPage />} />

@@ -63,6 +63,7 @@ const teacherLinks = [
   { href: "/teacher/exams",        icon: GraduationCap,   key: "exams"        as NavKey, exact: true },
   { href: "/teacher/exams/class-test", icon: GraduationCap, key: "classTests" as NavKey },
   { href: "/teacher/performance",  icon: Star,            key: "performance"  as NavKey },
+  { href: "/teacher/best-performance", icon: Trophy,      key: "bestPerformance" as NavKey },
   { href: "/teacher/notifications",icon: Bell,            key: "notifications"as NavKey },
   { href: "/teacher/profile",      icon: UserCircle2,     key: "profile"      as NavKey },
 ];
@@ -77,6 +78,7 @@ const parentLinks = [
   { href: "/parent/fees",          icon: CreditCard,      key: "fees"         as NavKey },
   { href: "/parent/posters",       icon: Image,           key: "posters"      as NavKey },
   { href: "/parent/results",       icon: GraduationCap,   key: "results"      as NavKey },
+  { href: "/parent/best-performance", icon: Trophy,       key: "bestPerformance" as NavKey },
   { href: "/parent/notifications", icon: Bell,            key: "notifications"as NavKey },
   { href: "/parent/profile",       icon: UserCircle2,     key: "profile"      as NavKey },
 ];
