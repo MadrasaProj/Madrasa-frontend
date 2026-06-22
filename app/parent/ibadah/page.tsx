@@ -16,6 +16,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { IbadahCounter } from "@/components/ui/IbadahCounter";
 
 const PRAYERS = ["fajr", "dhuhr", "asr", "maghrib", "isha"] as const;
 type Prayer = typeof PRAYERS[number];
@@ -407,76 +408,51 @@ export default function ParentIbadahPage() {
 
               {/* Quran pages */}
               {config?.enableQuranPages !== false && (
-                <div className="bg-white rounded-2xl border border-gray-100 p-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <BookOpen className="w-4 h-4 text-blue-500" />
-                    <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Quran Pages</p>
-                  </div>
-                  <div className="flex items-center justify-center gap-6">
-                    <button
-                      onClick={() => setForm((f) => ({ ...f, quranPages: Math.max(0, f.quranPages - 1) }))}
-                      className="w-12 h-12 rounded-2xl bg-gray-100 text-gray-700 text-2xl font-bold flex items-center justify-center active:scale-95"
-                    >−</button>
-                    <div className="text-center">
-                      <p className="text-4xl font-bold text-blue-700">{form.quranPages}</p>
-                      <p className="text-xs text-gray-400 mt-1">pages today</p>
-                    </div>
-                    <button
-                      onClick={() => setForm((f) => ({ ...f, quranPages: Math.min(1000, f.quranPages + 1) }))}
-                      className="w-12 h-12 rounded-2xl bg-blue-500 text-white text-2xl font-bold flex items-center justify-center active:scale-95"
-                    >+</button>
-                  </div>
-                </div>
+                <IbadahCounter
+                  label="Quran Pages"
+                  icon={<BookOpen className="w-4 h-4" />}
+                  value={form.quranPages}
+                  onChange={(val) => setForm((f) => ({ ...f, quranPages: val }))}
+                  suffix="pages"
+                />
               )}
 
               {/* Custom items */}
               {customItems.length > 0 && (
-                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                  <div className="px-4 py-3 bg-gray-50">
-                    <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Additional Ibadah</p>
-                  </div>
-                  <div className="divide-y divide-gray-50">
-                    {customItems.map((item) => (
-                      <div key={item.key} className="flex items-center gap-4 px-4 py-3.5">
-                        <div className="flex-1">
+                <div className="space-y-3">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wide px-0.5">Additional Ibadah</p>
+                  {customItems.map((item) =>
+                    item.type === "boolean" ? (
+                      <div key={item.key} className="bg-white rounded-2xl border border-gray-100 px-4 py-3.5 flex items-center justify-between">
+                        <div>
                           <p className="text-sm font-semibold text-gray-800">{item.label}</p>
-                          <div className="flex items-center gap-1 mt-0.5">
-                            {item.type === "boolean"
-                              ? <ToggleLeft className="w-3 h-3 text-gray-400" />
-                              : <Hash className="w-3 h-3 text-gray-400" />}
-                            <span className="text-[10px] text-gray-400">{item.type === "boolean" ? "Yes/No" : `${item.min ?? 0}–${item.max ?? "∞"}`}</span>
-                          </div>
+                          <p className="text-[10px] text-gray-400 mt-0.5">Yes / No</p>
                         </div>
-                        {item.type === "boolean" ? (
-                          <button
-                            onClick={() => toggleCustomBoolean(item.key)}
-                            className={cn(
-                              "w-5 h-5 rounded-md border-2 transition-all active:scale-95 flex items-center justify-center text-xs font-bold",
-                              form.customData[item.key]
-                                ? "bg-emerald-600 border-emerald-600 text-white shadow-sm"
-                                : "border-gray-300 bg-white text-transparent",
-                            )}
-                          >
-                            {form.customData[item.key] ? "✓" : ""}
-                          </button>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => setCustomNumber(item.key, ((form.customData[item.key] as number) ?? 0) - 1, item.min, item.max)}
-                              className="w-8 h-8 rounded-xl bg-gray-100 text-gray-600 font-bold flex items-center justify-center"
-                            >−</button>
-                            <span className="w-8 text-center text-base font-bold text-blue-700">
-                              {(form.customData[item.key] as number) ?? 0}
-                            </span>
-                            <button
-                              onClick={() => setCustomNumber(item.key, ((form.customData[item.key] as number) ?? 0) + 1, item.min, item.max)}
-                              className="w-8 h-8 rounded-xl bg-blue-500 text-white font-bold flex items-center justify-center"
-                            >+</button>
-                          </div>
-                        )}
+                        <button
+                          onClick={() => toggleCustomBoolean(item.key)}
+                          className={cn(
+                            "relative w-11 h-6 rounded-full transition-colors duration-200 shrink-0",
+                            form.customData[item.key] ? "bg-emerald-500" : "bg-gray-200",
+                          )}
+                        >
+                          <span className={cn(
+                            "absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200",
+                            form.customData[item.key] ? "translate-x-5" : "translate-x-0",
+                          )} />
+                        </button>
                       </div>
-                    ))}
-                  </div>
+                    ) : (
+                      <IbadahCounter
+                        key={item.key}
+                        label={item.label}
+                        icon={<Hash className="w-4 h-4" />}
+                        value={(form.customData[item.key] as number) ?? 0}
+                        onChange={(val) => setCustomNumber(item.key, val, item.min, item.max)}
+                        min={item.min ?? 0}
+                        max={item.max ?? 10000}
+                      />
+                    )
+                  )}
                 </div>
               )}
 
