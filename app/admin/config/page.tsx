@@ -7,16 +7,7 @@ import {
   type ClientConfig,
 } from "@/lib/config-api";
 import { useAuthStore } from "@/store/auth";
-import {
-  Settings,
-  Save,
-  CheckCircle2,
-  Loader2,
-  AlertCircle,
-  CalendarCheck,
-  Eye,
-  EyeOff,
-} from "lucide-react";
+import { Settings, Save, CheckCircle2, Loader2, AlertCircle, CalendarCheck, Eye, EyeOff, Users } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { PageSkeleton } from "@/components/ui/Skeleton";
@@ -127,16 +118,32 @@ export default function AdminConfigPage() {
   const [savingCommTC, setSavingCommTC] = useState(false);
   const [savedCommTC, setSavedCommTC] = useState(false);
 
+  // Parent module toggles
+  const PARENT_MODULES = [
+    { key: "attendance", label: "Attendance", desc: "Let parents view their child's attendance records" },
+    { key: "leaveRequests", label: "Leave Requests", desc: "Let parents submit leave requests for their children" },
+    { key: "homework", label: "Homework", desc: "Let parents view homework assignments" },
+    { key: "diary", label: "Diary", desc: "Let parents view daily diary entries" },
+    { key: "ibadah", label: "Ibadah", desc: "Let parents view ibadah tracking" },
+    { key: "fees", label: "Fees", desc: "Let parents view and pay fees" },
+    { key: "posters", label: "Posters", desc: "Let parents view posters" },
+    { key: "results", label: "Results", desc: "Let parents view exam results" },
+    { key: "notifications", label: "Notifications", desc: "Let parents receive and view notifications" },
+  ];
+
+  const [disabledModules, setDisabledModules] = useState<string[]>([]);
+  const [savingParentToggles, setSavingParentToggles] = useState(false);
+  const [savedParentToggles, setSavedParentToggles] = useState(false);
+
   useEffect(() => {
     if (!cid || !token) return;
     getClientConfig(cid, token)
       .then((data) => {
         setConfig(data);
         if (data.attendanceMode) setAttMode(data.attendanceMode);
-        if (data.showCommitteeAttendance !== undefined)
-          setShowCommAtt(data.showCommitteeAttendance);
-        if (data.showCommitteeTeacherCheckin !== undefined)
-          setShowCommTC(data.showCommitteeTeacherCheckin);
+        if (data.showCommitteeAttendance !== undefined) setShowCommAtt(data.showCommitteeAttendance);
+        if (data.showCommitteeTeacherCheckin !== undefined) setShowCommTC(data.showCommitteeTeacherCheckin);
+        setDisabledModules(data.disabledParentModules ?? []);
       })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
@@ -214,6 +221,17 @@ export default function AdminConfigPage() {
     } finally {
       setSavingCommAtt(false);
     }
+  };
+
+  const handleSaveParentModules = async () => {
+    if (!cid || !token) return;
+    setSavingParentToggles(true);
+    try {
+      await updateClientConfig(cid, token, { disabledParentModules: disabledModules });
+      setSavedParentToggles(true);
+      setTimeout(() => setSavedParentToggles(false), 3000);
+    } catch (e) { /* ignore */ }
+    finally { setSavingParentToggles(false); }
   };
 
   const handleSaveCommitteeTeacherCheckin = async () => {
@@ -497,6 +515,59 @@ export default function AdminConfigPage() {
                   <Save className="w-4 h-4" /> Save
                 </>
               )}
+            </button>
+          </motion.div>
+
+          {/* Parent Module Toggles */}
+          <motion.div
+            initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-2xl border border-gray-100 p-5"
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <Users className="w-4 h-4 text-emerald-600" />
+              <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide">Parent Modules</p>
+            </div>
+            <p className="text-xs text-gray-500 mb-4">Enable or disable modules visible to parents in their dashboard</p>
+            <div className="space-y-3">
+              {PARENT_MODULES.map((mod) => {
+                const enabled = !disabledModules.includes(mod.key);
+                return (
+                  <div key={mod.key} className="flex items-center justify-between py-2">
+                    <div className="pr-4">
+                      <p className="text-sm font-semibold text-gray-800">{mod.label}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{mod.desc}</p>
+                    </div>
+                    <button
+                      onClick={() =>
+                        setDisabledModules((prev) =>
+                          enabled ? [...prev, mod.key] : prev.filter((k) => k !== mod.key)
+                        )
+                      }
+                      className={`relative w-12 h-6 rounded-full transition-colors duration-200 shrink-0 ${
+                        enabled ? "bg-emerald-500" : "bg-gray-300"
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
+                          enabled ? "translate-x-6" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            <button
+              onClick={handleSaveParentModules}
+              disabled={savingParentToggles}
+              className={cn(
+                "flex items-center justify-center gap-2 w-full py-3 mt-4 rounded-xl text-sm font-bold transition-colors",
+                savedParentToggles ? "bg-emerald-100 text-emerald-700" : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60",
+              )}
+            >
+              {savingParentToggles ? <Loader2 className="w-4 h-4 animate-spin" /> :
+               savedParentToggles  ? <><CheckCircle2 className="w-4 h-4" /> Saved!</> :
+                                     <><Save className="w-4 h-4" /> Save Module Settings</>}
             </button>
           </motion.div>
 

@@ -240,6 +240,7 @@ export default function App() {
         <Route path="/parent/diary" element={<ParentDiaryPage />} />
         <Route path="/parent/posters" element={<ParentPostersPage />} />
         <Route path="/parent/posters/:id" element={<ParentPosterViewPage />} />
+        <Route path="/parent/best-performance" element={<ParentBestPerformancePage />} />
 
         {/* Parent — slug-prefixed */}
         <Route path="/m/:slug/parent" element={<ParentDashboard />} />
@@ -254,6 +255,7 @@ export default function App() {
         <Route path="/m/:slug/parent/diary" element={<ParentDiaryPage />} />
         <Route path="/m/:slug/parent/posters" element={<ParentPostersPage />} />
         <Route path="/m/:slug/parent/posters/:id" element={<ParentPosterViewPage />} />
+        <Route path="/m/:slug/parent/best-performance" element={<ParentBestPerformancePage />} />
 
         {/* Committee */}
         <Route path="/committee" element={<CommitteeDashboard />} />

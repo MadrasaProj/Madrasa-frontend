@@ -222,15 +222,22 @@ export function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose?: () =>
   const { lang } = useLanguageStore();
   const slugPrefix = useSlugPrefix();
   const [commConfig, setCommConfig] = useState<Pick<ClientConfig, "showCommitteeAttendance" | "showCommitteeTeacherCheckin">>({});
+  const [disabledModules, setDisabledModules] = useState<string[]>([]);
 
   const activeRef = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
-    if (user?.role !== "committee" || !activeClientId || !accessToken) return;
+    if (!activeClientId || !accessToken) return;
     getClientConfig(activeClientId, accessToken)
-      .then((cfg) => setCommConfig({ showCommitteeAttendance: cfg.showCommitteeAttendance, showCommitteeTeacherCheckin: cfg.showCommitteeTeacherCheckin }))
+      .then((cfg) => {
+        setCommConfig({
+          showCommitteeAttendance: cfg.showCommitteeAttendance,
+          showCommitteeTeacherCheckin: cfg.showCommitteeTeacherCheckin,
+        });
+        setDisabledModules(cfg.disabledParentModules ?? []);
+      })
       .catch(() => {});
-  }, [user?.role, activeClientId, accessToken]);
+  }, [activeClientId, accessToken]);
 
   useEffect(() => {
     if (activeRef.current) {
@@ -316,6 +323,9 @@ export function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose?: () =>
       if (l.key === "teacherCheckin" && commConfig.showCommitteeTeacherCheckin === false) return false;
       return true;
     });
+  }
+  if (user.actorType === "PARENT") {
+    flatLinks = flatLinks.filter((l) => !disabledModules.includes(l.key));
   }
 
   const handleLinkClick = () => {
@@ -517,13 +527,20 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
   const { lang } = useLanguageStore();
   const slugPrefix = useSlugPrefix();
   const [commConfig, setCommConfig] = useState<Pick<ClientConfig, "showCommitteeAttendance" | "showCommitteeTeacherCheckin">>({});
+  const [disabledModules, setDisabledModules] = useState<string[]>([]);
 
   useEffect(() => {
-    if (user?.role !== "committee" || !activeClientId || !accessToken) return;
+    if (!activeClientId || !accessToken) return;
     getClientConfig(activeClientId, accessToken)
-      .then((cfg) => setCommConfig({ showCommitteeAttendance: cfg.showCommitteeAttendance, showCommitteeTeacherCheckin: cfg.showCommitteeTeacherCheckin }))
+      .then((cfg) => {
+        setCommConfig({
+          showCommitteeAttendance: cfg.showCommitteeAttendance,
+          showCommitteeTeacherCheckin: cfg.showCommitteeTeacherCheckin,
+        });
+        setDisabledModules(cfg.disabledParentModules ?? []);
+      })
       .catch(() => {});
-  }, [user?.role, activeClientId, accessToken]);
+  }, [activeClientId, accessToken]);
 
   if (!user) return null;
 
@@ -539,6 +556,9 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
       if (l.key === "teacherCheckin" && commConfig.showCommitteeTeacherCheckin === false) return false;
       return true;
     });
+  }
+  if (user.actorType === "PARENT") {
+    allLinks = allLinks.filter((l) => !disabledModules.includes(l.key));
   }
 
   const showMore = allLinks.length > 5;

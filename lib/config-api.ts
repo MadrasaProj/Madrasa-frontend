@@ -25,6 +25,7 @@ export interface ClientConfig {
   attendanceMode?: "CLASS_BASED" | "PERIOD_BASED";
   showCommitteeAttendance?: boolean;
   showCommitteeTeacherCheckin?: boolean;
+  disabledParentModules?: string[];
   principalName?: string | null;
   principalPhone?: string | null;
   principalEmail?: string | null;
