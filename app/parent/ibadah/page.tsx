@@ -6,10 +6,12 @@ import {
   type StudentIbadahResponse, type IbadahConfig, type StudentIbadahLog,
 } from "@/lib/ibadah-api";
 import { useAuthStore } from "@/store/auth";
+import type { PrayerStatus } from "@/lib/ibadah-api";
 import {
   Moon, Calendar, Loader2, AlertCircle,
   Flame, BookOpen, ChevronDown, ChevronUp,
   CheckCircle2, Save, ChevronLeft, ChevronRight, Hash, ToggleLeft,
+  Check, Sun, X, Users,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -17,6 +19,14 @@ import { Skeleton } from "@/components/ui/Skeleton";
 
 const PRAYERS = ["fajr", "dhuhr", "asr", "maghrib", "isha"] as const;
 type Prayer = typeof PRAYERS[number];
+
+const PRAYER_OPTIONS: { value: PrayerStatus | null; label: string; sub: string; icon: any; color: string }[] = [
+  { value: null, label: "Missed", sub: "No prayer recorded", icon: X, color: "bg-gray-100 text-gray-500 hover:bg-gray-200" },
+  { value: "NOT_PRAYABLE", label: "Excused", sub: "Ruqsa / Menses / Valid reason", icon: Moon, color: "bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200" },
+  { value: "QALA", label: "Qala'", sub: "Prayed alone", icon: Sun, color: "bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200" },
+  { value: "ADA", label: "Ada'", sub: "Prayed on time", icon: Check, color: "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200" },
+  { value: "JAMA", label: "Jama'", sub: "In congregation", icon: Users, color: "bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200" },
+];
 
 const PRAYER_META: Record<Prayer, { label: string; time: string; configKey: keyof IbadahConfig }> = {
   fajr:    { label: "Fajr",    time: "Dawn",      configKey: "enableFajr"    },
@@ -27,11 +37,11 @@ const PRAYER_META: Record<Prayer, { label: string; time: string; configKey: keyo
 };
 
 interface FormState {
-  fajr: boolean;
-  dhuhr: boolean;
-  asr: boolean;
-  maghrib: boolean;
-  isha: boolean;
+  fajr: PrayerStatus | null;
+  dhuhr: PrayerStatus | null;
+  asr: PrayerStatus | null;
+  maghrib: PrayerStatus | null;
+  isha: PrayerStatus | null;
   quranPages: number;
   customData: Record<string, boolean | number>;
   notes: string;
@@ -39,7 +49,7 @@ interface FormState {
 
 function getEmptyForm(): FormState {
   return {
-    fajr: false, dhuhr: false, asr: false, maghrib: false, isha: false,
+    fajr: null, dhuhr: null, asr: null, maghrib: null, isha: null,
     quranPages: 0, customData: {}, notes: "",
   };
 }
@@ -71,6 +81,7 @@ export default function ParentIbadahPage() {
   const [saving, setSaving]           = useState(false);
   const [saved, setSaved]             = useState(false);
   const [saveError, setSaveError]     = useState<string | null>(null);
+  const [drawerPrayer, setDrawerPrayer] = useState<Prayer | null>(null);
   const [view, setView]               = useState<"form" | "history">("form");
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
 
@@ -125,14 +136,14 @@ export default function ParentIbadahPage() {
     if (d <= today) setDate(fmt(d));
   };
 
-  const togglePrayer = (p: Prayer) => {
-    setForm((prev) => ({ ...prev, [p]: !prev[p] }));
+  const setPrayer = (p: Prayer, value: PrayerStatus | null) => {
+    setForm((prev) => ({ ...prev, [p]: value }));
     setSaved(false);
   };
 
   const markAll = () => {
     setForm((prev) => {
-      const updates = Object.fromEntries(activePrayers.map((p) => [p, true]));
+      const updates = Object.fromEntries(activePrayers.map((p) => [p, 'ADA' as PrayerStatus]));
       return { ...prev, ...updates };
     });
     setSaved(false);
@@ -161,11 +172,11 @@ export default function ParentIbadahPage() {
     try {
       const saved = await upsertStudentIbadah(cid, token, activeId, {
         date,
-        fajr:    form.fajr,
-        dhuhr:   form.dhuhr,
-        asr:     form.asr,
-        maghrib: form.maghrib,
-        isha:    form.isha,
+        fajr:    form.fajr ?? undefined,
+        dhuhr:   form.dhuhr ?? undefined,
+        asr:     form.asr ?? undefined,
+        maghrib: form.maghrib ?? undefined,
+        isha:    form.isha ?? undefined,
         quranPages: form.quranPages,
         customData: Object.keys(form.customData).length > 0 ? form.customData : undefined,
         notes:   form.notes || undefined,
@@ -191,7 +202,7 @@ export default function ParentIbadahPage() {
     }
   };
 
-  const prayerCount = activePrayers.filter((p) => form[p]).length;
+  const prayerCount = activePrayers.filter((p) => form[p] != null).length;
   const dateLabel   = new Date(date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
 
   return (
@@ -338,40 +349,58 @@ export default function ParentIbadahPage() {
                         onClick={markAll}
                         className="text-[10px] font-semibold text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-1 rounded-lg transition-colors"
                       >
-                        All ✓
+                        All Ada'
                       </button>
                     </div>
                   </div>
                   <div className="divide-y divide-gray-50">
-                    {activePrayers.map((p) => (
-                      <button
-                        key={p}
-                        onClick={() => togglePrayer(p)}
-                        className={cn(
-                          "w-full flex items-center gap-4 px-4 py-3.5 transition-colors text-left",
-                          form[p] ? "bg-emerald-50/50" : "hover:bg-gray-50",
-                        )}
-                      >
-                        <div className={cn(
-                          "w-5 h-5 rounded-md border-2 shrink-0 transition-all flex items-center justify-center text-xs font-bold",
-                          form[p] ? "bg-emerald-600 border-emerald-600 text-white shadow-sm scale-105" : "border-gray-300 bg-white text-transparent",
-                        )}>
-                          {form[p] ? "✓" : ""}
+                    {activePrayers.map((p) => {
+                      const status = form[p];
+                      const opt = PRAYER_OPTIONS.find((o) => o.value === status);
+                      const Icon = opt?.icon ?? Moon;
+                      return (
+                        <div
+                          key={p}
+                          className={cn(
+                            "flex items-center gap-3 px-4 py-3 cursor-pointer active:opacity-80 transition-all first:rounded-t-none last:rounded-b-none",
+                            status === "ADA" && "bg-gradient-to-r from-emerald-50/60 to-transparent",
+                            status === "QALA" && "bg-gradient-to-r from-amber-50/60 to-transparent",
+                            status === "JAMA" && "bg-gradient-to-r from-blue-50/60 to-transparent",
+                            status === "NOT_PRAYABLE" && "bg-gradient-to-r from-purple-50/60 to-transparent",
+                            !status && "hover:bg-gray-50",
+                          )}
+                          onClick={() => setDrawerPrayer(p)}
+                        >
+                          <div className={cn(
+                            "w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 transition-all",
+                            status === "ADA" && "text-emerald-500",
+                            status === "QALA" && "text-amber-500",
+                            status === "JAMA" && "text-blue-500",
+                            status === "NOT_PRAYABLE" && "text-purple-500",
+                            !status && "text-gray-300",
+                          )}>
+                            <Icon className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-800">
+                              {PRAYER_META[p].label}
+                            </p>
+                            <p className="text-xs text-gray-400">{PRAYER_META[p].time}</p>
+                          </div>
+                          <span className={cn(
+                            "text-[11px] font-medium transition-all",
+                            status === "ADA" && "text-emerald-500",
+                            status === "QALA" && "text-amber-500",
+                            status === "JAMA" && "text-blue-500",
+                            status === "NOT_PRAYABLE" && "text-purple-500",
+                            !status && "text-gray-300",
+                          )}>
+                            {opt?.label ?? "—"}
+                          </span>
+                          <ChevronDown className="w-3.5 h-3.5 text-gray-300 shrink-0" />
                         </div>
-                        <div className="flex-1">
-                          <p className={cn("text-sm font-bold", form[p] ? "text-emerald-800" : "text-gray-700")}>
-                            {PRAYER_META[p].label}
-                          </p>
-                          <p className="text-xs text-gray-400">{PRAYER_META[p].time}</p>
-                        </div>
-                        <div className={cn(
-                          "text-xs font-semibold px-2 py-1 rounded-lg",
-                          form[p] ? "bg-emerald-100 text-emerald-700" : "text-gray-400",
-                        )}>
-                          {form[p] ? "Prayed" : "Missed"}
-                        </div>
-                      </button>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -504,7 +533,7 @@ export default function ParentIbadahPage() {
                 </div>
               ) : (
                 ibadah.logs.map((log, i) => {
-                  const prayersDone = activePrayers.filter((p) => log[p]).length;
+                  const prayersDone = activePrayers.filter((p) => log[p] != null).length;
                   const isExpanded  = expandedLog === log.id;
                   const logDate     = new Date(log.date).toLocaleDateString("en-GB", {
                     weekday: "short", day: "numeric", month: "short",
@@ -537,19 +566,19 @@ export default function ParentIbadahPage() {
                             {log.quranPages > 0 ? ` · ${log.quranPages} Quran pages` : ""}
                           </p>
                         </div>
-                        <div className="hidden sm:flex gap-1 shrink-0">
-                          {activePrayers.map((p) => (
-                            <span
-                              key={p}
-                              className={cn(
-                                "w-6 h-6 rounded-lg flex items-center justify-center text-[9px] font-bold",
-                                log[p] ? "bg-emerald-500 text-white" : "bg-gray-100 text-gray-400",
-                              )}
-                            >
-                              {PRAYER_META[p].label.slice(0, 1)}
-                            </span>
-                          ))}
-                        </div>
+                          <div className="hidden sm:flex gap-1 shrink-0">
+                            {activePrayers.map((p) => (
+                              <span
+                                key={p}
+                                className={cn(
+                                  "w-6 h-6 rounded-lg flex items-center justify-center text-[9px] font-bold",
+                                  log[p] != null ? "bg-emerald-500 text-white" : "bg-gray-100 text-gray-400",
+                                )}
+                              >
+                                {PRAYER_META[p].label.slice(0, 1)}
+                              </span>
+                            ))}
+                          </div>
                         {isExpanded
                           ? <ChevronUp className="w-4 h-4 text-gray-400 shrink-0" />
                           : <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />}
@@ -568,10 +597,10 @@ export default function ParentIbadahPage() {
                                     key={p}
                                     className={cn(
                                       "rounded-xl py-2.5 text-center text-[10px] font-bold",
-                                      log[p] ? "bg-emerald-500 text-white" : "bg-gray-200 text-gray-500",
+                                      log[p] != null ? "bg-emerald-500 text-white" : "bg-gray-200 text-gray-500",
                                     )}
                                   >
-                                    <div className="text-sm">{log[p] ? "✓" : "—"}</div>
+                                    <div className="text-sm">{log[p] ?? "—"}</div>
                                     <div className="opacity-80 mt-0.5">{PRAYER_META[p].label}</div>
                                   </div>
                                 ))}
@@ -627,6 +656,97 @@ export default function ParentIbadahPage() {
           )}
         </>
       ) : null}
+
+      {/* Prayer status drawer */}
+      <AnimatePresence>
+        {drawerPrayer && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 z-50"
+              onClick={() => setDrawerPrayer(null)}
+            />
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl max-h-[70vh] overflow-y-auto"
+            >
+              <div className="p-5">
+                <div className="flex items-center justify-between mb-5">
+                  <div>
+                    <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">
+                      {PRAYER_META[drawerPrayer].time}
+                    </p>
+                    <p className="text-lg font-bold text-gray-900">
+                      {PRAYER_META[drawerPrayer].label}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setDrawerPrayer(null)}
+                    className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center"
+                  >
+                    <X className="w-4 h-4 text-gray-500" />
+                  </button>
+                </div>
+
+                <div className="space-y-2.5">
+                  {PRAYER_OPTIONS.map((opt) => {
+                    const selected = form[drawerPrayer] === opt.value;
+                    return (
+                      <button
+                        key={opt.label}
+                        onClick={() => {
+                          setPrayer(drawerPrayer, opt.value);
+                          setDrawerPrayer(null);
+                        }}
+                        className={cn(
+                          "w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left",
+                          selected
+                            ? opt.color + " border-current"
+                            : "border-gray-100 hover:border-gray-200 bg-white",
+                        )}
+                      >
+                        <div className={cn(
+                          "w-11 h-11 rounded-2xl flex items-center justify-center shrink-0",
+                          selected ? "bg-white/80" : "bg-gray-50",
+                        )}>
+                          <opt.icon className={cn(
+                            "w-5 h-5",
+                            selected ? "text-current" : "text-gray-400",
+                          )} />
+                        </div>
+                        <div className="flex-1">
+                          <p className={cn(
+                            "text-sm font-bold",
+                            selected ? "text-current" : "text-gray-800",
+                          )}>
+                            {opt.label}
+                          </p>
+                          <p className={cn(
+                            "text-xs",
+                            selected ? "opacity-70" : "text-gray-400",
+                          )}>
+                            {opt.sub}
+                          </p>
+                        </div>
+                        {selected && (
+                          <div className="w-6 h-6 rounded-full bg-current flex items-center justify-center">
+                            <Check className="w-3.5 h-3.5 text-white" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </DashboardLayout>
   );
 }

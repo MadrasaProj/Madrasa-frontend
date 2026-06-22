@@ -4,16 +4,18 @@ const API_ORIGIN =
   import.meta.env.VITE_API_ORIGIN ?? "http://localhost:3000";
 const API_BASE = `${API_ORIGIN}${import.meta.env.VITE_API_BASE_PATH ?? "/api/v2"}`;
 
+export type PrayerStatus = 'QALA' | 'ADA' | 'JAMA' | 'NOT_PRAYABLE';
+
 export interface IbadahRecord {
   id: string;
   studentId: string;
   classId: string;
   date: string;
-  fajr: boolean;
-  dhuhr: boolean;
-  asr: boolean;
-  maghrib: boolean;
-  isha: boolean;
+  fajr: PrayerStatus | null;
+  dhuhr: PrayerStatus | null;
+  asr: PrayerStatus | null;
+  maghrib: PrayerStatus | null;
+  isha: PrayerStatus | null;
   quranPages: number;
   customData: Record<string, boolean | number> | null;
   notes: string | null;
@@ -43,11 +45,11 @@ export interface ClassIbadahResponse {
 export interface StudentIbadahLog {
   id: string;
   date: string;
-  fajr: boolean;
-  dhuhr: boolean;
-  asr: boolean;
-  maghrib: boolean;
-  isha: boolean;
+  fajr: PrayerStatus | null;
+  dhuhr: PrayerStatus | null;
+  asr: PrayerStatus | null;
+  maghrib: PrayerStatus | null;
+  isha: PrayerStatus | null;
   quranPages: number;
   customData: Record<string, boolean | number> | null;
   notes: string | null;
@@ -63,11 +65,11 @@ export interface StudentIbadahResponse {
 
 export interface UpsertStudentIbadahPayload {
   date: string;
-  fajr?: boolean;
-  dhuhr?: boolean;
-  asr?: boolean;
-  maghrib?: boolean;
-  isha?: boolean;
+  fajr?: PrayerStatus;
+  dhuhr?: PrayerStatus;
+  asr?: PrayerStatus;
+  maghrib?: PrayerStatus;
+  isha?: PrayerStatus;
   quranPages?: number;
   customData?: Record<string, boolean | number>;
   notes?: string;
@@ -76,11 +78,11 @@ export interface UpsertStudentIbadahPayload {
 
 export interface BulkIbadahEntry {
   studentId: string;
-  fajr?: boolean;
-  dhuhr?: boolean;
-  asr?: boolean;
-  maghrib?: boolean;
-  isha?: boolean;
+  fajr?: PrayerStatus;
+  dhuhr?: PrayerStatus;
+  asr?: PrayerStatus;
+  maghrib?: PrayerStatus;
+  isha?: PrayerStatus;
   quranPages?: number;
   customData?: Record<string, boolean | number>;
   notes?: string;

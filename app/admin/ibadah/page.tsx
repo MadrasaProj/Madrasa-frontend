@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
-import { getClassIbadah, type IbadahConfig, type IbadahRecord } from "@/lib/ibadah-api";
+import { getClassIbadah, type PrayerStatus, type IbadahConfig, type IbadahRecord } from "@/lib/ibadah-api";
 import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
 import { getStudents, type StudentRecord } from "@/lib/students-api";
 import { useAuthStore } from "@/store/auth";
@@ -28,7 +28,7 @@ interface StudentRow {
   studentId: string;
   name: string;
   adno: string;
-  fajr: boolean; dhuhr: boolean; asr: boolean; maghrib: boolean; isha: boolean;
+  fajr: PrayerStatus | null; dhuhr: PrayerStatus | null; asr: PrayerStatus | null; maghrib: PrayerStatus | null; isha: PrayerStatus | null;
   quranPages: number;
   customData: Record<string, boolean | number>;
 }
