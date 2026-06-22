@@ -13,17 +13,27 @@ import {
   type LeaveReasonType,
 } from "@/lib/leave-requests-api";
 import {
-  Loader2, CheckCircle2, XCircle, AlertCircle,
-  Search, ChevronDown, ChevronUp, UserCheck,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  Search,
+  ChevronDown,
+  ChevronUp,
+  UserCheck,
+  FilePen,
 } from "lucide-react";
 
-const REASON_CONFIG: Record<LeaveReasonType, { label: string; color: string; bg: string }> = {
+const REASON_CONFIG: Record<
+  LeaveReasonType,
+  { label: string; color: string; bg: string }
+> = {
   LEAVE: { label: "Leave", color: "text-amber-600", bg: "bg-amber-50" },
-  SICK:  { label: "Sick",  color: "text-orange-600", bg: "bg-orange-50" },
+  SICK: { label: "Sick", color: "text-orange-600", bg: "bg-orange-50" },
 };
 
 const STATUS_STYLES: Record<string, { border: string }> = {
-  PENDING:  { border: "border-l-amber-400" },
+  PENDING: { border: "border-l-amber-400" },
   APPROVED: { border: "border-l-emerald-400" },
   REJECTED: { border: "border-l-red-400" },
 };
@@ -63,7 +73,10 @@ export default function TeacherLeaveRequestsPage() {
   const handleReview = async (id: string, status: "APPROVED" | "REJECTED") => {
     setReviewingSave(true);
     try {
-      await reviewLeaveRequest(cid, token, id, { status, reviewNote: reviewNote || undefined });
+      await reviewLeaveRequest(cid, token, id, {
+        status,
+        reviewNote: reviewNote || undefined,
+      });
       setExpanded(null);
       setReviewNote("");
       loadRequests();
@@ -75,18 +88,22 @@ export default function TeacherLeaveRequestsPage() {
   };
 
   const filtered = search
-    ? requests.filter((r) =>
-        r.student.name.toLowerCase().includes(search.toLowerCase()) ||
-        r.student.adno.toLowerCase().includes(search.toLowerCase())
+    ? requests.filter(
+        (r) =>
+          r.student.name.toLowerCase().includes(search.toLowerCase()) ||
+          r.student.adno.toLowerCase().includes(search.toLowerCase()),
       )
     : requests;
 
   return (
     <DashboardLayout>
-      <div className="p-4 sm:p-6 max-w-3xl mx-auto">
+      <div className="p-4 sm:p-6 mx-auto">
         <PageHeader
           title="Leave Requests"
           subtitle="Review leave applications from your class"
+          icon={FilePen}
+          back
+          backHref="/teacher"
         />
 
         {error && <ApiErrorBanner message={error} />}
@@ -96,12 +113,22 @@ export default function TeacherLeaveRequestsPage() {
             {(["PENDING", "APPROVED", "REJECTED"] as const).map((s) => (
               <button
                 key={s}
-                onClick={() => { setFilter(s); setExpanded(null); }}
-                className={cn("flex-1 py-2 px-4 rounded-lg text-xs font-semibold transition-all",
-                  filter === s ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"
+                onClick={() => {
+                  setFilter(s);
+                  setExpanded(null);
+                }}
+                className={cn(
+                  "flex-1 py-2 px-4 rounded-lg text-xs font-semibold transition-all hover:text-gray-700 active:scale-[0.98]",
+                  filter === s
+                    ? "bg-white text-emerald-700 shadow-sm font-bold"
+                    : "text-gray-500",
                 )}
               >
-                {s === "PENDING" ? "Pending" : s === "APPROVED" ? "Approved" : "Rejected"}
+                {s === "PENDING"
+                  ? "Pending"
+                  : s === "APPROVED"
+                    ? "Approved"
+                    : "Rejected"}
               </button>
             ))}
           </div>
@@ -112,7 +139,7 @@ export default function TeacherLeaveRequestsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name or admission no..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-400"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 transition-all"
             />
           </div>
         </div>
@@ -145,25 +172,45 @@ export default function TeacherLeaveRequestsPage() {
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold text-gray-900 text-sm">{r.student.name}</span>
-                        <span className="text-xs text-gray-400">#{r.student.adno}</span>
+                        <span className="font-semibold text-gray-900 text-sm">
+                          {r.student.name}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          #{r.student.adno}
+                        </span>
                         {r.student.class && (
-                          <span className="text-xs text-gray-400">({r.student.class.name})</span>
+                          <span className="text-xs text-gray-400">
+                            ({r.student.class.name})
+                          </span>
                         )}
                       </div>
                       <div className="flex items-center gap-2 mb-2">
-                        <span className={cn("px-2 py-0.5 rounded-full text-xs font-semibold", rc.bg, rc.color)}>
+                        <span
+                          className={cn(
+                            "px-2 py-0.5 rounded-full text-xs font-semibold",
+                            rc.bg,
+                            rc.color,
+                          )}
+                        >
                           {rc.label}
                         </span>
                         <span className="text-xs text-gray-400">
                           {new Date(r.startDate).toLocaleDateString()}
-                          {r.endDate && <> - {new Date(r.endDate).toLocaleDateString()}</>}
+                          {r.endDate && (
+                            <> - {new Date(r.endDate).toLocaleDateString()}</>
+                          )}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 line-clamp-2">{r.description}</p>
+                      <p className="text-sm text-gray-600 line-clamp-2">
+                        {r.description}
+                      </p>
                     </div>
                     <div className="shrink-0 text-gray-400 mt-1">
-                      {isOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                      {isOpen ? (
+                        <ChevronUp className="w-5 h-5" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5" />
+                      )}
                     </div>
                   </button>
 
@@ -188,23 +235,31 @@ export default function TeacherLeaveRequestsPage() {
                               onChange={(e) => setReviewNote(e.target.value)}
                               placeholder="Add a note (optional)..."
                               rows={2}
-                              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-400 resize-none"
+                              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 resize-none transition-all"
                             />
                             <div className="flex gap-2">
                               <button
                                 onClick={() => handleReview(r.id, "REJECTED")}
                                 disabled={reviewingSave}
-                                className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5"
+                                className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-[0.98] shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-red-500/20"
                               >
-                                {reviewingSave ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                                {reviewingSave ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <XCircle className="w-4 h-4" />
+                                )}
                                 Reject
                               </button>
                               <button
                                 onClick={() => handleReview(r.id, "APPROVED")}
                                 disabled={reviewingSave}
-                                className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5"
+                                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-[0.98] shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                               >
-                                {reviewingSave ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                                {reviewingSave ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <CheckCircle2 className="w-4 h-4" />
+                                )}
                                 Approve
                               </button>
                             </div>

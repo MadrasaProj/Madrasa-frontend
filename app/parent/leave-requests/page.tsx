@@ -16,18 +16,66 @@ import {
   type LeaveRequestStatus,
 } from "@/lib/leave-requests-api";
 import {
-  Loader2, Send, Clock, CheckCircle2, XCircle, AlertCircle, Plus, X,
+  Loader2,
+  Send,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  Plus,
+  X,
+  FilePen,
 } from "lucide-react";
 
-const STATUS_CONFIG: Record<LeaveRequestStatus, { label: string; labelMl: string; color: string; bg: string; icon: typeof Clock }> = {
-  PENDING:  { label: "Pending",  labelMl: "തീരുമാനമായിട്ടില്ല", color: "text-amber-600", bg: "bg-amber-50", icon: Clock },
-  APPROVED: { label: "Approved", labelMl: "അനുവദിച്ചു",       color: "text-emerald-600", bg: "bg-emerald-50", icon: CheckCircle2 },
-  REJECTED: { label: "Rejected", labelMl: "നിരസിച്ചു",        color: "text-red-600",    bg: "bg-red-50",    icon: XCircle },
+const STATUS_CONFIG: Record<
+  LeaveRequestStatus,
+  {
+    label: string;
+    labelMl: string;
+    color: string;
+    bg: string;
+    icon: typeof Clock;
+  }
+> = {
+  PENDING: {
+    label: "Pending",
+    labelMl: "തീരുമാനമായിട്ടില്ല",
+    color: "text-amber-600",
+    bg: "bg-amber-50",
+    icon: Clock,
+  },
+  APPROVED: {
+    label: "Approved",
+    labelMl: "അനുവദിച്ചു",
+    color: "text-emerald-600",
+    bg: "bg-emerald-50",
+    icon: CheckCircle2,
+  },
+  REJECTED: {
+    label: "Rejected",
+    labelMl: "നിരസിച്ചു",
+    color: "text-red-600",
+    bg: "bg-red-50",
+    icon: XCircle,
+  },
 };
 
-const REASON_CONFIG: Record<LeaveReasonType, { label: string; labelMl: string; color: string; bg: string }> = {
-  LEAVE: { label: "Leave", labelMl: "ലീവ്",  color: "text-amber-600", bg: "bg-amber-50" },
-  SICK:  { label: "Sick",  labelMl: "അസുഖം", color: "text-orange-600", bg: "bg-orange-50" },
+const REASON_CONFIG: Record<
+  LeaveReasonType,
+  { label: string; labelMl: string; color: string; bg: string }
+> = {
+  LEAVE: {
+    label: "Leave",
+    labelMl: "ലീവ്",
+    color: "text-amber-600",
+    bg: "bg-amber-50",
+  },
+  SICK: {
+    label: "Sick",
+    labelMl: "അസുഖം",
+    color: "text-orange-600",
+    bg: "bg-orange-50",
+  },
 };
 
 export default function ParentLeaveRequestsPage() {
@@ -101,20 +149,23 @@ export default function ParentLeaveRequestsPage() {
 
   return (
     <DashboardLayout>
-      <div className="p-4 sm:p-6 max-w-2xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <PageHeader
-            title="Leave Requests"
-            subtitle="Apply for leave or sick leave"
-          />
-          <button
-            onClick={() => setShowForm(true)}
-            className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold"
-          >
-            <Plus className="w-4 h-4" />
-            New Request
-          </button>
-        </div>
+      <div className="p-4 sm:p-6 mx-auto">
+        <PageHeader
+          title="Leave Requests"
+          subtitle="Apply for leave or sick leave"
+          icon={FilePen}
+          back
+          backHref="/parent"
+          action={
+            <button
+              onClick={() => setShowForm(true)}
+              className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-all duration-200 active:scale-[0.98] shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            >
+              <Plus className="w-4 h-4" />
+              New Request
+            </button>
+          }
+        />
 
         {error && <ApiErrorBanner message={error} />}
 
@@ -136,13 +187,28 @@ export default function ParentLeaveRequestsPage() {
               const rc = REASON_CONFIG[r.reasonType];
               const Icon = sc.icon;
               return (
-                <div key={r.id} className="bg-white rounded-2xl border border-gray-200 p-4 space-y-2">
+                <div
+                  key={r.id}
+                  className="bg-white rounded-2xl border border-gray-200 p-4 space-y-2"
+                >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className={cn("px-2.5 py-0.5 rounded-full text-xs font-semibold", rc.bg, rc.color)}>
+                      <span
+                        className={cn(
+                          "px-2.5 py-0.5 rounded-full text-xs font-semibold",
+                          rc.bg,
+                          rc.color,
+                        )}
+                      >
                         {rc.label}
                       </span>
-                      <span className={cn("px-2.5 py-0.5 rounded-full text-xs font-semibold flex items-center gap-1", sc.bg, sc.color)}>
+                      <span
+                        className={cn(
+                          "px-2.5 py-0.5 rounded-full text-xs font-semibold flex items-center gap-1",
+                          sc.bg,
+                          sc.color,
+                        )}
+                      >
                         <Icon className="w-3 h-3" />
                         {sc.label}
                       </span>
@@ -153,12 +219,19 @@ export default function ParentLeaveRequestsPage() {
                   </div>
                   <p className="text-sm text-gray-700">{r.description}</p>
                   <div className="flex gap-4 text-xs text-gray-500">
-                    <span>From: {new Date(r.startDate).toLocaleDateString()}</span>
-                    {r.endDate && <span>To: {new Date(r.endDate).toLocaleDateString()}</span>}
+                    <span>
+                      From: {new Date(r.startDate).toLocaleDateString()}
+                    </span>
+                    {r.endDate && (
+                      <span>
+                        To: {new Date(r.endDate).toLocaleDateString()}
+                      </span>
+                    )}
                   </div>
                   {r.reviewNote && (
                     <div className="bg-gray-50 rounded-xl p-3 text-xs text-gray-600">
-                      <span className="font-semibold">Review note:</span> {r.reviewNote}
+                      <span className="font-semibold">Review note:</span>{" "}
+                      {r.reviewNote}
                     </div>
                   )}
                 </div>
@@ -188,22 +261,30 @@ export default function ParentLeaveRequestsPage() {
               <div className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-sm shadow-xl overflow-hidden">
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                   <p className="font-bold text-gray-900">Apply for Leave</p>
-                  <button onClick={() => setShowForm(false)} className="p-1 text-gray-400 hover:text-gray-600">
+                  <button
+                    onClick={() => setShowForm(false)}
+                    className="p-1 text-gray-400 hover:text-gray-600"
+                  >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
                 <div className="px-5 py-4 space-y-4">
                   <div>
-                    <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Reason Type</label>
+                    <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
+                      Reason Type
+                    </label>
                     <div className="flex gap-2">
                       {(["LEAVE", "SICK"] as const).map((r) => (
                         <button
                           key={r}
                           onClick={() => setReasonType(r)}
-                          className={cn("flex-1 py-3 rounded-xl text-sm font-semibold transition-all border-2",
+                          className={cn(
+                            "flex-1 py-3 rounded-xl text-sm font-semibold transition-all border-2 active:scale-[0.98]",
                             reasonType === r
-                              ? r === "LEAVE" ? "border-amber-500 bg-amber-50 text-amber-700" : "border-orange-500 bg-orange-50 text-orange-700"
-                              : "border-gray-200 text-gray-500"
+                              ? r === "LEAVE"
+                                ? "border-amber-500 bg-amber-50 text-amber-700"
+                                : "border-orange-500 bg-orange-50 text-orange-700"
+                              : "border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700",
                           )}
                         >
                           {REASON_CONFIG[r].label}
@@ -213,35 +294,41 @@ export default function ParentLeaveRequestsPage() {
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Description</label>
+                    <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
+                      Description
+                    </label>
                     <textarea
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       placeholder="Reason for leave..."
                       rows={3}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-400 resize-none"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 resize-none transition-all"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Start Date</label>
+                      <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
+                        Start Date
+                      </label>
                       <input
                         type="date"
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
                         min={today}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-400"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 transition-all"
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold text-gray-500 mb-1.5 block">End Date (optional)</label>
+                      <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
+                        End Date (optional)
+                      </label>
                       <input
                         type="date"
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
                         min={startDate || today}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-400"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 transition-all"
                       />
                     </div>
                   </div>
@@ -249,16 +336,20 @@ export default function ParentLeaveRequestsPage() {
                 <div className="px-5 pb-5 flex gap-2">
                   <button
                     onClick={() => setShowForm(false)}
-                    className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600"
+                    className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 active:scale-[0.98] transition-all duration-200"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleSubmit}
                     disabled={submitting || !description || !startDate}
-                    className="flex-[2] py-3 rounded-xl bg-emerald-600 text-white text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-1.5"
+                    className="flex-[2] py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                   >
-                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    {submitting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
                     Submit
                   </button>
                 </div>
