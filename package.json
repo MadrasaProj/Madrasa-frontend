@@ -9,6 +9,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@iconify/react": "^6.0.2",
     "@leafer-in/editor": "2.1.6",
     "@leafer-in/export": "2.1.6",
     "@leafer-in/view": "2.1.6",

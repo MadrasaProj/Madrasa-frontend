@@ -7,11 +7,12 @@ import {
 } from "@/lib/ibadah-api";
 import { useAuthStore } from "@/store/auth";
 import type { PrayerStatus } from "@/lib/ibadah-api";
+import { Icon } from "@iconify/react";
 import {
   Moon, Calendar, Loader2, AlertCircle,
   Flame, BookOpen, ChevronDown, ChevronUp,
   CheckCircle2, Save, ChevronLeft, ChevronRight, Hash, ToggleLeft,
-  Check, Sun, X, Users,
+  Check, Sun, X, Users, List,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -44,7 +45,7 @@ interface FormState {
   maghrib: PrayerStatus | null;
   isha: PrayerStatus | null;
   quranPages: number;
-  customData: Record<string, boolean | number>;
+  customData: Record<string, boolean | number | string>;
   notes: string;
 }
 
@@ -62,7 +63,7 @@ function logToForm(log: StudentIbadahLog): FormState {
     fajr: log.fajr, dhuhr: log.dhuhr, asr: log.asr,
     maghrib: log.maghrib, isha: log.isha,
     quranPages: log.quranPages,
-    customData: (log.customData as Record<string, boolean | number>) ?? {},
+    customData: (log.customData as Record<string, boolean | number | string>) ?? {},
     notes: log.notes ?? "",
   };
 }
@@ -83,6 +84,7 @@ export default function ParentIbadahPage() {
   const [saved, setSaved]             = useState(false);
   const [saveError, setSaveError]     = useState<string | null>(null);
   const [drawerPrayer, setDrawerPrayer] = useState<Prayer | null>(null);
+  const [drawerCustomEnum, setDrawerCustomEnum] = useState<string | null>(null);
   const [view, setView]               = useState<"form" | "history">("form");
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
 
@@ -151,18 +153,30 @@ export default function ParentIbadahPage() {
   };
 
   const toggleCustomBoolean = (key: string) => {
-    setForm((prev) => ({
-      ...prev,
-      customData: { ...prev.customData, [key]: !prev.customData[key] },
-    }));
+    setForm((prev) => {
+      const next = { ...prev.customData };
+      next[key] = !prev.customData[key];
+      return { ...prev, customData: next };
+    });
     setSaved(false);
   };
 
   const setCustomNumber = (key: string, val: number, min = 0, max = 10000) => {
-    setForm((prev) => ({
-      ...prev,
-      customData: { ...prev.customData, [key]: Math.min(max, Math.max(min, val)) },
-    }));
+    setForm((prev) => {
+      const next = { ...prev.customData };
+      next[key] = Math.min(max, Math.max(min, val));
+      return { ...prev, customData: next };
+    });
+    setSaved(false);
+  };
+
+  const setCustomEnum = (key: string, val: string | null) => {
+    setForm((prev) => {
+      const next = { ...prev.customData };
+      if (val) next[key] = val;
+      else delete next[key];
+      return { ...prev, customData: next };
+    });
     setSaved(false);
   };
 
@@ -441,6 +455,26 @@ export default function ParentIbadahPage() {
                           )} />
                         </button>
                       </div>
+                    ) : item.type === "enum" ? (
+                      <div
+                        key={item.key}
+                        className="flex items-center gap-3 px-4 py-3 bg-white rounded-2xl border border-gray-100 cursor-pointer active:bg-gray-50 transition-colors"
+                        onClick={() => setDrawerCustomEnum(item.key)}
+                      >
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-gray-800">{item.label}</p>
+                          <p className="text-xs text-gray-400">
+                            {item.options?.map((o) => o.label).join(" · ") ?? ""}
+                          </p>
+                        </div>
+                        <span className={cn(
+                          "text-xs font-medium",
+                          form.customData[item.key] ? "text-purple-600" : "text-gray-300",
+                        )}>
+                          {(form.customData[item.key] as string) ?? "—"}
+                        </span>
+                        <ChevronDown className="w-3.5 h-3.5 text-gray-300 shrink-0" />
+                      </div>
                     ) : (
                       <IbadahCounter
                         key={item.key}
@@ -594,16 +628,19 @@ export default function ParentIbadahPage() {
                                   {customItems.map((item) => {
                                     const val = log.customData?.[item.key];
                                     if (val === undefined || val === null) return null;
+                                    const enumOpt = item.type === "enum" ? item.options?.find((o) => o.label === val) : null;
                                     return (
                                       <div key={item.key} className="flex items-center gap-2 bg-blue-50 rounded-xl px-3 py-2">
                                         {item.type === "boolean" ? (
                                           <ToggleLeft className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                                        ) : item.type === "enum" && enumOpt ? (
+                                          <Icon icon={enumOpt.icon} className="w-4 h-4 text-blue-500 shrink-0" />
                                         ) : (
                                           <Hash className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                                         )}
                                         <p className="text-sm text-blue-700">
                                           <span className="font-bold">{item.label}:</span>{" "}
-                                          {item.type === "boolean" ? (val ? "Yes" : "No") : val}
+                                          {item.type === "boolean" ? (val ? "Yes" : "No") : String(val)}
                                         </p>
                                       </div>
                                     );
@@ -722,6 +759,94 @@ export default function ParentIbadahPage() {
             </motion.div>
           </>
         )}
+      </AnimatePresence>
+
+      {/* Custom enum drawer */}
+      <AnimatePresence>
+        {drawerCustomEnum && (() => {
+          const item = customItems.find((i) => i.key === drawerCustomEnum);
+          if (!item?.options) return null;
+          return (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/50 z-50"
+                onClick={() => setDrawerCustomEnum(null)}
+              />
+              <motion.div
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl max-h-[70vh] overflow-y-auto"
+              >
+                <div className="p-5">
+                  <div className="flex items-center justify-between mb-5">
+                    <div>
+                      <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Additional Ibadah</p>
+                      <p className="text-lg font-bold text-gray-900">{item.label}</p>
+                    </div>
+                    <button
+                      onClick={() => setDrawerCustomEnum(null)}
+                      className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center"
+                    >
+                      <X className="w-4 h-4 text-gray-500" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {[{ icon: "", label: "Not recorded", color: "" }, ...item.options].map((opt) => {
+                      const val = form.customData[drawerCustomEnum] as string | undefined;
+                      const selected = opt.label && val === opt.label;
+                      const isNone = !opt.label;
+                      const colorMap: Record<string, string> = {
+                        emerald: "bg-emerald-500", amber: "bg-amber-500", blue: "bg-blue-500",
+                        purple: "bg-purple-500", rose: "bg-rose-500", cyan: "bg-cyan-500",
+                        orange: "bg-orange-500", lime: "bg-lime-500",
+                      };
+                      const colorMatch = colorMap[opt.color] ?? "bg-gray-400";
+                      return (
+                        <button
+                          key={opt.label || "none"}
+                          onClick={() => {
+                            setCustomEnum(drawerCustomEnum, opt.label || null);
+                            setDrawerCustomEnum(null);
+                          }}
+                          className={cn(
+                            "w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left",
+                            selected ? "border-emerald-500 bg-emerald-50" : "border-gray-100 hover:border-gray-200 bg-white",
+                          )}
+                        >
+                          <div className={cn(
+                            "w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 text-white",
+                            selected ? colorMatch : "bg-gray-50 text-gray-400",
+                          )}>
+                            {opt.icon ? <Icon icon={opt.icon} className="w-5 h-5" /> : <X className="w-5 h-5 text-gray-400" />}
+                          </div>
+                          <div className="flex-1">
+                            <p className={cn(
+                              "text-sm font-bold",
+                              selected ? "text-emerald-700" : "text-gray-800",
+                            )}>
+                              {opt.label || "Not recorded"}
+                            </p>
+                          </div>
+                          {selected && (
+                            <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
+                              <Check className="w-3.5 h-3.5 text-white" />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </motion.div>
+            </>
+          );
+        })()}
       </AnimatePresence>
     </DashboardLayout>
   );

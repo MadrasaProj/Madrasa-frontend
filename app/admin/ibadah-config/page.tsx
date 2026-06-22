@@ -7,6 +7,7 @@ import {
   type IbadahConfig,
 } from "@/lib/ibadah-api";
 import { useAuthStore } from "@/store/auth";
+import { Icon } from "@iconify/react";
 import {
   Moon,
   Save,
@@ -18,6 +19,8 @@ import {
   GripVertical,
   ToggleLeft,
   Hash,
+  List,
+  X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -48,6 +51,7 @@ const EMPTY_ITEM: Omit<CustomItem, "key"> & { key: string } = {
   type: "boolean",
   min: 0,
   max: 100,
+  options: [],
 };
 
 function generateKey(label: string): string {
@@ -159,6 +163,9 @@ export default function IbadahConfigPage() {
         min: newItem.min ?? 0,
         max: newItem.max ?? 100,
       }),
+      ...(newItem.type === "enum" && {
+        options: newItem.options ?? [],
+      }),
     };
     setCustomItems((prev) => [...prev, item]);
     setNewItem({ ...EMPTY_ITEM });
@@ -200,6 +207,9 @@ export default function IbadahConfigPage() {
       ...(editItem.type === "number" && {
         min: editItem.min ?? 0,
         max: editItem.max ?? 100,
+      }),
+      ...(editItem.type === "enum" && {
+        options: editItem.options ?? [],
       }),
     };
     setCustomItems((prev) =>
@@ -347,6 +357,8 @@ export default function IbadahConfigPage() {
                           <div className="flex items-center gap-2">
                             {item.type === "boolean" ? (
                               <ToggleLeft className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                            ) : item.type === "enum" ? (
+                              <List className="w-3.5 h-3.5 text-purple-500 shrink-0" />
                             ) : (
                               <Hash className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                             )}
@@ -360,6 +372,11 @@ export default function IbadahConfigPage() {
                           {item.type === "number" && (
                             <p className="text-xs text-gray-400 mt-0.5 ml-5">
                               Range: {item.min ?? 0}–{item.max ?? "∞"}
+                            </p>
+                          )}
+                          {item.type === "enum" && (
+                            <p className="text-xs text-gray-400 mt-0.5 ml-5">
+                              Options: {item.options?.join(", ") ?? "—"}
                             </p>
                           )}
                         </div>
@@ -457,6 +474,150 @@ export default function IbadahConfigPage() {
   );
 }
 
+// ── Enum Options Editor ─────────────────────────────────────────────────────
+
+const ICON_COLORS = [
+  { label: "Emerald", value: "emerald" },
+  { label: "Amber", value: "amber" },
+  { label: "Blue", value: "blue" },
+  { label: "Purple", value: "purple" },
+  { label: "Rose", value: "rose" },
+  { label: "Cyan", value: "cyan" },
+  { label: "Orange", value: "orange" },
+  { label: "Lime", value: "lime" },
+];
+
+function EnumOptionsEditor({
+  item,
+  onChange,
+}: {
+  item: CustomItem;
+  onChange: (item: CustomItem) => void;
+}) {
+  const options = item.options ?? [];
+  const [adding, setAdding] = useState(false);
+  const [search, setSearch] = useState("");
+  const [results, setResults] = useState<string[]>([]);
+  const [newOpt, setNewOpt] = useState({ icon: "mdi:moon", label: "", color: "emerald" });
+
+  const searchIconify = async (q: string) => {
+    if (q.length < 2) { setResults([]); return; }
+    try {
+      const res = await fetch(`https://api.iconify.design/search?query=${encodeURIComponent(q)}&limit=12`);
+      const data = await res.json();
+      setResults(data.icons ?? []);
+    } catch { setResults([]); }
+  };
+
+  const addOption = () => {
+    if (!newOpt.label.trim()) return;
+    onChange({
+      ...item,
+      options: [...options, { ...newOpt, label: newOpt.label.trim() }],
+    });
+    setNewOpt({ icon: "mdi:moon", label: "", color: "emerald" });
+    setAdding(false);
+    setSearch("");
+    setResults([]);
+  };
+
+  const removeOption = (idx: number) => {
+    onChange({ ...item, options: options.filter((_, i) => i !== idx) });
+  };
+
+  const colorMap: Record<string, string> = {
+    emerald: "bg-emerald-500",
+    amber: "bg-amber-500",
+    blue: "bg-blue-500",
+    purple: "bg-purple-500",
+    rose: "bg-rose-500",
+    cyan: "bg-cyan-500",
+    orange: "bg-orange-500",
+    lime: "bg-lime-500",
+  };
+
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-gray-500 mb-2">Options</label>
+
+      <div className="space-y-1.5 mb-3">
+        {options.map((opt, idx) => (
+          <div key={idx} className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl">
+            <div className={`w-7 h-7 rounded-lg ${colorMap[opt.color] ?? "bg-gray-400"} flex items-center justify-center text-white shrink-0`}>
+              <Icon icon={opt.icon} className="w-4 h-4" />
+            </div>
+            <span className="text-sm font-medium text-gray-800 flex-1">{opt.label}</span>
+            <button onClick={() => removeOption(idx)} className="p-1 rounded-lg hover:bg-white text-gray-400 hover:text-red-500 transition-colors">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {adding ? (
+        <div className="border border-emerald-200 bg-emerald-50/50 rounded-xl p-3 space-y-2.5">
+          <div className="flex gap-2 items-start">
+            <div className="flex flex-col items-center gap-1 shrink-0">
+              <div className={`w-10 h-10 rounded-xl ${colorMap[newOpt.color] ?? "bg-gray-400"} flex items-center justify-center text-white`}>
+                <Icon icon={newOpt.icon} className="w-5 h-5" />
+              </div>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); searchIconify(e.target.value); }}
+                placeholder="Search icons..."
+                className="w-24 px-2 py-1 text-[10px] border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white text-center"
+              />
+              {results.length > 0 && (
+                <div className="absolute mt-16 z-10 bg-white border border-gray-200 rounded-xl shadow-lg p-2 grid grid-cols-4 gap-1 w-48">
+                  {results.map((ic) => (
+                    <button
+                      key={ic}
+                      onClick={() => { setNewOpt({ ...newOpt, icon: ic }); setResults([]); setSearch(""); }}
+                      className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-600"
+                    >
+                      <Icon icon={ic} className="w-4 h-4" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex-1 space-y-2">
+              <input
+                type="text"
+                value={newOpt.label}
+                onChange={(e) => setNewOpt({ ...newOpt, label: e.target.value })}
+                placeholder="Option label"
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+              />
+              <div className="flex gap-1.5 flex-wrap">
+                {ICON_COLORS.map((c) => (
+                  <button
+                    key={c.value}
+                    onClick={() => setNewOpt({ ...newOpt, color: c.value })}
+                    className={cn("w-6 h-6 rounded-full transition-all", colorMap[c.value], newOpt.color === c.value ? "ring-2 ring-offset-1 ring-gray-400 scale-110" : "opacity-60 hover:opacity-100")}
+                    title={c.label}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <button onClick={addOption} className="flex-1 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors">Add Option</button>
+            <button onClick={() => { setAdding(false); setResults([]); setSearch(""); }} className="px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors">Cancel</button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={() => setAdding(true)} className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-800 transition-colors">
+          <Plus className="w-3.5 h-3.5" /> Add Option
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ── Custom Item Form ─────────────────────────────────────────────────────────
 
 interface CustomItemFormProps {
@@ -519,7 +680,7 @@ function CustomItemForm({
           Type
         </label>
         <div className="flex gap-2">
-          {(["boolean", "number"] as const).map((t) => (
+          {(["boolean", "number", "enum"] as const).map((t) => (
             <label
               key={t}
               className={cn(
@@ -539,10 +700,12 @@ function CustomItemForm({
               />
               {t === "boolean" ? (
                 <ToggleLeft className="w-4 h-4" />
+              ) : t === "enum" ? (
+                <List className="w-4 h-4" />
               ) : (
                 <Hash className="w-4 h-4" />
               )}
-              {t === "boolean" ? "Yes/No" : "Number"}
+              {t === "boolean" ? "Yes/No" : t === "enum" ? "Enum" : "Number"}
             </label>
           ))}
         </div>
@@ -585,6 +748,8 @@ function CustomItemForm({
         </div>
       )}
 
+      {item.type === "enum" && <EnumOptionsEditor item={item} onChange={onChange} />}
+
       {error && (
         <div className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-xl flex items-center gap-1.5">
           <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {error}
@@ -608,3 +773,5 @@ function CustomItemForm({
     </div>
   );
 }
+
+

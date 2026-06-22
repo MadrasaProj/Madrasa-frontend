@@ -30,7 +30,7 @@ type CustomItem = IbadahConfig["customItems"][number];
 interface ItemForm {
   key: string;
   label: string;
-  type: "boolean" | "number";
+  type: "boolean" | "number" | "enum";
   min: string;
   max: string;
 }

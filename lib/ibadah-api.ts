@@ -17,7 +17,7 @@ export interface IbadahRecord {
   maghrib: PrayerStatus | null;
   isha: PrayerStatus | null;
   quranPages: number;
-  customData: Record<string, boolean | number> | null;
+  customData: Record<string, boolean | number | string> | null;
   notes: string | null;
   academicYearId: string | null;
   recordedBy: string;
@@ -34,7 +34,7 @@ export interface IbadahConfig {
   enableMaghrib: boolean;
   enableIsha: boolean;
   enableQuranPages: boolean;
-  customItems: { key: string; label: string; type: "boolean" | "number"; min?: number; max?: number }[];
+  customItems: { key: string; label: string; type: "boolean" | "number" | "enum"; min?: number; max?: number; options?: { icon: string; label: string; color: string }[] }[];
 }
 
 export interface ClassIbadahResponse {
@@ -51,7 +51,7 @@ export interface StudentIbadahLog {
   maghrib: PrayerStatus | null;
   isha: PrayerStatus | null;
   quranPages: number;
-  customData: Record<string, boolean | number> | null;
+  customData: Record<string, boolean | number | string> | null;
   notes: string | null;
 }
 
@@ -71,7 +71,7 @@ export interface UpsertStudentIbadahPayload {
   maghrib?: PrayerStatus;
   isha?: PrayerStatus;
   quranPages?: number;
-  customData?: Record<string, boolean | number>;
+  customData?: Record<string, boolean | number | string>;
   notes?: string;
   academicYearId?: string;
 }
@@ -84,7 +84,7 @@ export interface BulkIbadahEntry {
   maghrib?: PrayerStatus;
   isha?: PrayerStatus;
   quranPages?: number;
-  customData?: Record<string, boolean | number>;
+  customData?: Record<string, boolean | number | string>;
   notes?: string;
 }
 
