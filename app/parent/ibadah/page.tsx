@@ -191,11 +191,11 @@ export default function ParentIbadahPage() {
     try {
       const saved = await upsertStudentIbadah(cid, token, activeId, {
         date,
-        fajr:    dirtyPrayers.has("fajr") ? form.fajr : undefined,
-        dhuhr:   dirtyPrayers.has("dhuhr") ? form.dhuhr : undefined,
-        asr:     dirtyPrayers.has("asr") ? form.asr : undefined,
-        maghrib: dirtyPrayers.has("maghrib") ? form.maghrib : undefined,
-        isha:    dirtyPrayers.has("isha") ? form.isha : undefined,
+        fajr:    dirtyPrayers.has("fajr") ? (form.fajr ?? undefined) : undefined,
+        dhuhr:   dirtyPrayers.has("dhuhr") ? (form.dhuhr ?? undefined) : undefined,
+        asr:     dirtyPrayers.has("asr") ? (form.asr ?? undefined) : undefined,
+        maghrib: dirtyPrayers.has("maghrib") ? (form.maghrib ?? undefined) : undefined,
+        isha:    dirtyPrayers.has("isha") ? (form.isha ?? undefined) : undefined,
         quranPages: form.quranPages,
         customData: Object.keys(form.customData).length > 0 ? form.customData : undefined,
         notes:   form.notes || undefined,
