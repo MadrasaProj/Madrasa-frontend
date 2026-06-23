@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, useRef, useEffect, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 interface IbadahCounterProps {
@@ -12,6 +12,39 @@ interface IbadahCounterProps {
 }
 
 export function IbadahCounter({ label, icon, value, onChange, min = 0, max = 1000, suffix }: IbadahCounterProps) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(String(value));
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editing]);
+
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  const commit = () => {
+    setEditing(false);
+    const parsed = parseInt(draft, 10);
+    if (!isNaN(parsed)) {
+      onChange(Math.min(max, Math.max(min, parsed)));
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      commit();
+    }
+    if (e.key === "Escape") {
+      setDraft(String(value));
+      setEditing(false);
+    }
+  };
+
   return (
     <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
       <div className="flex items-center gap-2 px-4 pt-4 pb-3">
@@ -20,7 +53,23 @@ export function IbadahCounter({ label, icon, value, onChange, min = 0, max = 100
       </div>
       <div className="flex items-center justify-between px-4 pb-4">
         <div className="flex items-baseline gap-1.5">
-          <span className="text-4xl font-black text-emerald-600">{value}</span>
+          {editing ? (
+            <input
+              ref={inputRef}
+              type="number"
+              min={min}
+              max={max}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commit}
+              onKeyDown={handleKeyDown}
+              className="w-24 text-4xl font-black text-emerald-600 bg-transparent outline-none border-b-2 border-emerald-400 -mb-0.5"
+            />
+          ) : (
+            <button onClick={() => setEditing(true)} className="focus:outline-none">
+              <span className="text-4xl font-black text-emerald-600">{value}</span>
+            </button>
+          )}
           {suffix && <span className="text-xs text-gray-400 font-medium">{suffix}</span>}
         </div>
         <div className="flex items-center gap-2">
