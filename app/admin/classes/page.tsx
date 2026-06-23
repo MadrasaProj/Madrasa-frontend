@@ -431,7 +431,7 @@ export default function AdminClassesPage() {
                 </div>
                 <h3 className="font-bold text-gray-900 text-lg">Delete Class?</h3>
                 <p className="text-sm text-gray-500">
-                  Are you sure you want to deactivate or delete class <strong>{deleteTarget?.name}</strong>? Students won't be deleted, but all course mappings will be affected.
+                  Are you sure you want to delete class <strong>{deleteTarget?.name}</strong>? Students in this class will be unassigned, all subjects will be removed.
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3 mt-6">

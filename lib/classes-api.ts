@@ -9,7 +9,9 @@ const V2_BASE = `${API_ORIGIN}/api/v2`;
 export interface ClassRecord {
   id: string;
   name: string;
-  classLevel?: number;
+  classLevel?: number | null;
+  gradeLevelId?: string | null;
+  gradeLevel?: { id: string; name: string; level: number } | null;
   division?: string;
   status: string;
   sectionId: string | null;

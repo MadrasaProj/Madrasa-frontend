@@ -32,6 +32,8 @@ export interface ClientListItem {
   status: string;
   isLoginEnabled: boolean;
   attendanceMode: string;
+  educationSystemId?: string;
+  educationSystem?: { id: string; name: string; code: string } | null;
   subscriptionStart?: string;
   subscriptionEnd?: string;
   lastLoginAt?: string;
@@ -58,6 +60,8 @@ export interface UpdateClientDto {
   password?: string;
   committieUsername?: string;
   committiePassword?: string;
+  educationSystemId?: string;
+  gradeLevelIds?: string[];
   classLevels?: number[];
   divisions?: Record<string, string[]>;
 }
@@ -179,12 +183,34 @@ export interface CreateClientDto {
   committiePassword?: string;
   status?: "ACTIVE" | "SUSPENDED" | "TRIAL" | "CANCELLED";
   isLoginEnabled?: boolean;
+  educationSystemId?: string;
+  gradeLevelIds?: string[];
   classLevels?: number[];
   divisions?: Record<string, string[]>;
 }
 
 export function createClient(dto: CreateClientDto, token: string) {
   return mutateJson<ClientListItem>("POST", "/super-admin/clients", dto, token);
+}
+
+// ── Education Systems ─────────────────────────────────────────────────────────
+
+export interface GradeLevelInfo {
+  id: string;
+  name: string;
+  level: number;
+}
+
+export interface EducationSystemInfo {
+  id: string;
+  name: string;
+  code: string;
+  description?: string;
+  gradeLevels: GradeLevelInfo[];
+}
+
+export function listEducationSystems(token: string) {
+  return getJson<{ data: EducationSystemInfo[]; total: number }>("/super-admin/education-systems", token);
 }
 
 // ── Platform Report ───────────────────────────────────────────────────────────

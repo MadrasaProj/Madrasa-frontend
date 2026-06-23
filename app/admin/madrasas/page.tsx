@@ -8,11 +8,13 @@ import {
   updateClient,
   getClientLogs,
   createClient,
+  listEducationSystems,
   type ClientListItem,
   type ClientPayment,
   type ActivityLogItem,
   type CreateClientDto,
   type UpdateClientDto,
+  type EducationSystemInfo,
 } from "@/lib/super-admin-api";
 import {
   getAllClasses,
@@ -101,23 +103,40 @@ function EditMadrasaDrawer({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [editDivisions, setEditDivisions] = useState<Record<number, string[]>>({});
+  const [editDivisions, setEditDivisions] = useState<Record<string, string[]>>({});
   const [existingClasses, setExistingClasses] = useState<ClassRecord[]>([]);
   const [classesLoading, setClassesLoading] = useState(true);
+  const [editGradeLevels, setEditGradeLevels] = useState<{ id: string; name: string; level: number }[]>([]);
 
   useEffect(() => {
-    getAllClasses(client.id, token)
-      .then((classes) => {
-        setExistingClasses(classes);
-        const map: Record<number, string[]> = {};
-        for (const c of classes) {
-          if (c.status !== 'ACTIVE' || c.classLevel == null || !c.division) continue;
-          (map[c.classLevel] ??= []).push(c.division);
-        }
-        setEditDivisions(map);
-      })
-      .catch(() => {})
-      .finally(() => setClassesLoading(false));
+    let cancelled = false;
+    Promise.all([
+      getAllClasses(client.id, token),
+      client.educationSystemId ? listEducationSystems(token) : Promise.resolve(null),
+    ]).then(([classes, sysRes]) => {
+      if (cancelled) return;
+      setExistingClasses(classes);
+
+      // Build grade level list from the client's education system
+      const system = sysRes?.data?.find((s) => s.id === client.educationSystemId);
+      const allGradeLevels = (system?.gradeLevels ?? []).sort((a, b) => a.level - b.level);
+      setEditGradeLevels(allGradeLevels);
+
+      // Start with all grade levels empty, then fill in existing divisions
+      const map: Record<string, string[]> = {};
+      for (const gl of allGradeLevels) {
+        map[gl.id] = [];
+      }
+      for (const c of classes) {
+        if (c.status !== 'ACTIVE' || !c.gradeLevelId || !c.division) continue;
+        if (!map[c.gradeLevelId]) map[c.gradeLevelId] = [];
+        map[c.gradeLevelId].push(c.division);
+      }
+      setEditDivisions(map);
+    })
+    .catch(() => {})
+    .finally(() => setClassesLoading(false));
+    return () => { cancelled = true; };
   }, [client.id, token]);
 
   const set = (k: string, v: any) =>
@@ -132,22 +151,12 @@ function EditMadrasaDrawer({
     setError("");
     setSuccess(false);
     try {
-      // Build full desired state from active existing classes + any overrides
-      const byLevel: Record<number, string[]> = {};
-      for (const c of existingClasses) {
-        if (c.status !== 'ACTIVE' || c.classLevel == null || !c.division) continue;
-        (byLevel[c.classLevel] ??= []).push(c.division);
-      }
-      // Merge editDivisions overrides into the map (including empty = removed)
-      for (const [lvlStr, divs] of Object.entries(editDivisions)) {
-        byLevel[Number(lvlStr)] = divs;
-      }
-      const allLevels = Object.keys(byLevel).map(Number).sort();
+      const gradeLevelIds = Object.keys(editDivisions)
+        .filter((id) => (editDivisions[id]?.length ?? 0) > 0);
       const divisions: Record<string, string[]> = {};
-      for (const lvl of allLevels) {
-        divisions[String(lvl)] = byLevel[lvl];
+      for (const glId of gradeLevelIds) {
+        divisions[glId] = editDivisions[glId];
       }
-      const hasRemovals = Object.values(editDivisions).some((d) => d.length === 0);
       const dto: UpdateClientDto = {
         name: form.name?.trim(),
         arabicName: form.arabicName?.trim() || undefined,
@@ -160,8 +169,8 @@ function EditMadrasaDrawer({
         password: form.password?.trim() || undefined,
         committieUsername: form.committieUsername?.trim() || undefined,
         committiePassword: form.committiePassword?.trim() || undefined,
-        classLevels: allLevels.length > 0 ? allLevels : undefined,
-        divisions: Object.keys(divisions).length > 0 || hasRemovals ? divisions : undefined,
+        gradeLevelIds: gradeLevelIds.length > 0 ? gradeLevelIds : undefined,
+        divisions: Object.keys(divisions).length > 0 ? divisions : undefined,
       };
       const updated = await updateClient(client.id, dto, token);
       const merged: ClientListItem = { ...client, ...updated };
@@ -402,6 +411,8 @@ function EditMadrasaDrawer({
             <ClassDivisionsPicker
               value={editDivisions}
               onChange={setEditDivisions}
+              gradeLevels={editGradeLevels}
+              emptyLabel="No syllabus assigned. Set an education system in madrasa settings."
             />
           )}
         </div>
@@ -807,9 +818,19 @@ function NewMadrasaDrawer({
   }, []);
 
   const [form, setForm] = useState<CreateClientDto>(emptyForm);
-  const [levelDivisions, setLevelDivisions] = useState<Record<number, string[]>>({});
+  const [glDivisions, setGlDivisions] = useState<Record<string, string[]>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [eduSystems, setEduSystems] = useState<EducationSystemInfo[]>([]);
+  const [systemsLoading, setSystemsLoading] = useState(true);
+  const [selectedSystem, setSelectedSystem] = useState<EducationSystemInfo | null>(null);
+
+  useEffect(() => {
+    listEducationSystems(token)
+      .then((res) => setEduSystems(res.data))
+      .catch(() => {})
+      .finally(() => setSystemsLoading(false));
+  }, [token]);
 
   const set = (k: keyof CreateClientDto, v: string) => {
     setForm((f) => {
@@ -817,6 +838,13 @@ function NewMadrasaDrawer({
       if (k === "name") next.slug = slugify(v);
       return next;
     });
+  };
+
+  const handleSystemSelect = (sysId: string) => {
+    const sys = eduSystems.find((s) => s.id === sysId) ?? null;
+    setSelectedSystem(sys);
+    setForm((f) => ({ ...f, educationSystemId: sysId }));
+    setGlDivisions({});
   };
 
   const handleSubmit = async () => {
@@ -833,15 +861,18 @@ function NewMadrasaDrawer({
     setSaving(true);
     setError("");
     try {
-      const classLevels = Object.keys(levelDivisions)
-        .map(Number)
-        .filter((l) => (levelDivisions[l]?.length ?? 0) > 0)
-        .sort();
+      const gradeLevelIds = Object.keys(glDivisions)
+        .filter((id) => (glDivisions[id]?.length ?? 0) > 0);
       const divisions: Record<string, string[]> = {};
-      for (const lvl of classLevels) {
-        divisions[String(lvl)] = levelDivisions[lvl];
+      for (const glId of gradeLevelIds) {
+        divisions[glId] = glDivisions[glId];
       }
-      const payload = { ...form, classLevels: classLevels.length > 0 ? classLevels : undefined, divisions: Object.keys(divisions).length > 0 ? divisions : undefined };
+      const payload = {
+        ...form,
+        educationSystemId: selectedSystem?.id,
+        gradeLevelIds: gradeLevelIds.length > 0 ? gradeLevelIds : undefined,
+        divisions: Object.keys(divisions).length > 0 ? divisions : undefined,
+      };
       const created = await createClient(payload, token);
       onCreated(created);
       onClose();
@@ -1026,14 +1057,43 @@ function NewMadrasaDrawer({
               </div>
             </div>
 
+            {/* Syllabus */}
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide border-t border-gray-100 pt-6 mt-8">
+              Syllabus
+            </p>
+            <div>
+              <label className={labelCls}>Education System *</label>
+              <select
+                value={selectedSystem?.id ?? ""}
+                onChange={(e) => {
+                  const sys = eduSystems.find((s) => s.id === e.target.value) ?? null;
+                  setSelectedSystem(sys);
+                  setForm((f) => ({ ...f, educationSystemId: sys?.id }));
+                  setGlDivisions({});
+                }}
+                className={inputCls}
+                disabled={systemsLoading}
+              >
+                <option value="">
+                  {systemsLoading ? "Loading..." : "Select education system"}
+                </option>
+                {eduSystems.map((sys) => (
+                  <option key={sys.id} value={sys.id}>
+                    {sys.name} ({sys.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Classes */}
             <p className="text-xs font-bold text-gray-500 uppercase tracking-wide border-t border-gray-100 pt-6 mt-8">
               Classes
             </p>
 
             <ClassDivisionsPicker
-              value={levelDivisions}
-              onChange={setLevelDivisions}
+              value={glDivisions}
+              onChange={setGlDivisions}
+              gradeLevels={selectedSystem?.gradeLevels ?? []}
             />
 
             <p className="text-xs font-bold text-gray-500 uppercase tracking-wide border-t border-gray-100 pt-6 mt-8">

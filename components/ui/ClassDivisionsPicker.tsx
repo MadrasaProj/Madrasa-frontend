@@ -3,49 +3,64 @@ import { cn } from "@/lib/utils";
 
 const PREDEFINED_DIVISIONS = ["A", "B", "C", "D", "E", "F"];
 
-interface ClassDivisionsPickerProps {
-  value: Record<number, string[]>;
-  onChange: (next: Record<number, string[]> | ((prev: Record<number, string[]>) => Record<number, string[]>)) => void;
+export interface GradeLevelEntry {
+  id: string;
+  name: string;
+  level: number;
 }
 
-export function ClassDivisionsPicker({ value, onChange }: ClassDivisionsPickerProps) {
-  const [customInput, setCustomInput] = useState<Record<number, string>>({});
+interface ClassDivisionsPickerProps {
+  value: Record<string, string[]>;
+  onChange: (next: Record<string, string[]> | ((prev: Record<string, string[]>) => Record<string, string[]>)) => void;
+  gradeLevels: GradeLevelEntry[];
+  emptyLabel?: string;
+}
+
+export function ClassDivisionsPicker({ value, onChange, gradeLevels, emptyLabel }: ClassDivisionsPickerProps) {
+  const [customInput, setCustomInput] = useState<Record<string, string>>({});
+
+  if (gradeLevels.length === 0) {
+    return (
+      <p className="text-xs text-gray-400 text-center py-6">
+        {emptyLabel ?? "Select an education system to see available classes"}
+      </p>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
-      {Array.from({ length: 12 }, (_, i) => {
-        const lvl = i + 1;
-        const divs = value[lvl] ?? [];
+      {gradeLevels.map((gl) => {
+        const divs = value[gl.id] ?? [];
         const customDivs = divs.filter(
           (d) => !PREDEFINED_DIVISIONS.includes(d),
         );
 
         const toggleDiv = (d: string) => {
           onChange((prev) => {
-            const current = prev[lvl] ?? [];
+            const current = prev[gl.id] ?? [];
             const next = current.includes(d)
               ? current.filter((x) => x !== d)
               : [...current, d].sort();
-            return { ...prev, [lvl]: next };
+            return { ...prev, [gl.id]: next };
           });
         };
 
         const addCustomDiv = (name: string) => {
           onChange((prev) => {
-            const current = prev[lvl] ?? [];
+            const current = prev[gl.id] ?? [];
             if (current.includes(name)) return prev;
-            return { ...prev, [lvl]: [...current, name].sort() };
+            return { ...prev, [gl.id]: [...current, name].sort() };
           });
         };
 
         return (
           <div
-            key={lvl}
+            key={gl.id}
             className="flex items-start gap-3 py-2 border-b border-gray-100"
           >
-            <div className="w-16 shrink-0 pt-1">
+            <div className="w-24 shrink-0 pt-1">
               <span className="text-xs font-bold text-gray-700">
-                Class {lvl}
+                {gl.name}
               </span>
             </div>
             <div className="flex-1">
@@ -83,9 +98,9 @@ export function ClassDivisionsPicker({ value, onChange }: ClassDivisionsPickerPr
                     type="button"
                     onClick={() =>
                       onChange((prev) => {
-                        const current = prev[lvl] ?? [];
+                        const current = prev[gl.id] ?? [];
                         if (current.includes("A")) return prev;
-                        return { ...prev, [lvl]: [...current, "A"].sort() };
+                        return { ...prev, [gl.id]: [...current, "A"].sort() };
                       })
                     }
                     className="px-2.5 py-1 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
@@ -94,20 +109,20 @@ export function ClassDivisionsPicker({ value, onChange }: ClassDivisionsPickerPr
                   </button>
                 )}
                 <input
-                  value={customInput[lvl] ?? ""}
+                  value={customInput[gl.id] ?? ""}
                   onChange={(e) =>
                     setCustomInput((prev) => ({
                       ...prev,
-                      [lvl]: e.target.value.toUpperCase(),
+                      [gl.id]: e.target.value.toUpperCase(),
                     }))
                   }
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
-                      const val = customInput[lvl]?.trim().toUpperCase();
+                      const val = customInput[gl.id]?.trim().toUpperCase();
                       if (!val) return;
                       addCustomDiv(val);
-                      setCustomInput((prev) => ({ ...prev, [lvl]: "" }));
+                      setCustomInput((prev) => ({ ...prev, [gl.id]: "" }));
                     }
                   }}
                   className="w-12 px-1.5 py-1 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400"
@@ -117,12 +132,12 @@ export function ClassDivisionsPicker({ value, onChange }: ClassDivisionsPickerPr
                 <button
                   type="button"
                   onClick={() => {
-                    const val = customInput[lvl]?.trim().toUpperCase();
+                    const val = customInput[gl.id]?.trim().toUpperCase();
                     if (!val) return;
                     addCustomDiv(val);
-                    setCustomInput((prev) => ({ ...prev, [lvl]: "" }));
+                    setCustomInput((prev) => ({ ...prev, [gl.id]: "" }));
                   }}
-                  disabled={!customInput[lvl]?.trim()}
+                  disabled={!customInput[gl.id]?.trim()}
                   className="px-2 py-1 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 rounded-lg disabled:opacity-40 transition-all"
                 >
                   Add
@@ -133,7 +148,7 @@ export function ClassDivisionsPicker({ value, onChange }: ClassDivisionsPickerPr
                     onClick={() =>
                       onChange((prev) => {
                         const next = { ...prev };
-                        delete next[lvl];
+                        delete next[gl.id];
                         return next;
                       })
                     }
