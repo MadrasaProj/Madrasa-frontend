@@ -44,6 +44,8 @@ export interface FeePayment {
   student: { id: string; name: string; adno: string; class?: { id: string; name: string } | null };
   feeType: { id: string; name: string; kind: FeeTypeKind };
   recordedBy?: string | null;
+  collectedBy?: string | null;
+  handedToAdmin?: boolean;
 }
 
 export interface ReceiptData {
@@ -111,6 +113,8 @@ export interface UpdatePaymentPayload {
   reference?: string;
   notes?: string;
   paidAt?: string;
+  collectedBy?: string;
+  handedToAdmin?: boolean;
 }
 
 export class FeesApiError extends Error {

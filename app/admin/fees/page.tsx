@@ -18,6 +18,8 @@ import {
   type FeePaymentStatus,
 } from "@/lib/fees-api";
 import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
+import { getTeachers, type TeacherRecord } from "@/lib/teachers-api";
+import { apiFetch } from "@/lib/fetch";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
@@ -185,6 +187,9 @@ export default function AdminFeesPage() {
   const [editingAmount, setEditingAmount] = useState<string | null>(null);
   const [customAmount, setCustomAmount] = useState("");
 
+  // Teachers lookup (for collectedBy)
+  const [teachers, setTeachers] = useState<Record<string, string>>({});
+
   // Error
   const [error, setError] = useState<string | null>(null);
 
@@ -213,6 +218,20 @@ export default function AdminFeesPage() {
     getAllClasses(cid, token)
       .then(setClasses)
       .catch(() => {});
+    (async () => {
+      const map: Record<string, string> = {};
+      try {
+        const teachersRes = await getTeachers(cid, token, { limit: 500 });
+        for (const t of teachersRes.data ?? []) map[t.id] = t.name;
+      } catch {}
+      try {
+        const usersRes = await apiFetch<{ data: { id: string; name: string }[] }>(
+          `${import.meta.env.VITE_API_ORIGIN ?? "http://localhost:3000"}/api/v2/${cid}/users`, token
+        );
+        for (const u of usersRes.data ?? []) map[u.id] = u.name;
+      } catch {}
+      setTeachers(map);
+    })();
   }, [cid, token, loadTypes]);
 
   // Load payments
@@ -780,6 +799,11 @@ export default function AdminFeesPage() {
                                       : ""}
                                     {!activeType ? ` · ${p.feeType.name}` : ""}
                                   </p>
+                                  {isPaid && p.collectedBy ? (
+                                    <p className="text-[10px] text-gray-400 mt-0.5">
+                                      Collected by {teachers[p.collectedBy] ?? (p.collectedBy === cid ? user?.name ?? "Admin" : p.collectedBy.slice(0, 8))}
+                                    </p>
+                                  ) : null}
                                 </div>
                                 <div className="text-right shrink-0 mr-1">
                                   <p className="text-sm font-bold text-gray-900">
@@ -822,6 +846,25 @@ export default function AdminFeesPage() {
                                       ) : (
                                         <Receipt className="w-4 h-4 text-gray-300 hover:text-blue-500 transition-colors" />
                                       )}
+                                    </button>
+                                    <button
+                                      onClick={async () => {
+                                        try {
+                                          await updatePayment(cid, token, p.id, { handedToAdmin: !p.handedToAdmin });
+                                          loadPayments();
+                                        } catch (e) {
+                                          setError((e as Error).message);
+                                        }
+                                      }}
+                                      className={cn(
+                                        "shrink-0 p-1 rounded-lg text-[10px] font-semibold border transition-colors",
+                                        p.handedToAdmin
+                                          ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                                          : "bg-gray-50 border-gray-200 text-gray-400 hover:border-amber-300 hover:text-amber-600",
+                                      )}
+                                      title={p.handedToAdmin ? "Handed to admin" : "Mark as handed to admin"}
+                                    >
+                                      <Users className="w-4 h-4" />
                                     </button>
                                     <button
                                       onClick={() => {
