@@ -85,6 +85,7 @@ export default function ParentIbadahPage() {
   const [saveError, setSaveError]     = useState<string | null>(null);
   const [drawerPrayer, setDrawerPrayer] = useState<Prayer | null>(null);
   const [drawerCustomEnum, setDrawerCustomEnum] = useState<string | null>(null);
+  const [dirtyPrayers, setDirtyPrayers] = useState<Set<Prayer>>(new Set());
   const [view, setView]               = useState<"form" | "history">("form");
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
 
@@ -108,6 +109,7 @@ export default function ParentIbadahPage() {
   useEffect(() => {
     setSaved(false);
     setSaveError(null);
+    setDirtyPrayers(new Set());
   }, [date]);
 
   // Pre-fill form from existing log when date or ibadah changes
@@ -141,6 +143,7 @@ export default function ParentIbadahPage() {
 
   const setPrayer = (p: Prayer, value: PrayerStatus | null) => {
     setForm((prev) => ({ ...prev, [p]: value }));
+    setDirtyPrayers((prev) => new Set(prev).add(p));
     setSaved(false);
   };
 
@@ -149,6 +152,7 @@ export default function ParentIbadahPage() {
       const updates = Object.fromEntries(activePrayers.map((p) => [p, 'ADA' as PrayerStatus]));
       return { ...prev, ...updates };
     });
+    setDirtyPrayers((prev) => new Set([...prev, ...activePrayers]));
     setSaved(false);
   };
 
@@ -187,11 +191,11 @@ export default function ParentIbadahPage() {
     try {
       const saved = await upsertStudentIbadah(cid, token, activeId, {
         date,
-        fajr:    form.fajr ?? undefined,
-        dhuhr:   form.dhuhr ?? undefined,
-        asr:     form.asr ?? undefined,
-        maghrib: form.maghrib ?? undefined,
-        isha:    form.isha ?? undefined,
+        fajr:    dirtyPrayers.has("fajr") ? form.fajr : undefined,
+        dhuhr:   dirtyPrayers.has("dhuhr") ? form.dhuhr : undefined,
+        asr:     dirtyPrayers.has("asr") ? form.asr : undefined,
+        maghrib: dirtyPrayers.has("maghrib") ? form.maghrib : undefined,
+        isha:    dirtyPrayers.has("isha") ? form.isha : undefined,
         quranPages: form.quranPages,
         customData: Object.keys(form.customData).length > 0 ? form.customData : undefined,
         notes:   form.notes || undefined,
