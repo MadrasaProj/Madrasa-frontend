@@ -12,7 +12,7 @@ import {
   Moon, Calendar, Loader2, AlertCircle,
   Flame, BookOpen, ChevronDown, ChevronUp,
   CheckCircle2, Save, ChevronLeft, ChevronRight, Hash, ToggleLeft,
-  Check, Sun, X, Users, List,
+  Check, Sun, X, Users,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -23,11 +23,11 @@ const PRAYERS = ["fajr", "dhuhr", "asr", "maghrib", "isha"] as const;
 type Prayer = typeof PRAYERS[number];
 
 const PRAYER_OPTIONS: { value: PrayerStatus | null; label: string; sub: string; icon: any; color: string }[] = [
-  { value: null, label: "Missed", sub: "No prayer recorded", icon: X, color: "bg-gray-100 text-gray-500 hover:bg-gray-200" },
-  { value: "NOT_PRAYABLE", label: "Excused", sub: "Ruqsa / Menses / Valid reason", icon: Moon, color: "bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200" },
-  { value: "QALA", label: "Qala'", sub: "Prayed alone", icon: Sun, color: "bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200" },
-  { value: "ADA", label: "Ada'", sub: "Prayed on time", icon: Check, color: "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200" },
-  { value: "JAMA", label: "Jama'", sub: "In congregation", icon: Users, color: "bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200" },
+  { value: null, label: "Missed", sub: "No prayer recorded", icon: X, color: "bg-gray-50 text-gray-500" },
+  { value: "NOT_PRAYABLE", label: "Excused", sub: "Ruqsa / Menses / Valid reason", icon: Moon, color: "bg-purple-50 text-purple-600" },
+  { value: "QALA", label: "Qala'", sub: "Prayed alone", icon: Sun, color: "bg-amber-50 text-amber-600" },
+  { value: "ADA", label: "Ada'", sub: "Prayed on time", icon: Check, color: "bg-emerald-50 text-emerald-600" },
+  { value: "JAMA", label: "Jama'", sub: "In congregation", icon: Users, color: "bg-blue-50 text-blue-600" },
 ];
 
 const PRAYER_META: Record<Prayer, { label: string; time: string; configKey: keyof IbadahConfig }> = {
@@ -253,73 +253,88 @@ export default function ParentIbadahPage() {
       ) : ibadah ? (
         <>
           {/* Student card */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4 flex items-center gap-3">
-            <div className="w-11 h-11 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-700 font-bold text-sm shrink-0">
-              {ibadah.student.name.slice(0, 2).toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-gray-900 truncate">{ibadah.student.name}</p>
-              <p className="text-xs text-gray-400">
-                {ibadah.student.class?.name ?? ""}{ibadah.student.class ? " · " : ""}{ibadah.student.adno}
-              </p>
-            </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <Flame className="w-4 h-4 text-orange-500" />
-              <span className="text-lg font-bold text-orange-600">{ibadah.streak}</span>
-              <span className="text-[10px] text-gray-400">streak</span>
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-700 p-5 mb-5">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-1/3 -translate-x-1/4" />
+            <div className="relative flex items-center gap-3">
+              <div className="w-12 h-12 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-inner">
+                {ibadah.student.name.slice(0, 2).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-white truncate drop-shadow-sm">{ibadah.student.name}</p>
+                <p className="text-xs text-emerald-100/80">
+                  {ibadah.student.class?.name ?? ""}{ibadah.student.class ? " · " : ""}{ibadah.student.adno}
+                </p>
+              </div>
+
             </div>
           </div>
 
-          {/* Weekly summary bar */}
-          <div className="bg-emerald-50 rounded-2xl border border-emerald-100 px-4 py-3 mb-4">
-            <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wide mb-2">Last 7 Days</p>
-            <div className="flex gap-2 items-end">
-              {activePrayers.map((p) => {
-                const count = ibadah.weekly[p];
-                const pct   = count / 7;
-                return (
-                  <div key={p} className="flex-1 text-center">
-                    <div className={cn(
-                      "w-full h-1.5 rounded-full mb-1",
-                      pct >= 0.9 ? "bg-emerald-500" : pct >= 0.7 ? "bg-amber-400" : "bg-red-400",
-                    )} />
-                    <p className={cn(
-                      "text-xs font-bold",
-                      pct >= 0.9 ? "text-emerald-700" : pct >= 0.7 ? "text-amber-600" : "text-red-600",
-                    )}>{count}/7</p>
-                    <p className="text-[9px] text-gray-500">{PRAYER_META[p].label.slice(0, 3)}</p>
-                  </div>
-                );
-              })}
+          {/* Weekly summary */}
+          <div className="bg-white rounded-2xl border border-emerald-100/50 p-5 mb-5 space-y-6">
+            <div className="inline-flex items-center gap-2 mx-auto bg-orange-50 rounded-full px-4 py-2">
+              <Flame className="w-5 h-5 text-orange-500" />
+              <span className="text-sm font-bold text-orange-700">{ibadah.streak} day streak</span>
+            </div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Prayers this week</p>
+                <div className="flex gap-2" style={{ height: 100 }}>
+                  {activePrayers.map((p) => {
+                    const count = ibadah.weekly[p];
+                    const pct   = count / 7;
+                    const fillH = Math.round(pct * 100);
+                    return (
+                      <div key={p} className="flex-1 flex flex-col items-center gap-1.5 justify-end relative" style={{ height: 100 }}>
+                        <div className="w-full h-full rounded-lg bg-gray-100 overflow-hidden relative flex items-end justify-center">
+                          <div
+                            className={cn(
+                              "absolute bottom-0 left-0 right-0 rounded-b-lg flex items-center justify-center text-sm font-bold text-white transition-all",
+                              count >= 7 && "bg-gradient-to-t from-emerald-700 to-emerald-500",
+                              count === 6 && "bg-gradient-to-t from-emerald-600 to-emerald-400",
+                              count >= 4 && count <= 5 && "bg-gradient-to-t from-emerald-500 to-emerald-300",
+                              count <= 3 && "bg-gradient-to-t from-emerald-400 to-emerald-200",
+                            )}
+                            style={{ height: `${fillH}%` }}
+                          >
+                            {count}
+                          </div>
+                        </div>
+                        <span className="text-[11px] font-semibold text-gray-400">{PRAYER_META[p].label.slice(0, 3)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+
               {config?.enableQuranPages !== false && (
-                <div className="flex-1 text-center border-l border-emerald-200 pl-2">
-                  <BookOpen className="w-3.5 h-3.5 text-blue-500 mx-auto mb-1" />
-                  <p className="text-xs font-bold text-blue-700">{ibadah.weekly.quranPages}</p>
-                  <p className="text-[9px] text-gray-500">pages</p>
+                <div className="flex flex-col items-center pt-4 border-t border-gray-100">
+                  <div className="flex items-center gap-2 mb-2">
+                    <BookOpen className="w-4 h-4 text-emerald-600" />
+                    <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wide">Quran Pages</p>
+                  </div>
+                  <span className="text-7xl font-black" style={{ background: 'linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{ibadah.weekly.quranPages}</span>
+                  <span className="text-xs text-gray-400 mt-1">pages read this week</span>
                 </div>
               )}
-            </div>
           </div>
 
           {/* Tab toggle */}
-          <div className="flex gap-1 mb-4 bg-white border border-gray-100 rounded-xl p-1">
+          <div className="flex gap-1 mb-5 bg-gray-50 rounded-xl p-1">
             <button
               onClick={() => setView("form")}
               className={cn(
-                "flex-1 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-1.5",
-                view === "form" ? "bg-emerald-600 text-white" : "text-gray-500",
+                "flex-1 py-2 rounded-lg text-sm font-medium transition-all",
+                view === "form" ? "bg-white text-emerald-700 shadow-sm" : "text-gray-400 hover:text-gray-600",
               )}
             >
-              <Moon className="w-3.5 h-3.5" /> Record
+              Record
             </button>
             <button
               onClick={() => setView("history")}
               className={cn(
-                "flex-1 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-1.5",
-                view === "history" ? "bg-emerald-600 text-white" : "text-gray-500",
+                "flex-1 py-2 rounded-lg text-sm font-medium transition-all",
+                view === "history" ? "bg-white text-emerald-700 shadow-sm" : "text-gray-400 hover:text-gray-600",
               )}
             >
-              <Calendar className="w-3.5 h-3.5" /> History
+              History
             </button>
           </div>
 
@@ -328,7 +343,7 @@ export default function ParentIbadahPage() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 pb-28">
               {/* Date nav */}
               <div className="flex items-center gap-3">
-                <button onClick={prevDay} className="p-2 rounded-xl bg-white border border-gray-200">
+                <button onClick={prevDay} className="p-2 rounded-xl bg-white border border-emerald-100 text-emerald-600 hover:bg-emerald-50 transition-colors">
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 <div className="flex-1 text-center">
@@ -337,13 +352,13 @@ export default function ParentIbadahPage() {
                     value={date}
                     max={fmt(new Date())}
                     onChange={(e) => setDate(e.target.value)}
-                    className="text-sm font-semibold text-gray-800 focus:outline-none bg-transparent text-center"
+                    className="text-sm font-semibold text-emerald-700 focus:outline-none bg-transparent text-center"
                   />
                 </div>
                 <button
                   onClick={nextDay}
                   disabled={date >= fmt(new Date())}
-                  className="p-2 rounded-xl bg-white border border-gray-200 disabled:opacity-40"
+                  className="p-2 rounded-xl bg-white border border-emerald-100 text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-40"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -437,24 +452,23 @@ export default function ParentIbadahPage() {
 
               {/* Custom items */}
               {customItems.length > 0 && (
-                <div className="space-y-3">
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wide px-0.5">Additional Ibadah</p>
+                <div className="bg-white rounded-xl border border-emerald-100/50 overflow-hidden divide-y divide-emerald-50">
+                  <div className="px-4 py-3">
+                    <p className="text-xs font-semibold text-emerald-700">Additional ibadah</p>
+                  </div>
                   {customItems.map((item) =>
                     item.type === "boolean" ? (
-                      <div key={item.key} className="bg-white rounded-2xl border border-gray-100 px-4 py-3.5 flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-semibold text-gray-800">{item.label}</p>
-                          <p className="text-[10px] text-gray-400 mt-0.5">Yes / No</p>
-                        </div>
+                      <div key={item.key} className="flex items-center justify-between px-4 py-3">
+                        <p className="text-sm text-gray-700">{item.label}</p>
                         <button
                           onClick={() => toggleCustomBoolean(item.key)}
                           className={cn(
-                            "relative w-11 h-6 rounded-full transition-colors duration-200 shrink-0",
+                            "relative w-10 h-5 rounded-full transition-colors shrink-0",
                             form.customData[item.key] ? "bg-emerald-500" : "bg-gray-200",
                           )}
                         >
                           <span className={cn(
-                            "absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200",
+                            "absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-xs transition-transform",
                             form.customData[item.key] ? "translate-x-5" : "translate-x-0",
                           )} />
                         </button>
@@ -462,53 +476,47 @@ export default function ParentIbadahPage() {
                     ) : item.type === "enum" ? (
                       <div
                         key={item.key}
-                        className="flex items-center gap-3 px-4 py-3 bg-white rounded-2xl border border-gray-100 cursor-pointer active:bg-gray-50 transition-colors"
+                        className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-emerald-50/30 transition-colors"
                         onClick={() => setDrawerCustomEnum(item.key)}
                       >
                         <div className="flex-1">
-                          <p className="text-sm font-semibold text-gray-800">{item.label}</p>
-                          <p className="text-xs text-gray-400">
-                            {item.options?.map((o) => o.label).join(" · ") ?? ""}
-                          </p>
+                          <p className="text-sm text-gray-700">{item.label}</p>
                         </div>
-                        <span className={cn(
-                          "text-xs font-medium",
-                          form.customData[item.key] ? "text-purple-600" : "text-gray-300",
-                        )}>
+                        <span className="text-xs font-medium text-emerald-600">
                           {(form.customData[item.key] as string) ?? "—"}
                         </span>
-                        <ChevronDown className="w-3.5 h-3.5 text-gray-300 shrink-0" />
+                        <ChevronDown className="w-3.5 h-3.5 text-gray-200 shrink-0" />
                       </div>
                     ) : (
-                      <IbadahCounter
-                        key={item.key}
-                        label={item.label}
-                        icon={<Hash className="w-4 h-4" />}
-                        value={(form.customData[item.key] as number) ?? 0}
-                        onChange={(val) => setCustomNumber(item.key, val, item.min, item.max)}
-                        min={item.min ?? 0}
-                        max={item.max ?? 10000}
-                      />
+                      <div key={item.key} className="p-3">
+                        <IbadahCounter
+                          label={item.label}
+                          icon={<Hash className="w-4 h-4" />}
+                          value={(form.customData[item.key] as number) ?? 0}
+                          onChange={(val) => setCustomNumber(item.key, val, item.min, item.max)}
+                          min={item.min ?? 0}
+                          max={item.max ?? 10000}
+                        />
+                      </div>
                     )
                   )}
                 </div>
               )}
 
               {/* Notes */}
-              <div className="bg-white rounded-2xl border border-gray-100 p-4">
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Notes (optional)</label>
+              <div className="bg-white rounded-xl border border-emerald-100/50 px-4 py-3">
                 <textarea
                   value={form.notes}
                   onChange={(e) => { setForm((f) => ({ ...f, notes: e.target.value })); setSaved(false); }}
-                  placeholder="Any notes about today's ibadah..."
-                  rows={2}
-                  className="w-full text-sm text-gray-800 resize-none focus:outline-none placeholder-gray-300"
+                  placeholder="Add a note..."
+                  rows={1}
+                  className="w-full text-sm text-gray-500 resize-none focus:outline-none placeholder-gray-300 bg-transparent"
                 />
               </div>
 
               {/* Save error */}
               {saveError && (
-                <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">
+                <div className="text-red-500 text-sm flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0" /> {saveError}
                 </div>
               )}
@@ -519,18 +527,18 @@ export default function ParentIbadahPage() {
                   onClick={handleSave}
                   disabled={saving}
                   className={cn(
-                    "w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl font-bold text-sm transition-all shadow-lg",
+                    "w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-semibold transition-all shadow-lg shadow-emerald-200/50",
                     saved
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60",
+                      ? "bg-gradient-to-r from-emerald-100 to-emerald-50 text-emerald-600"
+                      : "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white hover:from-emerald-700 hover:to-emerald-800 disabled:opacity-50",
                   )}
                 >
                   {saving ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" />
                   ) : saved ? (
-                    <><CheckCircle2 className="w-5 h-5" /> Saved!</>
+                    <><CheckCircle2 className="w-4 h-4" /> Saved</>
                   ) : (
-                    <><Save className="w-5 h-5" /> Save {dateLabel} Ibadah</>
+                    <><Save className="w-4 h-4" /> Save for {dateLabel}</>
                   )}
                 </button>
               </div>
@@ -541,9 +549,9 @@ export default function ParentIbadahPage() {
           {view === "history" && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2 pb-20">
               {ibadah.logs.length === 0 ? (
-                <div className="text-center py-12 text-gray-400 text-sm">
-                  <Moon className="w-10 h-10 mx-auto mb-3 text-gray-200" />
-                  No ibadah records yet
+                <div className="text-center py-16">
+                  <Moon className="w-10 h-10 mx-auto mb-3 text-emerald-200" />
+                  <p className="text-sm text-gray-400">No records yet</p>
                 </div>
               ) : (
                 ibadah.logs.map((log, i) => {
@@ -557,45 +565,44 @@ export default function ParentIbadahPage() {
                     <motion.div
                       key={log.id}
                       initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
-                      className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+                      className={cn(
+                        "bg-white rounded-xl border border-emerald-100/50 overflow-hidden transition-shadow",
+                        isExpanded && "shadow-sm",
+                      )}
                     >
                       <div
                         className="flex items-center gap-3 px-4 py-3 cursor-pointer"
                         onClick={() => setExpandedLog(isExpanded ? null : log.id)}
                       >
                         <div className={cn(
-                          "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold",
+                          "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-[11px] font-bold",
                           prayersDone === activePrayers.length
-                            ? "bg-emerald-500 text-white"
-                            : prayersDone >= activePrayers.length * 0.6
-                              ? "bg-amber-400 text-white"
-                              : "bg-red-100 text-red-600",
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-gray-100 text-gray-500",
                         )}>
                           {prayersDone}/{activePrayers.length}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-gray-900">{logDate}</p>
+                          <p className="text-sm font-medium text-gray-900">{logDate}</p>
                           <p className="text-xs text-gray-400">
                             {prayersDone === activePrayers.length ? "All prayers" : `${prayersDone} prayers`}
-                            {log.quranPages > 0 ? ` · ${log.quranPages} Quran pages` : ""}
+                            {log.quranPages > 0 ? ` · ${log.quranPages} pages` : ""}
                           </p>
                         </div>
-                          <div className="hidden sm:flex gap-1 shrink-0">
-                            {activePrayers.map((p) => (
-                              <span
-                                key={p}
-                                className={cn(
-                                  "w-6 h-6 rounded-lg flex items-center justify-center text-[9px] font-bold",
-                                  log[p] != null ? "bg-emerald-500 text-white" : "bg-gray-100 text-gray-400",
-                                )}
-                              >
-                                {PRAYER_META[p].label.slice(0, 1)}
-                              </span>
-                            ))}
-                          </div>
+                        <div className="flex items-center gap-1.5">
+                          {activePrayers.map((p) => (
+                            <div
+                              key={p}
+                              className={cn(
+                                "w-1.5 h-1.5 rounded-full",
+                                log[p] != null ? "bg-emerald-500" : "bg-gray-200",
+                              )}
+                            />
+                          ))}
+                        </div>
                         {isExpanded
-                          ? <ChevronUp className="w-4 h-4 text-gray-400 shrink-0" />
-                          : <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />}
+                          ? <ChevronUp className="w-3.5 h-3.5 text-gray-300 shrink-0" />
+                          : <ChevronDown className="w-3.5 h-3.5 text-gray-300 shrink-0" />}
                       </div>
 
                       <AnimatePresence>
@@ -604,62 +611,56 @@ export default function ParentIbadahPage() {
                             initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }} className="overflow-hidden"
                           >
-                            <div className="border-t border-gray-50 bg-gray-50/60 px-4 py-3 space-y-3">
-                              <div className={`grid gap-1.5`} style={{ gridTemplateColumns: `repeat(${activePrayers.length}, 1fr)` }}>
+                            <div className="border-t border-emerald-50 px-4 py-3 space-y-3">
+                              <div className="flex gap-1.5">
                                 {activePrayers.map((p) => (
                                   <div
                                     key={p}
                                     className={cn(
-                                      "rounded-xl py-2.5 text-center text-[10px] font-bold",
-                                      log[p] != null ? "bg-emerald-500 text-white" : "bg-gray-200 text-gray-500",
+                                      "flex-1 rounded-lg py-2 text-center text-[10px] font-semibold",
+                                      log[p] != null ? "bg-emerald-50 text-emerald-700" : "bg-gray-50 text-gray-400",
                                     )}
                                   >
-                                    <div className="text-sm">{log[p] ?? "—"}</div>
-                                    <div className="opacity-80 mt-0.5">{PRAYER_META[p].label}</div>
+                                    <div>{log[p] ?? "—"}</div>
+                                    <div className="mt-0.5 opacity-70">{PRAYER_META[p].label}</div>
                                   </div>
                                 ))}
                               </div>
                               {log.quranPages > 0 && (
-                                <div className="flex items-center gap-2 bg-blue-50 rounded-xl px-3 py-2">
-                                  <BookOpen className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                                  <p className="text-sm text-blue-700">
-                                    <span className="font-bold">{log.quranPages}</span> Quran pages
-                                  </p>
+                                <div className="flex items-center gap-1.5 text-xs text-emerald-600">
+                                  <BookOpen className="w-3 h-3" /> {log.quranPages} pages
                                 </div>
                               )}
                               {customItems.length > 0 && log.customData && (
-                                <div className="space-y-1.5">
+                                <div className="space-y-1">
                                   {customItems.map((item) => {
                                     const val = log.customData?.[item.key];
                                     if (val === undefined || val === null) return null;
                                     const enumOpt = item.type === "enum" ? item.options?.find((o) => o.label === val) : null;
                                     return (
-                                      <div key={item.key} className="flex items-center gap-2 bg-blue-50 rounded-xl px-3 py-2">
+                                      <div key={item.key} className="flex items-center gap-1.5 text-xs text-gray-500">
                                         {item.type === "boolean" ? (
-                                          <ToggleLeft className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                                          <ToggleLeft className="w-3 h-3 shrink-0" />
                                         ) : item.type === "enum" && enumOpt ? (
-                                          <Icon icon={enumOpt.icon} className="w-4 h-4 text-blue-500 shrink-0" />
+                                          <Icon icon={enumOpt.icon} className="w-3 h-3 shrink-0" />
                                         ) : (
-                                          <Hash className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                                          <Hash className="w-3 h-3 shrink-0" />
                                         )}
-                                        <p className="text-sm text-blue-700">
-                                          <span className="font-bold">{item.label}:</span>{" "}
-                                          {item.type === "boolean" ? (val ? "Yes" : "No") : String(val)}
-                                        </p>
+                                        <span>{item.label}:</span>{" "}
+                                        <span>{item.type === "boolean" ? (val ? "Yes" : "No") : String(val)}</span>
                                       </div>
                                     );
                                   })}
                                 </div>
                               )}
                               {log.notes && (
-                                <p className="text-xs text-gray-500 italic">{log.notes}</p>
+                                <p className="text-xs text-gray-400 italic">{log.notes}</p>
                               )}
-                              {/* Edit past records */}
                               <button
                                 onClick={() => { setDate(fmt(new Date(log.date))); setView("form"); }}
-                                className="text-xs font-semibold text-emerald-600 hover:text-emerald-800 transition-colors"
+                                className="text-xs font-medium text-emerald-600 hover:text-emerald-800 transition-colors"
                               >
-                                Edit this day →
+                                Edit →
                               </button>
                             </div>
                           </motion.div>
@@ -682,35 +683,33 @@ export default function ParentIbadahPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 z-50"
+              className="fixed inset-0 bg-black/40 z-50"
               onClick={() => setDrawerPrayer(null)}
             />
             <motion.div
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl max-h-[70vh] overflow-y-auto"
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl max-h-[70vh] overflow-y-auto"
             >
-              <div className="p-5">
+              <div className="relative px-5 pt-6 pb-6">
                 <div className="flex items-center justify-between mb-5">
-                  <div>
-                    <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">
-                      {PRAYER_META[drawerPrayer].time}
-                    </p>
-                    <p className="text-lg font-bold text-gray-900">
-                      {PRAYER_META[drawerPrayer].label}
-                    </p>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-sm">
+                      <Moon className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">{PRAYER_META[drawerPrayer].time}</p>
+                      <p className="text-base font-semibold text-gray-900">{PRAYER_META[drawerPrayer].label}</p>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => setDrawerPrayer(null)}
-                    className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center"
-                  >
-                    <X className="w-4 h-4 text-gray-500" />
+                  <button onClick={() => setDrawerPrayer(null)} className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center">
+                    <X className="w-4 h-4 text-gray-400" />
                   </button>
                 </div>
 
-                <div className="space-y-2.5">
+                <div className="space-y-1">
                   {PRAYER_OPTIONS.map((opt) => {
                     const selected = form[drawerPrayer] === opt.value;
                     return (
@@ -721,38 +720,36 @@ export default function ParentIbadahPage() {
                           setDrawerPrayer(null);
                         }}
                         className={cn(
-                          "w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left",
-                          selected
-                            ? opt.color + " border-current"
-                            : "border-gray-100 hover:border-gray-200 bg-white",
+                          "w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-left",
+                          selected ? "bg-gradient-to-r " + opt.color : "hover:bg-gray-50",
                         )}
                       >
                         <div className={cn(
-                          "w-11 h-11 rounded-2xl flex items-center justify-center shrink-0",
-                          selected ? "bg-white/80" : "bg-gray-50",
+                          "w-9 h-9 rounded-xl flex items-center justify-center shrink-0",
+                          selected ? "bg-white/80" : "bg-gray-100",
                         )}>
                           <opt.icon className={cn(
-                            "w-5 h-5",
+                            "w-4 h-4",
                             selected ? "text-current" : "text-gray-400",
                           )} />
                         </div>
                         <div className="flex-1">
                           <p className={cn(
-                            "text-sm font-bold",
-                            selected ? "text-current" : "text-gray-800",
+                            "text-sm font-medium",
+                            selected ? "text-current font-semibold" : "text-gray-700",
                           )}>
                             {opt.label}
                           </p>
                           <p className={cn(
-                            "text-xs",
-                            selected ? "opacity-70" : "text-gray-400",
+                            "text-[11px]",
+                            selected ? "text-current/70" : "text-gray-400",
                           )}>
                             {opt.sub}
                           </p>
                         </div>
                         {selected && (
-                          <div className="w-6 h-6 rounded-full bg-current flex items-center justify-center">
-                            <Check className="w-3.5 h-3.5 text-white" />
+                          <div className="w-6 h-6 rounded-full bg-white/80 flex items-center justify-center">
+                            <Check className="w-3.5 h-3.5 text-current" />
                           </div>
                         )}
                       </button>
@@ -776,41 +773,39 @@ export default function ParentIbadahPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/50 z-50"
+                className="fixed inset-0 bg-black/40 z-50"
                 onClick={() => setDrawerCustomEnum(null)}
               />
               <motion.div
                 initial={{ y: "100%" }}
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
-                transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl max-h-[70vh] overflow-y-auto"
+                transition={{ type: "spring", damping: 30, stiffness: 300 }}
+                className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl max-h-[70vh] overflow-y-auto"
               >
-                <div className="p-5">
+                <div className="px-5 pt-6 pb-6">
                   <div className="flex items-center justify-between mb-5">
-                    <div>
-                      <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Additional Ibadah</p>
-                      <p className="text-lg font-bold text-gray-900">{item.label}</p>
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-sm">
+                        <Hash className="w-4 h-4 text-white" />
+                      </div>
+                      <p className="text-base font-semibold text-gray-900">{item.label}</p>
                     </div>
-                    <button
-                      onClick={() => setDrawerCustomEnum(null)}
-                      className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center"
-                    >
-                      <X className="w-4 h-4 text-gray-500" />
+                    <button onClick={() => setDrawerCustomEnum(null)} className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center">
+                      <X className="w-4 h-4 text-gray-400" />
                     </button>
                   </div>
 
-                  <div className="space-y-2.5">
+                  <div className="space-y-1">
                     {[{ icon: "", label: "Not recorded", color: "" }, ...item.options].map((opt) => {
                       const val = form.customData[drawerCustomEnum] as string | undefined;
                       const selected = opt.label && val === opt.label;
-                      const isNone = !opt.label;
                       const colorMap: Record<string, string> = {
-                        emerald: "bg-emerald-500", amber: "bg-amber-500", blue: "bg-blue-500",
-                        purple: "bg-purple-500", rose: "bg-rose-500", cyan: "bg-cyan-500",
-                        orange: "bg-orange-500", lime: "bg-lime-500",
+                        emerald: "text-emerald-600", amber: "text-amber-600", blue: "text-blue-600",
+                        purple: "text-purple-600", rose: "text-rose-600", cyan: "text-cyan-600",
+                        orange: "text-orange-600", lime: "text-lime-600",
                       };
-                      const colorMatch = colorMap[opt.color] ?? "bg-gray-400";
+                      const colorMatch = colorMap[opt.color] ?? "text-gray-600";
                       return (
                         <button
                           key={opt.label || "none"}
@@ -819,21 +814,17 @@ export default function ParentIbadahPage() {
                             setDrawerCustomEnum(null);
                           }}
                           className={cn(
-                            "w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left",
-                            selected ? "border-emerald-500 bg-emerald-50" : "border-gray-100 hover:border-gray-200 bg-white",
+                            "w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-left",
+                            selected ? "bg-emerald-50" : "hover:bg-gray-50",
                           )}
                         >
-                          <div className={cn(
-                            "w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 text-white",
-                            selected ? colorMatch : "bg-gray-50 text-gray-400",
-                          )}>
-                            {opt.icon ? <Icon icon={opt.icon} className="w-5 h-5" /> : <X className="w-5 h-5 text-gray-400" />}
-                          </div>
+                          {opt.icon ? (
+                            <Icon icon={opt.icon} className={cn("w-4 h-4 shrink-0", selected ? colorMatch : "text-gray-400")} />
+                          ) : (
+                            <X className={cn("w-4 h-4 shrink-0", selected ? "text-gray-500" : "text-gray-300")} />
+                          )}
                           <div className="flex-1">
-                            <p className={cn(
-                              "text-sm font-bold",
-                              selected ? "text-emerald-700" : "text-gray-800",
-                            )}>
+                            <p className={cn("text-sm", selected ? "font-semibold text-emerald-700" : "text-gray-600")}>
                               {opt.label || "Not recorded"}
                             </p>
                           </div>
