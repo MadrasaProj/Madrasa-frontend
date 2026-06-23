@@ -38,12 +38,12 @@ import {
   X,
   Pencil,
   Save,
-  AlertCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { ClassDivisionsPicker } from "@/components/ui/ClassDivisionsPicker";
+import { Toaster, toast } from "sonner";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -101,7 +101,6 @@ function EditMadrasaDrawer({
     committiePassword: "",
   });
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [editDivisions, setEditDivisions] = useState<Record<string, string[]>>({});
   const [existingClasses, setExistingClasses] = useState<ClassRecord[]>([]);
@@ -144,11 +143,10 @@ function EditMadrasaDrawer({
 
   const handleSave = async () => {
     if (!form.name?.trim()) {
-      setError("Name is required.");
+      toast.error("Name is required.");
       return;
     }
     setSaving(true);
-    setError("");
     setSuccess(false);
     try {
       const gradeLevelIds = Object.keys(editDivisions)
@@ -178,7 +176,7 @@ function EditMadrasaDrawer({
       onSaved(merged);
       setTimeout(onClose, 800);
     } catch (e: unknown) {
-      setError((e as Error)?.message ?? "Failed to save changes.");
+      toast.error((e as Error)?.message ?? "Failed to save changes.");
     } finally {
       setSaving(false);
     }
@@ -230,12 +228,6 @@ function EditMadrasaDrawer({
 
         {/* Body */}
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-3 pb-6">
-          {error && (
-            <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              {error}
-            </div>
-          )}
           {success && (
             <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-700">
               <CheckCircle className="w-4 h-4 shrink-0" />
@@ -820,7 +812,6 @@ function NewMadrasaDrawer({
   const [form, setForm] = useState<CreateClientDto>(emptyForm);
   const [glDivisions, setGlDivisions] = useState<Record<string, string[]>>({});
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
   const [eduSystems, setEduSystems] = useState<EducationSystemInfo[]>([]);
   const [systemsLoading, setSystemsLoading] = useState(true);
   const [selectedSystem, setSelectedSystem] = useState<EducationSystemInfo | null>(null);
@@ -855,11 +846,10 @@ function NewMadrasaDrawer({
       !form.adminIdentifier ||
       !form.adminPassword
     ) {
-      setError("Please fill in all required fields.");
+      toast.error("Please fill in all required fields.");
       return;
     }
     setSaving(true);
-    setError("");
     try {
       const gradeLevelIds = Object.keys(glDivisions)
         .filter((id) => (glDivisions[id]?.length ?? 0) > 0);
@@ -877,7 +867,7 @@ function NewMadrasaDrawer({
       onCreated(created);
       onClose();
     } catch (e: unknown) {
-      setError((e as Error)?.message ?? "Failed to create madrasa.");
+      toast.error((e as Error)?.message ?? "Failed to create madrasa.");
     } finally {
       setSaving(false);
     }
@@ -924,12 +914,6 @@ function NewMadrasaDrawer({
 
         {/* Scrollable body */}
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-3 pb-6">
-          {error && (
-            <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">
-              {error}
-            </div>
-          )}
-
           <div className="space-y-3">
             <p className="text-xs font-bold text-gray-500 uppercase tracking-wide border-t border-gray-100 pt-6 mt-8">
               Madrasa Info
@@ -1467,6 +1451,7 @@ export default function AdminMadrasasPage() {
           />
         )}
       </AnimatePresence>
+      <Toaster position="top-right" richColors closeButton />
     </DashboardLayout>
   );
 }
