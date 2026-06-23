@@ -29,6 +29,7 @@ export interface ClassDetail extends ClassRecord {
 
 export interface CreateClassPayload {
   name: string;
+  gradeLevelId?: string;
   division?: string;
   accademicYearId?: string;
   classTeacherId?: string | null;
@@ -37,6 +38,7 @@ export interface CreateClassPayload {
 
 export interface UpdateClassPayload {
   name?: string;
+  gradeLevelId?: string | null;
   division?: string;
   accademicYearId?: string;
   classTeacherId?: string | null;
@@ -110,6 +112,22 @@ export function updateClass(
     method: "PATCH",
     body: JSON.stringify(data),
   });
+}
+
+export interface GradeLevelRecord {
+  id: string;
+  name: string;
+  level: number;
+}
+
+export function getGradeLevels(
+  clientId: string,
+  token: string,
+): Promise<GradeLevelRecord[]> {
+  return apiFetch<GradeLevelRecord[]>(
+    `${V2_BASE}/${clientId}/classes/grade-levels`,
+    token,
+  );
 }
 
 export function deleteClass(

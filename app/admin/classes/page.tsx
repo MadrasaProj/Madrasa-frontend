@@ -4,8 +4,8 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import {
-  getAllClasses, createClass, updateClass, deleteClass,
-  type ClassRecord, type CreateClassPayload, type UpdateClassPayload,
+  getAllClasses, createClass, updateClass, deleteClass, getGradeLevels,
+  type ClassRecord, type CreateClassPayload, type UpdateClassPayload, type GradeLevelRecord,
 } from "@/lib/classes-api";
 import { getTeachers, type TeacherRecord } from "@/lib/teachers-api";
 import { useAuthStore } from "@/store/auth";
@@ -16,17 +16,23 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
+const DIVISION_OPTIONS = ["A", "B", "C", "D"];
+
 interface FormState {
   name: string;
+  gradeLevelId: string;
+  division: string;
   classTeacherId: string;
   status: "ACTIVE" | "INACTIVE";
 }
 
-const EMPTY_FORM: FormState = { name: "", classTeacherId: "", status: "ACTIVE" };
+const EMPTY_FORM: FormState = { name: "", gradeLevelId: "", division: "", classTeacherId: "", status: "ACTIVE" };
 
 function classToForm(c: ClassRecord): FormState {
   return {
     name: c.name,
+    gradeLevelId: c.gradeLevelId ?? "",
+    division: c.division ?? "",
     classTeacherId: c.classTeacherId ?? "",
     status: (c.status as "ACTIVE" | "INACTIVE") ?? "ACTIVE",
   };
@@ -54,6 +60,7 @@ export default function AdminClassesPage() {
   const [search, setSearch]     = useState("");
   const searchTimer             = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [teachers, setTeachers] = useState<TeacherRecord[]>([]);
+  const [gradeLevels, setGradeLevels] = useState<GradeLevelRecord[]>([]);
 
   const [showDrawer, setShowDrawer] = useState(false);
   const [editTarget, setEditTarget] = useState<ClassRecord | null>(null);
@@ -68,12 +75,14 @@ export default function AdminClassesPage() {
     if (!cid || !token) return;
     setLoading(true); setError(null);
     try {
-      const [cls, tch] = await Promise.all([
+      const [cls, tch, gls] = await Promise.all([
         getAllClasses(cid, token, { search: srch }),
         getTeachers(cid, token),
+        getGradeLevels(cid, token),
       ]);
       setClasses(cls);
       setTeachers(tch.data ?? []);
+      setGradeLevels(gls);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -82,6 +91,18 @@ export default function AdminClassesPage() {
   }, [cid, token]);
 
   useEffect(() => { load(); }, [load]);
+
+  const glMap = useRef(new Map<string, string>());
+  glMap.current = new Map(gradeLevels.map((g) => [g.id, g.name]));
+
+  // Auto-compute display name from gradeLevel + division
+  useEffect(() => {
+    if (!form.gradeLevelId) return;
+    const glName = glMap.current.get(form.gradeLevelId);
+    if (!glName) return;
+    const computed = form.division ? `${glName} ${form.division}` : glName;
+    setForm((f) => ({ ...f, name: computed }));
+  }, [form.gradeLevelId, form.division]);
 
   const handleSearch = (val: string) => {
     setSearch(val);
@@ -100,12 +121,15 @@ export default function AdminClassesPage() {
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) { setSaveError("Class name is required"); return; }
+    if (!form.name.trim()) { setSaveError("Display name is required"); return; }
+    const divisionVal = form.division;
     setSaving(true); setSaveError("");
     try {
       if (editTarget) {
         const updated = await updateClass(cid, token, editTarget.id, {
           name: form.name.trim(),
+          gradeLevelId: form.gradeLevelId || null,
+          division: divisionVal || null,
           classTeacherId: form.classTeacherId || null,
           status: form.status,
         } as UpdateClassPayload);
@@ -113,6 +137,8 @@ export default function AdminClassesPage() {
       } else {
         const created = await createClass(cid, token, {
           name: form.name.trim(),
+          gradeLevelId: form.gradeLevelId || undefined,
+          division: divisionVal || undefined,
           classTeacherId: form.classTeacherId || null,
           accademicYearId: user?.defaultAcademicYearId ?? undefined,
         } as CreateClassPayload);
@@ -342,13 +368,57 @@ export default function AdminClassesPage() {
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                    Class Name <span className="text-red-500">*</span>
+                    Class <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={form.gradeLevelId}
+                    onChange={(e) => setForm((f) => ({ ...f, gradeLevelId: e.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
+                  >
+                    <option value="">Select class…</option>
+                    {gradeLevels.map((gl) => (
+                      <option key={gl.id} value={gl.id}>{gl.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Division</label>
+                  <div className="flex items-center gap-2 mb-2">
+                    {DIVISION_OPTIONS.map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, division: f.division === d ? "" : d }))}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors border",
+                          form.division === d
+                            ? "bg-emerald-100 text-emerald-700 border-emerald-300"
+                            : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100",
+                        )}
+                      >
+                        {d}
+                      </button>
+                    ))}
+                  </div>
+                  <input
+                    type="text"
+                    value={form.division}
+                    onChange={(e) => setForm((f) => ({ ...f, division: e.target.value }))}
+                    placeholder="Or type a custom division…"
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                    Display Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={form.name}
                     onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                    placeholder="e.g. Class 5A"
+                    placeholder="Auto-computed from class & division"
                     className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
                   />
                 </div>
