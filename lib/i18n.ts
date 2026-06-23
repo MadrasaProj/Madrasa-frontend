@@ -180,7 +180,7 @@ const translations = {
     seats: { en: "Seats", ml: "സീറ്റ് പ്ലാൻ" },
     sksbv: { en: "SKSBV", ml: "SKSBV" },
     posters: { en: "Posters", ml: "പോസ്‌റ്ററുകൾ" },
-    globalClassSubjects: { en: "Global Class Subjects", ml: "ആഗോള ക്ലാസ് വിഷയങ്ങൾ" },
+    globalClassSubjects: { en: "Accademic systems", ml: "അക്കാദമിക്സ് സിസ്റ്റങ്ങൾ" },
     config: { en: "Config", ml: "ക്രമീകരണം" },
     attendance: { en: "Attendance", ml: "ഹാജർ" },
     leaveRequests: { en: "Leave Requests", ml: "ലീവ് അപേക്ഷകൾ" },

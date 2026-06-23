@@ -20,7 +20,7 @@ import {
 } from "@/lib/super-admin-api";
 import { useAuthStore } from "@/store/auth";
 import {
-  BookOpen, GraduationCap, Plus, Pencil, Trash2, X, Loader2,
+  BookOpen, GraduationCap, Plus, Pencil, Trash2, X, Loader2, ArrowUpRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -31,15 +31,20 @@ interface GradeLevelForm {
   level: number;
 }
 
+interface GradeEntry {
+  grade: string;
+  min: number;
+}
+
 interface SubjectForm {
   subjectName: string;
   maxMarks: string;
   passMarks: string;
-  gradeConfig: string;
+  grades: GradeEntry[];
 }
 
 const EMPTY_GL: GradeLevelForm = { name: "", level: 1 };
-const EMPTY_SUBJECT: SubjectForm = { subjectName: "", maxMarks: "", passMarks: "", gradeConfig: "" };
+const EMPTY_SUBJECT: SubjectForm = { subjectName: "", maxMarks: "", passMarks: "", grades: [] };
 
 const inputCls = "w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all";
 const labelCls = "text-xs font-semibold text-gray-600 mb-1.5 block";
@@ -206,11 +211,19 @@ export default function AdminGlobalClassSubjectsPage() {
 
   const editSubj = (s: ClassSubjectInfo) => {
     setEditingSubj(s.id);
+    const grades: GradeEntry[] = [];
+    if (s.gradeConfig && typeof s.gradeConfig === "object") {
+      for (const [grade, val] of Object.entries(s.gradeConfig)) {
+        const entry = val as { min?: number };
+        grades.push({ grade, min: entry.min ?? 0 });
+      }
+      grades.sort((a, b) => b.min - a.min);
+    }
     setSubjForm({
       subjectName: s.subjectName,
       maxMarks: s.maxMarks?.toString() ?? "",
       passMarks: s.passMarks?.toString() ?? "",
-      gradeConfig: s.gradeConfig ? JSON.stringify(s.gradeConfig, null, 2) : "",
+      grades,
     });
     setShowSubjForm(true);
   };
@@ -225,9 +238,12 @@ export default function AdminGlobalClassSubjectsPage() {
       const dto: any = { subjectName: subjForm.subjectName.trim() };
       if (subjForm.maxMarks) dto.maxMarks = parseInt(subjForm.maxMarks, 10);
       if (subjForm.passMarks) dto.passMarks = parseInt(subjForm.passMarks, 10);
-      if (subjForm.gradeConfig.trim()) {
-        try { dto.gradeConfig = JSON.parse(subjForm.gradeConfig.trim()); }
-        catch { toast.error("Invalid grade config JSON"); setSubjSaving(false); return; }
+      if (subjForm.grades.length > 0) {
+        const config: Record<string, { min: number }> = {};
+        for (const g of subjForm.grades) {
+          if (g.grade.trim()) config[g.grade.trim()] = { min: g.min };
+        }
+        dto.gradeConfig = config;
       }
 
       if (editingSubj) {
@@ -246,6 +262,22 @@ export default function AdminGlobalClassSubjectsPage() {
     finally { setSubjSaving(false); }
   };
 
+  const addGradeRow = () => {
+    setSubjForm((f) => ({ ...f, grades: [...f.grades, { grade: "", min: 0 }] }));
+  };
+
+  const updateGradeRow = (i: number, field: keyof GradeEntry, value: string | number) => {
+    setSubjForm((f) => {
+      const grades = [...f.grades];
+      grades[i] = { ...grades[i], [field]: value };
+      return { ...f, grades };
+    });
+  };
+
+  const removeGradeRow = (i: number) => {
+    setSubjForm((f) => ({ ...f, grades: f.grades.filter((_, idx) => idx !== i) }));
+  };
+
   const deleteSubj = async (subjId: string) => {
     try {
       await deleteClassSubject(subjId, token);
@@ -259,7 +291,7 @@ export default function AdminGlobalClassSubjectsPage() {
   return (
     <DashboardLayout>
       <PageHeader
-        title="Global Class Subjects"
+        title="Accademic Systems"
         subtitle="Manage education systems, classes, and subjects"
         icon={BookOpen}
         action={
@@ -321,11 +353,18 @@ export default function AdminGlobalClassSubjectsPage() {
                 </td>
                 <td className="px-5 py-4 text-right">
                   <button onClick={(e) => { e.stopPropagation(); openEditSys(sys); }}
-                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 mr-1">
+                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 mr-0.5"
+                    title="Edit system">
                     <Pencil className="w-4 h-4" />
                   </button>
+                  <button onClick={(e) => { e.stopPropagation(); openDrawer(sys); }}
+                    className="p-1.5 rounded-lg hover:bg-emerald-100 text-gray-400 hover:text-emerald-600 mr-0.5"
+                    title="Manage classes & subjects">
+                    <ArrowUpRight className="w-4 h-4" />
+                  </button>
                   <button onClick={(e) => { e.stopPropagation(); handleDeleteSys(sys.id); }}
-                    className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500">
+                    className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500"
+                    title="Deactivate system">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </td>
@@ -575,8 +614,38 @@ export default function AdminGlobalClassSubjectsPage() {
                     </div>
                   </div>
                   <div>
-                    <label className={labelCls}>Grade Config <span className="text-gray-400 font-normal">(optional JSON)</span></label>
-                    <textarea value={subjForm.gradeConfig} onChange={(e) => setSubjForm((f) => ({ ...f, gradeConfig: e.target.value }))} className={`${inputCls} font-mono text-xs`} rows={4} placeholder='[{"min":90,"grade":"A"},{"min":75,"grade":"B"}]' />
+                    <label className={labelCls}>Grade Config <span className="text-gray-400 font-normal">(optional)</span></label>
+                    <div className="space-y-2">
+                      {subjForm.grades.map((g, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <input
+                            value={g.grade}
+                            onChange={(e) => updateGradeRow(i, "grade", e.target.value)}
+                            className="w-20 px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-emerald-400"
+                            placeholder="A+"
+                          />
+                          <span className="text-xs text-gray-400">≥</span>
+                          <input
+                            type="number"
+                            value={g.min}
+                            onChange={(e) => updateGradeRow(i, "min", parseInt(e.target.value) || 0)}
+                            className="w-24 px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-emerald-400"
+                            placeholder="90"
+                          />
+                          <button onClick={() => removeGradeRow(i)}
+                            className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                      <button onClick={addGradeRow}
+                        className="flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition-colors">
+                        <Plus className="w-3.5 h-3.5" /> Add Grade
+                      </button>
+                    </div>
+                    {subjForm.grades.length > 0 && (
+                      <p className="text-xs text-gray-400 mt-2">Grades are evaluated top-down by min score. Highest min = best grade.</p>
+                    )}
                   </div>
                 </div>
                 <div className="px-6 py-4 border-t border-gray-100 flex gap-3 shrink-0">
