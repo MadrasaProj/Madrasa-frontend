@@ -247,7 +247,7 @@ export default function AdminFeesPage() {
     byStatus: any[];
     byFeeType: any[];
   } | null>(null);
-  const [reportFeeTypeId, setReportFeeTypeId] = useState<string>("");
+  const reportFeeTypeId = activeTypeId ?? "";
   const [reportClassId, setReportClassId] = useState<string>("");
   const [reportPayments, setReportPayments] = useState<FeePayment[]>([]);
   const [reportPayLoading, setReportPayLoading] = useState(false);
@@ -1074,16 +1074,6 @@ export default function AdminFeesPage() {
             <div className="space-y-4">
               {/* Filters */}
               <div className="flex flex-wrap gap-2">
-                <select
-                  value={reportFeeTypeId}
-                  onChange={(e) => setReportFeeTypeId(e.target.value)}
-                  className="px-3 py-2 rounded-xl border border-gray-200 text-sm bg-white"
-                >
-                  <option value="">All Fee Types</option>
-                  {feeTypes.map((ft) => (
-                    <option key={ft.id} value={ft.id}>{ft.name}</option>
-                  ))}
-                </select>
                 <select
                   value={reportClassId}
                   onChange={(e) => setReportClassId(e.target.value)}
