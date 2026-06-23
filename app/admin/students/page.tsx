@@ -946,12 +946,12 @@ export default function AdminStudentsPage() {
                         placeholder: "Alternate mobile",
                         type: "tel",
                       },
-                      {
-                        key: "parentEmail" as const,
-                        label: "Parent Email",
-                        placeholder: "parent@email.com",
-                        type: "email",
-                      },
+                      // {
+                      //   key: "parentEmail" as const,
+                      //   label: "Parent Email",
+                      //   placeholder: "parent@email.com",
+                      //   type: "email",
+                      // },
                       {
                         key: "parentPassword" as const,
                         label: t("adminPages", "parentLoginPwd", lang),

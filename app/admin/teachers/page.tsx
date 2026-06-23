@@ -260,12 +260,16 @@ export default function AdminTeachersPage() {
         key: "classes",
         header: "Class",
         render: (t) => {
-          const cls = t.classes?.[0];
-          if (!cls) return <span className="text-gray-300 text-xs">—</span>;
+          const classes = t.classes ?? [];
+          if (!classes.length) return <span className="text-gray-300 text-xs">—</span>;
           return (
-            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
-              {cls.name}
-            </span>
+            <div className="flex flex-wrap gap-1">
+              {classes.map((c) => (
+                <span key={c.id} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                  {c.name}
+                </span>
+              ))}
+            </div>
           );
         },
         className: "hidden md:table-cell",
@@ -388,7 +392,7 @@ export default function AdminTeachersPage() {
           onPageSizeChange: (sz) => { setPageSize(sz); setPage(1); },
         }}
         mobileRender={(t) => {
-          const cls = t.classes?.[0];
+          const classes = t.classes ?? [];
           const subjects = t.subjects ?? [];
           return (
             <div className="flex items-start gap-3">
@@ -418,12 +422,14 @@ export default function AdminTeachersPage() {
                     </button>
                   </div>
                 </div>
-                {cls && (
-                  <div className="flex items-center gap-1.5 mt-1.5">
+                {classes.length > 0 && (
+                  <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                     <GraduationCap className="w-3 h-3 text-indigo-500 shrink-0" />
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
-                      {cls.name}
-                    </span>
+                    {classes.map((c) => (
+                      <span key={c.id} className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                        {c.name}
+                      </span>
+                    ))}
                   </div>
                 )}
                 {isPeriodBased && subjects.length > 0 && (

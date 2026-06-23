@@ -415,7 +415,7 @@ export default function StudentDetailPage() {
                       { key: "guardianName" as const,   label: "Guardian Name",  placeholder: "", type: "text"     },
                       { key: "parentPhone" as const,    label: "Phone",          placeholder: "", type: "tel"      },
                       { key: "parentAltPhone" as const, label: "Alt. Phone",     placeholder: "", type: "tel"      },
-                      { key: "parentEmail" as const,    label: "Parent Email",   placeholder: "parent@email.com", type: "email" },
+                      // { key: "parentEmail" as const,    label: "Parent Email",   placeholder: "parent@email.com", type: "email" },
                       { key: "parentPassword" as const, label: "New Password",   placeholder: "Leave blank to keep current", type: "password" },
                     ]).map(({ key, label, placeholder, type }) => (
                       <div key={key}>
