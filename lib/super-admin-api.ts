@@ -333,6 +333,14 @@ export interface UpdateProfileDto {
   name?: string;
   currentPassword?: string;
   newPassword?: string;
+  parentAltPhone?: string;
+  parentEmail?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  pincode?: string;
+  bloodGroup?: string;
 }
 
 export function updateProfile(token: string, dto: UpdateProfileDto) {

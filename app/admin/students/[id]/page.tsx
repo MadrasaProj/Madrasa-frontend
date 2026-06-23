@@ -3,14 +3,14 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader, SectionHeader } from "@/components/ui/PageHeader";
 import {
-  getStudent, updateStudent, deleteStudent,
+  getStudent, getStudentProfileV2, updateStudent, deleteStudent, uploadStudentPhoto,
   type StudentRecord, type CreateStudentPayload,
 } from "@/lib/students-api";
 import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
 import { getStudentAttendance, type StudentAttendanceResponse } from "@/lib/attendance-api";
 import { useAuthStore } from "@/store/auth";
 import { motion, AnimatePresence } from "framer-motion";
-import { User, Phone, Calendar, Loader2, GraduationCap, Hash, Pencil, Trash2 } from "lucide-react";
+import { User, Phone, Calendar, Loader2, GraduationCap, Hash, Pencil, Trash2, Upload, Users, Heart, MapPin, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageSkeleton } from "@/components/ui/Skeleton";
 
@@ -27,6 +27,9 @@ interface FormState {
   dateOfBirth: string; guardianName: string; parentPhone: string;
   parentAltPhone: string; parentEmail: string;
   relationToStudent: string; parentPassword: string;
+  address: string; city: string; state: string; country: string; pincode: string;
+  bloodGroup: string;
+  emergencyContactName: string; emergencyContactPhone: string; medicalNotes: string;
 }
 
 function studentToForm(s: StudentRecord): FormState {
@@ -43,6 +46,15 @@ function studentToForm(s: StudentRecord): FormState {
     parentEmail: s.parentEmail ?? "",
     relationToStudent: s.relationToStudent ?? "father",
     parentPassword: "",
+    address: s.address ?? "",
+    city: s.city ?? "",
+    state: s.state ?? "",
+    country: s.country ?? "",
+    pincode: s.pincode ?? "",
+    bloodGroup: s.bloodGroup ?? "",
+    emergencyContactName: s.emergencyContactName ?? "",
+    emergencyContactPhone: s.emergencyContactPhone ?? "",
+    medicalNotes: s.medicalNotes ?? "",
   };
 }
 
@@ -67,6 +79,9 @@ export default function StudentDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting]           = useState(false);
@@ -82,7 +97,7 @@ export default function StudentDetailPage() {
     if (!activeClientId || !accessToken) return;
     const ac = new AbortController();
 
-    getStudent(activeClientId, accessToken, id!, ac.signal)
+    getStudentProfileV2(activeClientId, accessToken, id!, ac.signal)
       .then((s) => { setStudent(s); })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoadingStudent(false));
@@ -125,6 +140,15 @@ export default function StudentDetailPage() {
         ...(form.parentEmail ? { parentEmail: form.parentEmail.trim() } : {}),
         ...(form.relationToStudent ? { relationToStudent: form.relationToStudent } : {}),
         ...(form.parentPassword ? { parentPassword: form.parentPassword } : {}),
+        ...(form.address ? { address: form.address.trim() } : {}),
+        ...(form.city ? { city: form.city.trim() } : {}),
+        ...(form.state ? { state: form.state.trim() } : {}),
+        ...(form.country ? { country: form.country.trim() } : {}),
+        ...(form.pincode ? { pincode: form.pincode.trim() } : {}),
+        ...(form.bloodGroup ? { bloodGroup: form.bloodGroup } : {}),
+        ...(form.emergencyContactName ? { emergencyContactName: form.emergencyContactName.trim() } : {}),
+        ...(form.emergencyContactPhone ? { emergencyContactPhone: form.emergencyContactPhone.trim() } : {}),
+        ...(form.medicalNotes ? { medicalNotes: form.medicalNotes.trim() } : {}),
       };
       const updated = await updateStudent(activeClientId, accessToken, student.id, payload);
       setStudent(updated);
@@ -212,12 +236,18 @@ export default function StudentDetailPage() {
         className="bg-white rounded-3xl p-5 border border-gray-100 mb-5"
       >
         <div className="flex items-center gap-4 mb-4">
-          <div className={cn(
-            "w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-bold shrink-0",
-            student.gender === "FEMALE" ? "bg-pink-100 text-pink-700" : "bg-emerald-100 text-emerald-700",
-          )}>
-            {student.name.charAt(0)}
-          </div>
+          {student.photoUrl ? (
+            <img src={student.photoUrl} alt={student.name}
+              className="w-16 h-16 rounded-2xl object-cover shrink-0 border border-gray-200"
+            />
+          ) : (
+            <div className={cn(
+              "w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-bold shrink-0",
+              student.gender === "FEMALE" ? "bg-pink-100 text-pink-700" : "bg-emerald-100 text-emerald-700",
+            )}>
+              {student.name.charAt(0)}
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <h2 className="text-lg font-bold text-gray-900 truncate">{student.name}</h2>
             <p className="text-sm text-gray-500">{student.adno}</p>
@@ -247,6 +277,9 @@ export default function StudentDetailPage() {
             ...(student.dateOfBirth ? [{ icon: Calendar, label: "Date of Birth",  value: new Date(student.dateOfBirth).toLocaleDateString("en-GB") }] : []),
             ...(student.guardianName ? [{ icon: User, label: "Guardian",   value: `${student.guardianName} (${student.relationToStudent ?? "guardian"})` }] : []),
             ...(student.parentPhone ? [{ icon: Phone, label: "Parent Phone", value: student.parentPhone }] : []),
+            ...(student.bloodGroup ? [{ icon: Heart, label: "Blood Group", value: student.bloodGroup }] : []),
+            ...(student.address || student.city ? [{ icon: MapPin, label: "Address", value: [student.address, student.city, student.state].filter(Boolean).join(", ") }] : []),
+            ...(student.emergencyContactName ? [{ icon: AlertCircle, label: "Emergency Contact", value: `${student.emergencyContactName}${student.emergencyContactPhone ? ` (${student.emergencyContactPhone})` : ""}` }] : []),
             ...(student.accademicYear ? [{ icon: Calendar, label: "Academic Year", value: student.accademicYear.name }] : []),
           ].map(({ icon: Icon, label, value }) => (
             <div key={label} className="bg-gray-50 rounded-xl p-3 flex gap-2.5 items-start">
@@ -357,6 +390,59 @@ export default function StudentDetailPage() {
                   <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl">{submitError}</div>
                 )}
 
+                {/* Photo Upload */}
+                <section>
+                  <p className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3">Photo</p>
+                  <div className="flex items-center gap-4">
+                    {avatarPreview ? (
+                      <div className="relative w-20 h-20 rounded-2xl overflow-hidden">
+                        <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
+                      </div>
+                    ) : student.photoUrl ? (
+                      <img src={student.photoUrl} alt={student.name}
+                        className="w-20 h-20 rounded-2xl object-cover border border-gray-200"
+                      />
+                    ) : (
+                      <div className="w-20 h-20 rounded-2xl bg-gray-100 flex items-center justify-center text-3xl font-bold text-gray-400">
+                        <Users className="w-8 h-8" />
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <label className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-gray-700 cursor-pointer transition-colors w-fit">
+                        {uploadingPhoto ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Upload className="w-4 h-4" />
+                        )}
+                        {uploadingPhoto ? "Uploading..." : "Choose Photo"}
+                        <input type="file" accept="image/*" disabled={uploadingPhoto}
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = () => setAvatarPreview(reader.result as string);
+                            reader.readAsDataURL(file);
+                            if (!activeClientId || !accessToken) return;
+                            setUploadingPhoto(true);
+                            try {
+                              const result = await uploadStudentPhoto(activeClientId, accessToken, student.id, file);
+                              setAvatarFile(null);
+                              setAvatarPreview(null);
+                              // Update photoUrl directly from upload response
+                              setStudent(prev => prev ? { ...prev, photoUrl: result.photoUrl, photo: result.photo } : prev);
+                            } catch (e) {
+                              setSubmitError((e as Error).message);
+                            } finally {
+                              setUploadingPhoto(false);
+                              e.target.value = '';
+                            }
+                          }}
+                          className="hidden" />
+                      </label>
+                    </div>
+                  </div>
+                </section>
+
                 {/* Student Info */}
                 <section>
                   <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide mb-3">Student Info</p>
@@ -402,6 +488,56 @@ export default function StudentDetailPage() {
                         {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                       </select>
                     </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">Blood Group</label>
+                      <select value={form.bloodGroup} onChange={(e) => setForm(f => f ? { ...f, bloodGroup: e.target.value } : f)}
+                        className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm">
+                        <option value="">— Select —</option>
+                        {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bg) => (
+                          <option key={bg} value={bg}>{bg}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">Address</label>
+                      <textarea value={form.address}
+                        onChange={(e) => setForm(f => f ? { ...f, address: e.target.value } : f)}
+                        rows={2}
+                        className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm resize-none"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">City</label>
+                        <input type="text" value={form.city}
+                          onChange={(e) => setForm(f => f ? { ...f, city: e.target.value } : f)}
+                          className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">State</label>
+                        <input type="text" value={form.state}
+                          onChange={(e) => setForm(f => f ? { ...f, state: e.target.value } : f)}
+                          className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">Country</label>
+                        <input type="text" value={form.country}
+                          onChange={(e) => setForm(f => f ? { ...f, country: e.target.value } : f)}
+                          className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">Pincode</label>
+                        <input type="text" value={form.pincode}
+                          onChange={(e) => setForm(f => f ? { ...f, pincode: e.target.value } : f)}
+                          className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </section>
 
@@ -434,6 +570,35 @@ export default function StudentDetailPage() {
                           <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
                         ))}
                       </select>
+                    </div>
+                  </div>
+                </section>
+
+                <div className="border-t border-dashed border-gray-200" />
+
+                {/* Emergency Contact */}
+                <section>
+                  <p className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-3">Emergency Contact</p>
+                  <div className="space-y-3">
+                    {([
+                      { key: "emergencyContactName" as const, label: "Contact Name", placeholder: "Emergency contact person", type: "text" },
+                      { key: "emergencyContactPhone" as const, label: "Contact Phone", placeholder: "10-digit mobile", type: "tel" },
+                    ]).map(({ key, label, placeholder, type }) => (
+                      <div key={key}>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">{label}</label>
+                        <input type={type} placeholder={placeholder} value={form[key]}
+                          onChange={(e) => setForm(f => f ? { ...f, [key]: e.target.value } : f)}
+                          className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-amber-400 focus:bg-white text-sm transition-colors"
+                        />
+                      </div>
+                    ))}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">Medical Notes</label>
+                      <textarea value={form.medicalNotes}
+                        onChange={(e) => setForm(f => f ? { ...f, medicalNotes: e.target.value } : f)}
+                        rows={2}
+                        className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-amber-400 text-sm resize-none"
+                      />
                     </div>
                   </div>
                 </section>

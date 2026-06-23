@@ -36,6 +36,7 @@ import AdminGlobalClassSubjectsPage from "../app/admin/global-class-subjects/pag
 import AdminPostersPage from "../app/admin/posters/page";
 import AdminPresentPage from "../app/admin/present/page";
 import { default as AdminProfilePage, default as CommitteeProfilePage, default as ParentProfilePage, default as TeacherProfilePage } from "../app/admin/profile/page";
+import ParentStudentProfile from "../app/parent/students/page";
 import AdminReportsPage from "../app/admin/reports/page";
 import AdminStudentDetailPage from "../app/admin/students/[id]/page";
 import AdminStudentsPage from "../app/admin/students/page";
@@ -232,6 +233,7 @@ export default function App() {
 
         {/* Parent */}
         <Route path="/parent" element={<ParentDashboard />} />
+        <Route path="/parent/students" element={<ParentStudentProfile />} />
         <Route path="/parent/attendance" element={<ParentAttendancePage />} />
         <Route path="/parent/fees" element={<ParentFeesPage />} />
         <Route path="/parent/homework" element={<ParentHomeworkPage />} />
@@ -246,6 +248,7 @@ export default function App() {
 
         {/* Parent — slug-prefixed */}
         <Route path="/m/:slug/parent" element={<ParentDashboard />} />
+        <Route path="/m/:slug/parent/students" element={<ParentStudentProfile />} />
         <Route path="/m/:slug/parent/attendance" element={<ParentAttendancePage />} />
         <Route path="/m/:slug/parent/leave-requests" element={<ParentLeaveRequestsPage />} />
         <Route path="/m/:slug/parent/fees" element={<ParentFeesPage />} />

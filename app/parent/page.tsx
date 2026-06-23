@@ -14,6 +14,7 @@ import {
   GraduationCap,
   Bell,
   Moon,
+  User,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -41,6 +42,12 @@ export default function ParentDashboard() {
   const childCount = user?.accessibleStudentIds?.length ?? 0;
 
   const actions = [
+    {
+      title: "Student Profile",
+      icon: User,
+      href: "/parent/students",
+      desc: "View profile details",
+    },
     {
       title: t("parentPages", "attendanceTitle", lang),
       icon: ClipboardList,

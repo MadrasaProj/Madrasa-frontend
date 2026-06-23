@@ -3,6 +3,7 @@ import { apiFetch } from "@/lib/fetch";
 const API_ORIGIN =
   import.meta.env.VITE_API_ORIGIN ?? "http://localhost:3000";
 const V1_BASE = `${API_ORIGIN}/api/madrasa`;
+const V2_BASE = `${API_ORIGIN}/api/v2`;
 
 export interface StudentRecord {
   id: string;
@@ -25,6 +26,17 @@ export interface StudentRecord {
   teamId: string | null;
   sectionId: string | null;
   isArchived: boolean;
+  photo: string | null;
+  photoUrl?: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  pincode: string | null;
+  bloodGroup: string | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  medicalNotes: string | null;
   createdAt: string;
 }
 
@@ -50,6 +62,15 @@ export interface CreateStudentPayload {
   relationToStudent?: string;
   parentPassword?: string;
   status?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  pincode?: string;
+  bloodGroup?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  medicalNotes?: string;
 }
 
 export interface UpdateStudentPayload extends Partial<CreateStudentPayload> {}
@@ -142,6 +163,43 @@ export function updateStudent(
     token,
     { method: "PATCH", body: JSON.stringify(data), signal },
   );
+}
+
+export function getStudentProfileV2(
+  clientId: string,
+  token: string,
+  studentId: string,
+  signal?: AbortSignal,
+): Promise<StudentRecord> {
+  return apiFetch<StudentRecord>(
+    `${V2_BASE}/${clientId}/students/${studentId}`,
+    token,
+    { signal },
+  );
+}
+
+export async function uploadStudentPhoto(
+  clientId: string,
+  token: string,
+  studentId: string,
+  file: File,
+): Promise<{ id: string; photo: string; photoUrl: string | null }> {
+  const formData = new FormData();
+  formData.append("photo", file);
+
+  const url = `${V2_BASE}/${clientId}/students/${studentId}/photo`;
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: "Upload failed" }));
+    throw new Error(err.message || "Upload failed");
+  }
+
+  return res.json();
 }
 
 export function deleteStudent(

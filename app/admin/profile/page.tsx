@@ -1,13 +1,11 @@
 import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { updateProfile } from "@/lib/super-admin-api";
+import { updateProfile, type UpdateProfileDto } from "@/lib/super-admin-api";
 import { useAuthStore } from "@/store/auth";
-import { UserCircle2, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { UserCircle2, Loader2, CheckCircle, AlertCircle, Phone, Users, Mail } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-
-// ── Role badge ────────────────────────────────────────────────────────────────
 
 const ROLE_BADGE: Record<string, string> = {
   SUPER_ADMIN: "bg-indigo-100 text-indigo-700",
@@ -25,12 +23,20 @@ const ROLE_LABEL: Record<string, string> = {
   COMMITTEE: "Committee",
 };
 
-// ── Main Page ──────────────────────────────────────────────────────────────────
-
 export default function ProfilePage() {
   const { user, accessToken, updateUser } = useAuthStore();
+  const isParent = user?.actorType === "PARENT";
 
   const [name, setName] = useState(user?.name ?? "");
+  const [parentAltPhone, setParentAltPhone] = useState("");
+  const [parentEmail, setParentEmail] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [country, setCountry] = useState("");
+  const [pincode, setPincode] = useState("");
+  const [bloodGroup, setBloodGroup] = useState("");
+
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -48,7 +54,7 @@ export default function ProfilePage() {
 
     if (!name.trim()) { setError("Name cannot be empty."); return; }
 
-    const dto: { name?: string; currentPassword?: string; newPassword?: string } = {};
+    const dto: UpdateProfileDto = {};
 
     if (name !== user?.name) dto.name = name.trim();
 
@@ -60,7 +66,19 @@ export default function ProfilePage() {
       dto.newPassword = newPassword;
     }
 
-    if (!dto.name && !dto.newPassword) {
+    if (isParent) {
+      if (parentAltPhone) dto.parentAltPhone = parentAltPhone;
+      if (parentEmail) dto.parentEmail = parentEmail;
+      if (address) dto.address = address;
+      if (city) dto.city = city;
+      if (state) dto.state = state;
+      if (country) dto.country = country;
+      if (pincode) dto.pincode = pincode;
+      if (bloodGroup) dto.bloodGroup = bloodGroup;
+    }
+
+    if (!dto.name && !dto.newPassword && !dto.parentAltPhone && !dto.parentEmail &&
+        !dto.address && !dto.city && !dto.state && !dto.country && !dto.pincode && !dto.bloodGroup) {
       setError("No changes to save.");
       return;
     }
@@ -111,6 +129,20 @@ export default function ProfilePage() {
               )}
             </div>
           </div>
+          {isParent && (
+            <div className="flex gap-4 pt-3 border-t border-gray-100">
+              {user?.parentPhone && (
+                <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                  <Phone className="w-3.5 h-3.5" /> {user.parentPhone}
+                </div>
+              )}
+              {user?.accessibleStudents && (
+                <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                  <Users className="w-3.5 h-3.5" /> {user.accessibleStudents.length} child{user.accessibleStudents.length !== 1 ? "ren" : ""}
+                </div>
+              )}
+            </div>
+          )}
         </motion.div>
 
         {/* Edit form */}
@@ -143,6 +175,72 @@ export default function ProfilePage() {
                 placeholder="Your full name"
               />
             </div>
+
+            {isParent && (
+              <>
+                <div>
+                  <label className={labelCls}>Alternate Phone</label>
+                  <input
+                    value={parentAltPhone}
+                    onChange={(e) => setParentAltPhone(e.target.value)}
+                    className={inputCls}
+                    placeholder="10-digit mobile number"
+                    type="tel"
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Email</label>
+                  <input
+                    value={parentEmail}
+                    onChange={(e) => setParentEmail(e.target.value)}
+                    className={inputCls}
+                    placeholder="parent@email.com"
+                    type="email"
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Address</label>
+                  <textarea
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    className={inputCls}
+                    placeholder="Full address"
+                    rows={2}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className={labelCls}>City</label>
+                    <input value={city} onChange={(e) => setCity(e.target.value)} className={inputCls} placeholder="City" />
+                  </div>
+                  <div>
+                    <label className={labelCls}>State</label>
+                    <input value={state} onChange={(e) => setState(e.target.value)} className={inputCls} placeholder="State" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className={labelCls}>Country</label>
+                    <input value={country} onChange={(e) => setCountry(e.target.value)} className={inputCls} placeholder="Country" />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Pincode</label>
+                    <input value={pincode} onChange={(e) => setPincode(e.target.value)} className={inputCls} placeholder="Pincode" />
+                  </div>
+                </div>
+                <div>
+                  <label className={labelCls}>Blood Group</label>
+                  <select value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)}
+                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white"
+                  >
+                    <option value="">— Select —</option>
+                    {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bg) => (
+                      <option key={bg} value={bg}>{bg}</option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
           </div>
         </motion.div>
 

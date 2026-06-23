@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard, Users,   ClipboardList, BookOpen, FileText,
+  LayoutDashboard, Users, User, ClipboardList, BookOpen, FileText,
   CreditCard, BarChart3, Bell, Settings, Star, BookMarked,
   UserCircle, Home, GraduationCap, Moon, IndianRupee,
   BadgeCheck, FileBarChart2, Megaphone, UserCog, Activity, LogOut,
@@ -70,6 +70,7 @@ const teacherLinks = [
 
 const parentLinks = [
   { href: "/parent",               icon: Home,            key: "home"         as NavKey },
+  { href: "/parent/students",         icon: User,            key: "students"     as NavKey },
   { href: "/parent/attendance",       icon: ClipboardList,   key: "attendance"    as NavKey },
   { href: "/parent/leave-requests",   icon: FilePen,         key: "leaveRequests" as NavKey },
   { href: "/parent/homework",         icon: BookOpen,        key: "homework"      as NavKey },

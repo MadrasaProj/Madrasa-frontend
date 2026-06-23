@@ -14,6 +14,7 @@ import {
   createStudent,
   updateStudent,
   deleteStudent,
+  uploadStudentPhoto,
   type StudentRecord,
   type CreateStudentPayload,
 } from "@/lib/students-api";
@@ -61,6 +62,15 @@ interface FormState {
   parentEmail: string;
   relationToStudent: string;
   parentPassword: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  pincode: string;
+  bloodGroup: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+  medicalNotes: string;
 }
 const EMPTY_FORM: FormState = {
   name: "",
@@ -75,6 +85,15 @@ const EMPTY_FORM: FormState = {
   parentEmail: "",
   relationToStudent: "father",
   parentPassword: "",
+  address: "",
+  city: "",
+  state: "",
+  country: "",
+  pincode: "",
+  bloodGroup: "",
+  emergencyContactName: "",
+  emergencyContactPhone: "",
+  medicalNotes: "",
 };
 
 function studentToForm(s: StudentRecord): FormState {
@@ -84,13 +103,22 @@ function studentToForm(s: StudentRecord): FormState {
     adno: s.adno,
     classId: s.classId ?? "",
     gender: s.gender ?? "MALE",
-    dateOfBirth: s.dateOfBirth ? s.dateOfBirth.slice(0, 10) : "", // strip time for date input
+    dateOfBirth: s.dateOfBirth ? s.dateOfBirth.slice(0, 10) : "",
     guardianName: s.guardianName ?? "",
     parentPhone: s.parentPhone ?? "",
     parentAltPhone: s.parentAltPhone ?? "",
     parentEmail: s.parentEmail ?? "",
     relationToStudent: s.relationToStudent ?? "father",
     parentPassword: "",
+    address: s.address ?? "",
+    city: s.city ?? "",
+    state: s.state ?? "",
+    country: s.country ?? "",
+    pincode: s.pincode ?? "",
+    bloodGroup: s.bloodGroup ?? "",
+    emergencyContactName: s.emergencyContactName ?? "",
+    emergencyContactPhone: s.emergencyContactPhone ?? "",
+    medicalNotes: s.medicalNotes ?? "",
   };
 }
 
@@ -248,6 +276,9 @@ export default function AdminStudentsPage() {
   const [deleteTarget, setDeleteTarget] = useState<StudentRecord | null>(null);
 
   const [showImport, setShowImport] = useState(false);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load classes once
@@ -364,6 +395,15 @@ export default function AdminStudentsPage() {
           ? { relationToStudent: form.relationToStudent }
           : {}),
         ...(form.parentPassword ? { parentPassword: form.parentPassword } : {}),
+        ...(form.address ? { address: form.address.trim() } : {}),
+        ...(form.city ? { city: form.city.trim() } : {}),
+        ...(form.state ? { state: form.state.trim() } : {}),
+        ...(form.country ? { country: form.country.trim() } : {}),
+        ...(form.pincode ? { pincode: form.pincode.trim() } : {}),
+        ...(form.bloodGroup ? { bloodGroup: form.bloodGroup } : {}),
+        ...(form.emergencyContactName ? { emergencyContactName: form.emergencyContactName.trim() } : {}),
+        ...(form.emergencyContactPhone ? { emergencyContactPhone: form.emergencyContactPhone.trim() } : {}),
+        ...(form.medicalNotes ? { medicalNotes: form.medicalNotes.trim() } : {}),
         ...(user?.defaultAcademicYearId
           ? { accademicYearId: user.defaultAcademicYearId }
           : {}),
@@ -384,6 +424,30 @@ export default function AdminStudentsPage() {
       if (apiErr.fieldErrors) setFieldErrors(apiErr.fieldErrors);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setAvatarPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleAvatarUpload = async () => {
+    if (!avatarFile || !activeClientId || !accessToken || !isEditing) return;
+    setUploadingPhoto(true);
+    try {
+      await uploadStudentPhoto(activeClientId, accessToken, (drawer as StudentRecord).id, avatarFile);
+      setAvatarFile(null);
+      setAvatarPreview(null);
+      loadStudents(page, search, activeClassId, gender, pageSize, sortBy, sortDir);
+    } catch (err) {
+      setSubmitError((err as Error).message);
+    } finally {
+      setUploadingPhoto(false);
     }
   };
 
@@ -797,6 +861,61 @@ export default function AdminStudentsPage() {
                   </div>
                 )}
 
+                {/* Photo Upload */}
+                <section>
+                  <div className="flex items-center gap-2 mb-3">
+                    <p className="text-sm font-bold text-gray-700 uppercase tracking-wide">Photo</p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    {avatarPreview ? (
+                      <div className="relative w-20 h-20 rounded-2xl overflow-hidden">
+                        <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
+                      </div>
+                    ) : isEditing && (drawer as StudentRecord).photo ? (
+                      <div className="w-20 h-20 rounded-2xl bg-gray-100 flex items-center justify-center text-3xl font-bold text-gray-400">
+                        {(drawer as StudentRecord).name.charAt(0)}
+                      </div>
+                    ) : (
+                      <div className="w-20 h-20 rounded-2xl bg-gray-100 flex items-center justify-center text-3xl font-bold text-gray-400">
+                        <Users className="w-8 h-8" />
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <label className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-gray-700 cursor-pointer transition-colors w-fit">
+                        {uploadingPhoto ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Upload className="w-4 h-4" />
+                        )}
+                        {uploadingPhoto ? "Uploading..." : "Choose Photo"}
+                        <input type="file" accept="image/*" disabled={uploadingPhoto}
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = () => setAvatarPreview(reader.result as string);
+                            reader.readAsDataURL(file);
+                            if (!activeClientId || !accessToken || !isEditing) return;
+                            setUploadingPhoto(true);
+                            try {
+                              const result = await uploadStudentPhoto(activeClientId, accessToken, (drawer as StudentRecord).id, file);
+                              setAvatarFile(null);
+                              setAvatarPreview(null);
+                              // Update drawer student photoUrl directly
+                              loadStudents(page, search, activeClassId, gender, pageSize, sortBy, sortDir);
+                            } catch (err) {
+                              setSubmitError((err as Error).message);
+                            } finally {
+                              setUploadingPhoto(false);
+                              e.target.value = '';
+                            }
+                          }}
+                          className="hidden" />
+                      </label>
+                    </div>
+                  </div>
+                </section>
+
                 {/* Student Info */}
                 <section>
                   <div className="flex items-center gap-2 mb-3">
@@ -911,6 +1030,60 @@ export default function AdminStudentsPage() {
                         ))}
                       </select>
                     </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">Blood Group</label>
+                      <select
+                        value={form.bloodGroup}
+                        onChange={(e) => setForm((f) => ({ ...f, bloodGroup: e.target.value }))}
+                        className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
+                      >
+                        <option value="">— Select —</option>
+                        {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bg) => (
+                          <option key={bg} value={bg}>{bg}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">Address</label>
+                      <textarea
+                        value={form.address}
+                        onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+                        rows={2}
+                        className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm resize-none"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">City</label>
+                        <input type="text" value={form.city}
+                          onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
+                          className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">State</label>
+                        <input type="text" value={form.state}
+                          onChange={(e) => setForm((f) => ({ ...f, state: e.target.value }))}
+                          className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">Country</label>
+                        <input type="text" value={form.country}
+                          onChange={(e) => setForm((f) => ({ ...f, country: e.target.value }))}
+                          className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">Pincode</label>
+                        <input type="text" value={form.pincode}
+                          onChange={(e) => setForm((f) => ({ ...f, pincode: e.target.value }))}
+                          className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </section>
 
@@ -1012,6 +1185,40 @@ export default function AdminStudentsPage() {
                           </option>
                         ))}
                       </select>
+                    </div>
+                  </div>
+                </section>
+
+                <div className="border-t border-dashed border-gray-200" />
+
+                {/* Emergency Contact */}
+                <section>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-5 h-5 rounded-full bg-amber-600 flex items-center justify-center text-white text-xs font-bold">
+                      3
+                    </div>
+                    <p className="text-sm font-bold text-amber-700 uppercase tracking-wide">Emergency Contact</p>
+                  </div>
+                  <div className="space-y-3">
+                    {[
+                      { key: "emergencyContactName" as const, label: "Contact Name", placeholder: "Emergency contact person", type: "text" },
+                      { key: "emergencyContactPhone" as const, label: "Contact Phone", placeholder: "10-digit mobile", type: "tel" },
+                    ].map(({ key, label, placeholder, type }) => (
+                      <div key={key}>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">{label}</label>
+                        <input type={type} placeholder={placeholder} value={form[key]}
+                          onChange={(e) => { setForm((f) => ({ ...f, [key]: e.target.value })); setFieldErrors((fe) => ({ ...fe, [key]: "" })); }}
+                          className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:bg-white text-sm transition-colors focus:border-amber-400"
+                        />
+                      </div>
+                    ))}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">Medical Notes</label>
+                      <textarea value={form.medicalNotes}
+                        onChange={(e) => setForm((f) => ({ ...f, medicalNotes: e.target.value }))}
+                        rows={2}
+                        className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-amber-400 text-sm resize-none"
+                      />
                     </div>
                   </div>
                 </section>
