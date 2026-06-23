@@ -25,7 +25,7 @@ type NavKey =
   | "results" | "alerts" | "overview" | "finance" | "announcements" | "notifications"
   | "madrasas" | "superUsers" | "platformReports" | "profile"
   | "teacherCheckin" | "posters" | "artsfest" | "academics" | "operations" | "financeExtras" | "settings"
-  | "bestPerformance" | "feeTypes";
+  | "bestPerformance" | "feeTypes" | "globalClassSubjects";
 
 const adminLinks = [
   { href: "/admin",                icon: LayoutDashboard, key: "dashboard"     as NavKey },
@@ -101,6 +101,7 @@ const superAdminLinks = [
   { href: "/admin/super-users",        icon: ShieldCheck,     key: "superUsers"      as NavKey },
   { href: "/admin/ibadah-config",      icon: Moon,            key: "ibadah"          as NavKey },
   { href: "/admin/posters",            icon: Image,           key: "posters"         as NavKey },
+  { href: "/admin/global-class-subjects", icon: BookOpen,     key: "globalClassSubjects" as NavKey },
   { href: "/admin/platform-reports",   icon: BarChart3,       key: "platformReports" as NavKey },
   { href: "/admin/profile",            icon: UserCircle2,     key: "profile"         as NavKey },
 ];

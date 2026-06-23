@@ -32,6 +32,7 @@ import AdminNotificationsPage from "../app/admin/notifications/page";
 import AdminOtherPaymentsPage from "../app/admin/other-payments/page";
 import AdminDashboard from "../app/admin/page";
 import AdminPlatformReportsPage from "../app/admin/platform-reports/page";
+import AdminGlobalClassSubjectsPage from "../app/admin/global-class-subjects/page";
 import AdminPostersPage from "../app/admin/posters/page";
 import AdminPresentPage from "../app/admin/present/page";
 import { default as AdminProfilePage, default as CommitteeProfilePage, default as ParentProfilePage, default as TeacherProfilePage } from "../app/admin/profile/page";
@@ -143,6 +144,7 @@ export default function App() {
         <Route path="/admin/madrasas" element={<AdminMadrasasPage />} />
         <Route path="/admin/super-users" element={<AdminSuperUsersPage />} />
         <Route path="/admin/platform-reports" element={<AdminPlatformReportsPage />} />
+        <Route path="/admin/global-class-subjects" element={<AdminGlobalClassSubjectsPage />} />
         <Route path="/admin/profile" element={<AdminProfilePage />} />
 
         {/* Profile for all roles */}

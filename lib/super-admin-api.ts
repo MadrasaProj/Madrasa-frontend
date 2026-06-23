@@ -213,6 +213,94 @@ export function listEducationSystems(token: string) {
   return getJson<{ data: EducationSystemInfo[]; total: number }>("/super-admin/education-systems", token);
 }
 
+// ── Education Systems CRUD ────────────────────────────────────────────────────
+
+export interface CreateEducationSystemDto {
+  name: string;
+  code: string;
+  description?: string;
+}
+
+export interface UpdateEducationSystemDto {
+  name?: string;
+  code?: string;
+  description?: string;
+  status?: 'ACTIVE' | 'INACTIVE';
+}
+
+export function createEducationSystem(dto: CreateEducationSystemDto, token: string) {
+  return mutateJson<EducationSystemInfo>('POST', '/super-admin/education-systems', dto, token);
+}
+
+export function updateEducationSystem(systemId: string, dto: UpdateEducationSystemDto, token: string) {
+  return mutateJson<EducationSystemInfo>('PATCH', `/super-admin/education-systems/${systemId}`, dto, token);
+}
+
+export function deleteEducationSystem(systemId: string, token: string) {
+  return deleteJson(`/super-admin/education-systems/${systemId}`, token);
+}
+
+// ── Grade Levels CRUD ────────────────────────────────────────────────────────
+
+export interface GradeLevelDetail {
+  id: string;
+  name: string;
+  level: number;
+  status?: string;
+}
+
+export function createGradeLevel(systemId: string, dto: { name: string; level: number }, token: string) {
+  return mutateJson<GradeLevelDetail>('POST', `/super-admin/education-systems/${systemId}/grade-levels`, dto, token);
+}
+
+export function updateGradeLevel(gradeLevelId: string, dto: { name?: string; level?: number; status?: 'ACTIVE' | 'INACTIVE' }, token: string) {
+  return mutateJson<GradeLevelDetail>('PATCH', `/super-admin/grade-levels/${gradeLevelId}`, dto, token);
+}
+
+export function deleteGradeLevel(gradeLevelId: string, token: string) {
+  return deleteJson(`/super-admin/grade-levels/${gradeLevelId}`, token);
+}
+
+// ── Class Subjects CRUD ───────────────────────────────────────────────────────
+
+export interface ClassSubjectInfo {
+  id: string;
+  subjectName: string;
+  maxMarks?: number | null;
+  passMarks?: number | null;
+  gradeConfig?: Record<string, any> | null;
+}
+
+export interface CreateClassSubjectDto {
+  subjectName: string;
+  maxMarks?: number;
+  passMarks?: number;
+  gradeConfig?: Record<string, any>;
+}
+
+export interface UpdateClassSubjectDto {
+  subjectName?: string;
+  maxMarks?: number | null;
+  passMarks?: number | null;
+  gradeConfig?: Record<string, any> | null;
+}
+
+export function getGradeLevelSubjects(gradeLevelId: string, token: string) {
+  return getJson<{ data: ClassSubjectInfo[] }>(`/super-admin/grade-levels/${gradeLevelId}/class-subjects`, token);
+}
+
+export function createClassSubject(gradeLevelId: string, dto: CreateClassSubjectDto, token: string) {
+  return mutateJson<ClassSubjectInfo>('POST', `/super-admin/grade-levels/${gradeLevelId}/class-subjects`, dto, token);
+}
+
+export function updateClassSubject(classSubjectId: string, dto: UpdateClassSubjectDto, token: string) {
+  return mutateJson<ClassSubjectInfo>('PATCH', `/super-admin/class-subjects/${classSubjectId}`, dto, token);
+}
+
+export function deleteClassSubject(classSubjectId: string, token: string) {
+  return deleteJson(`/super-admin/class-subjects/${classSubjectId}`, token);
+}
+
 // ── Platform Report ───────────────────────────────────────────────────────────
 
 export interface PlatformStats {
