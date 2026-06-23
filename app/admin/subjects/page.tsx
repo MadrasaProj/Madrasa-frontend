@@ -9,11 +9,10 @@ import {
 } from "@/lib/subjects-api";
 import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
 import { getTeachers, type TeacherRecord } from "@/lib/teachers-api";
-import { ExamConfigForm } from "@/components/exam/ExamConfigForm";
 import { useAuthStore } from "@/store/auth";
 import { useLocation } from "react-router-dom";
 import {
-  BookOpen, Plus, Pencil, Loader2, Trash2, X, Users, Search, GraduationCap, ChevronDown, ChevronRight, Settings2,
+  BookOpen, Plus, Pencil, Loader2, Trash2, X, Users, Search, GraduationCap,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -69,8 +68,6 @@ export default function AdminSubjectsPage() {
   const [form, setForm]               = useState<FormState>(EMPTY_FORM);
   const [saving, setSaving]           = useState(false);
   const [saveError, setSaveError]     = useState("");
-  const [showExamConfig, setShowExamConfig] = useState(false);
-  const subjectExamConfig = useRef<{ maxMarks: number | null; gradeConfig: Record<string, { min: number }> } | null>(null);
   const [deleting, setDeleting]       = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SubjectRecord | null>(null);
@@ -117,13 +114,11 @@ export default function AdminSubjectsPage() {
   const openAdd = () => {
     setEditTarget(null);
     setForm({ ...EMPTY_FORM, classId: filterClassId });
-    setSaveError(""); setShowExamConfig(false); setShowDrawer(true);
+    setSaveError(""); setShowDrawer(true);
   };
 
   const openEdit = (s: SubjectRecord) => {
     setEditTarget(s); setForm(subjectToForm(s)); setSaveError("");
-    subjectExamConfig.current = null;
-    setShowExamConfig(!!(s.maxMarks || s.gradeConfig));
     setShowDrawer(true);
   };
 
@@ -133,12 +128,10 @@ export default function AdminSubjectsPage() {
     setSaving(true); setSaveError("");
     try {
       if (editTarget) {
-        const examConfig = subjectExamConfig.current;
         const updated = await updateSubject(cid, token, editTarget.id, {
           name: form.name.trim(),
           teacherId: isPeriodBased ? (form.teacherId || null) : undefined,
           status: form.status,
-          ...(examConfig && { maxMarks: examConfig.maxMarks, gradeConfig: examConfig.gradeConfig }),
         });
         setSubjects((prev) => prev.map((s) => (s.id === updated.id ? { ...s, ...updated } : s)));
       } else {
@@ -469,34 +462,6 @@ export default function AdminSubjectsPage() {
                   </div>
                 )}
 
-                {/* Exam Configuration (edit only — needs subject ID) */}
-                {editTarget && (
-                  <div className="border-t border-gray-100 pt-4">
-                    <button
-                      onClick={() => setShowExamConfig((v) => !v)}
-                      className="flex items-center justify-between w-full py-2 text-sm font-semibold text-gray-700 hover:text-gray-900 transition-colors"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Settings2 className="w-4 h-4 text-blue-600" />
-                        <span>Exam Configuration</span>
-                      </div>
-                      {showExamConfig ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                    </button>
-                    {showExamConfig && (
-                      <div className="mt-3">
-                        <ExamConfigForm
-                          clientId={cid}
-                          token={token}
-                          embedded
-                          subjectId={editTarget.id}
-                          initialMaxMarks={editTarget.maxMarks}
-                          initialGradeConfig={editTarget.gradeConfig}
-                          onConfigChange={(cfg) => { subjectExamConfig.current = cfg; }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
 
               <div className="px-5 py-4 border-t border-gray-100 flex gap-3 shrink-0">

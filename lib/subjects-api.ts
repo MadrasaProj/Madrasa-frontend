@@ -6,17 +6,12 @@ const API_ORIGIN =
     : "http://localhost:3000";
 const V2_BASE = `${API_ORIGIN}/api/v2`;
 
-export interface GradeConfigEntry { min: number }
-export type GradeConfig = Record<string, GradeConfigEntry>;
-
 export interface SubjectRecord {
   id: string;
   name: string;
   classId: string;
   teacherId: string | null;
   status: string;
-  maxMarks?: number | null;
-  gradeConfig?: GradeConfig | null;
   class?: { id: string; name: string } | null;
   teacher?: { id: string; name: string } | null;
 }
@@ -62,7 +57,7 @@ export function getSubject(
 export function createSubject(
   clientId: string,
   token: string,
-  data: { name: string; classId: string; teacherId?: string; maxMarks?: number; gradeConfig?: GradeConfig },
+  data: { name: string; classId: string; teacherId?: string },
 ): Promise<SubjectRecord> {
   return apiFetch<SubjectRecord>(`${V2_BASE}/${clientId}/subjects`, token, {
     method: "POST",
@@ -74,7 +69,7 @@ export function updateSubject(
   clientId: string,
   token: string,
   subjectId: string,
-  data: { name?: string; teacherId?: string | null; status?: string; maxMarks?: number | null; gradeConfig?: GradeConfig | null },
+  data: { name?: string; teacherId?: string | null; status?: string },
 ): Promise<SubjectRecord> {
   return apiFetch<SubjectRecord>(
     `${V2_BASE}/${clientId}/subjects/${subjectId}`,
