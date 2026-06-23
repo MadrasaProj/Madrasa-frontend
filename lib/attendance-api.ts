@@ -120,6 +120,33 @@ export function updateAttendanceRecord(
   );
 }
 
+export function bulkDeleteAttendance(
+  clientId: string,
+  token: string,
+  params: { date: string; classId: string },
+  signal?: AbortSignal,
+): Promise<{ deleted: number; date: string; classId: string }> {
+  const q = new URLSearchParams({ date: params.date, classId: params.classId });
+  return apiFetch<{ deleted: number; date: string; classId: string }>(
+    `${DEFAULT_API_BASE}/${clientId}/attendance/bulk?${q}`,
+    token,
+    { method: "DELETE", signal },
+  );
+}
+
+export function deleteAttendanceRecord(
+  clientId: string,
+  token: string,
+  attendanceId: string,
+  signal?: AbortSignal,
+): Promise<{ deleted: boolean; id: string }> {
+  return apiFetch<{ deleted: boolean; id: string }>(
+    `${DEFAULT_API_BASE}/${clientId}/attendance/${attendanceId}`,
+    token,
+    { method: "DELETE", signal },
+  );
+}
+
 export function getStudentAttendance(
   clientId: string,
   token: string,

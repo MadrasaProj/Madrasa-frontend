@@ -5,13 +5,13 @@ import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
 import { getStudents } from "@/lib/students-api";
 import {
-  getClassAttendance, bulkUpsertAttendance,
+  getClassAttendance, bulkUpsertAttendance, bulkDeleteAttendance,
   type AttendanceStatus, type ClassAttendanceRecord,
 } from "@/lib/attendance-api";
 import { useAuthStore } from "@/store/auth";
 import {
   ClipboardList, ChevronLeft, ChevronRight, Save, Loader2,
-  Users, AlertCircle, AlertTriangle, CheckCircle2,
+  Users, AlertCircle, AlertTriangle, CheckCircle2, Trash2,
 } from "lucide-react";
 import { Skeleton, SkeletonList } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
@@ -107,6 +107,7 @@ export default function TeacherAttendancePage() {
   const [saveError,      setSaveError]      = useState<string | null>(null);
   const [saveSuccess,    setSaveSuccess]    = useState(false);
   const [confirmSave,    setConfirmSave]    = useState(false);
+  const [confirmClear,   setConfirmClear]   = useState(false);
 
   const saveSuccessTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (saveSuccessTimer.current) clearTimeout(saveSuccessTimer.current); }, []);
@@ -193,6 +194,20 @@ export default function TeacherAttendancePage() {
     setSaveSuccess(false);
   };
 
+  const clearAll = useCallback(async () => {
+    if (!activeClassId) return;
+    setSaving(true);
+    try {
+      await bulkDeleteAttendance(cid, token, { date, classId: activeClassId });
+      await loadAttendance(activeClassId, date);
+    } catch (e) {
+      setSaveError((e as Error).message);
+    } finally {
+      setSaving(false);
+      setConfirmClear(false);
+    }
+  }, [activeClassId, cid, token, date, loadAttendance]);
+
   const markAll = (status: ActiveStatus) => {
     setRecords((prev) => {
       const next = new Map(prev);
@@ -207,6 +222,11 @@ export default function TeacherAttendancePage() {
 
   const hasDirty = useMemo(() => {
     for (const r of records.values()) if (r.dirty) return true;
+    return false;
+  }, [records]);
+
+  const hasExisting = useMemo(() => {
+    for (const r of records.values()) if (r.attendanceId) return true;
     return false;
   }, [records]);
 
@@ -294,21 +314,31 @@ export default function TeacherAttendancePage() {
         back
         backHref="/teacher"
         action={
-          hasDirty ? (
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex items-center gap-1.5 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 disabled:opacity-60 transition-colors"
-            >
-              {saving
-                ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</>
-                : <><Save className="w-4 h-4" /> Save</>}
-            </button>
-          ) : saveSuccess ? (
-            <span className="flex items-center gap-1 text-emerald-600 text-sm font-semibold">
-              <CheckCircle2 className="w-4 h-4" /> Saved
-            </span>
-          ) : null
+          <div className="flex items-center gap-2">
+            {hasDirty ? (
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex items-center gap-1.5 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 disabled:opacity-60 transition-colors"
+              >
+                {saving
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</>
+                  : <><Save className="w-4 h-4" /> Save</>}
+              </button>
+            ) : saveSuccess ? (
+              <span className="flex items-center gap-1 text-emerald-600 text-sm font-semibold">
+                <CheckCircle2 className="w-4 h-4" /> Saved
+              </span>
+            ) : null}
+            {hasExisting && (
+              <button
+                onClick={() => setConfirmClear(true)}
+                className="flex items-center gap-1.5 bg-red-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-600 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" /> Clear All
+              </button>
+            )}
+          </div>
         }
       />
 
@@ -434,6 +464,48 @@ export default function TeacherAttendancePage() {
         </>
       )}
 
+      {/* Clear all confirmation modal */}
+      <AnimatePresence>
+        {confirmClear && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-5 h-5 text-red-600" />
+                </div>
+                <div>
+                  <p className="font-bold text-gray-900">Clear all attendance</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{activeClass?.name} · {date}</p>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 mb-5">
+                This will remove all attendance records for this class and date. This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setConfirmClear(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={clearAll}
+                  disabled={saving}
+                  className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-60"
+                >
+                  {saving ? "Clearing..." : "Yes, Clear All"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Bulk mark actions */}
       {activeClassId && records.size > 0 && (
         <div className="flex gap-2 mb-4 flex-wrap">
@@ -558,19 +630,31 @@ export default function TeacherAttendancePage() {
         )
       )}
 
-      {/* Sticky save button — always visible when on mobile for quick access */}
-      {activeClassId && hasDirty && (
+      {/* Sticky save + clear buttons — always visible when on mobile for quick access */}
+      {activeClassId && (hasDirty || hasExisting) && (
         <div className="fixed bottom-20 lg:bottom-6 left-0 right-0 px-4 lg:pl-72 z-20 pointer-events-none">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="pointer-events-auto w-full max-w-2xl mx-auto flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-sm shadow-xl transition-all bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
-          >
-            {saving
-              ? <><Loader2 className="w-5 h-5 animate-spin" /> Saving…</>
-              : <><Save className="w-5 h-5" /> Save Attendance · {summary.ABSENT > 0 ? `${summary.ABSENT} absent` : "All marked"}</>
-            }
-          </button>
+          <div className="pointer-events-auto w-full max-w-2xl mx-auto flex gap-2">
+            {hasDirty && (
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-sm shadow-xl transition-all bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
+              >
+                {saving
+                  ? <><Loader2 className="w-5 h-5 animate-spin" /> Saving…</>
+                  : <><Save className="w-5 h-5" /> Save Attendance · {summary.ABSENT > 0 ? `${summary.ABSENT} absent` : "All marked"}</>
+                }
+              </button>
+            )}
+            {hasExisting && (
+              <button
+                onClick={() => setConfirmClear(true)}
+                className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-sm shadow-xl transition-all bg-red-500 text-white hover:bg-red-600"
+              >
+                <Trash2 className="w-5 h-5" /> Clear All
+              </button>
+            )}
+          </div>
         </div>
       )}
     </DashboardLayout>
