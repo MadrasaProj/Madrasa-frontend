@@ -147,6 +147,7 @@ export const deleteFeeType = (clientId: string, token: string, id: string, signa
 export interface GetPaymentsParams {
   feeTypeId?: string; studentId?: string; classId?: string;
   status?: FeePaymentStatus; academicYearId?: string;
+  collectedBy?: string; handedToAdmin?: boolean;
   skip?: number; take?: number; signal?: AbortSignal;
 }
 

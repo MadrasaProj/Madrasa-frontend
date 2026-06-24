@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { DataTable } from "@/components/ui/DataTable";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import {
   getFeeTypes,
@@ -162,11 +163,13 @@ export default function AdminFeesPage() {
   const [payTotal, setPayTotal] = useState(0);
   const [payLoading, setPayLoading] = useState(false);
   const [paySkip, setPaySkip] = useState(0);
+  const [payTake, setPayTake] = useState(30);
   const [search, setSearch] = useState("");
+  const [filterClass, setFilterClass] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const [classes, setClasses] = useState<ClassRecord[]>([]);
-  const [tab, setTab] = useState<"records" | "reports">("records");
+  const [tab, setTab] = useState<"records" | "reports" | "collected">("records");
 
   // Inline mark-paid state
   const [recording, setRecording] = useState<string | null>(null);
@@ -178,6 +181,10 @@ export default function AdminFeesPage() {
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [cancellingNote, setCancellingNote] = useState("");
   const [cancellingSave, setCancellingSave] = useState(false);
+
+  // Handover confirm state
+  const [handoverConfirm, setHandoverConfirm] = useState<string | null>(null);
+  const [handoverSaving, setHandoverSaving] = useState(false);
 
   // Receipt
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
@@ -241,12 +248,13 @@ export default function AdminFeesPage() {
     try {
       const res = await getPayments(cid, token, {
         feeTypeId: activeTypeId ?? undefined,
+        classId: filterClass || undefined,
         status:
           statusFilter !== "all"
             ? (statusFilter as FeePaymentStatus)
             : undefined,
         skip: paySkip,
-        take: 30,
+        take: payTake,
       });
       setPayments(res.payments);
       setPayTotal(res.total);
@@ -255,7 +263,7 @@ export default function AdminFeesPage() {
     } finally {
       setPayLoading(false);
     }
-  }, [cid, token, activeTypeId, statusFilter, paySkip]);
+  }, [cid, token, activeTypeId, filterClass, statusFilter, paySkip, payTake]);
 
   useEffect(() => {
     if (tab === "records") loadPayments();
@@ -270,6 +278,16 @@ export default function AdminFeesPage() {
   const [reportClassId, setReportClassId] = useState<string>("");
   const [reportPayments, setReportPayments] = useState<FeePayment[]>([]);
   const [reportPayLoading, setReportPayLoading] = useState(false);
+
+  // Collected By tab state
+  const [collectedTeacherId, setCollectedTeacherId] = useState<string>("");
+
+  const [handedOverFilter, setHandedOverFilter] = useState<string>("");
+  const [collectedPayments, setCollectedPayments] = useState<FeePayment[]>([]);
+  const [collectedPayLoading, setCollectedPayLoading] = useState(false);
+  const [collectedTotal, setCollectedTotal] = useState(0);
+  const [collectedSkip, setCollectedSkip] = useState(0);
+  const [collectedTake, setCollectedTake] = useState(30);
 
   const loadReportData = useCallback(async () => {
     if (!cid || !token) return;
@@ -300,6 +318,32 @@ export default function AdminFeesPage() {
   useEffect(() => {
     if (tab === "reports") loadReportData();
   }, [tab, loadReportData]);
+
+  // Collected By tab loader
+  const loadCollectedPayments = useCallback(async () => {
+    if (!cid || !token) return;
+    setCollectedPayLoading(true);
+    try {
+      const res = await getPayments(cid, token, {
+        feeTypeId: activeTypeId ?? undefined,
+        collectedBy: collectedTeacherId || undefined,
+        handedToAdmin: handedOverFilter ? handedOverFilter === "yes" : undefined,
+        status: "PAID",
+        skip: collectedSkip,
+        take: collectedTake,
+      });
+      setCollectedPayments(res.payments);
+      setCollectedTotal(res.total);
+    } catch {
+      /* silent */
+    } finally {
+      setCollectedPayLoading(false);
+    }
+  }, [cid, token, activeTypeId, collectedTeacherId, collectedSkip, collectedTake, handedOverFilter]);
+
+  useEffect(() => {
+    if (tab === "collected") loadCollectedPayments();
+  }, [tab, loadCollectedPayments]);
 
   const [typeDropdownOpen, setTypeDropdownOpen] = useState(false);
   const typeDropdownRef = useRef<HTMLDivElement | null>(null);
@@ -476,6 +520,20 @@ export default function AdminFeesPage() {
     }
   };
 
+  const toggleHandover = async (payment: FeePayment) => {
+    setHandoverSaving(true);
+    try {
+      await updatePayment(cid, token, payment.id, { handedToAdmin: !payment.handedToAdmin });
+      setHandoverConfirm(null);
+      loadPayments();
+      if (tab === "collected") loadCollectedPayments();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setHandoverSaving(false);
+    }
+  };
+
   const showReceiptFor = async (id: string) => {
     setLoadingReceipt(id);
     try {
@@ -490,6 +548,18 @@ export default function AdminFeesPage() {
 
   const cancellingPayment = cancelling
     ? payments.find((p) => p.id === cancelling) ?? null
+    : null;
+
+  const recordingPayment = recording
+    ? payments.find((p) => p.id === recording) ?? null
+    : null;
+
+  const editingPayment = editingAmount
+    ? payments.find((p) => p.id === editingAmount) ?? null
+    : null;
+
+  const handoverConfirmPayment = handoverConfirm
+    ? [...payments, ...collectedPayments].find((p) => p.id === handoverConfirm) ?? null
     : null;
 
   const chartData =
@@ -565,9 +635,9 @@ export default function AdminFeesPage() {
               );
             })}
 
-            <div className="sticky right-0 z-10 flex items-center pl-8 bg-gradient-to-l from-white via-white/95 to-transparent">
+            <div className="max-md:sticky max-md:right-0 md:ml-auto z-10 flex items-center max-md:pl-8 max-md:bg-gradient-to-l from-white via-white/95 to-transparent">
               <button ref={chevronBtnRef} onClick={toggleTypeDropdown}
-                className="h-10 w-10 rounded-full inline-flex items-center justify-center transition-all text-gray-500 hover:text-gray-700"
+                className="h-10 w-10 rounded-full inline-flex items-center justify-center transition-all text-gray-500 hover:text-gray-700 shrink-0"
                 title="All fee types"
                 aria-label="All fee types"
                 aria-expanded={typeDropdownOpen}>
@@ -693,7 +763,7 @@ export default function AdminFeesPage() {
 
           {/* Tabs */}
           <div className="flex gap-1.5 mb-4 bg-gray-100 p-1 rounded-xl w-fit">
-            {(["records", "reports"] as const).map((t) => (
+            {(["records", "collected", "reports"] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
@@ -704,7 +774,7 @@ export default function AdminFeesPage() {
                     : "text-gray-500",
                 )}
               >
-                {t === "records" ? "Payment Records" : "Reports"}
+                {t === "records" ? "Payment Records" : t === "collected" ? "Collected By" : "Reports"}
               </button>
             ))}
           </div>
@@ -712,8 +782,8 @@ export default function AdminFeesPage() {
           {/* ── Records tab ── */}
           {tab === "records" && (
             <>
-              <div className="flex gap-2 mb-3">
-                <div className="relative flex-1">
+              <div className="flex gap-2 mb-3 flex-wrap">
+                <div className="relative flex-1 min-w-[200px]">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
                     value={search}
@@ -722,6 +792,16 @@ export default function AdminFeesPage() {
                     className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:border-emerald-400"
                   />
                 </div>
+                <select
+                  value={filterClass}
+                  onChange={(e) => { setFilterClass(e.target.value); setPaySkip(0); }}
+                  className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-emerald-400"
+                >
+                  <option value="">All Classes</option>
+                  {classes.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
                 <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
                   {(["all", "PAID", "PENDING", "OVERDUE"] as const).map((s) => (
                     <button
@@ -745,370 +825,398 @@ export default function AdminFeesPage() {
                 </div>
               </div>
 
-              {payLoading ? (
-                <div className="flex items-center justify-center gap-2 py-10 text-gray-400">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                </div>
-              ) : (
-                <>
-                  <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                    <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
-                      <p className="text-xs font-semibold text-gray-500">
-                        {activeType ? activeType.name : "All Fee Types"} —{" "}
-                        {payTotal} total
-                      </p>
-                      <button
-                        onClick={loadPayments}
-                        className="text-xs text-gray-400 flex items-center gap-1"
-                      >
-                        <RefreshCw className="w-3 h-3" /> Refresh
-                      </button>
-                    </div>
-
-                    <div className="divide-y divide-gray-50">
-                      {filtered.length === 0 ? (
-                        <div className="py-12 text-center text-gray-400 text-sm">
-                          No payment records found
+              <DataTable
+                columns={[
+                  {
+                    key: "student",
+                    header: "Student",
+                    render: (p: FeePayment) => (
+                      <div className="flex items-center gap-2.5">
+                        <div className={cn(
+                          "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0",
+                          p.status === "PAID" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700",
+                        )}>
+                          {p.student.name.charAt(0)}
                         </div>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900 truncate max-w-[180px]">{p.student.name}</p>
+                          <p className="text-xs text-gray-400">{p.student.adno}{p.student.class ? ` · ${p.student.class.name}` : ""}</p>
+                        </div>
+                      </div>
+                    ),
+                  },
+                  ...(activeType ? [] : [{
+                    key: "feeType" as string,
+                    header: "Fee Type",
+                    render: (p: FeePayment) => (
+                      <span className="text-sm text-gray-600">{p.feeType.name}</span>
+                    ),
+                  }]),
+                  {
+                    key: "dueDate",
+                    header: "Due Date",
+                    render: (p: FeePayment) => {
+                      const isPaid = p.status === "PAID";
+                      return (
+                        <span className={cn("text-sm", isPaid ? "text-emerald-600" : "text-amber-600")}>
+                          {isPaid && p.paidAt
+                            ? new Date(p.paidAt).toLocaleDateString("en-GB")
+                            : p.dueDate
+                              ? `Due: ${new Date(p.dueDate).toLocaleDateString("en-GB")}`
+                              : "—"}
+                        </span>
+                      );
+                    },
+                  },
+                  {
+                    key: "amount",
+                    header: "Amount",
+                    render: (p: FeePayment) => (
+                      <span className="text-sm font-bold text-gray-900">₹{Number(p.dueAmount).toLocaleString()}</span>
+                    ),
+                  },
+                  {
+                    key: "status",
+                    header: "Status",
+                    render: (p: FeePayment) => {
+                      const meta = STATUS_META[p.status] ?? STATUS_META.PENDING;
+                      return (
+                        <span className={cn("px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap", meta.bg, meta.color)}>
+                          {p.status === "PAID" ? "✓ " : ""}{meta.label}
+                        </span>
+                      );
+                    },
+                  },
+                  {
+                    key: "collectedBy",
+                    header: "Collector",
+                    render: (p: FeePayment) => (
+                      p.status === "PAID" && p.collectedBy ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-gray-100 text-gray-700 text-xs font-medium">
+                          <Users className="w-3 h-3 text-gray-500" />
+                          {teachers[p.collectedBy] ?? (p.collectedBy === cid ? user?.name ?? "Admin" : p.collectedBy.slice(0, 8))}
+                        </span>
                       ) : (
-                        filtered.map((p) => {
-                          const meta =
-                            STATUS_META[p.status] ?? STATUS_META.PENDING;
-                          const isPaid = p.status === "PAID";
-                          return (
-                            <div key={p.id}>
-                              <div className="flex items-center gap-3 px-4 py-3.5">
-                                <div
-                                  className={cn(
-                                    "w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0",
-                                    isPaid
-                                      ? "bg-emerald-100 text-emerald-700"
-                                      : "bg-amber-100 text-amber-700",
-                                  )}
-                                >
-                                  {p.student.name.charAt(0)}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-semibold text-gray-900 truncate">
-                                    {p.student.name}
-                                  </p>
-                                  <p className="text-xs text-gray-400">
-                                    {p.student.adno}
-                                    {p.student.class
-                                      ? ` · ${p.student.class.name}`
-                                      : ""}
-                                    {!activeType ? ` · ${p.feeType.name}` : ""}
-                                  </p>
-                                  {isPaid && p.collectedBy ? (
-                                    <p className="text-[10px] text-gray-400 mt-0.5">
-                                      Collected by {teachers[p.collectedBy] ?? (p.collectedBy === cid ? user?.name ?? "Admin" : p.collectedBy.slice(0, 8))}
-                                    </p>
-                                  ) : null}
-                                </div>
-                                <div className="text-right shrink-0 mr-1">
-                                  <p className="text-sm font-bold text-gray-900">
-                                    ₹{Number(p.dueAmount).toLocaleString()}
-                                  </p>
-                                  {isPaid && p.paidAt ? (
-                                    <p className="text-[10px] text-emerald-600">
-                                      {new Date(p.paidAt).toLocaleDateString(
-                                        "en-GB",
-                                      )}
-                                    </p>
-                                  ) : p.dueDate ? (
-                                    <p className="text-[10px] text-amber-600">
-                                      Due:{" "}
-                                      {new Date(p.dueDate).toLocaleDateString(
-                                        "en-GB",
-                                      )}
-                                    </p>
-                                  ) : null}
-                                </div>
-                                <span
-                                  className={cn(
-                                    "px-2.5 py-1 rounded-full text-[11px] font-semibold shrink-0",
-                                    meta.bg,
-                                    meta.color,
-                                  )}
-                                >
-                                  {isPaid ? "✓ " : ""}
-                                  {meta.label}
-                                </span>
-                                {isPaid ? (
-                                  <>
-                                    <button
-                                      onClick={() => showReceiptFor(p.id)}
-                                      disabled={loadingReceipt === p.id}
-                                      className="shrink-0 p-1"
-                                    >
-                                      {loadingReceipt === p.id ? (
-                                        <Loader2 className="w-4 h-4 text-gray-300 animate-spin" />
-                                      ) : (
-                                        <Receipt className="w-4 h-4 text-gray-300 hover:text-blue-500 transition-colors" />
-                                      )}
-                                    </button>
-                                    <button
-                                      onClick={async () => {
-                                        try {
-                                          await updatePayment(cid, token, p.id, { handedToAdmin: !p.handedToAdmin });
-                                          loadPayments();
-                                        } catch (e) {
-                                          setError((e as Error).message);
-                                        }
-                                      }}
-                                      className={cn(
-                                        "shrink-0 p-1 rounded-lg text-[10px] font-semibold border transition-colors",
-                                        p.handedToAdmin
-                                          ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                                          : "bg-gray-50 border-gray-200 text-gray-400 hover:border-amber-300 hover:text-amber-600",
-                                      )}
-                                      title={p.handedToAdmin ? "Handed to admin" : "Mark as handed to admin"}
-                                    >
-                                      <Users className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        setCancelling(p.id);
-                                        setCancellingNote("");
-                                      }}
-                                      className="shrink-0 p-1"
-                                      title="Cancel fee"
-                                    >
-                                      <XCircle
-                                        className={cn(
-                                          "w-5 h-5 transition-colors",
-                                          cancelling === p.id
-                                            ? "text-red-500"
-                                            : "text-gray-300 hover:text-red-500",
-                                        )}
-                                      />
-                                    </button>
-                                  </>
-                                ) : p.status === "WAIVED" ? (
-                                  <button
-                                    onClick={() => undoCancel(p)}
-                                    disabled={cancellingSave}
-                                    className="shrink-0 p-1"
-                                    title="Undo cancel"
-                                  >
-                                    <RefreshCw
-                                      className={cn(
-                                        "w-4 h-4 transition-colors",
-                                        cancellingSave
-                                          ? "text-gray-300 animate-spin"
-                                          : "text-gray-300 hover:text-amber-500",
-                                      )}
-                                    />
-                                  </button>
-                                ) : (
-                                  <>
-                                    <button
-                                      onClick={() => {
-                                        setEditingAmount(p.id);
-                                        setCustomAmount(String(p.dueAmount));
-                                      }}
-                                      className="shrink-0 p-1"
-                                      title="Overwrite / Discount fee"
-                                    >
-                                      <Pencil
-                                        className={cn(
-                                          "w-4 h-4 transition-colors",
-                                          editingAmount === p.id
-                                            ? "text-blue-500"
-                                            : "text-gray-300 hover:text-blue-500",
-                                        )}
-                                      />
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        setRecording(p.id);
-                                        setPayMethod("CASH");
-                                        setPayRef("");
-                                      }}
-                                      className="shrink-0 p-1"
-                                      title="Mark paid"
-                                    >
-                                      <CheckCircle
-                                        className={cn(
-                                          "w-5 h-5 transition-colors",
-                                          recording === p.id
-                                            ? "text-emerald-500"
-                                            : "text-gray-300 hover:text-emerald-500",
-                                        )}
-                                      />
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        setCancelling(p.id);
-                                        setCancellingNote("");
-                                      }}
-                                      className="shrink-0 p-1"
-                                      title="Cancel fee"
-                                    >
-                                      <XCircle
-                                        className={cn(
-                                          "w-5 h-5 transition-colors",
-                                          cancelling === p.id
-                                            ? "text-red-500"
-                                            : "text-gray-300 hover:text-red-500",
-                                        )}
-                                      />
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-
-                              {/* Inline mark-paid panel */}
-                              <AnimatePresence>
-                                {recording === p.id && (
-                                  <motion.div
-                                    initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: "auto", opacity: 1 }}
-                                    exit={{ height: 0, opacity: 0 }}
-                                    className="overflow-hidden"
-                                  >
-                                    <div className="px-4 pb-3 border-t border-gray-50 pt-2 space-y-2">
-                                      <div className="grid grid-cols-2 gap-2">
-                                        <select
-                                          value={payMethod}
-                                          onChange={(e) =>
-                                            setPayMethod(e.target.value)
-                                          }
-                                          className="px-3 py-2 rounded-xl border text-xs bg-white focus:outline-none"
-                                        >
-                                          {PAYMENT_METHODS.map((m) => (
-                                            <option key={m} value={m}>
-                                              {m.replace(/_/g, " ")}
-                                            </option>
-                                          ))}
-                                        </select>
-                                        <input
-                                          type="text"
-                                          value={payRef}
-                                          onChange={(e) =>
-                                            setPayRef(e.target.value)
-                                          }
-                                          placeholder="Receipt / Ref no."
-                                          className="px-3 py-2 rounded-xl border text-xs focus:outline-none focus:border-emerald-400"
-                                        />
-                                      </div>
-                                      <div className="flex gap-2">
-                                        <button
-                                          onClick={() => setRecording(null)}
-                                          className="flex-1 py-2 rounded-xl border text-xs font-semibold text-gray-600"
-                                        >
-                                          Cancel
-                                        </button>
-                                        <button
-                                          onClick={() => markPaid(p)}
-                                          disabled={saving}
-                                          className="flex-1 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold disabled:opacity-60 flex items-center justify-center gap-1"
-                                        >
-                                          {saving ? (
-                                            <Loader2 className="w-3 h-3 animate-spin" />
-                                          ) : (
-                                            <CheckCircle className="w-3 h-3" />
-                                          )}
-                                          Mark Paid
-                                        </button>
-                                      </div>
-                                    </div>
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
-
-                              {/* Inline edit amount / discount panel */}
-                              <AnimatePresence>
-                                {editingAmount === p.id && (
-                                  <motion.div
-                                    initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: "auto", opacity: 1 }}
-                                    exit={{ height: 0, opacity: 0 }}
-                                    className="overflow-hidden"
-                                  >
-                                    <div className="px-4 pb-3 border-t border-gray-50 pt-2 space-y-2">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-xs text-gray-500 shrink-0">New Amount:</span>
-                                        <input
-                                          type="number"
-                                          value={customAmount}
-                                          onChange={(e) => setCustomAmount(e.target.value)}
-                                          placeholder="Enter discounted amount"
-                                          className="px-3 py-1.5 rounded-xl border text-xs focus:outline-none focus:border-blue-400 w-full"
-                                        />
-                                      </div>
-                                      <div className="flex gap-2">
-                                        <button
-                                          onClick={() => setEditingAmount(null)}
-                                          className="flex-1 py-2 rounded-xl border text-xs font-semibold text-gray-600"
-                                        >
-                                          Cancel
-                                        </button>
-                                        <button
-                                          onClick={() => saveDiscount(p)}
-                                          disabled={saving}
-                                          className="flex-1 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold disabled:opacity-60 flex items-center justify-center gap-1"
-                                        >
-                                          {saving ? (
-                                            <Loader2 className="w-3 h-3 animate-spin" />
-                                          ) : (
-                                            <Save className="w-3 h-3" />
-                                          )}
-                                          Save Amount
-                                        </button>
-                                      </div>
-                                    </div>
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
-
-
-                            </div>
-                          );
-                        })
-                      )}
+                        <span className="text-xs text-gray-300">—</span>
+                      )
+                    ),
+                  },
+                  {
+                    key: "actions",
+                    header: "",
+                    className: "text-right",
+                    render: (p: FeePayment) => (
+                      <div className="flex items-center justify-end gap-0.5">
+                        {p.status === "PAID" ? (
+                          <>
+                            <button onClick={() => showReceiptFor(p.id)} disabled={loadingReceipt === p.id} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" title="Receipt">
+                              {loadingReceipt === p.id ? <Loader2 className="w-3.5 h-3.5 text-gray-300 animate-spin" /> : <Receipt className="w-3.5 h-3.5 text-gray-400 hover:text-blue-500" />}
+                            </button>
+                            <button onClick={() => setHandoverConfirm(p.id)} className={cn("px-2 py-1 rounded-lg text-xs font-semibold border transition-colors inline-flex items-center gap-1", p.handedToAdmin ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-amber-50 border-amber-200 text-amber-700")} title={p.handedToAdmin ? "Handed over — click to undo" : "Not handed — click to mark handed"}>
+                              <Users className="w-3.5 h-3.5" />
+                              {p.handedToAdmin ? "Handed" : "Pending"}
+                            </button>
+                            <button onClick={() => { setCancelling(p.id); setCancellingNote(""); }} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" title="Cancel/Refund">
+                              <XCircle className="w-3.5 h-3.5 text-gray-400 hover:text-red-500" />
+                            </button>
+                          </>
+                        ) : p.status === "WAIVED" ? (
+                          <button onClick={() => undoCancel(p)} disabled={cancellingSave} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" title="Undo cancel">
+                            <RefreshCw className={cn("w-3.5 h-3.5", cancellingSave ? "text-gray-300 animate-spin" : "text-gray-400 hover:text-amber-500")} />
+                          </button>
+                        ) : (
+                          <>
+                            <button onClick={() => { setEditingAmount(p.id); setCustomAmount(String(p.dueAmount)); }} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" title="Discount">
+                              <Pencil className="w-3.5 h-3.5 text-gray-400 hover:text-blue-500" />
+                            </button>
+                            <button onClick={() => { setRecording(p.id); setPayMethod("CASH"); setPayRef(""); }} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" title="Mark paid">
+                              <CheckCircle className="w-3.5 h-3.5 text-gray-400 hover:text-emerald-500" />
+                            </button>
+                            <button onClick={() => { setCancelling(p.id); setCancellingNote(""); }} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" title="Cancel">
+                              <XCircle className="w-3.5 h-3.5 text-gray-400 hover:text-red-500" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    ),
+                  },
+                ]}
+                data={filtered}
+                keyExtractor={(p: FeePayment) => p.id}
+                loading={payLoading}
+                pagination={{
+                  page: Math.floor(paySkip / payTake) + 1,
+                  totalPages: Math.ceil(payTotal / payTake) || 1,
+                  total: payTotal,
+                  pageSize: payTake,
+                  pageSizeOptions: [10, 20, 30, 50, 100],
+                  onPageChange: (page: number) => setPaySkip((page - 1) * payTake),
+                  onPageSizeChange: (size: number) => { setPayTake(size); setPaySkip(0); },
+                }}
+                emptyMessage="No payment records found"
+                emptyIcon={CreditCard}
+                mobileRender={(p: FeePayment) => {
+                  const meta = STATUS_META[p.status] ?? STATUS_META.PENDING;
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0", p.status === "PAID" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700")}>
+                          {p.student.name.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate">{p.student.name}</p>
+                          <p className="text-xs text-gray-400">{p.student.adno}{p.student.class ? ` · ${p.student.class.name}` : ""}</p>
+                        </div>
+                        <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0", meta.bg, meta.color)}>
+                          {p.status === "PAID" ? "✓ " : ""}{meta.label}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>{p.feeType.name}</span>
+                        <span className="font-bold text-gray-900">₹{Number(p.dueAmount).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-[10px]">
+                        {p.status === "PAID" && p.paidAt ? (
+                          <span className="text-emerald-600">Paid: {new Date(p.paidAt).toLocaleDateString("en-GB")}</span>
+                        ) : (
+                          <span className="text-amber-600">Due: {new Date(p.dueDate).toLocaleDateString("en-GB")}</span>
+                        )}
+                        <div className="flex gap-1">
+                          {p.status === "PAID" ? (
+                            <>
+                              <button onClick={(e) => { e.stopPropagation(); showReceiptFor(p.id); }} className="p-1"><Receipt className="w-3.5 h-3.5 text-gray-400" /></button>
+                              <button onClick={(e) => { e.stopPropagation(); setHandoverConfirm(p.id); }} className={cn("p-1 rounded-lg", p.handedToAdmin ? "text-emerald-600" : "text-gray-400")}><Users className="w-3.5 h-3.5" /></button>
+                            </>
+                          ) : p.status !== "WAIVED" ? (
+                            <>
+                              <button onClick={(e) => { e.stopPropagation(); setEditingAmount(p.id); setCustomAmount(String(p.dueAmount)); }} className="p-1"><Pencil className="w-3.5 h-3.5 text-gray-400" /></button>
+                              <button onClick={(e) => { e.stopPropagation(); setRecording(p.id); setPayMethod("CASH"); setPayRef(""); }} className="p-1"><CheckCircle className="w-3.5 h-3.5 text-gray-400" /></button>
+                            </>
+                          ) : null}
+                          <button onClick={(e) => { e.stopPropagation(); p.status === "WAIVED" ? undoCancel(p) : setCancelling(p.id); }} className="p-1">
+                            {p.status === "WAIVED" ? <RefreshCw className="w-3.5 h-3.5 text-gray-400" /> : <XCircle className="w-3.5 h-3.5 text-gray-400" />}
+                          </button>
+                        </div>
+                      </div>
                     </div>
+                  );
+                }}
+              />
 
-                    <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs">
-                      <span className="text-gray-500">
-                        {paidPayments.length} paid · {pendingPayments.length}{" "}
-                        pending
+              {/* Inline mark-paid panel (outside table) */}
+              <AnimatePresence>
+                {recordingPayment && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    className="bg-white rounded-2xl border border-emerald-200 shadow-lg overflow-hidden mt-3"
+                  >
+                    <div className="px-4 py-3 bg-emerald-50 border-b border-emerald-100">
+                      <p className="text-sm font-semibold text-emerald-800">
+                        Mark Paid — {recordingPayment.student.name} · ₹{Number(recordingPayment.dueAmount).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="p-4 space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <select value={payMethod} onChange={(e) => setPayMethod(e.target.value)} className="px-3 py-2.5 rounded-xl border text-sm bg-white focus:outline-none focus:border-emerald-400">
+                          {PAYMENT_METHODS.map((m) => (
+                            <option key={m} value={m}>{m.replace(/_/g, " ")}</option>
+                          ))}
+                        </select>
+                        <input type="text" value={payRef} onChange={(e) => setPayRef(e.target.value)} placeholder="Receipt / Ref no." className="px-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-emerald-400" />
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => setRecording(null)} className="flex-1 py-2.5 rounded-xl border text-sm font-semibold text-gray-600">Cancel</button>
+                        <button onClick={() => markPaid(recordingPayment)} disabled={saving} className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5">
+                          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                          Confirm Payment
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Inline edit amount / discount panel (outside table) */}
+              <AnimatePresence>
+                {editingPayment && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    className="bg-white rounded-2xl border border-blue-200 shadow-lg overflow-hidden mt-3"
+                  >
+                    <div className="px-4 py-3 bg-blue-50 border-b border-blue-100">
+                      <p className="text-sm font-semibold text-blue-800">
+                        Discount — {editingPayment.student.name} · {editingPayment.feeType.name}
+                      </p>
+                    </div>
+                    <div className="p-4 space-y-3">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-gray-500 shrink-0">New Amount:</span>
+                        <input type="number" value={customAmount} onChange={(e) => setCustomAmount(e.target.value)} placeholder="Enter discounted amount" className="flex-1 px-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-blue-400" />
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => setEditingAmount(null)} className="flex-1 py-2.5 rounded-xl border text-sm font-semibold text-gray-600">Cancel</button>
+                        <button onClick={() => saveDiscount(editingPayment)} disabled={saving} className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5">
+                          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                          Save Amount
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </>
+          )}
+
+          {/* ── Collected By tab ── */}
+          {tab === "collected" && (
+            <>
+              <div className="flex gap-2 mb-3 flex-wrap">
+                <select
+                  value={collectedTeacherId}
+                  onChange={(e) => { setCollectedTeacherId(e.target.value); setCollectedSkip(0); }}
+                  className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-emerald-400"
+                >
+                  <option value="">All Teachers</option>
+                  {Object.entries(teachers).map(([id, name]) => (
+                    <option key={id} value={id}>{name}</option>
+                  ))}
+                </select>
+                <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-xl">
+                  {(["", "yes", "no"] as const).map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => { setHandedOverFilter(v); setCollectedSkip(0); }}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                        handedOverFilter === v
+                          ? "bg-white shadow-sm text-gray-900"
+                          : "text-gray-500",
+                      )}
+                    >
+                      {v === "" ? "All" : v === "yes" ? "Handed Over" : "Not Handed"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <DataTable
+                columns={[
+                  {
+                    key: "student",
+                    header: "Student",
+                    render: (p: FeePayment) => (
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 bg-emerald-100 text-emerald-700">
+                          {p.student.name.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900 truncate max-w-[180px]">{p.student.name}</p>
+                          <p className="text-xs text-gray-400">{p.student.adno}{p.student.class ? ` · ${p.student.class.name}` : ""}</p>
+                        </div>
+                      </div>
+                    ),
+                  },
+                  {
+                    key: "feeType",
+                    header: "Fee Type",
+                    render: (p: FeePayment) => (
+                      <span className="text-sm text-gray-600">{p.feeType.name}</span>
+                    ),
+                  },
+                  {
+                    key: "amount",
+                    header: "Amount",
+                    render: (p: FeePayment) => (
+                      <span className="text-sm font-bold text-gray-900">₹{Number(p.paidAmount ?? p.dueAmount).toLocaleString()}</span>
+                    ),
+                  },
+                  {
+                    key: "paidDate",
+                    header: "Paid Date",
+                    render: (p: FeePayment) => (
+                      <span className="text-sm text-emerald-600">
+                        {p.paidAt ? new Date(p.paidAt).toLocaleDateString("en-GB") : "—"}
                       </span>
-                      <div className="flex gap-3">
-                        <span className="text-emerald-600 font-bold">
-                          ₹{totalCollected.toLocaleString()} collected
-                        </span>
-                        <span className="text-amber-600 font-bold">
-                          ₹{totalPending.toLocaleString()} pending
-                        </span>
+                    ),
+                  },
+                  {
+                    key: "collector",
+                    header: "Collected By",
+                    render: (p: FeePayment) => (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-gray-100 text-gray-700 text-xs font-medium">
+                        <Users className="w-3 h-3 text-gray-500" />
+                        {p.collectedBy ? (teachers[p.collectedBy] ?? (p.collectedBy === cid ? user?.name ?? "Admin" : p.collectedBy.slice(0, 8))) : "—"}
+                      </span>
+                    ),
+                  },
+                  {
+                    key: "handedOver",
+                    header: "Handover",
+                    render: (p: FeePayment) => (
+                      <button onClick={() => setHandoverConfirm(p.id)} className={cn("px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors inline-flex items-center gap-1 cursor-pointer", p.handedToAdmin ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100" : "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100")}>
+                        <Users className="w-3.5 h-3.5" />
+                        {p.handedToAdmin ? "Handed Over" : "Pending"}
+                      </button>
+                    ),
+                  },
+                  {
+                    key: "actions",
+                    header: "",
+                    className: "text-right",
+                    render: (p: FeePayment) => (
+                      <div className="flex items-center justify-end gap-0.5">
+                        <button onClick={() => showReceiptFor(p.id)} disabled={loadingReceipt === p.id} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" title="Receipt">
+                          {loadingReceipt === p.id ? <Loader2 className="w-3.5 h-3.5 text-gray-300 animate-spin" /> : <Receipt className="w-3.5 h-3.5 text-gray-400 hover:text-blue-500" />}
+                        </button>
+                      </div>
+                    ),
+                  },
+                ]}
+                data={collectedPayments}
+                keyExtractor={(p: FeePayment) => p.id}
+                loading={collectedPayLoading}
+                pagination={{
+                  page: Math.floor(collectedSkip / collectedTake) + 1,
+                  totalPages: Math.ceil(collectedTotal / collectedTake) || 1,
+                  total: collectedTotal,
+                  pageSize: collectedTake,
+                  pageSizeOptions: [10, 20, 30, 50, 100],
+                  onPageChange: (page: number) => setCollectedSkip((page - 1) * collectedTake),
+                  onPageSizeChange: (size: number) => { setCollectedTake(size); setCollectedSkip(0); },
+                }}
+                emptyMessage="No collected payments found"
+                emptyIcon={CreditCard}
+                mobileRender={(p: FeePayment) => (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 bg-emerald-100 text-emerald-700">
+                        {p.student.name.charAt(0)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{p.student.name}</p>
+                        <p className="text-xs text-gray-400">{p.student.adno}{p.student.class ? ` · ${p.student.class.name}` : ""}</p>
+                      </div>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-500">{p.feeType.name}</span>
+                      <span className="font-bold text-gray-900">₹{Number(p.paidAmount ?? p.dueAmount).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[10px]">
+                      <span className="text-emerald-600">{p.paidAt ? new Date(p.paidAt).toLocaleDateString("en-GB") : "—"}</span>
+                      <div className="flex items-center gap-2">
+                        <button onClick={(e) => { e.stopPropagation(); setHandoverConfirm(p.id); }} className={cn("px-2 py-0.5 rounded-lg text-xs font-semibold border cursor-pointer", p.handedToAdmin ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-amber-50 border-amber-200 text-amber-700")}>
+                          {p.handedToAdmin ? "Handed" : "Pending"}
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); showReceiptFor(p.id); }} className="p-1"><Receipt className="w-3.5 h-3.5 text-gray-400" /></button>
                       </div>
                     </div>
                   </div>
-
-                  {payTotal > 30 && (
-                    <div className="flex items-center justify-center gap-3 mt-4">
-                      <button
-                        disabled={paySkip === 0}
-                        onClick={() => setPaySkip(Math.max(0, paySkip - 30))}
-                        className="px-4 py-2 rounded-xl border text-sm disabled:opacity-40"
-                      >
-                        Prev
-                      </button>
-                      <span className="text-sm text-gray-500">
-                        {paySkip + 1}–{Math.min(paySkip + 30, payTotal)} of{" "}
-                        {payTotal}
-                      </span>
-                      <button
-                        disabled={paySkip + 30 >= payTotal}
-                        onClick={() => setPaySkip(paySkip + 30)}
-                        className="px-4 py-2 rounded-xl border text-sm disabled:opacity-40"
-                      >
-                        Next
-                      </button>
-                    </div>
-                  )}
-                </>
-              )}
+                )}
+              />
             </>
           )}
 
@@ -1367,6 +1475,94 @@ export default function AdminFeesPage() {
                       <XCircle className="w-4 h-4" />
                     )}
                     Confirm Cancel
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Handover confirmation modal */}
+      <AnimatePresence>
+        {handoverConfirmPayment && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+              onClick={() => setHandoverConfirm(null)}
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              onClick={() => setHandoverConfirm(null)}
+            >
+              <div className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-sm shadow-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                <div className={cn("px-5 py-4 border-b", handoverConfirmPayment.handedToAdmin ? "bg-amber-50 border-amber-100" : "bg-emerald-50 border-emerald-100")}>
+                  <div className="flex items-center gap-3">
+                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", handoverConfirmPayment.handedToAdmin ? "bg-amber-100" : "bg-emerald-100")}>
+                      <Users className={cn("w-5 h-5", handoverConfirmPayment.handedToAdmin ? "text-amber-600" : "text-emerald-600")} />
+                    </div>
+                    <div>
+                      <p className="font-bold text-gray-900">
+                        {handoverConfirmPayment.handedToAdmin ? "Undo Handover" : "Mark as Handed Over"}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {handoverConfirmPayment.handedToAdmin
+                          ? "This will mark the collection as not yet handed to admin"
+                          : "Confirm that this amount has been handed over to the admin"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="px-5 py-4 space-y-3">
+                  <div className="bg-gray-50 rounded-xl p-3 space-y-1.5">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Student</span>
+                      <span className="font-semibold text-gray-900">{handoverConfirmPayment.student.name}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Amount</span>
+                      <span className="font-semibold text-gray-900">₹{Number(handoverConfirmPayment.paidAmount ?? handoverConfirmPayment.dueAmount).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Collected By</span>
+                      <span className="font-semibold text-gray-900">
+                        {handoverConfirmPayment.collectedBy
+                          ? (teachers[handoverConfirmPayment.collectedBy] ?? handoverConfirmPayment.collectedBy.slice(0, 8))
+                          : "—"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Status</span>
+                      <span className={cn("font-semibold", handoverConfirmPayment.handedToAdmin ? "text-emerald-600" : "text-amber-600")}>
+                        {handoverConfirmPayment.handedToAdmin ? "Handed Over" : "Pending"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="px-5 pb-5 flex gap-2">
+                  <button
+                    onClick={() => setHandoverConfirm(null)}
+                    className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => toggleHandover(handoverConfirmPayment)}
+                    disabled={handoverSaving}
+                    className={cn("flex-1 py-3 rounded-xl text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5 text-white", handoverConfirmPayment.handedToAdmin ? "bg-amber-600" : "bg-emerald-600")}
+                  >
+                    {handoverSaving ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Users className="w-4 h-4" />
+                    )}
+                    {handoverConfirmPayment.handedToAdmin ? "Undo Handover" : "Confirm Handover"}
                   </button>
                 </div>
               </div>
