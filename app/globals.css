@@ -49,6 +49,14 @@ body {
   border-radius: 99px;
 }
 
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 .card-hover {
   transition:
     transform 0.2s ease,

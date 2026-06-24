@@ -1,33 +1,113 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
-import { listDiary, addDiaryComment, type DiaryEntry } from "@/lib/diary-api";
+import { listDiary, addDiaryComment, type DiaryEntry, type DiaryComment } from "@/lib/diary-api";
 import { getDiaryEvents, type DiaryEventNotification, type NotificationType } from "@/lib/notifications-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
-  FileText, ChevronLeft, ChevronRight, Bell, Send, Loader2,
+  FileText, Bell, Send, Loader2,
   BookOpen, ClipboardList, GraduationCap, CreditCard,
+  MessageSquare, X, Search,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 function fmt(d: Date) { return d.toISOString().split("T")[0]; }
 
-function fmtDisplay(iso: string) {
-  return new Date(iso).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-}
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
 
-const TYPE_CONFIG: Record<NotificationType, { label: string; icon: React.ElementType; color: string; bg: string; dot: string; border: string }> = {
-  ANNOUNCEMENT:      { label: "Announcement",   icon: Bell,          color: "text-indigo-700", bg: "bg-indigo-100", dot: "bg-indigo-400", border: "border-indigo-300" },
-  ATTENDANCE_ALERT:  { label: "Attendance",      icon: ClipboardList, color: "text-emerald-700", bg: "bg-emerald-100", dot: "bg-emerald-400", border: "border-emerald-300" },
-  FEE_REMINDER:      { label: "Fee Reminder",    icon: CreditCard,    color: "text-amber-700",   bg: "bg-amber-100", dot: "bg-amber-400", border: "border-amber-300" },
-  HOMEWORK_REMINDER: { label: "Homework",        icon: BookOpen,      color: "text-blue-700",    bg: "bg-blue-100", dot: "bg-blue-400", border: "border-blue-300" },
-  EXAM_NOTICE:       { label: "Exam",            icon: GraduationCap, color: "text-indigo-700",  bg: "bg-indigo-100", dot: "bg-indigo-400", border: "border-indigo-300" },
-  GENERAL:           { label: "General",         icon: Bell,          color: "text-gray-700",    bg: "bg-gray-100", dot: "bg-gray-400", border: "border-gray-300" },
+const TYPE_CONFIG: Record<NotificationType, { label: string; icon: React.ElementType; tone: string }> = {
+  ANNOUNCEMENT:      { label: "Announcement",   icon: Bell,          tone: "indigo"  },
+  ATTENDANCE_ALERT:  { label: "Attendance",      icon: ClipboardList, tone: "emerald" },
+  FEE_REMINDER:      { label: "Fee Reminder",    icon: CreditCard,    tone: "amber"   },
+  HOMEWORK_REMINDER: { label: "Homework",        icon: BookOpen,      tone: "blue"    },
+  EXAM_NOTICE:       { label: "Exam",            icon: GraduationCap, tone: "violet"  },
+  GENERAL:           { label: "General",         icon: Bell,          tone: "slate"   },
 };
 
-const PAGE_SIZE = 10;
+const themes: Record<string, { bg: string; text: string; border: string; chip: string; label: string; font: string; mlFont: string }> = {
+  default: { bg: "bg-white",          text: "text-gray-800",   border: "border-gray-200",       chip: "bg-gray-100 text-gray-500",    label: "Clean",   font: "system-ui, sans-serif",          mlFont: "'Noto Sans Malayalam', sans-serif" },
+  classic: { bg: "bg-amber-50",       text: "text-amber-900",  border: "border-amber-300/60",    chip: "bg-amber-200/50 text-amber-800", label: "Classic", font: "'Merriweather', serif",            mlFont: "'Noto Serif Malayalam', serif" },
+  vintage: { bg: "bg-orange-50",      text: "text-orange-900", border: "border-orange-300/60",   chip: "bg-orange-200/50 text-orange-800", label: "Vintage", font: "'Playfair Display', serif",        mlFont: "'Noto Serif Malayalam', serif" },
+  nature:  { bg: "bg-emerald-50",     text: "text-emerald-900", border: "border-emerald-300/60", chip: "bg-emerald-200/50 text-emerald-800", label: "Nature", font: "'EB Garamond', serif",             mlFont: "'Noto Serif Malayalam', serif" },
+  ocean:   { bg: "bg-blue-50",        text: "text-blue-900",   border: "border-blue-300/60",     chip: "bg-blue-200/50 text-blue-800",  label: "Ocean",   font: "'DM Sans', sans-serif",            mlFont: "'Manjari', sans-serif" },
+  dreamy:  { bg: "bg-purple-50",      text: "text-purple-900", border: "border-purple-300/60",   chip: "bg-purple-200/50 text-purple-800", label: "Dreamy", font: "'Nunito', sans-serif",             mlFont: "'Baloo Chettan 2', sans-serif" },
+  cozy:    { bg: "bg-pink-50",        text: "text-pink-900",   border: "border-pink-300/60",     chip: "bg-pink-200/50 text-pink-800",  label: "Cozy",    font: "'Cormorant Garamond', serif",      mlFont: "'Noto Serif Malayalam', serif" },
+  sunny:   { bg: "bg-yellow-50",      text: "text-yellow-900", border: "border-yellow-300/60",   chip: "bg-yellow-200/50 text-yellow-800", label: "Sunny", font: "'Fredoka', sans-serif",            mlFont: "'Baloo Chettan 2', sans-serif" },
+};
+
+const eventThemes: Record<string, { bg: string; text: string; border: string; chip: string }> = {
+  indigo:  { bg: "bg-indigo-50",  text: "text-indigo-900",  border: "border-indigo-300/60",  chip: "bg-indigo-200/50 text-indigo-800"  },
+  emerald: { bg: "bg-emerald-50", text: "text-emerald-900", border: "border-emerald-300/60", chip: "bg-emerald-200/50 text-emerald-800" },
+  amber:   { bg: "bg-amber-50",   text: "text-amber-900",   border: "border-amber-300/60",   chip: "bg-amber-200/50 text-amber-800"   },
+  blue:    { bg: "bg-blue-50",    text: "text-blue-900",    border: "border-blue-300/60",    chip: "bg-blue-200/50 text-blue-800"    },
+  violet:  { bg: "bg-violet-50",  text: "text-violet-900",  border: "border-violet-300/60",  chip: "bg-violet-200/50 text-violet-800"  },
+  slate:   { bg: "bg-slate-50",   text: "text-slate-900",   border: "border-slate-300/60",   chip: "bg-slate-200/50 text-slate-800"   },
+};
+
+const themeFontLinks: Record<string, string[]> = {
+  classic: [
+    "https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&display=swap",
+    "https://fonts.googleapis.com/css2?family=Noto+Serif+Malayalam:wght@400;600&display=swap",
+  ],
+  vintage: [
+    "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap",
+    "https://fonts.googleapis.com/css2?family=Noto+Serif+Malayalam:wght@400;600&display=swap",
+  ],
+  nature: [
+    "https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;600&display=swap",
+    "https://fonts.googleapis.com/css2?family=Noto+Serif+Malayalam:wght@400;600&display=swap",
+  ],
+  ocean: [
+    "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap",
+    "https://fonts.googleapis.com/css2?family=Manjari:wght@400;700&display=swap",
+  ],
+  dreamy: [
+    "https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap",
+    "https://fonts.googleapis.com/css2?family=Baloo+Chettan+2:wght@400;600&display=swap",
+  ],
+  cozy: [
+    "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&display=swap",
+    "https://fonts.googleapis.com/css2?family=Noto+Serif+Malayalam:wght@400;600&display=swap",
+  ],
+  sunny: [
+    "https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&display=swap",
+    "https://fonts.googleapis.com/css2?family=Baloo+Chettan+2:wght@400;600&display=swap",
+  ],
+  default: [],
+};
+
+function entryTheme(theme: string) {
+  return themes[theme] ?? themes.default;
+}
+
+function stripHtml(html: string): string {
+  if (typeof window === "undefined") return html.replace(/<[^>]*>/g, "");
+  const tmp = document.createElement("div");
+  tmp.innerHTML = html;
+  return (tmp.textContent || tmp.innerText || "").trim();
+}
+
+function dayLabel(iso: string) {
+  const d = new Date(iso);
+  return {
+    day: String(d.getDate()).padStart(2, "0"),
+    weekday: d.toLocaleDateString("en-US", { weekday: "short" }),
+    monthIdx: d.getMonth(),
+    year: d.getFullYear(),
+    monthName: MONTHS[d.getMonth()],
+  };
+}
+
+type TimelineItem = {
+  type: "entry" | "event";
+  date: string;
+  data: DiaryEntry | DiaryEventNotification;
+};
 
 export default function ParentDiaryPage() {
   const { user, accessToken, activeClientId, activeStudentId } = useAuthStore();
@@ -42,9 +122,13 @@ export default function ParentDiaryPage() {
   const [events, setEvents] = useState<DiaryEventNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [replyText, setReplyText] = useState<Record<string, string>>({});
-  const [sendingReply, setSendingReply] = useState<Record<string, boolean>>({});
+  const [replyText, setReplyText] = useState("");
+  const [sendingReply, setSendingReply] = useState(false);
+  const [search, setSearch] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState<string>("this");
+
+  const [selectedEntry, setSelectedEntry] = useState<DiaryEntry | null>(null);
 
   const load = useCallback(async () => {
     if (!cid || !token || !classId) return;
@@ -56,7 +140,6 @@ export default function ParentDiaryPage() {
       ]);
       setEntries(diaryData);
       setEvents(eventsData);
-      setPage(1);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -66,8 +149,8 @@ export default function ParentDiaryPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const timeline = useMemo(() => {
-    const items: { type: "entry" | "event"; date: string; data: DiaryEntry | DiaryEventNotification }[] = [
+  const timeline = useMemo<TimelineItem[]>(() => {
+    const items: TimelineItem[] = [
       ...entries.map((e) => ({ type: "entry" as const, date: e.date.slice(0, 10), data: e })),
       ...events.filter((e) => e.eventDate).map((e) => ({ type: "event" as const, date: e.eventDate!.slice(0, 10), data: e })),
     ];
@@ -75,156 +158,491 @@ export default function ParentDiaryPage() {
     return items;
   }, [entries, events]);
 
-  const totalPages = Math.max(1, Math.ceil(timeline.length / PAGE_SIZE));
-  const paginated = timeline.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const availableMonths = useMemo(() => {
+    const seen = new Set<string>();
+    const out: { key: string; idx: number; year: number; label: string }[] = [];
+    for (const item of timeline) {
+      const d = dayLabel(item.date);
+      const key = `${d.year}-${d.monthIdx}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ key, idx: d.monthIdx, year: d.year, label: MONTHS[d.monthIdx] });
+    }
+    return out;
+  }, [timeline]);
 
-  const handleReply = async (entryId: string) => {
-    const text = replyText[entryId]?.trim();
+  useEffect(() => {
+    if (selectedMonth === "this") return;
+    if (!availableMonths.find((m) => m.key === selectedMonth)) {
+      setSelectedMonth("this");
+    }
+  }, [availableMonths, selectedMonth]);
+
+  const filteredTimeline = useMemo(() => {
+    let items = timeline;
+    if (selectedMonth !== "this") {
+      const [yearStr, idxStr] = selectedMonth.split("-");
+      const year = Number(yearStr);
+      const idx = Number(idxStr);
+      items = items.filter((i) => {
+        const d = dayLabel(i.date);
+        return d.year === year && d.monthIdx === idx;
+      });
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      items = items.filter((i) => {
+        if (i.type === "entry") {
+          const e = i.data as DiaryEntry;
+          return (
+            e.title.toLowerCase().includes(q) ||
+            stripHtml(e.content).toLowerCase().includes(q) ||
+            (e.class?.name ?? "").toLowerCase().includes(q)
+          );
+        }
+        const ev = i.data as DiaryEventNotification;
+        return ev.title.toLowerCase().includes(q) || ev.body.toLowerCase().includes(q);
+      });
+    }
+    return items;
+  }, [timeline, selectedMonth, search]);
+
+  const groupedByMonth = useMemo(() => {
+    const groups: Record<string, TimelineItem[]> = {};
+    for (const item of filteredTimeline) {
+      const d = dayLabel(item.date);
+      const key = `${d.year}-${d.monthIdx}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(item);
+    }
+    return Object.entries(groups)
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([key, items]) => {
+        const [y, m] = key.split("-");
+        return { key, year: Number(y), monthIdx: Number(m), monthName: MONTHS[Number(m)], items };
+      });
+  }, [filteredTimeline]);
+
+  const handleReply = async () => {
+    if (!selectedEntry) return;
+    const text = replyText.trim();
     if (!text || !activeStudent?.id) return;
-    setSendingReply((prev) => ({ ...prev, [entryId]: true }));
+    setSendingReply(true);
     try {
-      await addDiaryComment(cid, token, entryId, {
+      await addDiaryComment(cid, token, selectedEntry.id, {
         content: text,
         studentId: activeStudent.id,
         parentName: user?.name,
       });
-      setReplyText((prev) => ({ ...prev, [entryId]: "" }));
+      setReplyText("");
+      setSelectedEntry((prev) => {
+        if (!prev) return prev;
+        const { comments, ...rest } = prev;
+        return {
+          ...rest,
+          comments: [...(comments ?? []), { id: "temp", content: text, parentName: user?.name, studentId: activeStudent?.id, createdAt: new Date().toISOString() } as DiaryComment],
+        };
+      });
       load();
     } catch { /* ignore */ }
-    finally { setSendingReply((prev) => ({ ...prev, [entryId]: false })); }
+    finally { setSendingReply(false); }
   };
+
+  const parentFirstName = useMemo(() => {
+    const full = user?.name?.trim() ?? "";
+    if (!full) return "there";
+    return full.split(/\s+/)[0];
+  }, [user?.name]);
 
   return (
     <DashboardLayout>
-      <PageHeader
-        title="Madrasa Diary"
-        subtitle={activeStudent ? `${activeStudent.name}` : ""}
-        icon={FileText}
-        back
-        backHref="/parent"
-      />
+      <div className="max-w-2xl mx-auto pb-28">
+        <div className="flex items-center justify-between gap-4 mb-8 px-4 pt-2">
+          <h1 className="text-3xl font-bold text-gray-900 leading-none tracking-tight">
+            Hey {parentFirstName}!
+          </h1>
+          <button
+            onClick={() => setSearchOpen((v) => !v)}
+            className="p-3 rounded-full bg-white border border-gray-200 hover:bg-gray-50 active:scale-95 transition shrink-0 shadow-sm"
+            aria-label="Search"
+          >
+            <Search className="w-5 h-5 text-gray-600" />
+          </button>
+        </div>
 
-      {error && <ApiErrorBanner message={error} onRetry={load} />}
+        {error && <div className="px-4"><ApiErrorBanner message={error} onRetry={load} /></div>}
 
-      {loading ? (
-        <div className="space-y-3">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} className="h-28 rounded-2xl" />
+        <AnimatePresence>
+          {searchOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden mb-5"
+            >
+              <div className="relative px-4">
+                <Search className="absolute left-7 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  autoFocus
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search diary entries..."
+                  className="w-full pl-10 pr-10 py-3 rounded-full bg-white border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch("")}
+                    className="absolute right-7 top-1/2 -translate-y-1/2 p-1.5 rounded-full hover:bg-gray-100"
+                  >
+                    <X className="w-3.5 h-3.5 text-gray-400" />
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="flex gap-2.5 overflow-x-auto pb-1 mb-8 no-scrollbar px-4">
+          <FilterPill
+            active={selectedMonth === "this"}
+            onClick={() => setSelectedMonth("this")}
+            label="This month"
+          />
+          {availableMonths.map((m) => (
+            <FilterPill
+              key={m.key}
+              active={selectedMonth === m.key}
+              onClick={() => setSelectedMonth(m.key)}
+              label={m.label}
+            />
           ))}
         </div>
-      ) : timeline.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <FileText className="w-10 h-10 mx-auto mb-3 text-gray-200" />
-          <p className="text-sm">No diary entries found</p>
-        </div>
-      ) : (
-        <div className="pb-20">
-          <div className="relative pl-7">
-            <div className="absolute left-[8px] inset-y-0 w-px bg-gray-200" />
 
-            {paginated.map((item, idx) => {
-              const dateLabel = fmtDisplay(item.date);
-
-              if (item.type === "entry") {
-                const entry = item.data as DiaryEntry;
-                return (
-                  <div key={entry.id} className="relative pb-6">
-                    <div className="absolute -left-[23px] top-1.5 w-[7px] h-[7px] rounded-full bg-emerald-400 ring-2 ring-white" />
-                    <p className="text-[11px] font-semibold text-gray-400 mb-1.5">{dateLabel}</p>
-                    <div className="border-l-2 border-emerald-200 pl-3">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <p className="font-semibold text-gray-900 text-sm leading-tight">{entry.title}</p>
-                        {entry.class && (
-                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 shrink-0">
-                            {entry.class.name}
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-sm text-gray-600 leading-relaxed [&_ul]:pl-5 [&_ol]:pl-5 [&_img]:max-w-full [&_img]:rounded-lg" dangerouslySetInnerHTML={{ __html: entry.content }} />
-                      {entry.teacher && (
-                        <p className="text-xs text-gray-400 mt-1">— {entry.teacher.name}</p>
-                      )}
-
-                      {/* Comments */}
-                      {entry.comments && entry.comments.length > 0 && (
-                        <div className="mt-3 space-y-2">
-                          {entry.comments.map((c) => (
-                            <div key={c.id} className="bg-gray-50 rounded-xl p-2.5">
-                              <p className="text-xs text-gray-500 mb-0.5">
-                                {c.parentName ?? "Parent"}
-                              </p>
-                              <p className="text-sm text-gray-700">{c.content}</p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Reply input */}
-                      <div className="mt-3 flex gap-2">
-                        <input
-                          value={replyText[entry.id] ?? ""}
-                          onChange={(e) => setReplyText((prev) => ({ ...prev, [entry.id]: e.target.value }))}
-                          placeholder="Write a response..."
-                          className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        />
-                        <button
-                          onClick={() => handleReply(entry.id)}
-                          disabled={sendingReply[entry.id] || !replyText[entry.id]?.trim()}
-                          className="p-2 rounded-xl bg-emerald-600 text-white disabled:opacity-40"
-                        >
-                          {sendingReply[entry.id]
-                            ? <Loader2 className="w-4 h-4 animate-spin" />
-                            : <Send className="w-4 h-4" />}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              }
-
-              const ev = item.data as DiaryEventNotification;
-              const cfg = TYPE_CONFIG[ev.type] ?? TYPE_CONFIG.GENERAL;
-              const Icon = cfg.icon;
-              return (
-                <div key={ev.id} className="relative pb-6">
-                  <div className={cn("absolute -left-[23px] top-1.5 w-[7px] h-[7px] rounded-full ring-2 ring-white", cfg.dot)} />
-                  <p className="text-[11px] font-semibold text-gray-400 mb-1.5">{dateLabel}</p>
-                  <div className={cn("border-l-2 pl-3", cfg.border)}>
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <Icon className={cn("w-3.5 h-3.5", cfg.color)} />
-                      <p className="font-semibold text-gray-900 text-sm leading-tight">{ev.title}</p>
-                      <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0", cfg.bg, cfg.color)}>
-                        {cfg.label}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600 leading-relaxed">{ev.body}</p>
-                  </div>
-                </div>
-              );
-            })}
+        {loading ? (
+          <div className="space-y-4 px-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex gap-4">
+                <Skeleton className="w-14 h-14 rounded-2xl shrink-0" />
+                <Skeleton className="flex-1 h-20 rounded-l-2xl rounded-r-none" />
+              </div>
+            ))}
           </div>
+        ) : filteredTimeline.length === 0 ? (
+          <div className="text-center py-20 text-gray-400 px-4">
+            <FileText className="w-12 h-12 mx-auto mb-3 text-gray-200" />
+            <p className="text-sm">No diary entries found</p>
+          </div>
+        ) : (
+          <div className="space-y-10">
+            {groupedByMonth.map((group) => (
+              <div key={group.key}>
+                <div className="flex items-center gap-4 mb-5 px-4">
+                  <div className="h-px flex-1 bg-gray-200" />
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-[0.22em] shrink-0">
+                    {group.monthName}
+                  </span>
+                  <div className="h-px flex-1 bg-gray-200" />
+                </div>
 
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-3 pt-4">
+                <ol className="space-y-4">
+                  {group.items.map((item, idx) => (
+                    <TimelineRow
+                      key={(item.data as any).id}
+                      item={item}
+                      index={idx}
+                      onClick={() => {
+                        if (item.type === "entry") setSelectedEntry(item.data as DiaryEntry);
+                      }}
+                    />
+                  ))}
+                </ol>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <AnimatePresence>
+        {selectedEntry && (
+          <EntryDrawer
+            entry={selectedEntry}
+            replyText={replyText}
+            setReplyText={setReplyText}
+            sending={sendingReply}
+            onSend={handleReply}
+            canReply={!!activeStudent?.id}
+            onClose={() => { setSelectedEntry(null); setReplyText(""); }}
+          />
+        )}
+      </AnimatePresence>
+    </DashboardLayout>
+  );
+}
+
+function FilterPill({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition active:scale-95",
+        active
+          ? "bg-gray-900 text-white shadow-sm"
+          : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50",
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
+function TimelineRow({ item, index, onClick }: { item: TimelineItem; index: number; onClick: () => void }) {
+  const dl = dayLabel(item.date);
+
+  if (item.type === "event") {
+    const ev = item.data as DiaryEventNotification;
+    const cfg = TYPE_CONFIG[ev.type] ?? TYPE_CONFIG.GENERAL;
+    const tone = eventThemes[cfg.tone] ?? eventThemes.slate;
+    const Icon = cfg.icon;
+    return (
+      <motion.li
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: index * 0.03 }}
+        className="flex gap-4 items-stretch px-4"
+      >
+        <DateColumn day={dl.day} weekday={dl.weekday} />
+        <div
+          className={cn(
+            "flex-1 rounded-l-2xl rounded-r-none border px-5 py-4",
+            tone.bg, tone.border,
+          )}
+        >
+          <div className="flex items-center gap-2.5 mb-1.5">
+            <div
+              className={cn(
+                "w-6 h-6 rounded-full flex items-center justify-center shrink-0",
+                tone.chip,
+              )}
+            >
+              <Icon className="w-3.5 h-3.5" />
+            </div>
+            <span className={cn("text-[11px] font-bold uppercase tracking-wider", tone.text)}>
+              {cfg.label}
+            </span>
+          </div>
+          <p className="text-[15px] text-gray-800 leading-snug line-clamp-2">{ev.body || ev.title}</p>
+        </div>
+      </motion.li>
+    );
+  }
+
+  const entry = item.data as DiaryEntry;
+  const tone = entryTheme(entry.theme);
+  const snippet = stripHtml(entry.content);
+  const commentCount = entry.comments?.length ?? 0;
+  const score = String(commentCount).padStart(2, "0");
+
+  return (
+    <motion.li
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.03 }}
+      className="flex gap-4 items-stretch px-4"
+    >
+      <DateColumn day={dl.day} weekday={dl.weekday} />
+      <button
+        onClick={onClick}
+        className={cn(
+          "flex-1 text-left rounded-l-2xl rounded-r-none border px-5 py-4 transition-all active:scale-[0.99] hover:brightness-95",
+          tone.bg, tone.border,
+        )}
+      >
+        <div className="flex items-center gap-2.5 mb-1.5">
+          <div
+            className={cn(
+              "w-6 h-6 rounded-full flex items-center justify-center shrink-0",
+              tone.chip,
+            )}
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+          </div>
+          <span className={cn("text-[11px] font-bold uppercase tracking-wider", tone.text)}>
+            {entry.class?.name ?? "Diary"}
+          </span>
+          <span className="ml-auto text-[11px] font-bold text-gray-500 tabular-nums">
+            {score}
+          </span>
+        </div>
+        <p className="text-[15px] text-gray-800 leading-snug line-clamp-2">
+          {entry.title}
+          {snippet ? <span className="text-gray-600"> — {snippet}</span> : null}
+        </p>
+        {commentCount > 0 && (
+          <div className="flex items-center gap-1.5 mt-2 text-[11px] text-gray-500">
+            <MessageSquare className="w-3 h-3" />
+            <span>{commentCount} {commentCount === 1 ? "response" : "responses"}</span>
+          </div>
+        )}
+      </button>
+    </motion.li>
+  );
+}
+
+function DateColumn({ day, weekday }: { day: string; weekday: string }) {
+  return (
+    <div className="w-14 shrink-0 flex flex-col items-center pt-1">
+      <div className="w-14 h-14 rounded-2xl bg-white border border-gray-100 flex flex-col items-center justify-center shadow-sm">
+        <span className="text-[17px] font-bold text-gray-900 leading-none">{day}</span>
+        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mt-1">
+          {weekday}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function EntryDrawer({
+  entry, replyText, setReplyText, sending, onSend, canReply, onClose,
+}: {
+  entry: DiaryEntry;
+  replyText: string;
+  setReplyText: (v: string) => void;
+  sending: boolean;
+  onSend: () => void;
+  canReply: boolean;
+  onClose: () => void;
+}) {
+  const t = entryTheme(entry.theme);
+
+  useEffect(() => {
+    const links = entry.theme !== "default" ? themeFontLinks[entry.theme] : [];
+    if (!links) return;
+    for (const href of links) {
+      const existing = document.querySelector(`link[href="${href}"]`);
+      if (existing) continue;
+      const el = document.createElement("link");
+      el.href = href;
+      el.rel = "stylesheet";
+      document.head.appendChild(el);
+    }
+  }, [entry.theme]);
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="fixed inset-0 bg-black/30 z-40"
+      />
+      <motion.div
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={{ type: "spring", damping: 25, stiffness: 200 }}
+        className={cn(
+          "fixed bottom-0 left-0 right-0 w-full z-50 h-dvh flex flex-col shadow-2xl",
+          t.bg,
+        )}
+        style={{ fontFamily: `${t.font}, ${t.mlFont}` }}
+      >
+        <div className={cn("px-6 pt-6 pb-5 shrink-0 border-b", t.border)}>
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <div
+                  className={cn(
+                    "w-6 h-6 rounded-full flex items-center justify-center shrink-0",
+                    t.chip,
+                  )}
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                </div>
+                <span
+                  className={cn(
+                    "text-[11px] font-bold uppercase tracking-wider",
+                    t.text,
+                  )}
+                >
+                  {entry.class?.name ?? "Diary"}
+                </span>
+              </div>
+              <h2 className={cn("text-2xl font-bold leading-tight", t.text)}>{entry.title}</h2>
+              <p className={cn("text-sm mt-1.5 opacity-70", t.text)}>
+                {new Date(entry.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
+                {entry.teacher ? ` · ${entry.teacher.name}` : ""}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className={cn("p-2 rounded-xl shrink-0 transition-colors hover:bg-black/5", t.text)}
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto min-h-0">
+          <div className="px-6 py-6">
+            <div
+              className={cn(
+                "text-base leading-relaxed [&_ul]:pl-5 [&_ol]:pl-5 [&_img]:max-w-full [&_img]:rounded-lg [&_p]:mb-2",
+                t.text,
+              )}
+              dangerouslySetInnerHTML={{ __html: entry.content }}
+            />
+
+            <div className={cn("mt-7 pt-5 border-t", t.border)}>
+              <h3 className={cn("text-sm font-bold mb-3", t.text)}>
+                Responses ({entry.comments?.length ?? 0})
+              </h3>
+              {(!entry.comments || entry.comments.length === 0) ? (
+                <p className={cn("text-sm text-center py-7 rounded-xl bg-black/5 opacity-60", t.text)}>
+                  No responses yet
+                </p>
+              ) : (
+                <div className="space-y-2.5">
+                  {entry.comments.map((c: DiaryComment) => (
+                    <div key={c.id} className="rounded-xl p-3.5 bg-black/5">
+                      <p className={cn("text-xs font-medium mb-0.5 opacity-70", t.text)}>
+                        {c.parentName ?? "Parent"}
+                      </p>
+                      <p className={cn("text-sm", t.text)}>{c.content}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className={cn("shrink-0 p-4 border-t", t.border)}>
+          {canReply ? (
+            <div className="flex gap-2.5">
+              <input
+                value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
+                placeholder="Write a response..."
+                className={cn(
+                  "flex-1 px-4 py-2.5 rounded-xl text-sm focus:outline-none bg-white/60 border placeholder:opacity-60",
+                  t.border, t.text,
+                )}
+                style={{ fontFamily: `${t.font}, ${t.mlFont}` }}
+              />
               <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="p-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-40 transition-colors"
+                onClick={onSend}
+                disabled={sending || !replyText.trim()}
+                className="p-2.5 rounded-xl text-sm font-semibold disabled:opacity-40 shrink-0 transition-opacity bg-emerald-600 text-white"
               >
-                <ChevronLeft className="w-4 h-4 text-gray-600" />
-              </button>
-              <span className="text-sm text-gray-500 font-medium">Page {page} of {totalPages}</span>
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="p-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-40 transition-colors"
-              >
-                <ChevronRight className="w-4 h-4 text-gray-600" />
+                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </button>
             </div>
+          ) : (
+            <p className={cn("text-sm text-center py-1 opacity-70", t.text)}>Select a student to respond</p>
           )}
         </div>
-      )}
-    </DashboardLayout>
+      </motion.div>
+    </>
   );
 }
