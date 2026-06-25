@@ -1,17 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { getExams, type ExamRecord } from "@/lib/exams-api";
 import { getResults, getSummaries, type ResultRecord, type ExamSummary, GRADE_COLORS, TOTAL_GRADE_LABELS, calcGradeFromConfig } from "@/lib/results-api";
+import { getStudent } from "@/lib/students-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { downloadAsJPG, downloadAsPDF, shareAsJPG } from "@/lib/poster-utils";
+import { Drawer } from "@/components/ui/Drawer";
 import {
   Medal, Loader2, AlertCircle, RefreshCw, GraduationCap, Trophy,
-  Download, Share2, Upload, X, FileText, ChevronRight, ArrowLeft, Printer, Calendar, Award, BookOpen, User, ClipboardList
+  Download, Share2, FileText, ChevronDown, ArrowLeft, Printer, Calendar, Award, ClipboardList, Eye, FileBadge2
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -49,16 +49,15 @@ const STATUS_STYLE: Record<string, string> = {
   WITHHELD: "bg-amber-100 text-amber-800 border-amber-300",
 };
 
-type Tab = "overview" | "marks" | "subjects" | "share-card" | "share-poster";
-
 // ── Result Card (shareable poster) ────────────────────────────────────────────
 
 function ParentResultCard({
   studentName, studentAdo, studentGender, studentClass,
-  results, summary, exam, madrasaName, madrasaLogo,
+  studentPhoto, results, summary, exam, madrasaName, madrasaLogo,
 }: {
   studentName: string; studentAdo: string;
   studentGender: string | null; studentClass: string;
+  studentPhoto?: string | null;
   results: ResultRecord[];
   summary: ExamSummary | null;
   exam: ExamRecord;
@@ -66,7 +65,6 @@ function ParentResultCard({
   madrasaLogo?: string | null;
 }) {
   const posterRef = useRef<HTMLDivElement>(null);
-  const [photo, setPhoto]         = useState<string | null>(null);
   const [exporting, setExporting] = useState<"jpg" | "pdf" | "share" | null>(null);
 
   const rank        = summary?.rank ?? null;
@@ -76,14 +74,6 @@ function ParentResultCard({
   const totalPct    = summary?.totalPercentage ?? (totalMax > 0 ? (totalScore / totalMax) * 100 : 0);
   const finalStatus = summary?.finalStatus ?? null;
   const totalGrade  = summary?.totalGrade  ?? null;
-
-  const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setPhoto(ev.target?.result as string);
-    reader.readAsDataURL(file);
-  };
 
   const stem = `result-${studentName}`.replace(/\s+/g, "-");
 
@@ -104,36 +94,7 @@ function ParentResultCard({
   };
 
   return (
-    <div className="space-y-4">
-      {/* Controls */}
-      <div className="flex items-center gap-2 flex-wrap bg-white p-3 border border-gray-100 rounded-2xl shadow-xs">
-        <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 cursor-pointer transition-colors">
-          <Upload className="w-3.5 h-3.5" />
-          {photo ? "Change Photo" : "Upload Photo"}
-          <input type="file" accept="image/*" className="sr-only" onChange={handlePhoto} />
-        </label>
-        {photo && (
-          <button onClick={() => setPhoto(null)} className="p-1.5 rounded-lg border border-gray-200 hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors">
-            <X className="w-3.5 h-3.5" />
-          </button>
-        )}
-        <button onClick={() => run("jpg")} disabled={!!exporting}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
-          {exporting === "jpg" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-          JPG
-        </button>
-        <button onClick={() => run("pdf")} disabled={!!exporting}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
-          {exporting === "pdf" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
-          PDF
-        </button>
-        <button onClick={() => run("share")} disabled={!!exporting}
-          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 transition-colors ml-auto">
-          {exporting === "share" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Share2 className="w-3.5 h-3.5" />}
-          Share Result
-        </button>
-      </div>
-
+    <div className="space-y-5">
       {/* Poster */}
       <div ref={posterRef}
         className="bg-white rounded-3xl overflow-hidden shadow-xl border border-gray-100 w-full max-w-sm mx-auto"
@@ -158,8 +119,8 @@ function ParentResultCard({
         {/* Student identity */}
         <div className="flex items-center gap-4 px-5 py-4 border-b border-gray-100">
           <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-100 border-2 border-gray-200 flex items-center justify-center shrink-0">
-            {photo
-              ? <img src={photo} alt={studentName} className="w-full h-full object-cover" />
+            {studentPhoto
+              ? <img src={studentPhoto} alt={studentName} className="w-full h-full object-cover" />
               : <span className="text-3xl">{studentGender === "FEMALE" ? "👩" : "👨"}</span>
             }
           </div>
@@ -236,6 +197,41 @@ function ParentResultCard({
           </div>
         )}
       </div>
+
+      {/* Bottom action group — prominent button cluster */}
+      <div className="w-full max-w-sm mx-auto space-y-2.5">
+        <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-emerald-700 text-center">
+          Save & Share
+        </p>
+        <div className="flex mt-10 items-stretch gap-1.5 transition-shadow duration-200">
+          <button
+            onClick={() => run("share")}
+            disabled={!!exporting}
+            className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 transition-all duration-200 ease-out shadow-sm hover:shadow active:scale-[0.98]"
+          >
+            {exporting === "share" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
+            Share Result
+          </button>
+          <button
+            onClick={() => run("jpg")}
+            disabled={!!exporting}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 hover:text-gray-900 disabled:opacity-50 transition-all duration-200 ease-out active:scale-[0.98]"
+            title="Download as JPG"
+          >
+            {exporting === "jpg" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            JPG
+          </button>
+          <button
+            onClick={() => run("pdf")}
+            disabled={!!exporting}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 hover:text-gray-900 disabled:opacity-50 transition-all duration-200 ease-out active:scale-[0.98]"
+            title="Download as PDF"
+          >
+            {exporting === "pdf" ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+            PDF
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -244,17 +240,17 @@ function ParentResultCard({
 
 function ParentRankCard({
   studentName, studentAdo, studentGender, studentClass,
-  summary, exam, madrasaName, madrasaLogo,
+  studentPhoto, summary, exam, madrasaName, madrasaLogo,
 }: {
   studentName: string; studentAdo: string;
   studentGender: string | null; studentClass: string;
+  studentPhoto?: string | null;
   summary: ExamSummary;
   exam: ExamRecord;
   madrasaName: string;
   madrasaLogo?: string | null;
 }) {
   const posterRef = useRef<HTMLDivElement>(null);
-  const [photo, setPhoto]         = useState<string | null>(null);
   const [exporting, setExporting] = useState<"jpg" | "pdf" | "share" | null>(null);
 
   const rank = summary.rank ?? 1;
@@ -262,14 +258,6 @@ function ParentRankCard({
   const bgGrad = rank === 1 ? "from-yellow-400 via-amber-300 to-yellow-500" : rank === 2 ? "from-slate-300 via-slate-200 to-slate-400" : "from-amber-600 via-orange-400 to-amber-700";
   const badgeBg = rank === 1 ? "bg-yellow-800 text-yellow-100" : rank === 2 ? "bg-slate-700 text-slate-100" : "bg-amber-900 text-amber-100";
   const textTitle = rank === 1 ? "text-yellow-950" : rank === 2 ? "text-slate-950" : "text-amber-950";
-
-  const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setPhoto(ev.target?.result as string);
-    reader.readAsDataURL(file);
-  };
 
   const stem = `rank-${studentName}`.replace(/\s+/g, "-");
 
@@ -292,17 +280,7 @@ function ParentRankCard({
   return (
     <div className="space-y-4">
       {/* Controls */}
-      <div className="flex items-center gap-2 flex-wrap bg-white p-3 border border-gray-100 rounded-2xl shadow-xs">
-        <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 cursor-pointer transition-colors">
-          <Upload className="w-3.5 h-3.5" />
-          {photo ? "Change Photo" : "Upload Photo"}
-          <input type="file" accept="image/*" className="sr-only" onChange={handlePhoto} />
-        </label>
-        {photo && (
-          <button onClick={() => setPhoto(null)} className="p-1.5 rounded-lg border border-gray-200 hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors">
-            <X className="w-3.5 h-3.5" />
-          </button>
-        )}
+      <div className="flex items-center gap-2 flex-wrap">
         <button onClick={() => run("jpg")} disabled={!!exporting}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
           {exporting === "jpg" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
@@ -353,8 +331,8 @@ function ParentRankCard({
           {/* Student photo & info */}
           <div className="bg-white/80 backdrop-blur-md rounded-2xl p-4 flex items-center gap-4 border border-white/40 max-w-xs mx-auto text-left shadow-md">
             <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-100 border-2 border-white flex items-center justify-center shrink-0">
-              {photo
-                ? <img src={photo} alt={studentName} className="w-full h-full object-cover" />
+              {studentPhoto
+                ? <img src={studentPhoto} alt={studentName} className="w-full h-full object-cover" />
                 : <span className="text-2xl">{studentGender === "FEMALE" ? "👩" : "👨"}</span>
               }
             </div>
@@ -396,7 +374,22 @@ export default function ParentResultsPage() {
   const [loading,        setLoading]        = useState(true);
   const [loadingResults, setLoadingResults] = useState(false);
   const [error,          setError]          = useState<string | null>(null);
-  const [tab,            setTab]            = useState<Tab>("marks");
+
+  // Drawer state
+  const [overviewOpen, setOverviewOpen] = useState(false);
+  const [cardOpen,     setCardOpen]     = useState(false);
+  const [posterOpen,   setPosterOpen]   = useState(false);
+
+  // Student photo (for result card / rank poster)
+  const [studentPhoto, setStudentPhoto] = useState<string | null>(null);
+  useEffect(() => {
+    if (!cid || !token || !effectiveId) { setStudentPhoto(null); return; }
+    let cancelled = false;
+    getStudent(cid, token, effectiveId)
+      .then((s) => { if (!cancelled) setStudentPhoto(s.photoUrl ?? s.photo ?? null); })
+      .catch(() => { if (!cancelled) setStudentPhoto(null); });
+    return () => { cancelled = true; };
+  }, [cid, token, effectiveId]);
 
   // Load child details
   const students = user?.accessibleStudents ?? [];
@@ -443,15 +436,6 @@ export default function ParentResultsPage() {
   const totalObtained = summary?.totalScore ?? results.reduce((s, r) => s + r.score, 0);
   const totalMax      = summary?.totalMaxMarks ?? results.reduce((s, r) => s + r.totalMarks, 0);
   const overallPct    = summary?.totalPercentage ?? (totalMax > 0 ? (totalObtained / totalMax) * 100 : 0);
-
-  // ── Tab definitions ───────────────────────────────────────────────────────────
-  const tabs: { key: Tab; label: string }[] = [
-    { key: "marks",    label: "Marks" },
-    { key: "overview", label: "Overview" },
-    { key: "subjects", label: "Subjects" },
-    { key: "share-card", label: "Result Card" },
-    ...(canRankCard ? [{ key: "share-poster" as Tab, label: `Rank Poster` }] : []),
-  ];
 
   return (
     <DashboardLayout>
@@ -525,47 +509,84 @@ export default function ParentResultsPage() {
               </div>
             )}
 
-            {/* Top Summary Card (Screenshot 4) */}
+            {/* Top Summary — simple elegant view */}
             {activeExam && activeStudent && (
-              <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0 text-emerald-600 shadow-inner">
-                    <GraduationCap className="w-6 h-6" />
+              <div className="flex flex-col md:flex-row md:items-end justify-between gap-5 pb-5 border-b-2 border-gray-200">
+                <div className="space-y-2 min-w-0 flex-1">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <span className="inline-block text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700">
+                      Examination Result
+                    </span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                      · {activeExam.classId ? "Class Level" : "Madrasa Level"}
+                    </span>
                   </div>
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="text-lg font-extrabold text-gray-900 leading-tight">{activeExam.name}</h2>
-                      <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-full">
-                        {activeExam.classId ? "Class Level" : "Madrasa Level"}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 font-medium">
-                      For: <strong className="text-gray-800 font-bold">{activeStudent.name}</strong> ({activeStudent.className ?? "Class"})
-                    </p>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-gray-400 pt-0.5">
-                      <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> Exam: {fmt(activeExam.startDate)} - {fmt(activeExam.endDate)}</span>
-                      <span className="flex items-center gap-1"><ClipboardList className="w-3.5 h-3.5" /> Mark Entry: {fmt(activeExam.markEntryLastDate)}</span>
-                      <span className="flex items-center gap-1"><Award className="w-3.5 h-3.5" /> Publish: {fmt(activeExam.publishedDate)}</span>
-                    </div>
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-tight tracking-tight">
+                    {activeExam.name}
+                  </h2>
+                  <p className="text-sm text-gray-500 font-medium">
+                    For <span className="text-gray-900 font-semibold">{activeStudent.name}</span>
+                    <span className="text-gray-300 mx-1.5">·</span>
+                    <span>{activeStudent.className ?? "Class"}</span>
+                  </p>
+                  <div className="flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-gray-500 pt-1">
+                    <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-gray-400" /> Exam {fmt(activeExam.startDate)} – {fmt(activeExam.endDate)}</span>
+                    <span className="flex items-center gap-1.5"><ClipboardList className="w-3.5 h-3.5 text-gray-400" /> Mark Entry {fmt(activeExam.markEntryLastDate)}</span>
+                    <span className="flex items-center gap-1.5"><Award className="w-3.5 h-3.5 text-gray-400" /> Published {fmt(activeExam.publishedDate)}</span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 self-end md:self-auto shrink-0 print:hidden">
-                  <select
-                    value={activeExamId}
-                    onChange={(e) => setActiveExamId(e.target.value)}
-                    className="px-3 py-1.5 border border-gray-200 rounded-xl text-xs bg-white focus:outline-none"
-                  >
-                    {exams.map((ex) => <option key={ex.id} value={ex.id}>{ex.name}</option>)}
-                  </select>
-                  <button onClick={loadExams} className="p-2 border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors bg-white">
-                    <RefreshCw className="w-4 h-4 text-gray-500" />
+                <div className="flex items-center gap-2 self-start md:self-end shrink-0 print:hidden">
+                  <div className="relative">
+                    <select
+                      value={activeExamId}
+                      onChange={(e) => setActiveExamId(e.target.value)}
+                      className="appearance-none pl-3 pr-8 py-1.5 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-gray-400 focus:outline-none focus:border-emerald-500 transition-colors cursor-pointer"
+                    >
+                      {exams.map((ex) => <option key={ex.id} value={ex.id}>{ex.name}</option>)}
+                    </select>
+                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                  </div>
+                  <button onClick={loadExams} className="p-2 text-gray-500 hover:text-gray-900 border border-gray-200 hover:border-gray-400 rounded-lg transition-colors bg-white">
+                    <RefreshCw className="w-4 h-4" />
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Content Tabs */}
+            {/* Action bar — opens drawers */}
+            {activeExam && activeStudent && results.length > 0 && (
+              <div className="flex items-center gap-2 flex-wrap print:hidden">
+                <button
+                  onClick={() => setOverviewOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 transition-colors"
+                >
+                  <Eye className="w-3.5 h-3.5" /> Overview
+                </button>
+                <button
+                  onClick={() => setCardOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
+                >
+                  <FileBadge2 className="w-3.5 h-3.5" /> Result Card
+                </button>
+                {canRankCard && (
+                  <button
+                    onClick={() => setPosterOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 transition-colors"
+                  >
+                    <Trophy className="w-3.5 h-3.5" /> Rank Poster
+                  </button>
+                )}
+                <button
+                  onClick={() => window.print()}
+                  className="ml-auto inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 transition-colors"
+                >
+                  <Printer className="w-3.5 h-3.5" /> Print Mark List
+                </button>
+              </div>
+            )}
+
+            {/* Marks — always shown inline on the page */}
             {exams.length === 0 ? (
               <div className="text-center py-20 bg-white border border-gray-100 rounded-2xl p-6">
                 <Medal className="w-12 h-12 text-gray-200 mx-auto mb-3" />
@@ -574,7 +595,7 @@ export default function ParentResultsPage() {
               </div>
             ) : loadingResults ? (
               <div className="space-y-6">
-                <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                   {[1, 2, 3, 4, 5, 6].map((i) => (
                     <Skeleton key={i} className="h-20 rounded-2xl" />
                   ))}
@@ -584,268 +605,286 @@ export default function ParentResultsPage() {
             ) : results.length === 0 ? (
               <div className="text-center py-12 text-gray-400 text-xs">No marks records available for this exam.</div>
             ) : (
-              <div className="space-y-6">
-
-                {/* Tab selectors bar */}
-                <div className="border-b border-gray-100 flex gap-1 overflow-x-auto no-scrollbar py-0.5 print:hidden">
-                  {tabs.map(({ key, label }) => (
-                    <button
-                      key={key}
-                      onClick={() => setTab(key)}
-                      className={cn(
-                        "px-4 py-2 text-xs lg:text-sm font-semibold rounded-t-xl transition-colors shrink-0 border-b-2 -mb-px",
-                        tab === key
-                          ? "border-emerald-600 text-emerald-600 font-bold"
-                          : "border-transparent text-gray-500 hover:text-gray-900"
-                      )}
-                    >
-                      {label}
-                    </button>
-                  ))}
+              <div className="space-y-5">
+                {/* Hero summary — prominent boxes for each metric */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 print:hidden">
+                  <div className="bg-white border border-emerald-100 rounded-2xl p-4 sm:p-5 shadow-sm">
+                    <p className="text-[10px] text-emerald-700 uppercase tracking-[0.15em] font-bold">Percentage</p>
+                    <p className="mt-2 text-2xl sm:text-3xl font-extrabold text-emerald-700 leading-none tabular-nums tracking-tight">
+                      {overallPct.toFixed(2)}<span className="text-base sm:text-lg text-emerald-600/70 font-bold">%</span>
+                    </p>
+                  </div>
+                  <div className="bg-white border border-emerald-100 rounded-2xl p-4 sm:p-5 shadow-sm">
+                    <p className="text-[10px] text-emerald-700 uppercase tracking-[0.15em] font-bold">Grade</p>
+                    <p className="mt-2 text-2xl sm:text-3xl font-extrabold text-emerald-700 leading-none tracking-tight">
+                      {summary?.totalGrade ? TOTAL_GRADE_LABELS[summary.totalGrade] : calcFallbackGrade(totalObtained, totalMax)}
+                    </p>
+                  </div>
+                  {rank && (
+                    <div className="bg-white border border-emerald-100 rounded-2xl p-4 sm:p-5 shadow-sm">
+                      <p className="text-[10px] text-emerald-700 uppercase tracking-[0.15em] font-bold">Class Rank</p>
+                      <p className="mt-2 text-2xl sm:text-3xl font-extrabold text-emerald-700 leading-none tabular-nums tracking-tight">
+                        <span className="text-base sm:text-lg text-emerald-600/70 font-bold">#</span>{rank}
+                      </p>
+                    </div>
+                  )}
+                  {summary?.finalStatus && (
+                    <div className="bg-white border border-emerald-100 rounded-2xl p-4 sm:p-5 shadow-sm">
+                      <p className="text-[10px] text-emerald-700 uppercase tracking-[0.15em] font-bold">Status</p>
+                      <p className={cn("mt-2 text-xl sm:text-2xl font-extrabold leading-none uppercase tracking-tight",
+                        summary.finalStatus === "PASSED" || summary.finalStatus === "PROMOTED" ? "text-emerald-700" : "text-rose-600")}>
+                        {summary.finalStatus}
+                      </p>
+                    </div>
+                  )}
+                  <div className="bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 shadow-sm">
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Subjects</p>
+                    <p className="mt-2 text-2xl sm:text-3xl font-extrabold text-gray-900 leading-none tabular-nums tracking-tight">
+                      {results.length}
+                    </p>
+                  </div>
+                  <div className="bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 shadow-sm">
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Total Marks</p>
+                    <p className="mt-2 text-2xl sm:text-3xl font-extrabold text-gray-900 leading-none tabular-nums tracking-tight">
+                      {totalObtained.toFixed(0)}<span className="text-base sm:text-lg text-gray-400 font-bold">/{totalMax}</span>
+                    </p>
+                  </div>
                 </div>
 
-                {/* Tab Contents */}
-                <AnimatePresence mode="wait">
-                  <motion.div key={tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
+                {/* Subject wise marks — simple elegant table */}
+                <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+                  {/* Table header */}
+                  <div className="px-5 py-3.5 border-b border-gray-100 print:hidden">
+                    <h3 className="font-semibold text-gray-900 text-sm">Subject Wise Marks</h3>
+                  </div>
 
-                    {/* OVERVIEW TAB */}
-                    {tab === "overview" && activeExam && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="bg-white border border-gray-100 rounded-2xl p-5 space-y-3 shadow-xs">
-                          <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2 border-b pb-2"><Calendar className="w-4 h-4 text-emerald-600" /> Date Details</h3>
-                          <div className="grid grid-cols-2 gap-3 text-xs leading-relaxed">
-                            <div>
-                              <p className="text-gray-400">Exam Period</p>
-                              <p className="font-bold text-gray-800">{fmt(activeExam.startDate)} – {fmt(activeExam.endDate)}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-400">Mark Entry Deadline</p>
-                              <p className="font-bold text-gray-800">{fmt(activeExam.markEntryLastDate)}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-400">Published On</p>
-                              <p className="font-bold text-gray-800">{fmt(activeExam.publishedDate)}</p>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="bg-white border border-gray-100 rounded-2xl p-5 space-y-3 shadow-xs">
-                          <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2 border-b pb-2"><Trophy className="w-4 h-4 text-emerald-600" /> Exam Rules</h3>
-                          <div className="grid grid-cols-2 gap-3 text-xs leading-relaxed">
-                            <div>
-                              <p className="text-gray-400">Maximum Marks</p>
-                              <p className="font-bold text-gray-800">{activeExam.maxMarks ?? 100}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-400">Pass Percentage</p>
-                              <p className="font-bold text-gray-800">40%</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-400">Academic Year</p>
-                              <p className="font-bold text-gray-800">{activeExam.accademicYear?.name ?? "Current"}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                  {/* Desktop Table View */}
+                  <div className="hidden sm:block overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                          <th className="px-5 py-2.5 w-10 text-center text-gray-400 font-normal">#</th>
+                          <th className="px-3 py-2.5 font-normal">Subject</th>
+                          <th className="px-3 py-2.5 w-28 text-center font-normal">Full</th>
+                          <th className="px-3 py-2.5 w-28 text-center font-normal">Pass</th>
+                          <th className="px-3 py-2.5 w-32 text-center font-normal">Obtained</th>
+                          <th className="px-5 py-2.5 w-24 text-center font-normal">Grade</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {results.map((r, idx) => {
+                          const grade = r.grade ?? calcFallbackGrade(r.score, r.totalMarks);
+                          const isPassed = r.isPassed ?? gradeIsPassed(grade);
+                          const gClass = GRADE_COLORS[grade] ?? "text-gray-600 bg-gray-50 border-gray-200";
 
-                    {/* MARKS TAB (Screenshot 4 design) */}
-                    {tab === "marks" && (
-                      <div className="space-y-6">
-                        
-                        {/* Summary metrics row of cards (Screenshot 4) */}
-                        <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
-                          {[
-                            { label: "Total Subjects", value: results.length, color: "text-gray-900" },
-                            { label: "Total Marks", value: totalMax, color: "text-gray-900" },
-                            { label: "Obtained Marks", value: totalObtained.toFixed(0), color: "text-emerald-700" },
-                            { label: "Percentage", value: `${overallPct.toFixed(2)}%`, color: "text-emerald-700" },
-                            { label: "Grade", value: summary?.totalGrade ? TOTAL_GRADE_LABELS[summary.totalGrade] : calcFallbackGrade(totalObtained, totalMax), color: "text-emerald-700" },
-                            { label: "Rank in Class", value: rank ? `#${rank}` : "—", color: "text-emerald-700" }
-                          ].map((m, idx) => (
-                            <div key={idx} className="bg-white border border-gray-100 rounded-2xl p-4 text-center shadow-xs flex flex-col justify-center">
-                              <p className={cn("text-lg font-extrabold tracking-tight", m.color)}>{m.value}</p>
-                              <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mt-1">{m.label}</p>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Subject wise marks table */}
-                        <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-xs">
-                          {/* Table header with Download button */}
-                          <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100 print:hidden">
-                            <h3 className="font-bold text-gray-900 text-sm">Subject Wise Marks</h3>
-                            <button
-                              onClick={() => window.print()}
-                              className="inline-flex items-center gap-2 border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold text-xs px-3.5 py-2 rounded-xl transition-colors shadow-xs"
-                            >
-                              <Printer className="w-3.5 h-3.5" /> Download Mark List
-                            </button>
-                          </div>
-
-                          {/* Desktop Table View */}
-                          <div className="hidden sm:block overflow-x-auto">
-                            <table className="w-full text-left border-collapse text-xs md:text-sm">
-                              <thead>
-                                <tr className="bg-gray-50 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                                  <th className="px-6 py-3.5 w-12 text-center">#</th>
-                                  <th className="px-4 py-3.5">Subject</th>
-                                  <th className="px-4 py-3.5 w-32 text-center">Full Marks</th>
-                                  <th className="px-4 py-3.5 w-32 text-center">Pass Marks</th>
-                                  <th className="px-4 py-3.5 w-40 text-center">Obtained Marks</th>
-                                  <th className="px-6 py-3.5 w-32 text-center">Grade</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-gray-50">
-                                {results.map((r, idx) => {
-                                  const grade = r.grade ?? calcFallbackGrade(r.score, r.totalMarks);
-                                  const isPassed = r.isPassed ?? gradeIsPassed(grade);
-                                  const gClass = GRADE_COLORS[grade] ?? "text-gray-600 bg-gray-50 border-gray-200";
-
-                                  return (
-                                    <tr key={r.id} className="hover:bg-gray-50/50 transition-colors">
-                                      <td className="px-6 py-3 text-center text-gray-400 font-medium">{idx + 1}</td>
-                                      <td className="px-4 py-3">
-                                        <p className="font-bold text-gray-900 leading-tight">{r.subject?.name ?? "Subject"}</p>
-                                        <span className={cn("text-[9px] font-bold tracking-wider uppercase", isPassed ? "text-emerald-600" : "text-rose-600")}>
-                                          {isPassed ? "Pass" : "Fail"}
-                                        </span>
-                                      </td>
-                                      <td className="px-4 py-3 text-center text-gray-500 font-semibold">{r.totalMarks}</td>
-                                      <td className="px-4 py-3 text-center text-gray-500 font-semibold">{activeExam?.passMarks ?? 40}</td>
-                                      <td className="px-4 py-3 text-center">
-                                        <span className={cn("font-bold text-sm", isPassed ? "text-gray-900" : "text-rose-600")}>
-                                          {r.score}
-                                        </span>
-                                      </td>
-                                      <td className="px-6 py-3 text-center">
-                                        <span className={cn("inline-block text-[10px] font-extrabold px-2 py-0.5 rounded border text-center shrink-0 w-10", gClass)}>
-                                          {grade}
-                                        </span>
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                              <tfoot>
-                                <tr className="bg-emerald-50/40 border-t-2 border-emerald-100 text-gray-900 font-bold">
-                                  <td className="px-6 py-3 text-center">—</td>
-                                  <td className="px-4 py-3">Total</td>
-                                  <td className="px-4 py-3 text-center">{totalMax}</td>
-                                  <td className="px-4 py-3 text-center">—</td>
-                                  <td className="px-4 py-3 text-center text-emerald-700 font-extrabold text-sm">{totalObtained.toFixed(0)}</td>
-                                  <td className="px-6 py-3 text-center text-emerald-700 font-extrabold text-sm">{overallPct.toFixed(2)}% ({summary?.totalGrade ? TOTAL_GRADE_LABELS[summary.totalGrade] : calcFallbackGrade(totalObtained, totalMax)})</td>
-                                </tr>
-                              </tfoot>
-                            </table>
-                          </div>
-
-                          {/* Mobile Cards View */}
-                          <div className="block sm:hidden divide-y divide-gray-100">
-                            {results.map((r, idx) => {
-                              const grade = r.grade ?? calcFallbackGrade(r.score, r.totalMarks);
-                              const isPassed = r.isPassed ?? gradeIsPassed(grade);
-                              const gClass = GRADE_COLORS[grade] ?? "text-gray-600 bg-gray-50 border-gray-200";
-
-                              return (
-                                <div key={r.id} className="p-4 flex items-center justify-between gap-3">
-                                  <div className="min-w-0 space-y-0.5">
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="text-[10px] text-gray-400 font-bold">#{idx + 1}</span>
-                                      <p className="font-bold text-gray-900 text-sm">{r.subject?.name ?? "Subject"}</p>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-[10px] text-gray-400">
-                                      <span>Max: {r.totalMarks}</span>
-                                      <span>·</span>
-                                      <span>Pass: {activeExam?.passMarks ?? 40}</span>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-3 shrink-0">
-                                    <div className="text-right">
-                                      <p className={cn("text-base font-extrabold", isPassed ? "text-gray-900" : "text-rose-600")}>{r.score}</p>
-                                      <span className={cn("text-[9px] font-bold tracking-wider uppercase leading-none block mt-0.5", isPassed ? "text-emerald-600" : "text-rose-600")}>
-                                        {isPassed ? "Pass" : "Fail"}
-                                      </span>
-                                    </div>
-                                    <span className={cn("inline-block text-[10px] font-extrabold px-2 py-0.5 rounded border text-center w-10 shrink-0", gClass)}>
-                                      {grade}
-                                    </span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                            
-                            {/* Total summary card on mobile */}
-                            <div className="p-4 bg-emerald-50/20 flex items-center justify-between text-xs font-bold text-gray-900">
-                              <span>Total ({results.length} Subjects)</span>
-                              <div className="text-right">
-                                <span className="text-sm font-extrabold text-emerald-700">{totalObtained.toFixed(0)}/{totalMax}</span>
-                                <span className="block text-[10px] text-emerald-600 font-extrabold mt-0.5">
-                                  {overallPct.toFixed(2)}% ({summary?.totalGrade ? TOTAL_GRADE_LABELS[summary.totalGrade] : calcFallbackGrade(totalObtained, totalMax)})
+                          return (
+                            <tr key={r.id} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50/40 transition-colors">
+                              <td className="px-5 py-2.5 text-center text-gray-300 text-xs tabular-nums">{idx + 1}</td>
+                              <td className="px-3 py-2.5">
+                                <p className="font-medium text-gray-800 leading-tight">{r.subject?.name ?? "Subject"}</p>
+                              </td>
+                              <td className="px-3 py-2.5 text-center text-gray-500 tabular-nums">{r.totalMarks}</td>
+                              <td className="px-3 py-2.5 text-center text-gray-500 tabular-nums">{activeExam?.passMarks ?? 40}</td>
+                              <td className="px-3 py-2.5 text-center">
+                                <span className={cn("font-semibold tabular-nums", isPassed ? "text-gray-900" : "text-rose-600")}>
+                                  {r.score}
                                 </span>
-                              </div>
-                            </div>
+                              </td>
+                              <td className="px-5 py-2.5 text-center">
+                                <span className={cn("inline-block text-[10px] font-semibold px-2 py-0.5 rounded border w-9", gClass)}>
+                                  {grade}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot>
+                        <tr className="border-t border-gray-200 text-gray-900 bg-gray-50/40">
+                          <td className="px-5 py-2.5 text-center text-gray-300 text-xs">—</td>
+                          <td className="px-3 py-2.5 font-semibold text-sm">Total</td>
+                          <td className="px-3 py-2.5 text-center text-sm tabular-nums">{totalMax}</td>
+                          <td className="px-3 py-2.5 text-center text-gray-300 text-sm">—</td>
+                          <td className="px-3 py-2.5 text-center text-emerald-700 font-semibold text-sm tabular-nums">{totalObtained.toFixed(0)}</td>
+                          <td className="px-5 py-2.5 text-center text-sm">
+                            <span className="text-emerald-700 font-semibold tabular-nums">{overallPct.toFixed(2)}%</span>
+                            <span className="ml-1 text-gray-500 font-normal text-xs">({summary?.totalGrade ? TOTAL_GRADE_LABELS[summary.totalGrade] : calcFallbackGrade(totalObtained, totalMax)})</span>
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+
+                  {/* Mobile List View */}
+                  <div className="block sm:hidden divide-y divide-gray-100">
+                    {results.map((r, idx) => {
+                      const grade = r.grade ?? calcFallbackGrade(r.score, r.totalMarks);
+                      const isPassed = r.isPassed ?? gradeIsPassed(grade);
+                      const gClass = GRADE_COLORS[grade] ?? "text-gray-600 bg-gray-50 border-gray-200";
+
+                      return (
+                        <div key={r.id} className="px-5 py-3 flex items-center justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-gray-800 text-sm leading-tight">{r.subject?.name ?? "Subject"}</p>
+                            <p className="text-[11px] text-gray-400 mt-0.5 tabular-nums">Max {r.totalMarks} · Pass {activeExam?.passMarks ?? 40}</p>
+                          </div>
+                          <div className="flex items-center gap-2.5 shrink-0">
+                            <span className={cn("text-base font-semibold tabular-nums", isPassed ? "text-gray-900" : "text-rose-600")}>
+                              {r.score}
+                            </span>
+                            <span className={cn("inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded border w-8 text-center", gClass)}>
+                              {grade}
+                            </span>
                           </div>
                         </div>
+                      );
+                    })}
+
+                    {/* Total summary on mobile */}
+                    <div className="px-5 py-3 bg-gray-50/50 flex items-center justify-between">
+                      <span className="text-xs font-medium text-gray-700">Total · {results.length} subjects</span>
+                      <div className="text-right">
+                        <span className="text-sm font-semibold text-gray-900 tabular-nums">{totalObtained.toFixed(0)}/{totalMax}</span>
+                        <span className="ml-2 text-xs font-semibold text-emerald-700 tabular-nums">{overallPct.toFixed(2)}%</span>
                       </div>
-                    )}
-
-                    {/* SUBJECTS TAB */}
-                    {tab === "subjects" && (
-                      <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs">
-                        <h3 className="font-bold text-gray-900 text-sm border-b pb-2 mb-3">Course Curriculum</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          {results.map((r, idx) => (
-                            <div key={r.id} className="p-3 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between">
-                              <div>
-                                <p className="text-sm font-bold text-gray-800">{r.subject?.name ?? "Subject"}</p>
-                                <p className="text-[10px] text-gray-400 mt-0.5">Maximum Marks: {r.totalMarks}</p>
-                              </div>
-                              <span className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-500">
-                                {idx + 1}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* SHARE CARD TAB */}
-                    {tab === "share-card" && activeExam && activeStudent && (
-                      <ParentResultCard
-                        studentName={activeStudent.name}
-                        studentAdo={activeStudent.adno}
-                        studentGender={activeStudent.gender ?? null}
-                        studentClass={activeStudent.className ?? "—"}
-                        results={results}
-                        summary={summary}
-                        exam={activeExam}
-                        madrasaName={madrasaName}
-                        madrasaLogo={madrasaLogo}
-                      />
-                    )}
-
-                    {/* SHARE POSTER TAB */}
-                    {tab === "share-poster" && canRankCard && summary && activeExam && activeStudent && (
-                      <ParentRankCard
-                        studentName={activeStudent.name}
-                        studentAdo={activeStudent.adno}
-                        studentGender={activeStudent.gender ?? null}
-                        studentClass={activeStudent.className ?? "—"}
-                        summary={summary}
-                        exam={activeExam}
-                        madrasaName={madrasaName}
-                        madrasaLogo={madrasaLogo}
-                      />
-                    )}
-
-                  </motion.div>
-                </AnimatePresence>
-
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
           </div>
         )}
+
+        {/* Overview drawer — date details, exam rules, subjects (responsive: right on desktop, bottom on mobile) */}
+        <Drawer
+          open={overviewOpen}
+          onOpenChange={setOverviewOpen}
+          side="responsive"
+          title={activeExam ? `Overview · ${activeExam.name}` : "Overview"}
+          description={activeStudent ? `For ${activeStudent.name} · ${activeStudent.className ?? "Class"}` : undefined}
+        >
+          <div className="p-5 space-y-5">
+            {activeExam && (
+              <>
+                <section className="space-y-2">
+                  <h4 className="text-[10px] uppercase tracking-[0.18em] font-bold text-emerald-700">Date Details</h4>
+                  <div className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
+                    <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                      <span className="text-gray-500">Exam Period</span>
+                      <span className="font-semibold text-gray-900 text-right">{fmt(activeExam.startDate)} – {fmt(activeExam.endDate)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                      <span className="text-gray-500">Mark Entry Deadline</span>
+                      <span className="font-semibold text-gray-900 text-right">{fmt(activeExam.markEntryLastDate)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                      <span className="text-gray-500">Published On</span>
+                      <span className="font-semibold text-gray-900 text-right">{fmt(activeExam.publishedDate)}</span>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="space-y-2">
+                  <h4 className="text-[10px] uppercase tracking-[0.18em] font-bold text-emerald-700">Exam Rules</h4>
+                  <div className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
+                    <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                      <span className="text-gray-500">Maximum Marks</span>
+                      <span className="font-semibold text-gray-900 tabular-nums">{activeExam.maxMarks ?? 100}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                      <span className="text-gray-500">Pass Percentage</span>
+                      <span className="font-semibold text-gray-900 tabular-nums">40%</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                      <span className="text-gray-500">Academic Year</span>
+                      <span className="font-semibold text-gray-900 text-right">{activeExam.accademicYear?.name ?? "Current"}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                      <span className="text-gray-500">Level</span>
+                      <span className="font-semibold text-gray-900">{activeExam.classId ? "Class Level" : "Madrasa Level"}</span>
+                    </div>
+                  </div>
+                </section>
+              </>
+            )}
+
+            <section className="space-y-2">
+              <h4 className="text-[10px] uppercase tracking-[0.18em] font-bold text-emerald-700">Subjects ({results.length})</h4>
+              <div className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
+                {results.map((r, idx) => {
+                  const grade = r.grade ?? calcFallbackGrade(r.score, r.totalMarks);
+                  const gClass = GRADE_COLORS[grade] ?? "text-gray-600 bg-gray-50 border-gray-200";
+                  return (
+                    <div key={r.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="w-6 h-6 shrink-0 rounded-full bg-gray-100 text-gray-500 text-[10px] font-bold flex items-center justify-center tabular-nums">{idx + 1}</span>
+                        <p className="font-medium text-gray-800 truncate">{r.subject?.name ?? "Subject"}</p>
+                      </div>
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        <span className="text-[11px] text-gray-500 tabular-nums">{r.score}/{r.totalMarks}</span>
+                        <span className={cn("inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded border w-8 text-center", gClass)}>
+                          {grade}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          </div>
+        </Drawer>
+
+        {/* Result Card drawer — responsive: right on desktop, bottom on mobile */}
+        <Drawer
+          open={cardOpen}
+          onOpenChange={setCardOpen}
+          side="responsive"
+          title="Result Card"
+          description="Share or download a beautifully formatted result card"
+        >
+          <div className="p-5 sm:p-6">
+            {activeExam && activeStudent && (
+              <ParentResultCard
+                studentName={activeStudent.name}
+                studentAdo={activeStudent.adno}
+                studentGender={activeStudent.gender ?? null}
+                studentClass={activeStudent.className ?? "—"}
+                studentPhoto={studentPhoto}
+                results={results}
+                summary={summary}
+                exam={activeExam}
+                madrasaName={madrasaName}
+                madrasaLogo={madrasaLogo}
+              />
+            )}
+          </div>
+        </Drawer>
+
+        {/* Rank Poster drawer — responsive: right on desktop, bottom on mobile */}
+        <Drawer
+          open={posterOpen}
+          onOpenChange={setPosterOpen}
+          side="responsive"
+          title="Rank Poster"
+          description="Celebrate your child's achievement"
+        >
+          <div className="p-5 sm:p-6">
+            {canRankCard && summary && activeExam && activeStudent && (
+              <ParentRankCard
+                studentName={activeStudent.name}
+                studentAdo={activeStudent.adno}
+                studentGender={activeStudent.gender ?? null}
+                studentClass={activeStudent.className ?? "—"}
+                studentPhoto={studentPhoto}
+                summary={summary}
+                exam={activeExam}
+                madrasaName={madrasaName}
+                madrasaLogo={madrasaLogo}
+              />
+            )}
+          </div>
+        </Drawer>
       </div>
     </DashboardLayout>
   );

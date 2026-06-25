@@ -291,9 +291,9 @@ export default function TeacherFeesPage() {
  );
  })}
 
- <div className="sticky right-0 z-10 flex items-center bg-gradient-to-l from-white via-white/95 to-transparent">
+ <div className="sticky right-0 ml-auto z-10 flex items-center bg-gradient-to-l from-white via-white/95 to-transparent">
  <button ref={chevronBtnRef} onClick={toggleTypeDropdown}
- className="h-10 w-10 rounded-full inline-flex items-center justify-center transition-all text-gray-500 hover:text-gray-700"
+ className="h-10 w-10 rounded-full inline-flex items-center ml-auto justify-center transition-all text-gray-500 hover:text-gray-700"
  title="All fee types"
  aria-label="All fee types"
  aria-expanded={typeDropdownOpen}>
