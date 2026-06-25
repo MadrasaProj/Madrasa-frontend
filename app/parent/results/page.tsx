@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { getExams, type ExamRecord } from "@/lib/exams-api";
-import { getResults, getSummaries, type ResultRecord, type ExamSummary, GRADE_COLORS, TOTAL_GRADE_LABELS, calcGradeFromConfig } from "@/lib/results-api";
-import { getStudent } from "@/lib/students-api";
+import { getResults, getSummaries, getClassReport, type ResultRecord, type ExamSummary, type ClassReport, GRADE_COLORS, TOTAL_GRADE_LABELS, calcGradeFromConfig } from "@/lib/results-api";
+import { useStudent, useStudentPhoto } from "@/lib/hooks/useStudentPhoto";
+import { useStudentFullDataFromParent } from "@/lib/hooks/useStudentFullDataFromParent";
+import { useRefreshParentStudents } from "@/lib/hooks/useRefreshParentStudents";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -52,18 +54,21 @@ const STATUS_STYLE: Record<string, string> = {
 // ── Result Card (shareable poster) ────────────────────────────────────────────
 
 function ParentResultCard({
-  studentName, studentAdo, studentGender, studentClass,
-  studentPhoto, results, summary, exam, madrasaName, madrasaLogo,
+  studentId, results, summary, exam, madrasaName, madrasaLogo,
 }: {
-  studentName: string; studentAdo: string;
-  studentGender: string | null; studentClass: string;
-  studentPhoto?: string | null;
+  studentId: string;
   results: ResultRecord[];
   summary: ExamSummary | null;
   exam: ExamRecord;
   madrasaName: string;
   madrasaLogo?: string | null;
 }) {
+  const { student: activeStudent } = useStudentFullDataFromParent(studentId);
+  const studentName   = activeStudent?.name ?? "Student";
+  const studentAdo    = activeStudent?.adno ?? "—";
+  const studentGender = activeStudent?.gender ?? null;
+  const studentClass  = activeStudent?.class?.name ?? "—";
+  const studentPhoto  = activeStudent?.photoUrl ?? activeStudent?.photo ?? null;
   const posterRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState<"jpg" | "pdf" | "share" | null>(null);
 
@@ -96,7 +101,7 @@ function ParentResultCard({
   return (
     <div className="space-y-5">
       {/* Poster */}
-      <div ref={posterRef}
+       <div ref={posterRef}
         className="bg-white rounded-3xl overflow-hidden shadow-xl border border-gray-100 w-full max-w-sm mx-auto"
         style={{ fontFamily: "Arial, sans-serif" }}
       >
@@ -118,11 +123,15 @@ function ParentResultCard({
 
         {/* Student identity */}
         <div className="flex items-center gap-4 px-5 py-4 border-b border-gray-100">
-          <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-100 border-2 border-gray-200 flex items-center justify-center shrink-0">
-            {studentPhoto
-              ? <img src={studentPhoto} alt={studentName} className="w-full h-full object-cover" />
-              : <span className="text-3xl">{studentGender === "FEMALE" ? "👩" : "👨"}</span>
-            }
+          <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-emerald-500 to-teal-600 border-2 border-gray-200 flex items-center justify-center shrink-0">
+        
+            {studentPhoto ? (
+              <img src={studentPhoto} alt={studentName} className="w-full h-full object-cover" crossOrigin="anonymous" />
+            ) : (
+              <span className="text-xl font-extrabold text-white tracking-tight">
+                {studentName?.trim()?.charAt(0)?.toUpperCase() ?? "?"}
+              </span>
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-bold text-gray-900 text-sm leading-tight">{studentName}</p>
@@ -239,12 +248,9 @@ function ParentResultCard({
 // ── Parent Rank Card (shareable poster) ───────────────────────────────────────
 
 function ParentRankCard({
-  studentName, studentAdo, studentGender, studentClass,
-  studentPhoto, summary, exam, madrasaName, madrasaLogo,
+  studentId, summary, exam, madrasaName, madrasaLogo,
 }: {
-  studentName: string; studentAdo: string;
-  studentGender: string | null; studentClass: string;
-  studentPhoto?: string | null;
+  studentId: string;
   summary: ExamSummary;
   exam: ExamRecord;
   madrasaName: string;
@@ -252,6 +258,12 @@ function ParentRankCard({
 }) {
   const posterRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState<"jpg" | "pdf" | "share" | null>(null);
+  const activeStudent = useStudent(studentId);
+  const studentName   = activeStudent?.name ?? "Student";
+  const studentAdo    = activeStudent?.adno ?? "—";
+  const studentGender = activeStudent?.gender ?? null;
+  const studentClass  = activeStudent?.className ?? "—";
+  const studentPhoto  = useStudentPhoto(studentId);
 
   const rank = summary.rank ?? 1;
   const medal = RANK_MEDALS[rank - 1] ?? "🏆";
@@ -330,11 +342,14 @@ function ParentRankCard({
 
           {/* Student photo & info */}
           <div className="bg-white/80 backdrop-blur-md rounded-2xl p-4 flex items-center gap-4 border border-white/40 max-w-xs mx-auto text-left shadow-md">
-            <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-100 border-2 border-white flex items-center justify-center shrink-0">
-              {studentPhoto
-                ? <img src={studentPhoto} alt={studentName} className="w-full h-full object-cover" />
-                : <span className="text-2xl">{studentGender === "FEMALE" ? "👩" : "👨"}</span>
-              }
+            <div className="w-14 h-14 rounded-full overflow-hidden bg-gradient-to-br from-emerald-500 to-teal-600 border-2 border-white flex items-center justify-center shrink-0">
+              {studentPhoto ? (
+                <img src={studentPhoto} alt={studentName} className="w-full h-full object-cover" crossOrigin="anonymous" />
+              ) : (
+                <span className="text-lg font-extrabold text-white tracking-tight">
+                  {studentName?.trim()?.charAt(0)?.toUpperCase() ?? "?"}
+                </span>
+              )}
             </div>
             <div className="min-w-0">
               <p className="font-extrabold text-gray-900 text-sm leading-tight truncate">{studentName}</p>
@@ -356,6 +371,7 @@ function ParentRankCard({
 
 export default function ParentResultsPage() {
   const { user, accessToken, activeStudentId } = useAuthStore();
+  useRefreshParentStudents();
   const cid   = user?.clientId ?? "";
   const token = accessToken ?? "";
   const ids   = user?.accessibleStudentIds ?? [];
@@ -371,6 +387,7 @@ export default function ParentResultsPage() {
   const [activeExamId,   setActiveExamId]   = useState("");
   const [results,        setResults]        = useState<ResultRecord[]>([]);
   const [summary,        setSummary]        = useState<ExamSummary | null>(null);
+  const [classReport,    setClassReport]    = useState<ClassReport | null>(null);
   const [loading,        setLoading]        = useState(true);
   const [loadingResults, setLoadingResults] = useState(false);
   const [error,          setError]          = useState<string | null>(null);
@@ -379,17 +396,6 @@ export default function ParentResultsPage() {
   const [overviewOpen, setOverviewOpen] = useState(false);
   const [cardOpen,     setCardOpen]     = useState(false);
   const [posterOpen,   setPosterOpen]   = useState(false);
-
-  // Student photo (for result card / rank poster)
-  const [studentPhoto, setStudentPhoto] = useState<string | null>(null);
-  useEffect(() => {
-    if (!cid || !token || !effectiveId) { setStudentPhoto(null); return; }
-    let cancelled = false;
-    getStudent(cid, token, effectiveId)
-      .then((s) => { if (!cancelled) setStudentPhoto(s.photoUrl ?? s.photo ?? null); })
-      .catch(() => { if (!cancelled) setStudentPhoto(null); });
-    return () => { cancelled = true; };
-  }, [cid, token, effectiveId]);
 
   // Load child details
   const students = user?.accessibleStudents ?? [];
@@ -419,6 +425,7 @@ export default function ParentResultsPage() {
     setLoadingResults(true);
     setSummary(null);
     setResults([]);
+    setClassReport(null);
     Promise.all([
       getResults(cid, token, { examId: activeExamId, studentId: effectiveId, limit: 50 })
         .catch(() => ({ data: [] as ResultRecord[] })),
@@ -430,6 +437,17 @@ export default function ParentResultsPage() {
     }).finally(() => setLoadingResults(false));
   }, [cid, token, effectiveId, activeExamId]);
 
+  // ── Load class report (class-level stats) when exam changes ────────────────────
+  useEffect(() => {
+    const ex = exams.find((e) => e.id === activeExamId);
+    if (!cid || !token || !activeExamId || !ex?.classId) { setClassReport(null); return; }
+    let cancelled = false;
+    getClassReport(cid, token, { examId: activeExamId, classId: ex.classId })
+      .then((r) => { if (!cancelled) setClassReport(r); })
+      .catch(() => { if (!cancelled) setClassReport(null); });
+    return () => { cancelled = true; };
+  }, [cid, token, activeExamId, exams]);
+
   const activeExam   = exams.find((e) => e.id === activeExamId);
   const rank         = summary?.rank ?? null;
   const canRankCard  = rank !== null && rank <= 3;
@@ -440,7 +458,6 @@ export default function ParentResultsPage() {
   return (
     <DashboardLayout>
       <div className="px-4 py-3 lg:px-8 lg:py-6 space-y-6">
-
         {/* Breadcrumb Header */}
         <div className="flex items-center gap-3 print:hidden">
           <button
@@ -651,6 +668,68 @@ export default function ParentResultsPage() {
                   </div>
                 </div>
 
+                {/* Class-level stats row — average, highest, lowest, pass rate, total students */}
+                {(() => {
+                  const passedCount = results.filter((r) => {
+                    const g = r.grade ?? calcFallbackGrade(r.score, r.totalMarks);
+                    return r.isPassed ?? gradeIsPassed(g);
+                  }).length;
+                  const passRate = results.length > 0 ? (passedCount / results.length) * 100 : 0;
+                  const stats = classReport?.stats;
+                  const aboveAvg = stats && overallPct > stats.classAverage;
+                  return (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 print:hidden">
+                      <div className="bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 shadow-sm">
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Class Average</p>
+                        <p className="mt-2 text-2xl sm:text-3xl font-extrabold text-gray-900 leading-none tabular-nums tracking-tight">
+                          {stats ? <>{stats.classAverage.toFixed(2)}<span className="text-base sm:text-lg text-gray-400 font-bold">%</span></> : "—"}
+                        </p>
+                        {stats && (
+                          <p className={cn("mt-1.5 text-[10px] font-bold uppercase tracking-wider", aboveAvg ? "text-emerald-600" : "text-amber-600")}>
+                            {aboveAvg ? "▲ Above average" : "▼ Below average"}
+                          </p>
+                        )}
+                      </div>
+                      <div className="bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 shadow-sm">
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Class Highest</p>
+                        <p className="mt-2 text-2xl sm:text-3xl font-extrabold text-gray-900 leading-none tabular-nums tracking-tight">
+                          {stats && classReport?.students?.length
+                            ? <>{Math.max(...classReport.students.map((s) => s.summary.totalPercentage ?? 0)).toFixed(2)}<span className="text-base sm:text-lg text-gray-400 font-bold">%</span></>
+                            : "—"}
+                        </p>
+                      </div>
+                      <div className="bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 shadow-sm">
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Class Lowest</p>
+                        <p className="mt-2 text-2xl sm:text-3xl font-extrabold text-gray-900 leading-none tabular-nums tracking-tight">
+                          {stats && classReport?.students?.length
+                            ? <>{Math.min(...classReport.students.map((s) => s.summary.totalPercentage ?? 0)).toFixed(2)}<span className="text-base sm:text-lg text-gray-400 font-bold">%</span></>
+                            : "—"}
+                        </p>
+                      </div>
+                      <div className="bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 shadow-sm">
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Pass Rate</p>
+                        <p className="mt-2 text-2xl sm:text-3xl font-extrabold text-gray-900 leading-none tabular-nums tracking-tight">
+                          {passRate.toFixed(0)}<span className="text-base sm:text-lg text-gray-400 font-bold">%</span>
+                        </p>
+                        <p className="mt-1.5 text-[10px] text-gray-400 font-semibold tabular-nums">
+                          {passedCount}/{results.length} subjects
+                        </p>
+                      </div>
+                      <div className="bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 shadow-sm">
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Class Size</p>
+                        <p className="mt-2 text-2xl sm:text-3xl font-extrabold text-gray-900 leading-none tabular-nums tracking-tight">
+                          {stats?.totalStudents ?? "—"}
+                        </p>
+                        {stats && (
+                          <p className="mt-1.5 text-[10px] text-gray-400 font-semibold">
+                            {stats.passedCount} passed · {stats.failedCount} failed
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Subject wise marks — simple elegant table */}
                 <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
                   {/* Table header */}
@@ -806,6 +885,50 @@ export default function ParentResultsPage() {
                     </div>
                   </div>
                 </section>
+
+                {classReport?.stats && (() => {
+                  const highest = classReport.students?.length
+                    ? Math.max(...classReport.students.map((s) => s.summary.totalPercentage ?? 0))
+                    : null;
+                  const lowest = classReport.students?.length
+                    ? Math.min(...classReport.students.map((s) => s.summary.totalPercentage ?? 0))
+                    : null;
+                  return (
+                    <section className="space-y-2">
+                      <h4 className="text-[10px] uppercase tracking-[0.18em] font-bold text-emerald-700">Class Statistics</h4>
+                      <div className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
+                        <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                          <span className="text-gray-500">Class Average</span>
+                          <span className="font-semibold text-gray-900 tabular-nums">{classReport.stats.classAverage.toFixed(2)}%</span>
+                        </div>
+                        {highest !== null && (
+                          <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                            <span className="text-gray-500">Class Highest</span>
+                            <span className="font-semibold text-gray-900 tabular-nums">{highest.toFixed(2)}%</span>
+                          </div>
+                        )}
+                        {lowest !== null && (
+                          <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                            <span className="text-gray-500">Class Lowest</span>
+                            <span className="font-semibold text-gray-900 tabular-nums">{lowest.toFixed(2)}%</span>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                          <span className="text-gray-500">Total Students</span>
+                          <span className="font-semibold text-gray-900 tabular-nums">{classReport.stats.totalStudents}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                          <span className="text-gray-500">Pass / Fail</span>
+                          <span className="font-semibold text-gray-900 tabular-nums">
+                            <span className="text-emerald-700">{classReport.stats.passedCount}</span>
+                            <span className="text-gray-300 mx-1">/</span>
+                            <span className="text-rose-600">{classReport.stats.failedCount}</span>
+                          </span>
+                        </div>
+                      </div>
+                    </section>
+                  );
+                })()}
               </>
             )}
 
@@ -844,13 +967,9 @@ export default function ParentResultsPage() {
           description="Share or download a beautifully formatted result card"
         >
           <div className="p-5 sm:p-6">
-            {activeExam && activeStudent && (
+             {activeExam && activeStudent && (
               <ParentResultCard
-                studentName={activeStudent.name}
-                studentAdo={activeStudent.adno}
-                studentGender={activeStudent.gender ?? null}
-                studentClass={activeStudent.className ?? "—"}
-                studentPhoto={studentPhoto}
+                studentId={activeStudent.id}
                 results={results}
                 summary={summary}
                 exam={activeExam}
@@ -872,11 +991,7 @@ export default function ParentResultsPage() {
           <div className="p-5 sm:p-6">
             {canRankCard && summary && activeExam && activeStudent && (
               <ParentRankCard
-                studentName={activeStudent.name}
-                studentAdo={activeStudent.adno}
-                studentGender={activeStudent.gender ?? null}
-                studentClass={activeStudent.className ?? "—"}
-                studentPhoto={studentPhoto}
+                studentId={activeStudent.id}
                 summary={summary}
                 exam={activeExam}
                 madrasaName={madrasaName}

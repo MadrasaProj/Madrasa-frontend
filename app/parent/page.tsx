@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { getUnreadCount } from "@/lib/notifications-api";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
+import { useRefreshParentStudents } from "@/lib/hooks/useRefreshParentStudents";
 import {
   ClipboardList,
   BookOpen,
@@ -20,6 +21,7 @@ import { motion } from "framer-motion";
 
 export default function ParentDashboard() {
   const { user, accessToken } = useAuthStore();
+  useRefreshParentStudents();
   const { lang } = useLanguageStore();
   const navigate = useNavigate();
   const cid = user?.clientId ?? "";

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { StudentInfo } from "@/lib/auth-api";
-import { getProfile } from "@/lib/auth-api";
+import { getProfile, getParentStudents } from "@/lib/auth-api";
 
 export type UserRole = "admin" | "teacher" | "parent" | "committee";
 export type AuthActorType =
@@ -53,7 +53,9 @@ interface AuthStore {
   setActiveStudent: (studentId: string) => void;
   setAttendanceMode: (mode: AttendanceMode) => void;
   updateUser: (fields: Partial<User>) => void;
+  setAccessibleStudents: (students: StudentInfo[]) => void;
   refreshProfile: () => Promise<void>;
+  refreshParentStudents: () => Promise<void>;
 }
 
 export type AuthSessionPayload = {
@@ -198,9 +200,34 @@ export const useAuthStore = create<AuthStore>()(
           // Silently fail — stale photoUrl is not critical
         }
       },
+
+      setAccessibleStudents: (students) =>
+        set((state) => ({
+          user: state.user ? { ...state.user, accessibleStudents: students } : null,
+        })),
+
+      refreshParentStudents: async () => {
+        const { accessToken, user } = get();
+        if (!accessToken || !user || user.actorType !== "PARENT") return;
+        try {
+          const { data } = await getParentStudents(accessToken);
+          set((state) => ({
+            user: state.user
+              ? {
+                  ...state.user,
+                  accessibleStudents: data,
+                  accessibleStudentIds: data.map((s) => s.id),
+                }
+              : null,
+          }));
+        } catch {
+          // Silently fail — keep the persisted list as fallback
+        }
+      },
     }),
     {
       name: "madrasa-auth-session",
+      version: 2,
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         user: state.user,
@@ -210,6 +237,22 @@ export const useAuthStore = create<AuthStore>()(
         activeTenantSlug: state.activeTenantSlug,
         activeStudentId: state.activeStudentId,
       }),
+      migrate: (persisted: unknown, fromVersion: number) => {
+        // Bump version when the shape of `user.accessibleStudents` changes so
+        // the old (limited) cached payload is dropped and the user is forced
+        // to re-login once to receive the new fields.
+        if (fromVersion < 2) {
+          return {
+            user: null,
+            accessToken: null,
+            isLoggedIn: false,
+            activeClientId: null,
+            activeTenantSlug: null,
+            activeStudentId: null,
+          } as any;
+        }
+        return persisted as any;
+      },
       onRehydrateStorage: () => (state) => {
         state?.markHydrated();
       },
