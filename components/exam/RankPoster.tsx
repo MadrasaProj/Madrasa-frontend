@@ -210,7 +210,7 @@ export function RankPoster({ row, report, madrasaName, madrasaLogo }: Props) {
 
           {/* Footer watermark */}
           <p className={cn("text-[9px] opacity-40 font-semibold uppercase tracking-widest", cfg.text)}>
-            Al Madrasa Platform · {new Date().getFullYear()}
+            Smart Madrasa · {new Date().getFullYear()}
           </p>
         </div>
       </div>

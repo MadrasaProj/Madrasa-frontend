@@ -172,7 +172,7 @@ export function ResultAnnouncementPoster({ exam, madrasaName, madrasaLogo, stats
 
           {/* Footer watermark */}
           <div className="flex items-center justify-between pt-1">
-            <span className="text-[9px] text-white/25 uppercase tracking-widest font-semibold">Al Madrasa Platform</span>
+            <span className="text-[9px] text-white/25 uppercase tracking-widest font-semibold">Smart Madrasa</span>
             <span className="text-[9px] text-white/25">{new Date().getFullYear()}</span>
           </div>
         </div>

@@ -286,7 +286,7 @@ export function MarklistPoster({ row, report, madrasaName, madrasaLogo }: Props)
 
         {/* Footer watermark */}
         <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-          <span className="text-[9px] text-gray-400 uppercase tracking-widest font-semibold">Al Madrasa Platform</span>
+          <span className="text-[9px] text-gray-400 uppercase tracking-widest font-semibold">Smart Madrasa</span>
           <span className="text-[9px] text-gray-400">{new Date().getFullYear()}</span>
         </div>
       </div>

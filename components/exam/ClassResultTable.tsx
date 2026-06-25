@@ -136,7 +136,7 @@ function printTable(el: HTMLElement, title: string) {
       @media print { @page { margin: 10mm } }
     </style></head><body>`);
   win.document.body.appendChild(el.cloneNode(true));
-  win.document.write(`<div class="foot">Powered by Al Madrasa Platform • ${new Date().toLocaleDateString()}</div></body></html>`);
+  win.document.write(`<div class="foot">Powered by Smart Madrasa • ${new Date().toLocaleDateString()}</div></body></html>`);
   win.document.close();
   win.focus();
   setTimeout(() => { win.print(); win.close(); }, 300);
@@ -426,7 +426,7 @@ export function ClassResultTable({ report, madrasaName }: Props) {
 
         {/* Footer watermark */}
         <div className="px-6 py-4 border-t border-gray-100 text-center text-xs text-gray-400">
-          Powered by <span className="font-semibold text-emerald-600">Al Madrasa Platform</span> · Generated {new Date().toLocaleString("en-IN")}
+          Powered by <span className="font-semibold text-emerald-600">Smart Madrasa</span> · Generated {new Date().toLocaleString("en-IN")}
         </div>
       </div>
     </div>
