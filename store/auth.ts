@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { StudentInfo } from "@/lib/auth-api";
+import { getProfile } from "@/lib/auth-api";
 
 export type UserRole = "admin" | "teacher" | "parent" | "committee";
 export type AuthActorType =
@@ -52,6 +53,7 @@ interface AuthStore {
   setActiveStudent: (studentId: string) => void;
   setAttendanceMode: (mode: AttendanceMode) => void;
   updateUser: (fields: Partial<User>) => void;
+  refreshProfile: () => Promise<void>;
 }
 
 export type AuthSessionPayload = {
@@ -178,6 +180,24 @@ export const useAuthStore = create<AuthStore>()(
         set((state) => ({
           user: state.user ? { ...state.user, ...fields } : null,
         })),
+
+      refreshProfile: async () => {
+        const { accessToken, user } = get();
+        if (!accessToken || !user) return;
+        try {
+          const profile = await getProfile(accessToken);
+          set({
+            user: {
+              ...user,
+              name: profile.name,
+              photo: profile.photo,
+              photoUrl: profile.photoUrl,
+            },
+          });
+        } catch {
+          // Silently fail — stale photoUrl is not critical
+        }
+      },
     }),
     {
       name: "madrasa-auth-session",

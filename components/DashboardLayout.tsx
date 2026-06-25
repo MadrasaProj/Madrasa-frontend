@@ -3,7 +3,7 @@ import { ParentStudentSwitcher } from "@/components/ParentStudentSwitcher";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { Bell, ShieldAlert, X, Menu } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
@@ -45,9 +45,10 @@ function SuperAdminViewingBanner() {
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const { user, activeClientId, activeTenantSlug, hasHydrated, accessToken, setAttendanceMode, logout } = useAuthStore();
+  const { user, activeClientId, activeTenantSlug, hasHydrated, accessToken, setAttendanceMode, logout, refreshProfile } = useAuthStore();
   const { lang } = useLanguageStore();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const hasRefreshed = useRef(false);
 
   const loginRedirectPath = useCallback(() =>
     resolveLoginRedirectPath({
@@ -76,6 +77,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       .catch(() => {});
   }, [activeClientId]); // eslint-disable-line
 
+  // Fetch fresh profile (with a new signed URL) once on app load
+  useEffect(() => {
+    if (!hasHydrated || !user || hasRefreshed.current) return;
+    hasRefreshed.current = true;
+    refreshProfile();
+  }, [hasHydrated, user, refreshProfile]);
+
   useEffect(() => {
     if (!hasHydrated) return;
 
@@ -103,7 +111,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     if (slugBase && pathname.startsWith(slugBase)) return;
 
     navigate(slugBase ?? roleBase, { replace: true });
-  }, [hasHydrated, loginRedirectPath, pathname, navigate, user]);
+  }, [hasHydrated, loginRedirectPath, pathname, navigate, user]); // eslint-disable-line
 
   if (!hasHydrated) {
     return (

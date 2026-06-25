@@ -1,4 +1,4 @@
-import { NETWORK_ERROR, TIMEOUT_ERROR } from "@/lib/fetch";
+import { NETWORK_ERROR, TIMEOUT_ERROR, apiFetch } from "@/lib/fetch";
 
 const API_ORIGIN =
   import.meta.env.VITE_API_ORIGIN ?? "http://localhost:3000";
@@ -224,4 +224,15 @@ export async function loginCommittee(
     },
     signal,
   );
+}
+
+export type ProfilePayload = {
+  id: string;
+  name: string;
+  photo: string | null;
+  photoUrl: string | null;
+};
+
+export async function getProfile(token: string): Promise<ProfilePayload> {
+  return apiFetch<ProfilePayload>(`${DEFAULT_API_BASE}/auth/profile`, token);
 }
