@@ -43,8 +43,6 @@ import {
   getExamStatusInfo,
 } from "@/components/exam/ExamStatusBadge";
 
-type TabFilter = "ALL" | "DRAFT" | "MARK_ENTRY" | "PUBLISHED" | "CANCELLED";
-
 interface ExamForm {
   name: string;
   startDate: string;
@@ -119,7 +117,6 @@ export default function AdminExamsPage() {
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
 
-  const [selectedTab, setSelectedTab] = useState<TabFilter>("ALL");
   const [searchText, setSearchText] = useState("");
 
   const [page, setPage] = useState(1);
@@ -444,21 +441,9 @@ export default function AdminExamsPage() {
     const q = searchText.toLowerCase();
     return exams.filter((exam) => {
       if (q && !exam.name.toLowerCase().includes(q)) return false;
-      switch (selectedTab) {
-        case "DRAFT":
-          return exam.examStatus === "DRAFT";
-        case "MARK_ENTRY":
-          return exam.examStatus === "MARK_ENTRY";
-        case "PUBLISHED":
-          return exam.examStatus === "PUBLISHED";
-        case "CANCELLED":
-          return exam.examStatus === "CANCELLED";
-        case "ALL":
-        default:
-          return true;
-      }
+      return true;
     });
-  }, [exams, searchText, selectedTab]);
+  }, [exams, searchText]);
 
   const sortedExams = useMemo(() => {
     if (!sortBy) return filteredExams;
@@ -484,7 +469,7 @@ export default function AdminExamsPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [searchText, selectedTab, pageSize]);
+  }, [searchText, pageSize]);
 
   const upcomingExams = exams.filter(
     (e) => e.startDate && new Date(e.startDate) > new Date(),
@@ -699,45 +684,15 @@ export default function AdminExamsPage() {
           />
         )}
 
-        <div className="space-y-4">
-          <div className="border-b border-gray-100 flex gap-1 overflow-x-auto no-scrollbar py-0.5">
-            {(
-              ["ALL", "DRAFT", "MARK_ENTRY", "PUBLISHED", "CANCELLED"] as const
-            ).map((t) => {
-              const labels: Record<TabFilter, string> = {
-                ALL: "All Term Exams",
-                DRAFT: "Draft",
-                MARK_ENTRY: "Mark Entry Open",
-                PUBLISHED: "Published",
-                CANCELLED: "Cancelled",
-              };
-              return (
-                <button
-                  key={t}
-                  onClick={() => setSelectedTab(t)}
-                  className={cn(
-                    "px-4 py-2 text-xs lg:text-sm font-semibold rounded-t-xl transition-colors shrink-0 border-b-2 -mb-px",
-                    selectedTab === t
-                      ? "border-emerald-600 text-emerald-600 font-bold"
-                      : "border-transparent text-gray-500 hover:text-gray-900",
-                  )}
-                >
-                  {labels[t]}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search exam by name..."
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 focus:border-emerald-500 transition-all"
-            />
-          </div>
+        <div className="relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search exam by name..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 focus:border-emerald-500 transition-all"
+          />
         </div>
 
         <DataTable
