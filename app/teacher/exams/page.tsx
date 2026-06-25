@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
+import { DataTable, type Column, type SortDir } from "@/components/ui/DataTable";
 import { getExams, type ExamRecord, type ExamStatus } from "@/lib/exams-api";
 import { getResults, bulkUpsertResults, type ResultRecord } from "@/lib/results-api";
 import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
@@ -10,20 +12,28 @@ import { getStudents, type StudentRecord } from "@/lib/students-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
- GraduationCap, Save, Loader2, CheckCircle2, Lock, Calendar, AlertCircle, BarChart2,
- Clock, Check, Award, ArrowLeft, Download, RotateCcw, PenLine, FileSpreadsheet, ChevronRight, Eye,
- ClipboardCheck, Trophy, BookOpen
+  GraduationCap, Save, Loader2, CheckCircle2, Lock, Calendar, AlertCircle,
+  Clock, Award, ArrowLeft, RotateCcw, PenLine, FileSpreadsheet, Eye,
+  ClipboardCheck, Trophy, Search, X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ExamStatusBadge, getExamStatusInfo } from "@/components/exam/ExamStatusBadge";
 import { ExcelImportModal } from "@/components/exam/ExcelImportModal";
 
-type TabFilter = "ALL" | "UPCOMING" | "MARK_ENTRY" | "COMPLETED" | "PUBLISHED";
+
 
 function fmt(d?: string | null) {
- if (!d) return "—";
- return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  if (!d) return "—";
+  return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function shortDate(d?: string | null) {
+  if (!d) return "—";
+  return new Date(d).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+  });
 }
 
 export default function TeacherExamsPage() {
@@ -36,9 +46,8 @@ export default function TeacherExamsPage() {
  const ayId = user?.defaultAcademicYearId ?? "";
  const teacherId = user?.id ?? "";
 
- // UI Mode (list vs mark-entry)
- const isMarkEntryView = searchParams.get("view") === "mark-entry";
- const [selectedTab, setSelectedTab] = useState<TabFilter>("ALL");
+  // UI Mode (list vs mark-entry)
+  const isMarkEntryView = searchParams.get("view") === "mark-entry";
 
  // Selection states (from query params or fallback)
  const queryExamId = searchParams.get("examId") ?? "";
@@ -59,9 +68,15 @@ export default function TeacherExamsPage() {
  const [saving, setSaving] = useState(false);
  const [saved, setSaved] = useState(false);
  const [error, setError] = useState<string | null>(null);
- const [importOpen, setImportOpen] = useState(false);
+	const [importOpen, setImportOpen] = useState(false);
 
- const [classSubjects, setClassSubjects] = useState<SubjectRecord[]>([]);
+	const [classSubjects, setClassSubjects] = useState<SubjectRecord[]>([]);
+
+	const [searchText, setSearchText] = useState("");
+	const [page, setPage] = useState(1);
+	const [pageSize, setPageSize] = useState(10);
+	const [sortBy, setSortBy] = useState<string | undefined>("startDate");
+	const [sortDir, setSortDir] = useState<SortDir>("desc");
 
  // Derived arrays
  const myClassIds = new Set(mySubjects.map((s) => s.classId));
@@ -233,28 +248,172 @@ export default function TeacherExamsPage() {
  });
  const publishedExams = exams.filter((e) => e.examStatus === "PUBLISHED");
 
- const filteredExams = exams.filter((exam) => {
- switch (selectedTab) {
- case "UPCOMING":
- return upcomingExams.some((e) => e.id === exam.id);
- case "MARK_ENTRY":
- return markEntryOpenExams.some((e) => e.id === exam.id);
- case "COMPLETED":
- return completedExams.some((e) => e.id === exam.id);
- case "PUBLISHED":
- return publishedExams.some((e) => e.id === exam.id);
- case "ALL":
- default:
- return true;
- }
- });
+  const searchFiltered = useMemo(() => {
+    const q = searchText.toLowerCase();
+    return exams.filter((exam) => {
+      if (q && !exam.name.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [exams, searchText]);
 
- const filled = Object.values(scores).filter((v) => v !== "").length;
- const avg = filled > 0
- ? Math.round(Object.values(scores).filter((v) => v !== "").reduce((s, v) => s + Number(v), 0) / filled)
- : 0;
+  const sortedExams = useMemo(() => {
+    if (!sortBy) return searchFiltered;
+    const arr = [...searchFiltered];
+    arr.sort((a, b) => {
+      const av = (a as any)[sortBy];
+      const bv = (b as any)[sortBy];
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      if (av < bv) return sortDir === "asc" ? -1 : 1;
+      if (av > bv) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return arr;
+  }, [searchFiltered, sortBy, sortDir]);
 
- // ── Render Loading ───────────────────────────────────────────────────────────
+  const totalPages = Math.max(1, Math.ceil(sortedExams.length / pageSize));
+  const pagedExams = useMemo(
+    () => sortedExams.slice((page - 1) * pageSize, page * pageSize),
+    [sortedExams, page, pageSize],
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchText, pageSize]);
+
+  const filled = Object.values(scores).filter((v) => v !== "").length;
+  const avg = filled > 0
+    ? Math.round(Object.values(scores).filter((v) => v !== "").reduce((s, v) => s + Number(v), 0) / filled)
+    : 0;
+
+  // ── Columns ────────────────────────────────────────────────────────────────
+
+  const columns = useMemo<Column<ExamRecord>[]>(
+    () => [
+      {
+        key: "name",
+        header: "Exam",
+        sortable: true,
+        render: (exam) => (
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
+              <GraduationCap className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold text-gray-900 text-sm truncate">
+                {exam.name}
+              </p>
+              <p className="text-[10px] text-gray-400 mt-0.5 truncate">
+                {getExamStatusInfo(exam).description || "—"}
+              </p>
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: "examStatus",
+        header: "Status",
+        sortable: true,
+        render: (exam) => <ExamStatusBadge exam={exam} />,
+        className: "hidden sm:table-cell",
+        headerClass: "hidden sm:table-cell",
+      },
+      {
+        key: "startDate",
+        header: "Exam Period",
+        sortable: true,
+        render: (exam) => (
+          <div className="text-xs leading-tight">
+            <p className="text-gray-800 font-semibold whitespace-nowrap">
+              {shortDate(exam.startDate)} – {shortDate(exam.endDate)}
+            </p>
+            <p className="text-[10px] text-gray-400 mt-0.5">
+              {fmt(exam.startDate)}
+            </p>
+          </div>
+        ),
+        className: "hidden md:table-cell",
+        headerClass: "hidden md:table-cell",
+      },
+      {
+        key: "markEntryLastDate",
+        header: "Mark Entry",
+        sortable: true,
+        render: (exam) => (
+          <span className="text-xs text-gray-700 font-medium whitespace-nowrap">
+            {fmt(exam.markEntryLastDate)}
+          </span>
+        ),
+        className: "hidden lg:table-cell",
+        headerClass: "hidden lg:table-cell",
+      },
+      {
+        key: "publishedDate",
+        header: "Publish",
+        sortable: true,
+        render: (exam) => (
+          <span className="text-xs text-gray-700 font-medium whitespace-nowrap">
+            {fmt(exam.publishedDate)}
+          </span>
+        ),
+        className: "hidden lg:table-cell",
+        headerClass: "hidden lg:table-cell",
+      },
+      {
+        key: "actions",
+        header: "",
+        render: (exam) => (
+          <div className="flex items-center gap-1.5 justify-end">
+            {exam.examStatus === "PUBLISHED" ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goToClassReport(exam.id, teacherClasses[0]?.id || "");
+                }}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-700 transition-colors text-xs font-semibold"
+                title="View Results"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Results</span>
+              </button>
+            ) : exam.examStatus === "MARK_ENTRY" && (!exam.markEntryLastDate || new Date(exam.markEntryLastDate) >= new Date()) ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSearchParams((prev) => {
+                    prev.set("view", "mark-entry");
+                    prev.set("examId", exam.id);
+                    const firstCls = teacherClasses[0]?.id || "";
+                    if (firstCls) prev.set("classId", firstCls);
+                    return prev;
+                  });
+                }}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors text-xs font-semibold"
+                title="Enter Marks"
+              >
+                <PenLine className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Enter</span>
+              </button>
+            ) : (
+              <button
+                disabled
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-50 text-gray-400 cursor-not-allowed transition-colors text-xs font-semibold"
+                title="No action available"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Locked</span>
+              </button>
+            )}
+          </div>
+        ),
+        className: "text-right",
+      },
+    ],
+    [],
+  );
+
+  // ── Render Loading ───────────────────────────────────────────────────────────
 
  if (loading) {
  return (
@@ -578,154 +737,210 @@ export default function TeacherExamsPage() {
  );
  }
 
- // ── Render Dashboard Exams List View ─────────────────────────────────────────
 
- return (
- <DashboardLayout>
- <div className="px-4 py-3 lg:px-8 lg:py-6 space-y-6">
- 
- <PageHeader
- title="Exams"
- subtitle="View exam schedule and enter marks"
- icon={GraduationCap}
- />
 
- {/* Stat Cards Row */}
- <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
- {[
- { label: "Upcoming Exams", value: upcomingExams.length, color: "bg-emerald-50 text-emerald-600 border border-emerald-100", icon: Clock },
- { label: "Mark Entry Open", value: markEntryOpenExams.length, color: "bg-amber-50 text-amber-600 border border-amber-100", icon: PenLine },
- { label: "Completed", value: completedExams.length, color: "bg-purple-50 text-purple-600 border border-purple-100", icon: ClipboardCheck },
- { label: "Results Published", value: publishedExams.length, color: "bg-teal-50 text-teal-600 border border-teal-100", icon: Trophy }
- ].map((st, i) => (
- <div key={i} className="bg-white rounded-3xl border border-gray-100 p-5 flex items-center gap-4 shadow-xs">
- <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-inner", st.color)}>
- <st.icon className="w-5.5 h-5.5" />
- </div>
- <div>
- <p className="text-2xl font-extrabold text-gray-900 leading-none">{st.value}</p>
- <p className="text-[10px] text-gray-400 mt-1.5 uppercase font-bold tracking-wider">{st.label}</p>
- </div>
- </div>
- ))}
- </div>
+  // ── Render Dashboard Exams List View ─────────────────────────────────────────
 
- {/* Tab Filters */}
- <div className="border-b border-gray-100 flex gap-1 overflow-x-auto no-scrollbar py-0.5">
- {(["ALL", "UPCOMING", "MARK_ENTRY", "COMPLETED", "PUBLISHED"] as const).map((t) => {
- const labels: Record<TabFilter, string> = {
- ALL: "All Exams",
- UPCOMING: "Upcoming",
- MARK_ENTRY: "Mark Entry Open",
- COMPLETED: "Completed",
- PUBLISHED: "Published",
- };
- return (
- <button
- key={t}
- onClick={() => setSelectedTab(t)}
- className={cn(
- "px-4 py-2 text-xs lg:text-sm font-semibold rounded-t-xl transition-colors shrink-0 border-b-2 -mb-px",
- selectedTab === t
- ? "border-emerald-600 text-emerald-600 font-bold"
- : "border-transparent text-gray-500 hover:text-gray-900"
- )}
- >
- {labels[t]}
- </button>
- );
- })}
- </div>
+  return (
+    <DashboardLayout>
+      <div className="px-4 py-3 lg:px-8 lg:py-6 space-y-6">
 
- {/* Exams List cards */}
- {filteredExams.length === 0 ? (
- <div className="text-center py-20 bg-white border border-gray-100 rounded-3xl p-6">
- <GraduationCap className="w-12 h-12 text-gray-200 mx-auto mb-3" />
- <p className="text-sm font-semibold text-gray-900">No exams in this filter</p>
- <p className="text-xs text-gray-400 mt-1">Any exams created by administration will be listed here.</p>
- </div>
- ) : (
- <div className="grid grid-cols-1 gap-4">
- {filteredExams.map((exam) => {
- const { description } = getExamStatusInfo(exam);
+        <PageHeader
+          title="Exams"
+          subtitle="View exam schedule and enter marks"
+          icon={GraduationCap}
+        />
 
- return (
- <div key={exam.id} className="bg-white rounded-3xl border border-gray-100 p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm hover:shadow-md/50 transition-shadow">
- <div className="flex items-start gap-4 min-w-0">
- <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0 shadow-inner">
- <GraduationCap className="w-5.5 h-5.5" />
- </div>
- <div className="min-w-0 space-y-1">
- <div className="flex items-center gap-2 flex-wrap">
- <h3 className="font-bold text-gray-900 text-base leading-tight truncate">{exam.name}</h3>
- <ExamStatusBadge exam={exam} />
- </div>
- 
- {/* Dates details */}
- <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 pt-0.5">
- <span className="flex items-center gap-1">
- <Calendar className="w-3.5 h-3.5 text-gray-400" />
- Exam Period: {fmt(exam.startDate)} – {fmt(exam.endDate)}
- </span>
- <span className="flex items-center gap-1">
- <PenLine className="w-3.5 h-3.5 text-gray-400" />
- Mark Entry: {exam.endDate ? fmt(new Date(new Date(exam.endDate).getTime() + 86400000).toISOString()) : "—"} – {fmt(exam.markEntryLastDate)}
- </span>
- <span className="flex items-center gap-1">
- <Award className="w-3.5 h-3.5 text-gray-400" />
- Result Publish: {fmt(exam.publishedDate)}
- </span>
- </div>
- </div>
- </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            {
+              label: "Upcoming Exams",
+              value: upcomingExams.length,
+              color:
+                "bg-emerald-50 text-emerald-600 border border-emerald-100",
+              icon: Clock,
+            },
+            {
+              label: "Mark Entry Open",
+              value: markEntryOpenExams.length,
+              color: "bg-amber-50 text-amber-600 border border-amber-100",
+              icon: PenLine,
+            },
+            {
+              label: "Completed",
+              value: completedExams.length,
+              color: "bg-purple-50 text-purple-700 border border-purple-100",
+              icon: ClipboardCheck,
+            },
+            {
+              label: "Results Published",
+              value: publishedExams.length,
+              color: "bg-teal-50 text-teal-600 border border-teal-100",
+              icon: Trophy,
+            },
+          ].map((st, i) => (
+            <div
+              key={i}
+              className="bg-white rounded-3xl border border-gray-100 p-5 flex items-center gap-4 shadow-xs"
+            >
+              <div
+                className={cn(
+                  "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-inner",
+                  st.color,
+                )}
+              >
+                <st.icon className="w-5.5 h-5.5" />
+              </div>
+              <div>
+                <p className="text-2xl font-extrabold text-gray-900 leading-none">
+                  {st.value}
+                </p>
+                <p className="text-[10px] text-gray-400 mt-1.5 uppercase font-bold tracking-wider">
+                  {st.label}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
 
- {/* Actions & subtexts */}
- <div className="flex flex-col sm:flex-row md:flex-col sm:items-center md:items-end justify-between md:justify-center gap-3 shrink-0 border-t md:border-none pt-3 md:pt-0 border-gray-50">
- {description && (
- <p className="text-xs text-gray-500">{description}</p>
- )}
- <div className="flex items-center gap-2 self-end sm:self-auto md:self-end">
- {exam.examStatus === "PUBLISHED" ? (
- <>
- <button
- onClick={() => goToClassReport(exam.id, exam.classId || teacherClasses[0]?.id || "")}
- className="px-4 py-2 border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold text-xs rounded-xl transition-colors inline-flex items-center gap-1.5"
- >
- <Eye className="w-3.5 h-3.5" /> View Results
- </button>
- </>
- ) : exam.examStatus === "MARK_ENTRY" && (!exam.markEntryLastDate || new Date(exam.markEntryLastDate) >= new Date()) ? (
- <>
- <button
- onClick={() => setSearchParams((prev) => {
- prev.set("view", "mark-entry");
- prev.set("examId", exam.id);
- // Auto-select first class teacher option
- const firstCls = teacherClasses[0]?.id || "";
- if (firstCls) prev.set("classId", firstCls);
- return prev;
- })}
- className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition-colors inline-flex items-center gap-1.5"
- >
- <PenLine className="w-3.5 h-3.5" /> Enter Marks
- </button>
- </>
- ) : (
- <button
- disabled
- className="px-4 py-2 bg-gray-50 border border-gray-200 text-gray-400 font-bold text-xs rounded-xl transition-colors inline-flex items-center gap-1.5 cursor-not-allowed"
- >
- <Lock className="w-3.5 h-3.5" /> View Details
- </button>
- )}
- </div>
- </div>
- </div>
- );
- })}
- </div>
- )}
- </div>
- </DashboardLayout>
- );
+        {error && (
+          <ApiErrorBanner
+            message={error}
+            onRetry={() => {
+              setError(null);
+              window.location.reload();
+            }}
+          />
+        )}
+
+        <div className="relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search exam by name..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 focus:border-emerald-500 transition-all"
+          />
+          {searchText && (
+            <button
+              onClick={() => setSearchText("")}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        <DataTable
+          columns={columns}
+          data={pagedExams}
+          keyExtractor={(e) => e.id}
+          loading={loading}
+          error={null}
+          emptyIcon={GraduationCap}
+          emptyMessage="No term exams found"
+          onSort={(key, dir) => {
+            setSortBy(key);
+            setSortDir(dir);
+          }}
+          sortKey={sortBy}
+          sortDir={sortDir}
+          pagination={{
+            page,
+            totalPages,
+            total: sortedExams.length,
+            pageSize,
+            pageSizeOptions: [10, 20, 50, 100],
+            onPageChange: setPage,
+            onPageSizeChange: (sz) => {
+              setPageSize(sz);
+              setPage(1);
+            },
+          }}
+          mobileRender={(exam) => {
+            const { description } = getExamStatusInfo(exam);
+            return (
+              <div className="space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0 shadow-inner">
+                      <GraduationCap className="w-5.5 h-5.5" />
+                    </div>
+                    <div className="min-w-0 pt-0.5">
+                      <p className="font-bold text-gray-900 text-sm leading-snug">
+                        {exam.name}
+                      </p>
+                      {description && (
+                        <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">
+                          {description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <ExamStatusBadge exam={exam} />
+                </div>
+                <div className="grid grid-cols-3 gap-3 text-[10px]">
+                  <div className="bg-gray-50 rounded-xl p-2.5">
+                    <p className="text-gray-400 uppercase font-bold tracking-wider">Exam Period</p>
+                    <p className="text-gray-800 font-bold mt-1 leading-tight">
+                      {shortDate(exam.startDate)} – {shortDate(exam.endDate)}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-2.5">
+                    <p className="text-gray-400 uppercase font-bold tracking-wider">Mark Entry</p>
+                    <p className="text-gray-800 font-bold mt-1 leading-tight">
+                      {fmt(exam.markEntryLastDate)}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-2.5">
+                    <p className="text-gray-400 uppercase font-bold tracking-wider">Publish</p>
+                    <p className="text-gray-800 font-bold mt-1 leading-tight">
+                      {fmt(exam.publishedDate)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {exam.examStatus === "PUBLISHED" ? (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        goToClassReport(exam.id, teacherClasses[0]?.id || "");
+                      }}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 transition-colors text-xs font-bold"
+                    >
+                      <Eye className="w-3.5 h-3.5" /> View Results
+                    </button>
+                  ) : exam.examStatus === "MARK_ENTRY" && (!exam.markEntryLastDate || new Date(exam.markEntryLastDate) >= new Date()) ? (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSearchParams((prev) => {
+                          prev.set("view", "mark-entry");
+                          prev.set("examId", exam.id);
+                          const firstCls = teacherClasses[0]?.id || "";
+                          if (firstCls) prev.set("classId", firstCls);
+                          return prev;
+                        });
+                      }}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors text-xs font-bold"
+                    >
+                      <PenLine className="w-3.5 h-3.5" /> Enter Marks
+                    </button>
+                  ) : (
+                    <button
+                      disabled
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-gray-50 text-gray-400 cursor-not-allowed transition-colors text-xs font-bold"
+                    >
+                      <Lock className="w-3.5 h-3.5" /> No Action
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          }}
+        />
+      </div>
+    </DashboardLayout>
+  );
 }
