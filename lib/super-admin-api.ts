@@ -341,6 +341,10 @@ export interface UpdateProfileDto {
   country?: string;
   pincode?: string;
   bloodGroup?: string;
+  email?: string;
+  phone?: string;
+  profilePic?: string;
+  msrId?: string;
 }
 
 export function updateProfile(token: string, dto: UpdateProfileDto) {

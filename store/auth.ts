@@ -24,6 +24,11 @@ interface User {
   clientId?: string;
   defaultAcademicYearId?: string | null;
   parentPhone?: string;
+  email?: string;
+  phone?: string;
+  profilePic?: string | null;
+  address?: string;
+  msrId?: string;
   accessibleStudentIds?: string[];
   accessibleStudents?: StudentInfo[];
   attendanceMode?: AttendanceMode;

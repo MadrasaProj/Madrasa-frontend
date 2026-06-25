@@ -1,10 +1,14 @@
 import { useEffect } from "react";
 import { onForegroundMessage } from "@/lib/firebase";
-import { registerParentPushToken } from "@/lib/fcm-register";
+import { registerPushToken } from "@/lib/fcm-register";
+import { useAuthStore } from "@/store/auth";
 
 export default function PwaRegister() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
+
+    let fcmRegistration: ServiceWorkerRegistration | undefined;
+    let registeredFor: string | null = null;
 
     const register = async () => {
       try {
@@ -22,14 +26,11 @@ export default function PwaRegister() {
         });
         const fcmSwUrl = `/firebase-messaging-sw.js?${p.toString()}`;
         console.log("[PWA] Registering FCM service worker...");
-        const fcmRegistration = await navigator.serviceWorker.register(
+        fcmRegistration = await navigator.serviceWorker.register(
           fcmSwUrl,
           { scope: "/firebase-cloud-messaging-push-scope" }
         );
         console.log("[PWA] FCM service worker registered:", fcmRegistration.scope);
-
-        // Refresh parent FCM token on app load if already logged in
-        void registerParentPushToken(fcmRegistration);
       } catch (err) {
         console.error("[PWA] Service worker registration failed:", err);
       }
@@ -37,29 +38,55 @@ export default function PwaRegister() {
 
     void register();
 
-    // Show browser notifications for foreground FCM messages
+    // Register push token only on auth changes (not on initial mount —
+    // avoids duplicate registration with RoleLoginPage after login).
+    const ensureRegistered = (userId: string | undefined) => {
+      if (!userId) {
+        registeredFor = null;
+        return;
+      }
+      if (registeredFor === userId) return;
+      registeredFor = userId;
+      void registerPushToken(fcmRegistration);
+    };
+
+    const initial = useAuthStore.getState().user;
+    if (initial) ensureRegistered(initial.id);
+
+    const unsubscribeAuth = useAuthStore.subscribe((state, prev) => {
+      if (state.user?.id !== prev.user?.id) {
+        ensureRegistered(state.user?.id);
+      }
+    });
+
+    // Show browser notifications for foreground FCM messages via the SW
+    // (single notification path — avoids duplicate notifications when both
+    // onMessage and the SW's onBackgroundMessage fire on focus changes)
     const unsubscribe = onForegroundMessage((payload) => {
       if (Notification.permission !== "granted") return;
       const title = payload.notification?.title || "Smart Madrasa";
       const targetUrl = payload.data?.url;
-      const options: NotificationOptions = {
-        body: payload.notification?.body || "",
-        icon: "/icons/icon-192.png",
-        badge: "/icons/icon-192.png",
-        data: payload.data || {},
-      };
-      const notif = new Notification(title, options);
-      if (targetUrl) {
-        notif.onclick = () => {
-          notif.close();
-          window.focus();
-          window.location.href = targetUrl;
-        };
+      const messageId = (payload as any).messageId || "";
+      const tag = `fcm:${messageId || title}`;
+      const controller = navigator.serviceWorker.controller as any;
+      if (controller && typeof controller.postMessage === "function") {
+        controller.postMessage({
+          type: "FCM_SHOW_NOTIFICATION",
+          title,
+          options: {
+            body: payload.notification?.body || "",
+            icon: "/icons/icon-192.png",
+            badge: "/icons/icon-192.png",
+            tag,
+            data: { ...(payload.data || {}), url: targetUrl },
+          },
+        });
       }
     });
 
     return () => {
       unsubscribe?.();
+      unsubscribeAuth();
     };
   }, []);
 
