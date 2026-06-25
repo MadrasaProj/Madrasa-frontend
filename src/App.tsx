@@ -36,8 +36,8 @@ import AdminGlobalClassSubjectsPage from "../app/admin/global-class-subjects/pag
 import AdminPostersPage from "../app/admin/posters/page";
 import AdminPresentPage from "../app/admin/present/page";
 import AdminProfilePage from "../app/admin/profile/page";
-import CommitteeProfilePage from "../app/admin/profile/page";
-import ParentProfilePage from "../app/admin/profile/page";
+import CommitteeProfilePage from "../app/committee/profile/page";
+import ParentProfilePage from "../app/parent/profile/page";
 import TeacherProfilePage from "../app/teacher/profile/page";
 import ParentStudentProfile from "../app/parent/students/page";
 import AdminReportsPage from "../app/admin/reports/page";

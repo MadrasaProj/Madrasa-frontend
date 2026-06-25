@@ -111,6 +111,8 @@ export type AuthSessionPayload = {
     defaultAcademicYearId?: string | null;
     parentPhone?: string;
     accessibleStudentIds?: string[];
+    photo?: string | null;
+    photoUrl?: string | null;
     client?: {
       id?: string;
       name?: string;

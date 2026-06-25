@@ -10,28 +10,29 @@ import {
  type ParseResult,
 } from "@/components/ui/ImportModal";
 import {
- getStudents,
- createStudent,
- updateStudent,
- deleteStudent,
- uploadStudentPhoto,
- type StudentRecord,
- type CreateStudentPayload,
+  getStudents,
+  createStudent,
+  deleteStudent,
+  type StudentRecord,
+  type CreateStudentPayload,
 } from "@/lib/students-api";
 import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
+import StudentEditDrawer from "@/components/admin/StudentEditDrawer";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import {
- Users,
- Plus,
- Search,
- Eye,
- GraduationCap,
- Loader2,
- Pencil,
- Upload,
- Trash2,
+  Plus,
+  Search,
+  Eye,
+  GraduationCap,
+  Loader2,
+  Pencil,
+  Trash2,
+  Phone,
+  Check,
+  Users,
+  Upload,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -47,80 +48,6 @@ const GENDER_AVATAR = {
 const DEFAULT_PAGE_SIZE = 20;
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
-// ── Form state ────────────────────────────────────────────────────────────────
-
-interface FormState {
- name: string;
- uid: string;
- adno: string;
- classId: string;
- gender: "MALE" | "FEMALE";
- dateOfBirth: string;
- guardianName: string;
- parentPhone: string;
- parentAltPhone: string;
- parentEmail: string;
- relationToStudent: string;
- parentPassword: string;
- address: string;
- city: string;
- state: string;
- country: string;
- pincode: string;
- bloodGroup: string;
- emergencyContactName: string;
- emergencyContactPhone: string;
- medicalNotes: string;
-}
-const EMPTY_FORM: FormState = {
- name: "",
- uid: "",
- adno: "",
- classId: "",
- gender: "MALE",
- dateOfBirth: "",
- guardianName: "",
- parentPhone: "",
- parentAltPhone: "",
- parentEmail: "",
- relationToStudent: "father",
- parentPassword: "",
- address: "",
- city: "",
- state: "",
- country: "",
- pincode: "",
- bloodGroup: "",
- emergencyContactName: "",
- emergencyContactPhone: "",
- medicalNotes: "",
-};
-
-function studentToForm(s: StudentRecord): FormState {
- return {
- name: s.name,
- uid: s.uid ?? "",
- adno: s.adno,
- classId: s.classId ?? "",
- gender: s.gender ?? "MALE",
- dateOfBirth: s.dateOfBirth ? s.dateOfBirth.slice(0, 10) : "",
- guardianName: s.guardianName ?? "",
- parentPhone: s.parentPhone ?? "",
- parentAltPhone: s.parentAltPhone ?? "",
- parentEmail: s.parentEmail ?? "",
- relationToStudent: s.relationToStudent ?? "father",
- parentPassword: "",
- address: s.address ?? "",
- city: s.city ?? "",
- state: s.state ?? "",
- country: s.country ?? "",
- pincode: s.pincode ?? "",
- bloodGroup: s.bloodGroup ?? "",
- emergencyContactName: s.emergencyContactName ?? "",
- emergencyContactPhone: s.emergencyContactPhone ?? "",
- medicalNotes: s.medicalNotes ?? "",
- };
-}
 
 // ── Import column definitions (static — no auth deps here) ───────────────────
 
@@ -241,18 +168,11 @@ export default function AdminStudentsPage() {
  const navigate = useNavigate();
  const { pathname } = useLocation();
  const { lang } = useLanguageStore();
- const { user, accessToken, activeClientId } = useAuthStore();
- const slugMatch = pathname.match(/^\/m\/([^/]+)\//);
- const slugPrefix = slugMatch ? `/m/${slugMatch[1]}` : "";
+  const { user, accessToken, activeClientId } = useAuthStore();
+  const slugMatch = pathname.match(/^\/m\/([^/]+)\//);
+  const slugPrefix = slugMatch ? `/m/${slugMatch[1]}` : "";
 
- const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" ? window.innerWidth < 768 : true);
- useEffect(() => {
- const checkMobile = () => setIsMobile(window.innerWidth < 768);
- window.addEventListener("resize", checkMobile);
- return () => window.removeEventListener("resize", checkMobile);
- }, []);
-
- const [students, setStudents] = useState<StudentRecord[]>([]);
+  const [students, setStudents] = useState<StudentRecord[]>([]);
  const [total, setTotal] = useState(0);
  const [page, setPage] = useState(1);
  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -265,21 +185,14 @@ export default function AdminStudentsPage() {
  const [loading, setLoading] = useState(true);
  const [error, setError] = useState<string | null>(null);
 
- // Drawer state: null = closed, "add" = adding, StudentRecord = editing
- const [drawer, setDrawer] = useState<null | "add" | StudentRecord>(null);
- const [form, setForm] = useState<FormState>(EMPTY_FORM);
- const [submitting, setSubmitting] = useState(false);
- const [submitError, setSubmitError] = useState<string | null>(null);
- const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
- const [deleting, setDeleting] = useState<string | null>(null);
- const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
- const [deleteTarget, setDeleteTarget] = useState<StudentRecord | null>(null);
+  // Drawer state: null = closed, "add" = adding, StudentRecord = editing
+  const [drawer, setDrawer] = useState<null | "add" | StudentRecord>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<StudentRecord | null>(null);
 
- const [showImport, setShowImport] = useState(false);
- const [avatarFile, setAvatarFile] = useState<File | null>(null);
- const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
- const [uploadingPhoto, setUploadingPhoto] = useState(false);
- const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showImport, setShowImport] = useState(false);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
  // Load classes once
  useEffect(() => {
@@ -357,101 +270,17 @@ export default function AdminStudentsPage() {
  setPage(1);
  };
 
- const openAdd = () => {
- setForm(EMPTY_FORM);
- setSubmitError(null);
- setFieldErrors({});
- setDrawer("add");
- };
+  const openAdd = () => setDrawer("add");
+  const openEdit = (student: StudentRecord) => setDrawer(student);
+  const closeDrawer = () => setDrawer(null);
 
- const openEdit = (student: StudentRecord) => {
- setForm(studentToForm(student));
- setSubmitError(null);
- setFieldErrors({});
- setDrawer(student);
- };
+  const handleStudentSaved = () => {
+  setDrawer(null);
+  setPage(1);
+  loadStudents(1, search, activeClassId, gender, pageSize, sortBy, sortDir);
+  };
 
- const handleSubmit = async () => {
- if (!activeClientId || !accessToken) return;
- setSubmitting(true);
- setSubmitError(null);
- try {
- const payload: CreateStudentPayload = {
- name: form.name.trim(),
- uid: form.uid.trim() || null,
- adno: form.adno.trim(),
- ...(form.classId ? { classId: form.classId } : {}),
- gender: form.gender,
- ...(form.dateOfBirth ? { dateOfBirth: form.dateOfBirth } : {}),
- ...(form.guardianName
- ? { guardianName: form.guardianName.trim() }
- : {}),
- ...(form.parentPhone ? { parentPhone: form.parentPhone.trim() } : {}),
- ...(form.parentAltPhone
- ? { parentAltPhone: form.parentAltPhone.trim() }
- : {}),
- ...(form.parentEmail ? { parentEmail: form.parentEmail.trim() } : {}),
- ...(form.relationToStudent
- ? { relationToStudent: form.relationToStudent }
- : {}),
- ...(form.parentPassword ? { parentPassword: form.parentPassword } : {}),
- ...(form.address ? { address: form.address.trim() } : {}),
- ...(form.city ? { city: form.city.trim() } : {}),
- ...(form.state ? { state: form.state.trim() } : {}),
- ...(form.country ? { country: form.country.trim() } : {}),
- ...(form.pincode ? { pincode: form.pincode.trim() } : {}),
- ...(form.bloodGroup ? { bloodGroup: form.bloodGroup } : {}),
- ...(form.emergencyContactName ? { emergencyContactName: form.emergencyContactName.trim() } : {}),
- ...(form.emergencyContactPhone ? { emergencyContactPhone: form.emergencyContactPhone.trim() } : {}),
- ...(form.medicalNotes ? { medicalNotes: form.medicalNotes.trim() } : {}),
- ...(user?.defaultAcademicYearId
- ? { accademicYearId: user.defaultAcademicYearId }
- : {}),
- };
-
- if (typeof drawer === "object" && drawer !== null) {
- await updateStudent(activeClientId, accessToken, drawer.id, payload);
- } else {
- await createStudent(activeClientId, accessToken, payload);
- }
-
- setDrawer(null);
- setPage(1);
- loadStudents(1, search, activeClassId, gender, pageSize, sortBy, sortDir);
- } catch (err) {
- const apiErr = err as import("@/lib/students-api").StudentsApiError;
- setSubmitError(apiErr.message);
- if (apiErr.fieldErrors) setFieldErrors(apiErr.fieldErrors);
- } finally {
- setSubmitting(false);
- }
- };
-
- const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
- const file = e.target.files?.[0];
- if (!file) return;
- setAvatarFile(file);
- const reader = new FileReader();
- reader.onload = () => setAvatarPreview(reader.result as string);
- reader.readAsDataURL(file);
- };
-
- const handleAvatarUpload = async () => {
- if (!avatarFile || !activeClientId || !accessToken || !isEditing) return;
- setUploadingPhoto(true);
- try {
- await uploadStudentPhoto(activeClientId, accessToken, (drawer as StudentRecord).id, avatarFile);
- setAvatarFile(null);
- setAvatarPreview(null);
- loadStudents(page, search, activeClassId, gender, pageSize, sortBy, sortDir);
- } catch (err) {
- setSubmitError((err as Error).message);
- } finally {
- setUploadingPhoto(false);
- }
- };
-
- const handleDelete = async () => {
+  const handleDelete = async () => {
  if (!deleteTarget) return;
  setDeleting(deleteTarget.id);
  try {
@@ -497,20 +326,25 @@ export default function AdminStudentsPage() {
  key: "name",
  header: "Student",
  sortable: true,
- render: (s) => {
- const av =
- s.gender === "FEMALE" ? GENDER_AVATAR.FEMALE : GENDER_AVATAR.MALE;
- return (
- <div className="flex items-center gap-3">
- <div
- className={cn(
- "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0",
- av.bg,
- av.text,
- )}
- >
- {s.name.charAt(0)}
- </div>
+  render: (s) => {
+  const av =
+  s.gender === "FEMALE" ? GENDER_AVATAR.FEMALE : GENDER_AVATAR.MALE;
+  return (
+  <div className="flex items-center gap-3">
+  {s.photoUrl ? (
+  <img src={s.photoUrl} alt={s.name}
+  className="w-10 h-10 rounded-xl object-cover shrink-0 border border-gray-200" />
+  ) : (
+  <div
+  className={cn(
+  "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0",
+  av.bg,
+  av.text,
+  )}
+  >
+  {s.name.charAt(0)}
+  </div>
+  )}
  <div>
  <p className="font-semibold text-gray-900 text-sm leading-tight">
  {s.name}
@@ -733,20 +567,25 @@ export default function AdminStudentsPage() {
  setPage(1);
  },
  }}
- mobileRender={(s) => {
- return (
- <div className="flex items-center justify-between">
- <div className="flex items-center gap-3">
- <div
- className={cn(
- "w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg shrink-0",
- s.gender === "FEMALE"
- ? "bg-pink-100 text-pink-700"
- : "bg-indigo-100 text-indigo-700",
- )}
- >
- {s.name.charAt(0)}
- </div>
+  mobileRender={(s) => {
+  return (
+  <div className="flex items-center justify-between">
+  <div className="flex items-center gap-3">
+  {s.photoUrl ? (
+  <img src={s.photoUrl} alt={s.name}
+  className="w-12 h-12 rounded-2xl object-cover shrink-0 border border-gray-200" />
+  ) : (
+  <div
+  className={cn(
+  "w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg shrink-0",
+  s.gender === "FEMALE"
+  ? "bg-pink-100 text-pink-700"
+  : "bg-indigo-100 text-indigo-700",
+  )}
+  >
+  {s.name.charAt(0)}
+  </div>
+  )}
  <div>
  <p className="font-semibold text-gray-900 text-sm">
  {s.name}
@@ -805,465 +644,22 @@ export default function AdminStudentsPage() {
  }}
  />
 
- {/* ── Add / Edit Drawer ─────────────────────────────────────────── */}
- <AnimatePresence>
- {drawer !== null && (
- <>
- <motion.div
- key="drawer-backdrop"
- initial={{ opacity: 0 }}
- animate={{ opacity: 1 }}
- exit={{ opacity: 0 }}
- onClick={() => setDrawer(null)}
- className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
- />
- <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-none md:p-4">
- <motion.div
- key="drawer-panel"
- initial={isMobile ? { y: "100%", opacity: 1, scale: 1 } : { y: 0, opacity: 0, scale: 0.95 }}
- animate={{ y: 0, opacity: 1, scale: 1 }}
- exit={isMobile ? { y: "100%", opacity: 1, scale: 1 } : { y: 0, opacity: 0, scale: 0.95 }}
- transition={isMobile ? { type: "spring", damping: 30, stiffness: 300 } : { duration: 0.2 }}
- className={cn(
- "w-full bg-white flex flex-col pointer-events-auto shadow-2xl relative",
- isMobile 
- ? "rounded-t-3xl max-h-[92dvh]" 
- : "rounded-3xl max-w-xl max-h-[85dvh]"
- )}
- >
- {/* Handle */}
- <div className="flex justify-center pt-3 pb-1 shrink-0 md:hidden">
- <div className="w-10 h-1 bg-gray-300 rounded-full" />
- </div>
- <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
- <div>
- <h2 className="font-bold text-gray-900 text-lg">
- {isEditing
- ? "Edit Student"
- : t("adminPages", "newAdmission", lang)}
- </h2>
- <p className="text-xs text-gray-400 mt-0.5">
- {t("adminPages", "fillStudentDetails", lang)}
- </p>
- </div>
- <button
- onClick={() => setDrawer(null)}
- className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200"
- >
- ✕
- </button>
- </div>
+  {/* ── Add / Edit Drawer (shared component) ────────────────────── */}
+  <StudentEditDrawer
+  open={drawer !== null}
+  onClose={closeDrawer}
+  mode={drawer === "add" ? "add" : "edit"}
+  student={typeof drawer === "object" ? drawer : null}
+  classes={classes}
+  onSaved={handleStudentSaved}
+  onDelete={isEditing ? () => {
+  if (typeof drawer === "object" && drawer !== null) {
+  setDeleteTarget(drawer);
+  setShowDeleteConfirm(true);
+  }
+  } : undefined}
+  />
 
- <div className="overflow-y-auto flex-1 px-5 py-4 space-y-6 pb-8">
- {submitError && (
- <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl">
- {submitError}
- </div>
- )}
-
- {/* Photo Upload */}
- <section>
- <div className="flex items-center gap-2 mb-3">
- <p className="text-sm font-bold text-gray-700 uppercase tracking-wide">Photo</p>
- </div>
- <div className="flex items-center gap-4">
- {avatarPreview ? (
- <div className="relative w-20 h-20 rounded-2xl overflow-hidden">
- <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
- </div>
- ) : isEditing && (drawer as StudentRecord).photo ? (
- <div className="w-20 h-20 rounded-2xl bg-gray-100 flex items-center justify-center text-3xl font-bold text-gray-400">
- {(drawer as StudentRecord).name.charAt(0)}
- </div>
- ) : (
- <div className="w-20 h-20 rounded-2xl bg-gray-100 flex items-center justify-center text-3xl font-bold text-gray-400">
- <Users className="w-8 h-8" />
- </div>
- )}
- <div className="flex-1">
- <label className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-gray-700 cursor-pointer transition-colors w-fit">
- {uploadingPhoto ? (
- <Loader2 className="w-4 h-4 animate-spin" />
- ) : (
- <Upload className="w-4 h-4" />
- )}
- {uploadingPhoto ? "Uploading..." : "Choose Photo"}
- <input type="file" accept="image/*" disabled={uploadingPhoto}
- onChange={async (e) => {
- const file = e.target.files?.[0];
- if (!file) return;
- const reader = new FileReader();
- reader.onload = () => setAvatarPreview(reader.result as string);
- reader.readAsDataURL(file);
- if (!activeClientId || !accessToken || !isEditing) return;
- setUploadingPhoto(true);
- try {
- const result = await uploadStudentPhoto(activeClientId, accessToken, (drawer as StudentRecord).id, file);
- setAvatarFile(null);
- setAvatarPreview(null);
- // Update drawer student photoUrl directly
- loadStudents(page, search, activeClassId, gender, pageSize, sortBy, sortDir);
- } catch (err) {
- setSubmitError((err as Error).message);
- } finally {
- setUploadingPhoto(false);
- e.target.value = '';
- }
- }}
- className="hidden" />
- </label>
- </div>
- </div>
- </section>
-
- {/* Student Info */}
- <section>
- <div className="flex items-center gap-2 mb-3">
- <div className="w-5 h-5 rounded-full bg-emerald-600 flex items-center justify-center text-white text-xs font-bold">
- 1
- </div>
- <p className="text-sm font-bold text-emerald-700 uppercase tracking-wide">
- {t("adminPages", "studentInfo", lang)}
- </p>
- </div>
- <div className="space-y-3">
- {[
- {
- key: "name" as const,
- label: t("adminPages", "studentName", lang),
- placeholder: t("adminPages", "fullName", lang),
- type: "text",
- },
- {
- key: "uid" as const,
- label: "Student UID",
- placeholder: "Optional unique identifier",
- type: "text",
- },
- {
- key: "adno" as const,
- label: t("adminPages", "admissionNumber", lang),
- placeholder: t("adminPages", "admNoPlaceholder", lang),
- type: "text",
- },
- {
- key: "dateOfBirth" as const,
- label: t("adminPages", "dateOfBirth2", lang),
- placeholder: "",
- type: "date",
- },
- ].map(({ key, label, placeholder, type }) => (
- <div key={key}>
- <label className="block text-xs font-semibold text-gray-600 mb-1.5">
- {label}
- </label>
- <input
- type={type}
- placeholder={placeholder}
- value={form[key]}
- onChange={(e) => {
- setForm((f) => ({ ...f, [key]: e.target.value }));
- setFieldErrors((fe) => ({ ...fe, [key]: "" }));
- }}
- className={cn(
- "w-full px-4 py-3 rounded-2xl border bg-gray-50 focus:outline-none focus:bg-white text-sm transition-colors",
- fieldErrors[key]
- ? "border-red-400 focus:border-red-400"
- : "border-gray-200 focus:border-emerald-400",
- )}
- />
- {fieldErrors[key] && (
- <p className="text-xs text-red-500 mt-1 px-1">
- {fieldErrors[key]}
- </p>
- )}
- </div>
- ))}
- <div>
- <label className="block text-xs font-semibold text-gray-600 mb-1.5">
- {t("adminPages", "gender", lang)}
- </label>
- <div className="grid grid-cols-2 gap-2">
- {(["MALE", "FEMALE"] as const).map((g) => (
- <label
- key={g}
- className={cn(
- "flex items-center justify-center gap-2 py-3 rounded-2xl border text-sm font-semibold cursor-pointer transition-all",
- form.gender === g
- ? "border-emerald-500 bg-emerald-50 text-emerald-700"
- : "border-gray-200 bg-gray-50 text-gray-700",
- )}
- >
- <input
- type="radio"
- name="gender"
- value={g}
- checked={form.gender === g}
- onChange={() =>
- setForm((f) => ({ ...f, gender: g }))
- }
- className="sr-only"
- />
- {g === "MALE"
- ? t("adminPages", "male", lang)
- : t("adminPages", "female", lang)}
- </label>
- ))}
- </div>
- </div>
- <div>
- <label className="block text-xs font-semibold text-gray-600 mb-1.5">
- {t("adminPages", "classField", lang)}
- </label>
- <select
- value={form.classId}
- onChange={(e) =>
- setForm((f) => ({ ...f, classId: e.target.value }))
- }
- className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
- >
- <option value="">— No class —</option>
- {classes.map((c) => (
- <option key={c.id} value={c.id}>
- {c.name}
- </option>
- ))}
- </select>
- </div>
- <div>
- <label className="block text-xs font-semibold text-gray-600 mb-1.5">Blood Group</label>
- <select
- value={form.bloodGroup}
- onChange={(e) => setForm((f) => ({ ...f, bloodGroup: e.target.value }))}
- className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
- >
- <option value="">— Select —</option>
- {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bg) => (
- <option key={bg} value={bg}>{bg}</option>
- ))}
- </select>
- </div>
- <div>
- <label className="block text-xs font-semibold text-gray-600 mb-1.5">Address</label>
- <textarea
- value={form.address}
- onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
- rows={2}
- className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm resize-none"
- />
- </div>
- <div className="grid grid-cols-2 gap-2">
- <div>
- <label className="block text-xs font-semibold text-gray-600 mb-1.5">City</label>
- <input type="text" value={form.city}
- onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
- className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
- />
- </div>
- <div>
- <label className="block text-xs font-semibold text-gray-600 mb-1.5">State</label>
- <input type="text" value={form.state}
- onChange={(e) => setForm((f) => ({ ...f, state: e.target.value }))}
- className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
- />
- </div>
- </div>
- <div className="grid grid-cols-2 gap-2">
- <div>
- <label className="block text-xs font-semibold text-gray-600 mb-1.5">Country</label>
- <input type="text" value={form.country}
- onChange={(e) => setForm((f) => ({ ...f, country: e.target.value }))}
- className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
- />
- </div>
- <div>
- <label className="block text-xs font-semibold text-gray-600 mb-1.5">Pincode</label>
- <input type="text" value={form.pincode}
- onChange={(e) => setForm((f) => ({ ...f, pincode: e.target.value }))}
- className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
- />
- </div>
- </div>
- </div>
- </section>
-
- <div className="border-t border-dashed border-gray-200" />
-
- {/* Parent Info */}
- <section>
- <div className="flex items-center gap-2 mb-3">
- <div className="w-5 h-5 rounded-full bg-teal-600 flex items-center justify-center text-white text-xs font-bold">
- 2
- </div>
- <p className="text-sm font-bold text-teal-700 uppercase tracking-wide">
- {t("adminPages", "parentInfo", lang)}
- </p>
- </div>
- <div className="space-y-3">
- {[
- {
- key: "guardianName" as const,
- label: t("adminPages", "fatherNameForm", lang),
- placeholder: t("adminPages", "fatherFullName", lang),
- type: "text",
- },
- {
- key: "parentPhone" as const,
- label: t("adminPages", "phoneNumber", lang),
- placeholder: t("adminPages", "tenDigitMobile", lang),
- type: "tel",
- },
- {
- key: "parentAltPhone" as const,
- label: "Alt. Phone",
- placeholder: "Alternate mobile",
- type: "tel",
- },
- // {
- // key: "parentEmail" as const,
- // label: "Parent Email",
- // placeholder: "parent@email.com",
- // type: "email",
- // },
- {
- key: "parentPassword" as const,
- label: t("adminPages", "parentLoginPwd", lang),
- placeholder: t("adminPages", "minSixChars", lang),
- type: "password",
- },
- ].map(({ key, label, placeholder, type }) => (
- <div key={key}>
- <label className="block text-xs font-semibold text-gray-600 mb-1.5">
- {label}
- </label>
- <input
- type={type}
- placeholder={placeholder}
- value={form[key]}
- onChange={(e) => {
- setForm((f) => ({ ...f, [key]: e.target.value }));
- setFieldErrors((fe) => ({ ...fe, [key]: "" }));
- }}
- className={cn(
- "w-full px-4 py-3 rounded-2xl border bg-gray-50 focus:outline-none focus:bg-white text-sm transition-colors",
- fieldErrors[key]
- ? "border-red-400 focus:border-red-400"
- : "border-gray-200 focus:border-teal-400",
- )}
- />
- {fieldErrors[key] && (
- <p className="text-xs text-red-500 mt-1 px-1">
- {fieldErrors[key]}
- </p>
- )}
- </div>
- ))}
- <div>
- <label className="block text-xs font-semibold text-gray-600 mb-1.5">
- Relation to student
- </label>
- <select
- value={form.relationToStudent}
- onChange={(e) =>
- setForm((f) => ({
- ...f,
- relationToStudent: e.target.value,
- }))
- }
- className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-teal-400 text-sm"
- >
- {[
- "father",
- "mother",
- "guardian",
- "uncle",
- "aunt",
- "grandparent",
- ].map((r) => (
- <option key={r} value={r} className="capitalize">
- {r.charAt(0).toUpperCase() + r.slice(1)}
- </option>
- ))}
- </select>
- </div>
- </div>
- </section>
-
- <div className="border-t border-dashed border-gray-200" />
-
- {/* Emergency Contact */}
- <section>
- <div className="flex items-center gap-2 mb-3">
- <div className="w-5 h-5 rounded-full bg-amber-600 flex items-center justify-center text-white text-xs font-bold">
- 3
- </div>
- <p className="text-sm font-bold text-amber-700 uppercase tracking-wide">Emergency Contact</p>
- </div>
- <div className="space-y-3">
- {[
- { key: "emergencyContactName" as const, label: "Contact Name", placeholder: "Emergency contact person", type: "text" },
- { key: "emergencyContactPhone" as const, label: "Contact Phone", placeholder: "10-digit mobile", type: "tel" },
- ].map(({ key, label, placeholder, type }) => (
- <div key={key}>
- <label className="block text-xs font-semibold text-gray-600 mb-1.5">{label}</label>
- <input type={type} placeholder={placeholder} value={form[key]}
- onChange={(e) => { setForm((f) => ({ ...f, [key]: e.target.value })); setFieldErrors((fe) => ({ ...fe, [key]: "" })); }}
- className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:bg-white text-sm transition-colors focus:border-amber-400"
- />
- </div>
- ))}
- <div>
- <label className="block text-xs font-semibold text-gray-600 mb-1.5">Medical Notes</label>
- <textarea value={form.medicalNotes}
- onChange={(e) => setForm((f) => ({ ...f, medicalNotes: e.target.value }))}
- rows={2}
- className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-amber-400 text-sm resize-none"
- />
- </div>
- </div>
- </section>
- </div>
-
- {/* Footer */}
- <div className="px-5 py-4 border-t border-gray-100 flex gap-3 shrink-0">
- {isEditing && canWrite && (
- <button
- onClick={() => {
- setDeleteTarget(drawer as StudentRecord);
- setShowDeleteConfirm(true);
- }}
- type="button"
- className="flex-1 bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 font-bold py-3.5 rounded-2xl text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2"
- >
- <Trash2 className="w-4 h-4" /> Delete
- </button>
- )}
- <button
- onClick={handleSubmit}
- disabled={
- submitting || !form.name.trim() || !form.adno.trim()
- }
- className={cn(
- "bg-emerald-600 text-white font-bold py-3.5 rounded-2xl text-sm active:scale-[0.98] transition-transform shadow-lg disabled:opacity-60",
- isEditing && canWrite ? "flex-1" : "w-full",
- )}
- >
- {submitting ? (
- <span className="flex items-center justify-center gap-2">
- <Loader2 className="w-4 h-4 animate-spin" /> Saving…
- </span>
- ) : isEditing ? (
- "Save Changes"
- ) : (
- t("adminPages", "admitStudent", lang)
- )}
- </button>
- </div>
- </motion.div>
- </div>
- </>
- )}
- </AnimatePresence>
 
  {/* ── Import Modal ── */}
  <ImportModal

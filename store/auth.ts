@@ -26,7 +26,8 @@ interface User {
   parentPhone?: string;
   email?: string;
   phone?: string;
-  profilePic?: string | null;
+  photo?: string | null;
+  photoUrl?: string | null;
   address?: string;
   msrId?: string;
   accessibleStudentIds?: string[];
@@ -112,6 +113,8 @@ export function normalizeUserSession(payload: AuthSessionPayload) {
       clientId: payload.user.clientId,
       defaultAcademicYearId: payload.user.defaultAcademicYearId ?? null,
       parentPhone: payload.user.parentPhone,
+      photo: (payload.user as any).photo ?? null,
+      photoUrl: (payload.user as any).photoUrl ?? null,
       accessibleStudentIds: payload.user.accessibleStudentIds ?? [],
       accessibleStudents: payload.students ?? [],
       attendanceMode: (payload.user.client?.attendanceMode as AttendanceMode) ?? "CLASS_BASED",

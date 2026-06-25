@@ -386,7 +386,7 @@ const translations = {
     fatherFullName: { en: "Father's full name", ml: "പിതാവിന്റെ പൂർണ്ണ പേര്" },
     motherFullName: { en: "Mother's full name", ml: "മാതാവിന്റെ പൂർണ്ണ പേര്" },
     phoneNumber: { en: "Phone Number", ml: "ഫോൺ നമ്പർ" },
-    tenDigitMobile: { en: "10-digit mobile", ml: "10 അക്ക മൊബൈൽ" },
+    tenDigitMobile: { en: "Mobile number", ml: "മൊബൈൽ നമ്പർ" },
     parentLoginPwd: {
       en: "Parent Login Password",
       ml: "രക്ഷിതാവ് ലോഗിൻ പാസ്‌വേഡ്",
