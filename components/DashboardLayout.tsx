@@ -148,9 +148,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             >
               <Menu className="w-5.5 h-5.5" />
             </button>
-            <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center shrink-0">
-              <span className="text-white font-extrabold text-xs tracking-wide">SM</span>
-            </div>
+           
             <div className="w-7 h-7 bg-emerald-600 rounded-full flex items-center justify-center text-white font-bold text-xs">
               {user.name?.charAt(0) ?? "U"}
             </div>
@@ -168,9 +166,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 )}
               </Link>
             )}
-            <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0">
-              {user.name?.charAt(0) ?? "U"}
-            </div>
           </div>
         </header>
 
