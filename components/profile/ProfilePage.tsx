@@ -345,7 +345,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                   <img src={user.photoUrl} alt={user.name}
                     className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl object-cover border-2 border-white/30 shadow-xl bg-white/15" />
                 ) : (
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-white/15 backdrop-blur-sm border-2 border-white/30 flex items-center justify-center text-3xl sm:text-4xl font-black shadow-xl">
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-emerald-600 text-white flex items-center justify-center text-3xl sm:text-4xl font-black shadow-xl border-2 border-white/30">
                     {user?.name?.charAt(0)?.toUpperCase() ?? "?"}
                   </div>
                 )}
@@ -590,7 +590,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                       <img src={picPreview} alt={user?.name}
                         className="w-16 h-16 rounded-2xl object-cover border-2 border-white shadow" />
                     ) : (
-                      <div className="w-16 h-16 rounded-2xl bg-emerald-600 flex items-center justify-center text-white text-xl font-black border-2 border-white shadow">
+                      <div className="w-16 h-16 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-xl font-black border-2 border-white shadow">
                         {user?.name?.charAt(0)?.toUpperCase() ?? "?"}
                       </div>
                     )}

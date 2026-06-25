@@ -329,9 +329,9 @@ export default function StudentEditDrawer({
                               <img src={uploadedPhotoUrl ?? (student as StudentRecord).photoUrl!} alt={(student as StudentRecord).name}
                                 className="w-16 h-16 rounded-2xl object-cover border-2 border-white shadow" />
                             ) : (
-                              <div className="w-16 h-16 rounded-2xl bg-emerald-600 text-white text-xl font-black flex items-center justify-center border-2 border-white shadow">
-                                {(student as StudentRecord).name.charAt(0)}
-                              </div>
+                               <div className="w-16 h-16 rounded-2xl bg-emerald-600 text-white text-xl font-black flex items-center justify-center border-2 border-white shadow">
+                                 {(student as StudentRecord).name.charAt(0)}
+                               </div>
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
