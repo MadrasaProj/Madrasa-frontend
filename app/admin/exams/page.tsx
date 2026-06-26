@@ -43,6 +43,9 @@ import {
   getExamStatusInfo,
 } from "@/components/exam/ExamStatusBadge";
 import { MarkEntryGrid } from "@/components/exam/MarkEntryGrid";
+import { useExamColumns } from "@/components/exam/ExamColumns";
+import { ExamMobileCard } from "@/components/exam/ExamMobileCard";
+import { fmt, shortDate, getExamCategories, PAGE_SIZE_OPTIONS } from "@/lib/exam-utils";
 
 interface ExamForm {
   name: string;
@@ -66,23 +69,6 @@ const EMPTY_FORM: ExamForm = {
   passMarks: 36,
 };
 
-function fmt(d?: string | null) {
-  if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-function shortDate(d?: string | null) {
-  if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-  });
-}
-
 interface MarkEntryState {
   classId: string;
   subjectId: string;
@@ -96,7 +82,6 @@ interface MarkEntryState {
 }
 
 const DEFAULT_PAGE_SIZE = 10;
-const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
 export default function AdminExamsPage() {
   const { user, accessToken, activeClientId } = useAuthStore();
@@ -479,139 +464,14 @@ export default function AdminExamsPage() {
     setPage(1);
   }, [searchText, pageSize]);
 
-  const upcomingExams = exams.filter(
-    (e) => e.startDate && new Date(e.startDate) > new Date(),
-  );
-  const markEntryOpenExams = exams.filter(
-    (e) =>
-      e.examStatus === "MARK_ENTRY" &&
-      (!e.markEntryLastDate || new Date(e.markEntryLastDate) >= new Date()),
-  );
-  const completedExams = exams.filter((e) => {
-    if (e.examStatus === "PUBLISHED") return false;
-    if (e.markEntryLastDate && new Date(e.markEntryLastDate) < new Date())
-      return true;
-    return false;
+  const { upcoming: upcomingExams, markEntryOpen: markEntryOpenExams, completed: completedExams, published: publishedExams } = getExamCategories(exams);
+
+  const columns = useExamColumns({
+    showActions: true,
+    onEdit: openEditDrawer,
+    onClasses: (exam) => openClassDrawer(exam.id),
+    onDelete: startDeleteExam,
   });
-  const publishedExams = exams.filter((e) => e.examStatus === "PUBLISHED");
-
-  // ── Columns ────────────────────────────────────────────────────────────────
-
-  const columns = useMemo<Column<ExamRecord>[]>(
-    () => [
-      {
-        key: "name",
-        header: "Exam",
-        sortable: true,
-        render: (exam) => (
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
-              <GraduationCap className="w-5 h-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="font-semibold text-gray-900 text-sm truncate">
-                {exam.name}
-              </p>
-              <p className="text-[10px] text-gray-400 mt-0.5 truncate">
-                {getExamStatusInfo(exam).description || "—"}
-              </p>
-            </div>
-          </div>
-        ),
-      },
-      {
-        key: "examStatus",
-        header: "Status",
-        sortable: true,
-        render: (exam) => <ExamStatusBadge exam={exam} />,
-        className: "hidden sm:table-cell",
-        headerClass: "hidden sm:table-cell",
-      },
-      {
-        key: "startDate",
-        header: "Exam Period",
-        sortable: true,
-        render: (exam) => (
-          <div className="text-xs leading-tight">
-            <p className="text-gray-800 font-semibold whitespace-nowrap">
-              {shortDate(exam.startDate)} – {shortDate(exam.endDate)}
-            </p>
-            <p className="text-[10px] text-gray-400 mt-0.5">
-              {fmt(exam.startDate)}
-            </p>
-          </div>
-        ),
-        className: "hidden md:table-cell",
-        headerClass: "hidden md:table-cell",
-      },
-      {
-        key: "markEntryLastDate",
-        header: "Mark Entry",
-        sortable: true,
-        render: (exam) => (
-          <span className="text-xs text-gray-700 font-medium whitespace-nowrap">
-            {fmt(exam.markEntryLastDate)}
-          </span>
-        ),
-        className: "hidden lg:table-cell",
-        headerClass: "hidden lg:table-cell",
-      },
-      {
-        key: "publishedDate",
-        header: "Publish",
-        sortable: true,
-        render: (exam) => (
-          <span className="text-xs text-gray-700 font-medium whitespace-nowrap">
-            {fmt(exam.publishedDate)}
-          </span>
-        ),
-        className: "hidden lg:table-cell",
-        headerClass: "hidden lg:table-cell",
-      },
-      {
-        key: "actions",
-        header: "",
-        render: (exam) => (
-          <div className="flex items-center gap-1.5 justify-end">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                openEditDrawer(exam);
-              }}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors text-xs font-semibold"
-              title="Edit"
-            >
-              <Edit2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Edit</span>
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                openClassDrawer(exam.id);
-              }}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors text-xs font-semibold"
-              title="View Classes & Enter Marks"
-            >
-              <BarChart2 className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Classes</span>
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                startDeleteExam(exam);
-              }}
-              className="p-1.5 rounded-lg text-red-400 bg-red-50 hover:bg-red-100 hover:text-red-500 transition-colors"
-              title="Delete Exam"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        ),
-        className: "text-right",
-      },
-    ],
-    [],
-  );
 
   return (
     <DashboardLayout>
@@ -729,81 +589,14 @@ export default function AdminExamsPage() {
               setPage(1);
             },
           }}
-          mobileRender={(exam) => {
-            const { description } = getExamStatusInfo(exam);
-            return (
-              <div className="space-y-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0 shadow-inner">
-                      <GraduationCap className="w-5.5 h-5.5" />
-                    </div>
-                    <div className="min-w-0 pt-0.5">
-                      <p className="font-bold text-gray-900 text-sm leading-snug">
-                        {exam.name}
-                      </p>
-                      {description && (
-                        <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">
-                          {description}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <ExamStatusBadge exam={exam} />
-                </div>
-                <div className="grid grid-cols-3 gap-3 text-[10px]">
-                  <div className="bg-gray-50 rounded-xl p-2.5">
-                    <p className="text-gray-400 uppercase font-bold tracking-wider">Exam Period</p>
-                    <p className="text-gray-800 font-bold mt-1 leading-tight">
-                      {shortDate(exam.startDate)} – {shortDate(exam.endDate)}
-                    </p>
-                  </div>
-                  <div className="bg-gray-50 rounded-xl p-2.5">
-                    <p className="text-gray-400 uppercase font-bold tracking-wider">Mark Entry</p>
-                    <p className="text-gray-800 font-bold mt-1 leading-tight">
-                      {fmt(exam.markEntryLastDate)}
-                    </p>
-                  </div>
-                  <div className="bg-gray-50 rounded-xl p-2.5">
-                    <p className="text-gray-400 uppercase font-bold tracking-wider">Publish</p>
-                    <p className="text-gray-800 font-bold mt-1 leading-tight">
-                      {fmt(exam.publishedDate)}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openEditDrawer(exam);
-                    }}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors text-xs font-bold"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" /> Edit
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openClassDrawer(exam.id);
-                    }}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors text-xs font-bold"
-                  >
-                    <BarChart2 className="w-3.5 h-3.5" /> Classes
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      startDeleteExam(exam);
-                    }}
-                    className="p-2.5 rounded-xl text-red-400 bg-red-50 hover:bg-red-100 hover:text-red-500 transition-colors"
-                    title="Delete Exam"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            );
-          }}
+          mobileRender={(exam) => (
+            <ExamMobileCard
+              exam={exam}
+              onEdit={openEditDrawer}
+              onClasses={(e) => openClassDrawer(e.id)}
+              onDelete={startDeleteExam}
+            />
+          )}
         />
       </div>
 
