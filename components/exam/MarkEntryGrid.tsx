@@ -97,10 +97,12 @@ export function MarkEntryGrid({
   showLockPeriod = true,
 }: MarkEntryGridProps) {
   const filled = Object.values(scores).filter((v) => v !== "").length;
+  const currentSubject = subjects.find((s) => s.id === subjectId);
+  const effectiveMaxMarks = currentSubject?.classSubject?.maxMarks ?? 50;
 
   return (
     <div className="space-y-6">
-      {/* Selectors grid */}
+       {/* Selectors grid */}
       {(showExamSelector || showClassSelector || subjects.length > 0) && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
           {showExamSelector && (
@@ -273,13 +275,13 @@ export function MarkEntryGrid({
                         {s.adno}
                       </td>
                       <td className="px-4 py-3.5 text-center text-gray-500 font-bold">
-                        100
+                        {effectiveMaxMarks}
                       </td>
                       <td className="px-4 py-3.5 text-center">
                         <input
                           type="number"
                           min={0}
-                          max={100}
+                          max={effectiveMaxMarks}
                           disabled={isLocked || saving}
                           value={score}
                           onChange={(e) => onScoreChange(s.id, e.target.value)}
@@ -340,12 +342,12 @@ export function MarkEntryGrid({
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <span className="text-xs text-gray-400 font-medium mr-1">
-                        /100
+                        /{effectiveMaxMarks}
                       </span>
                       <input
                         type="number"
                         min={0}
-                        max={100}
+                        max={effectiveMaxMarks}
                         disabled={isLocked || saving}
                         value={score}
                         onChange={(e) => onScoreChange(s.id, e.target.value)}

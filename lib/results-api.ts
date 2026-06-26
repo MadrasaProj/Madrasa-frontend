@@ -66,7 +66,7 @@ export interface SummaryListResponse {
 
 // ── Class report (pivoted: one row per student) ───────────────────────────────
 
-export interface SubjectMeta { id: string; name: string; maxMarks: number }
+export interface SubjectMeta { id: string; name: string; maxMarks: number; passMarks: number | null; gradeConfig: Record<string, { min: number }> | null }
 
 export interface MarkData {
   score: number; maxMarks: number;

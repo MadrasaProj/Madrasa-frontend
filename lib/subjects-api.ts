@@ -6,6 +6,14 @@ const API_ORIGIN =
     : "http://localhost:3000";
 const V2_BASE = `${API_ORIGIN}/api/v2`;
 
+export interface ClassSubjectInfo {
+  id: string;
+  subjectName: string;
+  maxMarks: number | null;
+  passMarks: number | null;
+  gradeConfig: Record<string, { min: number }> | null;
+}
+
 export interface SubjectRecord {
   id: string;
   name: string;
@@ -14,6 +22,7 @@ export interface SubjectRecord {
   status: string;
   class?: { id: string; name: string } | null;
   teacher?: { id: string; name: string } | null;
+  classSubject?: ClassSubjectInfo | null;
 }
 
 export interface GetSubjectsParams {

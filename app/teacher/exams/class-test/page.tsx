@@ -185,6 +185,22 @@ export default function TeacherClassTestsPage() {
     setShowDrawer(true);
   };
 
+  const handleSubjectChange = (subjectId: string) => {
+    setFormSubjectId(subjectId);
+    if (subjectId) {
+      const subject = subjects.find((s) => s.id === subjectId);
+      const classSubjectData = subject?.classSubject;
+      if (classSubjectData) {
+        if (classSubjectData.maxMarks != null) {
+          setFormMaxMarks(String(classSubjectData.maxMarks));
+        }
+        if (classSubjectData.passMarks != null) {
+          setFormPassMarks(String(classSubjectData.passMarks));
+        }
+      }
+    }
+  };
+
   const handleSave = async () => {
     if (!formName.trim()) {
       setSaveError("Name is required");
@@ -341,14 +357,15 @@ export default function TeacherClassTestsPage() {
   const handleMeSave = async (examId: string) => {
     if (!meSubjectId) return;
     const exam = exams.find((e) => e.id === examId);
-    const totalMarks = exam?.maxMarks ?? 100;
+    const currentSubject = meSubjects.find((s) => s.id === meSubjectId);
+    const subjectMaxMarks = currentSubject?.classSubject?.maxMarks ?? exam?.maxMarks ?? 50;
     const items = meStudents
       .filter((s) => meScores[s.id] !== "" && meScores[s.id] !== undefined)
       .map((s) => ({
         subjectId: meSubjectId,
         studentId: s.id,
         score: Number(meScores[s.id]),
-        totalMarks,
+        totalMarks: subjectMaxMarks,
       }));
     if (!items.length) return;
     setMeSaving(true);
@@ -623,7 +640,10 @@ export default function TeacherClassTestsPage() {
                               <div className="rounded-xl border border-gray-100 overflow-hidden bg-white">
                                 <div className="px-3 py-2 bg-gray-50 flex justify-between text-[10px] font-bold text-gray-400 uppercase border-b">
                                   <span>Student</span>
-                                  <span>Score / {exam.maxMarks ?? 100}</span>
+                                  <span>Score / {(() => {
+                                    const currentSubject = meSubjects.find((s) => s.id === meSubjectId);
+                                    return currentSubject?.classSubject?.maxMarks ?? exam.maxMarks ?? 50;
+                                  })()}</span>
                                 </div>
                                 <div className="divide-y divide-gray-50 max-h-72 overflow-y-auto">
                                   {meStudents.map((s) => (
@@ -642,7 +662,10 @@ export default function TeacherClassTestsPage() {
                                       <input
                                         type="number"
                                         min={0}
-                                        max={exam.maxMarks ?? 100}
+                                        max={(() => {
+                                          const currentSubject = meSubjects.find((s) => s.id === meSubjectId);
+                                          return currentSubject?.classSubject?.maxMarks ?? exam.maxMarks ?? 50;
+                                        })()}
                                         value={meScores[s.id] ?? ""}
                                         onChange={(e) =>
                                           setMeScores((m) => ({
@@ -762,7 +785,7 @@ export default function TeacherClassTestsPage() {
                         </label>
                         <select
                           value={formSubjectId}
-                          onChange={(e) => setFormSubjectId(e.target.value)}
+                          onChange={(e) => handleSubjectChange(e.target.value)}
                           disabled={!formClassId}
                           className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors disabled:opacity-50"
                         >

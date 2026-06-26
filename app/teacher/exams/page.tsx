@@ -180,19 +180,21 @@ export default function TeacherExamsPage() {
 
  // ── Save Marks ───────────────────────────────────────────────────────────────
 
- const handleSave = async (submit = false) => {
- if (!queryExamId || !querySubjectId || !queryClassId || isLocked) return;
- setSaving(true);
- setError(null);
- try {
- const items = students
- .filter((s) => scores[s.id] !== "" && scores[s.id] !== undefined)
- .map((s) => ({
- subjectId: querySubjectId,
- studentId: s.id,
- score: Number(scores[s.id]),
- totalMarks: 100,
- }));
+  const handleSave = async (submit = false) => {
+  if (!queryExamId || !querySubjectId || !queryClassId || isLocked) return;
+  setSaving(true);
+  setError(null);
+  try {
+  const currentSubject = classSubjects.find((s) => s.id === querySubjectId);
+  const subjectMaxMarks = currentSubject?.classSubject?.maxMarks ?? activeExam?.maxMarks ?? 50;
+  const items = students
+  .filter((s) => scores[s.id] !== "" && scores[s.id] !== undefined)
+  .map((s) => ({
+  subjectId: querySubjectId,
+  studentId: s.id,
+  score: Number(scores[s.id]),
+  totalMarks: subjectMaxMarks,
+  }));
 
  if (!items.length) {
  setError("No scores entered");
@@ -384,11 +386,11 @@ export default function TeacherExamsPage() {
  examId={queryExamId}
  classId={queryClassId}
  accademicYearId={ayId}
- subjects={classSubjects.find((s) => s.id === querySubjectId) ? [{
- id: querySubjectId,
- name: classSubjects.find((s) => s.id === querySubjectId)!.name,
- maxMarks: activeExam?.maxMarks ?? 100
- }] : []}
+  subjects={classSubjects.find((s) => s.id === querySubjectId) ? [{
+  id: querySubjectId,
+  name: classSubjects.find((s) => s.id === querySubjectId)!.name,
+  maxMarks: classSubjects.find((s) => s.id === querySubjectId)?.classSubject?.maxMarks ?? activeExam?.maxMarks ?? 50
+  }] : []}
  students={students.map((s) => ({ id: s.id, name: s.name, adno: s.adno }))}
  onClose={() => setImportOpen(false)}
  onSuccess={async () => {

@@ -392,6 +392,8 @@ export default function AdminExamsPage() {
     if (!markEntry.classId || !markEntry.subjectId) return;
     setMarkEntry((p) => ({ ...p, saving: true, error: null, saved: false }));
     try {
+      const currentSubject = markEntry.subjects.find((s) => s.id === markEntry.subjectId);
+      const subjectMaxMarks = currentSubject?.classSubject?.maxMarks ?? classDrawerExam?.maxMarks ?? 50;
       const items = markEntry.students
         .filter(
           (s) =>
@@ -402,7 +404,7 @@ export default function AdminExamsPage() {
           subjectId: markEntry.subjectId,
           studentId: s.id,
           score: Number(markEntry.scores[s.id]),
-          totalMarks: 100,
+          totalMarks: subjectMaxMarks,
         }));
 
       if (!items.length) {
