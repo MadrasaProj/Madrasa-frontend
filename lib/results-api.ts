@@ -13,13 +13,18 @@ export interface ResultRecord {
   rank?: number | null;
   isPassed?: boolean | null;
   percentage?: number | null;
+  status?: "ACTIVE" | "INACTIVE" | "GRADUATED" | "TRANSFERRED" | "DROPPED_OUT" | string;
   classId?: string;
+  accademicYearId?: string | null;
+  markedById?: string | null;
+  createdAt?: string;
   updatedAt?: string;
   subject?:  { id: string; name: string } | null;
   exam?:     { id: string; name: string; examStatus: string } | null;
   student?:  { id: string; name: string; adno: string } | null;
   class?:    { id: string; name: string } | null;
   markedBy?: { id: string; name: string } | null;
+  accademicYear?: { id: string; name: string } | null;
 }
 
 export interface ResultListResponse {
@@ -42,6 +47,10 @@ export interface ExamSummary {
   rank: number | null;
   finalStatus: ResultStatus | null;
   totalGrade: TotalGrade | null;
+  classAverage: number | null;
+  classHighest: number | null;
+  classLowest:  number | null;
+  classSize:    number | null;
   updatedAt: string;
   student: { id: string; name: string; adno: string; gender: string };
   class:   { id: string; name: string };

@@ -55,6 +55,7 @@ const STATUS_STYLE: Record<string, string> = {
 
 function ParentResultCard({
   studentId, results, summary, exam, madrasaName, madrasaLogo,
+  classAverage, classHighest, classLowest, classSize,
 }: {
   studentId: string;
   results: ResultRecord[];
@@ -62,12 +63,16 @@ function ParentResultCard({
   exam: ExamRecord;
   madrasaName: string;
   madrasaLogo?: string | null;
+  classAverage?: number | null;
+  classHighest?: number | null;
+  classLowest?: number | null;
+  classSize?: number | null;
 }) {
   const { student: activeStudent } = useStudentFullDataFromParent(studentId);
   const studentName   = activeStudent?.name ?? "Student";
   const studentAdo    = activeStudent?.adno ?? "—";
   const studentGender = activeStudent?.gender ?? null;
-  const studentClass  = activeStudent?.class?.name ?? "—";
+  const studentClass  = activeStudent?.className ?? "—";
   const studentPhoto  = activeStudent?.photoUrl ?? activeStudent?.photo ?? null;
   const posterRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState<"jpg" | "pdf" | "share" | null>(null);
@@ -203,6 +208,41 @@ function ParentResultCard({
             <span className={cn("px-3 py-1 rounded-full font-bold border uppercase", STATUS_STYLE[finalStatus])}>
               {finalStatus}
             </span>
+          </div>
+        )}
+
+        {/* Class statistics — included in the generated card */}
+        {(classAverage != null || classHighest != null || classLowest != null || classSize != null) && (
+          <div className="bg-gradient-to-br from-emerald-50 to-teal-50/50 px-5 py-4 border-t border-emerald-100">
+            <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest mb-2.5">
+              Class Statistics
+            </p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+              {classAverage != null && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-gray-500 font-medium">Average</span>
+                  <span className="font-extrabold text-gray-900 tabular-nums">{classAverage.toFixed(2)}%</span>
+                </div>
+              )}
+              {classHighest != null && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-gray-500 font-medium">Highest</span>
+                  <span className="font-extrabold text-emerald-700 tabular-nums">{classHighest.toFixed(2)}%</span>
+                </div>
+              )}
+              {classLowest != null && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-gray-500 font-medium">Lowest</span>
+                  <span className="font-extrabold text-gray-900 tabular-nums">{classLowest.toFixed(2)}%</span>
+                </div>
+              )}
+              {classSize != null && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-gray-500 font-medium">Class Size</span>
+                  <span className="font-extrabold text-gray-900 tabular-nums">{classSize}</span>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -455,6 +495,24 @@ export default function ParentResultsPage() {
   const totalMax      = summary?.totalMaxMarks ?? results.reduce((s, r) => s + r.totalMarks, 0);
   const overallPct    = summary?.totalPercentage ?? (totalMax > 0 ? (totalObtained / totalMax) * 100 : 0);
 
+  // Class-level statistics — prefer the values stored on the student's
+  // summary (computed during the last `summaries/compute` run), fall back to
+  // the live class report if not yet computed.
+  const classAverage = summary?.classAverage
+    ?? classReport?.stats?.classAverage
+    ?? null;
+  const classHighest = summary?.classHighest
+    ?? (classReport?.students?.length
+      ? Math.max(...classReport.students.map((s) => s.summary.totalPercentage ?? 0))
+      : null);
+  const classLowest = summary?.classLowest
+    ?? (classReport?.students?.length
+      ? Math.min(...classReport.students.map((s) => s.summary.totalPercentage ?? 0))
+      : null);
+  const classSize = summary?.classSize
+    ?? classReport?.stats?.totalStudents
+    ?? null;
+
   return (
     <DashboardLayout>
       <div className="px-4 py-3 lg:px-8 lg:py-6 space-y-6">
@@ -676,15 +734,17 @@ export default function ParentResultsPage() {
                   }).length;
                   const passRate = results.length > 0 ? (passedCount / results.length) * 100 : 0;
                   const stats = classReport?.stats;
-                  const aboveAvg = stats && overallPct > stats.classAverage;
+                  const aboveAvg = classAverage != null && overallPct > classAverage;
                   return (
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 print:hidden">
                       <div className="bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 shadow-sm">
                         <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Class Average</p>
                         <p className="mt-2 text-2xl sm:text-3xl font-extrabold text-gray-900 leading-none tabular-nums tracking-tight">
-                          {stats ? <>{stats.classAverage.toFixed(2)}<span className="text-base sm:text-lg text-gray-400 font-bold">%</span></> : "—"}
+                          {classAverage != null
+                            ? <>{classAverage.toFixed(2)}<span className="text-base sm:text-lg text-gray-400 font-bold">%</span></>
+                            : "—"}
                         </p>
-                        {stats && (
+                        {classAverage != null && (
                           <p className={cn("mt-1.5 text-[10px] font-bold uppercase tracking-wider", aboveAvg ? "text-emerald-600" : "text-amber-600")}>
                             {aboveAvg ? "▲ Above average" : "▼ Below average"}
                           </p>
@@ -693,16 +753,16 @@ export default function ParentResultsPage() {
                       <div className="bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 shadow-sm">
                         <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Class Highest</p>
                         <p className="mt-2 text-2xl sm:text-3xl font-extrabold text-gray-900 leading-none tabular-nums tracking-tight">
-                          {stats && classReport?.students?.length
-                            ? <>{Math.max(...classReport.students.map((s) => s.summary.totalPercentage ?? 0)).toFixed(2)}<span className="text-base sm:text-lg text-gray-400 font-bold">%</span></>
+                          {classHighest != null
+                            ? <>{classHighest.toFixed(2)}<span className="text-base sm:text-lg text-gray-400 font-bold">%</span></>
                             : "—"}
                         </p>
                       </div>
                       <div className="bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 shadow-sm">
                         <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Class Lowest</p>
                         <p className="mt-2 text-2xl sm:text-3xl font-extrabold text-gray-900 leading-none tabular-nums tracking-tight">
-                          {stats && classReport?.students?.length
-                            ? <>{Math.min(...classReport.students.map((s) => s.summary.totalPercentage ?? 0)).toFixed(2)}<span className="text-base sm:text-lg text-gray-400 font-bold">%</span></>
+                          {classLowest != null
+                            ? <>{classLowest.toFixed(2)}<span className="text-base sm:text-lg text-gray-400 font-bold">%</span></>
                             : "—"}
                         </p>
                       </div>
@@ -718,7 +778,7 @@ export default function ParentResultsPage() {
                       <div className="bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 shadow-sm">
                         <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Class Size</p>
                         <p className="mt-2 text-2xl sm:text-3xl font-extrabold text-gray-900 leading-none tabular-nums tracking-tight">
-                          {stats?.totalStudents ?? "—"}
+                          {classSize != null ? classSize : "—"}
                         </p>
                         {stats && (
                           <p className="mt-1.5 text-[10px] text-gray-400 font-semibold">
@@ -886,45 +946,42 @@ export default function ParentResultsPage() {
                   </div>
                 </section>
 
-                {classReport?.stats && (() => {
-                  const highest = classReport.students?.length
-                    ? Math.max(...classReport.students.map((s) => s.summary.totalPercentage ?? 0))
-                    : null;
-                  const lowest = classReport.students?.length
-                    ? Math.min(...classReport.students.map((s) => s.summary.totalPercentage ?? 0))
-                    : null;
+                {(classAverage != null || classHighest != null || classLowest != null || classSize != null) && (() => {
+                  const stats = classReport?.stats;
                   return (
                     <section className="space-y-2">
                       <h4 className="text-[10px] uppercase tracking-[0.18em] font-bold text-emerald-700">Class Statistics</h4>
                       <div className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
                         <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
                           <span className="text-gray-500">Class Average</span>
-                          <span className="font-semibold text-gray-900 tabular-nums">{classReport.stats.classAverage.toFixed(2)}%</span>
+                          <span className="font-semibold text-gray-900 tabular-nums">{classAverage != null ? `${classAverage.toFixed(2)}%` : "—"}</span>
                         </div>
-                        {highest !== null && (
+                        {classHighest != null && (
                           <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
                             <span className="text-gray-500">Class Highest</span>
-                            <span className="font-semibold text-gray-900 tabular-nums">{highest.toFixed(2)}%</span>
+                            <span className="font-semibold text-gray-900 tabular-nums">{classHighest.toFixed(2)}%</span>
                           </div>
                         )}
-                        {lowest !== null && (
+                        {classLowest != null && (
                           <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
                             <span className="text-gray-500">Class Lowest</span>
-                            <span className="font-semibold text-gray-900 tabular-nums">{lowest.toFixed(2)}%</span>
+                            <span className="font-semibold text-gray-900 tabular-nums">{classLowest.toFixed(2)}%</span>
                           </div>
                         )}
                         <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
                           <span className="text-gray-500">Total Students</span>
-                          <span className="font-semibold text-gray-900 tabular-nums">{classReport.stats.totalStudents}</span>
+                          <span className="font-semibold text-gray-900 tabular-nums">{classSize != null ? classSize : "—"}</span>
                         </div>
-                        <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
-                          <span className="text-gray-500">Pass / Fail</span>
-                          <span className="font-semibold text-gray-900 tabular-nums">
-                            <span className="text-emerald-700">{classReport.stats.passedCount}</span>
-                            <span className="text-gray-300 mx-1">/</span>
-                            <span className="text-rose-600">{classReport.stats.failedCount}</span>
+                        {stats && (
+                          <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                            <span className="text-gray-500">Pass / Fail</span>
+                            <span className="font-semibold text-gray-900 tabular-nums">
+                              <span className="text-emerald-700">{stats.passedCount}</span>
+                              <span className="text-gray-300 mx-1">/</span>
+                            <span className="text-rose-600">{stats.failedCount}</span>
                           </span>
                         </div>
+                        )}
                       </div>
                     </section>
                   );
@@ -967,7 +1024,7 @@ export default function ParentResultsPage() {
           description="Share or download a beautifully formatted result card"
         >
           <div className="p-5 sm:p-6">
-             {activeExam && activeStudent && (
+              {activeExam && activeStudent && (
               <ParentResultCard
                 studentId={activeStudent.id}
                 results={results}
@@ -975,6 +1032,10 @@ export default function ParentResultsPage() {
                 exam={activeExam}
                 madrasaName={madrasaName}
                 madrasaLogo={madrasaLogo}
+                classAverage={classAverage}
+                classHighest={classHighest}
+                classLowest={classLowest}
+                classSize={classSize}
               />
             )}
           </div>

@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { getParentStudents } from "@/lib/auth-api";
 import { useAuthStore } from "@/store/auth";
 import type { StudentInfo } from "@/lib/auth-api";
-import { getStudentProfileV2, StudentRecord } from "../students-api";
 
 /**
  * Fetches a single student's complete profile using the parent's session.
@@ -18,10 +17,11 @@ import { getStudentProfileV2, StudentRecord } from "../students-api";
  */
 export function useStudentFullDataFromParent(
   studentId: string | null | undefined
-): { student: StudentRecord | null; loading: boolean; error: Error | null } {
+): { student: StudentInfo | null; loading: boolean; error: Error | null } {
   const { accessToken, user } = useAuthStore();
   const token = accessToken ?? "";
-  const [student, setStudent] = useState<StudentRecord | null>(null);
+  const cached = user?.accessibleStudents?.find((s) => s.id === studentId) ?? null;
+  const [student, setStudent] = useState<StudentInfo | null>(cached);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -31,16 +31,16 @@ export function useStudentFullDataFromParent(
       return;
     }
     // Seed with cached value so callers have something to render with
-    setStudent(null);
+    setStudent(cached);
     if (!token) return;
 
     let cancelled = false;
     setLoading(true);
     setError(null);
-    getStudentProfileV2(user?.clientId!,token, studentId)
-      .then((e) => {
+    getParentStudents(token)
+      .then(({ data }) => {
         if (cancelled) return;
-        setStudent(e);
+        setStudent(data.find((s) => s.id === studentId) ?? null);
       })
       .catch((err: Error) => {
         if (cancelled) return;
