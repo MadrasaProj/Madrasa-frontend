@@ -79,6 +79,7 @@ import ParentHomeworkPage from "../app/parent/homework/page";
 import ParentIbadahPage from "../app/parent/ibadah/page";
 import ParentNotificationsPage from "../app/parent/notifications/page";
 import ParentDashboard from "../app/parent/page";
+import ParentIdCardsPage from "../app/parent/id-cards/page";
 import ParentResultsPage from "../app/parent/results/page";
 import ParentBestPerformancePage from "../app/parent/best-performance/page";
 import ParentPostersPage from "../app/parent/posters/page";
@@ -239,6 +240,7 @@ export default function App() {
         <Route path="/parent/students" element={<ParentStudentProfile />} />
         <Route path="/parent/attendance" element={<ParentAttendancePage />} />
         <Route path="/parent/fees" element={<ParentFeesPage />} />
+        <Route path="/parent/id-cards" element={<ParentIdCardsPage />} />
         <Route path="/parent/homework" element={<ParentHomeworkPage />} />
         <Route path="/parent/ibadah" element={<ParentIbadahPage />} />
         <Route path="/parent/results" element={<ParentResultsPage />} />
@@ -255,6 +257,7 @@ export default function App() {
         <Route path="/m/:slug/parent/attendance" element={<ParentAttendancePage />} />
         <Route path="/m/:slug/parent/leave-requests" element={<ParentLeaveRequestsPage />} />
         <Route path="/m/:slug/parent/fees" element={<ParentFeesPage />} />
+        <Route path="/m/:slug/parent/id-cards" element={<ParentIdCardsPage />} />
         <Route path="/m/:slug/parent/homework" element={<ParentHomeworkPage />} />
         <Route path="/m/:slug/parent/ibadah" element={<ParentIbadahPage />} />
         <Route path="/m/:slug/parent/results" element={<ParentResultsPage />} />
@@ -263,7 +266,6 @@ export default function App() {
         <Route path="/m/:slug/parent/diary" element={<ParentDiaryPage />} />
         <Route path="/m/:slug/parent/posters" element={<ParentPostersPage />} />
         <Route path="/m/:slug/parent/posters/:id" element={<ParentPosterViewPage />} />
-        <Route path="/m/:slug/parent/best-performance" element={<ParentBestPerformancePage />} />
 
         {/* Committee */}
         <Route path="/committee" element={<CommitteeDashboard />} />

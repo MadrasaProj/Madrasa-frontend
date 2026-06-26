@@ -197,6 +197,7 @@ const parentLinks = [
   { href: "/parent/diary", icon: FileText, key: "diary" as NavKey },
   { href: "/parent/ibadah", icon: Moon, key: "ibadah" as NavKey },
   { href: "/parent/fees", icon: CreditCard, key: "fees" as NavKey },
+  { href: "/parent/id-cards", icon: BadgeCheck, key: "idCards" as NavKey },
   { href: "/parent/posters", icon: Image, key: "posters" as NavKey },
   { href: "/parent/results", icon: GraduationCap, key: "results" as NavKey },
   {

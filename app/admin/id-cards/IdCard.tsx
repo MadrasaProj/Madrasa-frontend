@@ -767,6 +767,12 @@ export default function IDCardsPage() {
 
       setClientConfig(config ?? null);
 
+      const initialAvatars: Record<string, string> = {};
+      (stuData.data ?? []).forEach((s) => {
+        if (s.photoUrl) initialAvatars[s.id] = s.photoUrl;
+      });
+      setAvatars(initialAvatars);
+
       if (mapped.length > 0 && !selectedId) {
         setSelectedId(mapped[0].id);
       }
