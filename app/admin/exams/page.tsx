@@ -42,6 +42,7 @@ import {
   ExamStatusBadge,
   getExamStatusInfo,
 } from "@/components/exam/ExamStatusBadge";
+import { MarkEntryGrid } from "@/components/exam/MarkEntryGrid";
 
 interface ExamForm {
   name: string;
@@ -394,6 +395,13 @@ export default function AdminExamsPage() {
       setMarkEntry((p) => ({ ...p, loading: false, error: e.message }));
     }
   };
+
+  useEffect(() => {
+    if(classDrawerExamId && markEntry.subjectId){
+      
+      loadMarkEntrySubject(classDrawerExamId, markEntry.subjectId);
+    }
+  },[classDrawerExamId, markEntry.subjectId])
 
   const handleMarkEntrySave = async (examId: string) => {
     if (!markEntry.classId || !markEntry.subjectId) return;
@@ -906,143 +914,44 @@ export default function AdminExamsPage() {
                             </button>
                           </div>
 
-                          <div>
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">
-                              Mark Entry · {selectedClass.name}
-                            </p>
-                            <p className="text-[10px] text-gray-400">
-                              {markEntry.loading
-                                ? "Loading..."
-                                : markEntry.subjects.length > 0
-                                  ? `${markEntry.students.length} students · ${markEntry.subjects.length} subjects`
-                                  : "No subjects loaded"}
-                            </p>
-                          </div>
-
-                          {markEntry.error && (
-                            <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 px-3 py-2 rounded-xl">
-                              <AlertCircle className="w-3.5 h-3.5 shrink-0" />{" "}
-                              {markEntry.error}
-                            </div>
-                          )}
-
-                          <div>
-                            <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                              Subject
-                            </label>
-                            <select
-                              value={markEntry.subjectId}
-                              onChange={(e) =>
-                                loadMarkEntrySubject(
-                                  classDrawerExam.id,
-                                  e.target.value,
-                                )
-                              }
-                              disabled={
-                                !markEntry.classId ||
-                                markEntry.subjects.length === 0
-                              }
-                              className="w-full sm:w-64 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none disabled:opacity-50"
-                            >
-                              <option value="">Select subject</option>
-                              {markEntry.subjects.map((s) => (
-                                <option key={s.id} value={s.id}>
-                                  {s.name}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          {markEntry.loading ? (
-                            <div className="flex items-center justify-center py-6 text-gray-400">
-                              <Loader2 className="w-5 h-5 animate-spin" />
-                            </div>
-                          ) : markEntry.students.length === 0 ? (
-                            <p className="text-xs text-gray-400 text-center py-4">
-                              No students in this class
-                            </p>
-                          ) : !markEntry.subjectId ? (
-                            <p className="text-xs text-gray-400 text-center py-4">
-                              Select a subject to enter marks
-                            </p>
-                          ) : (
-                            <div className="rounded-xl border border-gray-100 overflow-hidden">
-                              <div className="px-4 py-2 bg-gray-50 flex justify-between text-xs font-semibold text-gray-500">
-                                <span>Student</span>
-                                <span>Score / 100</span>
-                              </div>
-                              <div className="divide-y divide-gray-50 max-h-72 overflow-y-auto overflow-x-hidden">
-                                {markEntry.students.map((s) => {
-                                  const score =
-                                    markEntry.scores[s.id] ?? "";
-                                  return (
-                                    <div
-                                      key={s.id}
-                                      className="flex items-center justify-between px-4 py-2 bg-white"
-                                    >
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-semibold text-gray-900 truncate">
-                                          {s.name}
-                                        </p>
-                                        <p className="text-xs text-gray-400">
-                                          {s.adno}
-                                        </p>
-                                      </div>
-                                      <input
-                                        type="number"
-                                        min={0}
-                                        max={100}
-                                        value={score}
-                                        onChange={(e) =>
-                                          setMarkEntry((p) => ({
-                                            ...p,
-                                            scores: {
-                                              ...p.scores,
-                                              [s.id]: e.target.value,
-                                            },
-                                          }))
-                                        }
-                                        placeholder="—"
-                                        className="w-16 text-center px-2 py-1.5 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:border-emerald-400"
-                                      />
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
+                          <MarkEntryGrid
+                            exams={classDrawerExam ? [classDrawerExam] : []}
+                            classes={selectedClass ? [selectedClass] : []}
+                            subjects={markEntry.subjects}
+                            students={markEntry.students}
+                            examId={classDrawerExam?.id ?? ""}
+                            classId={markEntry.classId}
+                            subjectId={markEntry.subjectId}
+                            scores={markEntry.scores}
+                            isLocked={false}
+                            saving={markEntry.saving}
+                            saved={markEntry.saved}
+                            error={markEntry.error}
+                            loading={markEntry.loading}
+                            activeExam={classDrawerExam}
+                            onExamChange={() => {}}
+                            onClassChange={() => {}}
+                            onSubjectChange={(val) =>
+                              loadMarkEntrySubject(classDrawerExam.id, val)
+                            }
+                            onScoreChange={(sid, val) =>
+                              setMarkEntry((p) => ({
+                                ...p,
+                                scores: { ...p.scores, [sid]: val },
+                              }))
+                            }
+                            onSave={() => handleMarkEntrySave(classDrawerExam.id)}
+                            showExamSelector={false}
+                            showClassSelector={false}
+                            showRemarks={false}
+                            showExcelImport={false}
+                            showDraftButton={false}
+                            showResetButton={false}
+                            showLockPeriod={false}
+                          />
                         </div>
                       </div>
 
-                      {markEntry.subjectId && markEntry.students.length > 0 && (
-                        <div className="px-5 py-4 border-t border-gray-100 bg-white shrink-0">
-                          <button
-                            onClick={() =>
-                              handleMarkEntrySave(classDrawerExam.id)
-                            }
-                            disabled={markEntry.saving || markEntry.loading}
-                            className={cn(
-                              "w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all",
-                              markEntry.saved
-                                ? "bg-emerald-100 text-emerald-700"
-                                : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm",
-                            )}
-                          >
-                            {markEntry.saving ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : markEntry.saved ? (
-                              <CheckCircle2 className="w-4 h-4" />
-                            ) : (
-                              <Save className="w-4 h-4" />
-                            )}
-                            {markEntry.saving
-                              ? "Saving..."
-                              : markEntry.saved
-                                ? "Saved"
-                                : "Save Marks"}
-                          </button>
-                        </div>
-                      )}
                     </>
                   ) : (
                     <div className="flex-1 flex items-center justify-center text-gray-400">

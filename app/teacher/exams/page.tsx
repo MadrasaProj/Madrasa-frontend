@@ -12,14 +12,14 @@ import { getStudents, type StudentRecord } from "@/lib/students-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
-  GraduationCap, Save, Loader2, CheckCircle2, Lock, Calendar, AlertCircle,
-  Clock, Award, ArrowLeft, RotateCcw, PenLine, FileSpreadsheet, Eye,
-  ClipboardCheck, Trophy, Search, X,
+  GraduationCap, Lock, Clock, PenLine, Eye,
+  ClipboardCheck, Trophy, Search, X, ArrowLeft,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ExamStatusBadge, getExamStatusInfo } from "@/components/exam/ExamStatusBadge";
 import { ExcelImportModal } from "@/components/exam/ExcelImportModal";
+import { MarkEntryGrid } from "@/components/exam/MarkEntryGrid";
 
 
 
@@ -282,11 +282,6 @@ export default function TeacherExamsPage() {
     setPage(1);
   }, [searchText, pageSize]);
 
-  const filled = Object.values(scores).filter((v) => v !== "").length;
-  const avg = filled > 0
-    ? Math.round(Object.values(scores).filter((v) => v !== "").reduce((s, v) => s + Number(v), 0) / filled)
-    : 0;
-
   // ── Columns ────────────────────────────────────────────────────────────────
 
   const columns = useMemo<Column<ExamRecord>[]>(
@@ -469,214 +464,28 @@ export default function TeacherExamsPage() {
  </div>
  </div>
 
- {/* Error notice */}
- {error && (
- <div className="bg-rose-50 border border-rose-100 text-rose-600 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">
- <AlertCircle className="w-4 h-4 shrink-0" /> {error}
- </div>
- )}
-
- {/* Selectors grid */}
- <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
- <div>
- <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1.5">Select Exam</label>
- <select
- value={queryExamId}
- onChange={(e) => setSearchParams((prev) => { prev.set("examId", e.target.value); return prev; })}
- className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 bg-white"
- >
- {exams.map((ex) => <option key={ex.id} value={ex.id}>{ex.name}</option>)}
- </select>
- </div>
- <div>
- <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1.5">Select Class</label>
- <select
- value={queryClassId}
- onChange={(e) => setSearchParams((prev) => { prev.set("classId", e.target.value); return prev; })}
- className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 bg-white"
- >
- {teacherClasses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
- </select>
- </div>
- <div>
- <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1.5">Select Subject</label>
- <select
- value={querySubjectId}
- onChange={(e) => setSearchParams((prev) => { prev.set("subjectId", e.target.value); return prev; })}
- disabled={classSubjects.length === 0}
- className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 bg-white disabled:opacity-50"
- >
- {classSubjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
- </select>
- </div>
- </div>
-
- {/* Mark entry period box & download template button */}
- {activeExam && (
- <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-emerald-50/40 border border-emerald-100 rounded-3xl">
- <div className="flex items-center gap-3">
- <div className="w-10 h-10 rounded-2xl bg-emerald-100/50 flex items-center justify-center shrink-0 text-emerald-700">
- <Calendar className="w-5 h-5" />
- </div>
- <div>
- <p className="text-xs font-bold text-emerald-800 flex items-center gap-2">
- Mark Entry Period
- <span className={cn("px-2 py-0.5 rounded-full text-[9px] border font-extrabold uppercase", isLocked ? "bg-rose-50 text-rose-700 border-rose-100" : "bg-emerald-50 text-emerald-700 border-emerald-100")}>
- {isLocked ? "Closed" : "Open"}
- </span>
- </p>
- <p className="text-xs text-gray-500 mt-0.5">
- {activeExam.endDate ? fmt(new Date(new Date(activeExam.endDate).getTime() + 86400000).toISOString()) : "—"} – {fmt(activeExam.markEntryLastDate)}
- </p>
- </div>
- </div>
- <div className="flex items-center gap-2">
- <button
- onClick={() => setImportOpen(true)}
- className="inline-flex items-center gap-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm hover:scale-[1.01]"
- >
- <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> Import / Export Excel
- </button>
- </div>
- </div>
- )}
-
- {/* Student list grid table */}
- {students.length === 0 ? (
- <div className="text-center py-20 bg-white border border-gray-100 rounded-3xl p-6">
- <GraduationCap className="w-12 h-12 text-gray-200 mx-auto mb-3" />
- <p className="text-sm font-semibold text-gray-900">No students in this class</p>
- <p className="text-xs text-gray-400 mt-1">Make sure you have students registered in this class.</p>
- </div>
- ) : (
- <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden flex flex-col">
- {/* Desktop Table View */}
- <div className="hidden sm:block overflow-x-auto">
- <table className="w-full text-left border-collapse text-sm">
- <thead>
- <tr className="bg-gray-50 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
- <th className="px-6 py-4 w-12 text-center">#</th>
- <th className="px-4 py-4">Student Name</th>
- <th className="px-4 py-4 w-40">Admission No</th>
- <th className="px-4 py-4 w-32 text-center">Full Mark</th>
- <th className="px-4 py-4 w-44 text-center">Obtained Mark *</th>
- <th className="px-6 py-4">Remarks (Optional)</th>
- </tr>
- </thead>
- <tbody className="divide-y divide-gray-50">
- {students.map((s, idx) => {
- const score = scores[s.id] ?? "";
- const remark = remarks[s.id] ?? "";
- return (
- <tr key={s.id} className="hover:bg-gray-50/50 transition-colors">
- <td className="px-6 py-3.5 text-center text-gray-400 font-medium">{idx + 1}</td>
- <td className="px-4 py-3.5">
- <p className="font-bold text-gray-900 leading-tight">{s.name}</p>
- <span className="text-[10px] text-gray-400 uppercase font-semibold">{s.gender ?? "Male"}</span>
- </td>
- <td className="px-4 py-3.5 font-mono text-xs font-semibold text-gray-700">{s.adno}</td>
- <td className="px-4 py-3.5 text-center text-gray-500 font-bold">100</td>
- <td className="px-4 py-3.5 text-center">
- <input
- type="number"
- min={0}
- max={100}
- disabled={isLocked || saving}
- value={score}
- onChange={(e) => setScores((prev) => ({ ...prev, [s.id]: e.target.value }))}
- placeholder="—"
- className={cn(
- "w-24 text-center px-3 py-2 border rounded-xl text-sm font-bold focus:outline-none transition-all",
- isLocked
- ? "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed"
- : "border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/20"
- )}
- />
- </td>
- <td className="px-6 py-3.5">
- <input
- type="text"
- disabled={isLocked || saving}
- value={remark}
- onChange={(e) => setRemarks((prev) => ({ ...prev, [s.id]: e.target.value }))}
- placeholder="Good progress, excellent..."
- className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-emerald-500 transition-all bg-white"
- />
- </td>
- </tr>
- );
- })}
- </tbody>
- </table>
- </div>
-
- {/* Mobile Card-Based List View */}
- <div className="block sm:hidden divide-y divide-gray-100 max-h-[60vh] overflow-y-auto">
- {students.map((s, idx) => {
- const score = scores[s.id] ?? "";
- const remark = remarks[s.id] ?? "";
- return (
- <div key={s.id} className="p-4 space-y-3">
- <div className="flex items-start justify-between gap-3">
- <div className="min-w-0">
- <div className="flex items-center gap-1.5">
- <span className="text-xs text-gray-400 font-bold">#{idx + 1}</span>
- <p className="font-bold text-gray-900 text-sm leading-snug truncate">{s.name}</p>
- </div>
- <p className="text-[11px] text-gray-400 mt-0.5">
- AdNo: <span className="font-semibold font-mono text-gray-600">{s.adno}</span> · {s.gender ?? "Male"}
- </p>
- </div>
- <div className="flex items-center gap-1.5 shrink-0">
- <span className="text-xs text-gray-400 font-medium mr-1">/100</span>
- <input
- type="number"
- min={0}
- max={100}
- disabled={isLocked || saving}
- value={score}
- onChange={(e) => setScores((prev) => ({ ...prev, [s.id]: e.target.value }))}
- placeholder="—"
- className={cn(
- "w-16 text-center py-1.5 px-2 border rounded-xl text-sm font-bold focus:outline-none transition-all",
- isLocked
- ? "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed"
- : "border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/20"
- )}
- />
- </div>
- </div>
- <div>
- <input
- type="text"
- disabled={isLocked || saving}
- value={remark}
- onChange={(e) => setRemarks((prev) => ({ ...prev, [s.id]: e.target.value }))}
- placeholder="Add remark..."
- className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-emerald-500 transition-all bg-white"
- />
- </div>
- </div>
- );
- })}
- </div>
-
- {/* Bottom statistics bar */}
- <div className="bg-gray-50 px-6 py-4 flex flex-wrap items-center justify-between border-t border-gray-100 gap-4">
- <div className="flex items-center gap-6">
- <div className="text-xs">
- <span className="text-gray-400">Total Students:</span> <strong className="text-gray-900 font-bold ml-1">{students.length}</strong>
- </div>
- <div className="text-xs">
- <span className="text-emerald-500 font-semibold">Entered:</span> <strong className="text-emerald-700 font-extrabold ml-1">{filled}</strong>
- </div>
- <div className="text-xs">
- <span className="text-amber-500 font-semibold font-mono">Remaining:</span> <strong className="text-amber-700 font-extrabold ml-1">{students.length - filled}</strong>
- </div>
- </div>
- <div className="flex items-center gap-2">
- <button
- onClick={() => {
+ <MarkEntryGrid
+ exams={exams}
+ classes={teacherClasses}
+ subjects={classSubjects}
+ students={students}
+ examId={queryExamId}
+ classId={queryClassId}
+ subjectId={querySubjectId}
+ scores={scores}
+ remarks={remarks}
+ isLocked={isLocked}
+ saving={saving}
+ saved={saved}
+ error={error}
+ activeExam={activeExam}
+ onExamChange={(val) => setSearchParams((prev) => { prev.set("examId", val); return prev; })}
+ onClassChange={(val) => setSearchParams((prev) => { prev.set("classId", val); return prev; })}
+ onSubjectChange={(val) => setSearchParams((prev) => { prev.set("subjectId", val); return prev; })}
+ onScoreChange={(sid, val) => setScores((prev) => ({ ...prev, [sid]: val }))}
+ onRemarkChange={(sid, val) => setRemarks((prev) => ({ ...prev, [sid]: val }))}
+ onSave={handleSave}
+ onReset={() => {
  if (confirm("Reset entered marks?")) {
  const scoreMap: Record<string, string> = {};
  students.forEach((s) => {
@@ -686,30 +495,15 @@ export default function TeacherExamsPage() {
  setScores(scoreMap);
  }
  }}
- className="inline-flex items-center gap-1.5 border border-gray-200 hover:bg-gray-100 text-gray-600 font-bold text-xs px-4 py-2.5 rounded-xl transition-colors bg-white shadow-xs"
- >
- <RotateCcw className="w-3.5 h-3.5" /> Reset
- </button>
- <button
- onClick={() => handleSave(false)}
- disabled={saving || isLocked}
- className="inline-flex items-center gap-1.5 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs px-4 py-2.5 rounded-xl transition-colors shadow-xs"
- >
- {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
- Save as Draft
- </button>
- <button
- onClick={() => handleSave(true)}
- disabled={saving || isLocked}
- className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-sm hover:scale-[1.01]"
- >
- {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
- Save &amp; Submit
- </button>
- </div>
- </div>
- </div>
- )}
+ onImportOpen={() => setImportOpen(true)}
+ showExamSelector
+ showClassSelector
+ showRemarks
+ showExcelImport
+ showDraftButton
+ showResetButton
+ showLockPeriod
+ />
 
  {importOpen && queryExamId && queryClassId && querySubjectId && (
  <ExcelImportModal

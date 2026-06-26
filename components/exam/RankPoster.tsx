@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Download, Share2, Loader2, Upload, X, Crown, Trophy, Medal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ClassReportRow, ClassReport } from "@/lib/results-api";
@@ -45,19 +45,26 @@ interface Props {
   report: ClassReport;
   madrasaName: string;
   madrasaLogo?: string | null;
+  studentPhotoMap?: Record<string, string | null>;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function RankPoster({ row, report, madrasaName, madrasaLogo }: Props) {
+export function RankPoster({ row, report, madrasaName, madrasaLogo, studentPhotoMap }: Props) {
   const { student, summary } = row;
   const rank = summary.rank ?? 0;
   const cfg  = RANK_CONFIG[rank] ?? RANK_CONFIG[3];
   const { Icon } = cfg;
 
   const posterRef                  = useRef<HTMLDivElement>(null);
-  const [photo, setPhoto]          = useState<string | null>(null);
+  const [photo, setPhoto]          = useState<string | null>(() => studentPhotoMap?.[student.id] ?? null);
   const [exporting, setExporting]  = useState<"jpg" | "share" | null>(null);
+
+  useEffect(() => {
+    if (!photo && studentPhotoMap?.[student.id]) {
+      setPhoto(studentPhotoMap[student.id]);
+    }
+  }, [student.id, studentPhotoMap]);
 
   const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

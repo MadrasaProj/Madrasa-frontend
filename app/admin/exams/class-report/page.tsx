@@ -203,6 +203,7 @@ export default function ClassReportPage() {
  const posterRow = posterStudentId ? report.students.find((r) => r.student.id === posterStudentId) : null;
  const madrasaName = report.clientName ?? "Al Madrasa";
  const madrasaLogo = report.clientLogo ?? null;
+ const studentPhotoMap = Object.fromEntries(students.map((s) => [s.id, s.photoUrl ?? null]));
 
  return (
  <DashboardLayout>
@@ -304,6 +305,7 @@ export default function ClassReportPage() {
  setMarklistStudId={setMarklistStudId}
  madrasaName={madrasaName}
  madrasaLogo={madrasaLogo}
+ studentPhotoMap={studentPhotoMap}
  />
  )}
 
@@ -329,6 +331,7 @@ export default function ClassReportPage() {
  posterRow={posterRow ?? null}
  madrasaName={madrasaName}
  madrasaLogo={madrasaLogo}
+ studentPhotoMap={studentPhotoMap}
  />
  )}
  </div>
@@ -356,12 +359,13 @@ export default function ClassReportPage() {
 
 // ── Marklist tab ──────────────────────────────────────────────────────────────
 
-function MarklistTab({ report, marklistStudId, setMarklistStudId, madrasaName, madrasaLogo }: {
+function MarklistTab({ report, marklistStudId, setMarklistStudId, madrasaName, madrasaLogo, studentPhotoMap }: {
  report: ClassReport;
  marklistStudId: string | null;
  setMarklistStudId: (id: string | null) => void;
  madrasaName: string;
  madrasaLogo?: string | null;
+ studentPhotoMap?: Record<string, string | null>;
 }) {
  const { students } = report;
  const activeRow = marklistStudId ? students.find((s) => s.student.id === marklistStudId) : null;
@@ -393,7 +397,7 @@ function MarklistTab({ report, marklistStudId, setMarklistStudId, madrasaName, m
  animate={{ opacity: 1, y: 0 }}
  className="max-w-sm mx-auto"
  >
- <MarklistPoster row={activeRow} report={report} madrasaName={madrasaName} madrasaLogo={madrasaLogo} />
+ <MarklistPoster row={activeRow} report={report} madrasaName={madrasaName} madrasaLogo={madrasaLogo} studentPhotoMap={studentPhotoMap} />
  </motion.div>
  ) : (
  <div className="flex flex-col items-center justify-center py-16 text-gray-400 gap-3">
@@ -524,7 +528,7 @@ function StatusTab({ report, statusMap, setStatusMap, savingId, savingAll, statu
 
 // ── Posters tab ───────────────────────────────────────────────────────────────
 
-function PostersTab({ rankedStudents, report, posterStudentId, setPosterStudentId, posterRow, madrasaName, madrasaLogo }: {
+function PostersTab({ rankedStudents, report, posterStudentId, setPosterStudentId, posterRow, madrasaName, madrasaLogo, studentPhotoMap }: {
  rankedStudents: ClassReportRow[];
  report: ClassReport;
  posterStudentId: string | null;
@@ -532,6 +536,7 @@ function PostersTab({ rankedStudents, report, posterStudentId, setPosterStudentI
  posterRow: ClassReportRow | null;
  madrasaName: string;
  madrasaLogo?: string | null;
+ studentPhotoMap?: Record<string, string | null>;
 }) {
  const totalStudents = report.stats?.totalStudents ?? report.students.length;
  const passCount = report.stats?.passedCount ?? undefined;
@@ -590,7 +595,7 @@ function PostersTab({ rankedStudents, report, posterStudentId, setPosterStudentI
  animate={{ opacity: 1, y: 0 }}
  className="max-w-sm mx-auto"
  >
- <RankPoster row={posterRow} report={report} madrasaName={madrasaName} madrasaLogo={madrasaLogo} />
+ <RankPoster row={posterRow} report={report} madrasaName={madrasaName} madrasaLogo={madrasaLogo} studentPhotoMap={studentPhotoMap} />
  </motion.div>
  )}
  </div>

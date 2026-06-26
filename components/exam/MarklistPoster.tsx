@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Download, Share2, Loader2, Upload, X, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ClassReportRow, ClassReport } from "@/lib/results-api";
@@ -31,18 +31,25 @@ interface Props {
   report: ClassReport;
   madrasaName: string;
   madrasaLogo?: string | null;
+  studentPhotoMap?: Record<string, string | null>;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function MarklistPoster({ row, report, madrasaName, madrasaLogo }: Props) {
+export function MarklistPoster({ row, report, madrasaName, madrasaLogo, studentPhotoMap }: Props) {
   const { student, summary, marks } = row;
   const { exam, subjects, config, class: cls } = report;
   const rank = summary.rank ?? 0;
 
   const posterRef                 = useRef<HTMLDivElement>(null);
-  const [photo, setPhoto]         = useState<string | null>(null);
+  const [photo, setPhoto]         = useState<string | null>(() => studentPhotoMap?.[student.id] ?? null);
   const [exporting, setExporting] = useState<"jpg" | "pdf" | "share" | null>(null);
+
+  useEffect(() => {
+    if (!photo && studentPhotoMap?.[student.id]) {
+      setPhoto(studentPhotoMap[student.id]);
+    }
+  }, [student.id, studentPhotoMap]);
 
   const headerGrad  = rank >= 1 && rank <= 3 ? RANK_HEADER[rank].grad : DEFAULT_GRAD;
   const accentClass = rank >= 1 && rank <= 3 ? RANK_HEADER[rank].accent : "bg-emerald-700";
