@@ -6,12 +6,13 @@ import {
   HelpCircle, Check,
 } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
-import { resolveLoginRedirectPath, tenantLoginPath } from "@/lib/tenant-routing";
+import { getRoleFromPath, getTenantSlugFromPath } from "@/lib/tenant-routing";
+import RoleLoginPage from "@/components/auth/RoleLoginPage";
 import { getClientConfig } from "@/lib/config-api";
 import { cn } from "@/lib/utils";
 
@@ -59,7 +60,6 @@ type UserMenuProps = {
 };
 
 function UserMenu({ user, roleLabel, isSuperAdmin, isViewingMadrasa, notifPath, compact }: UserMenuProps) {
-  const navigate = useNavigate();
   const { activeTenantSlug, logout } = useAuthStore();
   const menuRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -88,12 +88,6 @@ function UserMenu({ user, roleLabel, isSuperAdmin, isViewingMadrasa, notifPath, 
   const handleLogout = () => {
     setOpen(false);
     logout();
-    navigate(
-      isSuperAdmin && !isViewingMadrasa
-        ? "/super-admin/login"
-        : tenantLoginPath(activeTenantSlug, user.role === "committee" ? "committee" : user.role as "admin" | "teacher" | "parent"),
-      { replace: true },
-    );
   };
 
   const initial = user.name?.charAt(0).toUpperCase() ?? "U";
@@ -254,24 +248,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const hasRefreshed = useRef(false);
 
-  const loginRedirectPath = useCallback(() =>
-    resolveLoginRedirectPath({
-      pathname: window.location.pathname,
-      hostname: window.location.hostname,
-      user,
-      activeTenantSlug,
-    }), [activeTenantSlug, user]);
-
   // Global 401 handler — any API that dispatches "auth:unauthorized" triggers logout
   useEffect(() => {
     const handler = () => {
-      const redirectTo = loginRedirectPath();
       logout();
-      navigate(redirectTo, { replace: true });
     };
     window.addEventListener("auth:unauthorized", handler);
     return () => window.removeEventListener("auth:unauthorized", handler);
-  }, [loginRedirectPath, logout, navigate]);
+  }, [logout]);
 
   // Sync attendanceMode when super admin switches to a madrasa
   useEffect(() => {
@@ -290,11 +274,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!hasHydrated) return;
-
-    if (!user) {
-      navigate(loginRedirectPath(), { replace: true });
-      return;
-    }
+    if (!user) return;
 
     const isSuperAdmin = user.actorType === "SUPER_ADMIN";
 
@@ -315,7 +295,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     if (slugBase && pathname.startsWith(slugBase)) return;
 
     navigate(slugBase ?? roleBase, { replace: true });
-  }, [hasHydrated, loginRedirectPath, pathname, navigate, user]); // eslint-disable-line
+  }, [hasHydrated, pathname, navigate, user]); // eslint-disable-line
 
   if (!hasHydrated) {
     return (
@@ -325,7 +305,31 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!user) return null;
+  if (!user) {
+    const pathRole = getRoleFromPath(pathname);
+    const pathSlug = getTenantSlugFromPath(pathname);
+
+    if (pathname === "/" || (!pathRole && !pathSlug)) {
+      return (
+        <div className="min-h-screen bg-[#faf9f6] flex items-center justify-center text-sm text-gray-500">
+          Redirecting...
+        </div>
+      );
+    }
+
+    if (!pathSlug && pathRole !== "admin") {
+      return <RoleLoginPage type="TEACHER" />;
+    }
+
+    const typeMap: Record<string, "SUPER_ADMIN" | "CLIENT_ADMIN" | "TEACHER" | "PARENT" | "COMMITTEE"> = {
+      admin: pathSlug ? "CLIENT_ADMIN" : "SUPER_ADMIN",
+      teacher: "TEACHER",
+      parent: "PARENT",
+      committee: "COMMITTEE",
+    };
+
+    return <RoleLoginPage type={typeMap[pathRole ?? "admin"]} tenantSlug={pathSlug ?? undefined} />;
+  }
 
   const isSuperAdmin = user.actorType === "SUPER_ADMIN";
   const isViewingMadrasa = isSuperAdmin && !!activeClientId;

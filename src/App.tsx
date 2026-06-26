@@ -4,13 +4,6 @@ import PwaRegister from "../components/PwaRegister";
 // ── TWA Landing ───────────────────────────────────────────────────────────────
 import TwaLandingPage from "../app/twa/page";
 
-// ── Auth / Login ──────────────────────────────────────────────────────────────
-import AdminLoginPage from "../app/m/[slug]/admin/login/page";
-import CommitteeLoginPage from "../app/m/[slug]/committee/login/page";
-import ParentLoginPage from "../app/m/[slug]/parent/login/page";
-import TeacherLoginPage from "../app/m/[slug]/teacher/login/page";
-import SuperAdminLoginPage from "../app/super-admin/login/page";
-
 // ── Admin ─────────────────────────────────────────────────────────────────────
 import AdminAbsentPage from "../app/admin/absent/page";
 import AdminAttendancePage from "../app/admin/attendance/page";
@@ -105,14 +98,6 @@ export default function App() {
         {/* TWA Landing */}
         <Route path="/" element={<TwaLandingPage />} />
         <Route path="/twa" element={<TwaLandingPage />} />
-
-        {/* Auth */}
-        <Route path="/super-admin/login" element={<SuperAdminLoginPage />} />
-        <Route path="/m/:slug/login" element={<Navigate to="../admin/login" replace />} />
-        <Route path="/m/:slug/admin/login" element={<AdminLoginPage />} />
-        <Route path="/m/:slug/teacher/login" element={<TeacherLoginPage />} />
-        <Route path="/m/:slug/parent/login" element={<ParentLoginPage />} />
-        <Route path="/m/:slug/committee/login" element={<CommitteeLoginPage />} />
 
         {/* Admin — bare paths kept for super-admin platform view */}
         <Route path="/admin" element={<AdminDashboard />} />

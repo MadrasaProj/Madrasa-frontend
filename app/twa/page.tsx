@@ -57,7 +57,7 @@ export default function TwaLandingPage() {
  if (!role || !slug.trim()) return;
  const normalizedSlug = slug.trim().toLowerCase();
  savePrefs(role, normalizedSlug);
- navigate(`/m/${normalizedSlug}/${role}/login`);
+  navigate(`/m/${normalizedSlug}/${role}`);
  };
 
  return (
