@@ -8,7 +8,7 @@ import { useRefreshParentStudents } from "@/lib/hooks/useRefreshParentStudents";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { downloadAsJPG, downloadAsPDF, shareAsJPG } from "@/lib/poster-utils";
+import { downloadAsJPG, downloadAsPDF, shareAsJPG, downloadAsPNG, shareAsPNG } from "@/lib/poster-utils";
 import { Drawer } from "@/components/ui/Drawer";
 import {
   Medal, Loader2, AlertCircle, RefreshCw, GraduationCap, Trophy,
@@ -75,7 +75,7 @@ function ParentResultCard({
   const studentClass  = activeStudent?.className ?? "—";
   const studentPhoto  = activeStudent?.photoUrl ?? activeStudent?.photo ?? null;
   const posterRef = useRef<HTMLDivElement>(null);
-  const [exporting, setExporting] = useState<"jpg" | "pdf" | "share" | null>(null);
+  const [exporting, setExporting] = useState<"jpg" | "png" | "pdf" | "share" | null>(null);
 
   const rank        = summary?.rank ?? null;
   const headerGrad  = rank && rank <= 3 ? RANK_HEADER[rank].grad : DEFAULT_GRAD;
@@ -87,11 +87,12 @@ function ParentResultCard({
 
   const stem = `result-${studentName}`.replace(/\s+/g, "-");
 
-  const run = async (type: "jpg" | "pdf" | "share") => {
+  const run = async (type: "jpg" | "png" | "pdf" | "share") => {
     if (!posterRef.current) return;
     setExporting(type);
     try {
       if (type === "jpg")   await downloadAsJPG(posterRef.current, stem);
+      if (type === "png")   await downloadAsPNG(posterRef.current, stem);
       if (type === "pdf")   await downloadAsPDF(posterRef.current, stem);
       if (type === "share") await shareAsJPG(
         posterRef.current, `${stem}.jpg`,
@@ -277,6 +278,15 @@ function ParentResultCard({
             JPG
           </button>
           <button
+            onClick={() => run("png")}
+            disabled={!!exporting}
+            className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-[13px] sm:text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 hover:text-gray-900 disabled:opacity-50 transition-all duration-200 ease-out active:scale-[0.98]"
+            title="Download as PNG"
+          >
+            {exporting === "png" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            PNG
+          </button>
+          <button
             onClick={() => run("pdf")}
             disabled={!!exporting}
             className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-[13px] sm:text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 hover:text-gray-900 disabled:opacity-50 transition-all duration-200 ease-out active:scale-[0.98]"
@@ -303,7 +313,7 @@ function ParentRankCard({
   madrasaLogo?: string | null;
 }) {
   const posterRef = useRef<HTMLDivElement>(null);
-  const [exporting, setExporting] = useState<"jpg" | "pdf" | "share" | null>(null);
+  const [exporting, setExporting] = useState<"jpg" | "png" | "pdf" | "share" | null>(null);
   const activeStudent = useStudent(studentId);
   const studentName   = activeStudent?.name ?? "Student";
   const studentAdo    = activeStudent?.adno ?? "—";
@@ -319,11 +329,12 @@ function ParentRankCard({
 
   const stem = `rank-${studentName}`.replace(/\s+/g, "-");
 
-  const run = async (type: "jpg" | "pdf" | "share") => {
+  const run = async (type: "jpg" | "png" | "pdf" | "share") => {
     if (!posterRef.current) return;
     setExporting(type);
     try {
       if (type === "jpg")   await downloadAsJPG(posterRef.current, stem);
+      if (type === "png")   await downloadAsPNG(posterRef.current, stem);
       if (type === "pdf")   await downloadAsPDF(posterRef.current, stem);
       if (type === "share") await shareAsJPG(
         posterRef.current, `${stem}.jpg`,
@@ -343,6 +354,11 @@ function ParentRankCard({
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
           {exporting === "jpg" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
           JPG
+        </button>
+        <button onClick={() => run("png")} disabled={!!exporting}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
+          {exporting === "png" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+          PNG
         </button>
         <button onClick={() => run("pdf")} disabled={!!exporting}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">

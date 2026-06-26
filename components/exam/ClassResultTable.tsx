@@ -152,7 +152,7 @@ interface Props {
 export function ClassResultTable({ report, madrasaName }: Props) {
   const { exam, class: cls, subjects, config, students, stats } = report;
   const tableRef  = useRef<HTMLDivElement>(null);
-  const [exporting, setExporting] = useState<"pdf" | "jpg" | "print" | null>(null);
+  const [exporting, setExporting] = useState<"pdf" | "jpg" | "png" | "print" | null>(null);
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
 
   const filename = `${madrasaName ? madrasaName + " - " : ""}${cls.name} - ${exam.name}`;
@@ -161,7 +161,7 @@ export function ClassResultTable({ report, madrasaName }: Props) {
     setExpandedRows((prev) => ({ ...prev, [studentId]: !prev[studentId] }));
   };
 
-  const doExport = useCallback(async (type: "pdf" | "jpg" | "print") => {
+  const doExport = useCallback(async (type: "pdf" | "jpg" | "png" | "print") => {
     if (!tableRef.current) return;
     setExporting(type);
     try {
@@ -169,6 +169,8 @@ export function ClassResultTable({ report, madrasaName }: Props) {
         printTable(tableRef.current, filename);
       } else if (type === "pdf") {
         await exportAsPDF(tableRef.current, filename);
+      } else if (type === "png") {
+        await exportAsImage(tableRef.current, filename, "png");
       } else {
         await exportAsImage(tableRef.current, filename, "jpeg");
       }
@@ -184,7 +186,7 @@ export function ClassResultTable({ report, madrasaName }: Props) {
     <div className="space-y-4">
       {/* Export toolbar */}
       <div className="flex items-center gap-2 justify-end flex-wrap">
-        {(["print", "pdf", "jpg"] as const).map((type) => (
+        {(["print", "pdf", "png", "jpg"] as const).map((type) => (
           <button
             key={type}
             onClick={() => doExport(type)}

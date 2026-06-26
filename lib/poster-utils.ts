@@ -76,6 +76,14 @@ export async function downloadAsJPG(el: HTMLElement, filename: string): Promise<
   );
 }
 
+export async function downloadAsPNG(el: HTMLElement, filename: string): Promise<void> {
+  const canvas = await captureElement(el);
+  triggerAnchorDownload(
+    canvas.toDataURL("image/png"),
+    filename.endsWith(".png") ? filename : `${filename}.png`,
+  );
+}
+
 export async function downloadAsPDF(
   el: HTMLElement,
   filename: string,
@@ -97,6 +105,29 @@ export async function downloadAsPDF(
     Math.min(h, pdf.internal.pageSize.getHeight()),
   );
   pdf.save(filename.endsWith(".pdf") ? filename : `${filename}.pdf`);
+}
+
+export async function shareAsPNG(
+  el: HTMLElement,
+  filename: string,
+  shareTitle: string,
+  shareText: string,
+): Promise<void> {
+  const canvas = await captureElement(el);
+  const blob   = await new Promise<Blob | null>((res) =>
+    canvas.toBlob(res, "image/png"),
+  );
+  if (!blob) return;
+
+  const file = new File([blob], filename.endsWith(".png") ? filename : `${filename}.png`, {
+    type: "image/png",
+  });
+
+  if (navigator.share && navigator.canShare?.({ files: [file] })) {
+    await navigator.share({ files: [file], title: shareTitle, text: shareText });
+  } else {
+    triggerAnchorDownload(URL.createObjectURL(blob), file.name);
+  }
 }
 
 export async function shareAsJPG(
@@ -133,6 +164,14 @@ export async function downloadTransparentJPG(el: HTMLElement, filename: string):
   );
 }
 
+export async function downloadTransparentPNG(el: HTMLElement, filename: string): Promise<void> {
+  const canvas = await captureElement(el, { bg: null });
+  triggerAnchorDownload(
+    canvas.toDataURL("image/png"),
+    filename.endsWith(".png") ? filename : `${filename}.png`,
+  );
+}
+
 export async function shareTransparentJPG(
   el: HTMLElement,
   filename: string,
@@ -146,6 +185,27 @@ export async function shareTransparentJPG(
   if (!blob) return;
   const file = new File([blob], filename.endsWith(".jpg") ? filename : `${filename}.jpg`, {
     type: "image/jpeg",
+  });
+  if (navigator.share && navigator.canShare?.({ files: [file] })) {
+    await navigator.share({ files: [file], title: shareTitle, text: shareText });
+  } else {
+    triggerAnchorDownload(URL.createObjectURL(blob), file.name);
+  }
+}
+
+export async function shareTransparentPNG(
+  el: HTMLElement,
+  filename: string,
+  shareTitle: string,
+  shareText: string,
+): Promise<void> {
+  const canvas = await captureElement(el, { bg: null });
+  const blob   = await new Promise<Blob | null>((res) =>
+    canvas.toBlob(res, "image/png"),
+  );
+  if (!blob) return;
+  const file = new File([blob], filename.endsWith(".png") ? filename : `${filename}.png`, {
+    type: "image/png",
   });
   if (navigator.share && navigator.canShare?.({ files: [file] })) {
     await navigator.share({ files: [file], title: shareTitle, text: shareText });
