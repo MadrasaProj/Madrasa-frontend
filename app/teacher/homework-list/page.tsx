@@ -7,6 +7,8 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { listHomework, getSubmissions, type HomeworkAssignment, type SubmissionsResponse } from "@/lib/homework-api";
 import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
 import { useAuthStore } from "@/store/auth";
+import { useLanguageStore } from "@/store/language";
+import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
   BookOpen, AlertTriangle, CheckCircle2, Clock,
@@ -17,6 +19,7 @@ import { motion, AnimatePresence } from "framer-motion";
 function fmt(d: Date) { return d.toISOString().split("T")[0]; }
 
 export default function TeacherHomeworkListPage() {
+  const { lang } = useLanguageStore();
   const { user, accessToken } = useAuthStore();
   const cid   = user?.clientId ?? "";
   const token = accessToken ?? "";
@@ -67,7 +70,7 @@ export default function TeacherHomeworkListPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Homework Overview" icon={BookOpen} back backHref="/teacher" />
+      <PageHeader title={t("teacherPages", "hwListTitle", lang)} icon={BookOpen} back backHref="/teacher" />
 
       {error && <ApiErrorBanner message={error} onRetry={loadData} />}
 
@@ -111,9 +114,9 @@ export default function TeacherHomeworkListPage() {
           {/* Summary */}
           <div className="grid grid-cols-3 gap-2 mb-5">
             {[
-              { label: "Total",    value: filtered.length, icon: BookOpen,     color: "text-blue-600",   bg: "bg-blue-50" },
-              { label: "Overdue",  value: overdue.length,  icon: AlertTriangle, color: "text-red-600",    bg: "bg-red-50" },
-              { label: "Upcoming", value: upcoming.length, icon: Clock,         color: "text-emerald-600", bg: "bg-emerald-50" },
+              { label: t("common", "total", lang),    value: filtered.length, icon: BookOpen,     color: "text-blue-600",   bg: "bg-blue-50" },
+              { label: t("teacherPages", "overdueTab", lang),  value: overdue.length,  icon: AlertTriangle, color: "text-red-600",    bg: "bg-red-50" },
+              { label: t("common", "upcoming", lang), value: upcoming.length, icon: Clock,         color: "text-emerald-600", bg: "bg-emerald-50" },
             ].map(({ label, value, icon: Icon, color, bg }) => (
               <div key={label} className="bg-white rounded-2xl border border-gray-100 p-3 text-center">
                 <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center mx-auto mb-1", bg)}>
@@ -129,12 +132,12 @@ export default function TeacherHomeworkListPage() {
           {overdue.length > 0 && (
             <>
               <p className="text-xs font-bold text-red-600 uppercase tracking-wide mb-2 flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3" /> Overdue ({overdue.length})
+                <AlertTriangle className="w-3 h-3" /> {t("teacherPages", "overdueTab", lang)} ({overdue.length})
               </p>
               <div className="space-y-2 mb-5">
                 {overdue.map((hw) => (
                   <HWRow key={hw.id} hw={hw} expandedId={expandedId} loadingSubs={loadingSubs}
-                    subs={subsMap[hw.id]} onExpand={loadSubs} overdue />
+                    subs={subsMap[hw.id]} onExpand={loadSubs} lang={lang} overdue />
                 ))}
               </div>
             </>
@@ -143,18 +146,18 @@ export default function TeacherHomeworkListPage() {
           {/* Upcoming section */}
           {upcoming.length > 0 && (
             <>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Upcoming ({upcoming.length})</p>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">{t("common", "upcoming", lang)} ({upcoming.length})</p>
               <div className="space-y-2 pb-20">
                 {upcoming.map((hw) => (
                   <HWRow key={hw.id} hw={hw} expandedId={expandedId} loadingSubs={loadingSubs}
-                    subs={subsMap[hw.id]} onExpand={loadSubs} />
+                    subs={subsMap[hw.id]} onExpand={loadSubs} lang={lang} />
                 ))}
               </div>
             </>
           )}
 
           {filtered.length === 0 && (
-            <div className="text-center py-16 text-gray-400 text-sm">No homework assignments</div>
+            <div className="text-center py-16 text-gray-400 text-sm">{t("teacherPages", "noHwFound", lang)}</div>
           )}
         </>
       )}
@@ -163,7 +166,7 @@ export default function TeacherHomeworkListPage() {
 }
 
 function HWRow({
-  hw, expandedId, loadingSubs, subs, onExpand, overdue = false,
+  hw, expandedId, loadingSubs, subs, onExpand, overdue = false, lang,
 }: {
   hw: HomeworkAssignment;
   expandedId: string | null;
@@ -171,6 +174,7 @@ function HWRow({
   subs?: SubmissionsResponse;
   onExpand: (id: string) => void;
   overdue?: boolean;
+  lang: "en" | "ml";
 }) {
   const due = new Date(hw.dueDate);
   const notSubmitted = subs?.submissions.filter((s) => s.status === "NOT_SUBMITTED").length ?? 0;
@@ -188,12 +192,12 @@ function HWRow({
           <p className="text-xs text-gray-400">{hw.class?.name}{hw.subject ? ` · ${hw.subject.name}` : ""}</p>
           <p className={cn("text-xs flex items-center gap-1 mt-0.5", overdue ? "text-red-500" : "text-gray-400")}>
             <Calendar className="w-3 h-3" />
-            Due {due.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-            {overdue ? " (overdue)" : ""}
+            {t("teacherPages", "dueLabel", lang)} {due.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+            {overdue ? ` (${t("teacherPages", "overdueLabel", lang).toLowerCase()})` : ""}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {subs && <span className="text-xs text-red-500 font-bold">{notSubmitted}/{total} pending</span>}
+          {subs && <span className="text-xs text-red-500 font-bold">{notSubmitted}/{total} {t("teacherPages", "pendingCount", lang)}</span>}
           {loadingSubs === hw.id
             ? <Loader2 className="w-4 h-4 animate-spin text-gray-300" />
             : expandedId === hw.id

@@ -6,6 +6,8 @@ import { getExams, type ExamRecord } from "@/lib/exams-api";
 import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
 import { getHomeworkSummary } from "@/lib/reports-api";
 import { useAuthStore } from "@/store/auth";
+import { useLanguageStore } from "@/store/language";
+import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Star, TrendingUp, BookOpen, RefreshCw } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";

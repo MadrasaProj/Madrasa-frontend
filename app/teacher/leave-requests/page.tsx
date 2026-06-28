@@ -6,6 +6,8 @@ import { SkeletonList } from "@/components/ui/Skeleton";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth";
+import { useLanguageStore } from "@/store/language";
+import { t } from "@/lib/i18n";
 import {
   getPendingLeaveRequests,
   reviewLeaveRequest,
@@ -26,10 +28,10 @@ import {
 
 const REASON_CONFIG: Record<
   LeaveReasonType,
-  { label: string; color: string; bg: string }
+  { labelKey: string; color: string; bg: string }
 > = {
-  LEAVE: { label: "Leave", color: "text-amber-600", bg: "bg-amber-50" },
-  SICK: { label: "Sick", color: "text-orange-600", bg: "bg-orange-50" },
+  LEAVE: { labelKey: "leaveLabel", color: "text-amber-600", bg: "bg-amber-50" },
+  SICK: { labelKey: "sickLabel", color: "text-orange-600", bg: "bg-orange-50" },
 };
 
 const STATUS_STYLES: Record<string, { border: string }> = {
@@ -40,6 +42,7 @@ const STATUS_STYLES: Record<string, { border: string }> = {
 
 export default function TeacherLeaveRequestsPage() {
   const { user, accessToken, activeClientId } = useAuthStore();
+  const { lang } = useLanguageStore();
   const cid = activeClientId ?? "";
   const token = accessToken ?? "";
 
@@ -95,12 +98,18 @@ export default function TeacherLeaveRequestsPage() {
       )
     : requests;
 
+  const statusLabel = (s: string) => {
+    if (s === "PENDING") return t("teacherPages", "pendingLabel", lang);
+    if (s === "APPROVED") return t("teacherPages", "approvedLabel", lang);
+    return t("teacherPages", "rejectedLabel", lang);
+  };
+
   return (
     <DashboardLayout>
       <div className="p-4 sm:p-6 mx-auto">
         <PageHeader
-          title="Leave Requests"
-          subtitle="Review leave applications from your class"
+          title={t("teacherPages", "leaveRequests", lang)}
+          subtitle={t("teacherPages", "leaveRequestsSub", lang)}
           icon={FilePen}
           back
           backHref="/teacher"
@@ -124,11 +133,7 @@ export default function TeacherLeaveRequestsPage() {
                     : "text-gray-500",
                 )}
               >
-                {s === "PENDING"
-                  ? "Pending"
-                  : s === "APPROVED"
-                    ? "Approved"
-                    : "Rejected"}
+                {statusLabel(s)}
               </button>
             ))}
           </div>
@@ -138,7 +143,7 @@ export default function TeacherLeaveRequestsPage() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name or admission no..."
+              placeholder={t("teacherPages", "searchNameAdmNo", lang)}
               className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 transition-all"
             />
           </div>
@@ -149,7 +154,7 @@ export default function TeacherLeaveRequestsPage() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-12 text-gray-400">
             <AlertCircle className="w-8 h-8 mx-auto mb-2" />
-            <p className="text-sm">No {filter.toLowerCase()} requests</p>
+            <p className="text-sm">{t("teacherPages", "noLeaveRequests", lang)}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -192,7 +197,7 @@ export default function TeacherLeaveRequestsPage() {
                             rc.color,
                           )}
                         >
-                          {rc.label}
+                          {t("teacherPages", rc.labelKey as any, lang)}
                         </span>
                         <span className="text-xs text-gray-400">
                           {new Date(r.startDate).toLocaleDateString()}
@@ -227,13 +232,13 @@ export default function TeacherLeaveRequestsPage() {
                             {r.reviewedBy && r.status !== "PENDING" && (
                               <div className="flex items-center gap-2 text-xs text-gray-500">
                                 <UserCheck className="w-3.5 h-3.5" />
-                                Reviewed by {r.reviewedBy.name}
+                                {t("teacherPages", "reviewedBy", lang)} {r.reviewedBy.name}
                               </div>
                             )}
                             <textarea
                               value={reviewNote}
                               onChange={(e) => setReviewNote(e.target.value)}
-                              placeholder="Add a note (optional)..."
+                              placeholder={t("teacherPages", "addRemarkOpt", lang)}
                               rows={2}
                               className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 resize-none transition-all"
                             />
@@ -248,7 +253,7 @@ export default function TeacherLeaveRequestsPage() {
                                 ) : (
                                   <XCircle className="w-4 h-4" />
                                 )}
-                                Reject
+                                {t("teacherPages", "rejectLabel", lang)}
                               </button>
                               <button
                                 onClick={() => handleReview(r.id, "APPROVED")}
@@ -260,7 +265,7 @@ export default function TeacherLeaveRequestsPage() {
                                 ) : (
                                   <CheckCircle2 className="w-4 h-4" />
                                 )}
-                                Approve
+                                {t("teacherPages", "approveLabel", lang)}
                               </button>
                             </div>
                           </div>

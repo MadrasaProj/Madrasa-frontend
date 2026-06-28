@@ -3,6 +3,8 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { updateProfile, uploadProfilePhoto, deleteProfilePhoto, type UpdateProfileDto } from "@/lib/super-admin-api";
 import { useAuthStore, type AuthActorType } from "@/store/auth";
+import { useLanguageStore } from "@/store/language";
+import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -36,6 +38,14 @@ function passwordStrength(pw: string): Strength {
   if (/[^A-Za-z0-9]/.test(pw)) s++;
   return Math.min(s, 4) as Strength;
 }
+
+const STRENGTH_KEYS: Record<number, string> = {
+  0: "—",
+  1: "weakPw",
+  2: "fairPw",
+  3: "goodPw",
+  4: "strongPw",
+};
 
 const strengthMeta: Record<Strength, { label: string; color: string; width: string }> = {
   0: { label: "—", color: "bg-gray-200", width: "w-0" },
@@ -118,6 +128,7 @@ interface ProfilePageProps {
 }
 
 export default function ProfilePage({ config }: ProfilePageProps) {
+  const { lang } = useLanguageStore();
   const { user, accessToken, updateUser } = useAuthStore();
   const isParent = user?.actorType === "PARENT";
 
@@ -249,7 +260,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
       if (dto.phone !== undefined) updateUser({ phone: cleanPhone || undefined, parentPhone: cleanPhone || undefined });
       if (dto.address !== undefined) updateUser({ address: address.trim() || undefined });
       if (dto.msrId !== undefined) updateUser({ msrId: msrId.trim() || undefined });
-      setSuccess("Profile updated successfully.");
+      setSuccess(t("parentPages", "profileUpdated", lang));
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
@@ -305,8 +316,8 @@ export default function ProfilePage({ config }: ProfilePageProps) {
   return (
     <DashboardLayout>
       <PageHeader
-        title="My Profile"
-        subtitle="Manage your account & preferences"
+        title={t("nav", "profile", lang)}
+        subtitle={t("nav", "settings", lang)}
         icon={UserCircle2}
       />
 
@@ -487,7 +498,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
 
           {/* Quick links */}
           <div className="mt-5 pt-5 border-t border-gray-100">
-            <p className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-3">Quick Links</p>
+            <p className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-3">{t("common", "quickLinks", lang)}</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {config.quickLinks.map((q) => {
                 const Icon = q.icon;
@@ -765,7 +776,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                       </div>
                       <div className="flex items-center justify-between mt-1.5">
                         <span className="text-[10px] font-semibold text-gray-500">
-                          Strength: <span className="text-gray-700">{strengthMeta[strength].label}</span>
+                          {t("common", "passwordStrength", lang)}: <span className="text-gray-700">{strength === 0 ? "—" : t("common", STRENGTH_KEYS[strength] as any, lang)}</span>
                         </span>
                       </div>
                     </motion.div>

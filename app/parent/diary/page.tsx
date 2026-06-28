@@ -273,7 +273,7 @@ export default function ParentDiaryPage() {
       <div className="max-w-2xl mx-auto pb-28">
         <div className="flex items-center justify-between gap-4 mb-8 px-4 pt-2">
           <h1 className="text-3xl font-bold text-gray-900 leading-none tracking-tight">
-            Hey {parentFirstName}!
+            {t("parentPages", "heyGreeting", lang)} {parentFirstName}!
           </h1>
           <button
             onClick={() => setSearchOpen((v) => !v)}
@@ -613,7 +613,7 @@ function EntryDrawer({
 
             <div className={cn("mt-7 pt-5 border-t", themeStyle.border)}>
               <h3 className={cn("text-sm font-bold mb-3", themeStyle.text)}>
-                Responses ({entry.comments?.length ?? 0})
+                {t("parentPages", "responsesTitle", drawerLang)} ({entry.comments?.length ?? 0})
               </h3>
               {(!entry.comments || entry.comments.length === 0) ? (
                 <p className={cn("text-sm text-center py-7 rounded-xl bg-black/5 opacity-60", themeStyle.text)}>
@@ -624,7 +624,7 @@ function EntryDrawer({
                   {entry.comments.map((c: DiaryComment) => (
                     <div key={c.id} className="rounded-xl p-3.5 bg-black/5">
                       <p className={cn("text-xs font-medium mb-0.5 opacity-70", themeStyle.text)}>
-                        {c.parentName ?? "Parent"}
+                        {c.parentName ?? t("parentPages", "parentRole", drawerLang)}
                       </p>
                       <p className={cn("text-sm", themeStyle.text)}>{c.content}</p>
                     </div>

@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { useAuthStore } from "@/store/auth";
+import { useLanguageStore } from "@/store/language";
+import { t } from "@/lib/i18n";
 import { getSocialFrames, type SocialFrameRecord } from "@/lib/social-frames-api";
 import { getCoverImageUrl } from "@/lib/poster-utils";
 import { SkeletonGrid } from "@/components/ui/Skeleton";
@@ -12,6 +14,7 @@ interface PublicSocialFramesPageProps {
 
 export default function PublicSocialFramesPage({ basePath }: PublicSocialFramesPageProps) {
   const { user } = useAuthStore();
+  const { lang } = useLanguageStore();
   const clientId = user?.clientId ?? "";
   const navigate = useNavigate();
 
@@ -38,13 +41,13 @@ export default function PublicSocialFramesPage({ basePath }: PublicSocialFramesP
   return (
     <DashboardLayout>
       <div className="space-y-4">
-        <h1 className="text-lg font-semibold">Social Frames</h1>
+        <h1 className="text-lg font-semibold">{t("adminPages", "socialFramesTitle", lang)}</h1>
 
         {loading ? (
           <SkeletonGrid count={3} className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" />
         ) : frames.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
-            <p className="text-sm">No social frames available.</p>
+            <p className="text-sm">{t("adminPages", "noSocialFrames", lang)}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
