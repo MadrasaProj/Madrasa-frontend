@@ -2,10 +2,12 @@ import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
+import { Drawer } from "@/components/ui/Drawer";
 import {
   getStudentHomework,
   parentSubmitHomework,
   type StudentHomeworkResponse,
+  type StudentHomeworkItem,
   type HomeworkStatus,
 } from "@/lib/homework-api";
 import { getStudent, type StudentRecord } from "@/lib/students-api";
@@ -20,38 +22,57 @@ import {
   Clock,
   Calendar,
   RefreshCw,
+  ChevronRight,
+  ExternalLink,
+  GraduationCap,
+  BookText,
+  User,
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 const STATUS_CONFIG: Record<
   HomeworkStatus,
-  { label: string; color: string; icon: React.ElementType }
+  { label: string; color: string; dot: string; icon: React.ElementType }
 > = {
   NOT_SUBMITTED: {
     label: "Pending",
-    color: "bg-red-100 text-red-700",
+    color: "bg-red-100 text-red-700 border-red-200",
+    dot: "bg-red-500",
     icon: AlertCircle,
   },
   SUBMITTED: {
     label: "Submitted",
-    color: "bg-amber-100 text-amber-700",
+    color: "bg-amber-100 text-amber-700 border-amber-200",
+    dot: "bg-amber-500",
     icon: Clock,
   },
   CHECKED: {
     label: "Checked",
-    color: "bg-emerald-100 text-emerald-700",
+    color: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    dot: "bg-emerald-500",
     icon: CheckCircle2,
   },
 };
 
-function urgencyColor(dueDate: string, status: HomeworkStatus): string {
-  if (status === "CHECKED") return "border-emerald-100";
-  if (status === "SUBMITTED") return "border-amber-100";
+function daysLeftText(dueDate: string): {
+  text: string;
+  urgent: boolean;
+  overdue: boolean;
+} {
   const due = new Date(dueDate);
   const diff = due.getTime() - Date.now();
-  if (diff < 0) return "border-red-300 bg-red-50/50";
-  if (diff < 86400_000) return "border-amber-300 bg-amber-50/50";
-  return "border-gray-100";
+  if (diff < 0) return { text: "Overdue", urgent: false, overdue: true };
+  const days = Math.ceil(diff / 86400_000);
+  if (days === 0) return { text: "Due today", urgent: true, overdue: false };
+  if (days === 1) return { text: "1 day left", urgent: true, overdue: false };
+  return { text: `${days} days left`, urgent: false, overdue: false };
+}
+
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+  });
 }
 
 interface ChildData {
@@ -72,6 +93,12 @@ export default function ParentHomeworkPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<HomeworkStatus | "all">("all");
   const [submittingId, setSubmittingId] = useState<string | null>(null);
+  const [selectedHw, setSelectedHw] = useState<StudentHomeworkItem | null>(null);
+
+  const pendingCount =
+    active?.hw?.homework.filter(
+      (hw) => hw.submission.status === "NOT_SUBMITTED",
+    ).length ?? 0;
 
   const handleSubmitHomework = async (submissionId: string) => {
     if (!cid || !token) return;
@@ -134,11 +161,6 @@ export default function ParentHomeworkPage() {
       (hw) => filter === "all" || hw.submission.status === filter,
     ) ?? [];
 
-  const pendingCount =
-    active?.hw?.homework.filter(
-      (hw) => hw.submission.status === "NOT_SUBMITTED",
-    ).length ?? 0;
-
   return (
     <DashboardLayout>
       <PageHeader
@@ -149,7 +171,7 @@ export default function ParentHomeworkPage() {
         action={
           <button
             onClick={load}
-            className="p-2 rounded-xl bg-gray-100 text-gray-600"
+            className="p-2.5 rounded-xl bg-white border border-gray-200 text-gray-500 hover:text-gray-800 hover:border-gray-300 transition-all active:scale-95 shadow-sm"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -157,46 +179,67 @@ export default function ParentHomeworkPage() {
       />
 
       {loading ? (
-        <div className="space-y-5">
-          <div className="grid grid-cols-3 gap-2">
+        <div className="space-y-6 px-1">
+          <div className="grid grid-cols-3 gap-3">
             {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-20 rounded-2xl" />
+              <Skeleton key={i} className="h-24 rounded-2xl" />
             ))}
           </div>
-          <div className="flex gap-1.5">
+          <Skeleton className="h-10 rounded-xl" />
+          <div className="hidden md:block rounded-2xl border border-gray-100 overflow-hidden">
             {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-8 w-16 rounded-lg" />
+              <Skeleton key={i} className="h-14 border-b border-gray-50" />
             ))}
           </div>
-          <div className="space-y-3">
-            {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-36 rounded-2xl" />
+          <div className="md:hidden space-y-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-44 rounded-2xl" />
             ))}
           </div>
         </div>
       ) : !effectiveId ? (
-        <div className="text-center py-16 text-gray-400 text-sm">
-          No children linked to this account
+        <div className="text-center py-20 text-gray-400">
+          <User className="w-12 h-12 mx-auto mb-3 text-gray-200" />
+          <p className="font-semibold">No children linked</p>
         </div>
       ) : (
         <>
           {active?.error ? (
             <ApiErrorBanner message={active.error} onRetry={load} />
           ) : active?.hw ? (
-            <>
-              {/* Summary bar */}
+            <div className="px-1">
+              {/* Student name banner */}
+              {active.student && (
+                <div className="flex items-center gap-3 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100 rounded-2xl px-5 py-3.5 mb-5">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                    <GraduationCap className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-900 text-sm">
+                      {active.student.name}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Class: {active.student.class?.name ?? "—"}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Urgent banner */}
               {pendingCount > 0 && (
-                <div className="flex items-center gap-2 bg-red-50 border border-red-100 rounded-2xl px-4 py-3 mb-4">
-                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-                  <p className="text-sm text-red-700">
-                    <span className="font-bold">{pendingCount}</span> pending
-                    homework{pendingCount !== 1 ? "s" : ""}
+                <div className="flex items-center gap-2.5 bg-gradient-to-r from-red-50 to-rose-50 border border-red-200 rounded-2xl px-5 py-3.5 mb-5">
+                  <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center text-red-600 shrink-0">
+                    <AlertCircle className="w-4 h-4" />
+                  </div>
+                  <p className="text-sm text-red-700 font-medium">
+                    <span className="font-bold text-base">{pendingCount}</span>{" "}
+                    pending homework{pendingCount !== 1 ? "s" : ""} to submit
                   </p>
                 </div>
               )}
 
-              {/* Stats cards */}
-              <div className="grid grid-cols-3 gap-2 mb-5">
+              {/* Stats */}
+              <div className="grid grid-cols-3 gap-3 mb-6">
                 {(["NOT_SUBMITTED", "SUBMITTED", "CHECKED"] as const).map(
                   (s: HomeworkStatus) => {
                     const count = active.hw!.homework.filter(
@@ -204,20 +247,40 @@ export default function ParentHomeworkPage() {
                     ).length;
                     const cfg = STATUS_CONFIG[s];
                     const Icon = cfg.icon;
+                    const activeFilter = filter === s;
                     return (
                       <button
                         key={s}
                         onClick={() => setFilter(s === filter ? "all" : s)}
                         className={cn(
-                          "rounded-2xl p-3 border-2 transition-all text-left",
-                          filter === s
-                            ? `${cfg.color} border-current`
-                            : "bg-white border-gray-100",
+                          "rounded-2xl p-4 border-2 transition-all text-left relative overflow-hidden",
+                          activeFilter
+                            ? "border-gray-900 bg-gray-50 shadow-sm"
+                            : "border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm",
                         )}
                       >
-                        <Icon className="w-4 h-4 mb-1 opacity-70" />
-                        <p className="text-lg font-bold">{count}</p>
-                        <p className="text-[10px] font-semibold opacity-70">
+                        <div
+                          className={cn(
+                            "absolute top-0 left-0 w-1 h-full",
+                            activeFilter ? "bg-gray-900" : cfg.dot,
+                          )}
+                        />
+                        <div className="flex items-center justify-between mb-2">
+                          <div
+                            className={cn(
+                              "w-9 h-9 rounded-xl flex items-center justify-center",
+                              activeFilter
+                                ? "bg-gray-900 text-white"
+                                : `${cfg.color.split(" ")[0]} text-gray-600`,
+                            )}
+                          >
+                            <Icon className="w-4 h-4" />
+                          </div>
+                        </div>
+                        <p className="text-2xl font-bold text-gray-900 leading-none mb-0.5">
+                          {count}
+                        </p>
+                        <p className="text-xs font-semibold text-gray-500">
                           {cfg.label}
                         </p>
                       </button>
@@ -227,7 +290,7 @@ export default function ParentHomeworkPage() {
               </div>
 
               {/* Filter tabs */}
-              <div className="flex gap-1.5 mb-4 bg-gray-100 p-1 rounded-xl w-fit">
+              <div className="flex gap-1.5 mb-5 bg-gray-100 p-1 rounded-xl w-fit">
                 {(
                   ["all", "NOT_SUBMITTED", "SUBMITTED", "CHECKED"] as const
                 ).map((f) => (
@@ -235,10 +298,10 @@ export default function ParentHomeworkPage() {
                     key={f}
                     onClick={() => setFilter(f)}
                     className={cn(
-                      "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                      "px-4 py-2 rounded-lg text-xs font-semibold transition-all",
                       filter === f
                         ? "bg-white shadow-sm text-gray-900"
-                        : "text-gray-500",
+                        : "text-gray-500 hover:text-gray-700",
                     )}
                   >
                     {f === "all" ? "All" : STATUS_CONFIG[f].label}
@@ -246,139 +309,450 @@ export default function ParentHomeworkPage() {
                 ))}
               </div>
 
-              {/* Homework list */}
-              <div className="space-y-3 pb-20">
-                {filtered.length === 0 ? (
-                  <div className="text-center py-12 text-gray-400 text-sm">
-                    <BookOpen className="w-10 h-10 mx-auto mb-3 text-gray-200" />
-                    No homework in this category
-                  </div>
-                ) : (
-                  filtered.map((hw, i) => {
-                    const due = new Date(hw.dueDate);
-                    const isOver = due < new Date();
-                    const diff = due.getTime() - Date.now();
-                    const daysLeft = Math.ceil(diff / 86400_000);
-                    const sub = hw.submission;
-                    const cfg = STATUS_CONFIG[sub.status];
-                    const Icon = cfg.icon;
-
-                    return (
-                      <motion.div
-                        key={hw.id}
-                        initial={{ opacity: 0, y: 4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                        className={cn(
-                          "bg-white rounded-2xl border-2 p-4",
-                          urgencyColor(hw.dueDate, sub.status),
-                        )}
-                      >
-                        <div className="flex items-start justify-between gap-3 mb-2">
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-gray-900 text-sm">
-                              {hw.title}
-                            </p>
-                            <p className="text-xs text-gray-400 mt-0.5">
-                              {hw.class?.name}
-                              {hw.subject ? ` · ${hw.subject.name}` : ""}
-                            </p>
-                          </div>
-                          <span
-                            className={cn(
-                              "text-[10px] font-bold px-2 py-1 rounded-lg shrink-0 flex items-center gap-1",
-                              cfg.color,
-                            )}
+              {/* ── Desktop table ── */}
+              <div className="hidden md:block rounded-2xl border border-gray-100 bg-white overflow-hidden mb-6">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-gray-50/80">
+                      <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        Assignment
+                      </th>
+                      <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        Due Date
+                      </th>
+                      <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        Teacher Note
+                      </th>
+                      <th className="text-right px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="text-center py-16 text-gray-400"
+                        >
+                          <BookOpen className="w-10 h-10 mx-auto mb-3 text-gray-200" />
+                          <p className="font-semibold">No homework found</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      filtered.map((hw) => {
+                        const due = daysLeftText(hw.dueDate);
+                        const cfg = STATUS_CONFIG[hw.submission.status];
+                        const Icon = cfg.icon;
+                        return (
+                          <tr
+                            key={hw.id}
+                            onClick={() => setSelectedHw(hw)}
+                            className="border-b border-gray-50 last:border-0 transition-colors cursor-pointer hover:bg-emerald-50/40"
                           >
-                            <Icon className="w-3 h-3" /> {cfg.label}
-                          </span>
-                        </div>
-
-                        {hw.description && (
-                          <p className="text-xs text-gray-500 mb-2">
-                            {hw.description}
-                          </p>
-                        )}
-
-                        <div className="flex items-center justify-between">
-                          <p
-                            className={cn(
-                              "text-xs flex items-center gap-1",
-                              isOver && sub.status === "NOT_SUBMITTED"
-                                ? "text-red-500 font-semibold"
-                                : "text-gray-400",
-                            )}
-                          >
-                            <Calendar className="w-3 h-3" />
-                            Due{" "}
-                            {due.toLocaleDateString("en-GB", {
-                              day: "numeric",
-                              month: "short",
-                            })}
-                            {sub.status === "NOT_SUBMITTED" && (
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 shrink-0">
+                                  <BookText className="w-4 h-4" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-gray-900 truncate">
+                                    {hw.title}
+                                  </p>
+                                  <p className="text-xs text-gray-400 truncate">
+                                    {hw.class?.name}
+                                    {hw.subject ? ` · ${hw.subject.name}` : ""}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                                <span
+                                  className={cn(
+                                    "text-sm",
+                                    due.overdue
+                                      ? "text-red-600 font-semibold"
+                                      : due.urgent
+                                        ? "text-amber-600 font-semibold"
+                                        : "text-gray-600",
+                                  )}
+                                >
+                                  {formatDate(hw.dueDate)}
+                                </span>
+                                {hw.submission.status === "NOT_SUBMITTED" && (
+                                  <span
+                                    className={cn(
+                                      "text-[10px] font-bold px-1.5 py-0.5 rounded",
+                                      due.overdue
+                                        ? "bg-red-100 text-red-700"
+                                        : due.urgent
+                                          ? "bg-amber-100 text-amber-700"
+                                          : "bg-gray-100 text-gray-500",
+                                    )}
+                                  >
+                                    {due.text}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-5 py-4">
                               <span
                                 className={cn(
-                                  "ml-1",
-                                  isOver
-                                    ? "text-red-500"
-                                    : daysLeft <= 1
-                                      ? "text-amber-600"
-                                      : "text-gray-400",
+                                  "inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-lg border",
+                                  cfg.color,
                                 )}
                               >
-                                {isOver
-                                  ? "(overdue!)"
-                                  : daysLeft === 0
-                                    ? "(today)"
-                                    : `(${daysLeft}d left)`}
+                                <Icon className="w-3.5 h-3.5" />
+                                {cfg.label}
                               </span>
-                            )}
-                          </p>
-                          {sub.submittedAt && (
-                            <p className="text-xs text-emerald-600">
-                              Submitted{" "}
-                              {new Date(sub.submittedAt).toLocaleDateString(
-                                "en-GB",
+                            </td>
+                            <td className="px-5 py-4 max-w-[200px]">
+                              {hw.submission.teacherNote ? (
+                                <p className="text-sm text-gray-600 truncate">
+                                  {hw.submission.teacherNote}
+                                </p>
+                              ) : (
+                                <span className="text-sm text-gray-300">
+                                  —
+                                </span>
                               )}
+                            </td>
+                            <td className="px-5 py-4 text-right">
+                              {hw.submission.status === "NOT_SUBMITTED" ? (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedHw(hw);
+                                  }}
+                                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition-all active:scale-95 shadow-sm"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  Submit
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedHw(hw);
+                                  }}
+                                  className="inline-flex items-center gap-1 text-xs font-semibold text-gray-400 hover:text-gray-700 transition-colors"
+                                >
+                                  View
+                                  <ChevronRight className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* ── Mobile cards ── */}
+              <div className="md:hidden space-y-4 pb-24">
+                {filtered.length === 0 ? (
+                  <div className="text-center py-16 text-gray-400">
+                    <BookOpen className="w-12 h-12 mx-auto mb-3 text-gray-200" />
+                    <p className="font-semibold">No homework in this category</p>
+                  </div>
+                ) : (
+                  <AnimatePresence mode="popLayout">
+                    {filtered.map((hw, i) => {
+                      const due = daysLeftText(hw.dueDate);
+                      const cfg = STATUS_CONFIG[hw.submission.status];
+                      const Icon = cfg.icon;
+                      return (
+                        <motion.div
+                          key={hw.id}
+                          layout
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.97 }}
+                          transition={{ delay: Math.min(i * 0.03, 0.3) }}
+                          onClick={() => setSelectedHw(hw)}
+                          className="bg-white rounded-2xl border border-gray-100 p-5 cursor-pointer active:scale-[0.98] transition-all hover:shadow-md"
+                        >
+                          <div className="flex items-start justify-between gap-3 mb-3">
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                              <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 shrink-0">
+                                <BookText className="w-5 h-5" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-bold text-gray-900 text-sm leading-snug">
+                                  {hw.title}
+                                </p>
+                                <p className="text-xs text-gray-400 mt-0.5">
+                                  {hw.class?.name}
+                                  {hw.subject ? ` · ${hw.subject.name}` : ""}
+                                </p>
+                              </div>
+                            </div>
+                            <span
+                              className={cn(
+                                "inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1.5 rounded-lg border shrink-0",
+                                cfg.color,
+                              )}
+                            >
+                              <Icon className="w-3 h-3" />
+                              {cfg.label}
+                            </span>
+                          </div>
+
+                          {hw.description && (
+                            <p className="text-xs text-gray-500 mb-4 line-clamp-2">
+                              {hw.description}
                             </p>
                           )}
-                        </div>
 
-                        {sub.teacherNote && (
-                          <div className="mt-2 bg-blue-50 rounded-xl px-3 py-2 text-xs text-blue-700">
-                            Teacher: {sub.teacherNote}
-                          </div>
-                        )}
-
-                        {sub.status === "NOT_SUBMITTED" && (
-                          <button
-                            onClick={() => handleSubmitHomework(sub.id)}
-                            disabled={submittingId === sub.id}
-                            className="mt-3 w-full py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-[0.98]"
-                          >
-                            {submittingId === sub.id ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            ) : (
-                              <CheckCircle2 className="w-3.5 h-3.5" />
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                              <span
+                                className={cn(
+                                  "text-xs",
+                                  due.overdue
+                                    ? "text-red-600 font-semibold"
+                                    : due.urgent
+                                      ? "text-amber-600 font-semibold"
+                                      : "text-gray-500",
+                                )}
+                              >
+                                Due {formatDate(hw.dueDate)}
+                              </span>
+                            </div>
+                            {hw.submission.status === "NOT_SUBMITTED" && (
+                              <span
+                                className={cn(
+                                  "text-[10px] font-bold px-2 py-0.5 rounded",
+                                  due.overdue
+                                    ? "bg-red-100 text-red-700"
+                                    : due.urgent
+                                      ? "bg-amber-100 text-amber-700"
+                                      : "bg-gray-100 text-gray-500",
+                                )}
+                              >
+                                {due.text}
+                              </span>
                             )}
-                            Mark as Submitted
-                          </button>
-                        )}
-                      </motion.div>
-                    );
-                  })
+                          </div>
+
+                          {hw.submission.submittedAt && (
+                            <p className="text-xs text-emerald-600 font-medium mb-3">
+                              Submitted{" "}
+                              {new Date(
+                                hw.submission.submittedAt,
+                              ).toLocaleDateString("en-GB")}
+                            </p>
+                          )}
+
+                          {hw.submission.teacherNote && (
+                            <div className="bg-blue-50 border border-blue-100 rounded-xl px-3.5 py-2.5 mb-4">
+                              <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wider mb-0.5">
+                                Teacher Note
+                              </p>
+                              <p className="text-xs text-blue-700">
+                                {hw.submission.teacherNote}
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-2">
+                            {hw.submission.status === "NOT_SUBMITTED" ? (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSubmitHomework(hw.submission.id);
+                                }}
+                                disabled={submittingId === hw.submission.id}
+                                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-[0.98]"
+                              >
+                                {submittingId === hw.submission.id ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                )}
+                                Mark as Submitted
+                              </button>
+                            ) : null}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedHw(hw);
+                              }}
+                              className={cn(
+                                "inline-flex items-center justify-center gap-1.5 rounded-xl text-xs font-semibold transition-all active:scale-[0.98]",
+                                hw.submission.status === "NOT_SUBMITTED"
+                                  ? "px-3 py-2.5 border border-gray-200 text-gray-500 hover:border-gray-300"
+                                  : "flex-1 py-2.5 bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100",
+                              )}
+                            >
+                              {hw.submission.status === "NOT_SUBMITTED" ? (
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              ) : (
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              )}
+                              Details
+                            </button>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
                 )}
               </div>
-            </>
+            </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-32 rounded-2xl" />
+                <Skeleton key={i} className="h-36 rounded-2xl" />
               ))}
             </div>
           )}
         </>
       )}
+
+      {/* Homework Detail Drawer */}
+      <Drawer
+        open={!!selectedHw}
+        onOpenChange={(open) => {
+          if (!open) setSelectedHw(null);
+        }}
+        title={selectedHw?.title ?? ""}
+        description={
+          selectedHw
+            ? `${selectedHw.class?.name ?? ""}${selectedHw.subject ? ` · ${selectedHw.subject.name}` : ""}`
+            : ""
+        }
+      >
+        {selectedHw && (
+          <div className="p-5 space-y-5">
+            {/* Status + Due */}
+            <div className="flex items-center justify-between">
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border",
+                  STATUS_CONFIG[selectedHw.submission.status].color,
+                )}
+              >
+                {(() => {
+                  const Icon = STATUS_CONFIG[selectedHw.submission.status].icon;
+                  return <Icon className="w-3.5 h-3.5" />;
+                })()}
+                {STATUS_CONFIG[selectedHw.submission.status].label}
+              </span>
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <Calendar className="w-3.5 h-3.5" />
+                <span className="font-medium">
+                  Due {formatDate(selectedHw.dueDate)}
+                </span>
+              </div>
+            </div>
+
+            {/* Description */}
+            {selectedHw.description && (
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                  Description
+                </p>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  {selectedHw.description}
+                </p>
+              </div>
+            )}
+
+            {/* Submitted date */}
+            {selectedHw.submission.submittedAt && (
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                  Submitted On
+                </p>
+                <p className="text-sm font-semibold text-emerald-600">
+                  {new Date(
+                    selectedHw.submission.submittedAt,
+                  ).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </p>
+              </div>
+            )}
+
+            {/* Teacher note */}
+            {selectedHw.submission.teacherNote && (
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wider mb-1">
+                  Teacher Note
+                </p>
+                <p className="text-sm text-blue-700 leading-relaxed">
+                  {selectedHw.submission.teacherNote}
+                </p>
+              </div>
+            )}
+
+            {/* Class & Subject info */}
+            <div className="grid grid-cols-2 gap-3">
+              {selectedHw.class && (
+                <div className="bg-gray-50 rounded-xl p-3.5">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">
+                    Class
+                  </p>
+                  <p className="text-sm font-semibold text-gray-800">
+                    {selectedHw.class.name}
+                  </p>
+                </div>
+              )}
+              {selectedHw.subject && (
+                <div className="bg-gray-50 rounded-xl p-3.5">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">
+                    Subject
+                  </p>
+                  <p className="text-sm font-semibold text-gray-800">
+                    {selectedHw.subject.name}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Submit action */}
+            {selectedHw.submission.status === "NOT_SUBMITTED" && (
+              <div className="pt-2">
+                <button
+                  onClick={() =>
+                    handleSubmitHomework(selectedHw.submission.id)
+                  }
+                  disabled={submittingId === selectedHw.submission.id}
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-sm"
+                >
+                  {submittingId === selectedHw.submission.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4" />
+                  )}
+                  Mark as Submitted
+                </button>
+              </div>
+            )}
+
+            {selectedHw.submission.status === "CHECKED" &&
+              selectedHw.submission.submittedAt && (
+                <div className="pt-2">
+                  <div className="w-full py-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-bold flex items-center justify-center gap-2">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Homework Checked
+                  </div>
+                </div>
+              )}
+          </div>
+        )}
+      </Drawer>
     </DashboardLayout>
   );
 }
