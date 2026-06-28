@@ -25,6 +25,13 @@ import { cn } from "@/lib/utils";
 
 import { Group, Leafer, Image as LeaferImage, Rect, Text } from "leafer-ui";
 
+const THEME_KEYS: Record<string, string> = {
+  classic: "classicGreen",
+  modern: "modernDark",
+  minimal: "minimalWhite",
+  islamic: "islamicGold",
+};
+
 const THEMES = [
   { id: "classic", label: "Classic Green", color: "#059669" },
   { id: "modern", label: "Modern Dark", color: "#1e293b" },
@@ -349,19 +356,19 @@ export default function ParentIdCardsPage() {
 
       {/* Theme selector */}
       <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
-        {THEMES.map((t) => (
+        {THEMES.map((th) => (
           <button
-            key={t.id}
-            onClick={() => setTheme(t.id)}
+            key={th.id}
+            onClick={() => setTheme(th.id)}
             className={cn(
               "flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold whitespace-nowrap border transition-all shrink-0",
-              theme === t.id
+              theme === th.id
                 ? "border-emerald-500 bg-emerald-50 text-emerald-700"
                 : "border-gray-200 bg-white text-gray-600 hover:border-gray-300",
             )}
           >
-            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: t.color }} />
-            {t.label}
+            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: th.color }} />
+            {t("adminPages", THEME_KEYS[th.id] as any, lang)}
           </button>
         ))}
       </div>
@@ -370,7 +377,7 @@ export default function ParentIdCardsPage() {
       <div className="flex items-center gap-3 mb-4">
         <label className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 cursor-pointer hover:border-gray-300">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-          {bgImage ? "Change Background" : "Upload Background"}
+          {bgImage ? t("parentPages", "changeBackground", lang) : t("parentPages", "uploadBackground", lang)}
           <input
             type="file" accept="image/*" className="hidden"
             onChange={(e) => {
@@ -399,7 +406,7 @@ export default function ParentIdCardsPage() {
         className="w-full lg:hidden flex items-center gap-2 px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 mb-4"
       >
         <Filter className="w-4 h-4" />
-        {showMobileList ? "Hide" : "Show"} Students ({students.length})
+        {showMobileList ? t("parentPages", "hideStudents", lang) : t("parentPages", "showStudents", lang)} ({students.length})
         <ChevronDown className={cn("w-4 h-4 ml-auto transition-transform", showMobileList && "rotate-180")} />
       </button>
 
@@ -468,7 +475,7 @@ export default function ParentIdCardsPage() {
                 <p className="text-sm">
                   {students.length === 0
                     ? t("parentPages", "noChildren", lang)
-                    : "Select a student to generate ID card"}
+                    : t("parentPages", "selectStudentIdCard", lang)}
                 </p>
               </div>
             ) : (
@@ -505,19 +512,19 @@ export default function ParentIdCardsPage() {
 
                 <div className="mt-4 grid grid-cols-3 gap-4 w-full max-w-md text-center">
                   <div>
-                    <p className="text-[10px] text-gray-400">Class</p>
+                    <p className="text-[10px] text-gray-400">{t("parentPages", "classInfo", lang)}</p>
                     <p className="text-sm font-bold text-gray-900">
                       {selected.className || "—"}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-gray-400">Gender</p>
+                    <p className="text-[10px] text-gray-400">{t("parentPages", "genderInfo", lang)}</p>
                     <p className="text-sm font-bold capitalize text-gray-900">
                       {selected.gender?.toLowerCase() || "—"}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-gray-400">DOB</p>
+                    <p className="text-[10px] text-gray-400">{t("parentPages", "dobInfo", lang)}</p>
                     <p className="text-sm font-bold text-gray-900">
                       {selected.dateOfBirth
                         ? new Date(selected.dateOfBirth).toLocaleDateString("en-GB")
@@ -531,7 +538,7 @@ export default function ParentIdCardsPage() {
                     onClick={handleExport}
                     className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700"
                   >
-                    <Download className="w-4 h-4" /> Download PNG
+                    <Download className="w-4 h-4" /> {t("parentPages", "downloadPng", lang)}
                   </button>
                 </div>
               </>

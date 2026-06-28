@@ -173,7 +173,7 @@ export default function ParentAttendancePage() {
             <div className="flex items-end gap-6">
               <div className="flex-1 space-y-2">
                 <p className="text-emerald-200 text-xs font-semibold uppercase tracking-widest">
-                  {lang === "ml" ? "ഹാജർ നിരക്ക്" : "Attendance Rate"}
+                  {t("parentPages", "attendanceRate", lang)}
                 </p>
                 <p className="text-white/80 text-sm">
                   {activeStudent?.name}
@@ -183,22 +183,22 @@ export default function ParentAttendancePage() {
                 
                 <div className="flex w-full gap-6">
                     <div className="flex flex-1 items-center justify-between border-b border-white/20 pb-1.5">
-                    <span className="text-[11px] text-emerald-200 lowercase">present</span>
+                    <span className="text-[11px] text-emerald-200 lowercase">{t("parentPages", "presentLower", lang)}</span>
                     <span className="text-lg font-black">{presentCount}</span>
                   </div>
                   <div className="flex flex-1  items-center justify-between border-b border-white/20 pb-1.5">
-                    <span className="text-[11px] text-emerald-200 lowercase">absent</span>
+                    <span className="text-[11px] text-emerald-200 lowercase">{t("parentPages", "absentLower", lang)}</span>
                     <span className="text-lg font-black">{absentCount}</span>
                   </div>
                 </div>
                   {otherCount > 0 && (
                     <div className="flex items-center justify-between border-b border-white/20 pb-1.5">
-                      <span className="text-[11px] text-emerald-200 lowercase">other</span>
+                      <span className="text-[11px] text-emerald-200 lowercase">{t("parentPages", "otherLower", lang)}</span>
                       <span className="text-lg font-black">{otherCount}</span>
                     </div>
                   )}
                   <div className="flex items-center justify-between pb-1.5  border-b border-white/20">
-                    <span className="text-[11px] text-emerald-200 lowercase">total</span>
+                    <span className="text-[11px] text-emerald-200 lowercase">{t("parentPages", "totalLower", lang)}</span>
                     <span className="text-lg font-black">{total}</span>
                   </div>
                 </div>
@@ -234,7 +234,7 @@ export default function ParentAttendancePage() {
             <div className="flex flex-col items-center justify-center py-16 text-center lg:flex-1">
               <CalendarDays className="w-10 h-10 text-gray-300 mb-3" />
               <p className="text-gray-400 text-sm">
-                {lang === "ml" ? "റെക്കോർഡുകൾ ഒന്നും കണ്ടെത്തിയില്ല" : "No attendance records found"}
+                {t("parentPages", "noAttendanceRecords", lang)}
               </p>
             </div>
           ) : (

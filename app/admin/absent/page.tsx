@@ -25,13 +25,10 @@ function fmtDate(d: string) {
   });
 }
 
-const STATUS_STYLE: Record<
-  string,
-  { label: string; color: string; bg: string }
-> = {
-  ABSENT: { label: "Absent", color: "text-red-600", bg: "bg-red-50" },
-  LATE: { label: "Late", color: "text-amber-700", bg: "bg-amber-50" },
-  EXCUSED: { label: "Excused", color: "text-blue-700", bg: "bg-blue-50" },
+const STATUS_META: Record<string, { key: "absentLower" | "lateLower" | "excusedLower"; color: string; bg: string }> = {
+  ABSENT: { key: "absentLower", color: "text-red-600", bg: "bg-red-50" },
+  LATE: { key: "lateLower", color: "text-amber-700", bg: "bg-amber-50" },
+  EXCUSED: { key: "excusedLower", color: "text-blue-700", bg: "bg-blue-50" },
 };
 
 export default function AdminAbsentPage() {
@@ -97,19 +94,19 @@ export default function AdminAbsentPage() {
       {!loading && !error && (
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           <div className="flex items-center gap-1.5 bg-red-50 text-red-700 text-xs font-bold px-3 py-1.5 rounded-xl">
-            <span className="text-base font-bold">{absentCount}</span> Absent
+            <span className="text-base font-bold">{absentCount}</span> {t("adminPages", "absentLower", lang)}
           </div>
           <div className="flex items-center gap-1.5 bg-amber-50 text-amber-700 text-xs font-bold px-3 py-1.5 rounded-xl">
-            <span className="text-base font-bold">{lateCount}</span> Late
+            <span className="text-base font-bold">{lateCount}</span> {t("adminPages", "lateLower", lang)}
           </div>
           <div className="flex items-center gap-1.5 bg-blue-50 text-blue-700 text-xs font-bold px-3 py-1.5 rounded-xl">
-            <span className="text-base font-bold">{excusedCount}</span> Excused
+            <span className="text-base font-bold">{excusedCount}</span> {t("adminPages", "excusedLower", lang)}
           </div>
           <button
             onClick={load}
             className="ml-auto flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600"
           >
-            <RefreshCw className="w-3 h-3" /> Refresh
+            <RefreshCw className="w-3 h-3" /> {t("adminPages", "refresh", lang)}
           </button>
         </div>
       )}
@@ -122,7 +119,7 @@ export default function AdminAbsentPage() {
         </div>
       ) : nonPresent.length === 0 ? (
         <div className="py-12 text-center text-sm text-gray-400">
-          🎉 All students present today
+          {t("adminPages", "allPresentToday", lang)}
         </div>
       ) : (
         <div className="space-y-4">
@@ -136,12 +133,12 @@ export default function AdminAbsentPage() {
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
                   <p className="font-bold text-gray-800 text-sm">{className}</p>
                   <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-1 rounded-lg">
-                    {students.length} absent/late
+                    {students.length} {t("adminPages", "absentLate", lang)}
                   </span>
                 </div>
                 <div className="divide-y divide-gray-50">
                   {students.map((r) => {
-                    const meta = STATUS_STYLE[r.status] ?? STATUS_STYLE.ABSENT;
+                    const meta = STATUS_META[r.status] ?? STATUS_META.ABSENT;
                     return (
                       <div
                         key={r.id}
@@ -172,7 +169,7 @@ export default function AdminAbsentPage() {
                             meta.color,
                           )}
                         >
-                          {meta.label}
+                          {t("adminPages", meta.key, lang)}
                         </span>
                       </div>
                     );

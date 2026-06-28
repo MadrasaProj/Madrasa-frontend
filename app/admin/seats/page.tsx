@@ -95,7 +95,7 @@ export default function AdminSeatsPage() {
             <h2 className="font-bold text-gray-900 text-lg mb-4">{t("adminPages", "generateSeat", lang)}</h2>
             <div className="space-y-4">
               {[
-                { label: t("adminPages", "examNameLabel", lang), placeholder: "e.g. Second Semester Exam" },
+                { label: t("adminPages", "examNameLabel", lang), placeholder: t("adminPages", "examNamePlaceholder", lang) },
                 { label: t("adminPages", "hallName", lang), placeholder: "e.g. Main Hall" },
                 { label: t("adminPages", "numBenches", lang), placeholder: "e.g. 30", type: "number" },
                 { label: t("adminPages", "numColumns", lang), placeholder: "e.g. 4", type: "number" },

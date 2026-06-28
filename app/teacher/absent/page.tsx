@@ -109,7 +109,7 @@ export default function TeacherAbsentPage() {
             {" "}{t("teacherPages", "totalAbsent", lang)}
           </p>
           <button className="flex items-center gap-1.5 text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-xl">
-            <Bell className="w-3.5 h-3.5" /> Notify Parents
+            <Bell className="w-3.5 h-3.5" /> {t("teacherPages", "notifyParents", lang)}
           </button>
         </div>
       )}
@@ -133,7 +133,7 @@ export default function TeacherAbsentPage() {
           <div className="px-4 py-4 text-sm text-red-600 bg-red-50">{error}</div>
         ) : nonPresent.length === 0 ? (
           <div className="px-4 py-8 text-sm text-gray-400 text-center">
-            🎉 All students present in {selectedClass?.name ?? "this class"}
+            {t("teacherPages", "allPresentIn", lang)} {selectedClass?.name ?? ""}
           </div>
         ) : (
           <div className="divide-y divide-gray-50">

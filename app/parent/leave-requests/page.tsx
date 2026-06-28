@@ -142,7 +142,7 @@ export default function ParentLeaveRequestsPage() {
   if (!studentId) {
     return (
       <DashboardLayout>
-        <div className="p-6 text-center text-gray-500">No student selected</div>
+        <div className="p-6 text-center text-gray-500">{t("parentPages", "noStudentSelected", lang)}</div>
       </DashboardLayout>
     );
   }
@@ -151,8 +151,8 @@ export default function ParentLeaveRequestsPage() {
     <DashboardLayout>
       <div className="p-4 sm:p-6 mx-auto">
         <PageHeader
-          title="Leave Requests"
-          subtitle="Apply for leave or sick leave"
+          title={t("parentPages", "leaveRequestsTitle", lang)}
+          subtitle={t("parentPages", "leaveRequestsSub", lang)}
           icon={FilePen}
           back
           backHref="/parent"
@@ -162,7 +162,7 @@ export default function ParentLeaveRequestsPage() {
               className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-all duration-200 active:scale-[0.98] shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
             >
               <Plus className="w-4 h-4" />
-              New Request
+              {t("parentPages", "newRequest", lang)}
             </button>
           }
         />
@@ -179,7 +179,7 @@ export default function ParentLeaveRequestsPage() {
           ) : requests.length === 0 ? (
             <div className="text-center py-12 text-gray-400">
               <AlertCircle className="w-8 h-8 mx-auto mb-2" />
-              <p className="text-sm">No leave requests yet</p>
+              <p className="text-sm">{t("parentPages", "noLeaveRequests", lang)}</p>
             </div>
           ) : (
             requests.map((r) => {
@@ -260,7 +260,7 @@ export default function ParentLeaveRequestsPage() {
             >
               <div className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-sm shadow-xl overflow-hidden">
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                  <p className="font-bold text-gray-900">Apply for Leave</p>
+                  <p className="font-bold text-gray-900">{t("parentPages", "applyForLeave", lang)}</p>
                   <button
                     onClick={() => setShowForm(false)}
                     className="p-1 text-gray-400 hover:text-gray-600"
@@ -271,7 +271,7 @@ export default function ParentLeaveRequestsPage() {
                 <div className="px-5 py-4 space-y-4">
                   <div>
                     <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
-                      Reason Type
+                      {t("parentPages", "reasonType", lang)}
                     </label>
                     <div className="flex gap-2">
                       {(["LEAVE", "SICK"] as const).map((r) => (
@@ -295,12 +295,12 @@ export default function ParentLeaveRequestsPage() {
 
                   <div>
                     <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
-                      Description
+                      {t("parentPages", "descriptionLabel", lang)}
                     </label>
                     <textarea
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Reason for leave..."
+                      placeholder={t("parentPages", "reasonPlaceholder", lang)}
                       rows={3}
                       className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 resize-none transition-all"
                     />
@@ -309,7 +309,7 @@ export default function ParentLeaveRequestsPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
-                        Start Date
+                        {t("parentPages", "startDateLabel", lang)}
                       </label>
                       <input
                         type="date"
@@ -321,7 +321,7 @@ export default function ParentLeaveRequestsPage() {
                     </div>
                     <div>
                       <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
-                        End Date (optional)
+                        {t("parentPages", "endDateLabel", lang)}
                       </label>
                       <input
                         type="date"
@@ -338,7 +338,7 @@ export default function ParentLeaveRequestsPage() {
                     onClick={() => setShowForm(false)}
                     className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 active:scale-[0.98] transition-all duration-200"
                   >
-                    Cancel
+                    {t("parentPages", "cancelLabel", lang)}
                   </button>
                   <button
                     onClick={handleSubmit}
@@ -350,7 +350,7 @@ export default function ParentLeaveRequestsPage() {
                     ) : (
                       <Send className="w-4 h-4" />
                     )}
-                    Submit
+                    {t("parentPages", "submitLabel", lang)}
                   </button>
                 </div>
               </div>

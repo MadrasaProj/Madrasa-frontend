@@ -319,13 +319,13 @@ export default function AdminStudentsPage() {
  [activeClientId, accessToken, user?.defaultAcademicYearId, classes],
  ); // eslint-disable-line
 
- // DataTable column definitions
- const columns = useMemo(
- (): Column<StudentRecord>[] => [
- {
- key: "name",
- header: "Student",
- sortable: true,
+  // DataTable column definitions
+  const columns = useMemo(
+  (): Column<StudentRecord>[] => [
+  {
+  key: "name",
+  header: t("adminPages", "studentCol", lang),
+  sortable: true,
   render: (s) => {
   const av =
   s.gender === "FEMALE" ? GENDER_AVATAR.FEMALE : GENDER_AVATAR.MALE;
@@ -355,10 +355,10 @@ export default function AdminStudentsPage() {
  );
  },
  },
- {
- key: "class",
- header: "Class",
- render: (s) =>
+  {
+  key: "class",
+  header: t("adminPages", "classCol", lang),
+  render: (s) =>
  s.class ? (
  <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-gray-100 text-gray-700">
  {s.class.name}
@@ -367,10 +367,10 @@ export default function AdminStudentsPage() {
  <span className="text-gray-300">—</span>
  ),
  },
- {
- key: "gender",
- header: "Gender",
- sortable: true,
+  {
+  key: "gender",
+  header: t("adminPages", "genderCol", lang),
+  sortable: true,
  render: (s) => (
  <span
  className={cn(
@@ -380,15 +380,15 @@ export default function AdminStudentsPage() {
  : "bg-indigo-100 text-indigo-700",
  )}
  >
- {s.gender === "FEMALE" ? "Girls" : "Boys"}
+  {s.gender === "FEMALE" ? t("adminPages", "girlsLabel", lang) : t("adminPages", "boysLabel", lang)}
  </span>
  ),
  className: "hidden sm:table-cell",
  headerClass: "hidden sm:table-cell",
  },
- {
- key: "guardianName",
- header: "Guardian",
+  {
+  key: "guardianName",
+  header: t("adminPages", "guardianCol", lang),
  sortable: true,
  render: (s) =>
  s.guardianName ? (
@@ -424,7 +424,7 @@ export default function AdminStudentsPage() {
  }}
  disabled={deleting === s.id}
  className="p-1.5 rounded-lg text-red-400 bg-red-50 hover:bg-red-100 hover:text-red-500 transition-colors disabled:opacity-40"
- title="Delete Student"
+  title={t("adminPages", "deleteStudentTitle", lang)}
  >
  {deleting === s.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
  </button>
@@ -462,7 +462,7 @@ export default function AdminStudentsPage() {
  className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 px-3 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
  >
  <Upload className="w-4 h-4" />
- <span className="hidden sm:inline">Import</span>
+  <span className="hidden sm:inline">{t("adminPages", "importBtn", lang)}</span>
  </button>
  <button
  onClick={openAdd}
@@ -516,7 +516,7 @@ export default function AdminStudentsPage() {
  }}
  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 appearance-none cursor-pointer"
  >
- <option value="all">All Classes ({total})</option>
+  <option value="all">{t("adminPages", "allClassesFilter", lang)} ({total})</option>
  {classes.map((cls) => (
  <option key={cls.id} value={cls.id}>
  {cls.name}
@@ -534,9 +534,9 @@ export default function AdminStudentsPage() {
  }}
  className="pl-3 pr-8 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 appearance-none cursor-pointer"
  >
- <option value="all">All</option>
- <option value="MALE">Boys</option>
- <option value="FEMALE">Girls</option>
+  <option value="all">{t("adminPages", "allFilter", lang)}</option>
+  <option value="MALE">{t("adminPages", "boysFilter", lang)}</option>
+  <option value="FEMALE">{t("adminPages", "girlsFilter", lang)}</option>
  </select>
  </div>
  </div>
@@ -697,10 +697,10 @@ export default function AdminStudentsPage() {
  <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto animate-bounce">
  <Trash2 className="w-7 h-7 text-red-600" />
  </div>
- <h3 className="font-bold text-gray-900 text-lg">Delete Student?</h3>
- <p className="text-sm text-gray-500">
- Are you sure you want to delete student <strong>{deleteTarget?.name}</strong>? This action cannot be undone and will delete all parent link mappings.
- </p>
+              <h3 className="font-bold text-gray-900 text-lg">{t("adminPages", "deleteStudentTitle", lang)}</h3>
+              <p className="text-sm text-gray-500">
+                {t("adminPages", "deleteStudentConfirm", lang).replace("{name}", deleteTarget?.name ?? "")}
+              </p>
  </div>
  <div className="grid grid-cols-2 gap-3 mt-6">
  <button
@@ -708,18 +708,18 @@ export default function AdminStudentsPage() {
  disabled={deleting !== null}
  className="py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
  >
- Cancel
- </button>
- <button
- onClick={handleDelete}
- disabled={deleting !== null}
- className="py-3 rounded-2xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors disabled:opacity-60"
- >
- {deleting !== null ? (
- <span className="flex items-center justify-center gap-2">
- <Loader2 className="w-4 h-4 animate-spin" /> Deleting…
- </span>
- ) : "Delete"}
+  {t("common", "cancel", lang)}
+  </button>
+  <button
+  onClick={handleDelete}
+  disabled={deleting !== null}
+  className="py-3 rounded-2xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors disabled:opacity-60"
+  >
+  {deleting !== null ? (
+  <span className="flex items-center justify-center gap-2">
+  <Loader2 className="w-4 h-4 animate-spin" /> {t("adminPages", "deletingLabel", lang)}
+  </span>
+  ) : t("adminPages", "deleteConfirm", lang)}
  </button>
  </div>
  </motion.div>

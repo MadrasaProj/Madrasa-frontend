@@ -2,6 +2,7 @@ import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguageStore } from "@/store/language";
+import { t } from "@/lib/i18n";
 import { elections, Election, students } from "@/mock-data";
 import {
   Vote, Play, Square, CheckCircle2,
@@ -123,12 +124,10 @@ export default function TeacherElectionsPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">
-              {lang === "ml" ? "ക്ലാസ് തിരഞ്ഞെടുപ്പ്" : "Class Elections"}
+              {t("elections", "classElections", lang)}
             </h1>
             <p className="text-xs text-gray-500">
-              {lang === "ml"
-                ? "വോട്ടിംഗ് സെഷൻ തുറക്കുക, വിദ്യാർത്ഥി വോട്ടുകൾ രേഖപ്പെടുത്തുക"
-                : "Open sessions, record student votes & publish results"}
+              {t("elections", "teacherSubtitle", lang)}
             </p>
           </div>
         </div>
@@ -138,7 +137,7 @@ export default function TeacherElectionsPage() {
       {activeOwn.length > 0 && (
         <div className="mb-5">
           <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
-            {lang === "ml" ? "⚡ നിങ്ങളുടെ സജീവ സെഷനുകൾ" : "⚡ Your Active Sessions"}
+            {t("elections", "activeSessions", lang)}
           </p>
           {activeOwn.map((el) => {
             const sess = getSession(el.id);
@@ -161,9 +160,9 @@ export default function TeacherElectionsPage() {
                       <div className="flex items-center gap-2 mb-1">
                         <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full">
                           {isLive ? (
-                            <><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> {lang === "ml" ? "LIVE" : "LIVE"}</>
+                            <><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> {t("elections", "live", lang)}</>
                           ) : (
-                            <><Clock className="w-3 h-3" /> {lang === "ml" ? "തയ്യാർ" : "Ready"}</>
+                            <><Clock className="w-3 h-3" /> {t("elections", "ready", lang)}</>
                           )}
                         </span>
                         <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">{el.class}</span>
@@ -173,14 +172,14 @@ export default function TeacherElectionsPage() {
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-lg font-bold text-emerald-700">{totalVotes}/{totalEligible}</p>
-                      <p className="text-[10px] text-gray-400">{lang === "ml" ? "വോട്ടുകൾ" : "votes"}</p>
+                      <p className="text-[10px] text-gray-400">{t("elections", "votes", lang)}</p>
                     </div>
                   </div>
 
                   {/* Turnout bar */}
                   <div className="mb-4">
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="text-gray-500">{lang === "ml" ? "ടേർനൗട്ട്" : "Turnout"}</span>
+                      <span className="text-gray-500">{t("elections", "turnout", lang)}</span>
                       <span className="font-bold text-gray-700">{turnout}%</span>
                     </div>
                     <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -196,7 +195,7 @@ export default function TeacherElectionsPage() {
                         className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-xl transition-all"
                       >
                         <Play className="w-3.5 h-3.5" />
-                        {lang === "ml" ? "സെഷൻ തുറക്കുക" : "Open Session"}
+                        {t("elections", "openSession", lang)}
                       </button>
                     ) : (
                       <>
@@ -205,14 +204,14 @@ export default function TeacherElectionsPage() {
                           className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-xl transition-all"
                         >
                           <UserCheck className="w-3.5 h-3.5" />
-                          {lang === "ml" ? "വോട്ടുകൾ നൽകുക" : "Record Votes"}
+                          {t("elections", "recordVotes", lang)}
                         </button>
                         <button
                           onClick={() => closeSession(el.id)}
                           className="flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs px-3 py-2.5 rounded-xl transition-all border border-red-200"
                         >
                           <Square className="w-3.5 h-3.5" />
-                          {lang === "ml" ? "നിർത്തുക" : "Close"}
+                          {t("elections", "closeSession", lang)}
                         </button>
                       </>
                     )}
@@ -234,7 +233,7 @@ export default function TeacherElectionsPage() {
       {draftReady.length > 0 && (
         <div className="mb-5">
           <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
-            {lang === "ml" ? "📋 തുറക്കാൻ തയ്യാർ" : "📋 Ready to Open"}
+            {t("elections", "readyToOpen", lang)}
           </p>
           <div className="space-y-2">
             {draftReady.map((el, i) => (
@@ -255,7 +254,7 @@ export default function TeacherElectionsPage() {
                   className="flex items-center gap-1 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition-all shrink-0"
                 >
                   <Play className="w-3 h-3" />
-                  {lang === "ml" ? "തുറക്കുക" : "Open"}
+                  {t("elections", "openSession", lang)}
                 </button>
               </motion.div>
             ))}
@@ -267,7 +266,7 @@ export default function TeacherElectionsPage() {
       {pastOwn.length > 0 && (
         <div>
           <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
-            {lang === "ml" ? "📁 കഴിഞ്ഞ ഫലങ്ങൾ" : "📁 Past Results"}
+            {t("elections", "pastResults", lang)}
           </p>
           <div className="space-y-2">
             {pastOwn.map((el, i) => {
@@ -285,17 +284,17 @@ export default function TeacherElectionsPage() {
                     <p className="font-bold text-gray-800 text-sm truncate">{lang === "ml" ? el.title_ml : el.title}</p>
                     {winner && (
                       <p className="text-xs text-amber-700 font-semibold">
-                        🏆 {lang === "ml" ? "ജേതാവ്" : "Winner"}: {winner.name}
+                        🏆 {t("elections", "winner", lang)}: {winner.name}
                       </p>
                     )}
-                    <p className="text-xs text-gray-400">{el.class} · {el.totalVotesCast} {lang === "ml" ? "വോട്ടുകൾ" : "votes"}</p>
+                    <p className="text-xs text-gray-400">{el.class} · {el.totalVotesCast} {t("elections", "votes", lang)}</p>
                   </div>
                   <button
                     onClick={() => setResultsEl(el)}
                     className="flex items-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-bold px-3 py-2 rounded-xl transition-all shrink-0"
                   >
                     <Eye className="w-3 h-3" />
-                    {lang === "ml" ? "ഫലം" : "Results"}
+                    {t("elections", "results", lang)}
                   </button>
                 </motion.div>
               );
@@ -308,7 +307,7 @@ export default function TeacherElectionsPage() {
         <div className="text-center py-20">
           <Vote className="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500 font-medium">
-            {lang === "ml" ? "നിങ്ങളുടെ ക്ലാസിൽ ഇപ്പോൾ തിരഞ്ഞെടുപ്പൊന്നുമില്ല" : "No elections for your classes"}
+            {t("elections", "noClassElections", lang)}
           </p>
         </div>
       )}
@@ -333,11 +332,11 @@ export default function TeacherElectionsPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-teal-200 text-[11px] font-bold uppercase tracking-widest mb-1">
-                      {lang === "ml" ? "🗳️ ലൈവ് വോട്ടിംഗ്" : "🗳️ Live Voting Session"}
+                      {t("elections", "liveSession", lang)}
                     </p>
                     <h2 className="text-lg font-bold">{lang === "ml" ? managingEl.title_ml : managingEl.title}</h2>
                     <p className="text-teal-200 text-xs mt-0.5">
-                      {managingEl.class} · {totalVotesForElection(managingEl.id, managingEl)}/{getStudentsForElection(managingEl).length} {lang === "ml" ? "വോട്ടുകൾ" : "votes"}
+                      {managingEl.class} · {totalVotesForElection(managingEl.id, managingEl)}/{getStudentsForElection(managingEl).length} {t("elections", "votes", lang)}
                     </p>
                   </div>
                   <button onClick={() => { setManagingEl(null); setVotingStudent(null); }} className="bg-white/20 rounded-full p-1.5">
@@ -349,7 +348,7 @@ export default function TeacherElectionsPage() {
               {!votingStudent ? (
                 <div className="p-4">
                   <p className="text-xs font-bold text-gray-600 mb-3 uppercase tracking-wide">
-                    {lang === "ml" ? "വിദ്യാർത്ഥി തിരഞ്ഞെടുക്കുക" : "Select student to record vote"}
+                    {t("elections", "selectStudent", lang)}
                   </p>
 
                   <div className="space-y-2">
@@ -391,7 +390,7 @@ export default function TeacherElectionsPage() {
                       className="w-full flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-sm py-3 rounded-2xl border border-red-200 transition-all"
                     >
                       <Square className="w-4 h-4" />
-                      {lang === "ml" ? "സെഷൻ അടയ്ക്കുക" : "Close Voting Session"}
+                      {t("elections", "closeSession", lang)}
                     </button>
                   </div>
                 </div>
@@ -404,7 +403,7 @@ export default function TeacherElectionsPage() {
                     </div>
                     <div>
                       <p className="font-bold text-teal-800 text-sm">{votingStudent.name}</p>
-                      <p className="text-xs text-teal-600">{lang === "ml" ? "ഇപ്പോൾ വോട്ട് ചെയ്യുന്നു" : "Now voting"}</p>
+                      <p className="text-xs text-teal-600">{t("elections", "nowVoting", lang)}</p>
                     </div>
                     <button onClick={() => { setVotingStudent(null); setStudentPick(null); }} className="ml-auto">
                       <RotateCcw className="w-4 h-4 text-teal-500" />
@@ -412,7 +411,7 @@ export default function TeacherElectionsPage() {
                   </div>
 
                   <p className="text-xs text-gray-500 mb-3 font-medium">
-                    {lang === "ml" ? "ഒരു സ്ഥാനാർത്ഥിയെ തിരഞ്ഞെടുക്കൂ" : "Select a candidate"}
+                    {t("elections", "selectCandidate", lang)}
                   </p>
 
                   <div className="space-y-2 mb-4">
@@ -445,7 +444,7 @@ export default function TeacherElectionsPage() {
                       onClick={() => { setVotingStudent(null); setStudentPick(null); }}
                       className="flex-1 py-3 rounded-2xl border border-gray-200 text-gray-600 font-semibold text-sm"
                     >
-                      {lang === "ml" ? "← മടങ്ങുക" : "← Back"}
+                      {t("common", "back", lang)}
                     </button>
                     <button
                       disabled={!studentPick}
@@ -456,7 +455,7 @@ export default function TeacherElectionsPage() {
                           : "bg-gray-100 text-gray-400 cursor-not-allowed"
                       }`}
                     >
-                      ✅ {lang === "ml" ? "വോട്ട് നൽകുക" : "Submit Vote"}
+                      ✅ {t("elections", "submitVote", lang)}
                     </button>
                   </div>
                 </div>
@@ -485,7 +484,7 @@ export default function TeacherElectionsPage() {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-emerald-200 text-xs font-bold uppercase tracking-widest mb-1">
-                      {lang === "ml" ? "ഫല സ്ലേറ്റ്" : "Results"}
+                      {t("elections", "results", lang)}
                     </p>
                     <h2 className="text-lg font-bold">{lang === "ml" ? resultsEl.title_ml : resultsEl.title}</h2>
                   </div>
@@ -502,7 +501,7 @@ export default function TeacherElectionsPage() {
                     <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-4 text-center">
                       <p className="text-3xl mb-2">{w.symbol}</p>
                       <p className="font-bold text-gray-900">{w.name}</p>
-                      <p className="text-xs text-amber-700 font-bold mt-1">🏆 {lang === "ml" ? "ജേതാവ്" : "Winner"}</p>
+                      <p className="text-xs text-amber-700 font-bold mt-1">🏆 {t("elections", "winner", lang)}</p>
                     </div>
                   ) : null;
                 })()}
@@ -520,7 +519,7 @@ export default function TeacherElectionsPage() {
                           <div className="flex items-center gap-2 mb-2">
                             <span className="text-lg">{c.symbol}</span>
                             <span className="font-bold text-gray-900 text-sm flex-1">{c.name}</span>
-                            <span className="font-bold text-gray-700 text-sm">{c.totalVotes} {lang === "ml" ? "വോ." : "votes"}</span>
+                            <span className="font-bold text-gray-700 text-sm">{c.totalVotes} {t("elections", "votes", lang)}</span>
                           </div>
                           <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                             <div
@@ -533,7 +532,7 @@ export default function TeacherElectionsPage() {
                     })}
                 </div>
                 <p className="text-center text-xs text-gray-400 mt-4">
-                  {lang === "ml" ? "ആകെ" : "Total"}: {totalVotesForElection(resultsEl.id, resultsEl)} / {resultsEl.totalEligibleVoters} {lang === "ml" ? "വോട്ടർമാർ" : "eligible voters"}
+                  {t("common", "total", lang)}: {totalVotesForElection(resultsEl.id, resultsEl)} / {resultsEl.totalEligibleVoters} {t("elections", "eligibleVoters", lang)}
                 </p>
               </div>
             </motion.div>
