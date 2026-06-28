@@ -7,6 +7,8 @@ import {
   type StudentFeeSummary, type ReceiptData,
 } from "@/lib/fees-api";
 import { useAuthStore } from "@/store/auth";
+import { useLanguageStore } from "@/store/language";
+import { t } from "@/lib/i18n";
 import type { StudentInfo } from "@/lib/auth-api";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -24,7 +26,7 @@ const STATUS_COLORS: Record<string, string> = {
   WAIVED:  "bg-gray-100 text-gray-500",
 };
 
-function ReceiptModal({ receipt, onClose }: { receipt: ReceiptData; onClose: () => void }) {
+function ReceiptModal({ receipt, onClose, lang }: { receipt: ReceiptData; onClose: () => void; lang: "en" | "ml" }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
@@ -35,18 +37,18 @@ function ReceiptModal({ receipt, onClose }: { receipt: ReceiptData; onClose: () 
         <div className="text-center mb-4 border-b border-dashed pb-4">
           <p className="font-bold text-lg">{receipt.client.name}</p>
           {receipt.client.address && <p className="text-xs text-gray-500">{receipt.client.address}</p>}
-          <p className="text-xs font-bold text-emerald-700 mt-1 uppercase tracking-widest">Fee Receipt</p>
+          <p className="text-xs font-bold text-emerald-700 mt-1 uppercase tracking-widest">{t("parentPages", "feeReceipt", lang)}</p>
         </div>
         <div className="space-y-2 text-sm mb-4">
           {[
-            ["Receipt No", receipt.reference ?? receipt.id.slice(0, 8).toUpperCase()],
-            ["Date", receipt.paidAt ? new Date(receipt.paidAt).toLocaleDateString("en-GB") : "—"],
-            ["Student", receipt.student.name],
-            ["Adm No", receipt.student.adno],
-            ["Class", receipt.student.class?.name ?? "—"],
-            ["Fee Type", receipt.feeType.name],
-            ["Amount Paid", `₹${Number(receipt.paidAmount ?? 0).toLocaleString()}`],
-            ["Method", receipt.method ?? "—"],
+            [t("parentPages", "receiptNo", lang), receipt.reference ?? receipt.id.slice(0, 8).toUpperCase()],
+            [t("parentPages", "dateLabel", lang), receipt.paidAt ? new Date(receipt.paidAt).toLocaleDateString("en-GB") : "—"],
+            [t("parentPages", "studentLabel", lang), receipt.student.name],
+            [t("parentPages", "admNoLabel", lang), receipt.student.adno],
+            [t("parentPages", "classInfoLabel", lang), receipt.student.class?.name ?? "—"],
+            [t("parentPages", "feeTypeLabel", lang), receipt.feeType.name],
+            [t("parentPages", "amountPaidLabel", lang), `₹${Number(receipt.paidAmount ?? 0).toLocaleString()}`],
+            [t("parentPages", "methodLabel", lang), receipt.method ?? "—"],
           ].map(([label, value]) => (
             <div key={label} className="flex items-center justify-between">
               <span className="text-gray-500">{label}</span>
@@ -54,16 +56,16 @@ function ReceiptModal({ receipt, onClose }: { receipt: ReceiptData; onClose: () 
             </div>
           ))}
         </div>
-        {receipt.notes && <p className="text-xs text-gray-400 italic mb-4">Note: {receipt.notes}</p>}
+        {receipt.notes && <p className="text-xs text-gray-400 italic mb-4">{t("parentPages", "noteLabel", lang)}: {receipt.notes}</p>}
         <div className="flex gap-2">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border text-sm font-semibold text-gray-600">
-            Close
+            {t("parentPages", "closeBtn", lang)}
           </button>
           <button
             onClick={() => window.print()}
             className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold flex items-center justify-center gap-1.5"
           >
-            <Printer className="w-4 h-4" /> Print
+            <Printer className="w-4 h-4" /> {t("parentPages", "printBtn", lang)}
           </button>
         </div>
       </motion.div>
@@ -80,6 +82,7 @@ interface ChildData {
 
 export default function ParentFeesPage() {
   const { user, accessToken } = useAuthStore();
+  const { lang } = useLanguageStore();
   const [children, setChildren] = useState<ChildData[]>([]);
   const [activeIdx, setActiveIdx] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -126,7 +129,7 @@ export default function ParentFeesPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title="My Fees" icon={IndianRupee} action={
+      <PageHeader title={t("parentPages", "myFeesTitle", lang)} icon={IndianRupee} action={
         <button onClick={load} className="p-2 rounded-xl bg-gray-100 text-gray-600">
           <RefreshCw className="w-4 h-4" />
         </button>
@@ -149,7 +152,7 @@ export default function ParentFeesPage() {
           </div>
         </div>
       ) : !ids.length ? (
-        <div className="text-center py-16 text-gray-400 text-sm">No children linked to this account</div>
+        <div className="text-center py-16 text-gray-400 text-sm">{t("parentPages", "noChildrenAccount", lang)}</div>
       ) : (
         <>
           {/* Child tabs */}
@@ -186,11 +189,11 @@ export default function ParentFeesPage() {
               {/* Summary cards */}
               <div className="grid grid-cols-2 gap-3 mb-5">
                 <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-100">
-                  <p className="text-xs text-emerald-600 mb-1">Total Paid</p>
+                  <p className="text-xs text-emerald-600 mb-1">{t("parentPages", "totalPaidFees", lang)}</p>
                   <p className="text-2xl font-bold text-emerald-700">₹{Number(active.summary.totalPaid).toLocaleString()}</p>
                 </div>
                 <div className="bg-red-50 rounded-2xl p-4 border border-red-100">
-                  <p className="text-xs text-red-500 mb-1">Pending</p>
+                  <p className="text-xs text-red-500 mb-1">{t("parentPages", "pendingLabel", lang)}</p>
                   <p className="text-2xl font-bold text-red-600">
                     ₹{Math.max(0, active.summary.totalDue - active.summary.totalPaid).toLocaleString()}
                   </p>
@@ -201,16 +204,16 @@ export default function ParentFeesPage() {
                 <div className="flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 mb-4">
                   <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
                   <p className="text-sm text-amber-700">
-                    <span className="font-bold">{active.summary.pendingCount}</span> pending payment{active.summary.pendingCount !== 1 ? "s" : ""}
+                    <span className="font-bold">{active.summary.pendingCount}</span> {t("parentPages", "pendingPayments", lang)}
                   </p>
                 </div>
               )}
 
               {/* Payment list */}
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Payment History</p>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">{t("parentPages", "paymentHistory", lang)}</p>
               <div className="space-y-3">
                 {active.summary.payments.length === 0 ? (
-                  <div className="text-center py-10 text-gray-400 text-sm">No payment records yet</div>
+                  <div className="text-center py-10 text-gray-400 text-sm">{t("parentPages", "noPaymentRecords", lang)}</div>
                 ) : (
                   active.summary.payments.map((p, i) => {
                     const isPaid = p.status === "PAID";
@@ -225,12 +228,12 @@ export default function ParentFeesPage() {
                             <p className="font-semibold text-gray-900 text-sm">{p.feeType.name}</p>
                             {p.dueDate && (
                               <p className="text-xs text-gray-400">
-                                Due: {new Date(p.dueDate).toLocaleDateString("en-GB")}
+                                {t("parentPages", "duePrefix", lang)} {new Date(p.dueDate).toLocaleDateString("en-GB")}
                               </p>
                             )}
                             {isPaid && p.paidAt && (
                               <p className="text-xs text-emerald-600">
-                                Paid: {new Date(p.paidAt).toLocaleDateString("en-GB")}
+                                {t("parentPages", "paidPrefix", lang)} {new Date(p.paidAt).toLocaleDateString("en-GB")}
                                 {p.reference ? ` · ${p.reference}` : ""}
                               </p>
                             )}
@@ -256,13 +259,13 @@ export default function ParentFeesPage() {
                               ? <Loader2 className="w-3 h-3 animate-spin" />
                               : <Receipt className="w-3 h-3" />
                             }
-                            View Receipt
+                            {t("parentPages", "viewReceiptBtn", lang)}
                           </button>
                         )}
                         {!isPaid && (
                           <div className="bg-amber-50 rounded-xl px-3 py-2 text-xs text-amber-700 font-semibold flex items-center gap-1.5">
                             <AlertCircle className="w-3 h-3 shrink-0" />
-                            Payment pending — contact admin to pay
+                            {t("parentPages", "paymentPendingMsg", lang)}
                           </div>
                         )}
                       </motion.div>
@@ -274,7 +277,7 @@ export default function ParentFeesPage() {
               {/* Fee types applicable */}
               {active.summary.feeTypes.length > 0 && (
                 <>
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-6 mb-3">Applicable Fees</p>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-6 mb-3">{t("parentPages", "applicableFees", lang)}</p>
                   <div className="flex flex-wrap gap-2">
                     {active.summary.feeTypes.map((ft) => (
                       <div key={ft.id} className="h-10 px-4 rounded-md inline-flex items-center gap-1.5 bg-gray-50 text-gray-600 text-xs font-semibold">
@@ -297,7 +300,7 @@ export default function ParentFeesPage() {
         </>
       )}
 
-      {receipt && <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />}
+      {receipt && <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} lang={lang} />}
     </DashboardLayout>
   );
 }

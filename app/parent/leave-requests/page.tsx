@@ -30,30 +30,26 @@ import {
 const STATUS_CONFIG: Record<
   LeaveRequestStatus,
   {
-    label: string;
-    labelMl: string;
+    labelKey: string;
     color: string;
     bg: string;
     icon: typeof Clock;
   }
 > = {
   PENDING: {
-    label: "Pending",
-    labelMl: "തീരുമാനമായിട്ടില്ല",
+    labelKey: "pendingLabel",
     color: "text-amber-600",
     bg: "bg-amber-50",
     icon: Clock,
   },
   APPROVED: {
-    label: "Approved",
-    labelMl: "അനുവദിച്ചു",
+    labelKey: "approvedLabel",
     color: "text-emerald-600",
     bg: "bg-emerald-50",
     icon: CheckCircle2,
   },
   REJECTED: {
-    label: "Rejected",
-    labelMl: "നിരസിച്ചു",
+    labelKey: "rejectedLabel",
     color: "text-red-600",
     bg: "bg-red-50",
     icon: XCircle,
@@ -62,17 +58,15 @@ const STATUS_CONFIG: Record<
 
 const REASON_CONFIG: Record<
   LeaveReasonType,
-  { label: string; labelMl: string; color: string; bg: string }
+  { labelKey: string; color: string; bg: string }
 > = {
   LEAVE: {
-    label: "Leave",
-    labelMl: "ലീവ്",
+    labelKey: "leaveLabel",
     color: "text-amber-600",
     bg: "bg-amber-50",
   },
   SICK: {
-    label: "Sick",
-    labelMl: "അസുഖം",
+    labelKey: "sickLabel",
     color: "text-orange-600",
     bg: "bg-orange-50",
   },
@@ -200,7 +194,7 @@ export default function ParentLeaveRequestsPage() {
                           rc.color,
                         )}
                       >
-                        {rc.label}
+                        {t("parentPages", rc.labelKey as any, lang)}
                       </span>
                       <span
                         className={cn(
@@ -210,7 +204,7 @@ export default function ParentLeaveRequestsPage() {
                         )}
                       >
                         <Icon className="w-3 h-3" />
-                        {sc.label}
+                        {t("parentPages", sc.labelKey as any, lang)}
                       </span>
                     </div>
                     <span className="text-xs text-gray-400">
@@ -287,7 +281,7 @@ export default function ParentLeaveRequestsPage() {
                               : "border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700",
                           )}
                         >
-                          {REASON_CONFIG[r].label}
+                          {t("parentPages", REASON_CONFIG[r].labelKey as any, lang)}
                         </button>
                       ))}
                     </div>

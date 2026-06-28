@@ -4,6 +4,8 @@ import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { listDiary, addDiaryComment, type DiaryEntry, type DiaryComment } from "@/lib/diary-api";
 import { getDiaryEvents, type DiaryEventNotification, type NotificationType } from "@/lib/notifications-api";
 import { useAuthStore } from "@/store/auth";
+import { useLanguageStore } from "@/store/language";
+import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
@@ -15,18 +17,29 @@ import { motion, AnimatePresence } from "framer-motion";
 
 function fmt(d: Date) { return d.toISOString().split("T")[0]; }
 
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+const MONTH_KEYS = [
+  "monthJan", "monthFeb", "monthMar", "monthApr", "monthMay", "monthJun",
+  "monthJul", "monthAug", "monthSep", "monthOct", "monthNov", "monthDec",
 ];
 
-const TYPE_CONFIG: Record<NotificationType, { label: string; icon: React.ElementType; tone: string }> = {
-  ANNOUNCEMENT:      { label: "Announcement",   icon: Bell,          tone: "indigo"  },
-  ATTENDANCE_ALERT:  { label: "Attendance",      icon: ClipboardList, tone: "emerald" },
-  FEE_REMINDER:      { label: "Fee Reminder",    icon: CreditCard,    tone: "amber"   },
-  HOMEWORK_REMINDER: { label: "Homework",        icon: BookOpen,      tone: "blue"    },
-  EXAM_NOTICE:       { label: "Exam",            icon: GraduationCap, tone: "violet"  },
-  GENERAL:           { label: "General",         icon: Bell,          tone: "slate"   },
+const TYPE_CONFIG: Record<NotificationType, { labelKey: string; icon: React.ElementType; tone: string }> = {
+  ANNOUNCEMENT:      { labelKey: "announcementLabel", icon: Bell,          tone: "indigo"  },
+  ATTENDANCE_ALERT:  { labelKey: "attendanceAlertLabel", icon: ClipboardList, tone: "emerald" },
+  FEE_REMINDER:      { labelKey: "feeReminderLabel", icon: CreditCard,    tone: "amber"   },
+  HOMEWORK_REMINDER: { labelKey: "homeworkReminderLabel", icon: BookOpen,      tone: "blue"    },
+  EXAM_NOTICE:       { labelKey: "examNoticeLabel", icon: GraduationCap, tone: "violet"  },
+  GENERAL:           { labelKey: "generalLabel",     icon: Bell,          tone: "slate"   },
+};
+
+const THEME_LABEL_KEYS: Record<string, string> = {
+  default: "themeClean",
+  classic: "themeClassic",
+  vintage: "themeVintage",
+  nature: "themeNature",
+  ocean: "themeOcean",
+  dreamy: "themeDreamy",
+  cozy: "themeCozy",
+  sunny: "themeSunny",
 };
 
 const themes: Record<string, { bg: string; text: string; border: string; chip: string; label: string; font: string; mlFont: string }> = {
@@ -99,7 +112,7 @@ function dayLabel(iso: string) {
     weekday: d.toLocaleDateString("en-US", { weekday: "short" }),
     monthIdx: d.getMonth(),
     year: d.getFullYear(),
-    monthName: MONTHS[d.getMonth()],
+    monthName: MONTH_KEYS[d.getMonth()],
   };
 }
 
@@ -110,6 +123,7 @@ type TimelineItem = {
 };
 
 export default function ParentDiaryPage() {
+  const { lang } = useLanguageStore();
   const { user, accessToken, activeClientId, activeStudentId } = useAuthStore();
   const cid   = activeClientId ?? "";
   const token = accessToken ?? "";
@@ -166,7 +180,7 @@ export default function ParentDiaryPage() {
       const key = `${d.year}-${d.monthIdx}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      out.push({ key, idx: d.monthIdx, year: d.year, label: MONTHS[d.monthIdx] });
+      out.push({ key, idx: d.monthIdx, year: d.year, label: MONTH_KEYS[d.monthIdx] });
     }
     return out;
   }, [timeline]);
@@ -219,7 +233,7 @@ export default function ParentDiaryPage() {
       .sort(([a], [b]) => b.localeCompare(a))
       .map(([key, items]) => {
         const [y, m] = key.split("-");
-        return { key, year: Number(y), monthIdx: Number(m), monthName: MONTHS[Number(m)], items };
+        return { key, year: Number(y), monthIdx: Number(m), monthName: MONTH_KEYS[Number(m)], items };
       });
   }, [filteredTimeline]);
 
@@ -286,7 +300,7 @@ export default function ParentDiaryPage() {
                   autoFocus
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search diary entries..."
+                  placeholder={t("parentPages", "searchDiary", lang)}
                   className="w-full pl-10 pr-10 py-3 rounded-full bg-white border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
                 {search && (
@@ -306,14 +320,14 @@ export default function ParentDiaryPage() {
           <FilterPill
             active={selectedMonth === "this"}
             onClick={() => setSelectedMonth("this")}
-            label="This month"
+            label={t("parentPages", "thisMonth", lang)}
           />
           {availableMonths.map((m) => (
             <FilterPill
               key={m.key}
               active={selectedMonth === m.key}
               onClick={() => setSelectedMonth(m.key)}
-              label={m.label}
+              label={t("parentPages", m.label as any, lang)}
             />
           ))}
         </div>
@@ -330,7 +344,7 @@ export default function ParentDiaryPage() {
         ) : filteredTimeline.length === 0 ? (
           <div className="text-center py-20 text-gray-400 px-4">
             <FileText className="w-12 h-12 mx-auto mb-3 text-gray-200" />
-            <p className="text-sm">No diary entries found</p>
+            <p className="text-sm">{t("parentPages", "noDiaryEntries", lang)}</p>
           </div>
         ) : (
           <div className="space-y-10">
@@ -339,7 +353,7 @@ export default function ParentDiaryPage() {
                 <div className="flex items-center gap-4 mb-5 px-4">
                   <div className="h-px flex-1 bg-gray-200" />
                   <span className="text-xs font-bold text-gray-400 uppercase tracking-[0.22em] shrink-0">
-                    {group.monthName}
+                    {t("parentPages", group.monthName as any, lang)}
                   </span>
                   <div className="h-px flex-1 bg-gray-200" />
                 </div>
@@ -350,6 +364,7 @@ export default function ParentDiaryPage() {
                       key={(item.data as any).id}
                       item={item}
                       index={idx}
+                      lang={lang}
                       onClick={() => {
                         if (item.type === "entry") setSelectedEntry(item.data as DiaryEntry);
                       }}
@@ -364,15 +379,16 @@ export default function ParentDiaryPage() {
 
       <AnimatePresence>
         {selectedEntry && (
-          <EntryDrawer
-            entry={selectedEntry}
-            replyText={replyText}
-            setReplyText={setReplyText}
-            sending={sendingReply}
-            onSend={handleReply}
-            canReply={!!activeStudent?.id}
-            onClose={() => { setSelectedEntry(null); setReplyText(""); }}
-          />
+            <EntryDrawer
+              entry={selectedEntry}
+              replyText={replyText}
+              setReplyText={setReplyText}
+              sending={sendingReply}
+              onSend={handleReply}
+              canReply={!!activeStudent?.id}
+              lang={lang}
+              onClose={() => { setSelectedEntry(null); setReplyText(""); }}
+            />
         )}
       </AnimatePresence>
     </DashboardLayout>
@@ -380,6 +396,7 @@ export default function ParentDiaryPage() {
 }
 
 function FilterPill({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+  void label;
   return (
     <button
       onClick={onClick}
@@ -395,7 +412,7 @@ function FilterPill({ active, onClick, label }: { active: boolean; onClick: () =
   );
 }
 
-function TimelineRow({ item, index, onClick }: { item: TimelineItem; index: number; onClick: () => void }) {
+function TimelineRow({ item, index, onClick, lang: rowLang }: { item: TimelineItem; index: number; onClick: () => void; lang: "en" | "ml" }) {
   const dl = dayLabel(item.date);
 
   if (item.type === "event") {
@@ -427,7 +444,7 @@ function TimelineRow({ item, index, onClick }: { item: TimelineItem; index: numb
               <Icon className="w-3.5 h-3.5" />
             </div>
             <span className={cn("text-[11px] font-bold uppercase tracking-wider", tone.text)}>
-              {cfg.label}
+              {t("parentPages", cfg.labelKey as any, rowLang)}
             </span>
           </div>
           <p className="text-[15px] text-gray-800 leading-snug line-clamp-2">{ev.body || ev.title}</p>
@@ -480,7 +497,7 @@ function TimelineRow({ item, index, onClick }: { item: TimelineItem; index: numb
         {commentCount > 0 && (
           <div className="flex items-center gap-1.5 mt-2 text-[11px] text-gray-500">
             <MessageSquare className="w-3 h-3" />
-            <span>{commentCount} {commentCount === 1 ? "response" : "responses"}</span>
+            <span>{commentCount} {commentCount === 1 ? t("parentPages", "responseLabel", rowLang) : t("parentPages", "responsesLabel", rowLang)}</span>
           </div>
         )}
       </button>
@@ -502,7 +519,7 @@ function DateColumn({ day, weekday }: { day: string; weekday: string }) {
 }
 
 function EntryDrawer({
-  entry, replyText, setReplyText, sending, onSend, canReply, onClose,
+  entry, replyText, setReplyText, sending, onSend, canReply, onClose, lang: drawerLang,
 }: {
   entry: DiaryEntry;
   replyText: string;
@@ -511,8 +528,9 @@ function EntryDrawer({
   onSend: () => void;
   canReply: boolean;
   onClose: () => void;
+  lang: "en" | "ml";
 }) {
-  const t = entryTheme(entry.theme);
+  const themeStyle = entryTheme(entry.theme);
 
   useEffect(() => {
     const links = entry.theme !== "default" ? themeFontLinks[entry.theme] : [];
@@ -543,18 +561,18 @@ function EntryDrawer({
         transition={{ type: "spring", damping: 25, stiffness: 200 }}
         className={cn(
           "fixed bottom-0 left-0 right-0 w-full z-50 h-dvh flex flex-col shadow-2xl",
-          t.bg,
+          themeStyle.bg,
         )}
-        style={{ fontFamily: `${t.font}, ${t.mlFont}` }}
+        style={{ fontFamily: `${themeStyle.font}, ${themeStyle.mlFont}` }}
       >
-        <div className={cn("px-6 pt-6 pb-5 shrink-0 border-b", t.border)}>
+        <div className={cn("px-6 pt-6 pb-5 shrink-0 border-b", themeStyle.border)}>
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-2">
                 <div
                   className={cn(
                     "w-6 h-6 rounded-full flex items-center justify-center shrink-0",
-                    t.chip,
+                    themeStyle.chip,
                   )}
                 >
                   <BookOpen className="w-3.5 h-3.5" />
@@ -562,21 +580,21 @@ function EntryDrawer({
                 <span
                   className={cn(
                     "text-[11px] font-bold uppercase tracking-wider",
-                    t.text,
+                    themeStyle.text,
                   )}
                 >
-                  {entry.class?.name ?? "Diary"}
+            {entry.class?.name ?? t("parentPages", "diaryPageTitle", drawerLang)}
                 </span>
               </div>
-              <h2 className={cn("text-2xl font-bold leading-tight", t.text)}>{entry.title}</h2>
-              <p className={cn("text-sm mt-1.5 opacity-70", t.text)}>
+              <h2 className={cn("text-2xl font-bold leading-tight", themeStyle.text)}>{entry.title}</h2>
+              <p className={cn("text-sm mt-1.5 opacity-70", themeStyle.text)}>
                 {new Date(entry.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
                 {entry.teacher ? ` · ${entry.teacher.name}` : ""}
               </p>
             </div>
             <button
               onClick={onClose}
-              className={cn("p-2 rounded-xl shrink-0 transition-colors hover:bg-black/5", t.text)}
+              className={cn("p-2 rounded-xl shrink-0 transition-colors hover:bg-black/5", themeStyle.text)}
             >
               <X className="w-5 h-5" />
             </button>
@@ -588,27 +606,27 @@ function EntryDrawer({
             <div
               className={cn(
                 "text-base leading-relaxed [&_ul]:pl-5 [&_ol]:pl-5 [&_img]:max-w-full [&_img]:rounded-lg [&_p]:mb-2",
-                t.text,
+                themeStyle.text,
               )}
               dangerouslySetInnerHTML={{ __html: entry.content }}
             />
 
-            <div className={cn("mt-7 pt-5 border-t", t.border)}>
-              <h3 className={cn("text-sm font-bold mb-3", t.text)}>
+            <div className={cn("mt-7 pt-5 border-t", themeStyle.border)}>
+              <h3 className={cn("text-sm font-bold mb-3", themeStyle.text)}>
                 Responses ({entry.comments?.length ?? 0})
               </h3>
               {(!entry.comments || entry.comments.length === 0) ? (
-                <p className={cn("text-sm text-center py-7 rounded-xl bg-black/5 opacity-60", t.text)}>
-                  No responses yet
+                <p className={cn("text-sm text-center py-7 rounded-xl bg-black/5 opacity-60", themeStyle.text)}>
+                  {t("parentPages", "noResponsesYet", drawerLang)}
                 </p>
               ) : (
                 <div className="space-y-2.5">
                   {entry.comments.map((c: DiaryComment) => (
                     <div key={c.id} className="rounded-xl p-3.5 bg-black/5">
-                      <p className={cn("text-xs font-medium mb-0.5 opacity-70", t.text)}>
+                      <p className={cn("text-xs font-medium mb-0.5 opacity-70", themeStyle.text)}>
                         {c.parentName ?? "Parent"}
                       </p>
-                      <p className={cn("text-sm", t.text)}>{c.content}</p>
+                      <p className={cn("text-sm", themeStyle.text)}>{c.content}</p>
                     </div>
                   ))}
                 </div>
@@ -617,18 +635,18 @@ function EntryDrawer({
           </div>
         </div>
 
-        <div className={cn("shrink-0 p-4 border-t", t.border)}>
+        <div className={cn("shrink-0 p-4 border-t", themeStyle.border)}>
           {canReply ? (
             <div className="flex gap-2.5">
               <input
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
-                placeholder="Write a response..."
+                placeholder={t("parentPages", "writeResponse", drawerLang)}
                 className={cn(
                   "flex-1 px-4 py-2.5 rounded-xl text-sm focus:outline-none bg-white/60 border placeholder:opacity-60",
-                  t.border, t.text,
+                  themeStyle.border, themeStyle.text,
                 )}
-                style={{ fontFamily: `${t.font}, ${t.mlFont}` }}
+style={{ fontFamily: `${themeStyle.font}, ${themeStyle.mlFont}` }}
               />
               <button
                 onClick={onSend}
@@ -639,7 +657,7 @@ function EntryDrawer({
               </button>
             </div>
           ) : (
-            <p className={cn("text-sm text-center py-1 opacity-70", t.text)}>Select a student to respond</p>
+            <p className={cn("text-sm text-center py-1 opacity-70", themeStyle.text)}>{t("parentPages", "selectStudentRespond", drawerLang)}</p>
           )}
         </div>
       </motion.div>

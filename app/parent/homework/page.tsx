@@ -12,6 +12,8 @@ import {
 } from "@/lib/homework-api";
 import { getStudent, type StudentRecord } from "@/lib/students-api";
 import { useAuthStore } from "@/store/auth";
+import { useLanguageStore } from "@/store/language";
+import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
@@ -37,24 +39,24 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const STATUS_CONFIG: Record<
   HomeworkStatus,
-  { label: string; color: string; dot: string; icon: React.ElementType; bg: string }
+  { labelKey: string; color: string; dot: string; icon: React.ElementType; bg: string }
 > = {
   NOT_SUBMITTED: {
-    label: "Pending",
+    labelKey: "pendingLabel",
     color: "bg-red-50 text-red-700 border-red-200 ring-red-400/20",
     dot: "bg-red-500",
     bg: "bg-red-500",
     icon: AlertCircle,
   },
   SUBMITTED: {
-    label: "Submitted",
+    labelKey: "submittedLabel",
     color: "bg-amber-50 text-amber-700 border-amber-200 ring-amber-400/20",
     dot: "bg-amber-500",
     bg: "bg-amber-500",
     icon: Clock,
   },
   CHECKED: {
-    label: "Checked",
+    labelKey: "checkedLabel",
     color: "bg-emerald-50 text-emerald-700 border-emerald-200 ring-emerald-400/20",
     dot: "bg-emerald-500",
     bg: "bg-emerald-500",
@@ -63,17 +65,18 @@ const STATUS_CONFIG: Record<
 };
 
 function daysLeftText(dueDate: string): {
-  text: string;
+  textKey: string;
+  days: number;
   urgent: boolean;
   overdue: boolean;
 } {
   const due = new Date(dueDate);
   const diff = due.getTime() - Date.now();
-  if (diff < 0) return { text: "Overdue", urgent: false, overdue: true };
+  if (diff < 0) return { textKey: "overdueText", days: 0, urgent: false, overdue: true };
   const days = Math.ceil(diff / 86400_000);
-  if (days === 0) return { text: "Due today", urgent: true, overdue: false };
-  if (days === 1) return { text: "1 day left", urgent: true, overdue: false };
-  return { text: `${days} days left`, urgent: false, overdue: false };
+  if (days === 0) return { textKey: "dueToday", days: 0, urgent: true, overdue: false };
+  if (days === 1) return { textKey: "dayLeft", days: 1, urgent: true, overdue: false };
+  return { textKey: "daysLeft", days, urgent: false, overdue: false };
 }
 
 function formatDate(dateStr: string) {
@@ -100,6 +103,7 @@ interface ChildData {
 
 export default function ParentHomeworkPage() {
   const { user, accessToken, activeStudentId } = useAuthStore();
+  const { lang } = useLanguageStore();
   const cid = user?.clientId ?? "";
   const token = accessToken ?? "";
   const ids = user?.accessibleStudentIds ?? [];
@@ -192,7 +196,7 @@ export default function ParentHomeworkPage() {
   return (
     <DashboardLayout>
       <PageHeader
-        title="Homework"
+        title={t("parentPages", "homeworkPageTitle", lang)}
         icon={BookOpen}
         back
         backHref="/parent"
@@ -234,8 +238,8 @@ export default function ParentHomeworkPage() {
       ) : !effectiveId ? (
         <div className="text-center py-24 text-gray-400">
           <User className="w-14 h-14 mx-auto mb-4 text-gray-200" />
-          <p className="font-semibold text-lg">No children linked</p>
-          <p className="text-sm text-gray-400 mt-1">Add a child to track homework</p>
+          <p className="font-semibold text-lg">{t("parentPages", "noChildrenLinked", lang)}</p>
+          <p className="text-sm text-gray-400 mt-1">{t("parentPages", "addChildTrack", lang)}</p>
         </div>
       ) : (
         <>
@@ -269,7 +273,7 @@ export default function ParentHomeworkPage() {
                   </div>
                   <p className="text-sm text-red-700 font-medium">
                     <span className="font-bold text-lg">{pendingCount}</span>{" "}
-                    pending homework{pendingCount !== 1 ? "s" : ""} to submit
+                    {t("parentPages", "pendingHomeworks", lang)}
                   </p>
                 </div>
               )}
@@ -316,7 +320,7 @@ export default function ParentHomeworkPage() {
                           {count}
                         </p>
                         <p className="text-sm font-medium text-gray-500">
-                          {cfg.label}
+                          {t("parentPages", cfg.labelKey as any, lang)}
                         </p>
                       </button>
                     );
@@ -340,12 +344,12 @@ export default function ParentHomeworkPage() {
                           : "text-gray-500 hover:text-gray-700",
                       )}
                     >
-                      {f === "all" ? "All" : STATUS_CONFIG[f].label}
+                      {f === "all" ? t("parentPages", "allFilterTab", lang) : t("parentPages", STATUS_CONFIG[f].labelKey as any, lang)}
                     </button>
                   ))}
                 </div>
                 <p className="text-sm text-gray-400 hidden sm:block">
-                  {filtered.length} assignment{filtered.length !== 1 ? "s" : ""}
+                  {filtered.length} {t("parentPages", "homeworkAssignments", lang)}
                 </p>
               </div>
 
@@ -355,19 +359,19 @@ export default function ParentHomeworkPage() {
                   <thead>
                     <tr className="border-b border-gray-100 bg-gray-50/80">
                       <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Assignment
+                        {t("parentPages", "assignmentCol", lang)}
                       </th>
                       <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Due Date
+                        {t("parentPages", "dueDateCol", lang)}
                       </th>
                       <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Status
+                        {t("parentPages", "statusCol", lang)}
                       </th>
                       <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Teacher Note
+                        {t("parentPages", "teacherNoteCol", lang)}
                       </th>
                       <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Action
+                        {t("parentPages", "actionCol", lang)}
                       </th>
                     </tr>
                   </thead>
@@ -379,11 +383,11 @@ export default function ParentHomeworkPage() {
                           className="text-center py-20 text-gray-400"
                         >
                           <BookOpen className="w-12 h-12 mx-auto mb-3 text-gray-200" />
-                          <p className="font-semibold">No homework found</p>
+                          <p className="font-semibold">{t("parentPages", "noHomeworkFound", lang)}</p>
                           <p className="text-sm text-gray-400 mt-1">
                             {filter !== "all"
-                              ? `No ${STATUS_CONFIG[filter as HomeworkStatus]?.label.toLowerCase() ?? ""} assignments`
-                              : "No assignments yet"}
+                              ? `${t("parentPages", "noHomeworkCategory", lang)}`
+                              : t("parentPages", "noHomeworkFound", lang)}
                           </p>
                         </td>
                       </tr>
@@ -441,7 +445,7 @@ export default function ParentHomeworkPage() {
                                             : "bg-gray-100 text-gray-500",
                                       )}
                                     >
-                                      {due.text}
+                                      {due.textKey === "daysLeft" ? `${due.days} ${t("parentPages", "daysLeft", lang)}` : t("parentPages", due.textKey as any, lang)}
                                     </span>
                                   )}
                                 </div>
@@ -455,7 +459,7 @@ export default function ParentHomeworkPage() {
                                 )}
                               >
                                 <Icon className="w-3.5 h-3.5" />
-                                {cfg.label}
+                                {t("parentPages", cfg.labelKey as any, lang)}
                               </span>
                             </td>
                             <td className="px-6 py-5 max-w-[220px]">
@@ -477,7 +481,7 @@ export default function ParentHomeworkPage() {
                                   className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition-all active:scale-95 shadow-sm"
                                 >
                                   <Send className="w-3.5 h-3.5" />
-                                  Submit
+                                  {t("parentPages", "submitBtn", lang)}
                                 </button>
                               ) : (
                                 <button
@@ -487,7 +491,7 @@ export default function ParentHomeworkPage() {
                                   }}
                                   className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-400 hover:text-gray-700 transition-colors"
                                 >
-                                  View
+                                  {t("parentPages", "viewBtn", lang)}
                                   <ChevronRight className="w-4 h-4" />
                                 </button>
                               )}
@@ -505,7 +509,7 @@ export default function ParentHomeworkPage() {
                 {filtered.length === 0 ? (
                   <div className="text-center py-20 text-gray-400">
                     <BookOpen className="w-14 h-14 mx-auto mb-3 text-gray-200" />
-                    <p className="font-semibold">No homework in this category</p>
+                    <p className="font-semibold">{t("parentPages", "noHomeworkCategory", lang)}</p>
                   </div>
                 ) : (
                   <AnimatePresence mode="popLayout">
@@ -550,7 +554,7 @@ export default function ParentHomeworkPage() {
                                 )}
                               >
                                 <Icon className="w-3 h-3" />
-                                {cfg.label}
+                                {t("parentPages", cfg.labelKey as any, lang)}
                               </span>
                             </div>
 
@@ -587,7 +591,7 @@ export default function ParentHomeworkPage() {
                                         : "bg-gray-100 text-gray-500",
                                   )}
                                 >
-                                  {due.text}
+                                  {due.textKey === "daysLeft" ? `${due.days} ${t("parentPages", "daysLeft", lang)}` : t("parentPages", due.textKey as any, lang)}
                                 </span>
                               )}
                             </div>
@@ -723,8 +727,7 @@ export default function ParentHomeworkPage() {
                       return <Icon className="w-3 h-3" />;
                     })()}
                     {
-                      STATUS_CONFIG[confirmSubmitHw.submission.status]
-                        .label
+                      t("parentPages", STATUS_CONFIG[confirmSubmitHw.submission.status].labelKey as any, lang)
                     }
                   </span>
                 </div>
@@ -805,7 +808,7 @@ export default function ParentHomeworkPage() {
                   const Icon = STATUS_CONFIG[selectedHw.submission.status].icon;
                   return <Icon className="w-3.5 h-3.5" />;
                 })()}
-                {STATUS_CONFIG[selectedHw.submission.status].label}
+                {t("parentPages", STATUS_CONFIG[selectedHw.submission.status].labelKey as any, lang)}
               </span>
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <Calendar className="w-4 h-4" />

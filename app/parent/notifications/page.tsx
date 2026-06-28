@@ -8,6 +8,8 @@ import {
   type NotificationRecord,
 } from "@/lib/notifications-api";
 import { useAuthStore } from "@/store/auth";
+import { useLanguageStore } from "@/store/language";
+import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
@@ -27,6 +29,7 @@ const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: 
 
 export default function ParentNotificationsPage() {
   const { user, accessToken } = useAuthStore();
+  const { lang } = useLanguageStore();
   const cid   = user?.clientId ?? "";
   const token = accessToken ?? "";
   const navigate = useNavigate();
@@ -74,13 +77,13 @@ export default function ParentNotificationsPage() {
   return (
     <DashboardLayout>
       <PageHeader
-        title="Notifications"
-        subtitle={unread > 0 ? `${unread} unread` : "All caught up"}
+        title={t("parentPages", "notifPageTitle", lang)}
+        subtitle={unread > 0 ? `${unread} ${t("parentPages", "unreadLabel", lang).toLowerCase()}` : t("parentPages", "allCaughtUpMsg", lang)}
         icon={Bell}
         action={
           <div className="flex gap-2">
             {unread > 0 && (
-              <button onClick={markAllRead} className="p-2 rounded-xl bg-gray-100 text-gray-600" title="Mark all read">
+              <button onClick={markAllRead} className="p-2 rounded-xl bg-gray-100 text-gray-600" title={t("parentPages", "markAllReadBtn", lang)}>
                 <CheckCheck className="w-4 h-4" />
               </button>
             )}
@@ -102,7 +105,7 @@ export default function ParentNotificationsPage() {
       ) : notifs.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm">
           <Bell className="w-10 h-10 mx-auto mb-3 text-gray-200" />
-          No notifications yet
+          {t("parentPages", "noNotificationsYet", lang)}
         </div>
       ) : (
         <div className="space-y-2 pb-20">
@@ -138,7 +141,7 @@ export default function ParentNotificationsPage() {
                     </div>
                     <p className="text-xs text-gray-500 mt-1">{n.body}</p>
                     {n.creator && (
-                      <p className="text-[10px] text-gray-400 mt-1">From: {n.creator.name}</p>
+                      <p className="text-[10px] text-gray-400 mt-1">{t("parentPages", "notifFromMsg", lang)} {n.creator.name}</p>
                     )}
                   </div>
                 </div>

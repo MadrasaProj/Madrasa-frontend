@@ -6,6 +6,8 @@ import { useStudent, useStudentPhoto } from "@/lib/hooks/useStudentPhoto";
 import { useStudentFullDataFromParent } from "@/lib/hooks/useStudentFullDataFromParent";
 import { useRefreshParentStudents } from "@/lib/hooks/useRefreshParentStudents";
 import { useAuthStore } from "@/store/auth";
+import { useLanguageStore } from "@/store/language";
+import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { downloadAsJPG, downloadAsPDF, shareAsJPG, downloadAsPNG, shareAsPNG } from "@/lib/poster-utils";
@@ -432,6 +434,7 @@ function ParentRankCard({
 // ── Main Page Component ───────────────────────────────────────────────────────
 
 export default function ParentResultsPage() {
+  const { lang } = useLanguageStore();
   const { user, accessToken, activeStudentId } = useAuthStore();
   useRefreshParentStudents();
   const cid   = user?.clientId ?? "";
@@ -550,9 +553,9 @@ export default function ParentResultsPage() {
             <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-gray-400 font-bold uppercase tracking-wider">
               <span className="truncate">Exams</span>
               <span>/</span>
-              <span className="truncate">{activeExam?.name ?? "Details"}</span>
+              <span className="truncate">{activeExam?.name ?? t("common", "details", lang)}</span>
             </div>
-            <h1 className="text-lg sm:text-xl font-extrabold text-gray-900 tracking-tight mt-0.5">Exam Results</h1>
+            <h1 className="text-lg sm:text-xl font-extrabold text-gray-900 tracking-tight mt-0.5">{t("parentPages", "resultsPageTitle", lang)}</h1>
           </div>
         </div>
 

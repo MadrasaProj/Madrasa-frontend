@@ -9,6 +9,8 @@ import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth";
 import { AlertCircle, CalendarDays, CheckCircle2, XCircle, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+
+const DAY_HEADER_KEYS = ["daySun", "dayMon", "dayTue", "dayWed", "dayThu", "dayFri", "daySat"];
 import {
   getStudentAttendance,
   type StudentAttendanceResponse,
@@ -49,7 +51,7 @@ function getCalendarDays(year: number, month: number) {
   return days;
 }
 
-const DAY_HEADERS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAY_HEADERS = DAY_HEADER_KEYS;
 
 export default function ParentAttendancePage() {
   const { lang } = useLanguageStore();
@@ -264,7 +266,7 @@ export default function ParentAttendancePage() {
               <div className="grid grid-cols-7 mb-2">
                 {DAY_HEADERS.map((d) => (
                   <div key={d} className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide py-1">
-                    {d}
+                    {t("parentPages", d as any, lang)}
                   </div>
                 ))}
               </div>

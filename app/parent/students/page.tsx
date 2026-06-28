@@ -12,6 +12,8 @@ import {
   type StudentAttendanceResponse,
 } from "@/lib/attendance-api";
 import { useAuthStore } from "@/store/auth";
+import { useLanguageStore } from "@/store/language";
+import { t } from "@/lib/i18n";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   User,
@@ -49,6 +51,7 @@ const V2_BASE = `${API_ORIGIN}/api/v2`;
 
 export default function ParentStudentProfile() {
   const navigate = useNavigate();
+  const { lang } = useLanguageStore();
   const {
     user,
     accessToken,
@@ -164,7 +167,7 @@ export default function ParentStudentProfile() {
       );
       setStudent(updated);
       setShowEdit(false);
-      setSuccess("Profile updated successfully");
+      setSuccess(t("parentPages", "profileUpdated", lang));
       setTimeout(() => setSuccess(""), 3000);
     } catch (e: any) {
       setEditError(e?.message ?? "Failed to update");
@@ -203,7 +206,7 @@ export default function ParentStudentProfile() {
   if (loading) {
     return (
       <DashboardLayout>
-        <PageHeader title="Student Profile" back />
+        <PageHeader title={t("parentPages", "studentProfileTitle", lang)} back />
         <PageSkeleton />
       </DashboardLayout>
     );
@@ -212,15 +215,15 @@ export default function ParentStudentProfile() {
   if (!student) {
     return (
       <DashboardLayout>
-        <PageHeader title="Student Profile" back />
+        <PageHeader title={t("parentPages", "studentProfileTitle", lang)} back />
         <div className="text-center py-20 text-gray-400">
           <User className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p className="font-semibold text-lg">No student selected</p>
+          <p className="font-semibold text-lg">{t("parentPages", "noStudentSelected", lang)}</p>
           <button
             onClick={() => navigate(-1)}
             className="mt-4 text-emerald-600 font-semibold text-sm underline"
           >
-            Go back
+            {t("parentPages", "goBack", lang)}
           </button>
         </div>
       </DashboardLayout>
@@ -307,7 +310,7 @@ export default function ParentStudentProfile() {
                 onClick={openEdit}
                 className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-semibold transition-colors"
               >
-                <Pencil className="w-3.5 h-3.5" /> Edit
+                <Pencil className="w-3.5 h-3.5" /> {t("parentPages", "editStudentBtn", lang)}
               </button>
             </div>
             <p className="text-sm text-gray-500">{student.adno}</p>
@@ -325,7 +328,7 @@ export default function ParentStudentProfile() {
                     : "bg-blue-100 text-blue-700",
                 )}
               >
-                {student.gender === "FEMALE" ? "Girl" : "Boy"}
+                {student.gender === "FEMALE" ? t("parentPages", "girlLabel", lang) : t("parentPages", "boyLabel", lang)}
               </span>
               <span
                 className={cn(
@@ -341,18 +344,18 @@ export default function ParentStudentProfile() {
 
         <div className="grid grid-cols-2 gap-3">
           {[
-            { icon: Hash, label: "Admission No", value: student.adno },
-            { icon: Hash, label: "Student UID", value: student.uid ?? "—" },
+            { icon: Hash, label: t("parentPages", "admissionNoLabel", lang), value: student.adno },
+            { icon: Hash, label: t("parentPages", "studentUidLabel", lang), value: student.uid ?? "—" },
             {
               icon: GraduationCap,
-              label: "Class",
+              label: t("parentPages", "classInfoLabel", lang),
               value: student.class?.name ?? "—",
             },
             ...(student.dateOfBirth
               ? [
                   {
                     icon: Calendar,
-                    label: "Date of Birth",
+                    label: t("parentPages", "dateOfBirthLabel", lang),
                     value: new Date(student.dateOfBirth).toLocaleDateString(
                       "en-GB",
                     ),
@@ -363,7 +366,7 @@ export default function ParentStudentProfile() {
               ? [
                   {
                     icon: User,
-                    label: "Guardian",
+                    label: t("parentPages", "guardianLabel", lang),
                     value: `${student.guardianName} (${student.relationToStudent ?? "guardian"})`,
                   },
                 ]
@@ -372,7 +375,7 @@ export default function ParentStudentProfile() {
               ? [
                   {
                     icon: Phone,
-                    label: "Parent Phone",
+                    label: t("parentPages", "parentPhoneLabel", lang),
                     value: student.parentPhone,
                   },
                 ]
@@ -381,7 +384,7 @@ export default function ParentStudentProfile() {
               ? [
                   {
                     icon: Heart,
-                    label: "Blood Group",
+                    label: t("parentPages", "bloodGroupLabel", lang),
                     value: student.bloodGroup,
                   },
                 ]
@@ -390,7 +393,7 @@ export default function ParentStudentProfile() {
               ? [
                   {
                     icon: MapPin,
-                    label: "Address",
+                    label: t("parentPages", "addressLabel", lang),
                     value: [student.address, student.city, student.state]
                       .filter(Boolean)
                       .join(", "),
@@ -401,7 +404,7 @@ export default function ParentStudentProfile() {
               ? [
                   {
                     icon: AlertCircle,
-                    label: "Emergency Contact",
+                    label: t("parentPages", "emergencyContactLabel", lang),
                     value: `${student.emergencyContactName}${student.emergencyContactPhone ? ` (${student.emergencyContactPhone})` : ""}`,
                   },
                 ]
@@ -410,7 +413,7 @@ export default function ParentStudentProfile() {
               ? [
                   {
                     icon: Calendar,
-                    label: "Academic Year",
+                    label: t("parentPages", "academicYearLabel", lang),
                     value: student.accademicYear.name,
                   },
                 ]
@@ -439,13 +442,13 @@ export default function ParentStudentProfile() {
         transition={{ delay: 0.08 }}
         className="bg-white rounded-2xl p-4 border border-gray-100 mb-4"
       >
-        <p className="text-sm font-bold text-gray-700 mb-3">Attendance</p>
+        <p className="text-sm font-bold text-gray-700 mb-3">{t("parentPages", "attendanceSection", lang)}</p>
         <div className="grid grid-cols-4 gap-2 mb-3">
           {[
-            { label: "Present", val: attPresent, color: "text-emerald-700" },
-            { label: "Absent", val: attAbsent, color: "text-red-600" },
-            { label: "Late", val: attLate, color: "text-amber-700" },
-            { label: "Total", val: attTotal, color: "text-gray-800" },
+            { label: t("parentPages", "presentStat", lang), val: attPresent, color: "text-emerald-700" },
+            { label: t("parentPages", "absentStat", lang), val: attAbsent, color: "text-red-600" },
+            { label: t("parentPages", "lateStat", lang), val: attLate, color: "text-amber-700" },
+            { label: t("parentPages", "totalStat", lang), val: attTotal, color: "text-gray-800" },
           ].map(({ label, val, color }) => (
             <div
               key={label}
@@ -477,18 +480,18 @@ export default function ParentStudentProfile() {
         </div>
         {attPct < 75 && (
           <p className="text-xs text-red-500 mt-2">
-            Below 75% attendance threshold
+            {t("parentPages", "belowThreshold", lang)}
           </p>
         )}
       </motion.div>
 
       {/* Edit note */}
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700 mb-4">
-        To update guardian name, phone, email, or address, go to{" "}
+        {t("parentPages", "editNoteMsg", lang)}{" "}
         <a href="/parent/profile" className="font-semibold underline">
-          Parent Profile
+          {t("parentPages", "studentProfileTitle", lang)}
         </a>
-        . These details are shared across all your children.
+        .
       </div>
 
       {/* ── Edit Drawer ── */}
@@ -518,7 +521,7 @@ export default function ParentStudentProfile() {
                 <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
                   <div>
                     <h2 className="font-bold text-gray-900 text-lg">
-                      Edit Student
+                      {t("parentPages", "editStudent", lang)}
                     </h2>
                     <p className="text-xs text-gray-400 mt-0.5">
                       {student.name}
@@ -542,7 +545,7 @@ export default function ParentStudentProfile() {
                   {/* Photo Upload */}
                   <section>
                     <p className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3">
-                      Photo
+                      {t("parentPages", "photoSection", lang)}
                     </p>
                     <div className="flex items-center gap-4">
                       {avatarPreview ? (
@@ -571,7 +574,7 @@ export default function ParentStudentProfile() {
                           ) : (
                             <Upload className="w-4 h-4" />
                           )}
-                          {uploadingPhoto ? "Uploading..." : "Choose Photo"}
+                          {uploadingPhoto ? t("parentPages", "uploadingLabel", lang) : t("parentPages", "choosePhoto", lang)}
                           <input
                             type="file"
                             accept="image/*"
@@ -607,7 +610,7 @@ export default function ParentStudentProfile() {
                                       }
                                     : prev,
                                 );
-                                setSuccess("Photo updated successfully");
+                                setSuccess(t("parentPages", "photoUpdated", lang));
                                 setTimeout(() => setSuccess(""), 3000);
                               } catch (err) {
                                 setEditError(
@@ -632,11 +635,11 @@ export default function ParentStudentProfile() {
                   {/* Health & Emergency */}
                   <section>
                     <p className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-3">
-                      Health & Emergency
+                      {t("parentPages", "healthEmergency", lang)}
                     </p>
                     <div className="space-y-3">
                       <div>
-                        <label className={labelCls}>Blood Group</label>
+                        <label className={labelCls}>{t("parentPages", "bloodGroupLabel", lang)}</label>
                         <select
                           value={editForm.bloodGroup}
                           onChange={(e) =>
@@ -666,7 +669,7 @@ export default function ParentStudentProfile() {
                       </div>
                       <div>
                         <label className={labelCls}>
-                          Emergency Contact Name
+                          {t("parentPages", "emergencyContactLabel", lang)}
                         </label>
                         <input
                           value={editForm.emergencyContactName}
@@ -682,7 +685,7 @@ export default function ParentStudentProfile() {
                       </div>
                       <div>
                         <label className={labelCls}>
-                          Emergency Contact Phone
+                          {t("parentPages", "parentPhoneLabel", lang)}
                         </label>
                         <input
                           value={editForm.emergencyContactPhone}
@@ -698,7 +701,7 @@ export default function ParentStudentProfile() {
                         />
                       </div>
                       <div>
-                        <label className={labelCls}>Medical Notes</label>
+                        <label className={labelCls}>{t("parentPages", "medicalNotes", lang)}</label>
                         <textarea
                           value={editForm.medicalNotes}
                           onChange={(e) =>
@@ -721,7 +724,7 @@ export default function ParentStudentProfile() {
                     onClick={() => setShowEdit(false)}
                     className="flex-1 py-3.5 text-sm font-semibold text-gray-500 bg-gray-100 rounded-2xl hover:bg-gray-200 transition-all"
                   >
-                    Cancel
+                    {t("parentPages", "cancelLabel", lang)}
                   </button>
                   <button
                     onClick={handleSave}
@@ -730,10 +733,10 @@ export default function ParentStudentProfile() {
                   >
                     {saving ? (
                       <span className="flex items-center justify-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin" /> Saving…
+                        <Loader2 className="w-4 h-4 animate-spin" /> {t("parentPages", "savingLabel", lang)}
                       </span>
                     ) : (
-                      "Save Changes"
+                      t("parentPages", "saveChanges", lang)
                     )}
                   </button>
                 </div>
