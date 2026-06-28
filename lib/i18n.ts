@@ -179,7 +179,8 @@ const translations = {
     logs:    { en: "Activity Logs", ml: "ആക്ടിവിറ്റി ലോഗ്" },
     seats: { en: "Seats", ml: "സീറ്റ് പ്ലാൻ" },
     sksbv: { en: "SKSBV", ml: "SKSBV" },
-    posters: { en: "Posters", ml: "പോസ്‌റ്ററുകൾ" },
+    socialFrames: { en: "Social Frames", ml: "സോഷ്യൽ ഫ്രെയിമുകൾ" },
+    posters: { en: "Posters", ml: "പോസ്റ്ററുകൾ" },
     globalClassSubjects: { en: "Accademic systems", ml: "അക്കാദമിക്സ് സിസ്റ്റങ്ങൾ" },
     config: { en: "Config", ml: "ക്രമീകരണം" },
     attendance: { en: "Attendance", ml: "ഹാജർ" },
@@ -638,15 +639,15 @@ const translations = {
       ml: "പരിപാടി അനുസരിച്ച് ബജറ്റ്",
     },
 
-    // Posters (body)
-    postersTitle: { en: "Posters", ml: "പോസ്‌റ്ററുകൾ" },
-    postersSubtitle: {
-      en: "Manage madrasa posters",
-      ml: "മദ്‌റസ പോസ്‌റ്ററുകൾ നിയന്ത്രിക്കുക",
+    // Social Frames (body)
+    socialFramesTitle: { en: "Social Frames", ml: "സോഷ്യൽ ഫ്രെയിമുകൾ" },
+    socialFramesSubtitle: {
+      en: "Manage madrasa social frames",
+      ml: "മദ്‌റസ സോഷ്യൽ ഫ്രെയിമുകൾ നിയന്ത്രിക്കുക",
     },
-    createPoster: { en: "Create Poster", ml: "പോസ്‌റ്റർ സൃഷ്ടിക്കുക" },
+    createSocialFrame: { en: "Create Social Frame", ml: "സോഷ്യൽ ഫ്രെയിം സൃഷ്ടിക്കുക" },
     preview: { en: "Preview", ml: "പ്രിവ്യൂ" },
-    savedPosters: { en: "Saved Posters", ml: "സേവ് ചെയ്ത പോസ്‌റ്ററുകൾ" },
+    savedSocialFrames: { en: "Saved Social Frames", ml: "സേവ് ചെയ്ത സോഷ്യൽ ഫ്രെയിമുകൾ" },
     event: { en: "Event", ml: "ഇവന്റ്" },
     template: { en: "Template", ml: "ടെംപ്ലേറ്റ്" },
     titleField: { en: "Title", ml: "ശീർഷകം" },
@@ -661,18 +662,18 @@ const translations = {
     centeredText: { en: "Centered Text", ml: "നടുവിൽ ടെക്‌സ്റ്റ്" },
     minimal: { en: "Minimal", ml: "മിനിമൽ" },
     imageSelected: { en: "Image selected", ml: "ചിത്രം തിരഞ്ഞെടുത്തു" },
-    savePoster: { en: "Save Poster", ml: "പോസ്‌റ്റർ സേവ്" },
-    updatePoster: { en: "Update", ml: "അപ്‌ഡേറ്റ്" },
-    clearPoster: { en: "Clear", ml: "ക്ലിയർ" },
+    saveSocialFrame: { en: "Save Social Frame", ml: "സോഷ്യൽ ഫ്രെയിം സേവ്" },
+    updateSocialFrame: { en: "Update", ml: "അപ്‌ഡേറ്റ്" },
+    clearSocialFrame: { en: "Clear", ml: "ക്ലിയർ" },
     saved: { en: "Saved", ml: "സേവ് ചെയ്‌തു" },
     exportPNG: { en: "Export PNG", ml: "PNG എക്‌സ്‌പോർട്ട്" },
     exportLatest: { en: "Export Latest", ml: "ഏറ്റവും പുതിയത് എക്‌സ്‌പോർട്ട്" },
-    editPoster: { en: "Edit", ml: "എഡിറ്റ്" },
+    editSocialFrame: { en: "Edit", ml: "എഡിറ്റ്" },
     exportBtn: { en: "Export", ml: "എക്‌സ്‌പോർട്ട്" },
-    deletePoster: { en: "Delete", ml: "ഡിലീറ്റ്" },
-    noPosters: {
-      en: "No posters saved yet.",
-      ml: "ഇതുവരെ പോസ്‌റ്ററുകൾ സേവ് ചെയ്തിട്ടില്ല.",
+    deleteSocialFrame: { en: "Delete", ml: "ഡിലീറ്റ്" },
+    noSocialFrames: {
+      en: "No social frames saved yet.",
+      ml: "ഇതുവരെ സോഷ്യൽ ഫ്രെയിമുകൾ സേവ് ചെയ്തിട്ടില്ല.",
     },
 
     // Config (body)

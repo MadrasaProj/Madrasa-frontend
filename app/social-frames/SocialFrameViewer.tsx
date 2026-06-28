@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Leafer, Frame } from "leafer-ui";
-import { getPoster, type PosterRecord } from "@/lib/posters-api";
+import { getSocialFrame, type SocialFrameRecord } from "@/lib/social-frames-api";
 import { useAuthStore } from "@/store/auth";
-import { Download, Type, ImageIcon, Upload, X } from "lucide-react";
+import { Download, Upload, X } from "lucide-react";
 import CropperModal from "./CropperModal";
 import { Skeleton } from "@/components/ui/Skeleton";
 
@@ -96,12 +96,12 @@ interface CropperState {
   layer: LayerItem;
 }
 
-interface PosterViewerProps {
-  posterId: string;
+interface SocialFrameViewerProps {
+  frameId: string;
   fullScreen?: boolean;
 }
 
-export default function PosterViewer({ posterId, fullScreen }: PosterViewerProps) {
+export default function SocialFrameViewer({ frameId, fullScreen }: SocialFrameViewerProps) {
   const { user } = useAuthStore();
   const clientId = user?.clientId ?? "";
   const navigate = useNavigate();
@@ -111,7 +111,7 @@ export default function PosterViewer({ posterId, fullScreen }: PosterViewerProps
   const fullScreenRef = useRef(fullScreen);
   fullScreenRef.current = fullScreen;
 
-  const [poster, setPoster] = useState<PosterRecord | null>(null);
+  const [frame, setFrame] = useState<SocialFrameRecord | null>(null);
   const [sceneData, setSceneData] = useState<Record<string, unknown> | null>(null);
   const [layers, setLayers] = useState<LayerItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -125,11 +125,11 @@ export default function PosterViewer({ posterId, fullScreen }: PosterViewerProps
     setLoading(true);
     setFontsReady(false);
 
-    getPoster(clientId, posterId)
-      .then(async (p) => {
+    getSocialFrame(clientId, frameId)
+      .then(async (f) => {
         if (cancelled) return;
-        const data = p.sceneData as Record<string, unknown>;
-        setPoster(p);
+        const data = f.sceneData as Record<string, unknown>;
+        setFrame(f);
         setSceneData(data);
         setLayers(extractActiveLayers((data?.children as unknown[]) ?? []));
         setFrameSize({ w: (data.width as number) ?? 800, h: (data.height as number) ?? 600 });
@@ -143,11 +143,11 @@ export default function PosterViewer({ posterId, fullScreen }: PosterViewerProps
         }
       })
       .catch(() => {
-        if (!cancelled) { setPoster(null); setLoading(false); }
+        if (!cancelled) { setFrame(null); setLoading(false); }
       });
 
     return () => { cancelled = true; };
-  }, [clientId, posterId]);
+  }, [clientId, frameId]);
 
   useEffect(() => {
     if (!fontsReady || !canvasRef.current || !sceneData || !frameSize) return;
@@ -238,7 +238,7 @@ export default function PosterViewer({ posterId, fullScreen }: PosterViewerProps
          
       const a = document.createElement("a");
       a.href = result.data;
-      a.download = `${poster?.title ?? "poster"}.png`;
+      a.download = `${frame?.title ?? "social-frame"}.png`;
       a.click();
      } catch {
       alert("Failed to export image");
@@ -253,8 +253,8 @@ export default function PosterViewer({ posterId, fullScreen }: PosterViewerProps
     );
   }
 
-  if (!poster) {
-    return <div className={`text-center ${fullScreen ? "h-screen bg-black flex items-center justify-center" : "py-20"} text-gray-400`}>Poster not found.</div>;
+  if (!frame) {
+    return <div className={`text-center ${fullScreen ? "h-screen bg-black flex items-center justify-center" : "py-20"} text-gray-400`}>Social frame not found.</div>;
   }
 
   if (fullScreen) {
@@ -277,7 +277,7 @@ export default function PosterViewer({ posterId, fullScreen }: PosterViewerProps
         </button>
 
         <div className="absolute top-4 right-4 z-20 flex items-center gap-3">
-          <h1 className="text-gray-600 text-lg font-semibold drop-shadow-md">{poster.title}</h1>
+          <h1 className="text-gray-600 text-lg font-semibold drop-shadow-md">{frame.title}</h1>
           <button
             onClick={handleDownload}
             className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium"
@@ -342,7 +342,7 @@ export default function PosterViewer({ posterId, fullScreen }: PosterViewerProps
       )}
 
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">{poster.title}</h1>
+        <h1 className="text-lg font-semibold">{frame.title}</h1>
         <button
           onClick={handleDownload}
           className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium"
@@ -363,9 +363,6 @@ export default function PosterViewer({ posterId, fullScreen }: PosterViewerProps
             }}
           />
         </div>
-
-
-
 
  {layers.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-20 p-3">

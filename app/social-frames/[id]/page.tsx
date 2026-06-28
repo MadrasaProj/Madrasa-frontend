@@ -1,13 +1,13 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import PosterViewer from "../PosterViewer";
+import SocialFrameViewer from "../SocialFrameViewer";
 import { ArrowLeft } from "lucide-react";
 
-interface PosterViewPageProps {
+interface SocialFrameViewPageProps {
   basePath: string;
 }
 
-export default function PosterViewPage({ basePath }: PosterViewPageProps) {
+export default function SocialFrameViewPage({ basePath }: SocialFrameViewPageProps) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
@@ -17,13 +17,13 @@ export default function PosterViewPage({ basePath }: PosterViewPageProps) {
     <DashboardLayout>
       <div className="space-y-4">
         <button
-          onClick={() => navigate(`${basePath}/posters`)}
+          onClick={() => navigate(`${basePath}/social-frames`)}
           className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Posters
+          Back to Social Frames
         </button>
-        <PosterViewer posterId={id} />
+        <SocialFrameViewer frameId={id} />
       </div>
     </DashboardLayout>
   );

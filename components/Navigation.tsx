@@ -78,6 +78,7 @@ type NavKey =
   | "platformReports"
   | "profile"
   | "teacherCheckin"
+  | "socialFrames"
   | "posters"
   | "artsfest"
   | "academics"
@@ -113,7 +114,8 @@ const adminLinks = [
   { href: "/admin/fees", icon: CreditCard, key: "fees" as NavKey, exact: true },
   { href: "/admin/fees/types", icon: CreditCard, key: "feeTypes" as NavKey },
   { href: "/admin/id-cards", icon: BadgeCheck, key: "idCards" as NavKey },
-  { href: "/admin/posters", icon: Image, key: "posters" as NavKey },
+  { href: "/admin/social-frames", icon: Image, key: "socialFrames" as NavKey },
+  { href: "/admin/posters", icon: FileText, key: "posters" as NavKey },
   {
     href: "/admin/exams",
     icon: GraduationCap,
@@ -197,7 +199,7 @@ const parentLinks = [
   { href: "/parent/ibadah", icon: Moon, key: "ibadah" as NavKey },
   { href: "/parent/fees", icon: CreditCard, key: "fees" as NavKey },
   { href: "/parent/id-cards", icon: BadgeCheck, key: "idCards" as NavKey },
-  { href: "/parent/posters", icon: Image, key: "posters" as NavKey },
+  { href: "/parent/social-frames", icon: Image, key: "socialFrames" as NavKey },
   { href: "/parent/results", icon: GraduationCap, key: "results" as NavKey },
   {
     href: "/parent/best-performance",
@@ -245,7 +247,8 @@ const superAdminLinks = [
     key: "superUsers" as NavKey,
   },
   { href: "/admin/ibadah-config", icon: Moon, key: "ibadah" as NavKey },
-  { href: "/admin/posters", icon: Image, key: "posters" as NavKey },
+  { href: "/admin/social-frames", icon: Image, key: "socialFrames" as NavKey },
+  { href: "/admin/posters", icon: FileText, key: "posters" as NavKey },
   {
     href: "/admin/global-class-subjects",
     icon: BookOpen,
@@ -352,7 +355,7 @@ const getAdminCategories = (role: string, actorType?: string) => {
       titleKey: "financeExtras" as NavKey,
       icon: CreditCard,
       links: links.filter((l) =>
-        ["fees", "feeTypes", "idCards", "posters", "artsfest"].includes(l.key),
+        ["fees", "feeTypes", "idCards", "socialFrames", "posters", "artsfest"].includes(l.key),
       ),
     },
     {

@@ -147,7 +147,7 @@ export default function AdminConfigPage() {
     { key: "diary", label: "Diary", desc: "Let parents view daily diary entries" },
     { key: "ibadah", label: "Ibadah", desc: "Let parents view ibadah tracking" },
     { key: "fees", label: "Fees", desc: "Let parents view and pay fees" },
-    { key: "posters", label: "Posters", desc: "Let parents view posters" },
+    { key: "socialFrames", label: "Social Frames", desc: "Let parents view social frames" },
     { key: "results", label: "Results", desc: "Let parents view exam results" },
     { key: "notifications", label: "Notifications", desc: "Let parents receive and view notifications" },
   ];

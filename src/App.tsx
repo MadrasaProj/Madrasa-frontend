@@ -26,6 +26,7 @@ import AdminOtherPaymentsPage from "../app/admin/other-payments/page";
 import AdminDashboard from "../app/admin/page";
 import AdminPlatformReportsPage from "../app/admin/platform-reports/page";
 import AdminGlobalClassSubjectsPage from "../app/admin/global-class-subjects/page";
+import AdminSocialFramesPage from "../app/admin/social-frames/page";
 import AdminPostersPage from "../app/admin/posters/page";
 import AdminPresentPage from "../app/admin/present/page";
 import AdminProfilePage from "../app/admin/profile/page";
@@ -60,8 +61,8 @@ import TeacherFeesPage from "../app/teacher/fees/page";
 import TeacherPerformancePage from "../app/teacher/performance/page";
 import TeacherBestPerformancePage from "../app/teacher/best-performance/page";
 import TeacherPresentPage from "../app/teacher/present/page";
-import TeacherPostersPage from "../app/teacher/posters/page";
-import TeacherPosterViewPage from "../app/teacher/posters/[id]/page";
+import TeacherSocialFramesPage from "../app/teacher/social-frames/page";
+import TeacherSocialFrameViewPage from "../app/teacher/social-frames/[id]/page";
 
 // ── Parent ────────────────────────────────────────────────────────────────────
 import ParentAttendancePage from "../app/parent/attendance/page";
@@ -75,8 +76,8 @@ import ParentDashboard from "../app/parent/page";
 import ParentIdCardsPage from "../app/parent/id-cards/page";
 import ParentResultsPage from "../app/parent/results/page";
 import ParentBestPerformancePage from "../app/parent/best-performance/page";
-import ParentPostersPage from "../app/parent/posters/page";
-import ParentPosterViewPage from "../app/parent/posters/[id]/page";
+import ParentSocialFramesPage from "../app/parent/social-frames/page";
+import ParentSocialFrameViewPage from "../app/parent/social-frames/[id]/page";
 
 // ── Committee ─────────────────────────────────────────────────────────────────
 import IDCardsPage from "../app/admin/id-cards/IdCard";
@@ -126,6 +127,7 @@ export default function App() {
         <Route path="/admin/ibadah" element={<AdminIbadahPage />} />
         <Route path="/admin/ibadah-config" element={<AdminIbadahConfigPage />} />
         <Route path="/admin/id-cards" element={<IDCardsPage />} />
+        <Route path="/admin/social-frames" element={<AdminSocialFramesPage />} />
         <Route path="/admin/posters" element={<AdminPostersPage />} />
         <Route path="/admin/logs" element={<AdminLogsPage />} />
         <Route path="/admin/best-performance" element={<AdminBestPerformancePage />} />
@@ -196,8 +198,8 @@ export default function App() {
         <Route path="/teacher/notifications" element={<TeacherNotificationsPage />} />
         <Route path="/teacher/performance" element={<TeacherPerformancePage />} />
         <Route path="/teacher/best-performance" element={<TeacherBestPerformancePage />} />
-        <Route path="/teacher/posters" element={<TeacherPostersPage />} />
-        <Route path="/teacher/posters/:id" element={<TeacherPosterViewPage />} />
+        <Route path="/teacher/social-frames" element={<TeacherSocialFramesPage />} />
+        <Route path="/teacher/social-frames/:id" element={<TeacherSocialFrameViewPage />} />
 
         {/* Teacher — slug-prefixed */}
         <Route path="/m/:slug/teacher" element={<TeacherDashboard />} />
@@ -217,8 +219,8 @@ export default function App() {
         <Route path="/m/:slug/teacher/notifications" element={<TeacherNotificationsPage />} />
         <Route path="/m/:slug/teacher/performance" element={<TeacherPerformancePage />} />
         <Route path="/m/:slug/teacher/best-performance" element={<TeacherBestPerformancePage />} />
-        <Route path="/m/:slug/teacher/posters" element={<TeacherPostersPage />} />
-        <Route path="/m/:slug/teacher/posters/:id" element={<TeacherPosterViewPage />} />
+        <Route path="/m/:slug/teacher/social-frames" element={<TeacherSocialFramesPage />} />
+        <Route path="/m/:slug/teacher/social-frames/:id" element={<TeacherSocialFrameViewPage />} />
 
         {/* Parent */}
         <Route path="/parent" element={<ParentDashboard />} />
@@ -232,8 +234,8 @@ export default function App() {
         <Route path="/parent/notifications" element={<ParentNotificationsPage />} />
         <Route path="/parent/best-performance" element={<ParentBestPerformancePage />} />
         <Route path="/parent/diary" element={<ParentDiaryPage />} />
-        <Route path="/parent/posters" element={<ParentPostersPage />} />
-        <Route path="/parent/posters/:id" element={<ParentPosterViewPage />} />
+        <Route path="/parent/social-frames" element={<ParentSocialFramesPage />} />
+        <Route path="/parent/social-frames/:id" element={<ParentSocialFrameViewPage />} />
         <Route path="/parent/best-performance" element={<ParentBestPerformancePage />} />
 
         {/* Parent — slug-prefixed */}
@@ -249,8 +251,8 @@ export default function App() {
         <Route path="/m/:slug/parent/notifications" element={<ParentNotificationsPage />} />
         <Route path="/m/:slug/parent/best-performance" element={<ParentBestPerformancePage />} />
         <Route path="/m/:slug/parent/diary" element={<ParentDiaryPage />} />
-        <Route path="/m/:slug/parent/posters" element={<ParentPostersPage />} />
-        <Route path="/m/:slug/parent/posters/:id" element={<ParentPosterViewPage />} />
+        <Route path="/m/:slug/parent/social-frames" element={<ParentSocialFramesPage />} />
+        <Route path="/m/:slug/parent/social-frames/:id" element={<ParentSocialFrameViewPage />} />
 
         {/* Committee */}
         <Route path="/committee" element={<CommitteeDashboard />} />

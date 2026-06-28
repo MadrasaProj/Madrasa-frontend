@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Drawer } from "@/components/ui/Drawer";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import {
   listHomework, createHomework, deleteHomework, updateHomework,
@@ -12,17 +13,15 @@ import { getSubjects, type SubjectRecord } from "@/lib/subjects-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
-  BookOpen, Plus, Trash2, CheckCircle2, Clock,
-  Loader2, ChevronDown, ChevronUp, AlertTriangle,
+  BookOpen, Plus, Trash2,
+  Loader2, ChevronRight, AlertTriangle,
   Calendar, Users, Check, X, Pencil,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { motion, AnimatePresence } from "framer-motion";
 
-type Tab = "assign" | "check" | "pending";
-
 const STATUS_CONFIG = {
-  NOT_SUBMITTED: { label: "Not Submitted", color: "bg-red-100 text-red-700"     },
+  NOT_SUBMITTED: { label: "Not Submitted", color: "bg-red-100 text-red-700" },
   SUBMITTED:     { label: "Submitted",     color: "bg-amber-100 text-amber-700" },
   CHECKED:       { label: "Checked",       color: "bg-emerald-100 text-emerald-700" },
 };
@@ -36,11 +35,9 @@ export default function TeacherHomeworkPage() {
   const teacherId    = user?.id ?? "";
   const isPeriodBased = user?.attendanceMode === "PERIOD_BASED";
 
-  const [activeTab, setActiveTab] = useState<Tab>("check");
-  const [classes, setClasses]     = useState<ClassRecord[]>([]);
-  const [homework, setHomework]   = useState<HomeworkAssignment[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [expandedHw, setExpandedHw] = useState<string | null>(null);
+  const [classes, setClasses]         = useState<ClassRecord[]>([]);
+  const [homework, setHomework]       = useState<HomeworkAssignment[]>([]);
+  const [loading, setLoading]         = useState(true);
   const [submissions, setSubmissions] = useState<Record<string, SubmissionsResponse>>({});
   const [loadingSubs, setLoadingSubs] = useState<string | null>(null);
   const [savingSubs, setSavingSubs]   = useState(false);
@@ -48,7 +45,7 @@ export default function TeacherHomeworkPage() {
   const [deletingId, setDeletingId]   = useState<string | null>(null);
   const [error, setError]             = useState<string | null>(null);
 
-  // New homework form
+  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
   const [classId, setClassId]         = useState("");
   const [title, setTitle]             = useState("");
   const [desc, setDesc]               = useState("");
@@ -57,7 +54,6 @@ export default function TeacherHomeworkPage() {
   const [classSubjects, setClassSubjects] = useState<SubjectRecord[]>([]);
   const [creating, setCreating]       = useState(false);
 
-  // Edit homework form
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const [editTarget, setEditTarget]         = useState<HomeworkAssignment | null>(null);
   const [editTitle, setEditTitle]           = useState("");
@@ -66,6 +62,9 @@ export default function TeacherHomeworkPage() {
   const [editSubjectId, setEditSubjectId]   = useState("");
   const [updating, setUpdating]             = useState(false);
 
+  const [showAssessDrawer, setShowAssessDrawer] = useState(false);
+  const [assessHw, setAssessHw]                 = useState<HomeworkAssignment | null>(null);
+
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" ? window.innerWidth < 768 : true);
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -73,7 +72,6 @@ export default function TeacherHomeworkPage() {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Load classes + homework
   useEffect(() => {
     if (!cid || !token) return;
     const ac = new AbortController();
@@ -82,11 +80,8 @@ export default function TeacherHomeworkPage() {
       getMyClasses(cid, token, ac.signal),
       listHomework(cid, token),
     ]).then(([cls, hw]) => {
-      // Filter to accessible classes:
-      // CLASS_BASED: only classes where teacher is classTeacher
-      // PERIOD_BASED: classes where teacher has subjects (loaded later per class)
       const accessible = isPeriodBased
-        ? cls  // show all; subject filter handles access
+        ? cls
         : cls.filter((c) => c.classTeacherId === teacherId);
       setClasses(accessible);
       setHomework(hw);
@@ -95,14 +90,13 @@ export default function TeacherHomeworkPage() {
     return () => ac.abort();
   }, [cid, token]); // eslint-disable-line
 
-  // Load subjects when classId changes
   useEffect(() => {
     if (!cid || !token || !classId) return;
     setSubjectId("");
     setClassSubjects([]);
     const params = isPeriodBased
-      ? { classId, teacherId }   // only teacher's subjects
-      : { classId };             // all subjects of teacher's class
+      ? { classId, teacherId }
+      : { classId };
     getSubjects(cid, token, params)
       .then((r) => {
         setClassSubjects(r.data);
@@ -117,7 +111,6 @@ export default function TeacherHomeworkPage() {
   }, [cid, token]);
 
   const loadSubmissions = async (hwId: string) => {
-    if (submissions[hwId]) { setExpandedHw(expandedHw === hwId ? null : hwId); return; }
     setLoadingSubs(hwId);
     try {
       const data = await getSubmissions(cid, token, hwId);
@@ -126,7 +119,6 @@ export default function TeacherHomeworkPage() {
         ...prev,
         [hwId]: Object.fromEntries(data.submissions.map((s) => [s.student!.id, s.status])),
       }));
-      setExpandedHw(hwId);
     } catch (e) { setError((e as Error).message); }
     finally { setLoadingSubs(null); }
   };
@@ -139,11 +131,16 @@ export default function TeacherHomeworkPage() {
       await bulkUpdateSubmissions(cid, token, hwId,
         Object.entries(statuses).map(([studentId, status]) => ({ studentId, status })),
       );
-      // Refresh submissions
       const data = await getSubmissions(cid, token, hwId);
       setSubmissions((prev) => ({ ...prev, [hwId]: data }));
     } catch (e) { setError((e as Error).message); }
     finally { setSavingSubs(false); }
+  };
+
+  const openAssess = async (hw: HomeworkAssignment) => {
+    setAssessHw(hw);
+    setShowAssessDrawer(true);
+    if (!submissions[hw.id]) await loadSubmissions(hw.id);
   };
 
   const handleCreate = async () => {
@@ -158,9 +155,9 @@ export default function TeacherHomeworkPage() {
         dueDate,
         academicYearId: user?.defaultAcademicYearId ?? undefined,
       });
-      setTitle(""); setDesc("");
+      setTitle(""); setDesc(""); setClassId(classes[0]?.id ?? "");
+      setShowCreateDrawer(false);
       await reload();
-      setActiveTab("check");
     } catch (e) { setError((e as Error).message); }
     finally { setCreating(false); }
   };
@@ -176,9 +173,7 @@ export default function TeacherHomeworkPage() {
         ? { classId: hw.classId, teacherId }
         : { classId: hw.classId };
       getSubjects(cid, token, params)
-        .then((r) => {
-          setClassSubjects(r.data);
-        })
+        .then((r) => { setClassSubjects(r.data); })
         .catch(() => {});
     }
     setShowEditDrawer(true);
@@ -212,10 +207,16 @@ export default function TeacherHomeworkPage() {
   };
 
   const today = fmt(new Date());
-  const pending = homework.filter((hw) => {
+
+  const isOverdue = (hw: HomeworkAssignment) => {
     const due = hw.dueDate.split("T")[0];
-    return due <= today;
-  });
+    return due < today;
+  };
+
+  const formatDate = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  };
 
   return (
     <DashboardLayout>
@@ -223,24 +224,24 @@ export default function TeacherHomeworkPage() {
 
       {error && <ApiErrorBanner message={error} onRetry={() => { setError(null); }} />}
 
-      {/* Tabs */}
-      <div className="flex gap-1.5 mb-5 bg-gray-100 p-1 rounded-xl">
-        {([
-          { key: "check",   label: "Assignments",  icon: BookOpen    },
-          { key: "assign",  label: "New",          icon: Plus        },
-          { key: "pending", label: "Overdue",      icon: AlertTriangle },
-        ] as const).map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            onClick={() => setActiveTab(key)}
-            className={cn(
-              "flex-1 py-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
-              activeTab === key ? "bg-white shadow-sm text-emerald-700" : "text-gray-500",
-            )}
-          >
-            <Icon className="w-3.5 h-3.5" /> {label}
-          </button>
-        ))}
+      <div className="flex items-center justify-between mb-6">
+        <p className="text-sm text-gray-500">
+          {homework.length} {homework.length === 1 ? "assignment" : "assignments"}
+        </p>
+        <button
+          onClick={() => {
+            setTitle(""); setDesc("");
+            setDueDate(fmt(new Date(Date.now() + 86400_000)));
+            if (classes.length > 0) setClassId(classes[0].id);
+            setSubjectId(classSubjects[0]?.id ?? "");
+            setShowCreateDrawer(true);
+          }}
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold text-sm hover:bg-emerald-700 active:scale-[0.97] transition-all shadow-sm"
+        >
+          <Plus className="w-4 h-4" />
+          <span className="hidden sm:inline">New Homework</span>
+          <span className="sm:hidden">New</span>
+        </button>
       </div>
 
       {loading ? (
@@ -261,244 +262,356 @@ export default function TeacherHomeworkPage() {
             </div>
           ))}
         </div>
+      ) : homework.length === 0 ? (
+        <div className="text-center py-20 text-gray-400">
+          <BookOpen className="w-12 h-12 mx-auto mb-4 text-gray-200" />
+          <p className="text-sm font-medium">No assignments yet</p>
+          <p className="text-xs mt-1">Create your first homework assignment</p>
+          <button
+            onClick={() => setShowCreateDrawer(true)}
+            className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold text-sm hover:bg-emerald-700 transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            New Homework
+          </button>
+        </div>
       ) : (
         <>
-          {/* ── NEW ASSIGNMENT ── */}
-          {activeTab === "assign" && (
-            <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
-              <p className="font-bold text-gray-800">New Homework Assignment</p>
+          {/* Desktop Table */}
+          <div className="hidden md:block bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  <th className="text-left px-4 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-widest w-8"></th>
+                  <th className="text-left px-4 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Title</th>
+                  <th className="text-left px-4 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Class</th>
+                  <th className="text-left px-4 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Subject</th>
+                  <th className="text-left px-4 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Due Date</th>
+                  <th className="text-left px-4 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Submissions</th>
+                  <th className="text-right px-4 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-widest w-28">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {homework.map((hw) => {
+                  const isOver = isOverdue(hw);
+                  const subResp = submissions[hw.id];
+                  const total = subResp?.submissions.length ?? hw._count?.submissions ?? 0;
+                  const checked = subResp?.submissions.filter((s) => s.status === "CHECKED").length ?? 0;
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Class *</label>
-                <select value={classId} onChange={(e) => setClassId(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
-                  {classes.length === 0
-                    ? <option value="">No accessible classes</option>
-                    : classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)
-                  }
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                  Subject *
-                  {isPeriodBased && <span className="text-gray-400 font-normal ml-1">(your subjects)</span>}
-                </label>
-                <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
-                  {classSubjects.length === 0
-                    ? <option value="">
-                        {classId
-                          ? isPeriodBased ? "No subjects assigned to you in this class" : "No subjects in this class"
-                          : "Select a class first"
-                        }
-                      </option>
-                    : classSubjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)
-                  }
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Title *</label>
-                <input value={title} onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Surah Al-Baqarah verses 1-5"
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Description (optional)</label>
-                <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={2}
-                  placeholder="Details, instructions..."
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none" />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Due Date *</label>
-                <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
-                  min={today}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-              </div>
-
-              <button
-                onClick={handleCreate}
-                disabled={!classId || !subjectId || !title || !dueDate || creating}
-                className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold text-sm disabled:opacity-60 flex items-center justify-center gap-2"
-              >
-                {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                Create Assignment
-              </button>
-            </div>
-          )}
-
-          {/* ── ASSIGNMENTS LIST (check submissions) ── */}
-          {activeTab === "check" && (
-            <div className="space-y-3 pb-20">
-              {homework.length === 0 ? (
-                <div className="text-center py-16 text-gray-400 text-sm">
-                  <BookOpen className="w-10 h-10 mx-auto mb-3 text-gray-200" />
-                  No assignments yet
-                </div>
-              ) : homework.map((hw) => {
-                const due     = new Date(hw.dueDate);
-                const isOver  = due < new Date();
-                const subResp = submissions[hw.id];
-                const total   = subResp?.submissions.length ?? hw._count?.submissions ?? 0;
-                const checked = subResp?.submissions.filter((s) => s.status === "CHECKED").length ?? 0;
-
-                return (
-                  <div key={hw.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                    <div
-                      className="flex items-start gap-3 p-4 cursor-pointer"
-                      onClick={() => loadSubmissions(hw.id)}
+                  return (
+                    <tr
+                      key={hw.id}
+                      onClick={() => openAssess(hw)}
+                      className="border-b border-gray-50 cursor-pointer transition-colors hover:bg-gray-50/60"
                     >
+                      <td className="px-4 py-4">
+                        <div className={cn(
+                          "w-2.5 h-2.5 rounded-full",
+                          isOver ? "bg-red-500" : "bg-emerald-500",
+                        )} />
+                      </td>
+                      <td className="px-4 py-4">
+                        <p className="font-semibold text-gray-900 text-sm">{hw.title}</p>
+                        {hw.description && (
+                          <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{hw.description}</p>
+                        )}
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className="text-sm text-gray-600">{hw.class?.name ?? "—"}</span>
+                      </td>
+                      <td className="px-4 py-4">
+                        {hw.subject ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700">
+                            {hw.subject.name}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-gray-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className={cn(
+                          "text-sm inline-flex items-center gap-1.5",
+                          isOver ? "text-red-600 font-semibold" : "text-gray-600",
+                        )}>
+                          <Calendar className="w-3.5 h-3.5 shrink-0" />
+                          {formatDate(hw.dueDate)}
+                          {isOver && (
+                            <span className="text-[10px] font-bold bg-red-100 text-red-700 px-1.5 py-0.5 rounded-md leading-none">OVERDUE</span>
+                          )}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4">
+                        {total > 0 ? (
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                              <Users className="w-3.5 h-3.5 text-gray-400" />
+                              <span className="tabular-nums">{checked}/{total}</span>
+                            </div>
+                            <div className="flex-1 max-w-[80px] h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-emerald-500 rounded-full transition-all"
+                                style={{ width: `${Math.round((checked / total) * 100)}%` }}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-gray-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 text-right">
+                        <div className="flex items-center justify-end gap-0.5">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); openEdit(hw); }}
+                            className="p-1.5 rounded-lg text-gray-300 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDelete(hw.id); }}
+                            disabled={deletingId === hw.id}
+                            className="p-1.5 rounded-lg text-gray-300 hover:text-red-600 hover:bg-red-50 transition-colors"
+                          >
+                            {deletingId === hw.id
+                              ? <Loader2 className="w-4 h-4 animate-spin" />
+                              : <Trash2 className="w-4 h-4" />}
+                          </button>
+                          <div className="w-px h-5 bg-gray-100 mx-1" />
+                          <ChevronRight className="w-4 h-4 text-gray-300" />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Cards */}
+          <div className="md:hidden space-y-4 pb-24">
+            {homework.map((hw) => {
+              const isOver = isOverdue(hw);
+              const subResp = submissions[hw.id];
+              const total = subResp?.submissions.length ?? hw._count?.submissions ?? 0;
+              const checked = subResp?.submissions.filter((s) => s.status === "CHECKED").length ?? 0;
+
+              return (
+                <div
+                  key={hw.id}
+                  onClick={() => openAssess(hw)}
+                  className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm active:bg-gray-50 transition-colors cursor-pointer"
+                >
+                  <div className="p-5">
+                    <div className="flex items-start gap-3.5">
                       <div className={cn(
-                        "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                        "w-11 h-11 rounded-xl flex items-center justify-center shrink-0",
                         isOver ? "bg-red-50" : "bg-emerald-50",
                       )}>
-                        <BookOpen className={cn("w-5 h-5", isOver ? "text-red-500" : "text-emerald-600")} />
+                        <BookOpen className={cn("w-5.5 h-5.5", isOver ? "text-red-500" : "text-emerald-600")} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-900 text-sm">{hw.title}</p>
-                        <p className="text-xs text-gray-400">
+                        <p className="font-bold text-gray-900 text-[15px] leading-snug">{hw.title}</p>
+                        <p className="text-sm text-gray-500 mt-1">
                           {hw.class?.name}
-                          {hw.subject ? ` · ${hw.subject.name}` : ""}
-                        </p>
-                        <div className="flex items-center gap-3 mt-1">
-                          <span className={cn("text-xs flex items-center gap-1", isOver ? "text-red-500" : "text-gray-400")}>
-                            <Calendar className="w-3 h-3" />
-                            {due.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                            {isOver ? " (overdue)" : ""}
-                          </span>
-                          {total > 0 && (
-                            <span className="text-xs text-gray-400 flex items-center gap-1">
-                              <Users className="w-3 h-3" /> {checked}/{total} checked
+                          {hw.subject ? (
+                            <span className="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700">
+                              {hw.subject.name}
                             </span>
-                          )}
-                        </div>
+                          ) : ""}
+                        </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <button
                           onClick={(e) => { e.stopPropagation(); openEdit(hw); }}
-                          className="p-1.5 rounded-lg text-gray-300 hover:text-emerald-500 hover:bg-emerald-50 transition-colors"
+                          className="p-2 rounded-xl text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
                         >
-                          <Pencil className="w-4 h-4" />
+                          <Pencil className="w-4.5 h-4.5" />
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleDelete(hw.id); }}
                           disabled={deletingId === hw.id}
-                          className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                          className="p-2 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                         >
                           {deletingId === hw.id
-                            ? <Loader2 className="w-4 h-4 animate-spin" />
-                            : <Trash2 className="w-4 h-4" />}
+                            ? <Loader2 className="w-4.5 h-4.5 animate-spin" />
+                            : <Trash2 className="w-4.5 h-4.5" />}
                         </button>
-                        {loadingSubs === hw.id
-                          ? <Loader2 className="w-4 h-4 animate-spin text-gray-300" />
-                          : expandedHw === hw.id
-                            ? <ChevronUp className="w-4 h-4 text-gray-400" />
-                            : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                        <ChevronRight className="w-5 h-5 text-gray-300" />
                       </div>
                     </div>
 
-                    {/* Submissions */}
-                    <AnimatePresence>
-                      {expandedHw === hw.id && subResp && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }} className="overflow-hidden"
-                        >
-                          <div className="border-t border-gray-50 bg-gray-50/60 px-4 py-3">
-                            <div className="flex items-center justify-between mb-3">
-                              <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                                Submissions ({subResp.submissions.length})
-                              </p>
-                              <button
-                                onClick={() => saveSubmissions(hw.id)}
-                                disabled={savingSubs}
-                                className="flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg"
-                              >
-                                {savingSubs ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
-                                Save
-                              </button>
-                            </div>
-                            <div className="space-y-2">
-                              {subResp.submissions.map((sub) => {
-                                const curStatus = localStatus[hw.id]?.[sub.student!.id] ?? sub.status;
-                                return (
-                                  <div key={sub.id} className="bg-white rounded-xl px-3 py-2 flex items-center gap-3">
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-semibold text-gray-900 truncate">{sub.student!.name}</p>
-                                      <p className="text-xs text-gray-400">{sub.student!.adno}</p>
-                                    </div>
-                                    <div className="flex gap-1 shrink-0">
-                                      {(["NOT_SUBMITTED", "SUBMITTED", "CHECKED"] as HomeworkStatus[]).map((s) => (
-                                        <button
-                                          key={s}
-                                          onClick={() => setLocalStatus((prev) => ({
-                                            ...prev,
-                                            [hw.id]: { ...(prev[hw.id] ?? {}), [sub.student!.id]: s },
-                                          }))}
-                                          className={cn(
-                                            "px-2 py-1 rounded-lg text-[10px] font-bold transition-all",
-                                            curStatus === s
-                                              ? STATUS_CONFIG[s].color
-                                              : "bg-gray-100 text-gray-400",
-                                          )}
-                                        >
-                                          {s === "NOT_SUBMITTED" ? "✗" : s === "SUBMITTED" ? "✓" : "✓✓"}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* ── PENDING / OVERDUE ── */}
-          {activeTab === "pending" && (
-            <div className="space-y-3 pb-20">
-              {pending.length === 0 ? (
-                <div className="text-center py-16 text-gray-400 text-sm">
-                  <CheckCircle2 className="w-10 h-10 mx-auto mb-3 text-emerald-200" />
-                  No overdue assignments
-                </div>
-              ) : pending.map((hw) => {
-                const due = new Date(hw.dueDate);
-                const daysAgo = Math.floor((Date.now() - due.getTime()) / 86400_000);
-                return (
-                  <div key={hw.id} className="bg-white rounded-2xl border border-red-100 p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center shrink-0">
-                        <AlertTriangle className="w-5 h-5 text-red-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-900 text-sm">{hw.title}</p>
-                        <p className="text-xs text-gray-400">{hw.class?.name}{hw.subject ? ` · ${hw.subject.name}` : ""}</p>
-                        <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          Due {due.toLocaleDateString("en-GB")} ({daysAgo === 0 ? "today" : `${daysAgo}d ago`})
-                        </p>
-                      </div>
-                      <span className="text-xs bg-red-100 text-red-700 font-bold px-2 py-1 rounded-lg shrink-0">
-                        {hw._count?.submissions ?? 0} students
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3.5">
+                      <span className={cn(
+                        "text-sm flex items-center gap-1.5",
+                        isOver ? "text-red-600 font-semibold" : "text-gray-500",
+                      )}>
+                        <Calendar className="w-4 h-4 shrink-0" />
+                        {formatDate(hw.dueDate)}
                       </span>
+                      {total > 0 && (
+                        <span className="text-sm text-gray-500 flex items-center gap-1.5">
+                          <Users className="w-4 h-4 shrink-0" />
+                          {checked}/{total} checked
+                        </span>
+                      )}
+                      {isOver && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-50 text-red-700 text-xs font-bold rounded-lg">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          Overdue
+                        </span>
+                      )}
                     </div>
+
+                    {total > 0 && (
+                      <div className="mt-3 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-emerald-500 rounded-full transition-all"
+                          style={{ width: `${Math.round((checked / total) * 100)}%` }}
+                        />
+                      </div>
+                    )}
                   </div>
-                );
-              })}
-            </div>
-          )}
+                </div>
+              );
+            })}
+          </div>
         </>
       )}
+
+      {/* Create Homework Drawer */}
+      <Drawer
+        open={showCreateDrawer}
+        onOpenChange={setShowCreateDrawer}
+        title="New Homework Assignment"
+        description="Fill in the details to create a new assignment"
+      >
+        <div className="space-y-4 p-5 pb-8">
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5">Class *</label>
+            <select value={classId} onChange={(e) => setClassId(e.target.value)}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
+              {classes.length === 0
+                ? <option value="">No accessible classes</option>
+                : classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)
+              }
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+              Subject *
+              {isPeriodBased && <span className="text-gray-400 font-normal ml-1">(your subjects)</span>}
+            </label>
+            <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
+              {classSubjects.length === 0
+                ? <option value="">
+                    {classId
+                      ? isPeriodBased ? "No subjects assigned to you in this class" : "No subjects in this class"
+                      : "Select a class first"
+                    }
+                  </option>
+                : classSubjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)
+              }
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5">Title *</label>
+            <input value={title} onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Surah Al-Baqarah verses 1-5"
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5">Description (optional)</label>
+            <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3}
+              placeholder="Details, instructions..."
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none" />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5">Due Date *</label>
+            <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
+              min={today}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          </div>
+
+          <button
+            onClick={handleCreate}
+            disabled={!classId || !subjectId || !title || !dueDate || creating}
+            className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold text-sm disabled:opacity-60 flex items-center justify-center gap-2 hover:bg-emerald-700 transition-colors active:scale-[0.98]"
+          >
+            {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            Create Assignment
+          </button>
+        </div>
+      </Drawer>
+
+      {/* Assess Homework Drawer */}
+      <Drawer
+        open={showAssessDrawer}
+        onOpenChange={(open) => { if (!open) { setShowAssessDrawer(false); setAssessHw(null); } }}
+        title={assessHw?.title ?? "Assess Homework"}
+        description={
+          assessHw
+            ? `${assessHw.class?.name ?? ""}${assessHw.subject ? ` · ${assessHw.subject.name}` : ""} — Due ${formatDate(assessHw.dueDate)}`
+            : ""
+        }
+      >
+        {assessHw && loadingSubs === assessHw.id && !submissions[assessHw.id] ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="w-6 h-6 animate-spin text-gray-300" />
+          </div>
+        ) : assessHw && submissions[assessHw.id] ? (
+          <div className="p-5 pb-8">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                Submissions ({submissions[assessHw.id].submissions.length})
+              </p>
+              <button
+                onClick={() => saveSubmissions(assessHw.id)}
+                disabled={savingSubs}
+                className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                {savingSubs ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                Save
+              </button>
+            </div>
+            <div className="space-y-2">
+              {submissions[assessHw.id].submissions.map((sub) => {
+                const curStatus = localStatus[assessHw.id]?.[sub.student!.id] ?? sub.status;
+                return (
+                  <div key={sub.id} className="bg-white rounded-xl px-4 py-3 flex items-center gap-3 border border-gray-100">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">{sub.student!.name}</p>
+                      <p className="text-xs text-gray-400">{sub.student!.adno}</p>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      {(["NOT_SUBMITTED", "SUBMITTED", "CHECKED"] as HomeworkStatus[]).map((s) => (
+                        <button
+                          key={s}
+                          onClick={() => setLocalStatus((prev) => ({
+                            ...prev,
+                            [assessHw.id]: { ...(prev[assessHw.id] ?? {}), [sub.student!.id]: s },
+                          }))}
+                          className={cn(
+                            "px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all",
+                            curStatus === s
+                              ? STATUS_CONFIG[s].color + " ring-1 ring-inset ring-current/20"
+                              : "bg-gray-50 text-gray-400 hover:bg-gray-100",
+                          )}
+                        >
+                          {s === "NOT_SUBMITTED" ? "Not Submitted" : s === "SUBMITTED" ? "Submitted" : "Checked"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+      </Drawer>
 
       {/* Edit Homework Drawer */}
       <AnimatePresence>
@@ -518,8 +631,8 @@ export default function TeacherHomeworkPage() {
                 transition={isMobile ? { type: "spring", damping: 30, stiffness: 300 } : { duration: 0.2 }}
                 className={cn(
                   "w-full bg-white flex flex-col pointer-events-auto shadow-2xl relative",
-                  isMobile 
-                    ? "rounded-t-3xl max-h-[92dvh]" 
+                  isMobile
+                    ? "rounded-t-3xl max-h-[92dvh]"
                     : "rounded-3xl max-w-xl max-h-[85dvh]"
                 )}
               >
@@ -529,59 +642,57 @@ export default function TeacherHomeworkPage() {
                 </div>
 
                 <div className="space-y-4 overflow-y-auto flex-1 px-5 py-4 pb-8">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Subject *</label>
-                  <select value={editSubjectId} onChange={(e) => setEditSubjectId(e.target.value)}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
-                    {classSubjects.length === 0
-                      ? <option value="">No subjects available</option>
-                      : classSubjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)
-                    }
-                  </select>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">Subject *</label>
+                    <select value={editSubjectId} onChange={(e) => setEditSubjectId(e.target.value)}
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
+                      {classSubjects.length === 0
+                        ? <option value="">No subjects available</option>
+                        : classSubjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)
+                      }
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">Title *</label>
+                    <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
+                      placeholder="e.g. Surah Al-Baqarah verses 1-5"
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">Description (optional)</label>
+                    <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} rows={3}
+                      placeholder="Details, instructions..."
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none" />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">Due Date *</label>
+                    <input type="date" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)}
+                      min={today}
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Title *</label>
-                  <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
-                    placeholder="e.g. Surah Al-Baqarah verses 1-5"
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                <div className="px-5 py-4 border-t border-gray-100 shrink-0 flex gap-3">
+                  <button
+                    onClick={() => setShowEditDrawer(false)}
+                    className="flex-1 py-3.5 text-sm font-semibold text-gray-500 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleUpdate}
+                    disabled={!editTitle || !editDueDate || !editSubjectId || updating}
+                    className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-semibold text-sm disabled:opacity-60 flex items-center justify-center gap-2"
+                  >
+                    {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    Save Changes
+                  </button>
                 </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Description (optional)</label>
-                  <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} rows={3}
-                    placeholder="Details, instructions..."
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none" />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Due Date *</label>
-                  <input type="date" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)}
-                    min={today}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                </div>
-
-              </div>
-
-              {/* Footer */}
-              <div className="px-5 py-4 border-t border-gray-100 shrink-0 flex gap-3">
-                <button
-                  onClick={() => setShowEditDrawer(false)}
-                  className="flex-1 py-3.5 text-sm font-semibold text-gray-500 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleUpdate}
-                  disabled={!editTitle || !editDueDate || !editSubjectId || updating}
-                  className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-semibold text-sm disabled:opacity-60 flex items-center justify-center gap-2"
-                >
-                  {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                  Save Changes
-                </button>
-              </div>
-            </motion.div>
-          </div>
+              </motion.div>
+            </div>
           </>
         )}
       </AnimatePresence>
