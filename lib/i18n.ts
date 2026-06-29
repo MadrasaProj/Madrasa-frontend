@@ -829,6 +829,8 @@ const translations = {
       en: "All madrasa teachers",
       ml: "എല്ലാ മദ്‌റസ അധ്യാപകരും",
     },
+    addTeacher: { en: "Add Teacher", ml: "അധ്യാപകനെ ചേർക്കുക" },
+    importTeachers: { en: "Import Teachers", ml: "അധ്യാപകരെ ഇറക്കുമതി ചെയ്യുക" },
     // Admin Notifications
     notifTitle: { en: "Notifications", ml: "അറിയിപ്പുകൾ" },
     notifSubtitle: {

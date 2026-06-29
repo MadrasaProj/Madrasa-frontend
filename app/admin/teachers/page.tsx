@@ -4,16 +4,28 @@ import { PageHeader, SectionHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { DataTable, type Column, type SortDir } from "@/components/ui/DataTable";
 import {
+ ImportModal,
+ type ImportConfig,
+} from "@/components/ui/ImportModal";
+import {
  getTeachers, createTeacher, updateTeacher, deleteTeacher,
+ bulkUpsertTeachers,
  type TeacherRecord, type UpdateTeacherPayload,
+ type BulkUpsertTeacherRow,
 } from "@/lib/teachers-api";
+import {
+ TEACHER_IMPORT_COLUMNS,
+ toBulkUpsertTeacherRow,
+} from "@/lib/teacher-import";
 import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
 import { getSubjects, type SubjectRecord } from "@/lib/subjects-api";
 import { useAuthStore } from "@/store/auth";
+import { useLanguageStore } from "@/store/language";
+import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
  Users, Plus, Search, Loader2, X, Eye, EyeOff, Pencil,
- GraduationCap, BookOpen, CheckCircle2, ChevronDown, Trash2,
+ GraduationCap, BookOpen, CheckCircle2, ChevronDown, Trash2, Upload,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -22,6 +34,7 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
 export default function AdminTeachersPage() {
  const { user, accessToken, activeClientId } = useAuthStore();
+ const { lang } = useLanguageStore();
  const cid = activeClientId ?? "";
  const token = accessToken ?? "";
  const isPeriodBased = user?.attendanceMode === "PERIOD_BASED";
@@ -34,21 +47,24 @@ export default function AdminTeachersPage() {
  }, []);
 
  // ── List state ─────────────────────────────────────────────────────────────
- const [teachers, setTeachers] = useState<TeacherRecord[]>([]);
- const [total, setTotal] = useState(0);
- const [page, setPage] = useState(1);
- const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
- const [search, setSearch] = useState("");
- const [sortBy, setSortBy] = useState<string | undefined>(undefined);
- const [sortDir, setSortDir] = useState<SortDir>("asc");
- const [loading, setLoading] = useState(true);
- const [error, setError] = useState<string | null>(null);
- const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [teachers, setTeachers] = useState<TeacherRecord[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<string | undefined>(undefined);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
- // ── Form state ─────────────────────────────────────────────────────────────
- const [showDrawer, setShowDrawer] = useState(false);
- const [editTarget, setEditTarget] = useState<TeacherRecord | null>(null);
- const [fName, setFName] = useState("");
+  // ── Import state ──────────────────────────────────────────────────────────
+  const [showImport, setShowImport] = useState(false);
+
+  // ── Form state ─────────────────────────────────────────────────────────────
+  const [showDrawer, setShowDrawer] = useState(false);
+  const [editTarget, setEditTarget] = useState<TeacherRecord | null>(null);
+  const [fName, setFName] = useState("");
  const [fUsername, setFUsername] = useState("");
  const [fPassword, setFPassword] = useState("");
  const [fNewPassword, setFNewPassword] = useState("");
@@ -202,14 +218,38 @@ export default function AdminTeachersPage() {
  };
 
  const toggleSubject = (id: string) => {
- setFSubjectIds((prev) => {
- const next = new Set(prev);
- next.has(id) ? next.delete(id) : next.add(id);
- return next;
- });
+  setFSubjectIds((prev) => {
+  const next = new Set(prev);
+  next.has(id) ? next.delete(id) : next.add(id);
+  return next;
+  });
  };
 
  const totalPages = Math.ceil(total / pageSize);
+
+ // ── Import config (single bulk POST, upsert by username) ──────────────────
+ const importConfig = useMemo<ImportConfig<BulkUpsertTeacherRow>>(
+  () => ({
+   entityName: "Teachers",
+   templateFilename: "teacher-import-template",
+   columns: TEACHER_IMPORT_COLUMNS,
+   createRow: (row) =>
+    createTeacher(cid, token, {
+     name: row.name,
+     username: row.username,
+     password: row.password ?? "pass1234",
+     status: row.status,
+    }),
+   createBulk: async (rows) => {
+    const res = await bulkUpsertTeachers(cid, token, rows);
+    return {
+     imported: res.results.map((r) => ({ rowIndex: r.rowIndex, action: r.action })),
+     failed: res.errors.map((e) => ({ rowIndex: e.rowIndex, message: e.message })),
+    };
+   },
+  }),
+  [cid, token],
+ ); // eslint-disable-line
 
  // ── Subjects grouped by class ───────────────────────────────────────────────
  const groupedSubjects = useMemo(() => {
@@ -348,19 +388,29 @@ export default function AdminTeachersPage() {
  }, [isPeriodBased]); // eslint-disable-line
 
  return (
- <DashboardLayout>
- <PageHeader
- title="Teachers"
- subtitle={`${total} total`}
- icon={Users}
- action={
- <button onClick={openAdd}
- className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-colors"
- >
- <Plus className="w-4 h-4" /> Add Teacher
- </button>
- }
- />
+  <DashboardLayout>
+  <PageHeader
+  title={t("adminPages", "teachersTitle", lang)}
+  subtitle={`${total} ${t("common", "total", lang).toLowerCase()}`}
+  icon={Users}
+  action={
+  <div className="flex items-center gap-2">
+  <button
+  onClick={() => setShowImport(true)}
+  className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 px-3 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
+  title={t("adminPages", "importTeachers", lang)}
+  >
+  <Upload className="w-4 h-4" />
+  <span className="hidden sm:inline">{t("adminPages", "importBtn", lang)}</span>
+  </button>
+  <button onClick={openAdd}
+  className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-colors"
+  >
+  <Plus className="w-4 h-4" /> {t("adminPages", "addTeacher", lang)}
+  </button>
+  </div>
+  }
+  />
 
  {error && <ApiErrorBanner message={error} onRetry={() => load(search, page, pageSize, sortBy, sortDir)} />}
 
@@ -834,10 +884,21 @@ export default function AdminTeachersPage() {
  ) : "Delete"}
  </button>
  </div>
- </motion.div>
- </>
- )}
- </AnimatePresence>
- </DashboardLayout>
- );
+  </motion.div>
+  </>
+  )}
+  </AnimatePresence>
+
+  {/* ── Import Modal (bulk upsert) ── */}
+  <ImportModal
+  show={showImport}
+  config={importConfig}
+  onComplete={() => {
+   setPage(1);
+   load(search, 1, pageSize, sortBy, sortDir);
+  }}
+  onClose={() => setShowImport(false)}
+  />
+  </DashboardLayout>
+  );
 }

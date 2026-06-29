@@ -37,8 +37,21 @@ export interface ImportConfig<TPayload = Record<string, unknown>> {
  entityName: string
  templateFilename: string
  columns: ImportColumnDef[]
- /** Called once per valid row. Must throw on failure. */
+ /**
+ * Called once per valid row. Must throw on failure.
+ * If `createBulk` is also provided, `createBulk` wins.
+ */
  createRow: (row: TPayload) => Promise<unknown>
+ /**
+ * Optional: send all valid rows in a single bulk call instead of looping
+ * `createRow`. The callback must throw on failure (throw a normal Error —
+ * the message will be shown to the user). Rows referenced in the error
+ * metadata are auto-marked failed; other rows are auto-marked imported.
+ */
+ createBulk?: (rows: TPayload[]) => Promise<{
+  imported?: Array<{ rowIndex: number; action?: "created" | "updated" }>
+  failed?: Array<{ rowIndex: number; message: string }>
+ }>
  /** Passed as second arg to every `parse` / `validate` callback. */
  context?: ImportContext
 }
@@ -69,7 +82,49 @@ async function downloadTemplate(columns: ImportColumnDef[], filename: string) {
  const headers = columns.map(c => c.header)
  const examples = columns.map(c => c.example ?? "")
  const ws = XLSX.utils.aoa_to_sheet([headers, examples])
+
+ // Style header row (bold + light fill) and example row (italic + grey)
+ const headerStyle = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "10B981" } } }
+ const exampleStyle = { font: { italic: true, color: { rgb: "6B7280" } } }
+ const range = XLSX.utils.decode_range(ws["!ref"] ?? "A1")
+ for (let c = range.s.c; c <= range.e.c; c++) {
+  const addr = XLSX.utils.encode_cell({ r: 0, c })
+  ws[addr] = ws[addr] ?? { t: "s", v: headers[c] }
+  ws[addr].s = headerStyle
+  const exAddr = XLSX.utils.encode_cell({ r: 1, c })
+  if (ws[exAddr]) ws[exAddr].s = exampleStyle
+ }
+ // Set reasonable column widths
+ ws["!cols"] = columns.map(c => ({ wch: Math.max(14, (c.header.length + 4)) }))
+
  XLSX.utils.book_append_sheet(wb, ws, "Data")
+
+ // Instructions sheet
+ const required = columns.filter(c => c.required).map(c => `• ${c.header} — required`)
+ const optional = columns.filter(c => !c.required).map(c => `• ${c.header}`)
+ const instructions = [
+  ["How to use this template"],
+  [],
+  ["1. Open the 'Data' sheet — that's where you fill in rows."],
+  ["2. The first row is the header. Don't rename or reorder columns."],
+  ["3. The second row is an example — replace it with your data."],
+  ["4. Save the file as .xlsx and upload it back."],
+  [],
+  ["Required columns:"],
+  ...required.map(line => [line]),
+  [],
+  ["Optional columns:"],
+  ...optional.map(line => [line]),
+  [],
+  ["Notes:"],
+  ["• Leaving an optional column blank is fine."],
+  ["• Status accepts ACTIVE or INACTIVE (defaults to ACTIVE)."],
+  ["• Existing usernames will be UPDATED, not duplicated."],
+ ]
+ const instrWs = XLSX.utils.aoa_to_sheet(instructions)
+ instrWs["!cols"] = [{ wch: 80 }]
+ XLSX.utils.book_append_sheet(wb, instrWs, "Instructions")
+
  XLSX.writeFile(wb, `${filename}.xlsx`)
 }
 
@@ -102,6 +157,19 @@ function resolveField(rawValue: string, col: ImportColumnDef, context: ImportCon
  return { value: result }
 }
 
+/** Thrown by `parseFile` when the uploaded file doesn't match the template. */
+export class ImportTemplateError extends Error {
+ missingHeaders: string[]
+ constructor(missingHeaders: string[]) {
+  super(
+   `Template mismatch — missing required column(s): ${missingHeaders.join(", ")}. ` +
+    `Please download the template and re-upload.`,
+  )
+  this.name = "ImportTemplateError"
+  this.missingHeaders = missingHeaders
+ }
+}
+
 async function parseFile(
  file: File,
  columns: ImportColumnDef[],
@@ -116,10 +184,18 @@ async function parseFile(
  if (sheetRows.length < 2) return []
 
  const headerRow = sheetRows[0].map(h => String(h ?? "").trim().toLowerCase())
+
+ // Verify template structure: every required column must be present.
+ const missing = columns
+  .filter((c) => c.required)
+  .filter((c) => !headerRow.includes(c.header.toLowerCase()))
+  .map((c) => c.header)
+ if (missing.length) throw new ImportTemplateError(missing)
+
  const colMap: Record<string, number> = {}
  for (const col of columns) {
- const idx = headerRow.indexOf(col.header.toLowerCase())
- if (idx >= 0) colMap[col.field] = idx
+  const idx = headerRow.indexOf(col.header.toLowerCase())
+  if (idx >= 0) colMap[col.field] = idx
  }
 
  const parsed: ParsedRow[] = []
@@ -490,46 +566,96 @@ export function ImportModal<TPayload>({ show, config, onComplete, onClose }: Imp
  }, [show])
 
  const handleFile = useCallback(async (file: File) => {
- setParsing(true)
- setParseError(null)
- try {
- const parsed = await parseFile(file, config.columns, config.context ?? {})
- setRows(parsed)
- setScreen("preview")
- } catch (e) {
- setParseError(`Failed to parse: ${(e as Error).message}`)
- } finally {
- setParsing(false)
- }
- }, [config])
+  setParsing(true)
+  setParseError(null)
+  try {
+  const parsed = await parseFile(file, config.columns, config.context ?? {})
+  setRows(parsed)
+  setScreen("preview")
+  } catch (e) {
+  if (e instanceof ImportTemplateError) {
+  setParseError(e.message)
+  } else {
+  setParseError(`Failed to parse: ${(e as Error).message}`)
+  }
+  } finally {
+  setParsing(false)
+  }
+  }, [config])
 
- const handleImport = async () => {
- const valid = rows.filter(r => r.status === "valid")
- setProgress({ done: 0, total: valid.length })
- setScreen("importing")
+  const handleImport = async () => {
+  const valid = rows.filter(r => r.status === "valid")
+  const nameField = config.columns[0]?.field ?? ""
+  const updated = rows.map(r => ({ ...r }))
+  const failed: typeof failedRows = []
 
- const failed: typeof failedRows = []
- const updated = rows.map(r => ({ ...r }))
- const nameField = config.columns[0]?.field ?? ""
+  setProgress({ done: 0, total: valid.length })
+  setScreen("importing")
 
- for (let i = 0; i < valid.length; i++) {
- const row = valid[i]
- const idx = updated.findIndex(r => r.index === row.index)
- try {
- await config.createRow(row.parsed as TPayload)
- if (idx >= 0) updated[idx].status = "imported"
- } catch (e) {
- const msg = (e as Error).message || "Failed"
- if (idx >= 0) { updated[idx].status = "failed"; updated[idx].failMessage = msg }
- failed.push({ index: row.index, name: String(row.raw[nameField] ?? `Row ${row.index}`), error: msg })
- }
- setProgress({ done: i + 1, total: valid.length })
- }
+  if (config.createBulk) {
+  // Single network round-trip; backend reports per-row status.
+  try {
+  const result = await config.createBulk(valid.map(r => r.parsed as TPayload))
+  const importedSet = new Set((result.imported ?? []).map(r => r.rowIndex))
+  const failedMap = new Map(
+   (result.failed ?? []).map(f => [f.rowIndex, f.message] as const),
+  )
+  for (const row of valid) {
+   const idx = updated.findIndex(r => r.index === row.index)
+   if (idx < 0) continue
+   if (failedMap.has(row.index)) {
+   const msg = failedMap.get(row.index) || "Failed"
+   updated[idx].status = "failed"
+   updated[idx].failMessage = msg
+   failed.push({
+   index: row.index,
+   name: String(row.raw[nameField] ?? `Row ${row.index}`),
+   error: msg,
+   })
+   } else {
+   updated[idx].status = "imported"
+   }
+   void importedSet
+  }
+  setProgress({ done: valid.length, total: valid.length })
+  } catch (e) {
+  // Whole-batch failure: mark every valid row as failed.
+  const msg = (e as Error).message || "Import failed"
+  for (const row of valid) {
+   const idx = updated.findIndex(r => r.index === row.index)
+   if (idx >= 0) {
+   updated[idx].status = "failed"
+   updated[idx].failMessage = msg
+   }
+   failed.push({
+   index: row.index,
+   name: String(row.raw[nameField] ?? `Row ${row.index}`),
+   error: msg,
+   })
+  }
+  setProgress({ done: valid.length, total: valid.length })
+  }
+  } else {
+  // Per-row fallback loop.
+  for (let i = 0; i < valid.length; i++) {
+   const row = valid[i]
+   const idx = updated.findIndex(r => r.index === row.index)
+   try {
+   await config.createRow(row.parsed as TPayload)
+   if (idx >= 0) updated[idx].status = "imported"
+   } catch (e) {
+   const msg = (e as Error).message || "Failed"
+   if (idx >= 0) { updated[idx].status = "failed"; updated[idx].failMessage = msg }
+   failed.push({ index: row.index, name: String(row.raw[nameField] ?? `Row ${row.index}`), error: msg })
+   }
+   setProgress({ done: i + 1, total: valid.length })
+  }
+  }
 
- setRows(updated)
- setFailedRows(failed)
- setScreen("results")
- }
+  setRows(updated)
+  setFailedRows(failed)
+  setScreen("results")
+  }
 
  const validCount = rows.filter(r => r.status === "valid").length
  const invalidCount = rows.filter(r => r.status === "invalid").length
