@@ -13,10 +13,16 @@ import {
   getFeeSummary,
   cancelPayment as cancelPaymentApi,
   undoCancelPayment as undoCancelPaymentApi,
+  getTransactions,
+  createFeeTransaction,
+  deleteFeeTransaction,
+  getTransactionSummary,
   type FeeType,
   type FeePayment,
   type ReceiptData,
   type FeePaymentStatus,
+  type FeeTransaction,
+  type TransactionSummary,
 } from "@/lib/fees-api";
 import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
 import { getTeachers, type TeacherRecord } from "@/lib/teachers-api";
@@ -37,6 +43,9 @@ import {
   Pencil,
   Save,
   ChevronDown,
+  ArrowRightLeft,
+  Trash2,
+  Plus,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -169,7 +178,7 @@ export default function AdminFeesPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const [classes, setClasses] = useState<ClassRecord[]>([]);
-  const [tab, setTab] = useState<"records" | "reports" | "collected">(
+  const [tab, setTab] = useState<"records" | "reports" | "transactions">(
     "records",
   );
 
@@ -184,10 +193,6 @@ export default function AdminFeesPage() {
   const [cancellingNote, setCancellingNote] = useState("");
   const [cancellingSave, setCancellingSave] = useState(false);
 
-  // Handover confirm state
-  const [handoverConfirm, setHandoverConfirm] = useState<string | null>(null);
-  const [handoverSaving, setHandoverSaving] = useState(false);
-
   // Receipt
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
   const [loadingReceipt, setLoadingReceipt] = useState<string | null>(null);
@@ -198,6 +203,39 @@ export default function AdminFeesPage() {
 
   // Teachers lookup (for collectedBy)
   const [teachers, setTeachers] = useState<Record<string, string>>({});
+  // Teachers only (for transaction modal — excludes admins)
+  const [teachersOnly, setTeachersOnly] = useState<Record<string, string>>({});
+
+  // Transactions tab state
+  const [transactions, setTransactions] = useState<FeeTransaction[]>([]);
+  const [txTotal, setTxTotal] = useState(0);
+  const [txLoading, setTxLoading] = useState(false);
+  const [txSkip, setTxSkip] = useState(0);
+  const [txTake, setTxTake] = useState(30);
+  const [txSummary, setTxSummary] = useState<TransactionSummary | null>(null);
+  const [txSummaryLoading, setTxSummaryLoading] = useState(false);
+  const [txStudentTotals, setTxStudentTotals] = useState<{
+    totalDue: number;
+    totalCollected: number;
+    totalPending: number;
+  } | null>(null);
+  const [txTeacherId, setTxTeacherId] = useState<string>("");
+  const [txFromDate, setTxFromDate] = useState<string>("");
+  const [txToDate, setTxToDate] = useState<string>("");
+
+  // Transaction create modal state
+  const [txCreating, setTxCreating] = useState(false);
+  const [txForm, setTxForm] = useState({
+    amount: "",
+    feeTypeId: "",
+    date: new Date().toISOString().split("T")[0],
+    teacherId: "",
+  });
+  const [txFormError, setTxFormError] = useState<string | null>(null);
+
+  // Transaction delete state
+  const [deletingTx, setDeletingTx] = useState<string | null>(null);
+  const [deletingTxSave, setDeletingTxSave] = useState(false);
 
   // Error
   const [error, setError] = useState<string | null>(null);
@@ -229,9 +267,13 @@ export default function AdminFeesPage() {
       .catch(() => {});
     (async () => {
       const map: Record<string, string> = {};
+      const teacherOnlyMap: Record<string, string> = {};
       try {
         const teachersRes = await getTeachers(cid, token, { limit: 500 });
-        for (const t of teachersRes.data ?? []) map[t.id] = t.name;
+        for (const t of teachersRes.data ?? []) {
+          map[t.id] = t.name;
+          teacherOnlyMap[t.id] = t.name;
+        }
       } catch {}
       try {
         const usersRes = await apiFetch<{
@@ -243,6 +285,7 @@ export default function AdminFeesPage() {
         for (const u of usersRes.data ?? []) map[u.id] = u.name;
       } catch {}
       setTeachers(map);
+      setTeachersOnly(teacherOnlyMap);
     })();
   }, [cid, token, loadTypes]);
 
@@ -278,21 +321,18 @@ export default function AdminFeesPage() {
   const [summary, setSummary] = useState<{
     byStatus: any[];
     byFeeType: any[];
+    totals?: {
+      studentDue: number;
+      studentCollected: number;
+      studentPending: number;
+      fromTeachers: number;
+      teacherTransactionCount: number;
+    };
   } | null>(null);
   const reportFeeTypeId = activeTypeId ?? "";
   const [reportClassId, setReportClassId] = useState<string>("");
   const [reportPayments, setReportPayments] = useState<FeePayment[]>([]);
   const [reportPayLoading, setReportPayLoading] = useState(false);
-
-  // Collected By tab state
-  const [collectedTeacherId, setCollectedTeacherId] = useState<string>("");
-
-  const [handedOverFilter, setHandedOverFilter] = useState<string>("");
-  const [collectedPayments, setCollectedPayments] = useState<FeePayment[]>([]);
-  const [collectedPayLoading, setCollectedPayLoading] = useState(false);
-  const [collectedTotal, setCollectedTotal] = useState(0);
-  const [collectedSkip, setCollectedSkip] = useState(0);
-  const [collectedTake, setCollectedTake] = useState(30);
 
   const loadReportData = useCallback(async () => {
     if (!cid || !token) return;
@@ -320,41 +360,64 @@ export default function AdminFeesPage() {
     if (tab === "reports") loadReportData();
   }, [tab, loadReportData]);
 
-  // Collected By tab loader
-  const loadCollectedPayments = useCallback(async () => {
+  // Transactions tab loader
+  const loadTransactions = useCallback(async () => {
     if (!cid || !token) return;
-    setCollectedPayLoading(true);
+    setTxLoading(true);
     try {
-      const res = await getPayments(cid, token, {
+      const res = await getTransactions(cid, token, {
         feeTypeId: activeTypeId ?? undefined,
-        collectedBy: collectedTeacherId || undefined,
-        handedToAdmin: handedOverFilter
-          ? handedOverFilter === "yes"
-          : undefined,
-        status: "PAID",
-        skip: collectedSkip,
-        take: collectedTake,
+        teacherId: txTeacherId || undefined,
+        fromDate: txFromDate || undefined,
+        toDate: txToDate || undefined,
+        skip: txSkip,
+        take: txTake,
       });
-      setCollectedPayments(res.payments);
-      setCollectedTotal(res.total);
+      setTransactions(res.transactions);
+      setTxTotal(res.total);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setTxLoading(false);
+    }
+  }, [cid, token, activeTypeId, txTeacherId, txFromDate, txToDate, txSkip, txTake]);
+
+  const loadTxSummary = useCallback(async () => {
+    if (!cid || !token) return;
+    setTxSummaryLoading(true);
+    try {
+      const res = await getTransactionSummary(cid, token);
+      setTxSummary(res);
     } catch {
       /* silent */
     } finally {
-      setCollectedPayLoading(false);
+      setTxSummaryLoading(false);
     }
-  }, [
-    cid,
-    token,
-    activeTypeId,
-    collectedTeacherId,
-    collectedSkip,
-    collectedTake,
-    handedOverFilter,
-  ]);
+  }, [cid, token]);
+
+  const loadTxStudentTotals = useCallback(async () => {
+    if (!cid || !token) return;
+    try {
+      const res = await getFeeSummary(cid, token, user?.defaultAcademicYearId ?? undefined);
+      if (res?.totals) {
+        setTxStudentTotals({
+          totalDue: res.totals.studentDue,
+          totalCollected: res.totals.studentCollected,
+          totalPending: res.totals.studentPending,
+        });
+      }
+    } catch {
+      /* silent */
+    }
+  }, [cid, token, user?.defaultAcademicYearId]);
 
   useEffect(() => {
-    if (tab === "collected") loadCollectedPayments();
-  }, [tab, loadCollectedPayments]);
+    if (tab === "transactions") {
+      loadTransactions();
+      loadTxSummary();
+      loadTxStudentTotals();
+    }
+  }, [tab, loadTransactions, loadTxSummary, loadTxStudentTotals]);
 
   const [typeDropdownOpen, setTypeDropdownOpen] = useState(false);
   const typeDropdownRef = useRef<HTMLDivElement | null>(null);
@@ -539,22 +602,6 @@ export default function AdminFeesPage() {
     }
   };
 
-  const toggleHandover = async (payment: FeePayment) => {
-    setHandoverSaving(true);
-    try {
-      await updatePayment(cid, token, payment.id, {
-        handedToAdmin: !payment.handedToAdmin,
-      });
-      setHandoverConfirm(null);
-      loadPayments();
-      if (tab === "collected") loadCollectedPayments();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setHandoverSaving(false);
-    }
-  };
-
   const showReceiptFor = async (id: string) => {
     setLoadingReceipt(id);
     try {
@@ -576,12 +623,6 @@ export default function AdminFeesPage() {
 
   const editingPayment = editingAmount
     ? (payments.find((p) => p.id === editingAmount) ?? null)
-    : null;
-
-  const handoverConfirmPayment = handoverConfirm
-    ? ([...payments, ...collectedPayments].find(
-        (p) => p.id === handoverConfirm,
-      ) ?? null)
     : null;
 
   const chartData =
@@ -839,12 +880,12 @@ export default function AdminFeesPage() {
 
           {/* Tabs */}
           <div className="flex gap-1.5 mb-4 bg-gray-100 p-1 rounded-xl w-fit">
-            {(["records", "collected", "reports"] as const).map((t) => (
+            {(["records", "transactions", "reports"] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
                 className={cn(
-                  "px-4 py-2 rounded-lg text-sm font-semibold capitalize transition-all",
+                  "px-4 py-2 rounded-lg text-sm font-semibold capitalize transition-all inline-flex items-center gap-1.5",
                   tab === t
                     ? "bg-white shadow-sm text-emerald-700"
                     : "text-gray-500",
@@ -852,8 +893,8 @@ export default function AdminFeesPage() {
               >
                 {t === "records"
                   ? "Payment Records"
-                  : t === "collected"
-                    ? "Collected By"
+                  : t === "transactions"
+                    ? "Transactions"
                     : "Reports"}
               </button>
             ))}
@@ -1040,23 +1081,6 @@ export default function AdminFeesPage() {
                               )}
                             </button>
                             <button
-                              onClick={() => setHandoverConfirm(p.id)}
-                              className={cn(
-                                "px-2 py-1 rounded-lg text-xs font-semibold border transition-colors inline-flex items-center gap-1",
-                                p.handedToAdmin
-                                  ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                                  : "bg-amber-50 border-amber-200 text-amber-700",
-                              )}
-                              title={
-                                p.handedToAdmin
-                                  ? "Handed over — click to undo"
-                                  : "Not handed — click to mark handed"
-                              }
-                            >
-                              <Users className="w-3.5 h-3.5" />
-                              {p.handedToAdmin ? "Handed" : "Pending"}
-                            </button>
-                            <button
                               onClick={() => {
                                 setCancelling(p.id);
                                 setCancellingNote("");
@@ -1206,20 +1230,6 @@ export default function AdminFeesPage() {
                                 className="p-1"
                               >
                                 <Receipt className="w-3.5 h-3.5 text-gray-400" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setHandoverConfirm(p.id);
-                                }}
-                                className={cn(
-                                  "p-1 rounded-lg",
-                                  p.handedToAdmin
-                                    ? "text-emerald-600"
-                                    : "text-gray-400",
-                                )}
-                              >
-                                <Users className="w-3.5 h-3.5" />
                               </button>
                             </>
                           ) : p.status !== "WAIVED" ? (
@@ -1385,234 +1395,285 @@ export default function AdminFeesPage() {
             </>
           )}
 
-          {/* ── Collected By tab ── */}
-          {tab === "collected" && (
-            <>
-              <div className="flex gap-2 mb-3 flex-wrap">
+          {/* ── Transactions tab ── */}
+          {tab === "transactions" && (
+            <div className="space-y-4">
+              {/* Totals: students vs teachers */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="rounded-2xl p-4 border-2 bg-emerald-50 border-emerald-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
+                      From Students
+                    </p>
+                    <Users className="w-4 h-4 text-emerald-500" />
+                  </div>
+                  <p className="text-2xl font-bold text-emerald-700">
+                    ₹
+                    {(txStudentTotals?.totalCollected ?? 0).toLocaleString()}
+                  </p>
+                  <p className="text-[10px] text-emerald-600 mt-1">
+                    Total collected
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 mt-3">
+                    <div className="bg-white/60 rounded-xl p-2 text-center">
+                      <p className="text-[9px] text-gray-500">Total Due</p>
+                      <p className="text-xs font-bold text-gray-900">
+                        ₹
+                        {(txStudentTotals?.totalDue ?? 0).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="bg-white/60 rounded-xl p-2 text-center">
+                      <p className="text-[9px] text-gray-500">Pending</p>
+                      <p className="text-xs font-bold text-amber-600">
+                        ₹
+                        {(txStudentTotals?.totalPending ?? 0).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="rounded-2xl p-4 border-2 bg-emerald-50 border-emerald-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
+                      From Teachers
+                    </p>
+                    <ArrowRightLeft className="w-4 h-4 text-emerald-500" />
+                  </div>
+                  <p className="text-2xl font-bold text-emerald-700">
+                    ₹{(txSummary?.totalAmount ?? 0).toLocaleString()}
+                  </p>
+                  <p className="text-[10px] text-emerald-600 mt-1">
+                    {txSummary?.transactionCount ?? 0} transactions across{" "}
+                    {txSummary?.byTeacher.length ?? 0} teachers
+                  </p>
+                </div>
+              </div>
+
+              {/* Per-teacher totals */}
+              {txSummary && txSummary.byTeacher.length > 0 && (
+                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                    <p className="text-sm font-bold text-gray-900">
+                      Total Collected From Each Teacher
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {txSummary.byTeacher.length} teacher
+                      {txSummary.byTeacher.length === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-gray-100">
+                    {txSummary.byTeacher.map((b) => {
+                      const max =
+                        txSummary.byTeacher[0]?.totalAmount ?? 0;
+                      const pct =
+                        max > 0 ? (b.totalAmount / max) * 100 : 0;
+                      return (
+                        <div
+                          key={b.teacherId}
+                          className="bg-white p-4 flex flex-col gap-2"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm shrink-0">
+                              {(b.teacherName ?? "?")
+                                .trim()
+                                .charAt(0)
+                                .toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-gray-900 truncate">
+                                {b.teacherName ?? "Unknown teacher"}
+                              </p>
+                              <p className="text-[10px] text-gray-400">
+                                {b.count} transaction
+                                {b.count === 1 ? "" : "s"}
+                              </p>
+                            </div>
+                            <p className="text-sm font-bold text-emerald-700 shrink-0">
+                              ₹{b.totalAmount.toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-emerald-500 rounded-full transition-all"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Filters + new transaction */}
+              <div className="flex gap-2 flex-wrap items-center">
                 <select
-                  value={collectedTeacherId}
+                  value={txTeacherId}
                   onChange={(e) => {
-                    setCollectedTeacherId(e.target.value);
-                    setCollectedSkip(0);
+                    setTxTeacherId(e.target.value);
+                    setTxSkip(0);
                   }}
                   className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-emerald-400"
                 >
                   <option value="">All Teachers</option>
-                  {Object.entries(teachers).map(([id, name]) => (
+                  {Object.entries(teachersOnly).map(([id, name]) => (
                     <option key={id} value={id}>
                       {name}
                     </option>
                   ))}
                 </select>
-                <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-xl">
-                  {(["", "yes", "no"] as const).map((v) => (
-                    <button
-                      key={v}
-                      onClick={() => {
-                        setHandedOverFilter(v);
-                        setCollectedSkip(0);
-                      }}
-                      className={cn(
-                        "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
-                        handedOverFilter === v
-                          ? "bg-white shadow-sm text-gray-900"
-                          : "text-gray-500",
-                      )}
-                    >
-                      {v === ""
-                        ? "All"
-                        : v === "yes"
-                          ? "Handed Over"
-                          : "Not Handed"}
-                    </button>
-                  ))}
-                </div>
+                <input
+                  type="date"
+                  value={txFromDate}
+                  onChange={(e) => {
+                    setTxFromDate(e.target.value);
+                    setTxSkip(0);
+                  }}
+                  className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-emerald-400"
+                />
+                <input
+                  type="date"
+                  value={txToDate}
+                  onChange={(e) => {
+                    setTxToDate(e.target.value);
+                    setTxSkip(0);
+                  }}
+                  className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-emerald-400"
+                />
+                <button
+                  onClick={() => {
+                    setTxForm({
+                      amount: "",
+                      feeTypeId: activeTypeId ?? "",
+                      date: new Date().toISOString().split("T")[0],
+                      teacherId: "",
+                    });
+                    setTxFormError(null);
+                    setTxCreating(true);
+                  }}
+                  className="ml-auto px-3 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold inline-flex items-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" /> New Transaction
+                </button>
               </div>
 
+              {/* Transactions table */}
               <DataTable
                 columns={[
                   {
-                    key: "student",
-                    header: "Student",
-                    render: (p: FeePayment) => (
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 bg-emerald-100 text-emerald-700">
-                          {p.student.name.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-900 truncate max-w-[180px]">
-                            {p.student.name}
-                          </p>
-                          <p className="text-xs text-gray-400">
-                            {p.student.adno}
-                            {p.student.class
-                              ? ` · ${p.student.class.name}`
-                              : ""}
-                          </p>
-                        </div>
-                      </div>
+                    key: "date",
+                    header: "Date",
+                    render: (t: FeeTransaction) => (
+                      <span className="text-sm text-gray-700">
+                        {new Date(t.date).toLocaleDateString("en-GB")}
+                      </span>
+                    ),
+                  },
+                  {
+                    key: "teacher",
+                    header: "From (Teacher)",
+                    render: (t: FeeTransaction) => (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-gray-100 text-gray-700 text-xs font-medium">
+                        <Users className="w-3 h-3 text-gray-500" />
+                        {t.teacher.name}
+                      </span>
                     ),
                   },
                   {
                     key: "feeType",
                     header: "Fee Type",
-                    render: (p: FeePayment) => (
+                    render: (t: FeeTransaction) => (
                       <span className="text-sm text-gray-600">
-                        {p.feeType.name}
+                        {t.feeType.name}
+                      </span>
+                    ),
+                  },
+                  {
+                    key: "admin",
+                    header: "To (Admin)",
+                    render: (t: FeeTransaction) => (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-medium">
+                        <Users className="w-3 h-3 text-blue-500" />
+                        {t.admin.name}
                       </span>
                     ),
                   },
                   {
                     key: "amount",
                     header: "Amount",
-                    render: (p: FeePayment) => (
-                      <span className="text-sm font-bold text-gray-900">
-                        ₹{Number(p.paidAmount ?? p.dueAmount).toLocaleString()}
+                    className: "text-right",
+                    render: (t: FeeTransaction) => (
+                      <span className="text-sm font-bold text-emerald-700">
+                        ₹{Number(t.amount).toLocaleString()}
                       </span>
-                    ),
-                  },
-                  {
-                    key: "paidDate",
-                    header: "Paid Date",
-                    render: (p: FeePayment) => (
-                      <span className="text-sm text-emerald-600">
-                        {p.paidAt
-                          ? new Date(p.paidAt).toLocaleDateString("en-GB")
-                          : "—"}
-                      </span>
-                    ),
-                  },
-                  {
-                    key: "collector",
-                    header: "Collected By",
-                    render: (p: FeePayment) => (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-gray-100 text-gray-700 text-xs font-medium">
-                        <Users className="w-3 h-3 text-gray-500" />
-                        {p.collectedBy
-                          ? (teachers[p.collectedBy] ??
-                            (p.collectedBy === cid
-                              ? (user?.name ?? "Admin")
-                              : p.collectedBy.slice(0, 8)))
-                          : "—"}
-                      </span>
-                    ),
-                  },
-                  {
-                    key: "handedOver",
-                    header: "Handover",
-                    render: (p: FeePayment) => (
-                      <button
-                        onClick={() => setHandoverConfirm(p.id)}
-                        className={cn(
-                          "px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors inline-flex items-center gap-1 cursor-pointer",
-                          p.handedToAdmin
-                            ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
-                            : "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100",
-                        )}
-                      >
-                        <Users className="w-3.5 h-3.5" />
-                        {p.handedToAdmin ? "Handed Over" : "Pending"}
-                      </button>
                     ),
                   },
                   {
                     key: "actions",
                     header: "",
                     className: "text-right",
-                    render: (p: FeePayment) => (
-                      <div className="flex items-center justify-end gap-0.5">
-                        <button
-                          onClick={() => showReceiptFor(p.id)}
-                          disabled={loadingReceipt === p.id}
-                          className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-                          title="Receipt"
-                        >
-                          {loadingReceipt === p.id ? (
-                            <Loader2 className="w-3.5 h-3.5 text-gray-300 animate-spin" />
-                          ) : (
-                            <Receipt className="w-3.5 h-3.5 text-gray-400 hover:text-blue-500" />
-                          )}
-                        </button>
-                      </div>
+                    render: (t: FeeTransaction) => (
+                      <button
+                        onClick={() => setDeletingTx(t.id)}
+                        className="p-1.5 rounded-lg hover:bg-red-50 transition-colors"
+                        title="Delete transaction"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-gray-400 hover:text-red-500" />
+                      </button>
                     ),
                   },
                 ]}
-                data={collectedPayments}
-                keyExtractor={(p: FeePayment) => p.id}
-                loading={collectedPayLoading}
+                data={transactions}
+                keyExtractor={(t: FeeTransaction) => t.id}
+                loading={txLoading || txSummaryLoading}
                 pagination={{
-                  page: Math.floor(collectedSkip / collectedTake) + 1,
-                  totalPages: Math.ceil(collectedTotal / collectedTake) || 1,
-                  total: collectedTotal,
-                  pageSize: collectedTake,
+                  page: Math.floor(txSkip / txTake) + 1,
+                  totalPages: Math.ceil(txTotal / txTake) || 1,
+                  total: txTotal,
+                  pageSize: txTake,
                   pageSizeOptions: [10, 20, 30, 50, 100],
                   onPageChange: (page: number) =>
-                    setCollectedSkip((page - 1) * collectedTake),
+                    setTxSkip((page - 1) * txTake),
                   onPageSizeChange: (size: number) => {
-                    setCollectedTake(size);
-                    setCollectedSkip(0);
+                    setTxTake(size);
+                    setTxSkip(0);
                   },
                 }}
-                emptyMessage="No collected payments found"
-                emptyIcon={CreditCard}
-                mobileRender={(p: FeePayment) => (
+                emptyMessage="No transactions yet. Use ‘New Transaction’ to record a teacher-to-admin handover."
+                emptyIcon={ArrowRightLeft}
+                mobileRender={(t: FeeTransaction) => (
                   <div className="space-y-2">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 bg-emerald-100 text-emerald-700">
-                        {p.student.name.charAt(0)}
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 bg-blue-100 text-blue-700">
+                        {t.teacher.name.charAt(0)}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-900 truncate">
-                          {p.student.name}
+                          {t.teacher.name} → {t.admin.name}
                         </p>
                         <p className="text-xs text-gray-400">
-                          {p.student.adno}
-                          {p.student.class ? ` · ${p.student.class.name}` : ""}
+                          {t.feeType.name} ·{" "}
+                          {new Date(t.date).toLocaleDateString("en-GB")}
                         </p>
                       </div>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-gray-500">{p.feeType.name}</span>
-                      <span className="font-bold text-gray-900">
-                        ₹{Number(p.paidAmount ?? p.dueAmount).toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center text-[10px]">
-                      <span className="text-emerald-600">
-                        {p.paidAt
-                          ? new Date(p.paidAt).toLocaleDateString("en-GB")
-                          : "—"}
-                      </span>
-                      <div className="flex items-center gap-2">
+                      <div className="text-right shrink-0 flex items-center gap-1.5">
+                        <span className="text-sm font-bold text-emerald-700">
+                          ₹{Number(t.amount).toLocaleString()}
+                        </span>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setHandoverConfirm(p.id);
-                          }}
-                          className={cn(
-                            "px-2 py-0.5 rounded-lg text-xs font-semibold border cursor-pointer",
-                            p.handedToAdmin
-                              ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                              : "bg-amber-50 border-amber-200 text-amber-700",
-                          )}
-                        >
-                          {p.handedToAdmin ? "Handed" : "Pending"}
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            showReceiptFor(p.id);
+                            setDeletingTx(t.id);
                           }}
                           className="p-1"
                         >
-                          <Receipt className="w-3.5 h-3.5 text-gray-400" />
+                          <Trash2 className="w-3.5 h-3.5 text-gray-400" />
                         </button>
                       </div>
                     </div>
                   </div>
                 )}
               />
-            </>
+            </div>
           )}
 
           {/* ── Reports tab ── */}
@@ -1985,137 +2046,293 @@ export default function AdminFeesPage() {
         )}
       </AnimatePresence>
 
-      {/* Handover confirmation modal */}
+      {/* New transaction modal */}
       <AnimatePresence>
-        {handoverConfirmPayment && (
+        {txCreating && (
           <>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
-              onClick={() => setHandoverConfirm(null)}
+              onClick={() => setTxCreating(false)}
+            />
+            <motion.div
+              initial={{ y: "100%", opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: "100%", opacity: 0 }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              className="fixed inset-x-0 bottom-0 z-50 sm:inset-0 sm:flex sm:items-center sm:justify-center sm:p-4"
+              onClick={() => setTxCreating(false)}
+            >
+              <div
+                className="bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md shadow-xl overflow-hidden max-h-[90vh] flex flex-col"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="sm:hidden flex justify-center pt-2 pb-1 bg-emerald-600">
+                  <div className="w-10 h-1.5 rounded-full bg-gray-200" />
+                </div>
+                <div className="bg-emerald-600 px-5 py-4 text-white">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                      <ArrowRightLeft className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="font-bold">
+                        New Teacher → Admin Transaction
+                      </p>
+                      <p className="text-xs text-emerald-50/90">
+                        Record an amount handed over by a teacher
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="px-5 py-4 space-y-3 overflow-y-auto flex-1">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1">
+                        Amount
+                      </label>
+                      <input
+                        type="number"
+                        value={txForm.amount}
+                        onChange={(e) =>
+                          setTxForm((f) => ({ ...f, amount: e.target.value }))
+                        }
+                        placeholder="0"
+                        className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1">
+                        Date
+                      </label>
+                      <input
+                        type="date"
+                        value={txForm.date}
+                        onChange={(e) =>
+                          setTxForm((f) => ({ ...f, date: e.target.value }))
+                        }
+                        className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1">
+                      Fee Type
+                    </label>
+                    <select
+                      value={txForm.feeTypeId}
+                      onChange={(e) =>
+                        setTxForm((f) => ({ ...f, feeTypeId: e.target.value }))
+                      }
+                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-emerald-500"
+                    >
+                      <option value="">Select fee type…</option>
+                      {feeTypes.map((ft) => (
+                        <option key={ft.id} value={ft.id}>
+                          {ft.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1">
+                      Teacher
+                    </label>
+                    <select
+                      value={txForm.teacherId}
+                      onChange={(e) =>
+                        setTxForm((f) => ({ ...f, teacherId: e.target.value }))
+                      }
+                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-emerald-500"
+                    >
+                      <option value="">Select teacher…</option>
+                      {Object.entries(teachersOnly).map(([id, name]) => (
+                        <option key={id} value={id}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2.5 text-xs text-emerald-800">
+                    <span className="font-semibold">Receiving Admin:</span>{" "}
+                    {user?.name ?? "You"}{" "}
+                    <span className="text-emerald-600/80">
+                      (this device's logged-in admin)
+                    </span>
+                  </div>
+                  {txFormError && (
+                    <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">
+                      {txFormError}
+                    </p>
+                  )}
+                </div>
+                <div className="px-5 pb-5 pt-3 flex gap-2 border-t border-gray-100">
+                  <button
+                    onClick={() => setTxCreating(false)}
+                    className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const amt = Number(txForm.amount);
+                      if (!amt || amt <= 0) {
+                        setTxFormError("Enter a valid amount");
+                        return;
+                      }
+                      if (!txForm.feeTypeId) {
+                        setTxFormError("Select a fee type");
+                        return;
+                      }
+                      if (!txForm.teacherId) {
+                        setTxFormError("Select a teacher");
+                        return;
+                      }
+                      if (!user?.id) {
+                        setTxFormError("Unable to identify current admin");
+                        return;
+                      }
+                      if (txForm.teacherId === user.id) {
+                        setTxFormError(
+                          "Teacher cannot be the same as the receiving admin",
+                        );
+                        return;
+                      }
+                      try {
+                        await createFeeTransaction(cid, token, {
+                          amount: amt,
+                          feeTypeId: txForm.feeTypeId,
+                          date: txForm.date,
+                          teacherId: txForm.teacherId,
+                          adminId: user.id,
+                        });
+                        setTxCreating(false);
+                        loadTransactions();
+                        loadTxSummary();
+                      } catch (e) {
+                        setTxFormError((e as Error).message);
+                      }
+                    }}
+                    className="flex-1 py-3 rounded-xl bg-emerald-600 text-white text-sm font-bold flex items-center justify-center gap-1.5"
+                  >
+                    <CheckCircle className="w-4 h-4" /> Save Transaction
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Delete transaction modal */}
+      <AnimatePresence>
+        {deletingTx && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+              onClick={() => setDeletingTx(null)}
             />
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               className="fixed inset-0 z-50 flex items-center justify-center p-4"
-              onClick={() => setHandoverConfirm(null)}
+              onClick={() => setDeletingTx(null)}
             >
               <div
                 className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-sm shadow-xl overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div
-                  className={cn(
-                    "px-5 py-4 border-b",
-                    handoverConfirmPayment.handedToAdmin
-                      ? "bg-amber-50 border-amber-100"
-                      : "bg-emerald-50 border-emerald-100",
-                  )}
-                >
+                <div className="bg-red-50 px-5 py-4 border-b border-red-100">
                   <div className="flex items-center gap-3">
-                    <div
-                      className={cn(
-                        "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
-                        handoverConfirmPayment.handedToAdmin
-                          ? "bg-amber-100"
-                          : "bg-emerald-100",
-                      )}
-                    >
-                      <Users
-                        className={cn(
-                          "w-5 h-5",
-                          handoverConfirmPayment.handedToAdmin
-                            ? "text-amber-600"
-                            : "text-emerald-600",
-                        )}
-                      />
+                    <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+                      <Trash2 className="w-5 h-5 text-red-600" />
                     </div>
                     <div>
                       <p className="font-bold text-gray-900">
-                        {handoverConfirmPayment.handedToAdmin
-                          ? "Undo Handover"
-                          : "Mark as Handed Over"}
+                        Delete Transaction
                       </p>
                       <p className="text-xs text-gray-500">
-                        {handoverConfirmPayment.handedToAdmin
-                          ? "This will mark the collection as not yet handed to admin"
-                          : "Confirm that this amount has been handed over to the admin"}
+                        This action cannot be undone
                       </p>
                     </div>
                   </div>
                 </div>
                 <div className="px-5 py-4 space-y-3">
-                  <div className="bg-gray-50 rounded-xl p-3 space-y-1.5">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Student</span>
-                      <span className="font-semibold text-gray-900">
-                        {handoverConfirmPayment.student.name}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Amount</span>
-                      <span className="font-semibold text-gray-900">
-                        ₹
-                        {Number(
-                          handoverConfirmPayment.paidAmount ??
-                            handoverConfirmPayment.dueAmount,
-                        ).toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Collected By</span>
-                      <span className="font-semibold text-gray-900">
-                        {handoverConfirmPayment.collectedBy
-                          ? (teachers[handoverConfirmPayment.collectedBy] ??
-                            handoverConfirmPayment.collectedBy.slice(0, 8))
-                          : "—"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Status</span>
-                      <span
-                        className={cn(
-                          "font-semibold",
-                          handoverConfirmPayment.handedToAdmin
-                            ? "text-emerald-600"
-                            : "text-amber-600",
-                        )}
-                      >
-                        {handoverConfirmPayment.handedToAdmin
-                          ? "Handed Over"
-                          : "Pending"}
-                      </span>
-                    </div>
-                  </div>
+                  {(() => {
+                    const tx = transactions.find((t) => t.id === deletingTx);
+                    if (!tx) return null;
+                    return (
+                      <div className="bg-gray-50 rounded-xl p-3 space-y-1.5">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500">Amount</span>
+                          <span className="font-bold text-gray-900">
+                            ₹{Number(tx.amount).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500">Fee Type</span>
+                          <span className="font-semibold text-gray-900">
+                            {tx.feeType.name}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500">From</span>
+                          <span className="font-semibold text-gray-900">
+                            {tx.teacher.name}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500">To</span>
+                          <span className="font-semibold text-gray-900">
+                            {tx.admin.name}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500">Date</span>
+                          <span className="font-semibold text-gray-900">
+                            {new Date(tx.date).toLocaleDateString("en-GB")}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div className="px-5 pb-5 flex gap-2">
                   <button
-                    onClick={() => setHandoverConfirm(null)}
+                    onClick={() => setDeletingTx(null)}
                     className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600"
                   >
                     Cancel
                   </button>
                   <button
-                    onClick={() => toggleHandover(handoverConfirmPayment)}
-                    disabled={handoverSaving}
-                    className={cn(
-                      "flex-1 py-3 rounded-xl text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5 text-white",
-                      handoverConfirmPayment.handedToAdmin
-                        ? "bg-amber-600"
-                        : "bg-emerald-600",
-                    )}
+                    onClick={async () => {
+                      setDeletingTxSave(true);
+                      try {
+                        await deleteFeeTransaction(cid, token, deletingTx);
+                        setDeletingTx(null);
+                        loadTransactions();
+                        loadTxSummary();
+                      } catch (e) {
+                        setError((e as Error).message);
+                      } finally {
+                        setDeletingTxSave(false);
+                      }
+                    }}
+                    disabled={deletingTxSave}
+                    className="flex-1 py-3 rounded-xl bg-red-600 text-white text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5"
                   >
-                    {handoverSaving ? (
+                    {deletingTxSave ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
-                      <Users className="w-4 h-4" />
+                      <Trash2 className="w-4 h-4" />
                     )}
-                    {handoverConfirmPayment.handedToAdmin
-                      ? "Undo Handover"
-                      : "Confirm Handover"}
+                    Delete
                   </button>
                 </div>
               </div>
