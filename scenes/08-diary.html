@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1920, initial-scale=1" />
+<title>08 · Daily Diary (serif)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=EB+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  body { background:#f5f1e8; }
+  .stage { background: linear-gradient(180deg, #ecfdf5 0%, #f5f1e8 40%) !important; }
+  .scroll-body {
+    flex: 1; overflow-y: auto; padding: 0 16px 100px;
+    background: #fff;
+  }
+  .date-row {
+    text-align: center; padding: 14px; color: var(--emerald-800);
+    font-size: 13px; letter-spacing: 4px; text-transform: uppercase;
+    background: var(--emerald-50); border-bottom: 1px solid var(--emerald-100);
+    animation: fadeUp .5s .2s both;
+  }
+  .toolbar {
+    display:flex; gap: 4px; padding: 8px 12px; border-bottom: 1px solid var(--gray-100);
+    background: #fafaf7;
+  }
+  .toolbar button {
+    width: 32px; height: 32px; border-radius: 6px; color: var(--gray-500);
+    display:grid; place-items:center;
+  }
+  .toolbar button:hover { background: var(--gray-100); }
+
+  .entry {
+    padding: 18px 20px; border-bottom: 1px dashed var(--gray-200);
+    animation: fadeUp .5s both;
+  }
+  .entry .nature {
+    display:inline-block; padding: 4px 10px; border-radius: 9999px;
+    background: var(--emerald-50); border: 1px solid var(--emerald-200);
+    color: var(--emerald-800); font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;
+  }
+  .entry h3 {
+    font-family: 'EB Garamond', serif;
+    font-size: 22px; font-weight: 600; color: var(--gray-900);
+    margin-bottom: 6px;
+  }
+  .entry .body {
+    font-family: 'EB Garamond', serif;
+    font-size: 16px; line-height: 1.7; color: var(--gray-700);
+  }
+  .entry .body p { margin-bottom: 8px; }
+  .entry .body .verse {
+    font-style: italic; color: var(--emerald-800);
+    border-left: 3px solid var(--emerald-500);
+    padding-left: 12px; margin: 10px 0;
+  }
+
+  .comment {
+    margin-top: 12px; padding: 10px 12px;
+    background: var(--emerald-50); border-radius: var(--r-md);
+    display:flex; gap: 8px; align-items: flex-start;
+  }
+  .comment .who { font-size: 11px; font-weight: 700; color: var(--emerald-800); }
+  .comment .msg { font-size: 12px; color: var(--gray-700); }
+
+  .fab {
+    position: absolute; right: 18px; bottom: 90px;
+    width: 56px; height: 56px; border-radius: 9999px;
+    background: var(--emerald-600); color:#fff;
+    display:grid; place-items:center; box-shadow: 0 12px 30px rgba(5,150,105,.4);
+  }
+  .fab svg { width: 24px; height: 24px; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="phone">
+    <div class="phone-inner">
+      <div class="scroll">
+
+        <div class="header-row" style="background: #fff;">
+          <div class="back"><svg data-icon="chevron-left"></svg></div>
+          <div class="title-block">
+            <h1 style="font-family: 'EB Garamond', serif; font-size: 22px;">Daily Diary</h1>
+            <p>Class 7-A · 3 entries</p>
+          </div>
+          <div style="margin-left:auto;" class="icon-box sm" style="background: var(--emerald-50); color: var(--emerald-600);"><svg data-icon="search" data-size="16"></svg></div>
+        </div>
+
+        <div class="date-row">Mon · 29 Jun 2026</div>
+        <div class="toolbar">
+          <button><svg data-icon="bold" data-size="16"></svg></button>
+          <button><svg data-icon="italic" data-size="16"></svg></button>
+          <button><svg data-icon="underline" data-size="16"></svg></button>
+          <button><svg data-icon="list" data-size="16"></svg></button>
+          <button><svg data-icon="image" data-size="16"></svg></button>
+          <button style="margin-left:auto;"><svg data-icon="palette" data-size="16"></svg></button>
+        </div>
+
+        <div class="scroll-body stg">
+          <div class="entry">
+            <span class="nature">Nature</span>
+            <h3>Surah Al-Baqarah · Ayahs 153–157</h3>
+            <div class="body">
+              <p>Today we recited and memorized the opening of Surah Al-Baqarah. The class was attentive and asked thoughtful questions about Sabr (patience) and its rewards.</p>
+              <p class="verse">"Indeed, with hardship comes ease." — Al-Baqarah 2:216</p>
+            </div>
+            <div class="comment">
+              <div class="avatar f" style="width:28px; height:28px; font-size:10px;">SA</div>
+              <div>
+                <div class="who">Sara (Parent)</div>
+                <div class="msg">MashaAllah, my daughter loved the lesson today. JazakAllah.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="entry" style="animation-delay: .2s;">
+            <span class="nature" style="background: var(--blue-50); border-color: var(--blue-200); color: var(--blue-700);">Math</span>
+            <h3>Chapter 4 · Fractions</h3>
+            <div class="body">
+              <p>Introduced equivalent fractions. Students practiced with the wooden fraction disks. Homework: worksheet questions 1–15.</p>
+            </div>
+          </div>
+
+          <div class="entry" style="animation-delay: .4s;">
+            <span class="nature" style="background: var(--amber-50); border-color: var(--amber-200); color: var(--amber-700);">Activity</span>
+            <h3>Quran Recitation Circle</h3>
+            <div class="body">
+              <p>Weekly halaqah — five students completed Juz Amma revision. Certificates distributed next Friday.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="fab"><svg data-icon="plus"></svg></div>
+
+        <nav class="bottom-nav">
+          <div class="item"><svg data-icon="menu"></svg><span>Home</span></div>
+          <div class="item"><svg data-icon="clipboard-list"></svg><span>Attend</span></div>
+          <div class="item active"><svg data-icon="book-open"></svg><span>Diary</span></div>
+          <div class="item"><svg data-icon="graduation-cap"></svg><span>Exams</span></div>
+          <div class="item"><svg data-icon="more-vertical"></svg><span>More</span></div>
+        </nav>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="icons.js"></script>
+</body>
+</html>

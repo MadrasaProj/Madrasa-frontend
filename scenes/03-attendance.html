@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1920, initial-scale=1" />
+<title>03 · Mark Attendance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  body { background:#e5e7eb; }
+  .scroll-body { flex:1; overflow-y:auto; padding: 0 16px 110px; }
+  .header-row {
+    display:flex; align-items:center; gap: 12px; padding: 16px 16px 0;
+  }
+  .back {
+    width: 38px; height: 38px; border-radius: var(--r-md); background:#fff;
+    display:grid; place-items:center; box-shadow: var(--sh-sm);
+  }
+  .title-block h1 { font-size: 18px; font-weight: 800; }
+  .title-block p  { font-size: 11px; color: var(--gray-500); }
+
+  .chips { display:flex; gap: 8px; padding: 14px 16px; overflow-x:auto; }
+  .chip {
+    padding: 7px 14px; border-radius: var(--r-md); font-size: 12px; font-weight: 700;
+    white-space: nowrap; border:1px solid var(--gray-200); background:#fff; color: var(--gray-600);
+    animation: fadeUp .4s both;
+  }
+  .chip.on { background: var(--emerald-600); color:#fff; border-color: var(--emerald-600); }
+  .chip:nth-child(1){animation-delay:.1s} .chip:nth-child(2){animation-delay:.15s}
+  .chip:nth-child(3){animation-delay:.2s} .chip:nth-child(4){animation-delay:.25s}
+
+  .date-bar {
+    display:flex; align-items:center; justify-content: space-between;
+    background: var(--emerald-50); margin: 4px 16px 12px; padding: 10px 14px;
+    border-radius: var(--r-md);
+    animation: fadeUp .4s .3s both;
+  }
+  .date-bar .d { font-size: 13px; font-weight: 700; color: var(--emerald-800); }
+  .badge-today {
+    background: var(--amber-100); color: var(--amber-600);
+    padding: 3px 10px; border-radius: var(--r-full);
+    font-size: 10px; font-weight: 700;
+  }
+
+  .row {
+    display:flex; align-items:center; gap: 10px; padding: 10px 12px;
+    background:#fff; border-radius: var(--r-md); border: 1px solid var(--gray-100);
+    margin-bottom: 8px; animation: fadeUp .4s both;
+  }
+  .row .info { flex: 1; }
+  .row .info .n { font-size: 13px; font-weight: 600; color: var(--gray-900); }
+  .row .info .a { font-size: 10px; color: var(--gray-500); }
+  .opts { display:flex; gap: 4px; }
+  .opt {
+    width: 32px; height: 32px; border-radius: var(--r-md); display:grid; place-items:center;
+    font-size: 12px; font-weight: 800; background: var(--gray-100); color: var(--gray-500);
+    transition: all .2s;
+  }
+  .opt.p.on { background: var(--emerald-100); color: var(--emerald-700); }
+  .opt.a.on { background: var(--red-100);     color: var(--red-600); }
+  .opt.l.on { background: var(--amber-100);   color: var(--amber-600); }
+  .opt.s.on { background: var(--blue-100);    color: var(--blue-700); }
+
+  .save-bar {
+    position: absolute; left: 16px; right: 16px; bottom: 80px;
+    background: var(--emerald-600); color: #fff;
+    padding: 14px; border-radius: var(--r-xl); font-weight: 700; font-size: 14px;
+    box-shadow: 0 12px 30px rgba(5,150,105,.4);
+    display:flex; align-items:center; justify-content:center; gap: 8px;
+    animation: fadeUp .5s 2.8s both;
+  }
+  .save-bar.saved { background: var(--emerald-500); }
+
+  /* tap feedback */
+  .opt.tapped { animation: pop .35s ease; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="phone">
+    <div class="phone-inner">
+      <div class="scroll">
+
+        <div class="header-row">
+          <div class="back"><svg data-icon="chevron-left"></svg></div>
+          <div class="title-block">
+            <h1>Mark Attendance</h1>
+            <p>Class 7-A · 30 students</p>
+          </div>
+        </div>
+
+        <div class="chips">
+          <div class="chip on">7-A</div>
+          <div class="chip">7-B</div>
+          <div class="chip">8-A</div>
+          <div class="chip">8-B</div>
+        </div>
+
+        <div class="date-bar">
+          <div style="display:flex; align-items:center; gap: 8px;">
+            <svg data-icon="calendar" data-size="14" style="color: var(--emerald-700);"></svg>
+            <span class="d">Mon, 29 Jun 2026</span>
+          </div>
+          <span class="badge-today">Today</span>
+        </div>
+
+        <div class="scroll-body" id="list"></div>
+
+        <div class="save-bar" id="save">
+          <svg data-icon="save" data-size="16"></svg> Save Attendance
+        </div>
+
+        <nav class="bottom-nav">
+          <div class="item"><svg data-icon="menu"></svg><span>Home</span></div>
+          <div class="item active"><svg data-icon="clipboard-list"></svg><span>Attend</span></div>
+          <div class="item"><svg data-icon="book-open"></svg><span>HW</span></div>
+          <div class="item"><svg data-icon="graduation-cap"></svg><span>Exams</span></div>
+          <div class="item"><svg data-icon="more-vertical"></svg><span>More</span></div>
+        </nav>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="icons.js"></script>
+<script>
+  const students = [
+    { n: "Ahmad Raza",     a: "ADM-014", gender: "m" },
+    { n: "Fatima Zahra",   a: "ADM-022", gender: "f" },
+    { n: "Yusuf Ibrahim",  a: "ADM-031", gender: "m" },
+    { n: "Maryam Sadiq",   a: "ADM-045", gender: "f" },
+    { n: "Omar Farooq",    a: "ADM-052", gender: "m" },
+    { n: "Aisha Siddiqui", a: "ADM-068", gender: "f" },
+    { n: "Hassan Ali",     a: "ADM-071", gender: "m" },
+    { n: "Khadija Bibi",   a: "ADM-089", gender: "f" },
+    { n: "Bilal Khan",     a: "ADM-094", gender: "m" },
+    { n: "Zainab Noor",    a: "ADM-101", gender: "f" },
+  ];
+  // pattern: P, P, P, P, A, P, P, L, P, P
+  const pattern = ["p","p","p","p","a","p","p","l","p","p"];
+  const list = document.getElementById("list");
+  students.forEach((s, i) => {
+    const init = s.n.split(" ").map(x=>x[0]).slice(0,2).join("");
+    const row = document.createElement("div");
+    row.className = "row";
+    row.style.animationDelay = (0.4 + i * 0.06) + "s";
+    row.innerHTML = `
+      <div class="avatar ${s.gender}">${init}</div>
+      <div class="info"><div class="n">${s.n}</div><div class="a">${s.a}</div></div>
+      <div class="opts">
+        <div class="opt p" data-s="${i}" data-k="p">P</div>
+        <div class="opt a" data-s="${i}" data-k="a">A</div>
+        <div class="opt l" data-s="${i}" data-k="l">L</div>
+        <div class="opt s" data-s="${i}" data-k="s">S</div>
+      </div>`;
+    list.appendChild(row);
+  });
+
+  // animate taps with staggered timing
+  setTimeout(() => {
+    pattern.forEach((k, i) => {
+      setTimeout(() => {
+        const row = list.children[i];
+        const opt = row.querySelector(`.opt.${k}`);
+        opt.classList.add("tapped");
+        setTimeout(() => opt.classList.add("on"), 80);
+      }, 600 + i * 220);
+    });
+    // success toast
+    setTimeout(() => {
+      const s = document.getElementById("save");
+      s.classList.add("saved");
+      s.innerHTML = '<svg data-icon="check-circle-2" data-size="16"></svg> Saved ✓';
+      hydrateIcons();
+    }, 600 + pattern.length * 220 + 400);
+  }, 1500);
+</script>
+</body>
+</html>

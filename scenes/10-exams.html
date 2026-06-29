@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1920, initial-scale=1" />
+<title>10 · Exams — List</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  body { background:#e5e7eb; }
+  .exam-card {
+    background: #fff; border-radius: var(--r-2xl); padding: 16px;
+    box-shadow: var(--sh-sm); border: 1px solid var(--gray-100);
+    margin: 0 16px 12px;
+    display:flex; align-items:center; gap: 12px;
+    animation: fadeUp .4s both;
+  }
+  .exam-card .icon-box { background: var(--indigo-100); color: var(--indigo-700); }
+  .exam-card .info { flex: 1; }
+  .exam-card h4 { font-size: 14px; font-weight: 700; }
+  .exam-card .m { font-size: 11px; color: var(--gray-500); margin-top: 2px; }
+  .exam-card .right { text-align: right; }
+  .exam-card .badge { font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: var(--r-full); }
+  .badge.published { background: var(--emerald-50); color: var(--emerald-700); }
+  .badge.entry     { background: var(--blue-50); color: var(--blue-700); }
+  .badge.config    { background: var(--amber-50); color: var(--amber-700); }
+  .exam-card .date { font-size: 10px; color: var(--gray-500); margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="phone">
+    <div class="phone-inner">
+      <div class="scroll">
+        <div class="header-row">
+          <div class="back"><svg data-icon="chevron-left"></svg></div>
+          <div class="title-block">
+            <h1>Exams</h1>
+            <p>4 exams · AY 2025-26</p>
+          </div>
+          <div style="margin-left:auto;" class="icon-box sm" style="background: var(--emerald-50); color: var(--emerald-600);">
+            <svg data-icon="search" data-size="16"></svg>
+          </div>
+        </div>
+
+        <div class="scroll-body stg" style="padding-top: 14px;">
+          <div class="exam-card">
+            <div class="icon-box"><svg data-icon="graduation-cap"></svg></div>
+            <div class="info">
+              <h4>Mid-Term Exam</h4>
+              <div class="m">Class 7 · All subjects</div>
+            </div>
+            <div class="right">
+              <span class="badge published">Published</span>
+              <div class="date">15 Mar</div>
+            </div>
+          </div>
+          <div class="exam-card">
+            <div class="icon-box" style="background: var(--emerald-50); color: var(--emerald-600);">
+              <svg data-icon="pen-line"></svg>
+            </div>
+            <div class="info">
+              <h4>Class Test · Quran</h4>
+              <div class="m">Class 7-A · Surah review</div>
+            </div>
+            <div class="right">
+              <span class="badge entry">Mark Entry</span>
+              <div class="date">28 Jun</div>
+            </div>
+          </div>
+          <div class="exam-card">
+            <div class="icon-box" style="background: var(--amber-50); color: var(--amber-600);">
+              <svg data-icon="lock"></svg>
+            </div>
+            <div class="info">
+              <h4>Final Term Exam</h4>
+              <div class="m">Class 7 · All subjects</div>
+            </div>
+            <div class="right">
+              <span class="badge config">Configured</span>
+              <div class="date">—</div>
+            </div>
+          </div>
+          <div class="exam-card">
+            <div class="icon-box" style="background: var(--blue-50); color: var(--blue-600);">
+              <svg data-icon="clipboard-check"></svg>
+            </div>
+            <div class="info">
+              <h4>Weekly Test · Math</h4>
+              <div class="m">Class 7-A · Ch. 4</div>
+            </div>
+            <div class="right">
+              <span class="badge entry">Mark Entry</span>
+              <div class="date">26 Jun</div>
+            </div>
+          </div>
+        </div>
+
+        <nav class="bottom-nav">
+          <div class="item"><svg data-icon="menu"></svg><span>Home</span></div>
+          <div class="item"><svg data-icon="clipboard-list"></svg><span>Attend</span></div>
+          <div class="item"><svg data-icon="book-open"></svg><span>HW</span></div>
+          <div class="item active"><svg data-icon="graduation-cap"></svg><span>Exams</span></div>
+          <div class="item"><svg data-icon="more-vertical"></svg><span>More</span></div>
+        </nav>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="icons.js"></script>
+</body>
+</html>

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1920, initial-scale=1" />
+<title>12 · Class Report (serif poster)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=EB+Garamond:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  body { background:#e5e7eb; }
+  .poster {
+    background: #fff; margin: 0 16px 100px;
+    border-radius: var(--r-2xl); overflow: hidden;
+    box-shadow: var(--sh-md);
+  }
+  .hero {
+    background: var(--grad-report);
+    color:#fff; padding: 18px; text-align: center;
+  }
+  .hero .school { font-size: 10px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; opacity: .85; }
+  .hero h1 { font-family: 'EB Garamond', serif; font-size: 24px; font-weight: 700; margin-top: 4px; }
+  .hero .sub { font-size: 11px; opacity: .8; margin-top: 4px; }
+
+  .stats { display:grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px; }
+  .stat { background: var(--emerald-50); padding: 10px; border-radius: 12px; text-align: center; }
+  .stat .v { font-size: 18px; font-weight: 900; color: var(--emerald-700); }
+  .stat .l { font-size: 9px; color: var(--emerald-600); text-transform: uppercase; letter-spacing: 1px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th { background: var(--emerald-50); color: var(--emerald-800); padding: 8px 6px;
+       font-size: 9px; text-transform: uppercase; letter-spacing: 1px; text-align: center; }
+  th:first-child, td:first-child { text-align: left; padding-left: 12px; }
+  td { padding: 8px 6px; border-top: 1px solid var(--gray-100); text-align: center; font-weight: 600; }
+  .rank-1 { background: linear-gradient(90deg, #fef3c7 0%, transparent 100%); }
+  .rank-2 { background: linear-gradient(90deg, #f3f4f6 0%, transparent 100%); }
+  .rank-3 { background: linear-gradient(90deg, #fed7aa 0%, transparent 100%); }
+  .rank-badge {
+    display:inline-block; width: 20px; height: 20px; border-radius: 9999px;
+    background: var(--emerald-100); color: var(--emerald-700);
+    font-size: 9px; font-weight: 900; line-height: 20px;
+  }
+  .rank-1 .rank-badge { background: var(--amber-100); color: var(--amber-700); }
+  .rank-2 .rank-badge { background: var(--gray-200); color: var(--gray-700); }
+  .rank-3 .rank-badge { background: var(--amber-100); color: var(--amber-700); }
+
+  .footer { text-align: center; padding: 10px; font-size: 10px; color: var(--gray-500); border-top: 1px solid var(--gray-100); }
+  .footer b { color: var(--emerald-600); }
+
+  .row-anim { animation: fadeUp .3s both; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="phone">
+    <div class="phone-inner">
+      <div class="scroll">
+        <div class="header-row">
+          <div class="back"><svg data-icon="chevron-left"></svg></div>
+          <div class="title-block">
+            <h1>Class Report</h1>
+            <p>Mid-Term · 7-A</p>
+          </div>
+          <div style="margin-left:auto;" class="icon-box sm" style="background: var(--emerald-50); color: var(--emerald-600);">
+            <svg data-icon="printer" data-size="16"></svg>
+          </div>
+        </div>
+
+        <div class="poster">
+          <div class="hero">
+            <p class="school">Al-Madina Madrasa</p>
+            <h1>Mid-Term Result</h1>
+            <p class="sub">Class 7-A · Academic Year 2025-26</p>
+          </div>
+
+          <div class="stats stg" style="--d:60ms;">
+            <div class="stat"><div class="v">68%</div><div class="l">Avg</div></div>
+            <div class="stat"><div class="v">28</div><div class="l">Passed</div></div>
+            <div class="stat"><div class="v">2</div><div class="l">Failed</div></div>
+          </div>
+
+          <table>
+            <thead>
+              <tr><th>#</th><th>Student</th><th>Qur</th><th>Arb</th><th>Mat</th><th>Eng</th><th>%</th></tr>
+            </thead>
+            <tbody class="stg" id="rows" style="--d:30ms;"></tbody>
+          </table>
+
+          <div class="footer">
+            Powered by <b>Smart Madrasa</b> · Generated 29 Jun 2026
+          </div>
+        </div>
+
+        <nav class="bottom-nav">
+          <div class="item"><svg data-icon="menu"></svg><span>Home</span></div>
+          <div class="item"><svg data-icon="clipboard-list"></svg><span>Attend</span></div>
+          <div class="item"><svg data-icon="book-open"></svg><span>HW</span></div>
+          <div class="item active"><svg data-icon="graduation-cap"></svg><span>Exams</span></div>
+          <div class="item"><svg data-icon="more-vertical"></svg><span>More</span></div>
+        </nav>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="icons.js"></script>
+<script>
+  const data = [
+    [1, "Khadija Bibi",  38, 36, 40, 39, 95],
+    [2, "Maryam Sadiq",  37, 35, 38, 38, 92],
+    [3, "Ahmad Raza",    36, 34, 35, 36, 88],
+    [4, "Aisha Siddiqui",35, 33, 36, 34, 86],
+    [5, "Zainab Noor",   34, 32, 33, 35, 83],
+    [6, "Fatima Zahra",  33, 31, 32, 34, 81],
+    [7, "Hassan Ali",    32, 30, 30, 32, 78],
+    [8, "Bilal Khan",    28, 26, 25, 28, 67],
+  ];
+  const rows = document.getElementById("rows");
+  data.forEach(([rk, n, q, a, m, e, p]) => {
+    const tr = document.createElement("tr");
+    tr.className = "row-anim" + (rk<=3 ? " rank-"+rk : "");
+    tr.innerHTML = `
+      <td><span class="rank-badge">${rk}</span></td>
+      <td style="font-weight:700;">${n}</td>
+      <td>${q}</td>
+      <td>${a}</td>
+      <td>${m}</td>
+      <td>${e}</td>
+      <td style="color: ${p>=80?'var(--emerald-600)':'var(--gray-900)'}; font-weight:800;">${p}%</td>`;
+    rows.appendChild(tr);
+  });
+</script>
+</body>
+</html>

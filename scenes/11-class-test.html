@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1920, initial-scale=1" />
+<title>11 · Class Test — Mark Entry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  body { background:#e5e7eb; }
+  .head {
+    background: linear-gradient(135deg, #064e3b 0%, #047857 100%);
+    color:#fff; padding: 16px; text-align: center;
+  }
+  .head h2 { font-size: 18px; font-weight: 800; }
+  .head p  { font-size: 11px; opacity: .8; margin-top: 2px; }
+  .head .stats { display:grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+  .head .stat { background: rgba(255,255,255,.12); border-radius: 10px; padding: 8px; }
+  .head .stat .v { font-size: 18px; font-weight: 900; }
+  .head .stat .l { font-size: 9px; opacity: .75; text-transform: uppercase; }
+
+  .sheet { background: #fff; border-radius: var(--r-2xl); margin: -16px 16px 100px; padding: 8px; position: relative; z-index: 2;
+           box-shadow: var(--sh-md); }
+
+  .row {
+    display:grid; grid-template-columns: 1.5fr 1fr 1fr 1fr;
+    gap: 8px; align-items: center; padding: 10px 8px;
+    border-bottom: 1px solid var(--gray-100);
+    animation: fadeUp .3s both;
+  }
+  .row:last-child { border-bottom: 0; }
+  .name { display:flex; align-items: center; gap: 8px; }
+  .name .n { font-size: 12px; font-weight: 600; }
+  .score {
+    width: 100%; padding: 6px 8px; border: 1px solid var(--gray-200);
+    border-radius: 8px; font-size: 12px; text-align: center; font-weight: 700;
+  }
+  .pct { font-size: 11px; font-weight: 800; color: var(--gray-500); text-align: center; }
+  .pct.pass { color: var(--emerald-600); }
+  .pct.fail { color: var(--red-600); }
+  .passed {
+    font-size: 9px; font-weight: 700; text-align: center;
+    background: var(--emerald-50); color: var(--emerald-700);
+    padding: 3px 6px; border-radius: 6px;
+  }
+  .failed {
+    font-size: 9px; font-weight: 700; text-align: center;
+    background: var(--red-50); color: var(--red-600);
+    padding: 3px 6px; border-radius: 6px;
+  }
+
+  .save-bar {
+    position: absolute; left: 16px; right: 16px; bottom: 80px;
+    background: var(--emerald-600); color: #fff;
+    padding: 14px; border-radius: var(--r-xl); font-weight: 700; font-size: 14px;
+    box-shadow: 0 12px 30px rgba(5,150,105,.4);
+    display:flex; align-items:center; justify-content:center; gap: 8px;
+    z-index: 5;
+    animation: fadeUp .5s 3.5s both;
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="phone">
+    <div class="phone-inner">
+      <div class="scroll">
+
+        <div class="header-row" style="background: transparent; border: 0;">
+          <div class="back" style="background: rgba(255,255,255,.95);"><svg data-icon="chevron-left"></svg></div>
+          <div class="title-block">
+            <h1 style="color:#fff;">Class Test</h1>
+            <p style="color: rgba(255,255,255,.7);">Quran · Surah Review</p>
+          </div>
+        </div>
+
+        <div class="head">
+          <h2>7-A · Mid-Term</h2>
+          <p>Max marks: 40 · Pass: 18</p>
+          <div class="stats">
+            <div class="stat"><div class="v">30</div><div class="l">Students</div></div>
+            <div class="stat"><div class="v">24</div><div class="l">Entered</div></div>
+            <div class="stat"><div class="v">68%</div><div class="l">Class avg</div></div>
+          </div>
+        </div>
+
+        <div class="sheet stg" id="rows" style="--d:30ms;"></div>
+
+        <div class="save-bar">
+          <svg data-icon="save" data-size="16"></svg> Save Marks
+        </div>
+
+        <nav class="bottom-nav">
+          <div class="item"><svg data-icon="menu"></svg><span>Home</span></div>
+          <div class="item"><svg data-icon="clipboard-list"></svg><span>Attend</span></div>
+          <div class="item"><svg data-icon="book-open"></svg><span>HW</span></div>
+          <div class="item active"><svg data-icon="graduation-cap"></svg><span>Exams</span></div>
+          <div class="item"><svg data-icon="more-vertical"></svg><span>More</span></div>
+        </nav>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="icons.js"></script>
+<script>
+  const students = [
+    ["Ahmad Raza","m",36], ["Fatima Zahra","f",34], ["Yusuf Ibrahim","m",28],
+    ["Maryam Sadiq","f",38], ["Omar Farooq","m",22], ["Aisha Siddiqui","f",30],
+    ["Hassan Ali","m",32], ["Khadija Bibi","f",40], ["Bilal Khan","m",26],
+    ["Zainab Noor","f",35], ["Salman Raheem","m",15], ["Zaid Abdullah","m",24],
+  ];
+  const rows = document.getElementById("rows");
+  students.forEach(([n,g,m], i) => {
+    const init = n.split(" ").map(x=>x[0]).slice(0,2).join("");
+    const pct = Math.round(m/40*100);
+    const pass = m >= 18;
+    const r = document.createElement("div");
+    r.className = "row";
+    r.innerHTML = `
+      <div class="name">
+        <div class="avatar ${g}" style="width:26px; height:26px; font-size:9px;">${init}</div>
+        <span class="n">${n}</span>
+      </div>
+      <input class="score" value="${m}" readonly>
+      <div class="pct ${pass?'pass':'fail'}">${pct}%</div>
+      <div class="${pass?'passed':'failed'}">${pass?'PASS':'FAIL'}</div>`;
+    rows.appendChild(r);
+  });
+</script>
+</body>
+</html>

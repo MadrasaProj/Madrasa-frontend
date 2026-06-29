@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1920, initial-scale=1" />
+<title>13 · Performance — Analytics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  body { background:#e5e7eb; }
+  .toggle {
+    display:inline-flex; gap: 4px; background: var(--gray-100);
+    padding: 4px; border-radius: var(--r-md); margin: 12px 16px;
+  }
+  .toggle button { padding: 5px 12px; border-radius: 8px; font-size:11px; font-weight:700; color: var(--gray-500); }
+  .toggle button.on { background:#fff; color: var(--emerald-700); box-shadow: var(--sh-sm); }
+
+  .chart-card {
+    background: #fff; margin: 0 16px 12px; padding: 18px;
+    border-radius: var(--r-2xl); box-shadow: var(--sh-sm);
+    animation: fadeUp .4s .2s both;
+  }
+  .chart-card h4 { font-size: 13px; font-weight: 700; margin-bottom: 12px; }
+  .chart { height: 160px; display:flex; align-items: flex-end; gap: 10px; padding: 0 4px; }
+  .bar-col { flex: 1; display:flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; }
+  .bar-col .b {
+    width: 100%; background: linear-gradient(180deg, var(--emerald-400) 0%, var(--emerald-600) 100%);
+    border-radius: 6px 6px 0 0;
+    transform-origin: bottom; animation: barGrow .8s ease-out both;
+    box-shadow: 0 4px 8px rgba(5,150,105,.2);
+  }
+  .bar-col .l { font-size: 9px; color: var(--gray-500); }
+  .bar-col .v { font-size: 10px; font-weight: 800; color: var(--gray-700); }
+
+  .donut-row { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 16px 100px; }
+  .donut-card {
+    background: #fff; padding: 16px; border-radius: var(--r-2xl);
+    box-shadow: var(--sh-sm); text-align: center;
+    animation: fadeUp .4s .4s both;
+  }
+  .donut-card h5 { font-size: 11px; color: var(--emerald-700); text-transform: uppercase; letter-spacing: 1px; }
+  .donut-card .v { font-size: 22px; font-weight: 900; margin: 4px 0; }
+  .donut-svg { width: 80px; height: 80px; margin: 0 auto; }
+  .donut-svg circle.bg { fill: none; stroke: var(--gray-100); stroke-width: 8; }
+  .donut-svg circle.fg {
+    fill: none; stroke: var(--emerald-500); stroke-width: 8; stroke-linecap: round;
+    transform: rotate(-90deg); transform-origin: center;
+    animation: strokeDraw 1.2s .6s ease-out both;
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="phone">
+    <div class="phone-inner">
+      <div class="scroll">
+        <div class="header-row">
+          <div class="back"><svg data-icon="chevron-left"></svg></div>
+          <div class="title-block">
+            <h1>Performance</h1>
+            <p>Class 7-A · Analytics</p>
+          </div>
+        </div>
+
+        <div class="toggle">
+          <button class="on">Weekly</button>
+          <button>Monthly</button>
+        </div>
+
+        <div class="chart-card">
+          <h4>Average Marks · This Week</h4>
+          <div class="chart">
+            <div class="bar-col"><div class="b" style="height:60%; animation-delay:.1s"></div><div class="l">Mon</div><div class="v">60</div></div>
+            <div class="bar-col"><div class="b" style="height:75%; animation-delay:.2s"></div><div class="l">Tue</div><div class="v">75</div></div>
+            <div class="bar-col"><div class="b" style="height:55%; animation-delay:.3s"></div><div class="l">Wed</div><div class="v">55</div></div>
+            <div class="bar-col"><div class="b" style="height:80%; animation-delay:.4s"></div><div class="l">Thu</div><div class="v">80</div></div>
+            <div class="bar-col"><div class="b" style="height:90%; animation-delay:.5s"></div><div class="l">Fri</div><div class="v">90</div></div>
+            <div class="bar-col"><div class="b" style="height:68%; animation-delay:.6s"></div><div class="l">Sat</div><div class="v">68</div></div>
+          </div>
+        </div>
+
+        <div class="donut-row">
+          <div class="donut-card">
+            <h5>Best Boy</h5>
+            <svg class="donut-svg" viewBox="0 0 36 36">
+              <circle class="bg" cx="18" cy="18" r="15.9"/>
+              <circle class="fg" cx="18" cy="18" r="15.9" stroke-dasharray="92 100"/>
+            </svg>
+            <div class="v">92%</div>
+            <div style="font-size: 11px; color: var(--emerald-700); font-weight: 700;">Ahmad Raza</div>
+          </div>
+          <div class="donut-card">
+            <h5>Best Girl</h5>
+            <svg class="donut-svg" viewBox="0 0 36 36">
+              <circle class="bg" cx="18" cy="18" r="15.9"/>
+              <circle class="fg" cx="18" cy="18" r="15.9" stroke-dasharray="95 100"/>
+            </svg>
+            <div class="v">95%</div>
+            <div style="font-size: 11px; color: var(--emerald-700); font-weight: 700;">Khadija Bibi</div>
+          </div>
+        </div>
+
+        <nav class="bottom-nav">
+          <div class="item"><svg data-icon="menu"></svg><span>Home</span></div>
+          <div class="item"><svg data-icon="clipboard-list"></svg><span>Attend</span></div>
+          <div class="item"><svg data-icon="book-open"></svg><span>HW</span></div>
+          <div class="item"><svg data-icon="graduation-cap"></svg><span>Exams</span></div>
+          <div class="item"><svg data-icon="more-vertical"></svg><span>More</span></div>
+        </nav>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="icons.js"></script>
+</body>
+</html>

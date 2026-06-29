@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1920, initial-scale=1" />
+<title>16 · Notifications</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  body { background:#e5e7eb; }
+  .unread-bar {
+    display:flex; align-items: center; gap: 6px;
+    background: var(--emerald-50); color: var(--emerald-700);
+    padding: 10px 14px; margin: 12px 16px 0; border-radius: var(--r-md);
+    font-size: 12px; font-weight: 700;
+    animation: fadeUp .4s .2s both;
+  }
+  .unread-bar .dot { width: 8px; height: 8px; border-radius: 9999px; background: var(--emerald-500); animation: pulse-dot 1.4s infinite; }
+
+  .notif {
+    display:flex; gap: 12px; padding: 14px;
+    background: #fff; margin: 8px 16px 0; border-radius: var(--r-md);
+    border: 1px solid var(--gray-100);
+    animation: fadeUp .3s both;
+    transition: all .3s;
+  }
+  .notif.unread { background: #f0fdf4; border-color: var(--emerald-200); }
+  .notif .ib { width: 38px; height: 38px; border-radius: 10px; display:grid; place-items:center; flex:none; }
+  .notif .body { flex: 1; }
+  .notif h5 { font-size: 13px; font-weight: 700; }
+  .notif p  { font-size: 11px; color: var(--gray-600); margin-top: 2px; line-height: 1.4; }
+  .notif .time { font-size: 10px; color: var(--gray-400); margin-top: 4px; }
+  .notif .unread-dot {
+    width: 8px; height: 8px; border-radius: 9999px; background: var(--emerald-500);
+    align-self: center; animation: pulse-dot 1.4s infinite;
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="phone">
+    <div class="phone-inner">
+      <div class="scroll">
+        <div class="header-row">
+          <div class="back"><svg data-icon="chevron-left"></svg></div>
+          <div class="title-block">
+            <h1>Notifications</h1>
+            <p>3 unread</p>
+          </div>
+          <div style="margin-left:auto;" class="icon-box sm" style="background: var(--emerald-50); color: var(--emerald-600);">
+            <svg data-icon="check" data-size="16"></svg>
+          </div>
+        </div>
+
+        <div class="unread-bar">
+          <span class="dot"></span> 3 new alerts
+        </div>
+
+        <div class="stg" style="--d:60ms;">
+          <div class="notif unread">
+            <div class="ib" style="background: var(--emerald-100); color: var(--emerald-700);">
+              <svg data-icon="clipboard-list" data-size="20"></svg>
+            </div>
+            <div class="body">
+              <h5>Attendance alert</h5>
+              <p>Salman Raheem has been absent for 3 consecutive days. Please follow up.</p>
+              <div class="time">5 min ago</div>
+            </div>
+            <div class="unread-dot"></div>
+          </div>
+
+          <div class="notif unread">
+            <div class="ib" style="background: var(--blue-100); color: var(--blue-700);">
+              <svg data-icon="book-open" data-size="20"></svg>
+            </div>
+            <div class="body">
+              <h5>Homework reminder</h5>
+              <p>8 students have not submitted "Arabic Verb Forms" — due 2 days ago.</p>
+              <div class="time">2 hr ago</div>
+            </div>
+            <div class="unread-dot"></div>
+          </div>
+
+          <div class="notif unread">
+            <div class="ib" style="background: var(--indigo-100); color: var(--indigo-700);">
+              <svg data-icon="bell" data-size="20"></svg>
+            </div>
+            <div class="body">
+              <h5>Announcement</h5>
+              <p>Parent-Teacher meeting scheduled for Saturday, 5 July at 10:00 AM.</p>
+              <div class="time">Yesterday</div>
+            </div>
+            <div class="unread-dot"></div>
+          </div>
+
+          <div class="notif">
+            <div class="ib" style="background: var(--amber-100); color: var(--amber-700);">
+              <svg data-icon="credit-card" data-size="20"></svg>
+            </div>
+            <div class="body">
+              <h5>Fee reminder</h5>
+              <p>4 students have unpaid tuition for June.</p>
+              <div class="time">2 days ago</div>
+            </div>
+          </div>
+
+          <div class="notif">
+            <div class="ib" style="background: var(--indigo-100); color: var(--indigo-700);">
+              <svg data-icon="graduation-cap" data-size="20"></svg>
+            </div>
+            <div class="body">
+              <h5>Exam notice</h5>
+              <p>Mid-Term result published. View class report.</p>
+              <div class="time">3 days ago</div>
+            </div>
+          </div>
+        </div>
+
+        <nav class="bottom-nav">
+          <div class="item"><svg data-icon="menu"></svg><span>Home</span></div>
+          <div class="item"><svg data-icon="bell"></svg><span>Alerts</span></div>
+          <div class="item"><svg data-icon="book-open"></svg><span>HW</span></div>
+          <div class="item"><svg data-icon="graduation-cap"></svg><span>Exams</span></div>
+          <div class="item active"><svg data-icon="more-vertical"></svg><span>More</span></div>
+        </nav>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="icons.js"></script>
+</body>
+</html>

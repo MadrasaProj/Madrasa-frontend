@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1920, initial-scale=1" />
+<title>17 · Check-in / Check-out</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  body { background: linear-gradient(180deg, #ecfdf5 0%, #f0fdf4 100%); }
+  .stage { background: linear-gradient(180deg, #ecfdf5 0%, #f0fdf4 100%) !important; }
+
+  .checkin-card {
+    background: #fff; margin: 60px 16px 16px;
+    border-radius: var(--r-3xl); padding: 32px 24px;
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(5,150,105,.12);
+    border: 2px solid var(--emerald-200);
+    animation: scaleIn .5s .2s both;
+    position: relative;
+  }
+  .pulse-ring {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 130px; height: 130px; border-radius: 9999px;
+    border: 3px solid var(--emerald-500);
+    animation: pulse-ring 1.6s ease-out infinite;
+  }
+  .checkin-icon {
+    width: 100px; height: 100px; border-radius: 9999px;
+    background: var(--emerald-100);
+    display:grid; place-items:center; margin: 0 auto 16px;
+    color: var(--emerald-700);
+    position: relative; z-index: 1;
+  }
+  .checkin-icon svg { width: 48px; height: 48px; }
+  .checkin-card h2 { font-size: 18px; font-weight: 800; color: var(--emerald-800); }
+  .checkin-card p  { font-size: 12px; color: var(--gray-500); margin-top: 4px; }
+  .checkin-card .time { font-size: 32px; font-weight: 900; color: var(--emerald-600);
+                        margin-top: 10px; font-variant-numeric: tabular-nums; }
+  .checkin-card .date { font-size: 11px; color: var(--gray-500); margin-top: 2px; }
+
+  .action-row { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 16px; margin-top: 14px; }
+  .action {
+    background: #fff; border-radius: var(--r-xl); padding: 14px;
+    text-align: center; box-shadow: var(--sh-sm);
+    animation: fadeUp .4s .4s both;
+  }
+  .action .ib { width: 38px; height: 38px; margin: 0 auto 6px; }
+  .action h4 { font-size: 12px; font-weight: 700; }
+  .action p { font-size: 10px; color: var(--gray-500); margin-top: 2px; }
+
+  .loc-row {
+    background: #fff; margin: 14px 16px; padding: 12px 14px;
+    border-radius: var(--r-md); display:flex; align-items: center; gap: 10px;
+    font-size: 12px;
+    animation: fadeUp .4s .5s both;
+  }
+  .loc-row .ib { background: var(--blue-50); color: var(--blue-600); }
+
+  .history {
+    background: #fff; margin: 14px 16px 100px;
+    border-radius: var(--r-2xl); padding: 14px;
+    box-shadow: var(--sh-sm);
+  }
+  .history h4 { font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+  .h-row {
+    display:flex; align-items: center; gap: 10px; padding: 8px 0;
+    border-bottom: 1px solid var(--gray-100);
+  }
+  .h-row:last-child { border: 0; }
+  .h-row .d { font-size: 11px; color: var(--gray-500); width: 60px; }
+  .h-row .t { font-size: 12px; font-weight: 600; }
+  .h-row .b { margin-left: auto; font-size: 9px; font-weight: 700; padding: 3px 8px; border-radius: 9999px; }
+  .b.in  { background: var(--emerald-100); color: var(--emerald-700); }
+  .b.out { background: var(--gray-100); color: var(--gray-600); }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="phone">
+    <div class="phone-inner">
+      <div class="scroll">
+        <div class="header-row">
+          <div class="back"><svg data-icon="chevron-left"></svg></div>
+          <div class="title-block">
+            <h1>Check-in</h1>
+            <p>Today · Al-Madina Madrasa</p>
+          </div>
+        </div>
+
+        <div class="checkin-card">
+          <div class="pulse-ring"></div>
+          <div class="checkin-icon">
+            <svg data-icon="log-in"></svg>
+          </div>
+          <h2>CHECKED IN</h2>
+          <p>You are at Al-Madina Madrasa</p>
+          <div class="time">07:42</div>
+          <div class="date">Monday · 29 June 2026</div>
+        </div>
+
+        <div class="action-row">
+          <div class="action">
+            <div class="icon-box sm ib" style="background: var(--emerald-50); color: var(--emerald-600);">
+              <svg data-icon="clock" data-size="16"></svg>
+            </div>
+            <h4>4h 18m</h4>
+            <p>Working since</p>
+          </div>
+          <div class="action">
+            <div class="icon-box sm ib" style="background: var(--emerald-50); color: var(--emerald-600);">
+              <svg data-icon="check-circle-2" data-size="16"></svg>
+            </div>
+            <h4>On time</h4>
+            <p>Today's status</p>
+          </div>
+        </div>
+
+        <div class="loc-row">
+          <div class="icon-box sm"><svg data-icon="map-pin" data-size="16"></svg></div>
+          <div>
+            <div style="font-weight: 700;">Madrasa campus</div>
+            <div style="color: var(--gray-500); font-size: 10px;">11.2588° N, 75.7804° E</div>
+          </div>
+          <div style="margin-left: auto; font-size: 10px; color: var(--emerald-600); font-weight: 700;">Verified</div>
+        </div>
+
+        <div class="history">
+          <h4>This week</h4>
+          <div class="h-row"><div class="d">Mon 29</div><div class="t">07:42 → —</div><span class="b in">In</span></div>
+          <div class="h-row"><div class="d">Sun 28</div><div class="t">07:50 → 15:30</div><span class="b out">Out</span></div>
+          <div class="h-row"><div class="d">Sat 27</div><div class="t">08:05 → 14:00</div><span class="b out">Out</span></div>
+          <div class="h-row"><div class="d">Fri 26</div><div class="t">07:45 → 15:15</div><span class="b out">Out</span></div>
+        </div>
+
+        <nav class="bottom-nav">
+          <div class="item"><svg data-icon="menu"></svg><span>Home</span></div>
+          <div class="item"><svg data-icon="log-in"></svg><span>Check-in</span></div>
+          <div class="item"><svg data-icon="book-open"></svg><span>HW</span></div>
+          <div class="item"><svg data-icon="graduation-cap"></svg><span>Exams</span></div>
+          <div class="item"><svg data-icon="more-vertical"></svg><span>More</span></div>
+        </nav>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="icons.js"></script>
+</body>
+</html>

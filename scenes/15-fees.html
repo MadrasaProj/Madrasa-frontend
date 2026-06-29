@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1920, initial-scale=1" />
+<title>15 · Fees — Payment & Receipt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  body { background:#e5e7eb; }
+  .summary-card {
+    background: var(--grad-emteal); color:#fff; padding: 18px;
+    margin: 16px; border-radius: var(--r-2xl);
+    text-align: center; position: relative; overflow: hidden;
+    animation: fadeUp .4s .2s both;
+  }
+  .summary-card::after {
+    content: ''; position: absolute; right: -20px; top: -20px;
+    width: 100px; height: 100px; border-radius: 9999px;
+    background: radial-gradient(circle, rgba(255,255,255,.2), transparent 70%);
+  }
+  .summary-card h2 { font-size: 26px; font-weight: 900; }
+  .summary-card p { font-size: 11px; opacity: .85; text-transform: uppercase; letter-spacing: 2px; }
+
+  .stats { display:grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 16px; }
+  .stat { padding: 12px; border-radius: var(--r-xl); }
+  .stat.paid { background: var(--emerald-50); color: var(--emerald-700); }
+  .stat.due  { background: var(--amber-50);   color: var(--amber-700); }
+  .stat .v { font-size: 18px; font-weight: 900; }
+  .stat .l { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; opacity: .8; }
+
+  .fee-row {
+    background: #fff; margin: 0 16px 8px; padding: 12px;
+    border-radius: var(--r-md); display:flex; align-items: center; gap: 10px;
+    animation: fadeUp .3s both;
+  }
+  .fee-row .info { flex: 1; }
+  .fee-row .name { font-size: 13px; font-weight: 600; }
+  .fee-row .m { font-size: 10px; color: var(--gray-500); }
+  .fee-row .amt { font-size: 13px; font-weight: 800; }
+  .fee-row .badge { font-size: 9px; font-weight: 700; padding: 3px 8px; border-radius: var(--r-full); margin-left: 6px; }
+  .badge.p { background: var(--emerald-100); color: var(--emerald-700); }
+  .badge.u { background: var(--amber-100); color: var(--amber-700); }
+
+  /* receipt modal */
+  .modal-mask { background: rgba(0,0,0,.55); }
+  .modal { width: 86%; padding: 0; overflow: hidden; }
+  .modal-head { background: var(--emerald-600); color:#fff; padding: 18px; text-align: center; }
+  .modal-head .ib { width: 48px; height: 48px; border-radius: 14px; background: rgba(255,255,255,.2);
+                   display:grid; place-items:center; margin: 0 auto 8px; }
+  .modal-head h3 { font-size: 16px; font-weight: 800; }
+  .modal-head p { font-size: 9px; opacity: .85; text-transform: uppercase; letter-spacing: 2px; margin-top: 2px; }
+  .modal-body { padding: 18px; }
+  .kv { display:flex; justify-content: space-between; padding: 6px 0; font-size: 11px; }
+  .kv .k { color: var(--gray-500); }
+  .kv .v { font-weight: 700; color: var(--gray-900); }
+  .total { border-top: 1px dashed var(--gray-200); margin-top: 6px; padding-top: 12px;
+           display:flex; justify-content: space-between; align-items: center; }
+  .total .l { font-size: 12px; font-weight: 700; color: var(--gray-700); }
+  .total .v { font-size: 20px; font-weight: 900; color: var(--emerald-600); }
+  .modal-foot { display:flex; gap: 8px; padding: 0 18px 18px; }
+  .modal-foot .btn { flex: 1; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="phone">
+    <div class="phone-inner">
+      <div class="scroll">
+        <div class="header-row">
+          <div class="back"><svg data-icon="chevron-left"></svg></div>
+          <div class="title-block">
+            <h1>Fees</h1>
+            <p>Class 7-A · This month</p>
+          </div>
+          <div style="margin-left:auto;" class="icon-box sm" style="background: var(--emerald-50); color: var(--emerald-600);">
+            <svg data-icon="search" data-size="16"></svg>
+          </div>
+        </div>
+
+        <div class="summary-card">
+          <h2>₹ 1,24,500</h2>
+          <p>Total Collected</p>
+        </div>
+
+        <div class="stats stg" style="--d:60ms;">
+          <div class="stat paid"><div class="v">26</div><div class="l">Paid</div></div>
+          <div class="stat due"><div class="v">4</div><div class="l">Unpaid</div></div>
+        </div>
+
+        <div style="padding: 14px 16px 0;" class="stg">
+          <div class="fee-row">
+            <div class="avatar m" style="background: var(--emerald-500);">AR</div>
+            <div class="info">
+              <div class="name">Ahmad Raza</div>
+              <div class="m">Tuition · Jun</div>
+            </div>
+            <div class="amt">₹2,500</div>
+            <span class="badge p">Paid</span>
+          </div>
+          <div class="fee-row">
+            <div class="avatar f" style="background:#ec4899;">FZ</div>
+            <div class="info">
+              <div class="name">Fatima Zahra</div>
+              <div class="m">Tuition · Jun</div>
+            </div>
+            <div class="amt">₹2,500</div>
+            <span class="badge p">Paid</span>
+          </div>
+          <div class="fee-row" id="row-unpaid">
+            <div class="avatar m" style="background: var(--amber-500);">SR</div>
+            <div class="info">
+              <div class="name">Salman Raheem</div>
+              <div class="m">Tuition · Jun</div>
+            </div>
+            <div class="amt">₹2,500</div>
+            <span class="badge u">Unpaid</span>
+          </div>
+          <div class="fee-row">
+            <div class="avatar f" style="background: var(--emerald-500);">MS</div>
+            <div class="info">
+              <div class="name">Maryam Sadiq</div>
+              <div class="m">Tuition · Jun</div>
+            </div>
+            <div class="amt">₹2,500</div>
+            <span class="badge p">Paid</span>
+          </div>
+        </div>
+
+        <!-- receipt modal — auto-opens at 2s -->
+        <div class="modal-mask" id="mask"></div>
+        <div class="modal" id="modal">
+          <div class="modal-head">
+            <div class="ib"><svg data-icon="receipt" data-size="20"></svg></div>
+            <h3>Al-Madina Madrasa</h3>
+            <p>Fee Receipt</p>
+          </div>
+          <div class="modal-body">
+            <div class="kv"><span class="k">Receipt No</span><span class="v">RCP-2026-0421</span></div>
+            <div class="kv"><span class="k">Student</span><span class="v">Salman Raheem</span></div>
+            <div class="kv"><span class="k">Adm. No</span><span class="v">ADM-018</span></div>
+            <div class="kv"><span class="k">Class</span><span class="v">7-A</span></div>
+            <div class="kv"><span class="k">Fee Type</span><span class="v">Tuition</span></div>
+            <div class="kv"><span class="k">Paid On</span><span class="v">29 Jun 2026</span></div>
+            <div class="kv"><span class="k">Method</span><span class="v">UPI</span></div>
+            <div class="total">
+              <div class="l">Amount Paid</div>
+              <div class="v">₹2,500</div>
+            </div>
+          </div>
+          <div class="modal-foot">
+            <button class="btn btn-ghost">Close</button>
+            <button class="btn btn-primary"><svg data-icon="printer" data-size="14"></svg> Print</button>
+          </div>
+        </div>
+
+        <nav class="bottom-nav">
+          <div class="item"><svg data-icon="menu"></svg><span>Home</span></div>
+          <div class="item"><svg data-icon="clipboard-list"></svg><span>Attend</span></div>
+          <div class="item"><svg data-icon="book-open"></svg><span>HW</span></div>
+          <div class="item"><svg data-icon="wallet"></svg><span>Fees</span></div>
+          <div class="item"><svg data-icon="more-vertical"></svg><span>More</span></div>
+        </nav>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="icons.js"></script>
+<script>
+  document.getElementById("mask").style.display = "none";
+  document.getElementById("modal").style.display = "none";
+  setTimeout(() => {
+    document.getElementById("mask").style.display = "block";
+    document.getElementById("modal").style.display = "block";
+  }, 2200);
+</script>
+</body>
+</html>

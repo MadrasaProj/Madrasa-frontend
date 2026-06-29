@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1920, initial-scale=1" />
+<title>01 · Teacher Login</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+Malayalam:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  body { background: #e5e7eb; }
+  .stage { background: linear-gradient(135deg, #f0fdf4 0%, #ecfeff 100%) !important; }
+  .login-card {
+    width: 88%; background:#fff; border-radius: var(--r-2xl);
+    padding: 28px 24px; box-shadow: var(--sh-lg);
+    animation: scaleIn .5s .3s both;
+  }
+  .badge {
+    display:inline-flex; align-items:center; gap: 6px;
+    font-size: 11px; font-weight: 700; color: var(--emerald-800);
+    background: var(--emerald-50); border:1px solid var(--emerald-100);
+    padding: 5px 12px; border-radius: var(--r-full);
+    animation: fadeUp .5s .6s both;
+  }
+  h2 { font-size: 22px; font-weight: 800; margin: 14px 0 4px; animation: fadeUp .5s .7s both; }
+  .sub { color: var(--gray-500); font-size: 12px; margin-bottom: 22px; animation: fadeUp .5s .8s both; }
+  .icon-head {
+    width: 64px; height: 64px; border-radius: var(--r-xl);
+    background: var(--emerald-600); display:grid; place-items:center;
+    color:#fff; box-shadow: 0 10px 30px rgba(5,150,105,.3);
+    margin-bottom: 14px;
+    animation: pop .6s .4s cubic-bezier(.34,1.56,.64,1) both;
+  }
+  .icon-head svg { width:32px; height:32px; }
+  .field-wrap { position:relative; margin-bottom: 12px; }
+  .field-wrap svg { position:absolute; left: 12px; top: 12px; color: var(--gray-400); }
+  .field-wrap .field { padding-left: 38px; }
+  .lang-toggle {
+    display:inline-flex; gap: 4px; background: var(--gray-100);
+    padding: 4px; border-radius: var(--r-md); margin-bottom: 18px;
+    animation: fadeUp .5s .9s both;
+  }
+  .lang-toggle button { padding: 5px 12px; border-radius: 8px; font-size:11px; font-weight:700; color: var(--gray-500); }
+  .lang-toggle button.on { background:#fff; color: var(--emerald-700); box-shadow: var(--sh-sm); }
+  .fields { animation: fadeUp .5s 1s both; }
+  .signin { width:100%; padding: 14px; border-radius: var(--r-md);
+            background: var(--emerald-600); color:#fff; font-weight: 700; font-size: 14px;
+            box-shadow: 0 8px 24px rgba(5,150,105,.3);
+            margin-top: 16px; animation: fadeUp .5s 1.1s both; }
+  .signin:hover { background: var(--emerald-700); }
+  .signin .spinner { display:none; }
+  .signin.loading .spinner { display:inline-block; animation: spin 1s linear infinite; }
+  .signin.loading .lbl { display:none; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="phone">
+    <div class="phone-inner" style="padding: 56px 20px 24px; display:flex; flex-direction:column; gap:24px; background: linear-gradient(180deg, #ecfdf5 0%, #fff 60%);">
+
+      <div class="login-card">
+        <div style="text-align:center;">
+          <div class="icon-head"><svg data-icon="log-in"></svg></div>
+          <span class="badge">
+            <svg data-icon="check-circle-2" data-size="12"></svg>
+            Al-Madina Madrasa
+          </span>
+        </div>
+        <h2 style="text-align:center;">Teacher sign in</h2>
+        <p class="sub" style="text-align:center;">Access your classes, homework &amp; reports</p>
+
+        <div style="display:flex; justify-content:center;">
+          <div class="lang-toggle">
+            <button class="on">EN</button>
+            <button>മല</button>
+          </div>
+        </div>
+
+        <div class="fields">
+          <div class="field-wrap">
+            <svg data-icon="user" data-size="16"></svg>
+            <input class="field" type="text" value="ayesha@almadina.edu" readonly />
+          </div>
+          <div class="field-wrap">
+            <svg data-icon="lock" data-size="16"></svg>
+            <input class="field" type="password" value="••••••••" readonly />
+          </div>
+
+          <button class="signin" id="signin">
+            <svg class="spinner" data-icon="loader-2" data-size="16"></svg>
+            <span class="lbl">Sign in</span>
+          </button>
+        </div>
+      </div>
+
+      <p style="text-align:center; font-size:11px; color: var(--gray-400);">
+        madrasa.app/m/al-madina/teacher
+      </p>
+    </div>
+  </div>
+</div>
+
+<script src="icons.js"></script>
+<script>
+  // typewriter-ish: type identifier, then password, then tap signin
+  const id = document.querySelectorAll("input")[0];
+  const pw = document.querySelectorAll("input")[1];
+  const btn = document.getElementById("signin");
+  const original = "ayesha@almadina.edu";
+  const originalPw = "madrasa25";
+
+  id.value = ""; pw.value = "";
+  let i = 0;
+  setTimeout(() => {
+    const t = setInterval(() => {
+      id.value = original.slice(0, ++i);
+      if (i >= original.length) { clearInterval(t); typePw(); }
+    }, 35);
+  }, 1300);
+
+  function typePw() {
+    let j = 0;
+    setTimeout(() => {
+      const t = setInterval(() => {
+        pw.value = "•".repeat(++j);
+        if (j >= originalPw.length) { clearInterval(t); tapSignin(); }
+      }, 60);
+    }, 300);
+  }
+
+  function tapSignin() {
+    setTimeout(() => {
+      btn.classList.add("loading");
+      setTimeout(() => {
+        btn.innerHTML = '<svg data-icon="check-circle-2" data-size="16"></svg> Signed in';
+        btn.style.background = "#10b981";
+        hydrateIcons();
+      }, 900);
+    }, 300);
+  }
+</script>
+</body>
+</html>

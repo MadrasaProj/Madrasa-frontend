@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1920, initial-scale=1" />
+<title>04 · Present Students</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  body { background:#e5e7eb; }
+  .scroll-body { flex:1; overflow-y:auto; padding: 0 16px 90px; }
+  .summary {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color:#fff; padding: 22px; border-radius: var(--r-2xl);
+    text-align:center; margin: 16px; position:relative; overflow:hidden;
+    animation: fadeUp .5s .2s both;
+  }
+  .summary::after {
+    content: ''; position:absolute; right:-30px; bottom:-30px;
+    width: 140px; height: 140px; border-radius: 9999px;
+    background: radial-gradient(circle, rgba(255,255,255,.2), transparent 70%);
+  }
+  .summary h2 { font-size: 44px; font-weight: 900; letter-spacing: -2px; }
+  .summary p { font-size: 12px; opacity: .85; text-transform: uppercase; letter-spacing: 2px; }
+
+  .list-card {
+    background: #fff; border-radius: var(--r-2xl); padding: 8px;
+    box-shadow: var(--sh-sm); margin: 0 16px;
+  }
+  .row {
+    display:flex; align-items:center; gap: 10px; padding: 10px 8px;
+    border-bottom: 1px solid var(--gray-100);
+  }
+  .row:last-child { border-bottom: 0; }
+  .row .info { flex: 1; }
+  .row .info .n { font-size: 13px; font-weight: 600; }
+  .row .info .a { font-size: 10px; color: var(--gray-500); }
+  .row .time { font-size: 11px; color: var(--emerald-700); font-weight: 700; background: var(--emerald-50); padding: 4px 8px; border-radius: 8px; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="phone">
+    <div class="phone-inner">
+      <div class="scroll">
+        <div class="header-row">
+          <div class="back"><svg data-icon="chevron-left"></svg></div>
+          <div class="title-block">
+            <h1>Present Today</h1>
+            <p>Class 7-A · Monday</p>
+          </div>
+        </div>
+
+        <div class="summary">
+          <h2>28</h2>
+          <p>Students Present</p>
+        </div>
+
+        <div class="list-card stg" id="list"></div>
+
+        <nav class="bottom-nav">
+          <div class="item"><svg data-icon="menu"></svg><span>Home</span></div>
+          <div class="item active"><svg data-icon="clipboard-list"></svg><span>Attend</span></div>
+          <div class="item"><svg data-icon="book-open"></svg><span>HW</span></div>
+          <div class="item"><svg data-icon="graduation-cap"></svg><span>Exams</span></div>
+          <div class="item"><svg data-icon="more-vertical"></svg><span>More</span></div>
+        </nav>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  // inject base styles & icons
+  const link = document.createElement("link");
+  link.rel = "stylesheet"; link.href = "styles.css"; document.head.appendChild(link);
+  const flink = document.createElement("link");
+  flink.rel = "stylesheet";
+  flink.href = "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap";
+  document.head.appendChild(flink);
+</script>
+<script src="icons.js"></script>
+<script>
+  const names = [
+    ["Ahmad Raza","ADM-014","m","07:42"],
+    ["Fatima Zahra","ADM-022","f","07:43"],
+    ["Yusuf Ibrahim","ADM-031","m","07:44"],
+    ["Maryam Sadiq","ADM-045","f","07:44"],
+    ["Omar Farooq","ADM-052","m","07:45"],
+    ["Aisha Siddiqui","ADM-068","f","07:46"],
+    ["Hassan Ali","ADM-071","m","07:46"],
+    ["Khadija Bibi","ADM-089","f","07:47"],
+  ];
+  const list = document.getElementById("list");
+  names.forEach(([n,a,g,t])=>{
+    const init = n.split(" ").map(x=>x[0]).slice(0,2).join("");
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML = `
+      <div class="avatar ${g}">${init}</div>
+      <div class="info"><div class="n">${n}</div><div class="a">${a}</div></div>
+      <div class="time">${t}</div>`;
+    list.appendChild(row);
+  });
+</script>
+</body>
+</html>

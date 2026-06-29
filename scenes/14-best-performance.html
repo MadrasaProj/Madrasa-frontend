@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1920, initial-scale=1" />
+<title>14 · Best Performance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  body { background: #f5f1e8; }
+  .stage { background: linear-gradient(180deg, #ecfdf5 0%, #f5f1e8 60%) !important; }
+  .podium {
+    display:flex; align-items: flex-end; justify-content: center; gap: 8px;
+    padding: 30px 16px 14px; position: relative;
+  }
+  .podium .col {
+    flex: 1; max-width: 110px; display:flex; flex-direction: column; align-items: center;
+  }
+  .avatar-big {
+    width: 70px; height: 70px; border-radius: 9999px; display:grid; place-items:center;
+    font-size: 22px; font-weight: 900; color:#fff;
+    box-shadow: 0 8px 20px rgba(0,0,0,.15);
+    margin-bottom: 8px;
+    border: 4px solid #fff;
+  }
+  .crown {
+    position: absolute; top: -2px; font-size: 22px;
+    animation: float 2s ease-in-out infinite;
+  }
+  @keyframes float { 0%,100%{ transform: translateY(0); } 50%{ transform: translateY(-6px); } }
+
+  .name { font-size: 11px; font-weight: 800; text-align: center; }
+  .pct  { font-size: 13px; font-weight: 900; color: var(--emerald-600); }
+
+  .plinth {
+    width: 100%; border-radius: 14px 14px 0 0;
+    background: linear-gradient(180deg, var(--emerald-500), var(--emerald-700));
+    color:#fff; text-align: center; font-weight: 900; padding: 14px 0 8px;
+    box-shadow: inset 0 -4px 0 rgba(0,0,0,.15);
+  }
+  .plinth.silver { background: linear-gradient(180deg, #d1d5db, #9ca3af); }
+  .plinth.bronze { background: linear-gradient(180deg, #fbbf24, #d97706); }
+  .plinth .rk { font-size: 24px; }
+  .plinth .ht { height: 100px; }
+  .plinth.silver .ht { height: 80px; }
+  .plinth.bronze .ht { height: 60px; }
+
+  .card {
+    background: #fff; margin: 16px; padding: 14px; border-radius: var(--r-2xl);
+    box-shadow: var(--sh-sm);
+  }
+  .card h4 { font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+
+  .row {
+    display:flex; align-items: center; gap: 10px; padding: 8px 0;
+    border-bottom: 1px solid var(--gray-100);
+    animation: fadeUp .3s both;
+  }
+  .row:last-child { border-bottom: 0; }
+  .row .rk {
+    width: 24px; height: 24px; border-radius: 9999px;
+    background: var(--emerald-100); color: var(--emerald-700);
+    display:grid; place-items:center; font-size: 10px; font-weight: 900;
+  }
+  .row .name2 { flex: 1; font-size: 12px; font-weight: 600; }
+  .row .bar2 { width: 100px; }
+  .row .v2 { font-size: 12px; font-weight: 800; color: var(--emerald-700); }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="phone">
+    <div class="phone-inner">
+      <div class="scroll">
+        <div class="header-row">
+          <div class="back"><svg data-icon="chevron-left"></svg></div>
+          <div class="title-block">
+            <h1>Best Performers</h1>
+            <p>7-A · Mid-Term 2025-26</p>
+          </div>
+          <div style="margin-left:auto;" class="icon-box sm" style="background: var(--emerald-50); color: var(--emerald-600);">
+            <svg data-icon="trophy" data-size="16"></svg>
+          </div>
+        </div>
+
+        <div class="podium">
+          <div class="col" style="animation: fadeUp .5s .2s both;">
+            <div class="avatar-big" style="background: #ec4899;">KB</div>
+            <div class="name">Khadija Bibi</div>
+            <div class="pct">95%</div>
+            <div class="plinth">
+              <div class="ht"></div>
+              <div class="rk">2</div>
+            </div>
+          </div>
+          <div class="col" style="animation: fadeUp .5s .1s both;">
+            <span class="crown" style="left: calc(50% + 0px); transform: translateX(-50%); top: 8px;">👑</span>
+            <div class="avatar-big" style="background: var(--emerald-500);">MS</div>
+            <div class="name">Maryam Sadiq</div>
+            <div class="pct">98%</div>
+            <div class="plinth silver">
+              <div class="ht"></div>
+              <div class="rk">1</div>
+            </div>
+          </div>
+          <div class="col" style="animation: fadeUp .5s .3s both;">
+            <div class="avatar-big" style="background: var(--blue-500);">AR</div>
+            <div class="name">Ahmad Raza</div>
+            <div class="pct">92%</div>
+            <div class="plinth bronze">
+              <div class="ht"></div>
+              <div class="rk">3</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h4>Top 5 · Class Ranking</h4>
+          <div class="stg" style="--d:60ms;">
+            <div class="row"><div class="rk">1</div><div class="name2">Maryam Sadiq</div><div class="bar2"><div class="bar"><i style="width:98%"></i></div></div><div class="v2">98%</div></div>
+            <div class="row"><div class="rk">2</div><div class="name2">Khadija Bibi</div><div class="bar2"><div class="bar"><i style="width:95%"></i></div></div><div class="v2">95%</div></div>
+            <div class="row"><div class="rk">3</div><div class="name2">Ahmad Raza</div><div class="bar2"><div class="bar"><i style="width:92%"></i></div></div><div class="v2">92%</div></div>
+            <div class="row"><div class="rk">4</div><div class="name2">Aisha Siddiqui</div><div class="bar2"><div class="bar"><i style="width:88%"></i></div></div><div class="v2">88%</div></div>
+            <div class="row"><div class="rk">5</div><div class="name2">Zainab Noor</div><div class="bar2"><div class="bar"><i style="width:85%"></i></div></div><div class="v2">85%</div></div>
+          </div>
+        </div>
+
+        <nav class="bottom-nav">
+          <div class="item"><svg data-icon="menu"></svg><span>Home</span></div>
+          <div class="item"><svg data-icon="clipboard-list"></svg><span>Attend</span></div>
+          <div class="item"><svg data-icon="book-open"></svg><span>HW</span></div>
+          <div class="item active"><svg data-icon="graduation-cap"></svg><span>Exams</span></div>
+          <div class="item"><svg data-icon="more-vertical"></svg><span>More</span></div>
+        </nav>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="icons.js"></script>
+</body>
+</html>

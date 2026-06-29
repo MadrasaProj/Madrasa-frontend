@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1920, initial-scale=1" />
+<title>05 · Absent Students</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  body { background:#e5e7eb; }
+  .summary {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    color:#fff; padding: 22px; border-radius: var(--r-2xl);
+    text-align:center; margin: 16px;
+    animation: fadeUp .5s .2s both; position:relative; overflow:hidden;
+  }
+  .summary::after {
+    content: ''; position:absolute; right:-30px; bottom:-30px;
+    width: 140px; height: 140px; border-radius: 9999px;
+    background: radial-gradient(circle, rgba(255,255,255,.15), transparent 70%);
+  }
+  .summary h2 { font-size: 44px; font-weight: 900; }
+  .summary p { font-size: 12px; opacity: .85; text-transform: uppercase; letter-spacing: 2px; }
+  .row {
+    display:flex; align-items:center; gap: 10px; padding: 12px;
+    background:#fff; border-radius: var(--r-md); border: 1px solid var(--gray-100);
+    margin-bottom: 8px;
+  }
+  .row .info { flex: 1; }
+  .row .info .n { font-size: 13px; font-weight: 600; }
+  .row .info .a { font-size: 10px; color: var(--gray-500); }
+  .action-btn {
+    background: var(--emerald-600); color:#fff; padding: 8px 12px;
+    border-radius: var(--r-md); font-size: 11px; font-weight: 700;
+    box-shadow: var(--sh-sm);
+    animation: fadeUp .4s 2s both;
+  }
+  .sms-btn {
+    background: var(--blue-500); color:#fff; padding: 8px 12px;
+    border-radius: var(--r-md); font-size: 11px; font-weight: 700;
+  }
+  .toast-sms {
+    position: absolute; right: 20px; bottom: 90px;
+    background: var(--gray-900); color:#fff; padding: 10px 16px;
+    border-radius: var(--r-md); font-size: 12px;
+    box-shadow: var(--sh-lg);
+    opacity:0; transform: translateY(20px);
+    animation: toastPop 3s 3.5s forwards;
+  }
+  @keyframes toastPop {
+    0%   { opacity:0; transform: translateY(20px); }
+    15%  { opacity:1; transform: translateY(0); }
+    85%  { opacity:1; }
+    100% { opacity:0; transform: translateY(-10px); }
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="phone">
+    <div class="phone-inner">
+      <div class="scroll">
+        <div class="header-row">
+          <div class="back"><svg data-icon="chevron-left"></svg></div>
+          <div class="title-block">
+            <h1>Absent Today</h1>
+            <p>Class 7-A · Need follow-up</p>
+          </div>
+        </div>
+
+        <div class="summary">
+          <h2>2</h2>
+          <p>Students Absent</p>
+        </div>
+
+        <div style="padding: 0 16px;" class="stg">
+          <div class="row">
+            <div class="avatar m">SR</div>
+            <div class="info"><div class="n">Salman Raheem</div><div class="a">ADM-018 · No reason</div></div>
+            <div class="sms-btn">SMS</div>
+          </div>
+          <div class="row">
+            <div class="avatar m">ZA</div>
+            <div class="info"><div class="n">Zaid Abdullah</div><div class="a">ADM-027 · Sick leave</div></div>
+            <div class="sms-btn">SMS</div>
+          </div>
+        </div>
+
+        <div class="toast-sms">
+          <svg data-icon="send" data-size="14" style="display:inline; vertical-align:-2px;"></svg>
+          SMS sent to 2 parents
+        </div>
+
+        <nav class="bottom-nav">
+          <div class="item"><svg data-icon="menu"></svg><span>Home</span></div>
+          <div class="item active"><svg data-icon="clipboard-list"></svg><span>Attend</span></div>
+          <div class="item"><svg data-icon="book-open"></svg><span>HW</span></div>
+          <div class="item"><svg data-icon="graduation-cap"></svg><span>Exams</span></div>
+          <div class="item"><svg data-icon="more-vertical"></svg><span>More</span></div>
+        </nav>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="icons.js"></script>
+</body>
+</html>
