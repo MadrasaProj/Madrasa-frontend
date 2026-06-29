@@ -10,6 +10,8 @@ import {
 import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
 import { getStudents, type StudentRecord } from "@/lib/students-api";
 import { useAuthStore } from "@/store/auth";
+import { useLanguageStore } from "@/store/language";
+import { t, type Lang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
   FileText, Plus, Save, CheckCircle2, Loader2, Trash2, Pencil,
@@ -35,11 +37,12 @@ function groupByDate(entries: DiaryEntry[]): Record<string, DiaryEntry[]> {
   return groups;
 }
 
-function JournalList({ entries, openEdit, handleDelete, deletingId }: {
+function JournalList({ entries, openEdit, handleDelete, deletingId, lang }: {
   entries: DiaryEntry[];
   openEdit: (e: DiaryEntry) => void;
   handleDelete: (id: string) => void;
   deletingId: string | null;
+  lang: Lang;
 }) {
   const [commentViewId, setCommentViewId] = useState<string | null>(null);
   const grouped = useMemo(() => groupByDate(entries), [entries]);
@@ -105,7 +108,7 @@ function JournalList({ entries, openEdit, handleDelete, deletingId }: {
                             "text-[11px] font-semibold px-2 py-0.5 rounded-full",
                             themeBadge[entry.theme] ?? themeBadge.default,
                           )}>
-                            {isClass ? entry.class?.name ?? "Class" : "Student"}
+                            {isClass ? (entry.class?.name ?? t("teacherPages", "classBadge", lang)) : t("teacherPages", "studentBadge", lang)}
                           </span>
                           <span className="text-xs text-gray-400">
                             {new Date(entry.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
@@ -153,7 +156,7 @@ function JournalList({ entries, openEdit, handleDelete, deletingId }: {
           <div className="bg-white rounded-t-2xl shadow-2xl max-h-[50vh] overflow-y-auto">
             <div className="p-5">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-gray-900">Responses</h3>
+                <h3 className="font-bold text-gray-900">{t("teacherPages", "responsesTitle", lang)}</h3>
                 <button onClick={() => setCommentViewId(null)} className="p-2 rounded-xl hover:bg-gray-100">
                   <X className="w-5 h-5" />
                 </button>
@@ -162,14 +165,14 @@ function JournalList({ entries, openEdit, handleDelete, deletingId }: {
                 const entry = entries.find((e) => e.id === commentViewId);
                 if (!entry) return null;
                 if (!entry.comments || entry.comments.length === 0) {
-                  return <p className="text-sm text-gray-400 text-center py-6">No responses yet</p>;
+                  return <p className="text-sm text-gray-400 text-center py-6">{t("teacherPages", "noResponsesYet", lang)}</p>;
                 }
                 return (
                   <div className="space-y-3">
                     {entry.comments.map((c: DiaryComment) => (
                       <div key={c.id} className="bg-gray-50 rounded-xl p-3">
                         <p className="text-xs font-medium text-gray-500 mb-0.5">
-                          {c.parentName ?? "Parent"}
+                          {c.parentName ?? t("teacherPages", "parentRole", lang)}
                         </p>
                         <p className="text-sm text-gray-700">{c.content}</p>
                       </div>
@@ -187,6 +190,7 @@ function JournalList({ entries, openEdit, handleDelete, deletingId }: {
 
 export default function TeacherDiaryPage() {
   const { user, accessToken } = useAuthStore();
+  const { lang } = useLanguageStore();
   const cid   = user?.clientId ?? "";
   const token = accessToken ?? "";
   const teacherId = user?.id ?? "";
@@ -424,8 +428,8 @@ export default function TeacherDiaryPage() {
   return (
     <DashboardLayout>
       <PageHeader
-        title="Class Diary"
-        subtitle={`${entries.length} entries`}
+        title={t("teacherPages", "classDiaryTitle", lang)}
+        subtitle={t("teacherPages", "entriesCount", lang).replace("{n}", String(entries.length))}
         icon={FileText}
         back backHref="/teacher"
         action={
@@ -433,7 +437,7 @@ export default function TeacherDiaryPage() {
             onClick={openCreate}
             className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold"
           >
-            <Plus className="w-4 h-4" /> Add Diary
+            <Plus className="w-4 h-4" /> {t("teacherPages", "addDiaryBtn", lang)}
           </button>
         }
       />
@@ -450,6 +454,7 @@ export default function TeacherDiaryPage() {
           openEdit={openEdit}
           handleDelete={handleDelete}
           deletingId={deletingId}
+          lang={lang}
         />
       )}
 
@@ -492,7 +497,7 @@ export default function TeacherDiaryPage() {
                       </button>
                     )}
                     <h2 className="text-lg font-bold text-gray-900">
-                      {editingEntry ? "Edit Diary" : "New Entry"}
+                      {editingEntry ? t("teacherPages", "editDiaryTitle", lang) : t("teacherPages", "newEntryTitle", lang)}
                     </h2>
                   </div>
                   <button onClick={closeDrawer} className="p-2 rounded-xl hover:bg-gray-100 active:scale-95 transition-all">
@@ -520,7 +525,7 @@ export default function TeacherDiaryPage() {
                               : "bg-gray-100 text-gray-500",
                           )}
                         >
-                          To Class
+                          {t("teacherPages", "toClassBtn", lang)}
                         </button>
                         <button
                           onClick={() => setTargetType("student")}
@@ -531,7 +536,7 @@ export default function TeacherDiaryPage() {
                               : "bg-gray-100 text-gray-500",
                           )}
                         >
-                          To Students
+                          {t("teacherPages", "toStudentsBtn", lang)}
                         </button>
                       </div>
                     )}
@@ -554,7 +559,7 @@ export default function TeacherDiaryPage() {
                           <input
                             value={studentSearch}
                             onChange={(e) => setStudentSearch(e.target.value)}
-                            placeholder="Search students..."
+                            placeholder={t("teacherPages", "searchDiary", lang)}
                             className="w-full px-3 py-2 rounded-lg text-sm bg-gray-50 border-0 focus:ring-2 focus:ring-emerald-500"
                           />
                         </div>
@@ -577,7 +582,7 @@ export default function TeacherDiaryPage() {
                                   }}
                                   className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
                                 />
-                                Select all {filteredStudents.length}
+                                {t("teacherPages", "selectAllCount", lang).replace("{n}", String(filteredStudents.length))}
                               </label>
                               {filteredStudents.map((s) => (
                                 <label
@@ -613,7 +618,7 @@ export default function TeacherDiaryPage() {
                       disabled={targetType === "class" ? !selectedClassId : selectedStudentIds.length === 0}
                       className="w-full py-2.5 rounded-lg font-semibold text-sm bg-emerald-600 text-white hover:bg-emerald-700 transition-all disabled:opacity-40"
                     >
-                      Continue
+                      {t("teacherPages", "continueBtn", lang)}
                     </button>
                   </motion.div>
                 ) : (
@@ -650,7 +655,7 @@ export default function TeacherDiaryPage() {
                         <input
                           value={title}
                           onChange={(e) => setTitle(e.target.value)}
-                          placeholder="Give a title"
+                          placeholder={t("teacherPages", "giveTitlePlc", lang)}
                           className={cn(
                             "w-full text-2xl font-bold bg-transparent border-none outline-none placeholder-gray-300",
                             themes[theme].text,
@@ -660,13 +665,13 @@ export default function TeacherDiaryPage() {
 
                       {/* Mobile-friendly toolbar */}
                       <div className="flex items-center gap-0.5 px-3 pt-3 pb-1 overflow-x-auto scrollbar-none">
-                        <button type="button" onClick={() => execFormat("bold")} className="p-2.5 rounded-xl hover:bg-black/5 text-gray-500 shrink-0 active:bg-black/10 transition-colors">
+                        <button type="button" onClick={() => execFormat("bold")} title={t("teacherPages", "boldTooltip", lang)} className="p-2.5 rounded-xl hover:bg-black/5 text-gray-500 shrink-0 active:bg-black/10 transition-colors">
                           <Bold className="w-5 h-5" />
                         </button>
-                        <button type="button" onClick={() => execFormat("italic")} className="p-2.5 rounded-xl hover:bg-black/5 text-gray-500 shrink-0 active:bg-black/10 transition-colors">
+                        <button type="button" onClick={() => execFormat("italic")} title={t("teacherPages", "italicTooltip", lang)} className="p-2.5 rounded-xl hover:bg-black/5 text-gray-500 shrink-0 active:bg-black/10 transition-colors">
                           <Italic className="w-5 h-5" />
                         </button>
-                        <button type="button" onClick={() => execFormat("underline")} className="p-2.5 rounded-xl hover:bg-black/5 text-gray-500 shrink-0 active:bg-black/10 transition-colors">
+                        <button type="button" onClick={() => execFormat("underline")} title={t("teacherPages", "underlineTooltip", lang)} className="p-2.5 rounded-xl hover:bg-black/5 text-gray-500 shrink-0 active:bg-black/10 transition-colors">
                           <Underline className="w-5 h-5" />
                         </button>
                         <span className="w-px h-6 bg-gray-200 mx-1 shrink-0" />
@@ -690,7 +695,7 @@ export default function TeacherDiaryPage() {
                           contentEditable
                           suppressContentEditableWarning
                           onInput={(e) => setContent((e.target as HTMLDivElement).innerHTML)}
-                          data-placeholder="Write your diary entry..."
+                          data-placeholder={t("teacherPages", "editorPlaceholder", lang)}
                           className={cn(
                             "w-full min-h-[180px] text-lg bg-transparent border-none outline-none empty:before:text-gray-300 empty:before:content-[attr(data-placeholder)] leading-relaxed [&_img]:max-w-full [&_img]:rounded-lg [&_img]:my-2 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-2 [&_li]:my-1",
                             themes[theme].text,
@@ -710,7 +715,7 @@ export default function TeacherDiaryPage() {
                     <div className="bg-white rounded-t-2xl shadow-2xl max-h-[60vh] overflow-y-auto">
                       <div className="p-5">
                         <div className="flex items-center justify-between mb-4">
-                          <h3 className="font-bold text-gray-900">Theme</h3>
+                          <h3 className="font-bold text-gray-900">{t("common", "themes", lang)}</h3>
                           <button onClick={() => setThemeOpen(false)} className="p-2 rounded-xl hover:bg-gray-100">
                             <X className="w-5 h-5" />
                           </button>
@@ -754,8 +759,8 @@ export default function TeacherDiaryPage() {
                       )}
                     >
                       {saving ? <Loader2 className="w-5 h-5 animate-spin" /> :
-                       saved  ? <><CheckCircle2 className="w-5 h-5" /> Saved!</> :
-                                <><Save className="w-5 h-5" /> {editingEntry ? "Update Entry" : "Post Entry"}</>}
+                       saved  ? <><CheckCircle2 className="w-5 h-5" /> {t("teacherPages", "savedExcl", lang)}</> :
+                                 <><Save className="w-5 h-5" /> {editingEntry ? t("teacherPages", "updateEntryBtn", lang) : t("teacherPages", "postEntryBtn", lang)}</>}
                     </button>
                   </div>
                 ) : null}

@@ -11,6 +11,8 @@ import {
 import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
 import { getSubjects, type SubjectRecord } from "@/lib/subjects-api";
 import { useAuthStore } from "@/store/auth";
+import { useLanguageStore } from "@/store/language";
+import { t, type Lang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
   BookOpen, Plus, Trash2,
@@ -20,16 +22,20 @@ import {
 import { Skeleton } from "@/components/ui/Skeleton";
 import { motion, AnimatePresence } from "framer-motion";
 
-const STATUS_CONFIG = {
-  NOT_SUBMITTED: { label: "Not Submitted", color: "bg-red-100 text-red-700" },
-  SUBMITTED:     { label: "Submitted",     color: "bg-amber-100 text-amber-700" },
-  CHECKED:       { label: "Checked",       color: "bg-emerald-100 text-emerald-700" },
-};
+function useStatusConfig(lang: Lang) {
+  return {
+    NOT_SUBMITTED: { label: t("teacherPages", "notSubmittedStatus", lang), color: "bg-red-100 text-red-700" },
+    SUBMITTED:     { label: t("teacherPages", "submittedStatus", lang),     color: "bg-amber-100 text-amber-700" },
+    CHECKED:       { label: t("teacherPages", "checkedStatus", lang),       color: "bg-emerald-100 text-emerald-700" },
+  };
+}
 
 function fmt(d: Date) { return d.toISOString().split("T")[0]; }
 
 export default function TeacherHomeworkPage() {
   const { user, accessToken } = useAuthStore();
+  const { lang } = useLanguageStore();
+  const STATUS_CONFIG = useStatusConfig(lang);
   const cid          = user?.clientId ?? "";
   const token        = accessToken ?? "";
   const teacherId    = user?.id ?? "";
@@ -220,13 +226,13 @@ export default function TeacherHomeworkPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Homework" icon={BookOpen} back backHref="/teacher" />
+      <PageHeader title={t("teacherPages", "homeworkTitle", lang)} icon={BookOpen} back backHref="/teacher" />
 
       {error && <ApiErrorBanner message={error} onRetry={() => { setError(null); }} />}
 
       <div className="flex items-center justify-between mb-6">
         <p className="text-sm text-gray-500">
-          {homework.length} {homework.length === 1 ? "assignment" : "assignments"}
+          {homework.length === 1 ? t("teacherPages", "assignmentsLabel", lang).replace("{n}", String(homework.length)) : t("teacherPages", "assignmentsPlural", lang).replace("{n}", String(homework.length))}
         </p>
         <button
           onClick={() => {
@@ -239,8 +245,8 @@ export default function TeacherHomeworkPage() {
           className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold text-sm hover:bg-emerald-700 active:scale-[0.97] transition-all shadow-sm"
         >
           <Plus className="w-4 h-4" />
-          <span className="hidden sm:inline">New Homework</span>
-          <span className="sm:hidden">New</span>
+          <span className="hidden sm:inline">{t("teacherPages", "newHwBtn", lang)}</span>
+          <span className="sm:hidden">{t("teacherPages", "newBtnShort", lang)}</span>
         </button>
       </div>
 
@@ -265,14 +271,14 @@ export default function TeacherHomeworkPage() {
       ) : homework.length === 0 ? (
         <div className="text-center py-20 text-gray-400">
           <BookOpen className="w-12 h-12 mx-auto mb-4 text-gray-200" />
-          <p className="text-sm font-medium">No assignments yet</p>
-          <p className="text-xs mt-1">Create your first homework assignment</p>
+          <p className="text-sm font-medium">{t("teacherPages", "noAssignmentsYet", lang)}</p>
+          <p className="text-xs mt-1">{t("teacherPages", "createFirstHw", lang)}</p>
           <button
             onClick={() => setShowCreateDrawer(true)}
             className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold text-sm hover:bg-emerald-700 transition-all"
           >
             <Plus className="w-4 h-4" />
-            New Homework
+            {t("teacherPages", "newHwBtn", lang)}
           </button>
         </div>
       ) : (
@@ -283,12 +289,12 @@ export default function TeacherHomeworkPage() {
               <thead>
                 <tr className="border-b border-gray-100">
                   <th className="text-left px-4 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-widest w-8"></th>
-                  <th className="text-left px-4 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Title</th>
-                  <th className="text-left px-4 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Class</th>
-                  <th className="text-left px-4 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Subject</th>
-                  <th className="text-left px-4 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Due Date</th>
-                  <th className="text-left px-4 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Submissions</th>
-                  <th className="text-right px-4 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-widest w-28">Actions</th>
+                  <th className="text-left px-4 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-widest">{t("teacherPages", "titleCol", lang)}</th>
+                  <th className="text-left px-4 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-widest">{t("teacherPages", "classCol", lang)}</th>
+                  <th className="text-left px-4 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-widest">{t("teacherPages", "subjectCol", lang)}</th>
+                  <th className="text-left px-4 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-widest">{t("teacherPages", "dueDateCol", lang)}</th>
+                  <th className="text-left px-4 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-widest">{t("teacherPages", "submissionsCol", lang)}</th>
+                  <th className="text-right px-4 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-widest w-28">{t("teacherPages", "actionsCol", lang)}</th>
                 </tr>
               </thead>
               <tbody>
@@ -336,7 +342,7 @@ export default function TeacherHomeworkPage() {
                           <Calendar className="w-3.5 h-3.5 shrink-0" />
                           {formatDate(hw.dueDate)}
                           {isOver && (
-                            <span className="text-[10px] font-bold bg-red-100 text-red-700 px-1.5 py-0.5 rounded-md leading-none">OVERDUE</span>
+                            <span className="text-[10px] font-bold bg-red-100 text-red-700 px-1.5 py-0.5 rounded-md leading-none">{t("teacherPages", "overdueBadge", lang)}</span>
                           )}
                         </span>
                       </td>
@@ -450,13 +456,13 @@ export default function TeacherHomeworkPage() {
                       {total > 0 && (
                         <span className="text-sm text-gray-500 flex items-center gap-1.5">
                           <Users className="w-4 h-4 shrink-0" />
-                          {checked}/{total} checked
+                          {checked}/{total} {t("teacherPages", "checkedLabel", lang)}
                         </span>
                       )}
                       {isOver && (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-50 text-red-700 text-xs font-bold rounded-lg">
                           <AlertTriangle className="w-3.5 h-3.5" />
-                          Overdue
+                          {t("teacherPages", "overdueLabel", lang)}
                         </span>
                       )}
                     </div>
@@ -481,16 +487,16 @@ export default function TeacherHomeworkPage() {
       <Drawer
         open={showCreateDrawer}
         onOpenChange={setShowCreateDrawer}
-        title="New Homework Assignment"
-        description="Fill in the details to create a new assignment"
+        title={t("teacherPages", "newHomeworkTitle", lang)}
+        description={t("teacherPages", "newHomeworkDesc", lang)}
       >
         <div className="space-y-4 p-5 pb-8">
           <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1.5">Class *</label>
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t("teacherPages", "classRequired", lang)}</label>
             <select value={classId} onChange={(e) => setClassId(e.target.value)}
               className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
               {classes.length === 0
-                ? <option value="">No accessible classes</option>
+                ? <option value="">{t("teacherPages", "noAccessibleClasses", lang)}</option>
                 : classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)
               }
             </select>
@@ -498,16 +504,16 @@ export default function TeacherHomeworkPage() {
 
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-              Subject *
-              {isPeriodBased && <span className="text-gray-400 font-normal ml-1">(your subjects)</span>}
+              {t("teacherPages", "subjectRequired", lang)}
+              {isPeriodBased && <span className="text-gray-400 font-normal ml-1">{t("teacherPages", "yourSubjectsHint", lang)}</span>}
             </label>
             <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)}
               className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
               {classSubjects.length === 0
                 ? <option value="">
                     {classId
-                      ? isPeriodBased ? "No subjects assigned to you in this class" : "No subjects in this class"
-                      : "Select a class first"
+                      ? isPeriodBased ? t("teacherPages", "noSubjectsAssigned", lang) : t("teacherPages", "noSubjectsInClass", lang)
+                      : t("teacherPages", "selectClassFirst", lang)
                     }
                   </option>
                 : classSubjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)
@@ -516,21 +522,21 @@ export default function TeacherHomeworkPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1.5">Title *</label>
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t("teacherPages", "titleRequired", lang)}</label>
             <input value={title} onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Surah Al-Baqarah verses 1-5"
+              placeholder={t("teacherPages", "titlePlaceholder", lang)}
               className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1.5">Description (optional)</label>
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t("teacherPages", "descOptional", lang)}</label>
             <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3}
-              placeholder="Details, instructions..."
+              placeholder={t("teacherPages", "descPlaceholder", lang)}
               className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none" />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1.5">Due Date *</label>
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t("teacherPages", "dueDateRequired", lang)}</label>
             <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
               min={today}
               className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
@@ -542,7 +548,7 @@ export default function TeacherHomeworkPage() {
             className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold text-sm disabled:opacity-60 flex items-center justify-center gap-2 hover:bg-emerald-700 transition-colors active:scale-[0.98]"
           >
             {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-            Create Assignment
+            {t("teacherPages", "createAssignmentBtn", lang)}
           </button>
         </div>
       </Drawer>
@@ -551,7 +557,7 @@ export default function TeacherHomeworkPage() {
       <Drawer
         open={showAssessDrawer}
         onOpenChange={(open) => { if (!open) { setShowAssessDrawer(false); setAssessHw(null); } }}
-        title={assessHw?.title ?? "Assess Homework"}
+        title={assessHw?.title ?? t("teacherPages", "assessHomeworkTitle", lang)}
         description={
           assessHw
             ? `${assessHw.class?.name ?? ""}${assessHw.subject ? ` · ${assessHw.subject.name}` : ""} — Due ${formatDate(assessHw.dueDate)}`
@@ -566,7 +572,7 @@ export default function TeacherHomeworkPage() {
           <div className="p-5 pb-8">
             <div className="flex items-center justify-between mb-4">
               <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                Submissions ({submissions[assessHw.id].submissions.length})
+                {t("teacherPages", "submissionsCount", lang).replace("{n}", String(submissions[assessHw.id].submissions.length))}
               </p>
               <button
                 onClick={() => saveSubmissions(assessHw.id)}
@@ -574,7 +580,7 @@ export default function TeacherHomeworkPage() {
                 className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors"
               >
                 {savingSubs ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                Save
+                {t("common", "save", lang)}
               </button>
             </div>
             <div className="space-y-2">
@@ -601,7 +607,7 @@ export default function TeacherHomeworkPage() {
                               : "bg-gray-50 text-gray-400 hover:bg-gray-100",
                           )}
                         >
-                          {s === "NOT_SUBMITTED" ? "Not Submitted" : s === "SUBMITTED" ? "Submitted" : "Checked"}
+                          {STATUS_CONFIG[s].label}
                         </button>
                       ))}
                     </div>
@@ -637,38 +643,38 @@ export default function TeacherHomeworkPage() {
                 )}
               >
                 <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
-                  <p className="font-bold text-gray-900 text-lg">Edit Assignment</p>
+                  <p className="font-bold text-gray-900 text-lg">{t("teacherPages", "editAssignmentTitle", lang)}</p>
                   <button onClick={() => setShowEditDrawer(false)}><X className="w-5 h-5 text-gray-400" /></button>
                 </div>
 
                 <div className="space-y-4 overflow-y-auto flex-1 px-5 py-4 pb-8">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">Subject *</label>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t("teacherPages", "subjectRequired", lang)}</label>
                     <select value={editSubjectId} onChange={(e) => setEditSubjectId(e.target.value)}
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
                       {classSubjects.length === 0
-                        ? <option value="">No subjects available</option>
+                        ? <option value="">{t("teacherPages", "noSubjectsAvail", lang)}</option>
                         : classSubjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)
                       }
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">Title *</label>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t("teacherPages", "titleRequired", lang)}</label>
                     <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
-                      placeholder="e.g. Surah Al-Baqarah verses 1-5"
+                      placeholder={t("teacherPages", "titlePlaceholder", lang)}
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">Description (optional)</label>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t("teacherPages", "descOptional", lang)}</label>
                     <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} rows={3}
-                      placeholder="Details, instructions..."
+                      placeholder={t("teacherPages", "descPlaceholder", lang)}
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none" />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">Due Date *</label>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t("teacherPages", "dueDateRequired", lang)}</label>
                     <input type="date" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)}
                       min={today}
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
@@ -680,7 +686,7 @@ export default function TeacherHomeworkPage() {
                     onClick={() => setShowEditDrawer(false)}
                     className="flex-1 py-3.5 text-sm font-semibold text-gray-500 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all"
                   >
-                    Cancel
+                    {t("common", "cancel", lang)}
                   </button>
                   <button
                     onClick={handleUpdate}
@@ -688,7 +694,7 @@ export default function TeacherHomeworkPage() {
                     className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-semibold text-sm disabled:opacity-60 flex items-center justify-center gap-2"
                   >
                     {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                    Save Changes
+                    {t("teacherPages", "saveChangesBtn", lang)}
                   </button>
                 </div>
               </motion.div>

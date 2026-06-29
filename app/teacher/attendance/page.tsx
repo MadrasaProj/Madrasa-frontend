@@ -16,6 +16,8 @@ import {
 import { Skeleton, SkeletonList } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { useLanguageStore } from "@/store/language";
+import { t } from "@/lib/i18n";
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -50,6 +52,7 @@ function OtherClassConfirmModal({
  onConfirm: () => void;
  onCancel: () => void;
 }) {
+ const { lang } = useLanguageStore();
  return (
  <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
  <motion.div
@@ -62,25 +65,25 @@ function OtherClassConfirmModal({
  <AlertTriangle className="w-5 h-5 text-amber-600" />
  </div>
  <div>
- <p className="font-bold text-gray-900">Marking other class</p>
+ <p className="font-bold text-gray-900">{t("teacherPages", "markingOtherClass", lang)}</p>
  <p className="text-xs text-gray-500 mt-0.5">{className}</p>
  </div>
  </div>
  <p className="text-sm text-gray-600 mb-5">
- You are marking attendance for a class not assigned to you. Confirm to save.
+ {t("teacherPages", "markingOtherDesc", lang)}
  </p>
  <div className="flex gap-3">
  <button
  onClick={onCancel}
  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50"
  >
- Cancel
+ {t("common", "cancel", lang)}
  </button>
  <button
  onClick={onConfirm}
  className="flex-1 py-2.5 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600"
  >
- Yes, Save
+ {t("teacherPages", "yesSaveBtn", lang)}
  </button>
  </div>
  </motion.div>
@@ -92,6 +95,7 @@ function OtherClassConfirmModal({
 
 export default function TeacherAttendancePage() {
  const { user, accessToken } = useAuthStore();
+ const { lang } = useLanguageStore();
  const cid = user?.clientId ?? "";
  const token = accessToken ?? "";
 
@@ -308,39 +312,39 @@ export default function TeacherAttendancePage() {
  </AnimatePresence>
 
  <PageHeader
- title="Attendance"
- subtitle={activeClassId ? `${activeClass?.name ?? ""} · ${records.size} students` : "Select a class"}
- icon={ClipboardList}
- back
- backHref="/teacher"
- action={
- <div className="flex items-center gap-2">
- {hasDirty ? (
- <button
- onClick={handleSave}
- disabled={saving}
- className="flex items-center gap-1.5 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 disabled:opacity-60 transition-colors"
- >
- {saving
- ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</>
- : <><Save className="w-4 h-4" /> Save</>}
- </button>
- ) : saveSuccess ? (
- <span className="flex items-center gap-1 text-emerald-600 text-sm font-semibold">
- <CheckCircle2 className="w-4 h-4" /> Saved
- </span>
- ) : null}
- {hasExisting && (
- <button
- onClick={() => setConfirmClear(true)}
- className="flex items-center gap-1.5 bg-red-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-600 transition-colors"
- >
- <Trash2 className="w-4 h-4" /> Clear All
- </button>
- )}
- </div>
- }
- />
+  title={t("teacherPages", "attendancePageTitle", lang)}
+  subtitle={activeClassId ? `${activeClass?.name ?? ""} · ${records.size} ${t("teacherPages", "studentsLabel", lang)}` : t("teacherPages", "selectClassView", lang)}
+  icon={ClipboardList}
+  back
+  backHref="/teacher"
+  action={
+  <div className="flex items-center gap-2">
+  {hasDirty ? (
+  <button
+  onClick={handleSave}
+  disabled={saving}
+  className="flex items-center gap-1.5 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 disabled:opacity-60 transition-colors"
+  >
+  {saving
+  ? <><Loader2 className="w-4 h-4 animate-spin" /> {t("teacherPages", "savingEllipsis", lang)}</>
+  : <><Save className="w-4 h-4" /> {t("common", "save", lang)}</>}
+  </button>
+  ) : saveSuccess ? (
+  <span className="flex items-center gap-1 text-emerald-600 text-sm font-semibold">
+  <CheckCircle2 className="w-4 h-4" /> {t("teacherPages", "saved", lang)}
+  </span>
+  ) : null}
+  {hasExisting && (
+  <button
+  onClick={() => setConfirmClear(true)}
+  className="flex items-center gap-1.5 bg-red-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-600 transition-colors"
+  >
+  <Trash2 className="w-4 h-4" /> {t("teacherPages", "clearAllBtn", lang)}
+  </button>
+  )}
+  </div>
+  }
+  />
 
  {error && <ApiErrorBanner message={error} onRetry={() => activeClassId ? loadAttendance(activeClassId, date) : undefined} />}
 
@@ -358,9 +362,9 @@ export default function TeacherAttendancePage() {
  onChange={(e) => setDate(e.target.value)}
  className="text-sm font-semibold text-gray-800 bg-transparent border-none focus:outline-none cursor-pointer"
  />
- {date === todayISO() && (
- <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">TODAY</span>
- )}
+{date === todayISO() && (
+  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{t("teacherPages", "todayBadge", lang)}</span>
+)}
  </div>
  <button onClick={() => changeDate(1)}
  disabled={date >= todayISO()}
@@ -378,7 +382,7 @@ export default function TeacherAttendancePage() {
  ))}
  </div>
  ) : classes.length === 0 ? (
- <p className="text-xs text-gray-400 px-3 py-2">No classes found</p>
+ <p className="text-xs text-gray-400 px-3 py-2">{t("teacherPages", "noClassesFound", lang)}</p>
  ) : classes.map((cls) => {
  const isOwn = cls.classTeacherId === user?.id;
  const isActive = cls.id === activeClassId;
@@ -399,7 +403,7 @@ export default function TeacherAttendancePage() {
  <span className={cn(
  "text-[10px] px-1.5 py-0.5 rounded-full font-bold",
  isActive ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-700",
- )}>Mine</span>
+ )}>{t("teacherPages", "mineBadge", lang)}</span>
  )}
  {cls.studentCount > 0 && (
  <span className={cn(
@@ -416,7 +420,7 @@ export default function TeacherAttendancePage() {
  {!isOwnClass && activeClassId && (
  <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 mb-4 text-amber-700 text-xs font-semibold">
  <AlertTriangle className="w-4 h-4 shrink-0" />
- Marking a class not assigned to you — confirmation required before saving.
+ {t("teacherPages", "markingOtherDesc", lang)}
  </div>
  )}
 
@@ -424,32 +428,32 @@ export default function TeacherAttendancePage() {
  {!activeClassId && !classesLoading && (
  <div className="flex flex-col items-center justify-center py-20 text-gray-400">
  <Users className="w-12 h-12 mb-4 opacity-20" />
- <p className="font-semibold text-gray-500">Select a class to view attendance</p>
+ <p className="font-semibold text-gray-500">{t("teacherPages", "selectClassView", lang)}</p>
  </div>
  )}
 
  {/* Summary bar + progress */}
  {activeClassId && records.size > 0 && (
  <>
- <div className="grid grid-cols-5 gap-2 mb-4">
- {[
- { key: "PRESENT", label: "Present", cls: "bg-emerald-50 text-emerald-700" },
- { key: "ABSENT", label: "Absent", cls: "bg-red-50 text-red-600" },
- { key: "LEAVE", label: "Leave", cls: "bg-amber-50 text-amber-700" },
- { key: "SICK", label: "Sick", cls: "bg-blue-50 text-blue-700" },
- { key: "UNMARKED", label: "Unmarked", cls: "bg-gray-50 text-gray-500" },
- ].map(({ key, label, cls }) => (
- <div key={key} className={cn("rounded-xl p-2.5 text-center", cls)}>
- <p className="text-xl font-bold">{summary[key] ?? 0}</p>
- <p className="text-[10px] font-semibold mt-0.5">{label}</p>
- </div>
- ))}
- </div>
+<div className="grid grid-cols-5 gap-2 mb-4">
+  {[
+  { key: "PRESENT", label: t("teacherPages", "present", lang), cls: "bg-emerald-50 text-emerald-700" },
+  { key: "ABSENT", label: t("teacherPages", "absent", lang), cls: "bg-red-50 text-red-600" },
+  { key: "LEAVE", label: t("teacherPages", "leaveLabel", lang), cls: "bg-amber-50 text-amber-700" },
+  { key: "SICK", label: t("teacherPages", "sickLabel", lang), cls: "bg-blue-50 text-blue-700" },
+  { key: "UNMARKED", label: t("teacherPages", "unmarkedLabel", lang), cls: "bg-gray-50 text-gray-500" },
+  ].map(({ key, label, cls }) => (
+  <div key={key} className={cn("rounded-xl p-2.5 text-center", cls)}>
+  <p className="text-xl font-bold">{summary[key] ?? 0}</p>
+  <p className="text-[10px] font-semibold mt-0.5">{label}</p>
+  </div>
+  ))}
+  </div>
 
  {/* Attendance % progress bar */}
  <div className="bg-white rounded-2xl border border-gray-100 px-4 py-3 mb-4">
  <div className="flex items-center justify-between mb-2">
- <p className="text-xs font-semibold text-gray-500">Attendance rate</p>
+ <p className="text-xs font-semibold text-gray-500">{t("teacherPages", "attendanceRateLabel", lang)}</p>
  <p className="text-sm font-bold text-emerald-700">{pct}%</p>
  </div>
  <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden flex">
@@ -479,26 +483,26 @@ export default function TeacherAttendancePage() {
  <AlertTriangle className="w-5 h-5 text-red-600" />
  </div>
  <div>
- <p className="font-bold text-gray-900">Clear all attendance</p>
+ <p className="font-bold text-gray-900">{t("teacherPages", "clearAttendanceTitle", lang)}</p>
  <p className="text-xs text-gray-500 mt-0.5">{activeClass?.name} · {date}</p>
  </div>
  </div>
  <p className="text-sm text-gray-600 mb-5">
- This will remove all attendance records for this class and date. This action cannot be undone.
+ {t("teacherPages", "clearAttendanceDesc", lang)}
  </p>
  <div className="flex gap-3">
  <button
  onClick={() => setConfirmClear(false)}
  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50"
  >
- Cancel
+ {t("common", "cancel", lang)}
  </button>
  <button
  onClick={clearAll}
  disabled={saving}
  className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-60"
  >
- {saving ? "Clearing..." : "Yes, Clear All"}
+ {saving ? t("teacherPages", "clearingLabel", lang) : t("teacherPages", "yesClearAll", lang)}
  </button>
  </div>
  </motion.div>
@@ -509,7 +513,7 @@ export default function TeacherAttendancePage() {
  {/* Bulk mark actions */}
  {activeClassId && records.size > 0 && (
  <div className="flex gap-2 mb-4 flex-wrap">
- <span className="text-xs text-gray-400 self-center mr-1">Mark all:</span>
+ <span className="text-xs text-gray-400 self-center mr-1">{t("teacherPages", "markAllLabel", lang)}</span>
  {ACTIVE_STATUSES.map((s) => (
  <button key={s}
  onClick={() => markAll(s)}
@@ -518,10 +522,10 @@ export default function TeacherAttendancePage() {
  STATUS_CONFIG[s].bg, STATUS_CONFIG[s].text,
  )}
  >
- {STATUS_CONFIG[s].label}
- </button>
- ))}
- </div>
+{s === "PRESENT" ? t("teacherPages", "present", lang) : s === "ABSENT" ? t("teacherPages", "absent", lang) : s === "LEAVE" ? t("teacherPages", "leaveLabel", lang) : t("teacherPages", "sickLabel", lang)}
+  </button>
+  ))}
+  </div>
  )}
 
  {saveError && (
@@ -557,7 +561,7 @@ export default function TeacherAttendancePage() {
  ) : students.length === 0 ? (
  <div className="text-center py-16 text-gray-400">
  <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
- <p className="font-semibold">No active students in this class</p>
+ <p className="font-semibold">{t("teacherPages", "noActiveStudents", lang)}</p>
  </div>
  ) : (
  <div className="space-y-2 pb-24">
@@ -597,7 +601,7 @@ export default function TeacherAttendancePage() {
  <button
  key={s}
  onClick={() => setStatus(student.id, s)}
- title={STATUS_CONFIG[s].label}
+ title={s === "PRESENT" ? t("teacherPages", "present", lang) : s === "ABSENT" ? t("teacherPages", "absent", lang) : s === "LEAVE" ? t("teacherPages", "leaveLabel", lang) : t("teacherPages", "sickLabel", lang)}
  className={cn(
  "text-[10px] font-bold px-2 py-1 rounded-lg transition-all",
  status === s
@@ -616,7 +620,7 @@ export default function TeacherAttendancePage() {
  <div className="px-3.5 pb-3">
  <input
  type="text"
- placeholder="Add note (optional)"
+ placeholder={t("teacherPages", "addNoteOptional", lang)}
  value={rec?.notes ?? ""}
  onChange={(e) => setNotes(student.id, e.target.value)}
  className="w-full px-3 py-2 rounded-xl bg-white border border-gray-200 text-xs text-gray-700 focus:outline-none focus:border-emerald-400"
@@ -640,10 +644,10 @@ export default function TeacherAttendancePage() {
  disabled={saving}
  className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-sm shadow-xl transition-all bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
  >
- {saving
- ? <><Loader2 className="w-5 h-5 animate-spin" /> Saving…</>
- : <><Save className="w-5 h-5" /> Save Attendance · {summary.ABSENT > 0 ? `${summary.ABSENT} absent` : "All marked"}</>
- }
+{saving
+  ? <><Loader2 className="w-5 h-5 animate-spin" /> {t("teacherPages", "savingEllipsis", lang)}</>
+  : <><Save className="w-5 h-5" /> {t("teacherPages", "saveAttendanceCount", lang)} · {summary.ABSENT > 0 ? t("teacherPages", "xAbsent", lang).replace("{n}", String(summary.ABSENT)) : t("teacherPages", "allMarked", lang)}</>
+  }
  </button>
  )}
  {hasExisting && (
@@ -651,12 +655,12 @@ export default function TeacherAttendancePage() {
  onClick={() => setConfirmClear(true)}
  className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-sm shadow-xl transition-all bg-red-500 text-white hover:bg-red-600"
  >
- <Trash2 className="w-5 h-5" /> Clear All
- </button>
- )}
- </div>
- </div>
- )}
- </DashboardLayout>
+<Trash2 className="w-5 h-5" /> {t("teacherPages", "clearAllBtn", lang)}
+  </button>
+  )}
+  </div>
+  </div>
+  )}
+  </DashboardLayout>
  );
 }

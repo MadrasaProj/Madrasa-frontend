@@ -10,6 +10,8 @@ import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
 import { getSubjects, type SubjectRecord } from "@/lib/subjects-api";
 import { getStudents, type StudentRecord } from "@/lib/students-api";
 import { useAuthStore } from "@/store/auth";
+import { useLanguageStore } from "@/store/language";
+import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
   GraduationCap, Lock, Clock, PenLine, Eye,
@@ -28,6 +30,7 @@ import { fmt, shortDate, getExamCategories } from "@/lib/exam-utils";
 
 export default function TeacherExamsPage() {
  const { user, accessToken } = useAuthStore();
+ const { lang } = useLanguageStore();
  const navigate = useNavigate();
  const location = useLocation();
  const [searchParams, setSearchParams] = useSearchParams();
@@ -197,7 +200,7 @@ export default function TeacherExamsPage() {
   }));
 
  if (!items.length) {
- setError("No scores entered");
+  setError(t("teacherPages", "noScoresEntered", lang));
  return;
  }
 
@@ -221,7 +224,7 @@ export default function TeacherExamsPage() {
  }
  }, 1500);
  } catch (e: any) {
- setError(e.message ?? "Save failed");
+  setError(e.message ?? t("teacherPages", "saveFailedMsg", lang));
  } finally {
  setSaving(false);
  }
@@ -289,14 +292,14 @@ export default function TeacherExamsPage() {
  <DashboardLayout>
  <div className="px-4 py-3 lg:px-8 lg:py-6 space-y-6">
  <PageHeader
- title="Exams"
- subtitle="View exam schedule and enter marks"
- icon={GraduationCap}
- />
- <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
- {Array.from({ length: 4 }).map((_, i) => (
- <Skeleton key={i} className="h-24 rounded-3xl" />
- ))}
+  title={t("teacherPages", "examsLoadingTitle", lang)}
+  subtitle={t("teacherPages", "examsLoadingSub", lang)}
+  icon={GraduationCap}
+  />
+  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+  {Array.from({ length: 4 }).map((_, i) => (
+  <Skeleton key={i} className="h-24 rounded-3xl" />
+  ))}
  </div>
  <div className="flex gap-1">
  {Array.from({ length: 5 }).map((_, i) => (
@@ -330,11 +333,11 @@ export default function TeacherExamsPage() {
  </button>
  <div>
  <div className="flex items-center gap-2 text-xs text-gray-400 font-bold uppercase tracking-wider">
- <span>Exams</span>
- <span>/</span>
- <span>Mark Entry</span>
- </div>
- <h1 className="text-xl font-extrabold text-gray-900 tracking-tight mt-0.5">Enter Marks</h1>
+  <span>{t("teacherPages", "examsBreadcrumb", lang)}</span>
+  <span>/</span>
+  <span>{t("teacherPages", "markEntryBreadcrumb", lang)}</span>
+  </div>
+  <h1 className="text-xl font-extrabold text-gray-900 tracking-tight mt-0.5">{t("teacherPages", "enterMarksBreadcrumb", lang)}</h1>
  </div>
  </div>
 
@@ -360,7 +363,7 @@ export default function TeacherExamsPage() {
  onRemarkChange={(sid, val) => setRemarks((prev) => ({ ...prev, [sid]: val }))}
  onSave={handleSave}
  onReset={() => {
- if (confirm("Reset entered marks?")) {
+  if (confirm(t("teacherPages", "confirmResetMarks", lang))) {
  const scoreMap: Record<string, string> = {};
  students.forEach((s) => {
  const r = existingResults.find((r) => r.student?.id === s.id && r.subject?.id === querySubjectId);
@@ -414,34 +417,34 @@ export default function TeacherExamsPage() {
       <div className="px-4 py-3 lg:px-8 lg:py-6 space-y-6">
 
         <PageHeader
-          title="Exams"
-          subtitle="View exam schedule and enter marks"
+          title={t("teacherPages", "examsLoadingTitle", lang)}
+          subtitle={t("teacherPages", "examsLoadingSub", lang)}
           icon={GraduationCap}
         />
-
+        
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             {
-              label: "Upcoming Exams",
+              label: t("teacherPages", "upcomingExams", lang),
               value: upcomingExams.length,
               color:
                 "bg-emerald-50 text-emerald-600 border border-emerald-100",
               icon: Clock,
             },
             {
-              label: "Mark Entry Open",
+              label: t("teacherPages", "markEntryOpen", lang),
               value: markEntryOpenExams.length,
               color: "bg-amber-50 text-amber-600 border border-amber-100",
               icon: PenLine,
             },
             {
-              label: "Completed",
+              label: t("teacherPages", "completedLabel", lang),
               value: completedExams.length,
               color: "bg-purple-50 text-purple-700 border border-purple-100",
               icon: ClipboardCheck,
             },
             {
-              label: "Results Published",
+              label: t("teacherPages", "resultsPublishedLabel", lang),
               value: publishedExams.length,
               color: "bg-teal-50 text-teal-600 border border-teal-100",
               icon: Trophy,
@@ -485,7 +488,7 @@ export default function TeacherExamsPage() {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Search exam by name..."
+            placeholder={t("teacherPages", "searchExamByName", lang)}
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 focus:border-emerald-500 transition-all"
@@ -507,7 +510,7 @@ export default function TeacherExamsPage() {
           loading={loading}
           error={null}
           emptyIcon={GraduationCap}
-          emptyMessage="No term exams found"
+          emptyMessage={t("teacherPages", "noTermExams", lang)}
           onSort={(key, dir) => {
             setSortBy(key);
             setSortDir(dir);

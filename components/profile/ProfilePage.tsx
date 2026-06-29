@@ -64,6 +64,7 @@ interface DrawerProps {
 }
 
 function Drawer({ open, onClose, children, title, subtitle }: DrawerProps) {
+  const { lang } = useLanguageStore();
   useEffect(() => {
     if (!open) return;
     document.body.style.overflow = "hidden";
@@ -98,7 +99,7 @@ function Drawer({ open, onClose, children, title, subtitle }: DrawerProps) {
               <button
                 onClick={onClose}
                 className="p-2 rounded-xl hover:bg-gray-100 text-gray-500 transition-colors active:scale-95 shrink-0"
-                aria-label="Close drawer"
+                aria-label={t("common", "close", lang)}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -309,8 +310,8 @@ export default function ProfilePage({ config }: ProfilePageProps) {
   });
 
   const drawerTabs = [
-    { id: "account" as const, label: "Account Details", icon: User },
-    { id: "security" as const, label: "Security", icon: Shield },
+    { id: "account" as const, label: t("common", "accountDetails", lang), icon: User },
+    { id: "security" as const, label: t("common", "security", lang), icon: Shield },
   ];
 
   return (
@@ -405,19 +406,19 @@ export default function ProfilePage({ config }: ProfilePageProps) {
         >
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h2 className="text-base font-bold text-gray-900">Profile Details</h2>
+              <h2 className="text-base font-bold text-gray-900">{t("common", "profileDetails", lang)}</h2>
               <p className="text-xs text-gray-500 mt-0.5">
-                Hello, <span className="font-semibold text-emerald-700">{user?.name ?? config.roleLabel}</span> — your account at a glance
+                {t("common", "helloYourAccount", lang).replace("{name}", user?.name ?? config.roleLabel)}
               </p>
             </div>
             <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full">
-              <CheckCircle className="w-3 h-3" /> Verified
+              <CheckCircle className="w-3 h-3" /> {t("common", "verified", lang)}
             </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className={labelCls}>Display Name</label>
+              <label className={labelCls}>{t("common", "displayName", lang)}</label>
               <div className={readOnlyCls}>
                 <User className="w-4 h-4 text-gray-400" />
                 <span className="font-medium">{user?.name ?? "—"}</span>
@@ -425,7 +426,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
             </div>
 
             <div>
-              <label className={labelCls}>Role</label>
+              <label className={labelCls}>{t("common", "role", lang)}</label>
               <div className={readOnlyCls}>
                 <IdCard className="w-4 h-4 text-gray-400" />
                 <span className="font-medium">{config.roleLabel}</span>
@@ -436,7 +437,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
             </div>
 
             <div>
-              <label className={labelCls}>User ID</label>
+              <label className={labelCls}>{t("common", "userId", lang)}</label>
               <div className={readOnlyCls}>
                 <Hash className="w-4 h-4 text-gray-400" />
                 <span className="font-mono text-xs truncate">{user?.id ?? "—"}</span>
@@ -444,53 +445,53 @@ export default function ProfilePage({ config }: ProfilePageProps) {
             </div>
 
             <div>
-              <label className={labelCls}>{user?.actorType === "SUPER_ADMIN" ? "Scope" : "Tenant"}</label>
+              <label className={labelCls}>{user?.actorType === "SUPER_ADMIN" ? t("common", "scope", lang) : t("common", "tenant", lang)}</label>
               <div className={readOnlyCls}>
                 <Building2 className="w-4 h-4 text-gray-400" />
                 <span className="font-medium truncate">
-                  {user?.actorType === "SUPER_ADMIN" ? "Platform-wide" : (user?.madrasaName ?? user?.tenantSlug ?? "—")}
+                  {user?.actorType === "SUPER_ADMIN" ? t("common", "platformWide", lang) : (user?.madrasaName ?? user?.tenantSlug ?? "—")}
                 </span>
               </div>
             </div>
 
             <div>
-              <label className={labelCls}>{isParent ? "Primary Phone" : "Phone"}</label>
+              <label className={labelCls}>{isParent ? t("common", "primaryPhone", lang) : t("common", "phone", lang)}</label>
               <div className={readOnlyCls}>
                 <Phone className="w-4 h-4 text-gray-400" />
                 <span className={cn("font-medium", !user?.phone && !user?.parentPhone && "text-gray-400")}>
-                  {user?.phone || user?.parentPhone || "Not set"}
+                  {user?.phone || user?.parentPhone || t("common", "notSet", lang)}
                 </span>
               </div>
             </div>
 
             <div>
-              <label className={labelCls}>Email</label>
+              <label className={labelCls}>{t("common", "email", lang)}</label>
               <div className={readOnlyCls}>
                 <Mail className="w-4 h-4 text-gray-400" />
                 <span className={cn("font-medium", !user?.email && "text-gray-400")}>
-                  {user?.email || "Not set"}
+                  {user?.email || t("common", "notSet", lang)}
                 </span>
               </div>
             </div>
 
             {config.showMsrId && (
               <div>
-                <label className={labelCls}>MSR ID</label>
+                <label className={labelCls}>{t("common", "msrId", lang)}</label>
                 <div className={readOnlyCls}>
                   <Briefcase className="w-4 h-4 text-gray-400" />
                   <span className={cn("font-medium font-mono", !user?.msrId && "text-gray-400")}>
-                    {user?.msrId || "Not assigned"}
+                    {user?.msrId || t("common", "notAssigned", lang)}
                   </span>
                 </div>
               </div>
             )}
 
             <div className="sm:col-span-2">
-              <label className={labelCls}>Address</label>
+              <label className={labelCls}>{t("common", "address", lang)}</label>
               <div className={cn(readOnlyCls, "whitespace-pre-wrap items-start")}>
                 <MapPin className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
                 <span className={cn("font-medium", !user?.address && "text-gray-400")}>
-                  {user?.address || "Not set"}
+                  {user?.address || t("common", "notSet", lang)}
                 </span>
               </div>
             </div>
@@ -528,7 +529,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                      shadow-lg transition-colors"
         >
           <Pencil className="w-4 h-4" />
-          Update Profile
+          {t("common", "updateProfile", lang)}
         </motion.button>
       </div>
 
@@ -542,15 +543,15 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                    shadow-lg hover:bg-emerald-700 transition-colors"
       >
         <Pencil className="w-4 h-4" />
-        Update Profile
+        {t("common", "updateProfile", lang)}
       </motion.button>
 
       {/* Edit Drawer */}
       <Drawer
         open={drawerOpen}
         onClose={closeDrawer}
-        title="Update Profile"
-        subtitle="Edit your account information and security"
+        title={t("common", "updateProfile", lang)}
+        subtitle={t("common", "editInfo", lang)}
       >
         <div className="px-5 pt-4">
           <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-2xl">
@@ -607,21 +608,21 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900">Profile Picture</p>
-                    <p className="text-[11px] text-gray-500 mt-0.5">PNG, JPG up to 2MB.</p>
+                    <p className="text-sm font-semibold text-gray-900">{t("common", "profilePicture", lang)}</p>
+                    <p className="text-[11px] text-gray-500 mt-0.5">{t("common", "photoHint", lang)}</p>
                     <div className="mt-2 flex items-center gap-2">
                       <label className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold
                                         bg-emerald-600 text-white rounded-lg cursor-pointer
                                         hover:bg-emerald-700 transition-colors active:scale-95 disabled:opacity-50">
                         <Camera className="w-3.5 h-3.5" />
-                        {picPreview ? "Change Photo" : "Upload Photo"}
+                        {picPreview ? t("common", "changePhoto", lang) : t("common", "uploadPhoto", lang)}
                         <input type="file" accept="image/*" className="hidden" onChange={handlePicFile} disabled={uploadingPhoto} />
                       </label>
                       {picPreview && (
                         <button type="button" onClick={handleRemovePhoto} disabled={uploadingPhoto}
                           className="inline-flex items-center gap-1 px-3 py-1.5 text-[11px] font-semibold
                                      text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors disabled:opacity-50">
-                          <X className="w-3 h-3" /> Remove
+                          <X className="w-3 h-3" /> {t("common", "remove", lang)}
                         </button>
                       )}
                     </div>
@@ -629,17 +630,17 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                 </div>
 
                 <div>
-                  <label className={labelCls}>Display Name *</label>
+                  <label className={labelCls}>{t("common", "displayName", lang)} *</label>
                   <div className="relative">
                     <User className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input value={name} onChange={(e) => setName(e.target.value)}
-                      className={cn(inputCls, "pl-9")} placeholder="Your full name" autoFocus />
+                      className={cn(inputCls, "pl-9")} placeholder={t("common", "displayName", lang).toLowerCase()} autoFocus />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className={labelCls}>{isParent ? "Primary Phone" : "Phone"}</label>
+                    <label className={labelCls}>{isParent ? t("common", "primaryPhone", lang) : t("common", "phone", lang)}</label>
                     <div className="relative">
                       <Phone className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                       <input value={phone} onChange={(e) => setPhone(e.target.value)}
@@ -648,7 +649,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                   </div>
 
                   <div>
-                    <label className={labelCls}>Email</label>
+                    <label className={labelCls}>{t("common", "email", lang)}</label>
                     <div className="relative">
                       <Mail className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                       <input value={email} onChange={(e) => setEmail(e.target.value)}
@@ -658,7 +659,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
 
                   {config.showMsrId && (
                     <div className="sm:col-span-2">
-                      <label className={labelCls}>MSR ID</label>
+                      <label className={labelCls}>{t("common", "msrId", lang)}</label>
                       <div className="relative">
                         <Briefcase className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                         <input value={msrId} onChange={(e) => setMsrId(e.target.value)}
@@ -668,7 +669,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                   )}
 
                   <div className="sm:col-span-2">
-                    <label className={labelCls}>Address</label>
+                    <label className={labelCls}>{t("common", "address", lang)}</label>
                     <div className="relative">
                       <MapPin className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
                       <textarea value={address} onChange={(e) => setAddress(e.target.value)}
@@ -682,11 +683,11 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                   <>
                     <div className="pt-2 border-t border-gray-100">
                       <p className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-2">
-                        Additional Details
+                        {t("common", "additionalDetails", lang)}
                       </p>
                     </div>
                     <div>
-                      <label className={labelCls}>Alternate Phone</label>
+                      <label className={labelCls}>{t("common", "alternatePhone", lang)}</label>
                       <div className="relative">
                         <Phone className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                         <input value={parentAltPhone} onChange={(e) => setParentAltPhone(e.target.value)}
@@ -695,27 +696,27 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className={labelCls}>City</label>
+                        <label className={labelCls}>{t("common", "city", lang)}</label>
                         <input value={city} onChange={(e) => setCity(e.target.value)}
-                          className={inputCls} placeholder="City" />
+                          className={inputCls} placeholder={t("common", "city", lang)} />
                       </div>
                       <div>
-                        <label className={labelCls}>State</label>
+                        <label className={labelCls}>{t("common", "state", lang)}</label>
                         <input value={stateField} onChange={(e) => setStateField(e.target.value)}
-                          className={inputCls} placeholder="State" />
+                          className={inputCls} placeholder={t("common", "state", lang)} />
                       </div>
                       <div>
-                        <label className={labelCls}>Country</label>
+                        <label className={labelCls}>{t("common", "country", lang)}</label>
                         <input value={country} onChange={(e) => setCountry(e.target.value)}
-                          className={inputCls} placeholder="Country" />
+                          className={inputCls} placeholder={t("common", "country", lang)} />
                       </div>
                       <div>
-                        <label className={labelCls}>Pincode</label>
+                        <label className={labelCls}>{t("common", "pincode", lang)}</label>
                         <input value={pincode} onChange={(e) => setPincode(e.target.value)}
-                          className={inputCls} placeholder="Pincode" inputMode="numeric" />
+                          className={inputCls} placeholder={t("common", "pincode", lang)} inputMode="numeric" />
                       </div>
                       <div className="sm:col-span-2">
-                        <label className={labelCls}>Blood Group</label>
+                        <label className={labelCls}>{t("common", "bloodGroup", lang)}</label>
                         <select value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)}
                           className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/60">
                           <option value="">— Select —</option>
@@ -738,16 +739,16 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                 <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
                   <Shield className="w-4 h-4 text-amber-600 shrink-0" />
                   <p className="text-[11px] text-amber-800 font-medium">
-                    Leave blank if you don't want to change your password.
+                    {t("common", "pwChangeHint", lang)}
                   </p>
                 </div>
 
                 <div>
-                  <label className={labelCls}>Current Password</label>
+                  <label className={labelCls}>{t("common", "currentPassword", lang)}</label>
                   <div className="relative">
                     <input type={showCur ? "text" : "password"}
                       value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)}
-                      className={cn(inputCls, "pr-10")} placeholder="Enter current password" />
+                      className={cn(inputCls, "pr-10")} placeholder={t("common", "enterCurrentPassword", lang)} />
                     <button type="button" onClick={() => setShowCur((v) => !v)}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100">
                       {showCur ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -756,11 +757,11 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                 </div>
 
                 <div>
-                  <label className={labelCls}>New Password</label>
+                  <label className={labelCls}>{t("common", "newPassword", lang)}</label>
                   <div className="relative">
                     <input type={showNew ? "text" : "password"}
                       value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
-                      className={cn(inputCls, "pr-10")} placeholder="Min 8 characters" />
+                      className={cn(inputCls, "pr-10")} placeholder={t("common", "min8Chars", lang)} />
                     <button type="button" onClick={() => setShowNew((v) => !v)}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100">
                       {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -784,12 +785,12 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                 </div>
 
                 <div>
-                  <label className={labelCls}>Confirm New Password</label>
+                  <label className={labelCls}>{t("common", "confirmPassword", lang)}</label>
                   <div className="relative">
                     <input type={showCon ? "text" : "password"}
                       value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
                       className={cn(inputCls, "pr-10", pwMismatch && "border-rose-300 focus:ring-rose-300/60 focus:border-rose-400")}
-                      placeholder="Repeat new password" />
+                      placeholder={t("common", "repeatNewPassword", lang)} />
                     <button type="button" onClick={() => setShowCon((v) => !v)}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100">
                       {showCon ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -797,24 +798,24 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                   </div>
                   {pwMismatch && (
                     <p className="text-[10px] text-rose-600 font-semibold mt-1.5 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" /> Passwords do not match
+                      <AlertCircle className="w-3 h-3" /> {t("common", "passwordsMismatch", lang)}
                     </p>
                   )}
                   {confirmPassword && !pwMismatch && (
                     <p className="text-[10px] text-emerald-600 font-semibold mt-1.5 flex items-center gap-1">
-                      <CheckCircle className="w-3 h-3" /> Passwords match
+                      <CheckCircle className="w-3 h-3" /> {t("common", "passwordsMatch", lang)}
                     </p>
                   )}
                 </div>
 
                 <div className="pt-2 border-t border-gray-100">
-                  <p className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-2">Password rules</p>
+                  <p className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-2">{t("common", "passwordRules", lang)}</p>
                   <ul className="grid grid-cols-2 gap-1.5">
                     {[
-                      { label: "8+ characters", done: newPassword.length >= 8 },
-                      { label: "Upper & lower", done: /[a-z]/.test(newPassword) && /[A-Z]/.test(newPassword) },
-                      { label: "Has number",    done: /[0-9]/.test(newPassword) },
-                      { label: "Has symbol",    done: /[^A-Za-z0-9]/.test(newPassword) },
+                      { label: t("common", "char8plus", lang), done: newPassword.length >= 8 },
+                      { label: t("common", "upperLower", lang), done: /[a-z]/.test(newPassword) && /[A-Z]/.test(newPassword) },
+                      { label: t("common", "hasNumber", lang),    done: /[0-9]/.test(newPassword) },
+                      { label: t("common", "hasSymbol", lang),    done: /[^A-Za-z0-9]/.test(newPassword) },
                     ].map((c) => (
                       <li key={c.label} className="flex items-center gap-1.5 text-[11px]">
                         {c.done ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
@@ -842,14 +843,14 @@ export default function ProfilePage({ config }: ProfilePageProps) {
             className="px-4 py-3 text-sm font-semibold border border-gray-200 rounded-2xl
                        text-gray-600 bg-white hover:bg-gray-50 transition-all active:scale-95
                        disabled:opacity-50">
-            Cancel
+            {t("common", "cancel", lang)}
           </button>
           <button onClick={handleSave} disabled={saving}
             className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-bold
                        bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700
                        shadow-lg transition-colors active:scale-[0.98] disabled:opacity-60">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
-            {saving ? "Updating…" : "Update Profile"}
+            {saving ? t("common", "updating", lang) : t("common", "updateProfile", lang)}
           </button>
         </div>
       </Drawer>

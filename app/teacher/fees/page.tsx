@@ -12,25 +12,30 @@ import {
  type FeePaymentStatus,
 } from "@/lib/fees-api";
 import { useAuthStore } from "@/store/auth";
+import { useLanguageStore } from "@/store/language";
+import { t, type Lang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
  CreditCard, Loader2, Receipt, CheckCircle, Search, RefreshCw, Printer, XCircle, ChevronDown,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const STATUS_META: Record<FeePaymentStatus, { label: string; color: string; bg: string }> = {
- PENDING: { label: "Pending", color: "text-amber-700", bg: "bg-amber-50" },
- PAID: { label: "Paid", color: "text-emerald-700", bg: "bg-emerald-50" },
- PARTIAL: { label: "Partial", color: "text-blue-700", bg: "bg-blue-50" },
- OVERDUE: { label: "Overdue", color: "text-red-700", bg: "bg-red-50" },
- WAIVED: { label: "Waived", color: "text-gray-500", bg: "bg-gray-100" },
-};
+function getStatusMeta(lang: Lang): Record<FeePaymentStatus, { label: string; color: string; bg: string }> {
+  return {
+    PENDING: { label: t("common", "pending", lang), color: "text-amber-700", bg: "bg-amber-50" },
+    PAID: { label: t("common", "paid", lang), color: "text-emerald-700", bg: "bg-emerald-50" },
+    PARTIAL: { label: t("teacherPages", "partialLabel", lang), color: "text-blue-700", bg: "bg-blue-50" },
+    OVERDUE: { label: t("teacherPages", "overdueLabel", lang), color: "text-red-700", bg: "bg-red-50" },
+    WAIVED: { label: "Waived", color: "text-gray-500", bg: "bg-gray-100" },
+  };
+}
 
 const PAYMENT_METHODS = ["CASH", "BANK_TRANSFER", "UPI", "CHEQUE", "OTHER"] as const;
 
 function ReceiptModal({ receipt, onClose }: { receipt: ReceiptData; onClose: () => void }) {
- return (
- <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+  const { lang } = useLanguageStore();
+  return (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
  <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
  <motion.div initial={{ scale: 0.94, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
  className="relative bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
@@ -39,17 +44,17 @@ function ReceiptModal({ receipt, onClose }: { receipt: ReceiptData; onClose: () 
  <Receipt className="w-6 h-6 text-white" />
  </div>
  <p className="font-bold text-lg">{receipt.client.name}</p>
- <p className="text-emerald-100 text-xs uppercase tracking-widest mt-0.5">Fee Receipt</p>
+  <p className="text-emerald-100 text-xs uppercase tracking-widest mt-0.5">{t("teacherPages", "feeReceiptTitle", lang)}</p>
  </div>
  <div className="px-6 py-5 space-y-2.5">
  {([
- ["Receipt No", receipt.reference ?? receipt.id.slice(0, 8).toUpperCase()],
- ["Student", receipt.student.name],
- ["Adm No", receipt.student.adno],
- ["Class", receipt.student.class?.name ?? "—"],
- ["Fee Type", receipt.feeType.name],
- ["Paid On", receipt.paidAt ? new Date(receipt.paidAt).toLocaleDateString("en-GB") : "—"],
- ["Method", receipt.method ?? "—"],
+  [t("teacherPages", "receiptNoLabel", lang), receipt.reference ?? receipt.id.slice(0, 8).toUpperCase()],
+  [t("common", "name", lang), receipt.student.name],
+  [t("parentPages", "admNoLabel", lang), receipt.student.adno],
+  [t("common", "class", lang), receipt.student.class?.name ?? "—"],
+  [t("parentPages", "feeTypeLabel", lang), receipt.feeType.name],
+  [t("teacherPages", "paidOnLabel", lang), receipt.paidAt ? new Date(receipt.paidAt).toLocaleDateString("en-GB") : "—"],
+  [t("parentPages", "methodLabel", lang), receipt.method ?? "—"],
  ] as [string, string][]).map(([label, value]) => (
  <div key={label} className="flex justify-between items-start gap-4">
  <p className="text-xs text-gray-400 shrink-0">{label}</p>
@@ -57,14 +62,14 @@ function ReceiptModal({ receipt, onClose }: { receipt: ReceiptData; onClose: () 
  </div>
  ))}
  <div className="border-t border-dashed border-gray-200 pt-3 flex justify-between items-center">
- <p className="font-bold text-gray-900">Amount Paid</p>
+  <p className="font-bold text-gray-900">{t("teacherPages", "amountPaidLabel", lang)}</p>
  <p className="text-xl font-bold text-emerald-600">₹{Number(receipt.paidAmount ?? 0).toLocaleString()}</p>
  </div>
  </div>
  <div className="px-6 pb-5 flex gap-2">
- <button onClick={onClose} className="flex-1 py-2.5 border rounded-xl text-sm font-semibold text-gray-600">Close</button>
- <button onClick={() => window.print()} className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5">
- <Printer className="w-4 h-4" /> Print
+  <button onClick={onClose} className="flex-1 py-2.5 border rounded-xl text-sm font-semibold text-gray-600">{t("common", "close", lang)}</button>
+  <button onClick={() => window.print()} className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5">
+  <Printer className="w-4 h-4" /> {t("common", "print", lang)}
  </button>
  </div>
  </motion.div>
@@ -73,8 +78,10 @@ function ReceiptModal({ receipt, onClose }: { receipt: ReceiptData; onClose: () 
 }
 
 export default function TeacherFeesPage() {
- const { user, accessToken, activeClientId } = useAuthStore();
- const cid = activeClientId ?? "";
+  const { user, accessToken, activeClientId } = useAuthStore();
+  const { lang } = useLanguageStore();
+  const STATUS_META = getStatusMeta(lang);
+  const cid = activeClientId ?? "";
  const token = accessToken ?? "";
 
  const [feeTypes, setFeeTypes] = useState<FeeType[]>([]);
@@ -235,7 +242,7 @@ export default function TeacherFeesPage() {
 
  return (
  <DashboardLayout>
- <PageHeader title="Fees & Payments" subtitle="View and record payments" icon={CreditCard} />
+  <PageHeader title={t("teacherPages", "feesPaymentsTitle", lang)} subtitle={t("teacherPages", "feesPaymentsSub", lang)} icon={CreditCard} />
 
  {error && <ApiErrorBanner message={error} onRetry={loadPayments} />}
 
@@ -273,11 +280,11 @@ export default function TeacherFeesPage() {
  activeTypeId === null
  ? "bg-emerald-600 text-white shadow-sm"
  : " text-gray-600 hover:bg-gray-200")}>
- <CreditCard className="w-3.5 h-3.5" />
- All Fees
- </button>
+          <CreditCard className="w-3.5 h-3.5" />
+          {t("teacherPages", "allFeesBtn", lang)}
+        </button>
 
- {feeTypes.map((ft) => {
+        {feeTypes.map((ft) => {
  const isActive = ft.id === activeTypeId;
  return (
  <button key={ft.id} onClick={() => selectType(ft.id)}
@@ -315,15 +322,15 @@ export default function TeacherFeesPage() {
  style={{ position: "fixed", top: chevronRect.top, right: chevronRect.right }}
  className="z-50 w-72 bg-white rounded-2xl shadow-xl ring-1 ring-gray-100 overflow-hidden">
  <div className="px-3 py-2 bg-gray-50">
- <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">All Fee Types</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("teacherPages", "allFeeTypes", lang)}</p>
  </div>
  <div className="max-h-80 overflow-y-auto py-1">
  <button onClick={() => selectType(null)}
  className={cn("w-full flex items-center gap-2.5 px-3 py-2.5 text-xs hover:bg-gray-50 text-left",
  activeTypeId === null && "bg-emerald-50 text-emerald-700 font-semibold")}>
  <CreditCard className={cn("w-4 h-4 shrink-0", activeTypeId === null ? "text-emerald-600" : "text-gray-400")} />
- <span className="flex-1 truncate">All Fees</span>
- <span className="text-[10px] text-gray-400">{feeTypes.length} types</span>
+  <span className="flex-1 truncate">{t("teacherPages", "allFeesBtn", lang)}</span>
+  <span className="text-[10px] text-gray-400">{feeTypes.length} types</span>
  </button>
  {feeTypes.map((ft) => {
  const isActive = ft.id === activeTypeId;
@@ -347,7 +354,7 @@ export default function TeacherFeesPage() {
  <div className="relative flex-1">
  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
  <input value={search} onChange={(e) => setSearch(e.target.value)}
- placeholder="Search student name or adm no…"
+  placeholder={t("teacherPages", "searchStudentName", lang)}
  className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:border-emerald-400" />
  </div>
  <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
@@ -355,7 +362,7 @@ export default function TeacherFeesPage() {
  <button key={s} onClick={() => { setStatusFilter(s); setPaySkip(0); }}
  className={cn("px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
  statusFilter === s ? "bg-white shadow-sm text-gray-900" : "text-gray-500")}>
- {s === "all" ? "All" : STATUS_META[s as FeePaymentStatus].label}
+  {s === "all" ? t("common", "all", lang) : STATUS_META[s as FeePaymentStatus].label}
  </button>
  ))}
  </div>
@@ -370,16 +377,16 @@ export default function TeacherFeesPage() {
  <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
  <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
  <p className="text-xs font-semibold text-gray-500">
- {activeType ? activeType.name : "All Fee Types"} — {payTotal} total
+  {activeType ? activeType.name : t("teacherPages", "allFeeTypes", lang)} — {payTotal} total
  </p>
  <button onClick={loadPayments} className="text-xs text-gray-400 flex items-center gap-1">
- <RefreshCw className="w-3 h-3" /> Refresh
+  <RefreshCw className="w-3 h-3" /> {t("teacherPages", "refreshBtn", lang)}
  </button>
  </div>
 
  <div className="divide-y divide-gray-50">
  {filtered.length === 0 ? (
- <div className="py-12 text-center text-gray-400 text-sm">No payment records found</div>
+  <div className="py-12 text-center text-gray-400 text-sm">{t("teacherPages", "noPaymentRecords", lang)}</div>
  ) : (
  filtered.map((p) => {
  const meta = STATUS_META[p.status] ?? STATUS_META.PENDING;
@@ -403,7 +410,7 @@ export default function TeacherFeesPage() {
  {isPaid && p.paidAt ? (
  <p className="text-[10px] text-emerald-600">{new Date(p.paidAt).toLocaleDateString("en-GB")}</p>
  ) : p.dueDate ? (
- <p className="text-[10px] text-amber-600">Due: {new Date(p.dueDate).toLocaleDateString("en-GB")}</p>
+  <p className="text-[10px] text-amber-600">{t("parentPages", "duePrefix", lang)} {new Date(p.dueDate).toLocaleDateString("en-GB")}</p>
  ) : null}
  </div>
  <span className={cn("px-2.5 py-1 rounded-full text-[11px] font-semibold shrink-0", meta.bg, meta.color)}>
@@ -411,32 +418,32 @@ export default function TeacherFeesPage() {
  </span>
  {isPaid ? (
  <>
- <button onClick={() => showReceiptFor(p.id)} disabled={loadingReceipt === p.id} className="shrink-0 p-1" title="View receipt">
+  <button onClick={() => showReceiptFor(p.id)} disabled={loadingReceipt === p.id} className="shrink-0 p-1" title={t("teacherPages", "viewReceiptTitle", lang)}>
  {loadingReceipt === p.id ? (
  <Loader2 className="w-4 h-4 text-gray-300 animate-spin" />
  ) : (
  <Receipt className="w-4 h-4 text-gray-300 hover:text-blue-500 transition-colors" />
  )}
  </button>
- <button
- onClick={() => {
- setCancelling(p.id);
- setCancellingNote("");
- }}
- className="shrink-0 p-1"
- title="Cancel fee"
- >
- <XCircle
- className={cn(
- "w-5 h-5 transition-colors",
- cancelling === p.id
- ? "text-red-500"
- : "text-gray-300 hover:text-red-500",
- )}
- />
- </button>
- </>
- ) : p.status === "WAIVED" ? (
+  <button
+  onClick={() => {
+  setCancelling(p.id);
+  setCancellingNote("");
+  }}
+  className="shrink-0 p-1"
+  title={t("teacherPages", "cancelFeeTitle", lang)}
+  >
+  <XCircle
+  className={cn(
+  "w-5 h-5 transition-colors",
+  cancelling === p.id
+  ? "text-red-500"
+  : "text-gray-300 hover:text-red-500",
+  )}
+  />
+  </button>
+  </>
+  ) : p.status === "WAIVED" ? (
  <button
  onClick={() => undoCancel(p)}
  disabled={cancellingSave}
@@ -454,30 +461,30 @@ export default function TeacherFeesPage() {
  </button>
  ) : (
  <>
- <button onClick={() => { setRecording(p.id); setPayMethod("CASH"); setPayRef(""); }} className="shrink-0 p-1" title="Mark paid">
+  <button onClick={() => { setRecording(p.id); setPayMethod("CASH"); setPayRef(""); }} className="shrink-0 p-1" title={t("teacherPages", "markPaidTitle", lang)}>
  <CheckCircle className={cn("w-5 h-5 transition-colors",
  recording === p.id ? "text-emerald-500" : "text-gray-300 hover:text-emerald-500")} />
  </button>
- <button
- onClick={() => {
- setCancelling(p.id);
- setCancellingNote("");
- }}
- className="shrink-0 p-1"
- title="Cancel fee"
- >
- <XCircle
- className={cn(
- "w-5 h-5 transition-colors",
- cancelling === p.id
- ? "text-red-500"
- : "text-gray-300 hover:text-red-500",
- )}
- />
- </button>
- </>
- )}
- </div>
+  <button
+  onClick={() => {
+  setCancelling(p.id);
+  setCancellingNote("");
+  }}
+  className="shrink-0 p-1"
+  title={t("teacherPages", "cancelFeeTitle", lang)}
+  >
+  <XCircle
+  className={cn(
+  "w-5 h-5 transition-colors",
+  cancelling === p.id
+  ? "text-red-500"
+  : "text-gray-300 hover:text-red-500",
+  )}
+  />
+  </button>
+  </>
+  )}
+  </div>
 
  <AnimatePresence>
  {recording === p.id && (
@@ -490,14 +497,14 @@ export default function TeacherFeesPage() {
  {PAYMENT_METHODS.map((m) => (<option key={m} value={m}>{m.replace(/_/g, " ")}</option>))}
  </select>
  <input type="text" value={payRef} onChange={(e) => setPayRef(e.target.value)}
- placeholder="Receipt / Ref no." className="px-3 py-2 rounded-xl border text-xs focus:outline-none focus:border-emerald-400" />
+  placeholder={t("teacherPages", "receiptRefPlc", lang)} className="px-3 py-2 rounded-xl border text-xs focus:outline-none focus:border-emerald-400" />
  </div>
  <div className="flex gap-2">
- <button onClick={() => setRecording(null)} className="flex-1 py-2 rounded-xl border text-xs font-semibold text-gray-600">Cancel</button>
+  <button onClick={() => setRecording(null)} className="flex-1 py-2 rounded-xl border text-xs font-semibold text-gray-600">{t("common", "cancel", lang)}</button>
  <button onClick={() => markPaid(p)} disabled={saving}
  className="flex-1 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold disabled:opacity-60 flex items-center justify-center gap-1">
- {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
- Mark Paid
+  {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
+  {t("teacherPages", "markPaidBtn", lang)}
  </button>
  </div>
  </div>
@@ -511,13 +518,13 @@ export default function TeacherFeesPage() {
  </div>
 
  <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs">
- <span className="text-gray-500">{payments.filter((p) => p.status === "PAID").length} paid · {payments.filter((p) => p.status !== "PAID" && p.status !== "WAIVED").length} pending</span>
+  <span className="text-gray-500">{t("teacherPages", "paidPendingSummary", lang).replace("{paid}", String(payments.filter((p) => p.status === "PAID").length)).replace("{pending}", String(payments.filter((p) => p.status !== "PAID" && p.status !== "WAIVED").length))}</span>
  <div className="flex gap-3">
  <span className="text-emerald-600 font-bold">
- ₹{payments.filter((p) => p.status === "PAID").reduce((s, p) => s + Number(p.paidAmount ?? p.dueAmount), 0).toLocaleString()} collected
+  {t("teacherPages", "collectedAmount", lang).replace("{amount}", payments.filter((p) => p.status === "PAID").reduce((s, p) => s + Number(p.paidAmount ?? p.dueAmount), 0).toLocaleString())}
  </span>
  <span className="text-amber-600 font-bold">
- ₹{payments.filter((p) => p.status !== "PAID" && p.status !== "WAIVED").reduce((s, p) => s + Number(p.dueAmount), 0).toLocaleString()} pending
+  {t("teacherPages", "pendingAmount", lang).replace("{amount}", payments.filter((p) => p.status !== "PAID" && p.status !== "WAIVED").reduce((s, p) => s + Number(p.dueAmount), 0).toLocaleString())}
  </span>
  </div>
  </div>
@@ -526,10 +533,10 @@ export default function TeacherFeesPage() {
  {payTotal > 30 && (
  <div className="flex items-center justify-center gap-3 mt-4">
  <button disabled={paySkip === 0} onClick={() => setPaySkip(Math.max(0, paySkip - 30))}
- className="px-4 py-2 rounded-xl border text-sm disabled:opacity-40">Prev</button>
+  className="px-4 py-2 rounded-xl border text-sm disabled:opacity-40">{t("teacherPages", "prevBtn", lang)}</button>
  <span className="text-sm text-gray-500">{paySkip + 1}–{Math.min(paySkip + 30, payTotal)} of {payTotal}</span>
  <button disabled={paySkip + 30 >= payTotal} onClick={() => setPaySkip(paySkip + 30)}
- className="px-4 py-2 rounded-xl border text-sm disabled:opacity-40">Next</button>
+  className="px-4 py-2 rounded-xl border text-sm disabled:opacity-40">{t("teacherPages", "nextBtn", lang)}</button>
  </div>
  )}
  </>
@@ -557,46 +564,46 @@ export default function TeacherFeesPage() {
  <XCircle className="w-5 h-5 text-red-600" />
  </div>
  <div>
- <p className="font-bold text-gray-900">Cancel Fee Payment</p>
- <p className="text-xs text-gray-500">This action will mark the payment as waived</p>
+  <p className="font-bold text-gray-900">{t("teacherPages", "cancelFeePaymentTitle", lang)}</p>
+  <p className="text-xs text-gray-500">{t("teacherPages", "cancelFeeDesc", lang)}</p>
  </div>
  </div>
  </div>
  <div className="px-5 py-4 space-y-3">
  <div className="bg-gray-50 rounded-xl p-3 space-y-1.5">
  <div className="flex justify-between text-sm">
- <span className="text-gray-500">Student</span>
- <span className="font-semibold text-gray-900">{cancellingPayment.student.name}</span>
+  <span className="text-gray-500">{t("common", "name", lang)}</span>
+  <span className="font-semibold text-gray-900">{cancellingPayment.student.name}</span>
  </div>
  <div className="flex justify-between text-sm">
- <span className="text-gray-500">Adm No</span>
- <span className="font-semibold text-gray-900">{cancellingPayment.student.adno}</span>
+  <span className="text-gray-500">{t("parentPages", "admNoLabel", lang)}</span>
+  <span className="font-semibold text-gray-900">{cancellingPayment.student.adno}</span>
  </div>
  <div className="flex justify-between text-sm">
- <span className="text-gray-500">Fee Type</span>
- <span className="font-semibold text-gray-900">{cancellingPayment.feeType.name}</span>
+  <span className="text-gray-500">{t("parentPages", "feeTypeLabel", lang)}</span>
+  <span className="font-semibold text-gray-900">{cancellingPayment.feeType.name}</span>
  </div>
  <div className="flex justify-between text-sm">
- <span className="text-gray-500">Amount</span>
- <span className="font-semibold text-gray-900">₹{Number(cancellingPayment.paidAmount ?? cancellingPayment.dueAmount).toLocaleString()}</span>
+  <span className="text-gray-500">{t("common", "amount", lang)}</span>
+  <span className="font-semibold text-gray-900">₹{Number(cancellingPayment.paidAmount ?? cancellingPayment.dueAmount).toLocaleString()}</span>
  </div>
  <div className="flex justify-between text-sm">
- <span className="text-gray-500">Status</span>
- <span className="font-semibold text-amber-600">{cancellingPayment.status}</span>
+  <span className="text-gray-500">{t("common", "status", lang)}</span>
+  <span className="font-semibold text-amber-600">{cancellingPayment.status}</span>
  </div>
  </div>
  <input type="text" value={cancellingNote} onChange={(e) => setCancellingNote(e.target.value)}
- placeholder="Reason for cancellation (optional)"
+  placeholder={t("teacherPages", "reasonForCancel", lang)}
  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-red-400" />
  </div>
  <div className="px-5 pb-5 flex gap-2">
  <button onClick={() => { setCancelling(null); setCancellingNote(""); }}
- className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Keep</button>
+  className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">{t("teacherPages", "keepBtn", lang)}</button>
  <button onClick={() => cancelPayment(cancellingPayment)} disabled={cancellingSave}
  className="flex-1 py-3 rounded-xl bg-red-600 text-white text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5"
  >
- {cancellingSave ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
- Confirm Cancel
+  {cancellingSave ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+  {t("teacherPages", "confirmCancelBtn", lang)}
  </button>
  </div>
  </div>

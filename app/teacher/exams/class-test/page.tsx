@@ -22,6 +22,8 @@ import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
 import { getSubjects, type SubjectRecord } from "@/lib/subjects-api";
 import { getStudents, type StudentRecord } from "@/lib/students-api";
 import { useAuthStore } from "@/store/auth";
+import { useLanguageStore } from "@/store/language";
+import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
   GraduationCap,
@@ -46,6 +48,7 @@ import { fmt, getExamCategories } from "@/lib/exam-utils";
 
 export default function TeacherClassTestsPage() {
   const { user, accessToken, activeClientId } = useAuthStore();
+  const { lang } = useLanguageStore();
   const navigate = useNavigate();
   const location = useLocation();
   const cid = activeClientId ?? "";
@@ -355,7 +358,7 @@ export default function TeacherClassTestsPage() {
   const handlePublish = async (exam: ExamRecord) => {
     if (
       !window.confirm(
-        `Publish "${exam.name}"? Parents will be able to see results.`,
+        t("teacherPages", "publishConfirmMsg", lang).replace("{name}", exam.name),
       )
     )
       return;
@@ -434,7 +437,7 @@ export default function TeacherClassTestsPage() {
       <div className="px-4 py-3 lg:px-8 lg:py-6 space-y-6">
 
         <PageHeader
-          title="Class Tests"
+          title={t("nav", "classTests", lang)}
           subtitle="Manage class tests and enter marks"
           icon={GraduationCap}
           action={
@@ -442,7 +445,7 @@ export default function TeacherClassTestsPage() {
               onClick={openAdd}
               className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-colors"
             >
-              <Plus className="w-4 h-4" /> New Class Test
+              <Plus className="w-4 h-4" /> {t("teacherPages", "newClassTestBtn", lang)}
             </button>
           }
         />
@@ -470,25 +473,25 @@ export default function TeacherClassTestsPage() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
                 {
-                  label: "Total Tests",
+                  label: t("teacherPages", "totalTestsLabel", lang),
                   value: exams.length,
                   color: "bg-blue-50 text-blue-600 border border-blue-100",
                   icon: GraduationCap,
                 },
                 {
-                  label: "Mark Entry Open",
+                  label: t("teacherPages", "markEntryOpen", lang),
                   value: markEntryOpenExams.length,
                   color: "bg-amber-50 text-amber-600 border border-amber-100",
                   icon: PenLine,
                 },
                 {
-                  label: "Completed",
+                  label: t("teacherPages", "completedLabel", lang),
                   value: completedExams.length,
                   color: "bg-purple-50 text-purple-700 border border-purple-100",
                   icon: Clock,
                 },
                 {
-                  label: "Results Published",
+                  label: t("teacherPages", "resultsPublishedLabel", lang),
                   value: publishedExams.length,
                   color: "bg-teal-50 text-teal-600 border border-teal-100",
                   icon: Trophy,
@@ -554,7 +557,7 @@ export default function TeacherClassTestsPage() {
                 }}
                 className="px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
-                <option value="">All Classes</option>
+                <option value="">{t("adminPages", "allClasses", lang)}</option>
                 {teacherClasses.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -638,7 +641,7 @@ export default function TeacherClassTestsPage() {
                 </div>
                 <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
                   <h2 className="font-bold text-gray-900 text-lg">
-                    {editTarget ? "Edit Class Test" : "New Class Test"}
+                    {editTarget ? t("teacherPages", "editClassTestTitle", lang) : t("teacherPages", "newClassTestTitle", lang)}
                   </h2>
                   <button
                     onClick={() => !saving && setShowDrawer(false)}
@@ -657,13 +660,13 @@ export default function TeacherClassTestsPage() {
 
                   <div>
                     <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                      Test Name <span className="text-red-500">*</span>
+                      {t("teacherPages", "testNameRequired", lang)} <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
                       value={formName}
                       onChange={(e) => setFormName(e.target.value)}
-                      placeholder="e.g. Chapter 3 Quiz"
+                      placeholder={t("teacherPages", "testNamePlaceholder", lang)}
                       className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
                     />
                   </div>
@@ -672,7 +675,7 @@ export default function TeacherClassTestsPage() {
                     <>
                       <div>
                         <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                          Class <span className="text-red-500">*</span>
+                          {t("teacherPages", "classRequired", lang)} <span className="text-red-500">*</span>
                         </label>
                         <select
                           value={formClassId}
@@ -682,7 +685,7 @@ export default function TeacherClassTestsPage() {
                           }}
                           className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
                         >
-                          <option value="">Select class</option>
+                          <option value="">{t("teacherPages", "selectClassOpt", lang)}</option>
                           {teacherClasses.map((c) => (
                             <option key={c.id} value={c.id}>
                               {c.name}
@@ -692,7 +695,7 @@ export default function TeacherClassTestsPage() {
                       </div>
                       <div>
                         <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                          Subject <span className="text-red-500">*</span>
+                          {t("teacherPages", "subjectRequired", lang)} <span className="text-red-500">*</span>
                         </label>
                         <select
                           value={formSubjectId}
@@ -700,7 +703,7 @@ export default function TeacherClassTestsPage() {
                           disabled={!formClassId}
                           className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors disabled:opacity-50"
                         >
-                          <option value="">Select subject</option>
+                          <option value="">{t("teacherPages", "selectSubjectOpt", lang)}</option>
                           {subjects
                             .filter((s) => s.classId === formClassId)
                             .filter(
@@ -720,7 +723,7 @@ export default function TeacherClassTestsPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                        Start Date
+                        {t("teacherPages", "startDateLabel", lang)}
                       </label>
                       <input
                         type="date"
@@ -731,7 +734,7 @@ export default function TeacherClassTestsPage() {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                        End Date
+                        {t("teacherPages", "endDateLabel", lang)}
                       </label>
                       <input
                         type="date"
@@ -745,7 +748,7 @@ export default function TeacherClassTestsPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                        Max Marks
+                        {t("teacherPages", "maxMarksLabel", lang)}
                       </label>
                       <input
                         type="number"
@@ -758,7 +761,7 @@ export default function TeacherClassTestsPage() {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                        Pass Marks
+                        {t("teacherPages", "passMarksLabel", lang)}
                       </label>
                       <input
                         type="number"
@@ -775,7 +778,7 @@ export default function TeacherClassTestsPage() {
                   {editTarget && (
                     <div>
                       <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                        Status
+                        {t("common", "status", lang)}
                       </label>
                       <select
                         value={formStatus}
@@ -801,7 +804,7 @@ export default function TeacherClassTestsPage() {
                     disabled={saving}
                     className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 disabled:opacity-50"
                   >
-                    Cancel
+                    {t("common", "cancel", lang)}
                   </button>
                   <button
                     onClick={handleSave}
@@ -809,7 +812,7 @@ export default function TeacherClassTestsPage() {
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 disabled:opacity-50"
                   >
                     {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-                    {editTarget ? "Save Changes" : "Create Test"}
+                    {editTarget ? t("teacherPages", "saveChangesBtn", lang) : t("teacherPages", "createTestBtn", lang)}
                   </button>
                 </div>
               </motion.div>
@@ -852,7 +855,7 @@ export default function TeacherClassTestsPage() {
                 <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
                   <div>
                     <h2 className="font-bold text-gray-900 text-lg">
-                      Enter Marks
+                      {t("teacherPages", "enterMarksTab", lang)}
                     </h2>
                     <p className="text-xs text-gray-400 mt-0.5">
                       {markEntryExam.name} — {markEntryExam.class?.name ?? ""}
@@ -879,7 +882,7 @@ export default function TeacherClassTestsPage() {
                           : "text-gray-400 border-transparent hover:text-gray-600"
                       )}
                     >
-                      Enter Marks
+                      {t("teacherPages", "enterMarksTab", lang)}
                     </button>
                     <button
                       onClick={() => setMarkEntryTab("grades")}
@@ -890,7 +893,7 @@ export default function TeacherClassTestsPage() {
                           : "text-gray-400 border-transparent hover:text-gray-600"
                       )}
                     >
-                      Grade Card
+                      {t("teacherPages", "gradeCardTab", lang)}
                     </button>
                   </div>
                 )}
@@ -911,23 +914,23 @@ export default function TeacherClassTestsPage() {
                               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shrink-0"
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" />
-                              Publish
+                              {t("teacherPages", "publishBtn", lang)}
                             </button>
                           )}
                       </div>
 
                       {meStudents.length === 0 ? (
                         <p className="text-xs text-gray-400 text-center py-8">
-                          Loading students...
+                          {t("teacherPages", "loadingStudentsMsg", lang)}
                         </p>
                       ) : (
                         <div className="rounded-xl border border-gray-100 overflow-hidden bg-white">
                           <div className="px-3 py-2 bg-gray-50 flex justify-between text-[10px] font-bold text-gray-400 uppercase border-b">
-                            <span>Student</span>
-                            <span>Score / {(() => {
+                            <span>{t("teacherPages", "studentHeader", lang)}</span>
+                            <span>{t("teacherPages", "scoreMaxLabel", lang).replace("{max}", String((() => {
                               const currentSubject = meSubjects.find((s) => s.id === meSubjectId);
                               return currentSubject?.classSubject?.maxMarks ?? markEntryExam.maxMarks ?? 50;
-                            })()}</span>
+                            })()))}</span>
                           </div>
                           <div className="divide-y divide-gray-50 max-h-[50dvh] overflow-y-auto">
                             {meStudents.map((s) => (
@@ -986,7 +989,7 @@ export default function TeacherClassTestsPage() {
                     disabled={meSaving}
                     className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 disabled:opacity-50"
                   >
-                    Close
+                    {t("common", "close", lang)}
                   </button>
                   <button
                     onClick={() => handleMeSave(markEntryExam.id)}
@@ -1005,7 +1008,7 @@ export default function TeacherClassTestsPage() {
                     ) : (
                       <PenLine className="w-4 h-4" />
                     )}
-                    {meSaved ? "Saved" : "Save Marks"}
+                    {meSaved ? "Saved" : t("teacherPages", "saveMarksBtn", lang)}
                   </button>
                 </div>
               </motion.div>
@@ -1038,7 +1041,7 @@ export default function TeacherClassTestsPage() {
                   <Trash2 className="w-7 h-7 text-red-600" />
                 </div>
                 <h3 className="font-bold text-gray-900 text-lg">
-                  Delete Class Test?
+                  {t("teacherPages", "deleteClassTestTitle", lang)}
                 </h3>
                 <p className="text-sm text-gray-500">
                   Are you sure you want to delete the class test{" "}
@@ -1052,7 +1055,7 @@ export default function TeacherClassTestsPage() {
                   disabled={deleting !== null}
                   className="py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
-                  Cancel
+                  {t("common", "cancel", lang)}
                 </button>
                 <button
                   onClick={handleDelete}
@@ -1064,7 +1067,7 @@ export default function TeacherClassTestsPage() {
                       <Loader2 className="w-4 h-4 animate-spin" /> Deleting…
                     </span>
                   ) : (
-                    "Delete"
+                    t("common", "delete", lang)
                   )}
                 </button>
               </div>
