@@ -175,19 +175,14 @@ function CardCanvas({
 
     const logoY = 8;
     const logoSz = 26;
-    const logoCircle = new Rect({
-      x: 14 + pad, y: logoY, width: logoSz, height: logoSz,
-      fill: theme === "minimal" ? primaryColor : theme === "islamic" ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.2)",
-      cornerRadius: 6,
+    const logoImg = new LeaferImage({
+      url: "/icons/icon.svg",
+      x: 14 + pad,
+      y: logoY,
+      width: logoSz,
+      height: logoSz,
     });
-    card.add(logoCircle);
-
-    const logoText = new Text({
-      x: 14 + pad, y: logoY, width: logoSz, height: logoSz,
-      text: "M", fontSize: 12, fill: "#fff",
-      textAlign: "center", verticalAlign: "middle", fontWeight: "bold",
-    });
-    card.add(logoText);
+    card.add(logoImg);
 
     const headerTextColor = theme === "minimal" ? "#111827" : "#fff";
     const headerMutedColor = theme === "minimal" ? "#6b7280" : "rgba(255,255,255,0.7)";

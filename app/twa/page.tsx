@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { BookMarked, GraduationCap, Users, ArrowRight } from "lucide-react";
+import { GraduationCap, Users, ArrowRight } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { roleHomePath } from "@/lib/tenant-routing";
 
@@ -68,10 +68,8 @@ export default function TwaLandingPage() {
  transition={{ duration: 0.35 }}
  className="w-full max-w-md"
  >
- <div className="text-center mb-8">
- <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-600 rounded-2xl mb-4 shadow-lg">
- <BookMarked className="w-8 h-8 text-white" />
- </div>
+  <div className="text-center mb-8">
+  <img src="/icons/icon.svg" alt="Smart Madrasa" className="inline-block w-16 h-16 mb-4 shadow-lg rounded-2xl" />
  <h1 className="text-2xl font-bold text-gray-900">Madrasa Portal</h1>
  <p className="text-gray-500 text-sm mt-1">
  Select your role to continue

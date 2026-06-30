@@ -12,7 +12,6 @@ import {
   Bell,
   Settings,
   Star,
-  BookMarked,
   UserCircle,
   Home,
   GraduationCap,
@@ -650,9 +649,7 @@ export function Sidebar({
         {/* Mobile Header / Close button */}
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center">
-              <BookMarked className="w-5 h-5 text-white" />
-            </div>
+            <img src="/icons/icon.svg" alt="Smart Madrasa" className="w-10 h-10" />
             <div>
               <p className="font-bold text-gray-900 text-sm leading-tight">
                 {t("common", "appName", lang)}
