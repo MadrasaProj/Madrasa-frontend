@@ -30,6 +30,8 @@ import AdminSocialFramesPage from "../app/admin/social-frames/page";
 import AdminPostersPage from "../app/admin/posters/page";
 import AdminPresentPage from "../app/admin/present/page";
 import AdminProfilePage from "../app/admin/profile/page";
+import SuperAdminIbadahPage from "../app/super-admin/ibadah/page";
+import SuperAdminLoginPage from "../app/super-admin/login/page";
 import CommitteeProfilePage from "../app/committee/profile/page";
 import ParentProfilePage from "../app/parent/profile/page";
 import TeacherProfilePage from "../app/teacher/profile/page";
@@ -138,6 +140,10 @@ export default function App() {
         <Route path="/admin/platform-reports" element={<AdminPlatformReportsPage />} />
         <Route path="/admin/global-class-subjects" element={<AdminGlobalClassSubjectsPage />} />
         <Route path="/admin/profile" element={<AdminProfilePage />} />
+
+        {/* Super Admin (legacy /super-admin/* paths) */}
+        <Route path="/super-admin/login" element={<SuperAdminLoginPage />} />
+        <Route path="/super-admin/ibadah" element={<SuperAdminIbadahPage />} />
 
         {/* Profile for all roles */}
         <Route path="/teacher/profile" element={<TeacherProfilePage />} />

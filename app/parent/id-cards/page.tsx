@@ -630,6 +630,12 @@ export default function ParentIdCardsPage() {
                         height: 74,
                         borderRadius: 8,
                         objectFit: "cover",
+                        // leafer appends its <canvas> as the last child of
+                        // this div in a useEffect, so the canvas ends up
+                        // later in the DOM than this img. Both are position:
+                        // absolute with z-index: auto, so the canvas wins
+                        // the stacking and hides the photo. Lift it above.
+                        zIndex: 1,
                       }}
                     />
                   )}
