@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
  BookMarked,
@@ -75,10 +75,16 @@ export default function RoleLoginPage({
  const navigate = useNavigate();
  const { login } = useAuthStore();
  const { lang } = useLanguageStore();
+ const [searchParams] = useSearchParams();
 
- const [identifier, setIdentifier] = useState("");
- const [password, setPassword] = useState("");
- const [parentPhone, setParentPhone] = useState("");
+ const queryEmail = searchParams.get("email") ?? "";
+ const queryPassword = searchParams.get("password") ?? "";
+ const queryPhone = searchParams.get("phone") ?? "";
+ const querySlug = searchParams.get("slug") ?? "";
+
+ const [identifier, setIdentifier] = useState(queryEmail);
+ const [password, setPassword] = useState(queryPassword);
+ const [parentPhone, setParentPhone] = useState(queryPhone);
  const [showPassword, setShowPassword] = useState(false);
  const [loading, setLoading] = useState(false);
  const [error, setError] = useState("");
@@ -123,7 +129,7 @@ export default function RoleLoginPage({
 
  const requireTenantSlug = () => {
  if (!isTenantRole) return undefined;
- const slug = tenantSlug?.trim().toLowerCase();
+ const slug = (tenantSlug ?? querySlug).trim().toLowerCase();
  if (!slug) throw new Error(t("authErrors", "tenantUrlMissing", lang));
  return slug;
  };
