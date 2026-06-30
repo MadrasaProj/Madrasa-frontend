@@ -17,13 +17,32 @@ import {
   Download,
   ChevronDown,
   Filter,
+  AlertCircle,
+  X,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
 import { Group, Leafer, Image as LeaferImage, Rect, Text } from "leafer-ui";
 
+import { Platform } from "@leafer/platform";
+
 import { useClientConfig } from "@/lib/queries";
+
+// ── Disable CORS on leafer image loads ─────────────────────────────────────────
+// By default leafer sets `crossOrigin="anonymous"` on the underlying
+// HTMLImageElement, which requires the storage host (R2) to return
+// `Access-Control-Allow-Origin` on the response. The pre-signed URLs we
+// receive from the backend expire quickly and the bucket-level CORS rule
+// is not always reliably applied on the *response* itself, so the image
+// load rejects silently and the avatar never paints.
+// Setting this to an empty string makes leafer skip the `crossOrigin`
+// attribute, so the image loads without CORS. The canvas becomes "tainted"
+// as a side-effect, which is fine for display. Export (`leafer.export()`)
+// will fail with a SecurityError in that case — handled in `handleExport`.
+// The type is `IImageCrossOrigin = "anonymous" | "use-credentials"`; we
+// widen to the type to bypass the literal check.
+(Platform.image as { crossOrigin: string }).crossOrigin = "";
 
 const THEME_KEYS: Record<string, string> = {
   classic: "classicGreen",
@@ -207,10 +226,13 @@ function CardCanvas({
     card.add(photoBorder);
 
     if (photoUrl) {
-      const avatarImg = new LeaferImage({
-        url: photoUrl, x: photoX, y: photoY, width: photoW, height: photoH, cornerRadius: 8,
-      });
-      card.add(avatarImg);
+      // Avatar is rendered as a CSS <img> overlay on top of the leafer
+      // canvas (see <div className="absolute"> in the parent component).
+      // The card still draws the photoBg + photoBorder underneath so the
+      // layout looks correct, and the export composites the avatar onto
+      // the leafer PNG so the downloaded card has it too. This sidesteps
+      // leafer's CORS-on-image-load which fails for R2 pre-signed URLs
+      // even when bucket CORS is configured.
     } else {
       const initText = new Text({
         x: photoX, y: photoY, width: photoW, height: photoH - 14,
@@ -309,12 +331,36 @@ export default function ParentIdCardsPage() {
   const [theme, setTheme] = useState<ThemeId>("classic");
   const [showMobileList, setShowMobileList] = useState(false);
   const [bgImage, setBgImage] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const { data: clientConfig } = useClientConfig({ clientId: cid, token });
 
   const selected = useMemo(
     () => students.find((s) => s.id === selectedId) ?? null,
     [students, selectedId],
+  );
+
+  // Memoize the student payload passed into <CardCanvas>. Without this the
+  // inline object literal creates a new reference on every parent render,
+  // which re-triggers the canvas useEffect and tears down the Leafer (and
+  // any in-flight image load) before the avatar can render.
+  const studentForCanvas = useMemo(
+    () =>
+      selected
+        ? {
+            id: selected.id,
+            name: selected.name,
+            adno: selected.adno,
+            className: selected.className ?? "",
+            parentPhone: selected.parentPhone ?? "",
+            guardianName: selected.guardianName ?? "",
+            dateOfBirth: selected.dateOfBirth
+              ? new Date(selected.dateOfBirth).toLocaleDateString("en-GB")
+              : "",
+            gender: selected.gender ?? "",
+          }
+        : null,
+    [selected],
   );
 
   useEffect(() => {
@@ -326,13 +372,78 @@ export default function ParentIdCardsPage() {
   const handleExport = async () => {
     const leafer = (canvasRef.current as any)?.__leafer as Leafer | undefined;
     if (!leafer) return;
-    const dataUrl = await leafer.export("png", { quality: 1, pixelRatio: 5 });
-    if (!dataUrl) return;
-    const link = document.createElement("a");
-    link.download = `id-card-${selected?.name?.replace(/\s+/g, "-") || "student"}.png`;
-    link.href = dataUrl.data;
-    link.click();
+    try {
+      const dataUrl = await leafer.export("png", { quality: 1, pixelRatio: 5 });
+      if (!dataUrl) return;
+
+      // The avatar is rendered as a CSS <img> overlay (not via leafer, to
+      // avoid CORS-on-image-load). Composite it onto the exported PNG so
+      // the downloaded card shows the student photo.
+      const avatarUrl = selected?.photoUrl ?? selected?.photo ?? null;
+      const finalUrl = avatarUrl
+        ? await compositeAvatarOntoCard(dataUrl.data, avatarUrl, 5)
+        : dataUrl.data;
+
+      const link = document.createElement("a");
+      link.download = `id-card-${selected?.name?.replace(/\s+/g, "-") || "student"}.png`;
+      link.href = finalUrl;
+      link.click();
+    } catch (err) {
+      console.error("[id-cards] export failed:", err);
+      setExportError(
+        "Couldn't export the card. The student photo may be blocking it (CORS).",
+      );
+    }
   };
+
+  // Composites the avatar <img> on top of the leafer-exported PNG.
+  // Avatar position in CSS pixels: x=18, y=52, w=58, h=74, radius=8.
+  async function compositeAvatarOntoCard(
+    cardDataUrl: string,
+    avatarUrl: string,
+    scale: number,
+  ): Promise<string> {
+    const cardImg = await loadHtmlImage(cardDataUrl);
+    const avatarImg = await loadHtmlImage(avatarUrl).catch(() => null);
+    if (!avatarImg) return cardDataUrl;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = cardImg.naturalWidth;
+    canvas.height = cardImg.naturalHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return cardDataUrl;
+
+    ctx.drawImage(cardImg, 0, 0);
+
+    const x = 18 * scale;
+    const y = 52 * scale;
+    const w = 58 * scale;
+    const h = 74 * scale;
+    const r = 8 * scale;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+    ctx.clip();
+    ctx.drawImage(avatarImg, x, y, w, h);
+    ctx.restore();
+
+    return canvas.toDataURL("image/png");
+  }
+
+  function loadHtmlImage(src: string): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = (e) => reject(e);
+      img.src = src;
+    });
+  }
 
   return (
     <DashboardLayout>
@@ -479,24 +590,26 @@ export default function ParentIdCardsPage() {
                 <p className="text-sm font-semibold text-gray-700 mb-4">
                   {selected.name} · {selected.adno}
                 </p>
+                {exportError && (
+                  <div className="mb-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs text-amber-800">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span className="flex-1">{exportError}</span>
+                    <button
+                      onClick={() => setExportError(null)}
+                      className="text-amber-600 hover:text-amber-800"
+                      aria-label="Dismiss"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
                 <div
                   ref={canvasRef}
-                  className="rounded-2xl shadow-lg border border-gray-200"
+                  className="relative rounded-2xl shadow-lg border border-gray-200 overflow-hidden"
                   style={{ width: 340, height: 210 }}
                 >
                   <CardCanvas
-                    student={{
-                      id: selected.id,
-                      name: selected.name,
-                      adno: selected.adno,
-                      className: selected.className ?? "",
-                      parentPhone: selected.parentPhone ?? "",
-                      guardianName: selected.guardianName ?? "",
-                      dateOfBirth: selected.dateOfBirth
-                        ? new Date(selected.dateOfBirth).toLocaleDateString("en-GB")
-                        : "",
-                      gender: selected.gender ?? "",
-                    }}
+                    student={studentForCanvas!}
                     theme={theme}
                     containerRef={canvasRef}
                     bgImage={bgImage}
@@ -504,6 +617,22 @@ export default function ParentIdCardsPage() {
                     photoUrl={selected.photoUrl ?? selected.photo ?? null}
                     clientConfig={clientConfig}
                   />
+                  {/* Avatar overlay — see comment in CardCanvas for why this is a CSS <img> and not a LeaferImage. */}
+                  {(selected.photoUrl ?? selected.photo) && (
+                    <img
+                      src={selected.photoUrl ?? selected.photo ?? ""}
+                      alt=""
+                      className="absolute pointer-events-none"
+                      style={{
+                        left: 18,
+                        top: 52,
+                        width: 58,
+                        height: 74,
+                        borderRadius: 8,
+                        objectFit: "cover",
+                      }}
+                    />
+                  )}
                 </div>
 
                 <div className="mt-4 grid grid-cols-3 gap-4 w-full max-w-md text-center">
