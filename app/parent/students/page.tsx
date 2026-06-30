@@ -1,16 +1,13 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
-  getStudentProfileV2,
-  uploadStudentPhoto,
-  type StudentRecord,
-} from "@/lib/students-api";
-import {
-  getStudentAttendance,
-  type StudentAttendanceResponse,
-} from "@/lib/attendance-api";
+  useStudentProfileV2,
+  useUpdateStudent,
+  useUploadStudentPhoto,
+} from "@/lib/queries";
+import { useStudentAttendance } from "@/lib/queries";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
@@ -46,9 +43,6 @@ const STATUS_COLORS: Record<string, string> = {
   DROPPED_OUT: "bg-red-100 text-red-600",
 };
 
-const API_ORIGIN = import.meta.env.VITE_API_ORIGIN ?? "http://localhost:3000";
-const V2_BASE = `${API_ORIGIN}/api/v2`;
-
 export default function ParentStudentProfile() {
   const navigate = useNavigate();
   const { lang } = useLanguageStore();
@@ -60,13 +54,6 @@ export default function ParentStudentProfile() {
     setActiveStudent,
   } = useAuthStore();
 
-  const [student, setStudent] = useState<StudentRecord | null>(null);
-  const [attendance, setAttendance] =
-    useState<StudentAttendanceResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [success, setSuccess] = useState("");
-
   const [showEdit, setShowEdit] = useState(false);
   const [editForm, setEditForm] = useState({
     bloodGroup: "",
@@ -75,47 +62,32 @@ export default function ParentStudentProfile() {
     medicalNotes: "",
   });
   const [editError, setEditError] = useState("");
-
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [success, setSuccess] = useState("");
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const students = user?.accessibleStudents ?? [];
   const ids = user?.accessibleStudentIds ?? [];
   const studentId = activeStudentId ?? ids[0];
 
-  useEffect(() => {
-    if (!activeClientId || !accessToken || !studentId) {
-      setLoading(false);
-      return;
-    }
-    const ac = new AbortController();
+  const cid = activeClientId ?? "";
+  const token = accessToken ?? "";
 
-    Promise.all([
-      getStudentProfileV2(activeClientId, accessToken, studentId, ac.signal),
-      getStudentAttendance(
-        activeClientId,
-        accessToken,
-        studentId,
-        {
-          ...(user?.defaultAcademicYearId
-            ? { academicYearId: user.defaultAcademicYearId }
-            : {}),
-          take: 365,
-        },
-        ac.signal,
-      ),
-    ])
-      .then(([s, att]) => {
-         
-        setStudent(s);
-        setAttendance(att);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+  const { data: student, isLoading: loadingStudent, error: studentError } = useStudentProfileV2(
+    { clientId: cid, token },
+    studentId ?? "",
+  );
+  const { data: attendance } = useStudentAttendance(
+    { clientId: cid, token },
+    studentId ?? "",
+    user?.defaultAcademicYearId
+      ? { academicYearId: user.defaultAcademicYearId, take: 365 }
+      : { take: 365 },
+  );
 
-    return () => ac.abort();
-  }, [activeClientId, accessToken, studentId, user?.defaultAcademicYearId]);
+  const updateMutation = useUpdateStudent({ clientId: cid, token });
+  const photoMutation = useUploadStudentPhoto({ clientId: cid, token });
+
+  const loading = loadingStudent && !student;
 
   const switchStudent = (id: string) => {
     setActiveStudent(id);
@@ -130,76 +102,35 @@ export default function ParentStudentProfile() {
       medicalNotes: student.medicalNotes ?? "",
     });
     setEditError("");
+    setSuccess("");
     setShowEdit(true);
   };
 
   const handleSave = async () => {
-    if (!activeClientId || !accessToken || !student) return;
-    setSaving(true);
-    setEditError("");
-    setSuccess("");
+    if (!student) return;
+    const payload: Record<string, any> = {};
+    for (const [key, value] of Object.entries(editForm)) {
+      if (value) payload[key] = value;
+    }
     try {
-      const payload: Record<string, any> = {};
-      for (const [key, value] of Object.entries(editForm)) {
-        if (value) payload[key] = value;
-      }
-      const res = await fetch(
-        `${V2_BASE}/${activeClientId}/students/${student.id}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify(payload),
-        },
-      );
-      if (!res.ok) {
-        const err = await res
-          .json()
-          .catch(() => ({ message: "Update failed" }));
-        throw new Error(err.message ?? "Update failed");
-      }
-      const updated = await getStudentProfileV2(
-        activeClientId,
-        accessToken,
-        student.id,
-      );
-      setStudent(updated);
+      await updateMutation.mutateAsync({ studentId: student.id, data: payload });
       setShowEdit(false);
       setSuccess(t("parentPages", "profileUpdated", lang));
       setTimeout(() => setSuccess(""), 3000);
     } catch (e: any) {
       setEditError(e?.message ?? "Failed to update");
-    } finally {
-      setSaving(false);
     }
   };
 
-  const handleAvatarUpload = async () => {
-    if (!avatarFile || !activeClientId || !accessToken || !student) return;
-    setUploadingPhoto(true);
+  const handleAvatarUpload = async (file: File) => {
+    if (!student) return;
     try {
-      await uploadStudentPhoto(
-        activeClientId,
-        accessToken,
-        student.id,
-        avatarFile,
-      );
-      setAvatarFile(null);
+      await photoMutation.mutateAsync({ studentId: student.id, file });
       setAvatarPreview(null);
-      const updated = await getStudentProfileV2(
-        activeClientId,
-        accessToken,
-        student.id,
-      );
-      setStudent(updated);
-      setSuccess("Photo updated successfully");
+      setSuccess(t("parentPages", "photoUpdated", lang));
       setTimeout(() => setSuccess(""), 3000);
     } catch (e: any) {
       setEditError(e?.message ?? "Photo upload failed");
-    } finally {
-      setUploadingPhoto(false);
     }
   };
 
@@ -569,59 +500,25 @@ export default function ParentStudentProfile() {
                       )}
                       <div className="flex-1">
                         <label className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-gray-700 cursor-pointer transition-colors w-fit">
-                          {uploadingPhoto ? (
+                          {photoMutation.isPending ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
                           ) : (
                             <Upload className="w-4 h-4" />
                           )}
-                          {uploadingPhoto ? t("parentPages", "uploadingLabel", lang) : t("parentPages", "choosePhoto", lang)}
+                          {photoMutation.isPending ? t("parentPages", "uploadingLabel", lang) : t("parentPages", "choosePhoto", lang)}
                           <input
                             type="file"
                             accept="image/*"
-                            disabled={uploadingPhoto}
+                            disabled={photoMutation.isPending}
                             onChange={async (e) => {
                               const file = e.target.files?.[0];
                               if (!file) return;
-                              // Show preview immediately
                               const reader = new FileReader();
                               reader.onload = () =>
                                 setAvatarPreview(reader.result as string);
                               reader.readAsDataURL(file);
-                              // Auto-upload
-                              if (!activeClientId || !accessToken || !student)
-                                return;
-                              setUploadingPhoto(true);
-                              try {
-                                const result = await uploadStudentPhoto(
-                                  activeClientId,
-                                  accessToken,
-                                  student.id,
-                                  file,
-                                );
-                                setAvatarFile(null);
-                                setAvatarPreview(null);
-                                // Update photoUrl directly from upload response
-                                setStudent((prev) =>
-                                  prev
-                                    ? {
-                                        ...prev,
-                                        photoUrl: result.photoUrl,
-                                        photo: result.photo,
-                                      }
-                                    : prev,
-                                );
-                                setSuccess(t("parentPages", "photoUpdated", lang));
-                                setTimeout(() => setSuccess(""), 3000);
-                              } catch (err) {
-                                setEditError(
-                                  (err as Error).message ??
-                                    "Photo upload failed",
-                                );
-                              } finally {
-                                setUploadingPhoto(false);
-                                // Reset file input so same file can be re-selected
-                                e.target.value = "";
-                              }
+                              await handleAvatarUpload(file);
+                              e.target.value = "";
                             }}
                             className="hidden"
                           />
@@ -728,10 +625,10 @@ export default function ParentStudentProfile() {
                   </button>
                   <button
                     onClick={handleSave}
-                    disabled={saving}
+                    disabled={updateMutation.isPending}
                     className="flex-1 bg-emerald-600 text-white font-bold py-3.5 rounded-2xl text-sm active:scale-[0.98] transition-transform shadow-lg disabled:opacity-60"
                   >
-                    {saving ? (
+                    {updateMutation.isPending ? (
                       <span className="flex items-center justify-center gap-2">
                         <Loader2 className="w-4 h-4 animate-spin" /> {t("parentPages", "savingLabel", lang)}
                       </span>

@@ -1,21 +1,19 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Drawer } from "@/components/ui/Drawer";
-import {
-  getStudentHomework,
-  parentSubmitHomework,
-  type StudentHomeworkResponse,
-  type StudentHomeworkItem,
-  type HomeworkStatus,
-} from "@/lib/homework-api";
-import { getStudent, type StudentRecord } from "@/lib/students-api";
+import type { StudentHomeworkItem, HomeworkStatus } from "@/lib/homework-api";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
+import {
+  useStudentHomework,
+  useStudentRecord,
+  useParentSubmitHomework,
+} from "@/lib/queries";
 import {
   BookOpen,
   Loader2,
@@ -29,9 +27,7 @@ import {
   GraduationCap,
   BookText,
   User,
-  FileText,
   Send,
-  ArrowRight,
   CheckCheck,
   Sparkles,
 } from "lucide-react";
@@ -94,13 +90,6 @@ function formatDateFull(dateStr: string) {
   });
 }
 
-interface ChildData {
-  studentId: string;
-  student: StudentRecord | null;
-  hw: StudentHomeworkResponse | null;
-  error: string | null;
-}
-
 export default function ParentHomeworkPage() {
   const { user, accessToken, activeStudentId } = useAuthStore();
   const { lang } = useLanguageStore();
@@ -109,89 +98,38 @@ export default function ParentHomeworkPage() {
   const ids = user?.accessibleStudentIds ?? [];
   const effectiveId = activeStudentId ?? ids[0] ?? "";
 
-  const [active, setActive] = useState<ChildData | null>(null);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<HomeworkStatus | "all">("all");
-  const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [selectedHw, setSelectedHw] = useState<StudentHomeworkItem | null>(null);
   const [confirmSubmitHw, setConfirmSubmitHw] = useState<StudentHomeworkItem | null>(null);
 
-  const pendingCount =
-    active?.hw?.homework.filter(
-      (hw) => hw.submission.status === "NOT_SUBMITTED",
-    ).length ?? 0;
+  const { data: hwData, isLoading, error, refetch, isRefetching } = useStudentHomework(
+    { clientId: cid, token },
+    effectiveId,
+  );
+  const { data: student } = useStudentRecord({ clientId: cid, token }, effectiveId);
 
-  const submittedCount =
-    active?.hw?.homework.filter(
-      (hw) => hw.submission.status === "SUBMITTED",
-    ).length ?? 0;
+  const submitMutation = useParentSubmitHomework({ clientId: cid, token });
 
-  const checkedCount =
-    active?.hw?.homework.filter(
-      (hw) => hw.submission.status === "CHECKED",
-    ).length ?? 0;
+  const homework = hwData?.homework ?? [];
+
+  const pendingCount = homework.filter((hw) => hw.submission.status === "NOT_SUBMITTED").length;
+  const submittedCount = homework.filter((hw) => hw.submission.status === "SUBMITTED").length;
+  const checkedCount = homework.filter((hw) => hw.submission.status === "CHECKED").length;
 
   const handleSubmitHomework = async (submissionId: string) => {
-    if (!cid || !token) return;
-    setSubmittingId(submissionId);
     try {
-      await parentSubmitHomework(cid, token, submissionId);
+      await submitMutation.mutateAsync({ studentId: effectiveId, submissionId });
       setConfirmSubmitHw(null);
-      await load();
     } catch (e) {
       alert((e as Error).message);
-    } finally {
-      setSubmittingId(null);
     }
   };
 
-  const load = useCallback(async () => {
-    if (!cid || !token || !effectiveId) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const [student, hw] = await Promise.all([
-        getStudent(cid, token, effectiveId).catch(() => null),
-        getStudentHomework(cid, token, effectiveId).catch((e: Error) => ({
-          error: e.message,
-        })),
-      ]);
-      if ("error" in hw) {
-        setActive({
-          studentId: effectiveId,
-          student: student as StudentRecord,
-          hw: null,
-          error: (hw as any).error,
-        });
-      } else {
-        setActive({
-          studentId: effectiveId,
-          student: student as StudentRecord,
-          hw,
-          error: null,
-        });
-      }
-    } catch (e) {
-      setActive({
-        studentId: effectiveId,
-        student: null,
-        hw: null,
-        error: (e as Error).message,
-      });
-    }
-    setLoading(false);
-  }, [cid, token, effectiveId]);
+  const filtered = filter === "all"
+    ? homework
+    : homework.filter((hw) => hw.submission.status === filter);
 
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  const filtered =
-    active?.hw?.homework.filter(
-      (hw) => filter === "all" || hw.submission.status === filter,
-    ) ?? [];
+  const errorMessage = error instanceof Error ? error.message : null;
 
   return (
     <DashboardLayout>
@@ -202,15 +140,18 @@ export default function ParentHomeworkPage() {
         backHref="/parent"
         action={
           <button
-            onClick={load}
+            onClick={() => refetch()}
+            disabled={isRefetching}
             className="p-2.5 rounded-xl bg-white border border-gray-200 text-gray-500 hover:text-gray-800 hover:border-gray-300 transition-all active:scale-95 shadow-sm"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className={cn("w-4 h-4", isRefetching && "animate-spin")} />
           </button>
         }
       />
 
-      {loading ? (
+      {errorMessage && <ApiErrorBanner message={errorMessage} onRetry={() => refetch()} />}
+
+      {isLoading ? (
         <div className="space-y-8 px-1">
           <div className="grid grid-cols-3 gap-4">
             {[1, 2, 3].map((i) => (
@@ -243,23 +184,23 @@ export default function ParentHomeworkPage() {
         </div>
       ) : (
         <>
-          {active?.error ? (
-            <ApiErrorBanner message={active.error} onRetry={load} />
-          ) : active?.hw ? (
+          {errorMessage ? (
+            <ApiErrorBanner message={errorMessage} onRetry={() => refetch()} />
+          ) : hwData ? (
             <div className="space-y-8">
               {/* Student name banner */}
-              {active.student && (
+              {student && (
                 <div className="flex items-center gap-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100 rounded-2xl px-6 py-4">
                   <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white shrink-0 shadow-sm">
                     <GraduationCap className="w-6 h-6" />
                   </div>
                   <div>
                     <p className="font-bold text-gray-900">
-                      {active.student.name}
+                      {student.name}
                     </p>
                     <p className="text-sm text-gray-500">
-                      Class {active.student.class?.name ?? "—"} &middot;{" "}
-                      {active.hw.homework.length} homework assignments
+                      Class {student.class?.name ?? "—"} &middot;{" "}
+                      {homework.length} homework assignments
                     </p>
                   </div>
                 </div>
@@ -624,10 +565,10 @@ export default function ParentHomeworkPage() {
                               <>
                                 <button
                                   onClick={() => setConfirmSubmitHw(hw)}
-                                  disabled={submittingId === hw.submission.id}
+                                  disabled={submitMutation.isPending && submitMutation.variables?.submissionId === hw.submission.id}
                                   className="flex-1 py-3.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
                                 >
-                                  {submittingId === hw.submission.id ? (
+                                  {submitMutation.isPending && submitMutation.variables?.submissionId === hw.submission.id ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
                                   ) : (
                                     <Send className="w-4 h-4" />
@@ -767,10 +708,10 @@ export default function ParentHomeworkPage() {
               onClick={() =>
                 handleSubmitHomework(confirmSubmitHw.submission.id)
               }
-              disabled={submittingId === confirmSubmitHw.submission.id}
+              disabled={submitMutation.isPending}
               className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-sm"
             >
-              {submittingId === confirmSubmitHw.submission.id ? (
+              {submitMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <CheckCheck className="w-4 h-4" />

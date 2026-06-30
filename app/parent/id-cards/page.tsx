@@ -6,8 +6,6 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 
 import { PageHeader } from "@/components/ui/PageHeader";
 
-import { getClientConfig, ClientConfig } from "@/lib/config-api";
-
 import { useAuthStore } from "@/store/auth";
 
 import { useLanguageStore } from "@/store/language";
@@ -24,6 +22,8 @@ import {
 import { cn } from "@/lib/utils";
 
 import { Group, Leafer, Image as LeaferImage, Rect, Text } from "leafer-ui";
+
+import { useClientConfig } from "@/lib/queries";
 
 const THEME_KEYS: Record<string, string> = {
   classic: "classicGreen",
@@ -59,13 +59,13 @@ function CardCanvas({
   photoUrl,
   clientConfig,
 }: {
-  student: { id: string; name: string; adno: string; className: string; parentPhone: string; guardianName: string; dateOfBirth: string; gender: string };
+    student: { id: string; name: string; adno: string; className: string; parentPhone: string; guardianName: string; dateOfBirth: string; gender: string };
   theme: ThemeId;
   containerRef: React.RefObject<HTMLDivElement | null>;
   bgImage?: string | null;
   madrasaName?: string;
   photoUrl?: string | null;
-  clientConfig?: ClientConfig | null;
+  clientConfig?: { address?: string | null; phone?: string | null } | null;
 }) {
   const leaferRef = useRef<Leafer | null>(null);
 
@@ -309,12 +309,8 @@ export default function ParentIdCardsPage() {
   const [theme, setTheme] = useState<ThemeId>("classic");
   const [showMobileList, setShowMobileList] = useState(false);
   const [bgImage, setBgImage] = useState<string | null>(null);
-  const [clientConfig, setClientConfig] = useState<ClientConfig | null>(null);
 
-  useEffect(() => {
-    if (!cid || !token) return;
-    getClientConfig(cid, token).then(setClientConfig).catch(() => {});
-  }, [cid, token]);
+  const { data: clientConfig } = useClientConfig({ clientId: cid, token });
 
   const selected = useMemo(
     () => students.find((s) => s.id === selectedId) ?? null,

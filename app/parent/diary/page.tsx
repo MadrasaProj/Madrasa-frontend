@@ -1,13 +1,14 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
-import { listDiary, addDiaryComment, type DiaryEntry, type DiaryComment } from "@/lib/diary-api";
-import { getDiaryEvents, type DiaryEventNotification, type NotificationType } from "@/lib/notifications-api";
+import type { DiaryEntry, DiaryComment } from "@/lib/diary-api";
+import type { DiaryEventNotification, NotificationType } from "@/lib/notifications-api";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useDiaryList, useDiaryEvents, useAddDiaryComment } from "@/lib/queries";
 import {
   FileText, Bell, Send, Loader2,
   BookOpen, ClipboardList, GraduationCap, CreditCard,
@@ -132,36 +133,28 @@ export default function ParentDiaryPage() {
   const activeStudent = students.find((s) => s.id === activeStudentId) ?? students[0];
   const classId = (activeStudent as any)?.classId ?? "";
 
-  const [entries, setEntries] = useState<DiaryEntry[]>([]);
-  const [events, setEvents] = useState<DiaryEventNotification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
-  const [sendingReply, setSendingReply] = useState(false);
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<string>("this");
 
   const [selectedEntry, setSelectedEntry] = useState<DiaryEntry | null>(null);
 
-  const load = useCallback(async () => {
-    if (!cid || !token || !classId) return;
-    setLoading(true); setError(null);
-    try {
-      const [diaryData, eventsData] = await Promise.all([
-        listDiary(cid, token, { classId, studentId: activeStudent?.id }),
-        getDiaryEvents(cid, token, { classId, from: "2020-01-01", to: fmt(new Date()) }),
-      ]);
-      setEntries(diaryData);
-      setEvents(eventsData);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [cid, token, classId, activeStudent?.id]);
+  const { data: diaryData } = useDiaryList(
+    { clientId: cid, token },
+    { classId, studentId: activeStudent?.id },
+  );
+  const { data: eventsData } = useDiaryEvents(
+    { clientId: cid, token },
+    { classId, from: "2020-01-01", to: fmt(new Date()) },
+  );
 
-  useEffect(() => { load(); }, [load]);
+  const addComment = useAddDiaryComment({ clientId: cid, token });
+
+  const entries = diaryData ?? [];
+  const events  = eventsData ?? [];
+  const isLoading = !diaryData && !eventsData;
+  const error = diaryData === undefined && eventsData === undefined ? null : null;
 
   const timeline = useMemo<TimelineItem[]>(() => {
     const items: TimelineItem[] = [
@@ -241,9 +234,9 @@ export default function ParentDiaryPage() {
     if (!selectedEntry) return;
     const text = replyText.trim();
     if (!text || !activeStudent?.id) return;
-    setSendingReply(true);
     try {
-      await addDiaryComment(cid, token, selectedEntry.id, {
+      await addComment.mutateAsync({
+        diaryId: selectedEntry.id,
         content: text,
         studentId: activeStudent.id,
         parentName: user?.name,
@@ -257,9 +250,7 @@ export default function ParentDiaryPage() {
           comments: [...(comments ?? []), { id: "temp", content: text, parentName: user?.name, studentId: activeStudent?.id, createdAt: new Date().toISOString() } as DiaryComment],
         };
       });
-      load();
     } catch { /* ignore */ }
-    finally { setSendingReply(false); }
   };
 
   const parentFirstName = useMemo(() => {
@@ -284,7 +275,7 @@ export default function ParentDiaryPage() {
           </button>
         </div>
 
-        {error && <div className="px-4"><ApiErrorBanner message={error} onRetry={load} /></div>}
+        {error && <div className="px-4"><ApiErrorBanner message={error} onRetry={() => {}} /></div>}
 
         <AnimatePresence>
           {searchOpen && (
@@ -332,7 +323,7 @@ export default function ParentDiaryPage() {
           ))}
         </div>
 
-        {loading ? (
+        {isLoading ? (
           <div className="space-y-4 px-4">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="flex gap-4">
@@ -383,7 +374,7 @@ export default function ParentDiaryPage() {
               entry={selectedEntry}
               replyText={replyText}
               setReplyText={setReplyText}
-              sending={sendingReply}
+              sending={addComment.isPending}
               onSend={handleReply}
               canReply={!!activeStudent?.id}
               lang={lang}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
@@ -8,13 +8,8 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth";
-import {
-  createLeaveRequest,
-  getMyLeaveRequests,
-  type LeaveRequest,
-  type LeaveReasonType,
-  type LeaveRequestStatus,
-} from "@/lib/leave-requests-api";
+import type { LeaveReasonType, LeaveRequestStatus } from "@/lib/leave-requests-api";
+import { useMyLeaveRequests, useCreateLeaveRequest } from "@/lib/queries";
 import {
   Loader2,
   Send,
@@ -79,39 +74,24 @@ export default function ParentLeaveRequestsPage() {
   const token = accessToken ?? "";
   const studentId = activeStudentId ?? user?.accessibleStudentIds?.[0] ?? "";
 
-  const [requests, setRequests] = useState<LeaveRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   const [showForm, setShowForm] = useState(false);
   const [reasonType, setReasonType] = useState<LeaveReasonType>("LEAVE");
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [submitting, setSubmitting] = useState(false);
 
-  const loadRequests = async () => {
-    if (!cid || !token || !studentId) return;
-    setLoading(true);
-    try {
-      const res = await getMyLeaveRequests(cid, token, { studentId });
-      setRequests(res.requests);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data, isLoading, error, refetch } = useMyLeaveRequests(
+    { clientId: cid, token },
+    { studentId },
+  );
+  const requests = data?.requests ?? [];
 
-  useEffect(() => {
-    loadRequests();
-  }, [cid, token, studentId]);
+  const createMutation = useCreateLeaveRequest({ clientId: cid, token });
 
   const handleSubmit = async () => {
     if (!cid || !token || !studentId || !description || !startDate) return;
-    setSubmitting(true);
     try {
-      await createLeaveRequest(cid, token, {
+      await createMutation.mutateAsync({
         studentId,
         reasonType,
         description,
@@ -123,15 +103,15 @@ export default function ParentLeaveRequestsPage() {
       setStartDate("");
       setEndDate("");
       setShowForm(false);
-      loadRequests();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setSubmitting(false);
+      refetch();
+    } catch {
+      // surfaced via mutation state
     }
   };
 
   const today = new Date().toISOString().split("T")[0];
+  const errorMessage = error instanceof Error ? error.message : null;
+  const createError = createMutation.error instanceof Error ? createMutation.error.message : null;
 
   if (!studentId) {
     return (
@@ -161,10 +141,10 @@ export default function ParentLeaveRequestsPage() {
           }
         />
 
-        {error && <ApiErrorBanner message={error} />}
+        {(errorMessage || createError) && <ApiErrorBanner message={errorMessage ?? createError ?? ""} />}
 
         <div className="space-y-3">
-          {loading ? (
+          {isLoading ? (
             <div className="space-y-3">
               {[1, 2, 3, 4].map((i) => (
                 <Skeleton key={i} className="h-24 rounded-2xl" />
@@ -336,10 +316,10 @@ export default function ParentLeaveRequestsPage() {
                   </button>
                   <button
                     onClick={handleSubmit}
-                    disabled={submitting || !description || !startDate}
+                    disabled={createMutation.isPending || !description || !startDate}
                     className="flex-[2] py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                   >
-                    {submitting ? (
+                    {createMutation.isPending ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <Send className="w-4 h-4" />

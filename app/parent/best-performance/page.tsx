@@ -4,11 +4,8 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth";
-import { useState, useEffect } from "react";
-import {
-  getBestPerformers,
-  type BestPerformer,
-} from "@/lib/best-performance-api";
+import { useState } from "react";
+import { useBestPerformers } from "@/lib/queries";
 import { Trophy, Star, BookOpen, Flame, Target, Medal, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -17,10 +14,6 @@ const medalEmoji = ["🥇", "🥈", "🥉", "🏅", "🌟", "⭐", "✨", "💫"
 export default function ParentBestPerformancePage() {
   const { lang } = useLanguageStore();
   const { user, accessToken, activeStudentId } = useAuthStore();
-  const [data, setData] = useState<BestPerformer[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState<{ from: string; to: string } | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [showAllPerformers, setShowAllPerformers] = useState(true);
 
   const cid = user?.clientId ?? "";
@@ -32,28 +25,13 @@ export default function ParentBestPerformancePage() {
 
   const isParent = user?.role === "parent";
 
-  useEffect(() => {
-    if (!cid || !token) return;
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
+  const { data: response, isLoading, error } = useBestPerformers(
+    { clientId: cid, token },
+    { limit: 100 },
+  );
 
-    getBestPerformers(cid, token, { limit: 100 })
-      .then((res) => {
-        if (cancelled) return;
-        setData(res.performers);
-        setPeriod(res.period);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setError(err?.message ?? "Failed to load data");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => { cancelled = true; };
-  }, [cid, token]);
+  const data = response?.performers ?? [];
+  const period = response?.period ?? null;
 
   const formatDateRange = () => {
     if (!period) return "";
@@ -135,7 +113,7 @@ export default function ParentBestPerformancePage() {
         )}
 
         {/* Loading */}
-        {loading && (
+        {isLoading && (
           <div className="space-y-4">
             <Skeleton className="h-48 rounded-2xl" />
             <Skeleton className="h-5 w-32" />
@@ -150,11 +128,11 @@ export default function ParentBestPerformancePage() {
         {/* Error */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-2xl p-5 text-center">
-            <p className="text-red-600 font-semibold">{error}</p>
+            <p className="text-red-600 font-semibold">{error.message}</p>
           </div>
         )}
 
-        {!loading && !error && (
+        {!isLoading && !error && (
           <>
             {/* ──────────────────────────────────────────────────────── */}
             {/* SECTION 1: Current Student Performance & Rank            */}

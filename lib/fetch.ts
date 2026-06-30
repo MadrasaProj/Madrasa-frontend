@@ -34,8 +34,18 @@ export async function apiFetch<T>(
   init?: RequestInit,
   timeoutMs = 15_000,
 ): Promise<T> {
+  const externalSignal = init?.signal;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  // If the caller passed a signal, forward its abort into our internal
+  // controller. This is what lets React Query cancel inflight requests when
+  // keys change, components unmount, etc.
+  const onExternalAbort = () => controller.abort();
+  if (externalSignal) {
+    if (externalSignal.aborted) controller.abort();
+    else externalSignal.addEventListener("abort", onExternalAbort);
+  }
 
   try {
     const res = await fetch(url, {
@@ -78,5 +88,6 @@ export async function apiFetch<T>(
     throw new ApiError(msg || "Something went wrong.", "UNKNOWN");
   } finally {
     clearTimeout(timer);
+    if (externalSignal) externalSignal.removeEventListener("abort", onExternalAbort);
   }
 }

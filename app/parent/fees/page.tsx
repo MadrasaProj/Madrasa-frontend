@@ -1,19 +1,16 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
-import {
-  getStudentFees, getPaymentReceipt,
-  type StudentFeeSummary, type ReceiptData,
-} from "@/lib/fees-api";
+import type { ReceiptData } from "@/lib/fees-api";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
-import type { StudentInfo } from "@/lib/auth-api";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useStudentFeesBatch, usePaymentReceipt } from "@/lib/queries";
 import {
-  IndianRupee, Loader2, CheckCircle, Receipt, Printer,
+  IndianRupee, Loader2, Receipt, Printer,
   AlertCircle, RefreshCw,
 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -75,69 +72,65 @@ function ReceiptModal({ receipt, onClose, lang }: { receipt: ReceiptData; onClos
 
 interface ChildData {
   studentId: string;
-  student: StudentInfo | null;
-  summary: StudentFeeSummary | null;
   error: string | null;
 }
 
 export default function ParentFeesPage() {
   const { user, accessToken } = useAuthStore();
   const { lang } = useLanguageStore();
-  const [children, setChildren] = useState<ChildData[]>([]);
   const [activeIdx, setActiveIdx] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
-  const [loadingReceipt, setLoadingReceipt] = useState<string | null>(null);
 
   const cid   = user?.clientId ?? "";
   const token = accessToken ?? "";
   const ids   = user?.accessibleStudentIds ?? [];
   const accessibleStudents = user?.accessibleStudents ?? [];
 
-  const load = useCallback(async () => {
-    if (!cid || !token || !ids.length) { setLoading(false); return; }
-    setLoading(true);
-    setError(null);
-    const results = await Promise.all(
-      ids.map(async (sid) => {
-        try {
-          const studentInfo = accessibleStudents.find((s) => s.id === sid) ?? null;
-          const summary = await getStudentFees(cid, token, sid).catch((e) => ({ error: (e as Error).message }));
-          if ("error" in summary) return { studentId: sid, student: studentInfo, summary: null, error: summary.error };
-          return { studentId: sid, student: studentInfo, summary, error: null };
-        } catch (e) {
-          return { studentId: sid, student: null, summary: null, error: (e as Error).message };
-        }
-      }),
-    );
-    setChildren(results);
-    setLoading(false);
-  }, [cid, token, ids.join(",")]);
+  const { data, isLoading, error, refetch, isRefetching } = useStudentFeesBatch(
+    { clientId: cid, token },
+    ids,
+  );
 
-  useEffect(() => { load(); }, [load]);
+  const children: ChildData[] = ids.map((sid) => {
+    const entry = data?.[sid];
+    if (!entry) return { studentId: sid, error: null };
+    if (entry instanceof Error) return { studentId: sid, error: entry.message };
+    return { studentId: sid, error: null };
+  });
+
+  const getSummary = (sid: string) => {
+    const entry = data?.[sid];
+    if (!entry || entry instanceof Error) return null;
+    return entry;
+  };
+
+  const receiptMutation = usePaymentReceipt({ clientId: cid, token });
 
   const showReceipt = async (paymentId: string) => {
-    setLoadingReceipt(paymentId);
-    setError(null);
-    try { setReceipt(await getPaymentReceipt(cid, token, paymentId)); }
-    catch (e) { setError((e as Error).message); }
-    finally { setLoadingReceipt(null); }
+    try {
+      const r = await receiptMutation.mutateAsync(paymentId);
+      setReceipt(r);
+    } catch {
+      // surfaced via mutation state
+    }
   };
 
   const active = children[activeIdx];
+  const activeSummary = active ? getSummary(active.studentId) : null;
+  const errorMessage = error instanceof Error ? error.message : null;
 
   return (
     <DashboardLayout>
       <PageHeader title={t("parentPages", "myFeesTitle", lang)} icon={IndianRupee} action={
-        <button onClick={load} className="p-2 rounded-xl bg-gray-100 text-gray-600">
-          <RefreshCw className="w-4 h-4" />
+        <button onClick={() => refetch()} disabled={isRefetching} className="p-2 rounded-xl bg-gray-100 text-gray-600">
+          <RefreshCw className={cn("w-4 h-4", isRefetching && "animate-spin")} />
         </button>
       } />
 
-      {error && <ApiErrorBanner message={error} onRetry={load} />}
+      {errorMessage && <ApiErrorBanner message={errorMessage} onRetry={() => refetch()} />}
+      {receiptMutation.error && <ApiErrorBanner message={(receiptMutation.error as Error).message} />}
 
-      {loading ? (
+      {isLoading ? (
         <div className="space-y-5">
           <div className="grid grid-cols-2 gap-3">
             {[1, 2].map((i) => (
@@ -158,20 +151,23 @@ export default function ParentFeesPage() {
           {/* Child tabs */}
           {children.length > 1 && (
             <div className="flex gap-2 mb-5">
-              {children.map((c, i) => (
-                <button
-                  key={c.studentId}
-                  onClick={() => setActiveIdx(i)}
-                  className={cn(
-                    "flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all",
-                    i === activeIdx
-                      ? "bg-emerald-600 text-white"
-                      : "bg-white border border-gray-200 text-gray-600",
-                  )}
-                >
-                  {c.student?.name ?? `Child ${i + 1}`}
-                </button>
-              ))}
+              {children.map((c, i) => {
+                const info = accessibleStudents.find((s) => s.id === c.studentId);
+                return (
+                  <button
+                    key={c.studentId}
+                    onClick={() => setActiveIdx(i)}
+                    className={cn(
+                      "flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all",
+                      i === activeIdx
+                        ? "bg-emerald-600 text-white"
+                        : "bg-white border border-gray-200 text-gray-600",
+                    )}
+                  >
+                    {info?.name ?? `Child ${i + 1}`}
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -179,32 +175,35 @@ export default function ParentFeesPage() {
             <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" /> {active.error}
             </div>
-          ) : active?.summary ? (
+          ) : activeSummary ? (
             <>
               {/* Student name if single child */}
-{children.length === 1 && active.student && (
-  <p className="text-sm text-gray-500 mb-4">{active.student.name}{active.student.className ? ` · ${active.student.className}` : ""}</p>
-)}
+              {children.length === 1 && (() => {
+                const info = accessibleStudents.find((s) => s.id === active.studentId);
+                return info ? (
+                  <p className="text-sm text-gray-500 mb-4">{info.name}{info.className ? ` · ${info.className}` : ""}</p>
+                ) : null;
+              })()}
 
               {/* Summary cards */}
               <div className="grid grid-cols-2 gap-3 mb-5">
                 <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-100">
                   <p className="text-xs text-emerald-600 mb-1">{t("parentPages", "totalPaidFees", lang)}</p>
-                  <p className="text-2xl font-bold text-emerald-700">₹{Number(active.summary.totalPaid).toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-emerald-700">₹{Number(activeSummary.totalPaid).toLocaleString()}</p>
                 </div>
                 <div className="bg-red-50 rounded-2xl p-4 border border-red-100">
                   <p className="text-xs text-red-500 mb-1">{t("parentPages", "pendingLabel", lang)}</p>
                   <p className="text-2xl font-bold text-red-600">
-                    ₹{Math.max(0, active.summary.totalDue - active.summary.totalPaid).toLocaleString()}
+                    ₹{Math.max(0, activeSummary.totalDue - activeSummary.totalPaid).toLocaleString()}
                   </p>
                 </div>
               </div>
 
-              {active.summary.pendingCount > 0 && (
+              {activeSummary.pendingCount > 0 && (
                 <div className="flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 mb-4">
                   <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
                   <p className="text-sm text-amber-700">
-                    <span className="font-bold">{active.summary.pendingCount}</span> {t("parentPages", "pendingPayments", lang)}
+                    <span className="font-bold">{activeSummary.pendingCount}</span> {t("parentPages", "pendingPayments", lang)}
                   </p>
                 </div>
               )}
@@ -212,10 +211,10 @@ export default function ParentFeesPage() {
               {/* Payment list */}
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">{t("parentPages", "paymentHistory", lang)}</p>
               <div className="space-y-3">
-                {active.summary.payments.length === 0 ? (
+                {activeSummary.payments.length === 0 ? (
                   <div className="text-center py-10 text-gray-400 text-sm">{t("parentPages", "noPaymentRecords", lang)}</div>
                 ) : (
-                  active.summary.payments.map((p, i) => {
+                  activeSummary.payments.map((p, i) => {
                     const isPaid = p.status === "PAID";
                     return (
                       <motion.div
@@ -252,10 +251,10 @@ export default function ParentFeesPage() {
                         {isPaid && (
                           <button
                             onClick={() => showReceipt(p.id)}
-                            disabled={loadingReceipt === p.id}
+                            disabled={receiptMutation.isPending && receiptMutation.variables === p.id}
                             className="w-full py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-semibold flex items-center justify-center gap-1.5"
                           >
-                            {loadingReceipt === p.id
+                            {receiptMutation.isPending && receiptMutation.variables === p.id
                               ? <Loader2 className="w-3 h-3 animate-spin" />
                               : <Receipt className="w-3 h-3" />
                             }
@@ -275,11 +274,11 @@ export default function ParentFeesPage() {
               </div>
 
               {/* Fee types applicable */}
-              {active.summary.feeTypes.length > 0 && (
+              {activeSummary.feeTypes.length > 0 && (
                 <>
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-6 mb-3">{t("parentPages", "applicableFees", lang)}</p>
                   <div className="flex flex-wrap gap-2">
-                    {active.summary.feeTypes.map((ft) => (
+                    {activeSummary.feeTypes.map((ft) => (
                       <div key={ft.id} className="h-10 px-4 rounded-md inline-flex items-center gap-1.5 bg-gray-50 text-gray-600 text-xs font-semibold">
                         <IndianRupee className="w-3.5 h-3.5" />
                         {ft.name}

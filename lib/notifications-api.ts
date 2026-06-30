@@ -30,13 +30,14 @@ export interface NotificationsResponse {
 
 export const getNotifications = (
   clientId: string, token: string,
-  params?: { skip?: number; take?: number },
+  params?: { skip?: number; take?: number; signal?: AbortSignal },
 ) => {
+  const { signal, ...rest } = params ?? {};
   const q = new URLSearchParams();
-  if (params?.skip) q.set("skip", String(params.skip));
-  if (params?.take) q.set("take", String(params.take));
+  if (rest.skip) q.set("skip", String(rest.skip));
+  if (rest.take) q.set("take", String(rest.take));
   const qs = q.toString();
-  return apiFetch<NotificationsResponse>(`${API_BASE}/${clientId}/notifications${qs ? `?${qs}` : ""}`, token);
+  return apiFetch<NotificationsResponse>(`${API_BASE}/${clientId}/notifications${qs ? `?${qs}` : ""}`, token, { signal });
 };
 
 export const getSentNotifications = (
@@ -50,8 +51,8 @@ export const getSentNotifications = (
   return apiFetch<NotificationsResponse>(`${API_BASE}/${clientId}/notifications/sent${qs ? `?${qs}` : ""}`, token);
 };
 
-export const getUnreadCount = (clientId: string, token: string) =>
-  apiFetch<{ count: number }>(`${API_BASE}/${clientId}/notifications/unread-count`, token);
+export const getUnreadCount = (clientId: string, token: string, signal?: AbortSignal) =>
+  apiFetch<{ count: number }>(`${API_BASE}/${clientId}/notifications/unread-count`, token, { signal });
 
 export interface DiaryEventNotification {
   id: string;
@@ -83,13 +84,15 @@ export const createNotification = (
 export const getDiaryEvents = (
   clientId: string,
   token: string,
-  params: { from: string; to: string; classId?: string },
+  params: { from: string; to: string; classId?: string; signal?: AbortSignal },
 ) => {
-  const q = new URLSearchParams({ from: params.from, to: params.to });
-  if (params.classId) q.set("classId", params.classId);
+  const { signal, ...rest } = params;
+  const q = new URLSearchParams({ from: rest.from, to: rest.to });
+  if (rest.classId) q.set("classId", rest.classId);
   return apiFetch<DiaryEventNotification[]>(
     `${API_BASE}/${clientId}/notifications/diary-events?${q}`,
     token,
+    { signal },
   );
 };
 

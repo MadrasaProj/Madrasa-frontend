@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { getExams, type ExamRecord } from "@/lib/exams-api";
-import { getResults, getSummaries, getClassReport, type ResultRecord, type ExamSummary, type ClassReport, GRADE_COLORS, TOTAL_GRADE_LABELS, calcGradeFromConfig } from "@/lib/results-api";
+import type { ExamRecord } from "@/lib/exams-api";
+import type { ResultRecord, ExamSummary, ClassReport } from "@/lib/results-api";
+import { GRADE_COLORS, TOTAL_GRADE_LABELS } from "@/lib/results-api";
 import { useStudent, useStudentPhoto } from "@/lib/hooks/useStudentPhoto";
 import { useStudentFullDataFromParent } from "@/lib/hooks/useStudentFullDataFromParent";
 import { useRefreshParentStudents } from "@/lib/hooks/useRefreshParentStudents";
@@ -10,12 +11,13 @@ import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { downloadAsJPG, downloadAsPDF, shareAsJPG, downloadAsPNG, shareAsPNG } from "@/lib/poster-utils";
+import { downloadAsJPG, downloadAsPDF, shareAsJPG, downloadAsPNG } from "@/lib/poster-utils";
 import { Drawer } from "@/components/ui/Drawer";
 import {
   Medal, Loader2, AlertCircle, RefreshCw, GraduationCap, Trophy,
-  Download, Share2, FileText, ChevronDown, ArrowLeft, Printer, Calendar, Award, ClipboardList, Eye, FileBadge2
+  Download, Share2, FileText, ChevronDown, ArrowLeft, Printer, Calendar, Award, Eye, FileBadge2
 } from "lucide-react";
+import { useExams, useResults, useResultSummaries, useClassReport } from "@/lib/queries";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -448,14 +450,7 @@ export default function ParentResultsPage() {
   const [selectedChildId, setSelectedChildId] = useState<string>(() => activeStudentId ?? ids[0] ?? "");
   const effectiveId = selectedChildId || ids[0] || "";
 
-  const [exams,          setExams]          = useState<ExamRecord[]>([]);
-  const [activeExamId,   setActiveExamId]   = useState("");
-  const [results,        setResults]        = useState<ResultRecord[]>([]);
-  const [summary,        setSummary]        = useState<ExamSummary | null>(null);
-  const [classReport,    setClassReport]    = useState<ClassReport | null>(null);
-  const [loading,        setLoading]        = useState(true);
-  const [loadingResults, setLoadingResults] = useState(false);
-  const [error,          setError]          = useState<string | null>(null);
+  const [activeExamId, setActiveExamId] = useState("");
 
   // Drawer state
   const [overviewOpen, setOverviewOpen] = useState(false);
@@ -467,51 +462,38 @@ export default function ParentResultsPage() {
   const activeStudent = students.find((s) => s.id === effectiveId);
 
   // ── Load published exams ──────────────────────────────────────────────────────
-  const loadExams = useCallback(async () => {
-    if (!cid || !token || !effectiveId) { setLoading(false); return; }
-    setLoading(true); setError(null);
-    try {
-      const examData = await getExams(cid, token, { accademicYearId: ayId || undefined, studentId: effectiveId, limit: 50 })
-        .catch(() => ({ data: [] as ExamRecord[] }));
-      const published = (examData.data ?? []).filter((e) => e.examStatus === "PUBLISHED");
-      setExams(published);
-      if (published[0] && !activeExamId) setActiveExamId(published[0].id);
-    } catch (e: any) {
-      setError(e.message ?? "Failed to load exams");
-    }
-    setLoading(false);
-  }, [cid, token, effectiveId, ayId, activeExamId]);
+  const { data: examData, isLoading: loadingExams, error: examError, refetch: refetchExams, isRefetching } = useExams(
+    { clientId: cid, token },
+    { accademicYearId: ayId || undefined, studentId: effectiveId, limit: 50 },
+  );
+  const exams: ExamRecord[] = (examData?.data ?? []).filter((e) => e.examStatus === "PUBLISHED");
+  const loading = loadingExams;
+  const error = examError instanceof Error ? examError.message : null;
 
-  useEffect(() => { loadExams(); }, [loadExams]);
+  // Auto-select first published exam on load
+  if (!activeExamId && exams.length > 0 && exams[0]) {
+    setActiveExamId(exams[0].id);
+  }
 
   // ── Load results + summary when exam changes ──────────────────────────────────
-  useEffect(() => {
-    if (!cid || !token || !effectiveId || !activeExamId) return;
-    setLoadingResults(true);
-    setSummary(null);
-    setResults([]);
-    setClassReport(null);
-    Promise.all([
-      getResults(cid, token, { examId: activeExamId, studentId: effectiveId, limit: 50 })
-        .catch(() => ({ data: [] as ResultRecord[] })),
-      getSummaries(cid, token, { examId: activeExamId, studentId: effectiveId, limit: 1 })
-        .catch(() => ({ data: [] as ExamSummary[] })),
-    ]).then(([resData, sumData]) => {
-      setResults(resData.data ?? []);
-      setSummary(sumData.data?.[0] ?? null);
-    }).finally(() => setLoadingResults(false));
-  }, [cid, token, effectiveId, activeExamId]);
+  const { data: resultsData, isLoading: loadingResults } = useResults(
+    { clientId: cid, token },
+    { examId: activeExamId, studentId: effectiveId, limit: 50 },
+  );
+  const { data: summaryData } = useResultSummaries(
+    { clientId: cid, token },
+    { examId: activeExamId, studentId: effectiveId, limit: 1 },
+  );
+  const results: ResultRecord[] = resultsData?.data ?? [];
+  const summary: ExamSummary | null = summaryData?.data?.[0] ?? null;
 
   // ── Load class report (class-level stats) when exam changes ────────────────────
-  useEffect(() => {
-    const ex = exams.find((e) => e.id === activeExamId);
-    if (!cid || !token || !activeExamId || !ex?.classId) { setClassReport(null); return; }
-    let cancelled = false;
-    getClassReport(cid, token, { examId: activeExamId, classId: ex.classId })
-      .then((r) => { if (!cancelled) setClassReport(r); })
-      .catch(() => { if (!cancelled) setClassReport(null); });
-    return () => { cancelled = true; };
-  }, [cid, token, activeExamId, exams]);
+  const activeExamForReport = exams.find((e) => e.id === activeExamId);
+  const { data: classReportData } = useClassReport(
+    { clientId: cid, token },
+    { examId: activeExamId, classId: activeExamForReport?.classId ?? "" },
+  );
+  const classReport: ClassReport | null = classReportData ?? null;
 
   const activeExam   = exams.find((e) => e.id === activeExamId);
   const rank         = summary?.rank ?? null;
@@ -596,7 +578,7 @@ export default function ParentResultsPage() {
               <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 print:hidden">
                 {students.map((s) => (
                   <button key={s.id}
-                    onClick={() => { setSelectedChildId(s.id); setActiveExamId(""); setResults([]); setSummary(null); }}
+                    onClick={() => { setSelectedChildId(s.id); setActiveExamId(""); }}
                     className={cn(
                       "px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors border active:scale-[0.97]",
                       selectedChildId === s.id
@@ -646,8 +628,8 @@ export default function ParentResultsPage() {
                     </select>
                     <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
                   </div>
-                  <button onClick={loadExams} className="p-2 text-gray-500 hover:text-gray-900 border border-gray-200 hover:border-gray-400 rounded-xl transition-colors bg-white">
-                    <RefreshCw className="w-4 h-4" />
+                  <button onClick={() => refetchExams()} className="p-2 text-gray-500 hover:text-gray-900 border border-gray-200 hover:border-gray-400 rounded-xl transition-colors bg-white">
+                    <RefreshCw className={cn("w-4 h-4", isRefetching && "animate-spin")} />
                   </button>
                 </div>
               </div>

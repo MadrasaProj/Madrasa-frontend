@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
-import { getSocialFrames, type SocialFrameRecord } from "@/lib/social-frames-api";
+import { useSocialFrames } from "@/lib/queries";
 import { getCoverImageUrl } from "@/lib/poster-utils";
 import { SkeletonGrid } from "@/components/ui/Skeleton";
 
@@ -18,32 +17,15 @@ export default function PublicSocialFramesPage({ basePath }: PublicSocialFramesP
   const clientId = user?.clientId ?? "";
   const navigate = useNavigate();
 
-  const [frames, setFrames] = useState<SocialFrameRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const loadFrames = useCallback(async () => {
-    if (!clientId) return;
-    setLoading(true);
-    try {
-      const res = await getSocialFrames(clientId, { limit: 100 });
-      setFrames(res.data);
-    } catch {
-      setFrames([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [clientId]);
-
-  useEffect(() => {
-    loadFrames();
-  }, [loadFrames]);
+  const { data, isLoading } = useSocialFrames(clientId, { limit: 100 });
+  const frames = data?.data ?? [];
 
   return (
     <DashboardLayout>
       <div className="space-y-4">
         <h1 className="text-lg font-semibold">{t("adminPages", "socialFramesTitle", lang)}</h1>
 
-        {loading ? (
+        {isLoading ? (
           <SkeletonGrid count={3} className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" />
         ) : frames.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
