@@ -54,6 +54,7 @@ interface AuthStore {
   setAttendanceMode: (mode: AttendanceMode) => void;
   updateUser: (fields: Partial<User>) => void;
   setAccessibleStudents: (students: StudentInfo[]) => void;
+  bootstrap: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   refreshParentStudents: () => Promise<void>;
 }
@@ -77,6 +78,8 @@ export type AuthSessionPayload = {
     defaultAcademicYearId?: string | null;
     parentPhone?: string;
     accessibleStudentIds?: string[];
+    photo?: string | null;
+    photoUrl?: string | null;
   };
 };
 
@@ -98,34 +101,69 @@ const validActorTypes: AuthActorType[] = [
   "TEAM_LEADER",
 ];
 
-export function normalizeUserSession(payload: AuthSessionPayload) {
-  const rawActorType = payload.user.actorType ?? payload.user.role;
+type JwtPayload = AuthSessionPayload["user"];
+
+function decodeJwt(token: string): JwtPayload | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const json =
+      typeof atob === "function"
+        ? atob(b64)
+        : Buffer.from(b64, "base64").toString("binary");
+    return JSON.parse(json) as JwtPayload;
+  } catch {
+    return null;
+  }
+}
+
+type ProfilePhoto = { photo: string | null; photoUrl: string | null };
+
+function buildUser(
+  payload: JwtPayload,
+  photo: ProfilePhoto,
+  students: StudentInfo[] = [],
+): User {
+  const rawActorType = payload.actorType ?? payload.role;
   const actorType: AuthActorType = validActorTypes.includes(
-    rawActorType as AuthActorType
+    rawActorType as AuthActorType,
   )
     ? (rawActorType as AuthActorType)
     : "CLIENT_ADMIN";
 
   return {
-    accessToken: payload.access_token,
-    user: {
-      id: payload.user.sub,
-      name: payload.user.name,
-      role: routeRoleByActor[actorType],
-      actorType,
-      tenantSlug: payload.user.client?.slug ?? payload.user.client?.subdomain,
-      clientId: payload.user.clientId,
-      defaultAcademicYearId: payload.user.defaultAcademicYearId ?? null,
-      parentPhone: payload.user.parentPhone,
-      photo: (payload.user as any).photo ?? null,
-      photoUrl: (payload.user as any).photoUrl ?? null,
-      accessibleStudentIds: payload.user.accessibleStudentIds ?? [],
-      accessibleStudents: payload.students ?? [],
-      attendanceMode: (payload.user.client?.attendanceMode as AttendanceMode) ?? "CLASS_BASED",
-      madrasaName: payload.user.client?.name,
-      madrasaLogo: payload.user.client?.logo ?? null,
-    } satisfies User,
+    id: payload.sub,
+    name: payload.name,
+    role: routeRoleByActor[actorType],
+    actorType,
+    tenantSlug: payload.client?.slug ?? payload.client?.subdomain,
+    clientId: payload.clientId,
+    defaultAcademicYearId: payload.defaultAcademicYearId ?? null,
+    parentPhone: payload.parentPhone,
+    photo: photo.photo,
+    photoUrl: photo.photoUrl,
+    accessibleStudentIds: students.length
+      ? students.map((s) => s.id)
+      : (payload.accessibleStudentIds ?? []),
+    accessibleStudents: students,
+    attendanceMode:
+      (payload.client?.attendanceMode as AttendanceMode) ?? "CLASS_BASED",
+    madrasaName: payload.client?.name,
+    madrasaLogo: payload.client?.logo ?? null,
   };
+}
+
+export function normalizeUserSession(payload: AuthSessionPayload) {
+  const user = buildUser(
+    payload.user,
+    {
+      photo: payload.user.photo ?? null,
+      photoUrl: payload.user.photoUrl ?? null,
+    },
+    payload.students ?? [],
+  );
+  return { accessToken: payload.access_token, user };
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -144,8 +182,12 @@ export const useAuthStore = create<AuthStore>()(
           user,
           accessToken,
           isLoggedIn: true,
-          activeClientId: user.actorType === "SUPER_ADMIN" ? null : (user.clientId ?? null),
-          activeTenantSlug: user.actorType === "SUPER_ADMIN" ? null : (user.tenantSlug ?? null),
+          activeClientId:
+            user.actorType === "SUPER_ADMIN" ? null : (user.clientId ?? null),
+          activeTenantSlug:
+            user.actorType === "SUPER_ADMIN"
+              ? null
+              : (user.tenantSlug ?? null),
           activeStudentId:
             user.actorType === "PARENT" && user.accessibleStudentIds?.length
               ? user.accessibleStudentIds[0]
@@ -183,21 +225,79 @@ export const useAuthStore = create<AuthStore>()(
           user: state.user ? { ...state.user, ...fields } : null,
         })),
 
+      bootstrap: async () => {
+        const { accessToken } = get();
+        if (!accessToken) return;
+        const token = accessToken;
+
+        const payload = decodeJwt(token);
+        if (!payload) {
+          get().logout();
+          return;
+        }
+
+        let profile: ProfilePhoto;
+        try {
+          const res = await getProfile(token);
+          profile = { photo: res.photo, photoUrl: res.photoUrl };
+        } catch {
+          get().logout();
+          return;
+        }
+
+        const rawActorType = payload.actorType ?? payload.role;
+        const actorType: AuthActorType = validActorTypes.includes(
+          rawActorType as AuthActorType,
+        )
+          ? (rawActorType as AuthActorType)
+          : "CLIENT_ADMIN";
+
+        let students: StudentInfo[] = [];
+        if (actorType === "PARENT") {
+          try {
+            const res = await getParentStudents(token);
+            students = res.data;
+          } catch {
+            // Tolerate failure — `accessibleStudentIds` from JWT still works
+          }
+        }
+
+        if (get().accessToken !== token) return;
+
+        const user = buildUser(payload, profile, students);
+        set({
+          user,
+          isLoggedIn: true,
+          activeClientId:
+            user.actorType === "SUPER_ADMIN" ? null : (user.clientId ?? null),
+          activeTenantSlug:
+            user.actorType === "SUPER_ADMIN"
+              ? null
+              : (user.tenantSlug ?? null),
+          activeStudentId:
+            user.actorType === "PARENT" && students.length
+              ? students[0].id
+              : null,
+        });
+      },
+
       refreshProfile: async () => {
         const { accessToken, user } = get();
         if (!accessToken || !user) return;
         try {
           const profile = await getProfile(accessToken);
-          set({
-            user: {
-              ...user,
-              name: profile.name,
-              photo: profile.photo,
-              photoUrl: profile.photoUrl,
-            },
-          });
+          set((state) => ({
+            user: state.user
+              ? {
+                  ...state.user,
+                  name: profile.name,
+                  photo: profile.photo,
+                  photoUrl: profile.photoUrl,
+                }
+              : state.user,
+          }));
         } catch {
-          // Silently fail — stale photoUrl is not critical
+          // Silently fail — non-critical
         }
       },
 
@@ -221,40 +321,31 @@ export const useAuthStore = create<AuthStore>()(
               : null,
           }));
         } catch {
-          // Silently fail — keep the persisted list as fallback
+          // Silently fail
         }
       },
     }),
     {
       name: "madrasa-auth-session",
-      version: 2,
+      version: 4,
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
-        user: state.user,
         accessToken: state.accessToken,
-        isLoggedIn: state.isLoggedIn,
-        activeClientId: state.activeClientId,
-        activeTenantSlug: state.activeTenantSlug,
-        activeStudentId: state.activeStudentId,
       }),
       migrate: (persisted: unknown, fromVersion: number) => {
-        // Bump version when the shape of `user.accessibleStudents` changes so
-        // the old (limited) cached payload is dropped and the user is forced
-        // to re-login once to receive the new fields.
-        if (fromVersion < 2) {
-          return {
-            user: null,
-            accessToken: null,
-            isLoggedIn: false,
-            activeClientId: null,
-            activeTenantSlug: null,
-            activeStudentId: null,
-          } as any;
+        if (fromVersion < 4) {
+          const prev = persisted as any;
+          return { accessToken: prev?.accessToken ?? null };
         }
         return persisted as any;
       },
       onRehydrateStorage: () => (state) => {
-        state?.markHydrated();
+        if (!state) return;
+        if (state.accessToken) {
+          state.bootstrap().finally(() => state.markHydrated());
+        } else {
+          state.markHydrated();
+        }
       },
     },
   ),

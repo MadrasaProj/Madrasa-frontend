@@ -38,7 +38,6 @@ import {
   ChevronDown,
   Languages,
 } from "lucide-react";
-import { ParentStudentSwitcher } from "@/components/ParentStudentSwitcher";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
@@ -767,10 +766,6 @@ export function Sidebar({
 
         {/* ── Mobile sidebar utilities ── */}
         <div className="lg:hidden px-4 py-3 border-t border-gray-100 bg-gray-50 space-y-1 shrink-0">
-          {user.actorType === "PARENT" &&
-            (user.accessibleStudentIds?.length ?? 0) > 0 && (
-              <ParentStudentSwitcher />
-            )}
           <div className="flex items-center justify-between gap-2 px-3 py-2">
             <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
               {lang === "ml" ? "ഭാഷ" : "Language"}
