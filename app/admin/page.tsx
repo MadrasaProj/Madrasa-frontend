@@ -10,6 +10,7 @@ import {
   type ClientListItem,
 } from "@/lib/super-admin-api";
 import { useAuthStore } from "@/store/auth";
+import OperationsDashboard from "./crm/operations";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Users, CreditCard, BookOpen, BarChart3, Settings, GraduationCap,
@@ -188,10 +189,19 @@ function MadrasaAdminDashboard() {
 
 export default function AdminDashboard() {
   const { user, activeClientId } = useAuthStore();
-  const isSuperAdmin = user?.actorType === "SUPER_ADMIN" && !activeClientId;
+  const isPlatformUser = [
+    "SUPER_ADMIN",
+    "SALES_EXECUTIVE",
+    "SALES_MANAGER",
+    "IMPLEMENTATION_SPECIALIST",
+    "SUPPORT_EXECUTIVE",
+    "CUSTOMER_SUCCESS_MANAGER",
+    "FINANCE_EXECUTIVE"
+  ].includes(user?.actorType ?? "") && !activeClientId;
+
   return (
     <DashboardLayout>
-      {isSuperAdmin ? <PlatformOverview /> : <MadrasaAdminDashboard />}
+      {isPlatformUser ? <OperationsDashboard /> : <MadrasaAdminDashboard />}
     </DashboardLayout>
   );
 }

@@ -212,6 +212,11 @@ const translations = {
     financeExtras: { en: "Finance & Extras", ml: "ധനകാര്യം & എക്സ്ട്രാസ്" },
     settings: { en: "Settings", ml: "ക്രമീകരണങ്ങൾ" },
     bestPerformance: { en: "Best Performance", ml: "മികച്ച പ്രകടനം" },
+    leads: { en: "Leads CRM", ml: "ലെയ്ഡ്സ് സിആർഎം" },
+    commissions: { en: "Commissions", ml: "കമ്മീഷനുകൾ" },
+    support: { en: "Support Desk", ml: "സപ്പോർട്ട് ഡെസ്ക്" },
+    renewals: { en: "Renewals", ml: "റിന്യൂവലുകൾ" },
+    districts: { en: "Districts Catalog", ml: "ജില്ലകൾ" },
   },
 
   // ── Admin Dashboard ───────────────────────────────────────────────────────

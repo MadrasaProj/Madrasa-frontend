@@ -42,6 +42,15 @@ import AdminSubjectsPage from "../app/admin/subjects/page";
 import AdminSuperUsersPage from "../app/admin/super-users/page";
 import AdminTeachersPage from "../app/admin/teachers/page";
 import AdminTeacherAttendancePage from "../app/admin/teacher-attendance/page";
+
+// ── CRM Platform Modules ──────────────────────────────────────────────────────
+import OperationsDashboard from "../app/admin/crm/operations";
+import CrmLeadsPage from "../app/admin/crm/leads";
+import SupportDashboard from "../app/admin/crm/support";
+import CommissionsDashboard from "../app/admin/crm/commissions";
+import RenewalsDashboard from "../app/admin/crm/renewals";
+import DistrictsPage from "../app/admin/crm/districts";
+import ExpensesPage from "../app/admin/crm/expenses";
 // ClassReportPage is role-agnostic; teacher route reuses the same component
 const TeacherClassReportPage = AdminClassReportPage;
 
@@ -143,6 +152,12 @@ export default function App() {
         <Route path="/admin/madrasas" element={<AdminMadrasasPage />} />
         <Route path="/admin/super-users" element={<AdminSuperUsersPage />} />
         <Route path="/admin/platform-reports" element={<AdminPlatformReportsPage />} />
+        <Route path="/admin/crm/leads" element={<CrmLeadsPage />} />
+        <Route path="/admin/crm/support" element={<SupportDashboard />} />
+        <Route path="/admin/crm/commissions" element={<CommissionsDashboard />} />
+        <Route path="/admin/crm/renewals" element={<RenewalsDashboard />} />
+        <Route path="/admin/crm/districts" element={<DistrictsPage />} />
+        <Route path="/admin/crm/expenses" element={<ExpensesPage />} />
         <Route path="/admin/profile" element={<AdminProfilePage />} />
 
         {/* Profile for all roles */}

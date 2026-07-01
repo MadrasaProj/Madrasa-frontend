@@ -34,6 +34,7 @@ function UserDrawer({
   const [name, setName] = useState(user?.name ?? "");
   const [identifier, setIdentifier] = useState(user?.identifier ?? "");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState(user?.role ?? "SUPER_ADMIN");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -50,9 +51,9 @@ function UserDrawer({
     try {
       let saved: SuperAdminUser;
       if (mode === "add") {
-        saved = await createSuperAdminUser({ name, identifier, password }, token);
+        saved = await createSuperAdminUser({ name, identifier, password, role }, token);
       } else {
-        const dto: { name?: string; password?: string } = { name };
+        const dto: { name?: string; password?: string; role?: string } = { name, role };
         if (password) dto.password = password;
         saved = await updateSuperAdminUser(user!.id, dto, token);
       }
@@ -124,6 +125,20 @@ function UserDrawer({
                 <label className={labelCls}>{mode === "add" ? "Password *" : "New Password (leave blank to keep)"}</label>
                 <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
                   className={inputCls} placeholder={mode === "edit" ? "Optional" : "Min 8 characters"} />
+              </div>
+              <div>
+                <label className={labelCls}>Role *</label>
+                <select value={role} onChange={(e) => setRole(e.target.value)} className={inputCls}>
+                  <option value="SUPER_ADMIN">Super Admin</option>
+                  <option value="SALES_EXECUTIVE">Sales Executive</option>
+                  <option value="SALES_MANAGER">Sales Manager</option>
+                  <option value="MARKETING_MANAGER">Marketing Manager</option>
+                  <option value="TECHNICAL_MANAGER">Technical Manager</option>
+                  <option value="IMPLEMENTATION_SPECIALIST">Implementation Specialist</option>
+                  <option value="SUPPORT_EXECUTIVE">Support Executive</option>
+                  <option value="CUSTOMER_SUCCESS_MANAGER">Customer Success Manager</option>
+                  <option value="FINANCE_EXECUTIVE">Finance Executive</option>
+                </select>
               </div>
             </div>
           </div>
@@ -241,8 +256,13 @@ export default function AdminSuperUsersPage() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-semibold text-gray-900 text-sm">{u.name}</p>
                   {u.isPrimary && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-mono">
                       Primary
+                    </span>
+                  )}
+                  {u.role && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-mono uppercase">
+                      {u.role.replace(/_/g, " ")}
                     </span>
                   )}
                 </div>

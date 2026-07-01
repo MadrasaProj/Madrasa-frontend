@@ -6,7 +6,7 @@ import {
   UserCircle, Home, GraduationCap, Moon, IndianRupee,
   BadgeCheck, FileBarChart2, Megaphone, UserCog, Activity, LogOut,
   Building2, ShieldCheck, UserCircle2, School, Clock, FilePen,
-  ClipboardCheck, Image, Trophy, Menu, X, ChevronDown, Languages,
+  ClipboardCheck, Image, Trophy, Menu, X, ChevronDown, Languages, MapPin, Receipt,
 } from "lucide-react";
 import { ParentStudentSwitcher } from "@/components/ParentStudentSwitcher";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -25,7 +25,8 @@ type NavKey =
   | "results" | "alerts" | "overview" | "finance" | "announcements" | "notifications"
   | "madrasas" | "superUsers" | "platformReports" | "profile"
   | "teacherCheckin" | "posters" | "artsfest" | "academics" | "operations" | "financeExtras" | "settings"
-  | "bestPerformance" | "feeTypes";
+  | "bestPerformance" | "feeTypes"
+  | "leads" | "commissions" | "support" | "renewals" | "districts" | "expenses";
 
 const adminLinks = [
   { href: "/admin",                icon: LayoutDashboard, key: "dashboard"     as NavKey },
@@ -98,6 +99,12 @@ const committeeLinks = [
 const superAdminLinks = [
   { href: "/admin",                    icon: LayoutDashboard, key: "dashboard"       as NavKey },
   { href: "/admin/madrasas",           icon: Building2,       key: "madrasas"        as NavKey },
+  { href: "/admin/crm/leads",          icon: ClipboardList,   key: "leads"           as NavKey },
+  { href: "/admin/crm/commissions",    icon: CreditCard,      key: "commissions"     as NavKey },
+  { href: "/admin/crm/support",        icon: ShieldCheck,     key: "support"         as NavKey },
+  { href: "/admin/crm/renewals",       icon: ClipboardList,   key: "renewals"        as NavKey },
+  { href: "/admin/crm/districts",      icon: MapPin,          key: "districts"       as NavKey },
+  { href: "/admin/crm/expenses",       icon: Receipt,         key: "expenses"        as NavKey },
   { href: "/admin/super-users",        icon: ShieldCheck,     key: "superUsers"      as NavKey },
   { href: "/admin/ibadah-config",      icon: Moon,            key: "ibadah"          as NavKey },
   { href: "/admin/posters",            icon: Image,           key: "posters"         as NavKey },
@@ -183,6 +190,64 @@ const getAdminCategories = (role: string, actorType?: string) => {
 
 function getLinksByRole(role: string, actorType?: string, hasActiveClient?: boolean): NavLink[] {
   if (actorType === "SUPER_ADMIN" && !hasActiveClient) return superAdminLinks;
+  if (!hasActiveClient) {
+    if (actorType === "SALES_EXECUTIVE") {
+      return [
+        { href: "/admin",                    icon: LayoutDashboard, key: "dashboard"       as NavKey },
+        { href: "/admin/crm/leads",          icon: Building2,       key: "leads"           as NavKey },
+        { href: "/admin/crm/commissions",    icon: CreditCard,      key: "commissions"     as NavKey },
+        { href: "/admin/profile",            icon: UserCircle2,     key: "profile"         as NavKey },
+      ];
+    }
+    if (actorType === "SALES_MANAGER") {
+      return [
+        { href: "/admin",                    icon: LayoutDashboard, key: "dashboard"       as NavKey },
+        { href: "/admin/crm/leads",          icon: Building2,       key: "leads"           as NavKey },
+        { href: "/admin/crm/commissions",    icon: CreditCard,      key: "commissions"     as NavKey },
+        { href: "/admin/crm/districts",      icon: MapPin,          key: "districts"       as NavKey },
+        { href: "/admin/crm/expenses",       icon: Receipt,         key: "expenses"        as NavKey },
+        { href: "/admin/profile",            icon: UserCircle2,     key: "profile"         as NavKey },
+      ];
+    }
+    if (actorType === "MARKETING_MANAGER" || actorType === "TECHNICAL_MANAGER") {
+      return [
+        { href: "/admin",                    icon: LayoutDashboard, key: "dashboard"       as NavKey },
+        { href: "/admin/crm/expenses",       icon: Receipt,         key: "expenses"        as NavKey },
+        { href: "/admin/profile",            icon: UserCircle2,     key: "profile"         as NavKey },
+      ];
+    }
+    if (actorType === "SUPPORT_EXECUTIVE") {
+      return [
+        { href: "/admin",                    icon: LayoutDashboard, key: "dashboard"       as NavKey },
+        { href: "/admin/crm/support",        icon: ShieldCheck,     key: "support"         as NavKey },
+        { href: "/admin/profile",            icon: UserCircle2,     key: "profile"         as NavKey },
+      ];
+    }
+    if (actorType === "IMPLEMENTATION_SPECIALIST") {
+      return [
+        { href: "/admin",                    icon: LayoutDashboard, key: "dashboard"       as NavKey },
+        { href: "/admin/crm/leads",          icon: Building2,       key: "leads"           as NavKey },
+        { href: "/admin/profile",            icon: UserCircle2,     key: "profile"         as NavKey },
+      ];
+    }
+    if (actorType === "CUSTOMER_SUCCESS_MANAGER") {
+      return [
+        { href: "/admin",                    icon: LayoutDashboard, key: "dashboard"       as NavKey },
+        { href: "/admin/crm/leads",          icon: Building2,       key: "leads"           as NavKey },
+        { href: "/admin/crm/support",        icon: ShieldCheck,     key: "support"         as NavKey },
+        { href: "/admin/crm/renewals",       icon: ClipboardList,   key: "renewals"        as NavKey },
+        { href: "/admin/profile",            icon: UserCircle2,     key: "profile"         as NavKey },
+      ];
+    }
+    if (actorType === "FINANCE_EXECUTIVE") {
+      return [
+        { href: "/admin",                    icon: LayoutDashboard, key: "dashboard"       as NavKey },
+        { href: "/admin/crm/renewals",       icon: ClipboardList,   key: "renewals"        as NavKey },
+        { href: "/admin/crm/commissions",    icon: CreditCard,      key: "commissions"     as NavKey },
+        { href: "/admin/profile",            icon: UserCircle2,     key: "profile"         as NavKey },
+      ];
+    }
+  }
   if (role === "admin") return adminLinks;
   if (role === "teacher") return teacherLinks;
   if (role === "committee") return committeeLinks;

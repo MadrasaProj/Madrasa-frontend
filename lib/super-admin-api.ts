@@ -136,6 +136,7 @@ export interface SuperAdminUser {
   id: string;
   name: string;
   identifier: string;
+  role?: string;
   isPrimary: boolean;
   createdAt: string;
 }
@@ -145,7 +146,7 @@ export function listSuperAdminUsers(token: string) {
 }
 
 export function createSuperAdminUser(
-  dto: { name: string; identifier: string; password: string },
+  dto: { name: string; identifier: string; password: string; role?: string },
   token: string,
 ) {
   return mutateJson<SuperAdminUser>("POST", "/super-admin/users", dto, token);
@@ -153,7 +154,7 @@ export function createSuperAdminUser(
 
 export function updateSuperAdminUser(
   userId: string,
-  dto: { name?: string; password?: string },
+  dto: { name?: string; password?: string; role?: string },
   token: string,
 ) {
   return mutateJson<SuperAdminUser>("PATCH", `/super-admin/users/${userId}`, dto, token);
