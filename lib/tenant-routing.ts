@@ -1,4 +1,4 @@
-export type ActorType = "SUPER_ADMIN" | "CLIENT_ADMIN" | "TEACHER" | "PARENT" | "COMMITTEE" | "TEAM_LEADER";
+export type ActorType = "SUPER_ADMIN" | "CLIENT_ADMIN" | "TEACHER" | "PARENT" | "COMMITTEE" | "TEAM_LEADER" | "SALES_EXECUTIVE" | "SALES_MANAGER" | "IMPLEMENTATION_SPECIALIST" | "SUPPORT_EXECUTIVE" | "CUSTOMER_SUCCESS_MANAGER" | "MARKETING_MANAGER" | "TECHNICAL_MANAGER" | "FINANCE_EXECUTIVE";
 export type RouteRole = "admin" | "teacher" | "parent" | "committee";
 
 type SessionForRedirect = {

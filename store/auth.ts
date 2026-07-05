@@ -9,7 +9,15 @@ export type AuthActorType =
   | "TEACHER"
   | "PARENT"
   | "COMMITTEE"
-  | "TEAM_LEADER";
+  | "TEAM_LEADER"
+  | "SALES_EXECUTIVE"
+  | "SALES_MANAGER"
+  | "IMPLEMENTATION_SPECIALIST"
+  | "SUPPORT_EXECUTIVE"
+  | "CUSTOMER_SUCCESS_MANAGER"
+  | "MARKETING_MANAGER"
+  | "TECHNICAL_MANAGER"
+  | "FINANCE_EXECUTIVE";
 
 export type AttendanceMode = "CLASS_BASED" | "PERIOD_BASED";
 
@@ -77,6 +85,14 @@ const routeRoleByActor: Record<AuthActorType, UserRole> = {
   PARENT: "parent",
   COMMITTEE: "committee",
   TEAM_LEADER: "teacher",
+  SALES_EXECUTIVE: "admin",
+  SALES_MANAGER: "admin",
+  MARKETING_MANAGER: "admin",
+  TECHNICAL_MANAGER: "admin",
+  IMPLEMENTATION_SPECIALIST: "admin",
+  SUPPORT_EXECUTIVE: "admin",
+  CUSTOMER_SUCCESS_MANAGER: "admin",
+  FINANCE_EXECUTIVE: "admin",
 };
 
 const validActorTypes: AuthActorType[] = [
@@ -86,6 +102,14 @@ const validActorTypes: AuthActorType[] = [
   "PARENT",
   "COMMITTEE",
   "TEAM_LEADER",
+  "SALES_EXECUTIVE",
+  "SALES_MANAGER",
+  "MARKETING_MANAGER",
+  "TECHNICAL_MANAGER",
+  "IMPLEMENTATION_SPECIALIST",
+  "SUPPORT_EXECUTIVE",
+  "CUSTOMER_SUCCESS_MANAGER",
+  "FINANCE_EXECUTIVE",
 ];
 
 export function normalizeUserSession(payload: AuthSessionPayload) {

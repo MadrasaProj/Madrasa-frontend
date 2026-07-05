@@ -26,7 +26,7 @@ import AdminFeesPaidPage from "../app/admin/fees/paid/page";
 import AdminFeesUnpaidPage from "../app/admin/fees/unpaid/page";
 import AdminIbadahConfigPage from "../app/admin/ibadah-config/page";
 import AdminIbadahPage from "../app/admin/ibadah/page";
- import AdminLogsPage from "../app/admin/logs/page";
+import AdminLogsPage from "../app/admin/logs/page";
 import AdminMadrasasPage from "../app/admin/madrasas/page";
 import AdminNotificationsPage from "../app/admin/notifications/page";
 import AdminOtherPaymentsPage from "../app/admin/other-payments/page";
@@ -35,7 +35,12 @@ import AdminPlatformReportsPage from "../app/admin/platform-reports/page";
 import AdminGlobalClassSubjectsPage from "../app/admin/global-class-subjects/page";
 import AdminPostersPage from "../app/admin/posters/page";
 import AdminPresentPage from "../app/admin/present/page";
-import { default as AdminProfilePage, default as CommitteeProfilePage, default as ParentProfilePage, default as TeacherProfilePage } from "../app/admin/profile/page";
+import {
+  default as AdminProfilePage,
+  default as CommitteeProfilePage,
+  default as ParentProfilePage,
+  default as TeacherProfilePage,
+} from "../app/admin/profile/page";
 import AdminReportsPage from "../app/admin/reports/page";
 import AdminStudentDetailPage from "../app/admin/students/[id]/page";
 import AdminStudentsPage from "../app/admin/students/page";
@@ -43,6 +48,15 @@ import AdminSubjectsPage from "../app/admin/subjects/page";
 import AdminSuperUsersPage from "../app/admin/super-users/page";
 import AdminTeachersPage from "../app/admin/teachers/page";
 import AdminTeacherAttendancePage from "../app/admin/teacher-attendance/page";
+
+// ── CRM Platform Modules ──────────────────────────────────────────────────────
+import OperationsDashboard from "../app/admin/crm/operations";
+import CrmLeadsPage from "../app/admin/crm/leads";
+import SupportDashboard from "../app/admin/crm/support";
+import CommissionsDashboard from "../app/admin/crm/commissions";
+import RenewalsDashboard from "../app/admin/crm/renewals";
+import DistrictsPage from "../app/admin/crm/districts";
+import ExpensesPage from "../app/admin/crm/expenses";
 // ClassReportPage is role-agnostic; teacher route reuses the same component
 const TeacherClassReportPage = AdminClassReportPage;
 
@@ -103,48 +117,96 @@ export default function App() {
 
         {/* Auth */}
         <Route path="/super-admin/login" element={<SuperAdminLoginPage />} />
-        <Route path="/m/:slug/login" element={<Navigate to="../admin/login" replace />} />
+        <Route
+          path="/m/:slug/login"
+          element={<Navigate to="../admin/login" replace />}
+        />
         <Route path="/m/:slug/admin/login" element={<AdminLoginPage />} />
         <Route path="/m/:slug/teacher/login" element={<TeacherLoginPage />} />
         <Route path="/m/:slug/parent/login" element={<ParentLoginPage />} />
-        <Route path="/m/:slug/committee/login" element={<CommitteeLoginPage />} />
+        <Route
+          path="/m/:slug/committee/login"
+          element={<CommitteeLoginPage />}
+        />
 
         {/* Admin — bare paths kept for super-admin platform view */}
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/students" element={<AdminStudentsPage />} />
-        <Route path="/admin/students/:id" element={<AdminStudentDetailPage />} />
+        <Route
+          path="/admin/students/:id"
+          element={<AdminStudentDetailPage />}
+        />
         <Route path="/admin/attendance" element={<AdminAttendancePage />} />
-        <Route path="/admin/leave-requests" element={<AdminLeaveRequestsPage />} />
+        <Route
+          path="/admin/leave-requests"
+          element={<AdminLeaveRequestsPage />}
+        />
         <Route path="/admin/present" element={<AdminPresentPage />} />
         <Route path="/admin/absent" element={<AdminAbsentPage />} />
         <Route path="/admin/fees" element={<AdminFeesPage />} />
         <Route path="/admin/fees/types" element={<AdminFeesTypesPage />} />
         <Route path="/admin/fees/paid" element={<AdminFeesPaidPage />} />
         <Route path="/admin/fees/unpaid" element={<AdminFeesUnpaidPage />} />
-        <Route path="/admin/other-payments" element={<AdminOtherPaymentsPage />} />
+        <Route
+          path="/admin/other-payments"
+          element={<AdminOtherPaymentsPage />}
+        />
         <Route path="/admin/classes" element={<AdminClassesPage />} />
         <Route path="/admin/subjects" element={<AdminSubjectsPage />} />
         <Route path="/admin/teachers" element={<AdminTeachersPage />} />
-        <Route path="/admin/teacher-attendance" element={<AdminTeacherAttendancePage />} />
+        <Route
+          path="/admin/teacher-attendance"
+          element={<AdminTeacherAttendancePage />}
+        />
         <Route path="/admin/exams" element={<AdminExamsPage />} />
-        <Route path="/admin/exams/class-test" element={<TeacherClassTestsPage />} />
-        <Route path="/admin/exams/class-report" element={<AdminClassReportPage />} />
+        <Route
+          path="/admin/exams/class-test"
+          element={<TeacherClassTestsPage />}
+        />
+        <Route
+          path="/admin/exams/class-report"
+          element={<AdminClassReportPage />}
+        />
         <Route path="/admin/exams/config" element={<AdminExamConfigPage />} />
-        <Route path="/admin/notifications" element={<AdminNotificationsPage />} />
+        <Route
+          path="/admin/notifications"
+          element={<AdminNotificationsPage />}
+        />
         <Route path="/admin/reports" element={<AdminReportsPage />} />
         <Route path="/admin/config" element={<AdminConfigPage />} />
         <Route path="/admin/ibadah" element={<AdminIbadahPage />} />
-        <Route path="/admin/ibadah-config" element={<AdminIbadahConfigPage />} />
+        <Route
+          path="/admin/ibadah-config"
+          element={<AdminIbadahConfigPage />}
+        />
         <Route path="/admin/id-cards" element={<IDCardsPage />} />
         <Route path="/admin/posters" element={<AdminPostersPage />} />
         <Route path="/admin/logs" element={<AdminLogsPage />} />
-        <Route path="/admin/best-performance" element={<AdminBestPerformancePage />} />
+        <Route
+          path="/admin/best-performance"
+          element={<AdminBestPerformancePage />}
+        />
 
         {/* Super Admin platform routes */}
         <Route path="/admin/madrasas" element={<AdminMadrasasPage />} />
         <Route path="/admin/super-users" element={<AdminSuperUsersPage />} />
-        <Route path="/admin/platform-reports" element={<AdminPlatformReportsPage />} />
-        <Route path="/admin/global-class-subjects" element={<AdminGlobalClassSubjectsPage />} />
+        <Route
+          path="/admin/platform-reports"
+          element={<AdminPlatformReportsPage />}
+        />
+        <Route
+          path="/admin/global-class-subjects"
+          element={<AdminGlobalClassSubjectsPage />}
+        />
+        <Route path="/admin/crm/leads" element={<CrmLeadsPage />} />
+        <Route path="/admin/crm/support" element={<SupportDashboard />} />
+        <Route
+          path="/admin/crm/commissions"
+          element={<CommissionsDashboard />}
+        />
+        <Route path="/admin/crm/renewals" element={<RenewalsDashboard />} />
+        <Route path="/admin/crm/districts" element={<DistrictsPage />} />
+        <Route path="/admin/crm/expenses" element={<ExpensesPage />} />
         <Route path="/admin/profile" element={<AdminProfilePage />} />
 
         {/* Profile for all roles */}
@@ -154,81 +216,189 @@ export default function App() {
 
         {/* Slug-prefixed profile routes */}
         <Route path="/m/:slug/admin/profile" element={<AdminProfilePage />} />
-        <Route path="/m/:slug/teacher/profile" element={<TeacherProfilePage />} />
+        <Route
+          path="/m/:slug/teacher/profile"
+          element={<TeacherProfilePage />}
+        />
         <Route path="/m/:slug/parent/profile" element={<ParentProfilePage />} />
-        <Route path="/m/:slug/committee/profile" element={<CommitteeProfilePage />} />
+        <Route
+          path="/m/:slug/committee/profile"
+          element={<CommitteeProfilePage />}
+        />
 
         {/* Admin — slug-prefixed (CLIENT_ADMIN + super-admin viewing a madrasa) */}
         <Route path="/m/:slug/admin" element={<AdminDashboard />} />
         <Route path="/m/:slug/admin/students" element={<AdminStudentsPage />} />
-        <Route path="/m/:slug/admin/students/:id" element={<AdminStudentDetailPage />} />
-        <Route path="/m/:slug/admin/attendance" element={<AdminAttendancePage />} />
-        <Route path="/m/:slug/admin/leave-requests" element={<AdminLeaveRequestsPage />} />
+        <Route
+          path="/m/:slug/admin/students/:id"
+          element={<AdminStudentDetailPage />}
+        />
+        <Route
+          path="/m/:slug/admin/attendance"
+          element={<AdminAttendancePage />}
+        />
+        <Route
+          path="/m/:slug/admin/leave-requests"
+          element={<AdminLeaveRequestsPage />}
+        />
         <Route path="/m/:slug/admin/present" element={<AdminPresentPage />} />
         <Route path="/m/:slug/admin/absent" element={<AdminAbsentPage />} />
         <Route path="/m/:slug/admin/fees" element={<AdminFeesPage />} />
-        <Route path="/m/:slug/admin/fees/types" element={<AdminFeesTypesPage />} />
-        <Route path="/m/:slug/admin/fees/paid" element={<AdminFeesPaidPage />} />
-        <Route path="/m/:slug/admin/fees/unpaid" element={<AdminFeesUnpaidPage />} />
-        <Route path="/m/:slug/admin/other-payments" element={<AdminOtherPaymentsPage />} />
+        <Route
+          path="/m/:slug/admin/fees/types"
+          element={<AdminFeesTypesPage />}
+        />
+        <Route
+          path="/m/:slug/admin/fees/paid"
+          element={<AdminFeesPaidPage />}
+        />
+        <Route
+          path="/m/:slug/admin/fees/unpaid"
+          element={<AdminFeesUnpaidPage />}
+        />
+        <Route
+          path="/m/:slug/admin/other-payments"
+          element={<AdminOtherPaymentsPage />}
+        />
         <Route path="/m/:slug/admin/classes" element={<AdminClassesPage />} />
         <Route path="/m/:slug/admin/subjects" element={<AdminSubjectsPage />} />
         <Route path="/m/:slug/admin/teachers" element={<AdminTeachersPage />} />
-        <Route path="/m/:slug/admin/teacher-attendance" element={<AdminTeacherAttendancePage />} />
+        <Route
+          path="/m/:slug/admin/teacher-attendance"
+          element={<AdminTeacherAttendancePage />}
+        />
         <Route path="/m/:slug/admin/exams" element={<AdminExamsPage />} />
-        <Route path="/m/:slug/admin/exams/class-test" element={<TeacherClassTestsPage />} />
-        <Route path="/m/:slug/admin/exams/class-report" element={<AdminClassReportPage />} />
-        <Route path="/m/:slug/admin/exams/config" element={<AdminExamConfigPage />} />
-        <Route path="/m/:slug/admin/notifications" element={<AdminNotificationsPage />} />
+        <Route
+          path="/m/:slug/admin/exams/class-test"
+          element={<TeacherClassTestsPage />}
+        />
+        <Route
+          path="/m/:slug/admin/exams/class-report"
+          element={<AdminClassReportPage />}
+        />
+        <Route
+          path="/m/:slug/admin/exams/config"
+          element={<AdminExamConfigPage />}
+        />
+        <Route
+          path="/m/:slug/admin/notifications"
+          element={<AdminNotificationsPage />}
+        />
         <Route path="/m/:slug/admin/reports" element={<AdminReportsPage />} />
         <Route path="/m/:slug/admin/ibadah" element={<AdminIbadahPage />} />
         <Route path="/m/:slug/admin/config" element={<AdminConfigPage />} />
         <Route path="/m/:slug/admin/id-cards" element={<IDCardsPage />} />
-       
+
         <Route path="/m/:slug/admin/logs" element={<AdminLogsPage />} />
-        <Route path="/m/:slug/admin/best-performance" element={<AdminBestPerformancePage />} />
+        <Route
+          path="/m/:slug/admin/best-performance"
+          element={<AdminBestPerformancePage />}
+        />
 
         {/* Teacher */}
         <Route path="/teacher" element={<TeacherDashboard />} />
         <Route path="/teacher/checkin" element={<TeacherCheckinPage />} />
         <Route path="/teacher/attendance" element={<TeacherAttendancePage />} />
-        <Route path="/teacher/leave-requests" element={<TeacherLeaveRequestsPage />} />
+        <Route
+          path="/teacher/leave-requests"
+          element={<TeacherLeaveRequestsPage />}
+        />
         <Route path="/teacher/present" element={<TeacherPresentPage />} />
         <Route path="/teacher/absent" element={<TeacherAbsentPage />} />
         <Route path="/teacher/homework" element={<TeacherHomeworkPage />} />
-        <Route path="/teacher/homework-list" element={<TeacherHomeworkListPage />} />
+        <Route
+          path="/teacher/homework-list"
+          element={<TeacherHomeworkListPage />}
+        />
         <Route path="/teacher/diary" element={<TeacherDiaryPage />} />
         <Route path="/teacher/ibadah" element={<TeacherIbadahPage />} />
         <Route path="/teacher/fees" element={<TeacherFeesPage />} />
         <Route path="/teacher/exams" element={<TeacherExamsPage />} />
-        <Route path="/teacher/exams/class-test" element={<TeacherClassTestsPage />} />
-        <Route path="/teacher/exams/class-report" element={<TeacherClassReportPage />} />
-        <Route path="/teacher/notifications" element={<TeacherNotificationsPage />} />
-        <Route path="/teacher/performance" element={<TeacherPerformancePage />} />
-        <Route path="/teacher/best-performance" element={<TeacherBestPerformancePage />} />
+        <Route
+          path="/teacher/exams/class-test"
+          element={<TeacherClassTestsPage />}
+        />
+        <Route
+          path="/teacher/exams/class-report"
+          element={<TeacherClassReportPage />}
+        />
+        <Route
+          path="/teacher/notifications"
+          element={<TeacherNotificationsPage />}
+        />
+        <Route
+          path="/teacher/performance"
+          element={<TeacherPerformancePage />}
+        />
+        <Route
+          path="/teacher/best-performance"
+          element={<TeacherBestPerformancePage />}
+        />
         <Route path="/teacher/posters" element={<TeacherPostersPage />} />
-        <Route path="/teacher/posters/:id" element={<TeacherPosterViewPage />} />
+        <Route
+          path="/teacher/posters/:id"
+          element={<TeacherPosterViewPage />}
+        />
 
         {/* Teacher — slug-prefixed */}
         <Route path="/m/:slug/teacher" element={<TeacherDashboard />} />
-        <Route path="/m/:slug/teacher/checkin" element={<TeacherCheckinPage />} />
-        <Route path="/m/:slug/teacher/attendance" element={<TeacherAttendancePage />} />
-        <Route path="/m/:slug/teacher/leave-requests" element={<TeacherLeaveRequestsPage />} />
-        <Route path="/m/:slug/teacher/present" element={<TeacherPresentPage />} />
+        <Route
+          path="/m/:slug/teacher/checkin"
+          element={<TeacherCheckinPage />}
+        />
+        <Route
+          path="/m/:slug/teacher/attendance"
+          element={<TeacherAttendancePage />}
+        />
+        <Route
+          path="/m/:slug/teacher/leave-requests"
+          element={<TeacherLeaveRequestsPage />}
+        />
+        <Route
+          path="/m/:slug/teacher/present"
+          element={<TeacherPresentPage />}
+        />
         <Route path="/m/:slug/teacher/absent" element={<TeacherAbsentPage />} />
-        <Route path="/m/:slug/teacher/homework" element={<TeacherHomeworkPage />} />
-        <Route path="/m/:slug/teacher/homework-list" element={<TeacherHomeworkListPage />} />
+        <Route
+          path="/m/:slug/teacher/homework"
+          element={<TeacherHomeworkPage />}
+        />
+        <Route
+          path="/m/:slug/teacher/homework-list"
+          element={<TeacherHomeworkListPage />}
+        />
         <Route path="/m/:slug/teacher/diary" element={<TeacherDiaryPage />} />
         <Route path="/m/:slug/teacher/ibadah" element={<TeacherIbadahPage />} />
         <Route path="/m/:slug/teacher/fees" element={<TeacherFeesPage />} />
         <Route path="/m/:slug/teacher/exams" element={<TeacherExamsPage />} />
-        <Route path="/m/:slug/teacher/exams/class-test" element={<TeacherClassTestsPage />} />
-        <Route path="/m/:slug/teacher/exams/class-report" element={<TeacherClassReportPage />} />
-        <Route path="/m/:slug/teacher/notifications" element={<TeacherNotificationsPage />} />
-        <Route path="/m/:slug/teacher/performance" element={<TeacherPerformancePage />} />
-        <Route path="/m/:slug/teacher/best-performance" element={<TeacherBestPerformancePage />} />
-        <Route path="/m/:slug/teacher/posters" element={<TeacherPostersPage />} />
-        <Route path="/m/:slug/teacher/posters/:id" element={<TeacherPosterViewPage />} />
+        <Route
+          path="/m/:slug/teacher/exams/class-test"
+          element={<TeacherClassTestsPage />}
+        />
+        <Route
+          path="/m/:slug/teacher/exams/class-report"
+          element={<TeacherClassReportPage />}
+        />
+        <Route
+          path="/m/:slug/teacher/notifications"
+          element={<TeacherNotificationsPage />}
+        />
+        <Route
+          path="/m/:slug/teacher/performance"
+          element={<TeacherPerformancePage />}
+        />
+        <Route
+          path="/m/:slug/teacher/best-performance"
+          element={<TeacherBestPerformancePage />}
+        />
+        <Route
+          path="/m/:slug/teacher/posters"
+          element={<TeacherPostersPage />}
+        />
+        <Route
+          path="/m/:slug/teacher/posters/:id"
+          element={<TeacherPosterViewPage />}
+        />
 
         {/* Parent */}
         <Route path="/parent" element={<ParentDashboard />} />
@@ -237,47 +407,110 @@ export default function App() {
         <Route path="/parent/homework" element={<ParentHomeworkPage />} />
         <Route path="/parent/ibadah" element={<ParentIbadahPage />} />
         <Route path="/parent/results" element={<ParentResultsPage />} />
-        <Route path="/parent/notifications" element={<ParentNotificationsPage />} />
-        <Route path="/parent/best-performance" element={<ParentBestPerformancePage />} />
+        <Route
+          path="/parent/notifications"
+          element={<ParentNotificationsPage />}
+        />
+        <Route
+          path="/parent/best-performance"
+          element={<ParentBestPerformancePage />}
+        />
         <Route path="/parent/diary" element={<ParentDiaryPage />} />
         <Route path="/parent/posters" element={<ParentPostersPage />} />
         <Route path="/parent/posters/:id" element={<ParentPosterViewPage />} />
-        <Route path="/parent/best-performance" element={<ParentBestPerformancePage />} />
+        <Route
+          path="/parent/best-performance"
+          element={<ParentBestPerformancePage />}
+        />
 
         {/* Parent — slug-prefixed */}
         <Route path="/m/:slug/parent" element={<ParentDashboard />} />
-        <Route path="/m/:slug/parent/attendance" element={<ParentAttendancePage />} />
-        <Route path="/m/:slug/parent/leave-requests" element={<ParentLeaveRequestsPage />} />
+        <Route
+          path="/m/:slug/parent/attendance"
+          element={<ParentAttendancePage />}
+        />
+        <Route
+          path="/m/:slug/parent/leave-requests"
+          element={<ParentLeaveRequestsPage />}
+        />
         <Route path="/m/:slug/parent/fees" element={<ParentFeesPage />} />
-        <Route path="/m/:slug/parent/homework" element={<ParentHomeworkPage />} />
+        <Route
+          path="/m/:slug/parent/homework"
+          element={<ParentHomeworkPage />}
+        />
         <Route path="/m/:slug/parent/ibadah" element={<ParentIbadahPage />} />
         <Route path="/m/:slug/parent/results" element={<ParentResultsPage />} />
-        <Route path="/m/:slug/parent/notifications" element={<ParentNotificationsPage />} />
-        <Route path="/m/:slug/parent/best-performance" element={<ParentBestPerformancePage />} />
+        <Route
+          path="/m/:slug/parent/notifications"
+          element={<ParentNotificationsPage />}
+        />
+        <Route
+          path="/m/:slug/parent/best-performance"
+          element={<ParentBestPerformancePage />}
+        />
         <Route path="/m/:slug/parent/diary" element={<ParentDiaryPage />} />
         <Route path="/m/:slug/parent/posters" element={<ParentPostersPage />} />
-        <Route path="/m/:slug/parent/posters/:id" element={<ParentPosterViewPage />} />
-        <Route path="/m/:slug/parent/best-performance" element={<ParentBestPerformancePage />} />
+        <Route
+          path="/m/:slug/parent/posters/:id"
+          element={<ParentPosterViewPage />}
+        />
+        <Route
+          path="/m/:slug/parent/best-performance"
+          element={<ParentBestPerformancePage />}
+        />
 
         {/* Committee */}
         <Route path="/committee" element={<CommitteeDashboard />} />
-        <Route path="/committee/attendance" element={<CommitteeAttendancePage />} />
+        <Route
+          path="/committee/attendance"
+          element={<CommitteeAttendancePage />}
+        />
         <Route path="/committee/finance" element={<CommitteeFinancePage />} />
         <Route path="/committee/students" element={<CommitteeStudentsPage />} />
-        <Route path="/committee/announcements" element={<CommitteeAnnouncementsPage />} />
+        <Route
+          path="/committee/announcements"
+          element={<CommitteeAnnouncementsPage />}
+        />
         <Route path="/committee/reports" element={<CommitteeReportsPage />} />
-        <Route path="/committee/teacher-attendance" element={<CommitteeTeacherAttendancePage />} />
-        <Route path="/committee/best-performance" element={<CommitteeBestPerformancePage />} />
+        <Route
+          path="/committee/teacher-attendance"
+          element={<CommitteeTeacherAttendancePage />}
+        />
+        <Route
+          path="/committee/best-performance"
+          element={<CommitteeBestPerformancePage />}
+        />
 
         {/* Committee — slug-prefixed */}
         <Route path="/m/:slug/committee" element={<CommitteeDashboard />} />
-        <Route path="/m/:slug/committee/attendance" element={<CommitteeAttendancePage />} />
-        <Route path="/m/:slug/committee/finance" element={<CommitteeFinancePage />} />
-        <Route path="/m/:slug/committee/students" element={<CommitteeStudentsPage />} />
-        <Route path="/m/:slug/committee/announcements" element={<CommitteeAnnouncementsPage />} />
-        <Route path="/m/:slug/committee/reports" element={<CommitteeReportsPage />} />
-        <Route path="/m/:slug/committee/teacher-attendance" element={<CommitteeTeacherAttendancePage />} />
-        <Route path="/m/:slug/committee/best-performance" element={<CommitteeBestPerformancePage />} />
+        <Route
+          path="/m/:slug/committee/attendance"
+          element={<CommitteeAttendancePage />}
+        />
+        <Route
+          path="/m/:slug/committee/finance"
+          element={<CommitteeFinancePage />}
+        />
+        <Route
+          path="/m/:slug/committee/students"
+          element={<CommitteeStudentsPage />}
+        />
+        <Route
+          path="/m/:slug/committee/announcements"
+          element={<CommitteeAnnouncementsPage />}
+        />
+        <Route
+          path="/m/:slug/committee/reports"
+          element={<CommitteeReportsPage />}
+        />
+        <Route
+          path="/m/:slug/committee/teacher-attendance"
+          element={<CommitteeTeacherAttendancePage />}
+        />
+        <Route
+          path="/m/:slug/committee/best-performance"
+          element={<CommitteeBestPerformancePage />}
+        />
 
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />
