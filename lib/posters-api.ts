@@ -1,7 +1,6 @@
 import { apiFetch } from "@/lib/fetch";
 
-const API_ORIGIN =
-  import.meta.env.VITE_API_ORIGIN ?? "http://localhost:3000";
+const API_ORIGIN = import.meta.env.VITE_API_ORIGIN ?? "http://localhost:3000";
 const BASE = `${API_ORIGIN}/api/v2`;
 
 export interface PosterRecord {
@@ -51,11 +50,17 @@ async function publicFetch<T>(url: string, init?: RequestInit): Promise<T> {
       headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
     });
     const payload = await res.json().catch(() => null);
-    if (!res.ok) throw new PostersApiError(payload?.message ?? `Request failed (${res.status})`, { statusCode: res.status });
+    if (!res.ok)
+      throw new PostersApiError(
+        payload?.message ?? `Request failed (${res.status})`,
+        { statusCode: res.status },
+      );
     return payload as T;
   } catch (err) {
     if (err instanceof PostersApiError) throw err;
-    throw new PostersApiError((err as Error)?.message ?? "Something went wrong.");
+    throw new PostersApiError(
+      (err as Error)?.message ?? "Something went wrong.",
+    );
   } finally {
     clearTimeout(timer);
   }
@@ -67,7 +72,9 @@ export function getPosters(
 ): Promise<PosterListResponse> {
   const { page = 1, limit = 20, signal } = params ?? {};
   const q = new URLSearchParams({ page: String(page), limit: String(limit) });
-  return publicFetch<PosterListResponse>(`${BASE}/${clientId}/posters?${q}`, { signal });
+  return publicFetch<PosterListResponse>(`${BASE}/${clientId}/posters?${q}`, {
+    signal,
+  });
 }
 
 export function getPoster(
@@ -75,7 +82,9 @@ export function getPoster(
   posterId: string,
   signal?: AbortSignal,
 ): Promise<PosterRecord> {
-  return publicFetch<PosterRecord>(`${BASE}/${clientId}/posters/${posterId}`, { signal });
+  return publicFetch<PosterRecord>(`${BASE}/${clientId}/posters/${posterId}`, {
+    signal,
+  });
 }
 
 export function createPoster(
@@ -84,11 +93,11 @@ export function createPoster(
   data: CreatePosterPayload,
   signal?: AbortSignal,
 ): Promise<PosterRecord> {
-  return apiFetch<PosterRecord>(
-    `${BASE}/${clientId}/posters`,
-    token,
-    { method: "POST", body: JSON.stringify(data), signal },
-  );
+  return apiFetch<PosterRecord>(`${BASE}/${clientId}/posters`, token, {
+    method: "POST",
+    body: JSON.stringify(data),
+    signal,
+  });
 }
 
 export function updatePoster(
@@ -111,9 +120,8 @@ export function deletePoster(
   posterId: string,
   signal?: AbortSignal,
 ): Promise<{ message: string }> {
-  return apiFetch<{ message: string }>(
-    `${BASE}/${clientId}/posters/${posterId}`,
-    token,
-    { method: "DELETE", signal },
-  );
+  return apiFetch<{ message: string }>(`${BASE}/posters/${posterId}`, token, {
+    method: "DELETE",
+    signal,
+  });
 }
