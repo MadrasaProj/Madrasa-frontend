@@ -72,7 +72,7 @@ export function getPosters(
 ): Promise<PosterListResponse> {
   const { page = 1, limit = 20, signal } = params ?? {};
   const q = new URLSearchParams({ page: String(page), limit: String(limit) });
-  return publicFetch<PosterListResponse>(`${BASE}/${clientId}/posters?${q}`, {
+  return publicFetch<PosterListResponse>(`${BASE}/posters?${q}`, {
     signal,
   });
 }
@@ -82,7 +82,7 @@ export function getPoster(
   posterId: string,
   signal?: AbortSignal,
 ): Promise<PosterRecord> {
-  return publicFetch<PosterRecord>(`${BASE}/${clientId}/posters/${posterId}`, {
+  return publicFetch<PosterRecord>(`${BASE}/posters/${posterId}`, {
     signal,
   });
 }
@@ -93,7 +93,7 @@ export function createPoster(
   data: CreatePosterPayload,
   signal?: AbortSignal,
 ): Promise<PosterRecord> {
-  return apiFetch<PosterRecord>(`${BASE}/${clientId}/posters`, token, {
+  return apiFetch<PosterRecord>(`${BASE}/posters`, token, {
     method: "POST",
     body: JSON.stringify(data),
     signal,
@@ -108,7 +108,7 @@ export function updatePoster(
   signal?: AbortSignal,
 ): Promise<PosterRecord> {
   return apiFetch<PosterRecord>(
-    `${BASE}/${clientId}/posters/${posterId}`,
+    `${BASE}/posters/${posterId}`,
     token,
     { method: "PATCH", body: JSON.stringify(data), signal },
   );
