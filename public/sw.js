@@ -1,4 +1,4 @@
-const CACHE_NAME = "darul-huda-pwa-v2";
+const CACHE_NAME = "smartmadrasa-v1prod";
 const STATIC_ASSETS = [
   "/",
   "/manifest.webmanifest",
