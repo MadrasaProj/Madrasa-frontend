@@ -334,10 +334,60 @@ export interface UpdateProfileDto {
   name?: string;
   currentPassword?: string;
   newPassword?: string;
+  parentAltPhone?: string;
+  parentEmail?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  pincode?: string;
+  bloodGroup?: string;
+  email?: string;
+  phone?: string;
+  msrId?: string;
 }
 
 export function updateProfile(token: string, dto: UpdateProfileDto) {
   return mutateJson<{ id: string; name: string }>("PATCH", "/auth/profile", dto, token);
+}
+
+export async function uploadProfilePhoto(
+  token: string,
+  file: File,
+): Promise<{ id: string; photo: string; photoUrl: string | null }> {
+  const formData = new FormData();
+  formData.append("photo", file);
+
+  const url = `${API_BASE}/auth/profile/photo`;
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: "Upload failed" }));
+    throw new Error(err.message || "Upload failed");
+  }
+
+  return res.json();
+}
+
+export async function deleteProfilePhoto(
+  token: string,
+): Promise<{ message: string; photo: null; photoUrl: null }> {
+  const url = `${API_BASE}/auth/profile/photo`;
+  const res = await fetch(url, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: "Delete failed" }));
+    throw new Error(err.message || "Delete failed");
+  }
+
+  return res.json();
 }
 
 // Client-scoped log (for admin/committee viewing own logs)

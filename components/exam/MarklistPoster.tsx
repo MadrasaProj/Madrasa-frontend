@@ -1,9 +1,9 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Download, Share2, Loader2, Upload, X, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ClassReportRow, ClassReport } from "@/lib/results-api";
 import { GRADE_COLORS, TOTAL_GRADE_LABELS } from "@/lib/results-api";
-import { downloadAsJPG, downloadAsPDF, shareAsJPG } from "@/lib/poster-utils";
+import { downloadAsJPG, downloadAsPDF, shareAsPNG, downloadAsPNG } from "@/lib/poster-utils";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -31,18 +31,25 @@ interface Props {
   report: ClassReport;
   madrasaName: string;
   madrasaLogo?: string | null;
+  studentPhotoMap?: Record<string, string | null>;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function MarklistPoster({ row, report, madrasaName, madrasaLogo }: Props) {
+export function MarklistPoster({ row, report, madrasaName, madrasaLogo, studentPhotoMap }: Props) {
   const { student, summary, marks } = row;
   const { exam, subjects, config, class: cls } = report;
   const rank = summary.rank ?? 0;
 
   const posterRef                 = useRef<HTMLDivElement>(null);
-  const [photo, setPhoto]         = useState<string | null>(null);
-  const [exporting, setExporting] = useState<"jpg" | "pdf" | "share" | null>(null);
+  const [photo, setPhoto]         = useState<string | null>(() => studentPhotoMap?.[student.id] ?? null);
+  const [exporting, setExporting] = useState<"jpg" | "png" | "pdf" | "share" | null>(null);
+
+  useEffect(() => {
+    if (!photo && studentPhotoMap?.[student.id]) {
+      setPhoto(studentPhotoMap[student.id]);
+    }
+  }, [student.id, studentPhotoMap]);
 
   const headerGrad  = rank >= 1 && rank <= 3 ? RANK_HEADER[rank].grad : DEFAULT_GRAD;
   const accentClass = rank >= 1 && rank <= 3 ? RANK_HEADER[rank].accent : "bg-emerald-700";
@@ -64,14 +71,15 @@ export function MarklistPoster({ row, report, madrasaName, madrasaLogo }: Props)
 
   const stem = `${madrasaName}-${student.name}-${exam.name}`.replace(/\s+/g, "-");
 
-  const run = async (type: "jpg" | "pdf" | "share") => {
+  const run = async (type: "jpg" | "png" | "pdf" | "share") => {
     if (!posterRef.current) return;
     setExporting(type);
     try {
       if (type === "jpg")   await downloadAsJPG(posterRef.current, stem);
+      if (type === "png")   await downloadAsPNG(posterRef.current, stem);
       if (type === "pdf")   await downloadAsPDF(posterRef.current, stem);
-      if (type === "share") await shareAsJPG(
-        posterRef.current, `${stem}.jpg`,
+      if (type === "share") await shareAsPNG(
+        posterRef.current, `${stem}.png`,
         `Result · ${student.name}`,
         `${student.name} · ${exam.name} · ${madrasaName}`,
       );
@@ -104,6 +112,11 @@ export function MarklistPoster({ row, report, madrasaName, madrasaLogo }: Props)
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
           {exporting === "jpg" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
           JPG
+        </button>
+        <button onClick={() => run("png")} disabled={!!exporting}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
+          {exporting === "png" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+          PNG
         </button>
         <button onClick={() => run("pdf")} disabled={!!exporting}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
@@ -286,7 +299,7 @@ export function MarklistPoster({ row, report, madrasaName, madrasaLogo }: Props)
 
         {/* Footer watermark */}
         <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-          <span className="text-[9px] text-gray-400 uppercase tracking-widest font-semibold">Al Madrasa Platform</span>
+          <span className="text-[9px] text-gray-400 uppercase tracking-widest font-semibold">Smart Madrasa</span>
           <span className="text-[9px] text-gray-400">{new Date().getFullYear()}</span>
         </div>
       </div>

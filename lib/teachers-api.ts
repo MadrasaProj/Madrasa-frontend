@@ -64,3 +64,49 @@ export const deleteTeacher = (clientId: string, token: string, id: string) =>
     method: "DELETE",
   });
 
+/** Payload for one row in a teacher bulk-upsert request. */
+export interface BulkUpsertTeacherRow {
+  name: string;
+  username: string;
+  /** Required when creating, optional when updating an existing teacher. */
+  password?: string;
+  status?: "ACTIVE" | "INACTIVE";
+  phone?: string;
+  email?: string;
+}
+
+/** One entry returned by the bulk-upsert endpoint. */
+export interface BulkUpsertTeacherResult {
+  /** 1-based row index from the submitted payload (matches spreadsheet row number minus header). */
+  rowIndex: number;
+  /** Username from the row (echoed back so the UI can match results). */
+  username: string;
+  name: string;
+  /** Whether this row inserted a new teacher or updated an existing one. */
+  action: "created" | "updated";
+  teacherId: string;
+}
+
+export interface BulkUpsertTeachersResponse {
+  created: number;
+  updated: number;
+  failed: number;
+  results: BulkUpsertTeacherResult[];
+  errors: Array<{ rowIndex: number; username?: string; message: string }>;
+}
+
+/**
+ * Upsert many teachers in a single request.
+ * Backend matches by `username`; missing rows insert, existing rows update.
+ */
+export const bulkUpsertTeachers = (
+  clientId: string,
+  token: string,
+  rows: BulkUpsertTeacherRow[],
+) =>
+  apiFetch<BulkUpsertTeachersResponse>(
+    `${V2_BASE}/${clientId}/teachers/bulk`,
+    token,
+    { method: "POST", body: JSON.stringify({ teachers: rows }) },
+  );
+

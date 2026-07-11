@@ -88,14 +88,14 @@ export default function AdminPresentPage() {
               {present.length}
             </span>
             <span className="text-sm text-gray-500">
-              {t("common", "present", lang)} today
+              {t("common", "present", lang)} {t("adminPages", "todayLabel", lang)}
             </span>
           </div>
           <button
             onClick={load}
             className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600"
           >
-            <RefreshCw className="w-3 h-3" /> Refresh
+            <RefreshCw className="w-3 h-3" /> {t("adminPages", "refresh", lang)}
           </button>
         </div>
       )}
@@ -108,7 +108,7 @@ export default function AdminPresentPage() {
         </div>
       ) : present.length === 0 ? (
         <div className="py-12 text-center text-sm text-gray-400">
-          No attendance marked yet for today
+          {t("adminPages", "noAttendanceYet", lang)}
         </div>
       ) : (
         <div className="space-y-4">

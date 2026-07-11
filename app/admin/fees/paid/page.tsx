@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { getPayments, getPaymentReceipt, type FeePayment, type ReceiptData } from "@/lib/fees-api";
+import { getTeachers } from "@/lib/teachers-api";
+import { apiFetch } from "@/lib/fetch";
 import { useAuthStore } from "@/store/auth";
-import { cn } from "@/lib/utils";
-import { CheckCircle, Loader2, Receipt, Search, Printer } from "lucide-react";
+import { CheckCircle, Loader2, Receipt, Search, Printer, Users } from "lucide-react";
 import { motion } from "framer-motion";
 import { SkeletonList } from "@/components/ui/Skeleton";
 
@@ -59,6 +60,7 @@ export default function AdminFeesPaidPage() {
   const [receipt, setReceipt]       = useState<ReceiptData | null>(null);
   const [loadingReceipt, setLoadingReceipt] = useState<string | null>(null);
   const [error, setError]           = useState<string | null>(null);
+  const [teachers, setTeachers]     = useState<Record<string, string>>({});
 
   const cid = activeClientId ?? "";
   const token = accessToken ?? "";
@@ -75,6 +77,24 @@ export default function AdminFeesPaidPage() {
   }, [cid, token, skip]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!cid || !token) return;
+    (async () => {
+      const map: Record<string, string> = {};
+      try {
+        const teachersRes = await getTeachers(cid, token, { limit: 500 });
+        for (const t of teachersRes.data ?? []) map[t.id] = t.name;
+      } catch {}
+      try {
+        const usersRes = await apiFetch<{ data: { id: string; name: string }[] }>(
+          `${import.meta.env.VITE_API_ORIGIN ?? "http://localhost:3000"}/api/v2/${cid}/users`, token
+        );
+        for (const u of usersRes.data ?? []) map[u.id] = u.name;
+      } catch {}
+      setTeachers(map);
+    })();
+  }, [cid, token]);
 
   const showReceipt = async (id: string) => {
     setLoadingReceipt(id);
@@ -113,12 +133,15 @@ export default function AdminFeesPaidPage() {
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-gray-900 text-sm truncate">{p.student.name}</p>
                   <p className="text-xs text-gray-400">{p.student.adno} · {p.feeType.name}</p>
+                  {p.collectedBy ? (
+                    <p className="text-[10px] text-gray-400 mt-0.5">Collected by {teachers[p.collectedBy] ?? (p.collectedBy === cid ? user?.name ?? "Admin" : p.collectedBy.slice(0, 8))}</p>
+                  ) : null}
                   {p.paidAt && <p className="text-xs text-emerald-600">{new Date(p.paidAt).toLocaleDateString("en-GB")}{p.reference ? ` · ${p.reference}` : ""}</p>}
                 </div>
-                <div className="text-right shrink-0">
+                <div className="text-right shrink-0 flex flex-col items-end gap-1">
                   <p className="font-bold text-emerald-700">₹{Number(p.paidAmount ?? p.dueAmount).toLocaleString()}</p>
                   <button onClick={() => showReceipt(p.id)} disabled={loadingReceipt === p.id}
-                    className="text-xs text-gray-500 flex items-center gap-1 mt-1 ml-auto">
+                    className="text-xs text-gray-500 flex items-center gap-1">
                     {loadingReceipt === p.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Receipt className="w-3 h-3" />} Receipt
                   </button>
                 </div>

@@ -2,12 +2,10 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useLanguageStore } from "@/store/language";
+import { t } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth";
-import { useState, useEffect } from "react";
-import {
-  getBestPerformers,
-  type BestPerformer,
-} from "@/lib/best-performance-api";
+import { useState } from "react";
+import { useBestPerformers } from "@/lib/queries";
 import { Trophy, Star, BookOpen, Flame, Target, Medal, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -16,10 +14,6 @@ const medalEmoji = ["🥇", "🥈", "🥉", "🏅", "🌟", "⭐", "✨", "💫"
 export default function ParentBestPerformancePage() {
   const { lang } = useLanguageStore();
   const { user, accessToken, activeStudentId } = useAuthStore();
-  const [data, setData] = useState<BestPerformer[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState<{ from: string; to: string } | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [showAllPerformers, setShowAllPerformers] = useState(true);
 
   const cid = user?.clientId ?? "";
@@ -31,28 +25,13 @@ export default function ParentBestPerformancePage() {
 
   const isParent = user?.role === "parent";
 
-  useEffect(() => {
-    if (!cid || !token) return;
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
+  const { data: response, isLoading, error } = useBestPerformers(
+    { clientId: cid, token },
+    { limit: 100 },
+  );
 
-    getBestPerformers(cid, token, { limit: 100 })
-      .then((res) => {
-        if (cancelled) return;
-        setData(res.performers);
-        setPeriod(res.period);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setError(err?.message ?? "Failed to load data");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => { cancelled = true; };
-  }, [cid, token]);
+  const data = response?.performers ?? [];
+  const period = response?.period ?? null;
 
   const formatDateRange = () => {
     if (!period) return "";
@@ -109,10 +88,10 @@ export default function ParentBestPerformancePage() {
             </div>
             <div>
               <p className="text-emerald-200 text-xs font-semibold uppercase tracking-widest">
-                {lang === "ml" ? "രക്ഷിതാവ്" : "Parent"}
+                {t("parentPages", "parentPortal", lang)}
               </p>
               <h1 className="text-xl font-bold">
-                {lang === "ml" ? "മികച്ച ഇബാദത്ത്" : "Best Ibadah Performance"}
+                {t("parentPages", "bestIbadahPerf", lang)}
               </h1>
             </div>
           </div>
@@ -128,13 +107,13 @@ export default function ParentBestPerformancePage() {
           >
             <Target className="w-4 h-4 text-emerald-600" />
             <span className="text-sm font-semibold text-emerald-800">
-              {lang === "ml" ? "കാലയളവ്" : "Period"}: {formatDateRange()}
+              {t("parentPages", "periodLabel", lang)}: {formatDateRange()}
             </span>
           </motion.div>
         )}
 
         {/* Loading */}
-        {loading && (
+        {isLoading && (
           <div className="space-y-4">
             <Skeleton className="h-48 rounded-2xl" />
             <Skeleton className="h-5 w-32" />
@@ -149,11 +128,11 @@ export default function ParentBestPerformancePage() {
         {/* Error */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-2xl p-5 text-center">
-            <p className="text-red-600 font-semibold">{error}</p>
+            <p className="text-red-600 font-semibold">{error.message}</p>
           </div>
         )}
 
-        {!loading && !error && (
+        {!isLoading && !error && (
           <>
             {/* ──────────────────────────────────────────────────────── */}
             {/* SECTION 1: Current Student Performance & Rank            */}
@@ -161,16 +140,14 @@ export default function ParentBestPerformancePage() {
             <div>
               <SectionHeader
                 icon={Medal}
-                title={activeStudent?.name ?? (lang === "ml" ? "എന്റെ കുട്ടിയുടെ പ്രകടനം" : "My Child's Performance")}
+                title={activeStudent?.name ?? t("parentPages", "myChildPerformance", lang)}
               />
 
               {!activeChildInList ? (
                 <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center shadow-sm">
                   <Medal className="w-10 h-10 mx-auto mb-3 text-gray-300" />
                   <p className="text-gray-500 font-semibold text-sm">
-                    {lang === "ml"
-                      ? "തിരഞ്ഞെടുത്ത കുട്ടിക്ക് ഇബാദത്ത് വിവരങ്ങൾ ലഭ്യമല്ല"
-                      : "No ibadah data available for the selected student"}
+                    {t("parentPages", "noIbadahForStudent", lang)}
                   </p>
                 </div>
               ) : (
@@ -195,7 +172,7 @@ export default function ParentBestPerformancePage() {
                         </div>
                         <div className="text-right shrink-0">
                           <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">
-                            {lang === "ml" ? "റാങ്ക്" : "Rank"}
+                            {t("parentPages", "rankLabel", lang)}
                           </p>
                           <p className="text-2xl font-black text-emerald-600">
                             #{rank ?? "—"}
@@ -207,7 +184,7 @@ export default function ParentBestPerformancePage() {
                       <div className="flex items-end justify-between">
                         <div>
                           <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">
-                            {lang === "ml" ? "സ്കോർ" : "Score"}
+                            {t("parentPages", "scoreLabel", lang)}
                           </p>
                           <p className="text-4xl font-black text-gray-900">
                             {child.score}<span className="text-lg font-semibold text-gray-400">%</span>
@@ -218,10 +195,10 @@ export default function ParentBestPerformancePage() {
                           child.score >= 80 ? "bg-emerald-100 text-emerald-700" : child.score >= 50 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700",
                         )}>
                           {child.score >= 80
-                            ? (lang === "ml" ? "മികവുറ്റത്" : "Excellent")
+                            ? t("parentPages", "excellentLabel", lang)
                             : child.score >= 50
-                              ? (lang === "ml" ? "നല്ലത്" : "Good")
-                              : (lang === "ml" ? "മെച്ചപ്പെടുത്തണം" : "Needs Improvement")}
+                              ? t("parentPages", "goodLabel", lang)
+                              : t("parentPages", "needsImprovement", lang)}
                         </span>
                       </div>
 
@@ -242,18 +219,18 @@ export default function ParentBestPerformancePage() {
                       <div className="flex flex-wrap gap-2">
                         <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 bg-emerald-50 text-emerald-700 rounded-xl">
                           <Star className="w-3 h-3" />
-                          {child.totalPrayers} {lang === "ml" ? "നമസ്കാരം" : "prayers"}
+                          {child.totalPrayers} {t("parentPages", "prayersLabel", lang)}
                         </span>
                         <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 bg-amber-50 text-amber-700 rounded-xl">
                           <BookOpen className="w-3 h-3" />
-                          {child.totalQuranPages} {lang === "ml" ? "പേജ്" : "pages"}
+                          {child.totalQuranPages} {t("parentPages", "pagesLabel", lang)}
                         </span>
                         <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 bg-orange-50 text-orange-700 rounded-xl">
                           <Flame className="w-3 h-3" />
-                          {child.streak}d {lang === "ml" ? "സ്ട്രീക്ക്" : "streak"}
+                          {child.streak}d {t("parentPages", "streakLabel", lang)}
                         </span>
                         <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 bg-blue-50 text-blue-700 rounded-xl">
-                          {child.consistency}% {lang === "ml" ? "സ്ഥിരത" : "consistency"}
+                          {child.consistency}% {t("parentPages", "consistencyLabel", lang)}
                         </span>
                       </div>
 
@@ -261,17 +238,17 @@ export default function ParentBestPerformancePage() {
                         {topPerformer && (
                           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 font-semibold">
                             <Trophy className="w-3 h-3" />
-                            {lang === "ml" ? "മികവ്" : "Top"}: {topPerformer.score}%
+                            {t("parentPages", "topLabel", lang)}: {topPerformer.score}%
                           </div>
                         )}
                         <div className={cn(
                           "flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold",
                           vsAvg >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700",
                         )}>
-                          {vsAvg >= 0 ? "▲" : "▼"} {lang === "ml" ? "ശരാശരി" : "Avg"}: {avgScore}%
+                          {vsAvg >= 0 ? "▲" : "▼"} {t("parentPages", "avgLabel", lang)}: {avgScore}%
                         </div>
                         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 text-gray-600 font-semibold">
-                          {lang === "ml" ? "വിടവ്" : "Gap"}: {gap}%
+                          {t("parentPages", "gapLabel", lang)}: {gap}%
                         </div>
                       </div>
 
@@ -280,10 +257,10 @@ export default function ParentBestPerformancePage() {
                           <span className="text-2xl">{medalEmoji[rank - 1]}</span>
                           <span className="text-sm font-bold text-amber-800">
                             {rank === 1
-                              ? (lang === "ml" ? "ഒന്നാം റാങ്ക്!" : "1st Rank!")
+                              ? t("parentPages", "firstRank", lang)
                               : rank === 2
-                                ? (lang === "ml" ? "രണ്ടാം റാങ്ക്!" : "2nd Rank!")
-                                : (lang === "ml" ? "മൂന്നാം റാങ്ക്!" : "3rd Rank!")}
+                                ? t("parentPages", "secondRank", lang)
+                                : t("parentPages", "thirdRank", lang)}
                           </span>
                         </div>
                       )}
@@ -303,7 +280,7 @@ export default function ParentBestPerformancePage() {
               >
                 <SectionHeader
                   icon={Trophy}
-                  title={lang === "ml" ? "മികച്ച പ്രകടനക്കാർ" : "Best Performers"}
+                  title={t("parentPages", "bestPerformers", lang)}
                   count={data.length}
                 />
                 {showAllPerformers
@@ -315,7 +292,7 @@ export default function ParentBestPerformancePage() {
                 <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center shadow-sm">
                   <BookOpen className="w-10 h-10 mx-auto mb-3 text-gray-300" />
                   <p className="text-gray-500 font-semibold">
-                    {lang === "ml" ? "ഇബാദത്ത് ഡാറ്റ ലഭ്യമല്ല" : "No ibadah data available yet"}
+                    {t("parentPages", "noIbadahData", lang)}
                   </p>
                 </div>
               ) : showAllPerformers && (
@@ -345,7 +322,7 @@ export default function ParentBestPerformancePage() {
                               </p>
                               {isMyChild && (
                                 <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-800">
-                                  {lang === "ml" ? "എന്റെ കുട്ടി" : "Your Child"}
+                                  {t("parentPages", "myChildBestPerf", lang)}
                                 </span>
                               )}
                             </div>
@@ -353,18 +330,18 @@ export default function ParentBestPerformancePage() {
                             <div className="flex flex-wrap gap-2 mt-2">
                               <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full">
                                 <Star className="w-3 h-3" />
-                                {performer.totalPrayers} {lang === "ml" ? "നമസ്കാരം" : "prayers"}
+                                {performer.totalPrayers} {t("parentPages", "prayersLabel", lang)}
                               </span>
                               <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full">
                                 <BookOpen className="w-3 h-3" />
-                                {performer.totalQuranPages} {lang === "ml" ? "പേജ്" : "pages"}
+                                {performer.totalQuranPages} {t("parentPages", "pagesLabel", lang)}
                               </span>
                               <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 bg-orange-50 text-orange-700 rounded-full">
                                 <Flame className="w-3 h-3" />
-                                {performer.streak}d {lang === "ml" ? "സ്ട്രീക്ക്" : "streak"}
+                                {performer.streak}d {t("parentPages", "streakLabel", lang)}
                               </span>
                               <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">
-                                {performer.consistency}% {lang === "ml" ? "സ്ഥിരത" : "consistency"}
+                                {performer.consistency}% {t("parentPages", "consistencyLabel", lang)}
                               </span>
                             </div>
                           </div>
@@ -373,7 +350,7 @@ export default function ParentBestPerformancePage() {
                               {performer.score}
                             </p>
                             <p className="text-[11px] font-semibold text-gray-400">
-                              {lang === "ml" ? "സ്കോർ" : "SCORE"}
+                              {t("parentPages", "scoreUppercase", lang)}
                             </p>
                           </div>
                         </div>

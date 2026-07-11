@@ -1,8 +1,8 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Download, Share2, Loader2, Upload, X, Crown, Trophy, Medal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ClassReportRow, ClassReport } from "@/lib/results-api";
-import { downloadTransparentJPG, shareTransparentJPG } from "@/lib/poster-utils";
+import { downloadTransparentPNG, shareTransparentPNG } from "@/lib/poster-utils";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -45,19 +45,26 @@ interface Props {
   report: ClassReport;
   madrasaName: string;
   madrasaLogo?: string | null;
+  studentPhotoMap?: Record<string, string | null>;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function RankPoster({ row, report, madrasaName, madrasaLogo }: Props) {
+export function RankPoster({ row, report, madrasaName, madrasaLogo, studentPhotoMap }: Props) {
   const { student, summary } = row;
   const rank = summary.rank ?? 0;
   const cfg  = RANK_CONFIG[rank] ?? RANK_CONFIG[3];
   const { Icon } = cfg;
 
   const posterRef                  = useRef<HTMLDivElement>(null);
-  const [photo, setPhoto]          = useState<string | null>(null);
-  const [exporting, setExporting]  = useState<"jpg" | "share" | null>(null);
+  const [photo, setPhoto]          = useState<string | null>(() => studentPhotoMap?.[student.id] ?? null);
+  const [exporting, setExporting]  = useState<"png" | "share" | null>(null);
+
+  useEffect(() => {
+    if (!photo && studentPhotoMap?.[student.id]) {
+      setPhoto(studentPhotoMap[student.id]);
+    }
+  }, [student.id, studentPhotoMap]);
 
   const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -69,15 +76,15 @@ export function RankPoster({ row, report, madrasaName, madrasaLogo }: Props) {
 
   const stem = `rank-${rank}-${student.name}`.replace(/\s+/g, "-");
 
-  const run = async (type: "jpg" | "share") => {
+  const run = async (type: "png" | "share") => {
     if (!posterRef.current) return;
     setExporting(type);
     try {
-      if (type === "jpg") {
-        await downloadTransparentJPG(posterRef.current, stem);
+      if (type === "png") {
+        await downloadTransparentPNG(posterRef.current, stem);
       } else {
-        await shareTransparentJPG(
-          posterRef.current, `${stem}.jpg`,
+        await shareTransparentPNG(
+          posterRef.current, `${stem}.png`,
           `Congratulations ${student.name}!`,
           `${student.name} secured ${RANK_LABELS[rank]} in ${report.exam.name} · ${madrasaName}`,
         );
@@ -107,10 +114,10 @@ export function RankPoster({ row, report, madrasaName, madrasaLogo }: Props) {
             <X className="w-4 h-4" />
           </button>
         )}
-        <button onClick={() => run("jpg")} disabled={!!exporting}
+        <button onClick={() => run("png")} disabled={!!exporting}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
-          {exporting === "jpg" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-          Download JPG
+          {exporting === "png" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+          Download PNG
         </button>
         <button onClick={() => run("share")} disabled={!!exporting}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 transition-colors">
@@ -210,7 +217,7 @@ export function RankPoster({ row, report, madrasaName, madrasaLogo }: Props) {
 
           {/* Footer watermark */}
           <p className={cn("text-[9px] opacity-40 font-semibold uppercase tracking-widest", cfg.text)}>
-            Al Madrasa Platform · {new Date().getFullYear()}
+            Smart Madrasa · {new Date().getFullYear()}
           </p>
         </div>
       </div>

@@ -1,13 +1,28 @@
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import * as Tabs from "@radix-ui/react-tabs";
 import {
   getClientConfig,
   updateClientConfig,
   type ClientConfig,
 } from "@/lib/config-api";
 import { useAuthStore } from "@/store/auth";
-import { Settings, Save, CheckCircle2, Loader2, AlertCircle, CalendarCheck, Eye, EyeOff, Users } from "lucide-react";
+import {
+  Settings,
+  Save,
+  CheckCircle2,
+  Loader2,
+  AlertCircle,
+  CalendarCheck,
+  Eye,
+  EyeOff,
+  Users,
+  Building2,
+  UserCog,
+  Radio,
+  ShieldCheck,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { PageSkeleton } from "@/components/ui/Skeleton";
@@ -94,6 +109,13 @@ const SECTIONS: { title: string; fields: Field[] }[] = [
   },
 ];
 
+const TABS = [
+  { value: "general", label: "General", icon: Building2 },
+  { value: "management", label: "Management", icon: UserCog },
+  { value: "attendance", label: "Attendance", icon: Radio },
+  { value: "parent-modules", label: "Parent Modules", icon: ShieldCheck },
+];
+
 export default function AdminConfigPage() {
   const { user, accessToken, activeClientId, setAttendanceMode } =
     useAuthStore();
@@ -118,7 +140,6 @@ export default function AdminConfigPage() {
   const [savingCommTC, setSavingCommTC] = useState(false);
   const [savedCommTC, setSavedCommTC] = useState(false);
 
-  // Parent module toggles
   const PARENT_MODULES = [
     { key: "attendance", label: "Attendance", desc: "Let parents view their child's attendance records" },
     { key: "leaveRequests", label: "Leave Requests", desc: "Let parents submit leave requests for their children" },
@@ -126,7 +147,7 @@ export default function AdminConfigPage() {
     { key: "diary", label: "Diary", desc: "Let parents view daily diary entries" },
     { key: "ibadah", label: "Ibadah", desc: "Let parents view ibadah tracking" },
     { key: "fees", label: "Fees", desc: "Let parents view and pay fees" },
-    { key: "posters", label: "Posters", desc: "Let parents view posters" },
+    { key: "socialFrames", label: "Social Frames", desc: "Let parents view social frames" },
     { key: "results", label: "Results", desc: "Let parents view exam results" },
     { key: "notifications", label: "Notifications", desc: "Let parents receive and view notifications" },
   ];
@@ -265,338 +286,434 @@ export default function AdminConfigPage() {
       {loading ? (
         <PageSkeleton />
       ) : (
-        <div className="space-y-5 pb-28">
+        <Tabs.Root defaultValue="general" className="lg:flex lg:gap-6 lg:items-start pb-28">
           {error && (
             <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" /> {error}
             </div>
           )}
 
-          {/* Slug (read-only) */}
-          <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 text-sm">
-            <p className="text-xs text-amber-600 font-semibold mb-0.5">
-              Madrasa Slug (read-only)
-            </p>
-            <p className="font-mono font-bold text-amber-800">{config.slug}</p>
-          </div>
+          <Tabs.List className="flex gap-6 overflow-x-auto border-b border-gray-200 scrollbar-none lg:flex-col lg:border-b-0 lg:border-r lg:border-gray-200 lg:shrink-0 lg:w-60 lg:gap-0.5 lg:sticky lg:top-24">
+            {TABS.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <Tabs.Trigger
+                  key={tab.value}
+                  value={tab.value}
+                  className="data-[state=active]:text-emerald-600 data-[state=active]:bg-emerald-50 px-4 py-3 text-gray-500 border-b-2 border-transparent hover:text-emerald-600 hover:border-b-emerald-300 flex items-center gap-2 px-1 py-3 text-sm font-semibold transition-all whitespace-nowrap -mb-px lg:w-full lg:px-3 lg:py-2.5 lg:-mb-0 lg:border-b-0 lg:border-r-0 lg:data-[state=active]:border-b-0 lg:data-[state=active]:border-r-emerald-600 lg:hover:border-r-emerald-300 lg:hover:border-b-transparent"
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+                  {tab.label}
+                </Tabs.Trigger>
+              );
+            })}
+          </Tabs.List>
 
-          {SECTIONS.map((section) => (
+          <div className="min-w-0 flex-1 space-y-5 lg:max-w-2xl">
+          {/* ── General Tab ── */}
+          <Tabs.Content value="general" className="space-y-5">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">General Information</h2>
+              <p className="text-sm text-gray-500 mt-1">Basic details and address of the madrasa</p>
+            </div>
+            <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 text-sm">
+              <p className="text-xs text-amber-600 font-semibold mb-0.5">
+                Madrasa Slug (read-only)
+              </p>
+              <p className="font-mono font-bold text-amber-800">{config.slug}</p>
+            </div>
+
+            {SECTIONS.slice(0, 2).map((section) => (
+              <motion.div
+                key={section.title}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white rounded-2xl border border-gray-100 p-5"
+              >
+                <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide mb-4">
+                  {section.title}
+                </p>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {section.fields.map(
+                    ({ key, label, placeholder, type = "text" }) => (
+                      <div key={key}>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                          {label}
+                        </label>
+                        <input
+                          type={type}
+                          value={String(config[key] ?? "")}
+                          onChange={(e) => handleChange(key, e.target.value)}
+                          placeholder={placeholder}
+                          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                      </div>
+                    ),
+                  )}
+                </div>
+              </motion.div>
+            ))}
+
+            <StickySaveButton
+              saving={saving}
+              saved={saved}
+              onSave={handleSave}
+            />
+          </Tabs.Content>
+
+          {/* ── Management Tab ── */}
+
+          <div className="mt-10"></div>
+          <Tabs.Content value="management" className="space-y-5">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Management &amp; Settings</h2>
+              <p className="text-sm text-gray-500 mt-1">Head master details and madrasa preferences</p>
+            </div>
+            {SECTIONS.slice(2).map((section) => (
+              <motion.div
+                key={section.title}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white rounded-2xl border border-gray-100 p-5"
+              >
+                <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide mb-4">
+                  {section.title}
+                </p>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {section.fields.map(
+                    ({ key, label, placeholder, type = "text" }) => (
+                      <div key={key}>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                          {label}
+                        </label>
+                        <input
+                          type={type}
+                          value={String(config[key] ?? "")}
+                          onChange={(e) => handleChange(key, e.target.value)}
+                          placeholder={placeholder}
+                          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                      </div>
+                    ),
+                  )}
+                </div>
+              </motion.div>
+            ))}
+
+            <StickySaveButton
+              saving={saving}
+              saved={saved}
+              onSave={handleSave}
+            />
+          </Tabs.Content>
+
+          {/* ── Attendance Tab ── */}
+          <Tabs.Content value="attendance" className="space-y-5">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Attendance &amp; Visibility</h2>
+              <p className="text-sm text-gray-500 mt-1">Attendance mode and committee dashboard visibility</p>
+            </div>
             <motion.div
-              key={section.title}
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               className="bg-white rounded-2xl border border-gray-100 p-5"
             >
-              <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide mb-4">
-                {section.title}
-              </p>
-              <div className="space-y-4">
-                {section.fields.map(
-                  ({ key, label, placeholder, type = "text" }) => (
-                    <div key={key}>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                        {label}
-                      </label>
-                      <input
-                        type={type}
-                        value={String(config[key] ?? "")}
-                        onChange={(e) => handleChange(key, e.target.value)}
-                        placeholder={placeholder}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      />
-                    </div>
-                  ),
-                )}
+              <div className="flex items-center gap-2 mb-4">
+                <CalendarCheck className="w-4 h-4 text-emerald-600" />
+                <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide">
+                  Attendance Mode
+                </p>
               </div>
-            </motion.div>
-          ))}
-
-          {/* Attendance Mode */}
-          <motion.div
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-2xl border border-gray-100 p-5"
-          >
-            <div className="flex items-center gap-2 mb-4">
-              <CalendarCheck className="w-4 h-4 text-emerald-600" />
-              <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide">
-                Attendance Mode
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              {(["CLASS_BASED", "PERIOD_BASED"] as const).map((mode) => (
-                <label
-                  key={mode}
-                  className={cn(
-                    "flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition-all",
-                    attMode === mode
-                      ? "border-emerald-500 bg-emerald-50"
-                      : "border-gray-200 bg-gray-50",
-                  )}
-                >
-                  <input
-                    type="radio"
-                    name="attendanceMode"
-                    value={mode}
-                    checked={attMode === mode}
-                    onChange={() => setAttMode(mode)}
-                    className="sr-only"
-                  />
-                  <span
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                {(["CLASS_BASED", "PERIOD_BASED"] as const).map((mode) => (
+                  <label
+                    key={mode}
                     className={cn(
-                      "text-sm font-bold mb-1",
-                      attMode === mode ? "text-emerald-700" : "text-gray-700",
+                      "flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition-all",
+                      attMode === mode
+                        ? "border-emerald-500 bg-emerald-50"
+                        : "border-gray-200 bg-gray-50",
                     )}
                   >
-                    {mode === "CLASS_BASED" ? "Class Based" : "Period Based"}
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    {mode === "CLASS_BASED"
-                      ? "Class teacher marks whole class once per day"
-                      : "Each subject teacher marks attendance per period"}
-                  </span>
-                </label>
-              ))}
-            </div>
-            {attError && (
-              <div className="bg-red-50 text-red-600 text-xs px-3 py-2 rounded-xl mb-3">
-                {attError}
-              </div>
-            )}
-            <button
-              onClick={handleSaveAttendanceMode}
-              disabled={savingAtt || attMode === config.attendanceMode}
-              className={cn(
-                "flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold transition-colors",
-                savedAtt
-                  ? "bg-emerald-100 text-emerald-700"
-                  : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60",
-              )}
-            >
-              {savingAtt ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : savedAtt ? (
-                <>
-                  <CheckCircle2 className="w-4 h-4" /> Saved!
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" /> Save Attendance Mode
-                </>
-              )}
-            </button>
-          </motion.div>
-
-          {/* Committee Attendance Toggle */}
-          <motion.div
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-2xl border border-gray-100 p-5"
-          >
-            <div className="flex items-center gap-2 mb-4">
-              {showCommAtt ? (
-                <Eye className="w-4 h-4 text-emerald-600" />
-              ) : (
-                <EyeOff className="w-4 h-4 text-gray-400" />
-              )}
-              <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide">
-                Committee View
-              </p>
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-gray-800">
-                  Show Attendance to Committee
-                </p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Toggle visibility of student &amp; teacher attendance on the
-                  committee dashboard
-                </p>
-              </div>
-              <button
-                onClick={() => setShowCommAtt((v) => !v)}
-                className={`relative w-12 h-6 rounded-full transition-colors duration-200 shrink-0 ${
-                  showCommAtt ? "bg-emerald-500" : "bg-gray-300"
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
-                    showCommAtt ? "translate-x-6" : "translate-x-0"
-                  }`}
-                />
-              </button>
-            </div>
-            <button
-              onClick={handleSaveCommitteeAttendance}
-              disabled={
-                savingCommAtt || showCommAtt === config.showCommitteeAttendance
-              }
-              className={cn(
-                "flex items-center justify-center gap-2 w-full py-3 mt-4 rounded-xl text-sm font-bold transition-colors",
-                savedCommAtt
-                  ? "bg-emerald-100 text-emerald-700"
-                  : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60",
-              )}
-            >
-              {savingCommAtt ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : savedCommAtt ? (
-                <>
-                  <CheckCircle2 className="w-4 h-4" /> Saved!
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" /> Save
-                </>
-              )}
-            </button>
-          </motion.div>
-
-          {/* Committee Teacher Checkin Toggle */}
-          <motion.div
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-2xl border border-gray-100 p-5"
-          >
-            <div className="flex items-center gap-2 mb-4">
-              {showCommTC ? (
-                <Eye className="w-4 h-4 text-emerald-600" />
-              ) : (
-                <EyeOff className="w-4 h-4 text-gray-400" />
-              )}
-              <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide">
-                Committee View
-              </p>
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-gray-800">
-                  Show Teacher Check-in to Committee
-                </p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Toggle visibility of teacher check-in/check-out details on the
-                  committee dashboard
-                </p>
-              </div>
-              <button
-                onClick={() => setShowCommTC((v) => !v)}
-                className={`relative w-12 h-6 rounded-full transition-colors duration-200 shrink-0 ${
-                  showCommTC ? "bg-emerald-500" : "bg-gray-300"
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
-                    showCommTC ? "translate-x-6" : "translate-x-0"
-                  }`}
-                />
-              </button>
-            </div>
-            <button
-              onClick={handleSaveCommitteeTeacherCheckin}
-              disabled={
-                savingCommTC ||
-                showCommTC === config.showCommitteeTeacherCheckin
-              }
-              className={cn(
-                "flex items-center justify-center gap-2 w-full py-3 mt-4 rounded-xl text-sm font-bold transition-colors",
-                savedCommTC
-                  ? "bg-emerald-100 text-emerald-700"
-                  : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60",
-              )}
-            >
-              {savingCommTC ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : savedCommTC ? (
-                <>
-                  <CheckCircle2 className="w-4 h-4" /> Saved!
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" /> Save
-                </>
-              )}
-            </button>
-          </motion.div>
-
-          {/* Parent Module Toggles */}
-          <motion.div
-            initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-2xl border border-gray-100 p-5"
-          >
-            <div className="flex items-center gap-2 mb-4">
-              <Users className="w-4 h-4 text-emerald-600" />
-              <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide">Parent Modules</p>
-            </div>
-            <p className="text-xs text-gray-500 mb-4">Enable or disable modules visible to parents in their dashboard</p>
-            <div className="space-y-3">
-              {PARENT_MODULES.map((mod) => {
-                const enabled = !disabledModules.includes(mod.key);
-                return (
-                  <div key={mod.key} className="flex items-center justify-between py-2">
-                    <div className="pr-4">
-                      <p className="text-sm font-semibold text-gray-800">{mod.label}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{mod.desc}</p>
-                    </div>
-                    <button
-                      onClick={() =>
-                        setDisabledModules((prev) =>
-                          enabled ? [...prev, mod.key] : prev.filter((k) => k !== mod.key)
-                        )
-                      }
-                      className={`relative w-12 h-6 rounded-full transition-colors duration-200 shrink-0 ${
-                        enabled ? "bg-emerald-500" : "bg-gray-300"
-                      }`}
+                    <input
+                      type="radio"
+                      name="attendanceMode"
+                      value={mode}
+                      checked={attMode === mode}
+                      onChange={() => setAttMode(mode)}
+                      className="sr-only"
+                    />
+                    <span
+                      className={cn(
+                        "text-sm font-bold mb-1",
+                        attMode === mode ? "text-emerald-700" : "text-gray-700",
+                      )}
                     >
-                      <span
-                        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
-                          enabled ? "translate-x-6" : "translate-x-0"
-                        }`}
-                      />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-            <button
-              onClick={handleSaveParentModules}
-              disabled={savingParentToggles}
-              className={cn(
-                "flex items-center justify-center gap-2 w-full py-3 mt-4 rounded-xl text-sm font-bold transition-colors",
-                savedParentToggles ? "bg-emerald-100 text-emerald-700" : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60",
+                      {mode === "CLASS_BASED" ? "Class Based" : "Period Based"}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {mode === "CLASS_BASED"
+                        ? "Class teacher marks whole class once per day"
+                        : "Each subject teacher marks attendance per period"}
+                    </span>
+                  </label>
+                ))}
+              </div>
+              {attError && (
+                <div className="bg-red-50 text-red-600 text-xs px-3 py-2 rounded-xl mb-3">
+                  {attError}
+                </div>
               )}
-            >
-              {savingParentToggles ? <Loader2 className="w-4 h-4 animate-spin" /> :
-               savedParentToggles  ? <><CheckCircle2 className="w-4 h-4" /> Saved!</> :
-                                     <><Save className="w-4 h-4" /> Save Module Settings</>}
-            </button>
-          </motion.div>
+              <button
+                onClick={handleSaveAttendanceMode}
+                disabled={savingAtt || attMode === config.attendanceMode}
+                className={cn(
+                  "flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold transition-colors",
+                  savedAtt
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60",
+                )}
+              >
+                {savingAtt ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : savedAtt ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" /> Saved!
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" /> Save Attendance Mode
+                  </>
+                )}
+              </button>
+            </motion.div>
 
-          {/* Sticky save */}
-          <div className="sticky bottom-20 lg:bottom-6">
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className={`w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl font-bold text-sm transition-all shadow-lg ${
-                saved
-                  ? "bg-emerald-100 text-emerald-700"
-                  : "bg-emerald-600 text-white hover:bg-emerald-700"
-              }`}
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-2xl border border-gray-100 p-5"
             >
-              {saving ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : saved ? (
-                <>
-                  <CheckCircle2 className="w-5 h-5" /> Saved!
-                </>
-              ) : (
-                <>
-                  <Save className="w-5 h-5" /> Save Configuration
-                </>
-              )}
-            </button>
+              <div className="flex items-center gap-2 mb-4">
+                {showCommAtt ? (
+                  <Eye className="w-4 h-4 text-emerald-600" />
+                ) : (
+                  <EyeOff className="w-4 h-4 text-gray-400" />
+                )}
+                <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide">
+                  Committee View
+                </p>
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">
+                    Show Attendance to Committee
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Toggle visibility of student &amp; teacher attendance on the
+                    committee dashboard
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowCommAtt((v) => !v)}
+                  className={`relative w-12 h-6 rounded-full transition-colors duration-200 shrink-0 ${
+                    showCommAtt ? "bg-emerald-500" : "bg-gray-300"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
+                      showCommAtt ? "translate-x-6" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+              </div>
+              <button
+                onClick={handleSaveCommitteeAttendance}
+                disabled={
+                  savingCommAtt || showCommAtt === config.showCommitteeAttendance
+                }
+                className={cn(
+                  "flex items-center justify-center gap-2 w-full py-3 mt-4 rounded-xl text-sm font-bold transition-colors",
+                  savedCommAtt
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60",
+                )}
+              >
+                {savingCommAtt ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : savedCommAtt ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" /> Saved!
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" /> Save
+                  </>
+                )}
+              </button>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-2xl border border-gray-100 p-5"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                {showCommTC ? (
+                  <Eye className="w-4 h-4 text-emerald-600" />
+                ) : (
+                  <EyeOff className="w-4 h-4 text-gray-400" />
+                )}
+                <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide">
+                  Committee View
+                </p>
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">
+                    Show Teacher Check-in to Committee
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Toggle visibility of teacher check-in/check-out details on the
+                    committee dashboard
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowCommTC((v) => !v)}
+                  className={`relative w-12 h-6 rounded-full transition-colors duration-200 shrink-0 ${
+                    showCommTC ? "bg-emerald-500" : "bg-gray-300"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
+                      showCommTC ? "translate-x-6" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+              </div>
+              <button
+                onClick={handleSaveCommitteeTeacherCheckin}
+                disabled={
+                  savingCommTC ||
+                  showCommTC === config.showCommitteeTeacherCheckin
+                }
+                className={cn(
+                  "flex items-center justify-center gap-2 w-full py-3 mt-4 rounded-xl text-sm font-bold transition-colors",
+                  savedCommTC
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60",
+                )}
+              >
+                {savingCommTC ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : savedCommTC ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" /> Saved!
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" /> Save
+                  </>
+                )}
+              </button>
+            </motion.div>
+          </Tabs.Content>
+
+          {/* ── Parent Modules Tab ── */}
+          <Tabs.Content value="parent-modules" className="space-y-5">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Parent Module Access</h2>
+              <p className="text-sm text-gray-500 mt-1">Enable or disable modules visible to parents in their dashboard</p>
+            </div>
+            <motion.div
+              initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-2xl border border-gray-100 p-5"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <Users className="w-4 h-4 text-emerald-600" />
+                <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide">Parent Modules</p>
+              </div>
+              <div className="space-y-3">
+                {PARENT_MODULES.map((mod) => {
+                  const enabled = !disabledModules.includes(mod.key);
+                  return (
+                    <div key={mod.key} className="flex items-center justify-between py-2">
+                      <div className="pr-4">
+                        <p className="text-sm font-semibold text-gray-800">{mod.label}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{mod.desc}</p>
+                      </div>
+                      <button
+                        onClick={() =>
+                          setDisabledModules((prev) =>
+                            enabled ? [...prev, mod.key] : prev.filter((k) => k !== mod.key)
+                          )
+                        }
+                        className={`relative w-12 h-6 rounded-full transition-colors duration-200 shrink-0 ${
+                          enabled ? "bg-emerald-500" : "bg-gray-300"
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
+                            enabled ? "translate-x-6" : "translate-x-0"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+              <button
+                onClick={handleSaveParentModules}
+                disabled={savingParentToggles}
+                className={cn(
+                  "flex items-center justify-center gap-2 w-full py-3 mt-4 rounded-xl text-sm font-bold transition-colors",
+                  savedParentToggles ? "bg-emerald-100 text-emerald-700" : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60",
+                )}
+              >
+                {savingParentToggles ? <Loader2 className="w-4 h-4 animate-spin" /> :
+                 savedParentToggles  ? <><CheckCircle2 className="w-4 h-4" /> Saved!</> :
+                                        <><Save className="w-4 h-4" /> Save Module Settings</>}
+              </button>
+            </motion.div>
+          </Tabs.Content>
           </div>
-        </div>
+        </Tabs.Root>
       )}
     </DashboardLayout>
+  );
+}
+
+function StickySaveButton({
+  saving,
+  saved,
+  onSave,
+}: {
+  saving: boolean;
+  saved: boolean;
+  onSave: () => void;
+}) {
+  return (
+    <div className="sticky bottom-20 lg:bottom-6">
+      <button
+        onClick={onSave}
+        disabled={saving}
+        className={`w-full lg:w-auto lg:px-10 flex items-center justify-center gap-2.5 py-4 rounded-2xl font-bold text-sm transition-all shadow-lg ${
+          saved
+            ? "bg-emerald-100 text-emerald-700"
+            : "bg-emerald-600 text-white hover:bg-emerald-700"
+        }`}
+      >
+        {saving ? (
+          <Loader2 className="w-5 h-5 animate-spin" />
+        ) : saved ? (
+          <>
+            <CheckCircle2 className="w-5 h-5" /> Saved!
+          </>
+        ) : (
+          <>
+            <Save className="w-5 h-5" /> Save Configuration
+          </>
+        )}
+      </button>
+    </div>
   );
 }

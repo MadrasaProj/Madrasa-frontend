@@ -6,14 +6,14 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
-  getFeeTypes, createFeeType, generatePayments,
+  getFeeTypes, createFeeType, updateFeeType, generatePayments,
   type FeeType, type CreateFeeTypePayload,
 } from "@/lib/fees-api";
 import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
-  CreditCard, Plus, Loader2, Zap, X, RefreshCw, ArrowLeft,
+  CreditCard, Plus, Loader2, Zap, X, RefreshCw, ArrowLeft, Pencil,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -37,6 +37,12 @@ export default function AdminFeeTypesPage() {
   const [createError, setCreateError] = useState<string | null>(null);
 
   const [generating, setGenerating] = useState<string | null>(null);
+
+  const [showEdit, setShowEdit] = useState(false);
+  const [editingFee, setEditingFee] = useState<FeeType | null>(null);
+  const [editFee, setEditFee] = useState<Partial<CreateFeeTypePayload & { status?: string }>>({});
+  const [updating, setUpdating] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!cid || !token) return;
@@ -71,6 +77,38 @@ export default function AdminFeeTypesPage() {
       setCreateError((e as Error).message);
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleEdit = (ft: FeeType) => {
+    setEditingFee(ft);
+    setEditFee({
+      name: ft.name,
+      description: ft.description ?? undefined,
+      amount: Number(ft.amount),
+      kind: ft.kind,
+      frequency: ft.frequency ?? undefined,
+      dueDay: ft.dueDay ?? undefined,
+      targetClassIds: ft.targetClassIds ?? undefined,
+      status: ft.status,
+    });
+    setEditError(null);
+    setShowEdit(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingFee) return;
+    setUpdating(true);
+    setEditError(null);
+    try {
+      await updateFeeType(cid, token, editingFee.id, editFee);
+      setShowEdit(false);
+      setEditingFee(null);
+      load();
+    } catch (e) {
+      setEditError((e as Error).message);
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -186,18 +224,26 @@ export default function AdminFeeTypesPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => handleGenerate(ft)}
-                        disabled={generating === ft.id}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-700 text-[11px] font-semibold hover:bg-amber-100 transition-all disabled:opacity-50"
-                      >
-                        {generating === ft.id ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : (
-                          <Zap className="w-3 h-3" />
-                        )}
-                        Generate
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleEdit(ft)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-50 text-gray-600 text-[11px] font-semibold hover:bg-gray-100 transition-all"
+                        >
+                          <Pencil className="w-3 h-3" /> Edit
+                        </button>
+                        <button
+                          onClick={() => handleGenerate(ft)}
+                          disabled={generating === ft.id}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-700 text-[11px] font-semibold hover:bg-amber-100 transition-all disabled:opacity-50"
+                        >
+                          {generating === ft.id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Zap className="w-3 h-3" />
+                          )}
+                          Generate
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -349,6 +395,179 @@ export default function AdminFeeTypesPage() {
                   >
                     {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                     Create Fee Type
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── Edit fee type modal ── */}
+      <AnimatePresence>
+        {showEdit && editingFee && (
+          <>
+            <motion.div
+              key="edit-bd"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+              onClick={() => { setShowEdit(false); setEditingFee(null); }}
+            />
+            <motion.div
+              key="edit-modal"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+              onClick={() => { setShowEdit(false); setEditingFee(null); }}
+            >
+              <div className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-md shadow-xl max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between px-5 py-4 border-b">
+                  <p className="font-bold text-gray-900">Edit Fee Type</p>
+                  <button onClick={() => { setShowEdit(false); setEditingFee(null); }}>
+                    <X className="w-5 h-5 text-gray-400" />
+                  </button>
+                </div>
+                <div className="px-5 py-4 space-y-4">
+                  {editError && (
+                    <div className="bg-red-50 text-red-600 text-sm px-3 py-2 rounded-xl">{editError}</div>
+                  )}
+                  <div>
+                    <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Name *</label>
+                    <input
+                      type="text" value={editFee.name ?? ""}
+                      placeholder="e.g. Monthly Fee, SKSBV Fund"
+                      onChange={(e) => setEditFee((n) => ({ ...n, name: e.target.value }))}
+                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Amount (₹) *</label>
+                    <input
+                      type="number" value={editFee.amount ?? ""} placeholder="500"
+                      onChange={(e) => setEditFee((n) => ({ ...n, amount: Number(e.target.value) }))}
+                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Description (optional)</label>
+                    <input
+                      type="text" value={editFee.description ?? ""} placeholder="Details…"
+                      onChange={(e) => setEditFee((n) => ({ ...n, description: e.target.value }))}
+                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Type</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(["ONE_TIME", "RECURRING"] as const).map((k) => (
+                        <label
+                          key={k}
+                          className={cn(
+                            "flex items-center justify-center gap-2 py-3 rounded-2xl border text-sm font-semibold cursor-pointer transition-all",
+                            editFee.kind === k
+                              ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                              : "border-gray-200 bg-gray-50 text-gray-700",
+                          )}
+                        >
+                          <input
+                            type="radio" className="sr-only"
+                            checked={editFee.kind === k}
+                            onChange={() => setEditFee((n) => ({ ...n, kind: k }))}
+                          />
+                          {k === "ONE_TIME" ? "One Time" : "Recurring"}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  {editFee.kind === "RECURRING" && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Frequency</label>
+                        <select
+                          value={editFee.frequency ?? "monthly"}
+                          onChange={(e) => setEditFee((n) => ({ ...n, frequency: e.target.value }))}
+                          className="w-full px-3 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm"
+                        >
+                          {["monthly", "quarterly", "yearly"].map((f) => (
+                            <option key={f} value={f}>{f}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Due Day</label>
+                        <input
+                          type="number" min={1} max={31} placeholder="5"
+                          value={editFee.dueDay ?? ""}
+                          onChange={(e) => setEditFee((n) => ({ ...n, dueDay: Number(e.target.value) }))}
+                          className="w-full px-3 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Status</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(["ACTIVE", "INACTIVE"] as const).map((s) => (
+                        <label
+                          key={s}
+                          className={cn(
+                            "flex items-center justify-center gap-2 py-3 rounded-2xl border text-sm font-semibold cursor-pointer transition-all",
+                            editFee.status === s
+                              ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                              : "border-gray-200 bg-gray-50 text-gray-700",
+                          )}
+                        >
+                          <input
+                            type="radio" className="sr-only"
+                            checked={editFee.status === s}
+                            onChange={() => setEditFee((n) => ({ ...n, status: s }))}
+                          />
+                          {s === "ACTIVE" ? "Active" : "Inactive"}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  {classes.length > 0 && (
+                    <div>
+                      <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Target Classes (leave empty = all classes)</label>
+                      <div className="flex flex-wrap gap-2">
+                        {classes.map((c) => {
+                          const selected = (editFee.targetClassIds ?? []).includes(c.id);
+                          return (
+                            <button
+                              key={c.id} type="button"
+                              onClick={() =>
+                                setEditFee((n) => ({
+                                  ...n,
+                                  targetClassIds: selected
+                                    ? (n.targetClassIds ?? []).filter((id) => id !== c.id)
+                                    : [...(n.targetClassIds ?? []), c.id],
+                                }))
+                              }
+                              className={cn(
+                                "px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all",
+                                selected ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-gray-200 text-gray-600",
+                              )}
+                            >
+                              {c.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="px-5 pb-5">
+                  <button
+                    onClick={handleUpdate}
+                    disabled={updating || !editFee.name || !editFee.amount}
+                    className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl disabled:opacity-60 flex items-center justify-center gap-2"
+                  >
+                    {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
+                    Update Fee Type
                   </button>
                 </div>
               </div>

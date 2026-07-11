@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
@@ -9,11 +9,10 @@ import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth";
 import { AlertCircle, CalendarDays, CheckCircle2, XCircle, Clock, ChevronLeft, ChevronRight } from "lucide-react";
-import {
-  getStudentAttendance,
-  type StudentAttendanceResponse,
-  type AttendanceStatus,
-} from "@/lib/attendance-api";
+
+const DAY_HEADER_KEYS = ["daySun", "dayMon", "dayTue", "dayWed", "dayThu", "dayFri", "daySat"];
+import type { AttendanceStatus } from "@/lib/attendance-api";
+import { useStudentAttendance } from "@/lib/queries";
 
 const STATUS_CONFIG: Record<
   AttendanceStatus,
@@ -26,8 +25,6 @@ const STATUS_CONFIG: Record<
   LEAVE:    { label: "Leave",    labelMl: "ലീവ്",       dot: "bg-amber-400",  bg: "bg-amber-50"    },
   SICK:     { label: "Sick",     labelMl: "അസുഖം",     dot: "bg-orange-400", bg: "bg-orange-50"   },
 };
-
-const isPositive = (s: AttendanceStatus) => s === "PRESENT" || s === "EXCUSED";
 
 function monthKey(dateStr: string) { return dateStr.slice(0, 7); }
 
@@ -49,7 +46,7 @@ function getCalendarDays(year: number, month: number) {
   return days;
 }
 
-const DAY_HEADERS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAY_HEADERS = DAY_HEADER_KEYS;
 
 export default function ParentAttendancePage() {
   const { lang } = useLanguageStore();
@@ -59,33 +56,13 @@ export default function ParentAttendancePage() {
   const effectiveId = activeStudentId ?? (user?.accessibleStudentIds?.[0] ?? "");
   const activeStudent = user?.accessibleStudents?.find((s) => s.id === effectiveId);
 
-  const [data, setData] = useState<StudentAttendanceResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [monthIndex, setMonthIndex] = useState(0);
-  const [retryKey, setRetryKey] = useState(0);
-  const loadData = () => setRetryKey((k) => k + 1);
 
-  useEffect(() => {
-    if (!effectiveId || !accessToken || !user?.clientId) return;
-    const controller = new AbortController();
-    let mounted = true;
-    setLoading(true);
-    setError(null);
-
-    getStudentAttendance(
-      user.clientId,
-      accessToken,
-      effectiveId,
-      user.defaultAcademicYearId ? { academicYearId: user.defaultAcademicYearId } : undefined,
-      controller.signal,
-    )
-      .then((res)  => { if (mounted) setData(res); })
-      .catch((err: Error) => { if (!mounted) return; if (err.name !== "AbortError") setError(err.message); })
-      .finally(()  => { if (mounted) setLoading(false); });
-
-    return () => { mounted = false; controller.abort(); };
-  }, [effectiveId, accessToken, user?.clientId, retryKey]);
+  const { data, isLoading, error, refetch, isRefetching } = useStudentAttendance(
+    { clientId: user?.clientId ?? "", token: accessToken ?? "" },
+    effectiveId,
+    user?.defaultAcademicYearId ? { academicYearId: user.defaultAcademicYearId } : undefined,
+  );
 
   const presentCount  = (data?.summary?.PRESENT  ?? 0) + (data?.summary?.EXCUSED ?? 0);
   const absentCount   = (data?.summary?.ABSENT   ?? 0);
@@ -117,6 +94,7 @@ export default function ParentAttendancePage() {
   }, [currentMonth, data?.records]);
 
   const todayStr = new Date().toISOString().slice(0, 10);
+  const errorMessage = error instanceof Error ? error.message : null;
 
   if (!user?.clientId) {
     return (
@@ -150,7 +128,7 @@ export default function ParentAttendancePage() {
         back
       />
 
-      {loading && (
+      {isLoading && (
         <div className="space-y-4">
           <Skeleton className="h-36 rounded-3xl" />
           <div className="grid grid-cols-3 gap-3">
@@ -163,9 +141,9 @@ export default function ParentAttendancePage() {
         </div>
       )}
 
-      {error && <ApiErrorBanner message={error} onRetry={loadData} />}
+      {errorMessage && <ApiErrorBanner message={errorMessage} onRetry={() => refetch()} />}
 
-      {!loading && !error && data && (
+      {!isLoading && !errorMessage && data && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
 
           {/* ── Hero card ──────────────────────────────────────────────────── */}
@@ -173,32 +151,32 @@ export default function ParentAttendancePage() {
             <div className="flex items-end gap-6">
               <div className="flex-1 space-y-2">
                 <p className="text-emerald-200 text-xs font-semibold uppercase tracking-widest">
-                  {lang === "ml" ? "ഹാജർ നിരക്ക്" : "Attendance Rate"}
+                  {t("parentPages", "attendanceRate", lang)}
                 </p>
                 <p className="text-white/80 text-sm">
                   {activeStudent?.name}
                   {activeStudent?.className ? ` · ${activeStudent.className}` : ""}
                 </p>
                 <div className="space-y-2 pt-2">
-                
+
                 <div className="flex w-full gap-6">
                     <div className="flex flex-1 items-center justify-between border-b border-white/20 pb-1.5">
-                    <span className="text-[11px] text-emerald-200 lowercase">present</span>
+                    <span className="text-[11px] text-emerald-200 lowercase">{t("parentPages", "presentLower", lang)}</span>
                     <span className="text-lg font-black">{presentCount}</span>
                   </div>
                   <div className="flex flex-1  items-center justify-between border-b border-white/20 pb-1.5">
-                    <span className="text-[11px] text-emerald-200 lowercase">absent</span>
+                    <span className="text-[11px] text-emerald-200 lowercase">{t("parentPages", "absentLower", lang)}</span>
                     <span className="text-lg font-black">{absentCount}</span>
                   </div>
                 </div>
                   {otherCount > 0 && (
                     <div className="flex items-center justify-between border-b border-white/20 pb-1.5">
-                      <span className="text-[11px] text-emerald-200 lowercase">other</span>
+                      <span className="text-[11px] text-emerald-200 lowercase">{t("parentPages", "otherLower", lang)}</span>
                       <span className="text-lg font-black">{otherCount}</span>
                     </div>
                   )}
                   <div className="flex items-center justify-between pb-1.5  border-b border-white/20">
-                    <span className="text-[11px] text-emerald-200 lowercase">total</span>
+                    <span className="text-[11px] text-emerald-200 lowercase">{t("parentPages", "totalLower", lang)}</span>
                     <span className="text-lg font-black">{total}</span>
                   </div>
                 </div>
@@ -234,7 +212,7 @@ export default function ParentAttendancePage() {
             <div className="flex flex-col items-center justify-center py-16 text-center lg:flex-1">
               <CalendarDays className="w-10 h-10 text-gray-300 mb-3" />
               <p className="text-gray-400 text-sm">
-                {lang === "ml" ? "റെക്കോർഡുകൾ ഒന്നും കണ്ടെത്തിയില്ല" : "No attendance records found"}
+                {t("parentPages", "noAttendanceRecords", lang)}
               </p>
             </div>
           ) : (
@@ -264,7 +242,7 @@ export default function ParentAttendancePage() {
               <div className="grid grid-cols-7 mb-2">
                 {DAY_HEADERS.map((d) => (
                   <div key={d} className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide py-1">
-                    {d}
+                    {t("parentPages", d as any, lang)}
                   </div>
                 ))}
               </div>

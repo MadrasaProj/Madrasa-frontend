@@ -1,8 +1,9 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Users,
+  User,
   ClipboardList,
   BookOpen,
   FileText,
@@ -11,7 +12,6 @@ import {
   Bell,
   Settings,
   Star,
-  BookMarked,
   UserCircle,
   Home,
   GraduationCap,
@@ -36,15 +36,11 @@ import {
   X,
   ChevronDown,
   Languages,
-  MapPin,
-  Receipt,
 } from "lucide-react";
-import { ParentStudentSwitcher } from "@/components/ParentStudentSwitcher";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
-import { tenantLoginPath } from "@/lib/tenant-routing";
 import { useState, useEffect, useRef } from "react";
 import { getClientConfig, type ClientConfig } from "@/lib/config-api";
 
@@ -80,6 +76,7 @@ type NavKey =
   | "platformReports"
   | "profile"
   | "teacherCheckin"
+  | "socialFrames"
   | "posters"
   | "artsfest"
   | "academics"
@@ -88,13 +85,7 @@ type NavKey =
   | "settings"
   | "bestPerformance"
   | "feeTypes"
-  | "globalClassSubjects"
-  | "leads"
-  | "commissions"
-  | "support"
-  | "renewals"
-  | "districts"
-  | "expenses";
+  | "globalClassSubjects";
 
 const adminLinks = [
   { href: "/admin", icon: LayoutDashboard, key: "dashboard" as NavKey },
@@ -121,7 +112,8 @@ const adminLinks = [
   { href: "/admin/fees", icon: CreditCard, key: "fees" as NavKey, exact: true },
   { href: "/admin/fees/types", icon: CreditCard, key: "feeTypes" as NavKey },
   { href: "/admin/id-cards", icon: BadgeCheck, key: "idCards" as NavKey },
-  { href: "/admin/posters", icon: Image, key: "posters" as NavKey },
+  { href: "/admin/social-frames", icon: Image, key: "socialFrames" as NavKey },
+  { href: "/admin/posters", icon: FileText, key: "posters" as NavKey },
   {
     href: "/admin/exams",
     icon: GraduationCap,
@@ -189,6 +181,7 @@ const teacherLinks = [
 
 const parentLinks = [
   { href: "/parent", icon: Home, key: "home" as NavKey },
+  { href: "/parent/students", icon: User, key: "students" as NavKey },
   {
     href: "/parent/attendance",
     icon: ClipboardList,
@@ -203,7 +196,8 @@ const parentLinks = [
   { href: "/parent/diary", icon: FileText, key: "diary" as NavKey },
   { href: "/parent/ibadah", icon: Moon, key: "ibadah" as NavKey },
   { href: "/parent/fees", icon: CreditCard, key: "fees" as NavKey },
-  { href: "/parent/posters", icon: Image, key: "posters" as NavKey },
+  { href: "/parent/id-cards", icon: BadgeCheck, key: "idCards" as NavKey },
+  { href: "/parent/social-frames", icon: Image, key: "socialFrames" as NavKey },
   { href: "/parent/results", icon: GraduationCap, key: "results" as NavKey },
   {
     href: "/parent/best-performance",
@@ -245,27 +239,14 @@ const committeeLinks = [
 const superAdminLinks = [
   { href: "/admin", icon: LayoutDashboard, key: "dashboard" as NavKey },
   { href: "/admin/madrasas", icon: Building2, key: "madrasas" as NavKey },
-  { href: "/admin/crm/leads", icon: ClipboardList, key: "leads" as NavKey },
-  {
-    href: "/admin/crm/commissions",
-    icon: CreditCard,
-    key: "commissions" as NavKey,
-  },
-  { href: "/admin/crm/support", icon: ShieldCheck, key: "support" as NavKey },
-  {
-    href: "/admin/crm/renewals",
-    icon: ClipboardList,
-    key: "renewals" as NavKey,
-  },
-  { href: "/admin/crm/districts", icon: MapPin, key: "districts" as NavKey },
-  { href: "/admin/crm/expenses", icon: Receipt, key: "expenses" as NavKey },
   {
     href: "/admin/super-users",
     icon: ShieldCheck,
     key: "superUsers" as NavKey,
   },
   { href: "/admin/ibadah-config", icon: Moon, key: "ibadah" as NavKey },
-  { href: "/admin/posters", icon: Image, key: "posters" as NavKey },
+  { href: "/admin/social-frames", icon: Image, key: "socialFrames" as NavKey },
+  { href: "/admin/posters", icon: FileText, key: "posters" as NavKey },
   {
     href: "/admin/global-class-subjects",
     icon: BookOpen,
@@ -372,7 +353,7 @@ const getAdminCategories = (role: string, actorType?: string) => {
       titleKey: "financeExtras" as NavKey,
       icon: CreditCard,
       links: links.filter((l) =>
-        ["fees", "feeTypes", "idCards", "posters", "artsfest"].includes(l.key),
+        ["fees", "feeTypes", "idCards", "socialFrames", "posters", "artsfest"].includes(l.key),
       ),
     },
     {
@@ -538,7 +519,6 @@ export function Sidebar({
   onClose?: () => void;
 }) {
   const { pathname } = useLocation();
-  const navigate = useNavigate();
   const { user, activeClientId, accessToken, logout } = useAuthStore();
   const { lang } = useLanguageStore();
   const slugPrefix = useSlugPrefix();
@@ -770,9 +750,7 @@ export function Sidebar({
         {/* Mobile Header / Close button */}
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center">
-              <BookMarked className="w-5 h-5 text-white" />
-            </div>
+            <img src="/icons/icon.svg" alt="Smart Madrasa" className="w-10 h-10" />
             <div>
               <p className="font-bold text-gray-900 text-sm leading-tight">
                 {t("common", "appName", lang)}
@@ -792,12 +770,19 @@ export function Sidebar({
             </button>
           )}
         </div>
-
         <div className="px-4 py-3 border-b border-gray-100 shrink-0">
           <div className="flex items-center gap-3 bg-emerald-50 rounded-xl p-3">
-            <div className="w-9 h-9 bg-emerald-600 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0">
-              {user.name.charAt(0)}
-            </div>
+            {user.photoUrl ? (
+              <img
+                src={user.photoUrl}
+                alt="Profile"
+                className="w-9 h-9 rounded-full object-cover shrink-0"
+              />
+            ) : (
+              <div className="w-9 h-9 bg-emerald-600 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0">
+                {user.name.charAt(0)}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-gray-900 truncate">
                 {user.name}
@@ -879,10 +864,6 @@ export function Sidebar({
 
         {/* ── Mobile sidebar utilities ── */}
         <div className="lg:hidden px-4 py-3 border-t border-gray-100 bg-gray-50 space-y-1 shrink-0">
-          {user.actorType === "PARENT" &&
-            (user.accessibleStudentIds?.length ?? 0) > 0 && (
-              <ParentStudentSwitcher />
-            )}
           <div className="flex items-center justify-between gap-2 px-3 py-2">
             <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
               {lang === "ml" ? "ഭാഷ" : "Language"}
@@ -895,12 +876,6 @@ export function Sidebar({
           <button
             onClick={() => {
               logout();
-              navigate(
-                isSuperAdmin
-                  ? "/super-admin/login"
-                  : tenantLoginPath(user.tenantSlug),
-                { replace: true },
-              );
             }}
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-all w-full focus-visible:ring-2 focus-visible:ring-red-500 outline-none"
           >
@@ -915,7 +890,6 @@ export function Sidebar({
 
 export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
   const { pathname } = useLocation();
-  const navigate = useNavigate();
   const { user, activeClientId, accessToken, logout } = useAuthStore();
   const { lang } = useLanguageStore();
   const slugPrefix = useSlugPrefix();
@@ -1056,7 +1030,6 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
           <button
             onClick={() => {
               logout();
-              navigate("/super-admin/login", { replace: true });
             }}
             className="flex flex-col items-center justify-center gap-1 py-2.5 px-2 min-w-0 flex-1 relative transition-all active:scale-95 text-red-400"
           >

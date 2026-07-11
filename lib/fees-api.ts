@@ -44,6 +44,7 @@ export interface FeePayment {
   student: { id: string; name: string; adno: string; class?: { id: string; name: string } | null };
   feeType: { id: string; name: string; kind: FeeTypeKind };
   recordedBy?: string | null;
+  collectedBy?: string | null;
 }
 
 export interface ReceiptData {
@@ -111,6 +112,7 @@ export interface UpdatePaymentPayload {
   reference?: string;
   notes?: string;
   paidAt?: string;
+  collectedBy?: string;
 }
 
 export class FeesApiError extends Error {
@@ -143,6 +145,7 @@ export const deleteFeeType = (clientId: string, token: string, id: string, signa
 export interface GetPaymentsParams {
   feeTypeId?: string; studentId?: string; classId?: string;
   status?: FeePaymentStatus; academicYearId?: string;
+  collectedBy?: string;
   skip?: number; take?: number; signal?: AbortSignal;
 }
 
@@ -167,7 +170,7 @@ export const getStudentFees = (clientId: string, token: string, studentId: strin
   apiFetch<StudentFeeSummary>(`${DEFAULT_API_BASE}/${clientId}/fees/student/${studentId}`, token, { signal });
 
 export const getFeeSummary = (clientId: string, token: string, academicYearId?: string, signal?: AbortSignal) =>
-  apiFetch<{ byStatus: any[]; byFeeType: any[] }>(
+  apiFetch<FeeSummaryResponse>(
     `${DEFAULT_API_BASE}/${clientId}/fees/summary${academicYearId ? `?academicYearId=${academicYearId}` : ""}`,
     token, { signal }
   );
@@ -181,4 +184,114 @@ export const undoCancelPayment = (clientId: string, token: string, id: string, s
 export const generatePayments = (clientId: string, token: string, data: { feeTypeId: string; academicYearId?: string; classIds?: string[] }, signal?: AbortSignal) =>
   apiFetch<{ generated: number; total?: number; dueDate?: string; message?: string }>(
     `${DEFAULT_API_BASE}/${clientId}/fees/generate`, token, { method: "POST", body: JSON.stringify(data), signal }
+  );
+
+// ─── Teacher → Admin Transactions ───────────────────────────────────────────
+
+export interface FeeTransaction {
+  id: string;
+  amount: number;
+  feeTypeId: string;
+  date: string;
+  teacherId: string;
+  adminId: string;
+  createdAt: string;
+  updatedAt: string;
+  teacher: { id: string; name: string };
+  admin: { id: string; name: string };
+  feeType: { id: string; name: string };
+}
+
+export interface TransactionsListResponse {
+  total: number;
+  skip: number;
+  take: number;
+  totalAmount: number;
+  transactions: FeeTransaction[];
+}
+
+export interface CreateFeeTransactionPayload {
+  amount: number;
+  feeTypeId: string;
+  date: string;
+  teacherId: string;
+  adminId: string;
+}
+
+export interface GetTransactionsParams {
+  feeTypeId?: string;
+  teacherId?: string;
+  adminId?: string;
+  fromDate?: string;
+  toDate?: string;
+  skip?: number;
+  take?: number;
+  signal?: AbortSignal;
+}
+
+export interface FeeSummaryResponse {
+  byStatus: any[];
+  byFeeType: any[];
+  totals: {
+    studentDue: number;
+    studentCollected: number;
+    studentPending: number;
+    fromTeachers: number;
+    teacherTransactionCount: number;
+  };
+}
+
+export interface TransactionSummary {
+  totalAmount: number;
+  transactionCount: number;
+  byTeacher: Array<{
+    teacherId: string;
+    teacherName: string | null;
+    totalAmount: number;
+    count: number;
+  }>;
+  byFeeType: Array<{
+    feeTypeId: string;
+    feeTypeName: string | null;
+    totalAmount: number;
+    count: number;
+  }>;
+}
+
+export const getTransactions = (clientId: string, token: string, params: GetTransactionsParams = {}) => {
+  const { signal, ...rest } = params;
+  const q = new URLSearchParams();
+  Object.entries(rest).forEach(([k, v]) => { if (v !== undefined) q.set(k, String(v)); });
+  const qs = q.toString();
+  return apiFetch<TransactionsListResponse>(
+    `${DEFAULT_API_BASE}/${clientId}/fees/transactions${qs ? `?${qs}` : ""}`,
+    token,
+    { signal },
+  );
+};
+
+export const createFeeTransaction = (
+  clientId: string,
+  token: string,
+  data: CreateFeeTransactionPayload,
+  signal?: AbortSignal,
+) =>
+  apiFetch<FeeTransaction>(
+    `${DEFAULT_API_BASE}/${clientId}/fees/transactions`,
+    token,
+    { method: "POST", body: JSON.stringify(data), signal },
+  );
+
+export const deleteFeeTransaction = (clientId: string, token: string, id: string, signal?: AbortSignal) =>
+  apiFetch<{ message: string }>(
+    `${DEFAULT_API_BASE}/${clientId}/fees/transactions/${id}`,
+    token,
+    { method: "DELETE", signal },
+  );
+
+export const getTransactionSummary = (clientId: string, token: string, signal?: AbortSignal) =>
+  apiFetch<TransactionSummary>(
+    `${DEFAULT_API_BASE}/${clientId}/fees/transactions/summary`,
+    token,
+    { signal },
   );

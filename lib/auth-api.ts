@@ -1,4 +1,4 @@
-import { NETWORK_ERROR, TIMEOUT_ERROR } from "@/lib/fetch";
+import { NETWORK_ERROR, TIMEOUT_ERROR, apiFetch } from "@/lib/fetch";
 
 const API_ORIGIN =
   import.meta.env.VITE_API_ORIGIN ?? "http://localhost:3000";
@@ -97,6 +97,28 @@ export type StudentInfo = {
   gender: "MALE" | "FEMALE";
   className: string | null;
   classId: string | null;
+  dateOfBirth?: string | null;
+  parentPhone?: string | null;
+  parentAltPhone?: string | null;
+  parentEmail?: string | null;
+  guardianName?: string | null;
+  relationToStudent?: string | null;
+  status?: "ACTIVE" | "INACTIVE" | "GRADUATED" | "TRANSFERRED" | "DROPPED_OUT";
+  accademicYearId?: string | null;
+  accademicYear?: { id: string; name: string } | null;
+  teamId?: string | null;
+  sectionId?: string | null;
+  isArchived?: boolean;
+  photo: string | null;
+  photoUrl?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  pincode?: string | null;
+  bloodGroup?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
 };
 
 export type AuthSessionPayload = {
@@ -111,6 +133,8 @@ export type AuthSessionPayload = {
     defaultAcademicYearId?: string | null;
     parentPhone?: string;
     accessibleStudentIds?: string[];
+    photo?: string | null;
+    photoUrl?: string | null;
     client?: {
       id?: string;
       name?: string;
@@ -222,4 +246,24 @@ export async function loginCommittee(
     },
     signal,
   );
+}
+
+export type ProfilePayload = {
+  id: string;
+  name: string;
+  photo: string | null;
+  photoUrl: string | null;
+};
+
+export async function getProfile(token: string): Promise<ProfilePayload> {
+  return apiFetch<ProfilePayload>(`${DEFAULT_API_BASE}/auth/profile`, token);
+}
+
+/**
+ * Fetches the parent's accessible students with complete profile details
+ * (photo, photoUrl, contact, address, etc.). Used to repopulate the auth
+ * store on portal load so the UI has the full data without a re-login.
+ */
+export async function getParentStudents(token: string): Promise<{ data: StudentInfo[] }> {
+  return apiFetch<{ data: StudentInfo[] }>(`${DEFAULT_API_BASE}/auth/parent/students`, token);
 }

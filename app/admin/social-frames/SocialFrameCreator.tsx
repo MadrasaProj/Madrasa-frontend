@@ -9,7 +9,7 @@ import {
 import { App, Frame } from "leafer-ui";
 import { MoveEvent, ZoomEvent } from "@leafer-ui/core";
 import "@leafer-in/viewport";
- 
+
 function collectFontFamilies(obj: unknown, families = new Set<string>()): Set<string> {
   if (!obj || typeof obj !== "object") return families;
   for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
@@ -58,18 +58,6 @@ function isImageFill(fill: unknown): boolean {
   return false;
 }
 
-function getImageFillUrl(fill: unknown): string | undefined {
-  if (!fill) return undefined;
-  if (typeof fill === "object" && !Array.isArray(fill)) {
-    return (fill as Record<string, unknown>).url as string | undefined;
-  }
-  if (Array.isArray(fill)) {
-    const img = fill.find((f) => typeof f === "object" && f !== null && (f as Record<string, unknown>).type === "image");
-    return img ? (img as Record<string, unknown>).url as string | undefined : undefined;
-  }
-  return undefined;
-}
-
 function extractLayers(children: unknown[], parentPath: number[] = []): LayerItem[] {
   const layers: LayerItem[] = [];
   if (!Array.isArray(children)) return layers;
@@ -112,9 +100,9 @@ function getElementByPath(data: Record<string, unknown>, path: number[]): Record
   return current ?? null;
 }
 
-export type PosterSize = { width: number; height: number; label: string };
+export type SocialFrameSize = { width: number; height: number; label: string };
 
-export const POSTER_SIZES: PosterSize[] = [
+export const SOCIAL_FRAME_SIZES: SocialFrameSize[] = [
   { width: 1200, height: 628, label: "Social Media (1200x628)" },
   { width: 1080, height: 1080, label: "Instagram (1080x1080)" },
   { width: 1080, height: 1920, label: "Story (1080x1920)" },
@@ -122,20 +110,20 @@ export const POSTER_SIZES: PosterSize[] = [
   { width: 800, height: 600, label: "Custom (800x600)" },
 ];
 
-export interface PosterCreatorRef {
+export interface SocialFrameCreatorRef {
   getSceneData: () => Record<string, unknown> | null;
 }
 
-interface PosterCreatorProps {
+interface SocialFrameCreatorProps {
   initialData?: Record<string, unknown> | null;
 }
 
-export const PosterCreator = forwardRef<PosterCreatorRef, PosterCreatorProps>(
-  function PosterCreator({ initialData }, ref) {
+export const SocialFrameCreator = forwardRef<SocialFrameCreatorRef, SocialFrameCreatorProps>(
+  function SocialFrameCreator({ initialData }, ref) {
     const canvasRef = useRef<HTMLDivElement>(null);
     const appRef = useRef<App>(null);
 
-    const [posterJson, setPosterJson] = useState(
+    const [frameJson, setFrameJson] = useState(
       initialData ? JSON.stringify(initialData, null, 2) : ""
     );
     const [frameData, setFrameData] = useState<Record<string, unknown> | null>(
@@ -173,7 +161,7 @@ export const PosterCreator = forwardRef<PosterCreatorRef, PosterCreatorProps>(
     const el = getElementByPath(updated, layer.path);
     if (el) el.active = !el.active;
     setFrameData(updated);
-    setPosterJson(JSON.stringify(updated, null, 2));
+    setFrameJson(JSON.stringify(updated, null, 2));
     refreshLayers(updated);
   };
 
@@ -183,7 +171,7 @@ export const PosterCreator = forwardRef<PosterCreatorRef, PosterCreatorProps>(
     const el = getElementByPath(updated, layer.path);
     if (el) el.label = label;
     setFrameData(updated);
-    setPosterJson(JSON.stringify(updated, null, 2));
+    setFrameJson(JSON.stringify(updated, null, 2));
     setLayers((prev) =>
       prev.map((l) => (l.path.join(",") === layer.path.join(",") ? { ...l, label } : l))
     );
@@ -222,15 +210,15 @@ export const PosterCreator = forwardRef<PosterCreatorRef, PosterCreatorProps>(
       <div className="flex-1 min-w-0">
         <textarea
           className="ring-2 ring-green-600 p-2 rounded-2xl w-full"
-          value={posterJson}
-          onInput={(e) => setPosterJson((e.target as HTMLTextAreaElement).value)}
+          value={frameJson}
+          onInput={(e) => setFrameJson((e.target as HTMLTextAreaElement).value)}
           style={{ height: "100px" }}
           placeholder="Paste scene JSON here"
         />
         <button
           onClick={() => {
             try {
-              const data = JSON.parse(posterJson);
+              const data = JSON.parse(frameJson);
               if (data.tag !== "Frame") {
                 alert("Root element must be a Frame");
                 return;

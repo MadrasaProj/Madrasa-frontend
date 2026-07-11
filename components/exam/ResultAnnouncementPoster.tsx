@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Download, Share2, Loader2, Megaphone, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { downloadAsJPG, shareAsJPG } from "@/lib/poster-utils";
+import { downloadAsJPG, shareAsJPG, downloadAsPNG, shareAsPNG } from "@/lib/poster-utils";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -36,7 +36,7 @@ function fmtDate(d?: string | null) {
 
 export function ResultAnnouncementPoster({ exam, madrasaName, madrasaLogo, stats }: Props) {
   const posterRef                  = useRef<HTMLDivElement>(null);
-  const [exporting, setExporting]  = useState<"jpg" | "share" | null>(null);
+  const [exporting, setExporting]  = useState<"jpg" | "png" | "share" | null>(null);
 
   const stem = `result-announcement-${exam.name}`.replace(/\s+/g, "-");
   const publishDate = fmtDate(exam.publishedDate ?? exam.endDate);
@@ -44,15 +44,17 @@ export function ResultAnnouncementPoster({ exam, madrasaName, madrasaLogo, stats
     ? Math.round((stats.passCount / stats.totalStudents) * 100)
     : null;
 
-  const run = async (type: "jpg" | "share") => {
+  const run = async (type: "jpg" | "png" | "share") => {
     if (!posterRef.current) return;
     setExporting(type);
     try {
       if (type === "jpg") {
         await downloadAsJPG(posterRef.current, stem);
+      } else if (type === "png") {
+        await downloadAsPNG(posterRef.current, stem);
       } else {
-        await shareAsJPG(
-          posterRef.current, `${stem}.jpg`,
+        await shareAsPNG(
+          posterRef.current, `${stem}.png`,
           `Results Published — ${exam.name}`,
           `${exam.name} results are now available · ${madrasaName}`,
         );
@@ -74,7 +76,12 @@ export function ResultAnnouncementPoster({ exam, madrasaName, madrasaLogo, stats
         <button onClick={() => run("jpg")} disabled={!!exporting}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
           {exporting === "jpg" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-          Download JPG
+          JPG
+        </button>
+        <button onClick={() => run("png")} disabled={!!exporting}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
+          {exporting === "png" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+          PNG
         </button>
         <button onClick={() => run("share")} disabled={!!exporting}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 transition-colors">
@@ -172,7 +179,7 @@ export function ResultAnnouncementPoster({ exam, madrasaName, madrasaLogo, stats
 
           {/* Footer watermark */}
           <div className="flex items-center justify-between pt-1">
-            <span className="text-[9px] text-white/25 uppercase tracking-widest font-semibold">Al Madrasa Platform</span>
+            <span className="text-[9px] text-white/25 uppercase tracking-widest font-semibold">Smart Madrasa</span>
             <span className="text-[9px] text-white/25">{new Date().getFullYear()}</span>
           </div>
         </div>

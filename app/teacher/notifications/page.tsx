@@ -9,6 +9,8 @@ import {
   type NotificationRecord,
 } from "@/lib/notifications-api";
 import { useAuthStore } from "@/store/auth";
+import { useLanguageStore } from "@/store/language";
+import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
   Bell, ExternalLink,
@@ -27,6 +29,7 @@ const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: 
 
 export default function TeacherNotificationsPage() {
   const { user, accessToken } = useAuthStore();
+  const { lang } = useLanguageStore();
   const cid   = user?.clientId ?? "";
   const token = accessToken ?? "";
   const navigate = useNavigate();
@@ -68,8 +71,8 @@ export default function TeacherNotificationsPage() {
   return (
     <DashboardLayout>
       <PageHeader
-        title="Notifications"
-        subtitle={unread > 0 ? `${unread} unread` : "All read"}
+        title={t("teacherPages", "notifTitle", lang)}
+        subtitle={unread > 0 ? `${unread} ${t("teacherPages", "unread", lang)}` : t("teacherPages", "allCaughtUp", lang)}
         icon={Bell}
       />
 
@@ -80,7 +83,7 @@ export default function TeacherNotificationsPage() {
           <SkeletonList count={5} />
         </div>
       ) : notifs.length === 0 ? (
-        <div className="text-center py-16 text-gray-400 text-sm">No notifications</div>
+        <div className="text-center py-16 text-gray-400 text-sm">{t("teacherPages", "allCaughtUp", lang)}</div>
       ) : (
         <div className="space-y-2 pb-20">
           {notifs.map((n, i) => {

@@ -6,6 +6,8 @@ import { getExams, type ExamRecord } from "@/lib/exams-api";
 import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
 import { getHomeworkSummary } from "@/lib/reports-api";
 import { useAuthStore } from "@/store/auth";
+import { useLanguageStore } from "@/store/language";
+import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Star, TrendingUp, BookOpen, RefreshCw } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -31,6 +33,7 @@ function getGrade(score: number) {
 
 export default function TeacherPerformancePage() {
   const { user, accessToken } = useAuthStore();
+  const { lang } = useLanguageStore();
   const cid = user?.clientId ?? "";
   const token = accessToken ?? "";
   const ayId = user?.defaultAcademicYearId ?? "";
@@ -110,7 +113,7 @@ export default function TeacherPerformancePage() {
   return (
     <DashboardLayout>
       <PageHeader
-        title="Class Performance"
+        title={t("teacherPages", "classPerformanceTitle", lang)}
         icon={Star}
         back
         backHref="/teacher"
@@ -185,21 +188,21 @@ export default function TeacherPerformancePage() {
           <div className="grid grid-cols-3 gap-3 mb-5">
             {[
               {
-                label: "Students",
+                label: t("teacherPages", "studentsSummary", lang),
                 value: results.length,
                 icon: Star,
                 color: "text-blue-600",
                 bg: "bg-blue-50",
               },
               {
-                label: "Avg Score",
+                label: t("teacherPages", "avgScoreSummary", lang),
                 value: `${avgScore}%`,
                 icon: TrendingUp,
                 color: "text-emerald-600",
                 bg: "bg-emerald-50",
               },
               {
-                label: "HW Compl.",
+                label: t("teacherPages", "hwCompletionSummary", lang),
                 value: hwSummary ? `${hwSummary.completionRate}%` : "—",
                 icon: BookOpen,
                 color: "text-indigo-600",
@@ -227,15 +230,15 @@ export default function TeacherPerformancePage() {
           {results.length === 0 ? (
             <div className="text-center py-10 text-gray-400 text-sm">
               {exams.length === 0
-                ? "No exams found for this class"
-                : "No results recorded yet"}
+                ? t("teacherPages", "noExamsFound", lang)
+                : t("teacherPages", "noResultsRecorded", lang)}
             </div>
           ) : (
             <>
               {/* Grade distribution chart */}
               <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-5">
                 <p className="text-sm font-bold text-gray-800 mb-3">
-                  Grade Distribution
+                  {t("teacherPages", "gradeDistribution", lang)}
                 </p>
                 <ResponsiveContainer width="100%" height={160}>
                   <BarChart data={gradeData} barSize={36}>
@@ -257,7 +260,7 @@ export default function TeacherPerformancePage() {
                 <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-20">
                   <div className="px-4 py-3 bg-amber-50 border-b border-amber-100">
                     <p className="text-xs font-bold text-amber-700 uppercase tracking-wide flex items-center gap-1.5">
-                      <Star className="w-3.5 h-3.5" /> Top Students
+                      <Star className="w-3.5 h-3.5" /> {t("teacherPages", "topStudents", lang)}
                     </p>
                   </div>
                   <div className="divide-y divide-gray-50">

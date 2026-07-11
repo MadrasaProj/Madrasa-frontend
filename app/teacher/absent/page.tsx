@@ -18,10 +18,10 @@ function fmtDate(d: string) {
   return new Date(d).toLocaleDateString("en-GB", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
 }
 
-const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }> = {
-  ABSENT:  { label: "Absent",  color: "text-red-600",   bg: "bg-red-50" },
-  LATE:    { label: "Late",    color: "text-amber-700", bg: "bg-amber-50" },
-  EXCUSED: { label: "Excused", color: "text-blue-700",  bg: "bg-blue-50" },
+const STATUS_LABEL: Record<string, { labelKey: string; color: string; bg: string }> = {
+  ABSENT:  { labelKey: "absentLower",  color: "text-red-600",   bg: "bg-red-50" },
+  LATE:    { labelKey: "lateLower",    color: "text-amber-700", bg: "bg-amber-50" },
+  EXCUSED: { labelKey: "excusedLower", color: "text-blue-700",  bg: "bg-blue-50" },
 };
 
 export default function TeacherAbsentPage() {
@@ -109,7 +109,7 @@ export default function TeacherAbsentPage() {
             {" "}{t("teacherPages", "totalAbsent", lang)}
           </p>
           <button className="flex items-center gap-1.5 text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-xl">
-            <Bell className="w-3.5 h-3.5" /> Notify Parents
+            <Bell className="w-3.5 h-3.5" /> {t("teacherPages", "notifyParents", lang)}
           </button>
         </div>
       )}
@@ -133,7 +133,7 @@ export default function TeacherAbsentPage() {
           <div className="px-4 py-4 text-sm text-red-600 bg-red-50">{error}</div>
         ) : nonPresent.length === 0 ? (
           <div className="px-4 py-8 text-sm text-gray-400 text-center">
-            🎉 All students present in {selectedClass?.name ?? "this class"}
+            {t("teacherPages", "allPresentIn", lang)} {selectedClass?.name ?? ""}
           </div>
         ) : (
           <div className="divide-y divide-gray-50">
@@ -151,7 +151,7 @@ export default function TeacherAbsentPage() {
                     </p>
                   </div>
                   <span className={cn("text-xs font-bold px-2 py-1 rounded-lg", meta.bg, meta.color)}>
-                    {meta.label}
+                    {t("adminPages", meta.labelKey as any, lang)}
                   </span>
                 </div>
               );
@@ -165,7 +165,7 @@ export default function TeacherAbsentPage() {
           onClick={() => selectedClass && loadAttendance(selectedClass)}
           className="mt-3 flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 mx-auto"
         >
-          <RefreshCw className="w-3 h-3" /> Refresh
+          <RefreshCw className="w-3 h-3" /> {t("teacherPages", "refreshBtn", lang)}
         </button>
       )}
     </DashboardLayout>

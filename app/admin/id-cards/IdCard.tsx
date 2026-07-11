@@ -270,56 +270,21 @@ function CardCanvas({
       card.add(header);
     }
 
-    // Logo circle
+    // Logo (icon.svg — full Smart Madrasa mark)
 
     const logoY = 8;
 
     const logoSz = 26;
 
-    const logoCircle = new Rect({
+    const logoImg = new LeaferImage({
+      url: "/icons/icon.svg",
       x: 14 + pad,
-
       y: logoY,
-
       width: logoSz,
-
       height: logoSz,
-
-      fill:
-        theme === "minimal"
-          ? primaryColor
-          : theme === "islamic"
-            ? "rgba(255,255,255,0.15)"
-            : "rgba(255,255,255,0.2)",
-
-      cornerRadius: 6,
     });
 
-    card.add(logoCircle);
-
-    const logoText = new Text({
-      x: 14 + pad,
-
-      y: logoY,
-
-      width: logoSz,
-
-      height: logoSz,
-
-      text: "M",
-
-      fontSize: 12,
-
-      fill: theme === "minimal" ? "#fff" : "#fff",
-
-      textAlign: "center",
-
-      verticalAlign: "middle",
-
-      fontWeight: "bold",
-    });
-
-    card.add(logoText);
+    card.add(logoImg);
 
     const headerTextColor = theme === "minimal" ? "#111827" : "#fff";
 
@@ -766,6 +731,12 @@ export default function IDCardsPage() {
       setClasses(classData);
 
       setClientConfig(config ?? null);
+
+      const initialAvatars: Record<string, string> = {};
+      (stuData.data ?? []).forEach((s) => {
+        if (s.photoUrl) initialAvatars[s.id] = s.photoUrl;
+      });
+      setAvatars(initialAvatars);
 
       if (mapped.length > 0 && !selectedId) {
         setSelectedId(mapped[0].id);

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguageStore } from "@/store/language";
+import { t } from "@/lib/i18n";
 import { elections, Election } from "@/mock-data";
 import {
   Vote, CheckCircle2, Trophy, Lock,
@@ -62,10 +63,10 @@ export default function ParentElectionsPage() {
   };
 
   const statusLabel = (el: Election) => {
-    if (el.status === "active") return lang === "ml" ? "✅ വോട്ടിംഗ് തുറന്നിരിക്കുന്നു" : "✅ Voting Open";
-    if (el.status === "closed") return lang === "ml" ? "🔒 അടഞ്ഞു" : "🔒 Closed";
-    if (el.status === "results_published") return lang === "ml" ? "🏆 ഫലം പ്രസിദ്ധീകരിച്ചു" : "🏆 Results Published";
-    return lang === "ml" ? "ഡ്രാഫ്റ്റ്" : "Draft";
+    if (el.status === "active") return t("elections", "live", lang);
+    if (el.status === "closed") return t("elections", "closed", lang);
+    if (el.status === "results_published") return t("elections", "resultsPublished", lang);
+    return t("elections", "draft", lang);
   };
 
   return (
@@ -78,10 +79,10 @@ export default function ParentElectionsPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">
-              {lang === "ml" ? "തിരഞ്ഞെടുപ്പ്" : "Elections"}
+              {t("elections", "elections", lang)}
             </h1>
             <p className="text-xs text-gray-500">
-              {lang === "ml" ? "നിങ്ങളുടെ വോട്ട് ഇവിടെ രേഖപ്പെടുത്തുക" : "Cast your vote as a parent"}
+              {t("elections", "parentSubtitle", lang)}
             </p>
           </div>
         </div>
@@ -95,7 +96,7 @@ export default function ParentElectionsPage() {
             className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white px-6 py-3 rounded-2xl shadow-lg flex items-center gap-2 text-sm font-semibold"
           >
             <CheckCircle2 className="w-4 h-4" />
-            {lang === "ml" ? "വോട്ട് വിജയകരമായി രേഖപ്പെടുത്തി! ✅" : "Vote submitted successfully! ✅"}
+            {t("elections", "voteSubmitted", lang)}
           </motion.div>
         )}
       </AnimatePresence>
@@ -108,7 +109,7 @@ export default function ParentElectionsPage() {
         <Users className="w-5 h-5 text-emerald-700 shrink-0" />
         <div>
           <p className="text-sm font-bold text-emerald-800">
-            {lang === "ml" ? "നിങ്ങളുടെ കുട്ടികൾ" : "Voting on behalf of your children"}
+            {t("elections", "onBehalfOf", lang)}
           </p>
           <p className="text-xs text-emerald-600">
             {MY_CHILDREN.map((c) => `${c.name} (${c.class})`).join(" · ")}
@@ -120,7 +121,7 @@ export default function ParentElectionsPage() {
       {activeOnes.length > 0 && (
         <div className="mb-6">
           <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
-            {lang === "ml" ? "🗳️ തിരഞ്ഞെടുപ്പ് നടന്നുകൊണ്ടിരിക്കുന്നു" : "🗳️ Active Elections — Cast Your Vote"}
+            {t("elections", "activeElections", lang)}
           </p>
           <div className="space-y-3">
             {activeOnes.map((el, i) => {
@@ -140,13 +141,13 @@ export default function ParentElectionsPage() {
                       <div className="flex-1">
                         <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full mb-1">
                           <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                          {lang === "ml" ? "LIVE" : "LIVE"}
+                          {t("elections", "live", lang)}
                         </span>
                         <h3 className="font-bold text-gray-900 text-sm leading-snug">
                           {lang === "ml" ? el.title_ml : el.title}
                         </h3>
                         <p className="text-xs text-gray-500 mt-0.5">
-                          {lang === "ml" ? el.position_ml : el.position} · {lang === "ml" ? "അവസാന തീയതി" : "Ends"}: {el.endDate}
+                          {lang === "ml" ? el.position_ml : el.position} · {t("elections", "endsOn", lang)}: {el.endDate}
                         </p>
                       </div>
                     </div>
@@ -162,11 +163,11 @@ export default function ParentElectionsPage() {
                         </div>
                         <div>
                           <p className="text-xs font-bold text-emerald-700">
-                            {lang === "ml" ? "✅ നിങ്ങൾ വോട്ട് ചെയ്തു" : "✅ Your Vote Submitted"}
+                            {t("elections", "alreadyVoted", lang)}
                           </p>
                           {myVoteCandidate && (
                             <p className="text-xs text-emerald-600">
-                              {lang === "ml" ? "തിരഞ്ഞെടുത്തത്" : "Voted for"}: {myVoteCandidate.symbol} {myVoteCandidate.name}
+                              {t("elections", "votedFor", lang)}: {myVoteCandidate.symbol} {myVoteCandidate.name}
                             </p>
                           )}
                         </div>
@@ -174,10 +175,10 @@ export default function ParentElectionsPage() {
                     ) : (
                       <button
                         onClick={() => openVote(el)}
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm py-3 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-sm shadow-emerald-200"
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm py-3 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-sm"
                       >
                         <Vote className="w-4 h-4" />
-                        {lang === "ml" ? "ഇപ്പോൾ വോട്ട് ചെയ്യുക" : "Cast Your Vote Now"}
+                        {t("elections", "castVoteNow", lang)}
                         <ChevronRight className="w-4 h-4" />
                       </button>
                     )}
@@ -193,7 +194,7 @@ export default function ParentElectionsPage() {
       {pastOnes.length > 0 && (
         <div>
           <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
-            {lang === "ml" ? "📁 കഴിഞ്ഞ തിരഞ്ഞെടുപ്പുകൾ" : "📁 Past Elections"}
+            {t("elections", "pastElections", lang)}
           </p>
           <div className="space-y-3">
             {pastOnes.map((el, i) => {
@@ -216,12 +217,12 @@ export default function ParentElectionsPage() {
                       <p className="text-xs text-gray-400">{lang === "ml" ? el.position_ml : el.position}</p>
                       {winner && (
                         <p className="text-xs text-amber-700 font-semibold mt-1">
-                          🏆 {lang === "ml" ? "ജേതാവ്" : "Winner"}: {winner.symbol} {winner.name}
+                          🏆 {t("elections", "winner", lang)}: {winner.symbol} {winner.name}
                         </p>
                       )}
                       {myVoteCandidate && (
                         <p className="text-xs text-emerald-600 mt-0.5">
-                          ✅ {lang === "ml" ? "നിങ്ങൾ വോട്ട് ചെയ്തത്" : "Your vote"}: {myVoteCandidate.symbol} {myVoteCandidate.name}
+                          ✅ {t("elections", "votedFor", lang)}: {myVoteCandidate.symbol} {myVoteCandidate.name}
                         </p>
                       )}
                     </div>
@@ -260,7 +261,7 @@ export default function ParentElectionsPage() {
         <div className="text-center py-20">
           <Vote className="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500 font-medium">
-            {lang === "ml" ? "ഇപ്പോൾ തിരഞ്ഞെടുപ്പൊന്നും ലഭ്യമല്ല" : "No elections available right now"}
+            {t("elections", "noElections", lang)}
           </p>
         </div>
       )}
@@ -283,13 +284,13 @@ export default function ParentElectionsPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-emerald-200 text-[11px] font-bold uppercase tracking-widest mb-1">
-                      {lang === "ml" ? "🗳️ വോട്ടിംഗ് ബൂത്ത്" : "🗳️ Voting Booth"}
+                      {t("elections", "votingBooth", lang)}
                     </p>
                     <h2 className="text-lg font-bold leading-snug">
                       {lang === "ml" ? activeElection.title_ml : activeElection.title}
                     </h2>
                     <p className="text-emerald-200 text-xs mt-1">
-                      {lang === "ml" ? "ഒരു സ്ഥാനാർത്ഥിയെ തിരഞ്ഞെടുക്കുക" : "Choose one candidate — your vote cannot be changed"}
+                      {t("elections", "chooseCandidate", lang)}
                     </p>
                   </div>
                   <button
@@ -307,15 +308,13 @@ export default function ParentElectionsPage() {
                   <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-4 flex items-start gap-2">
                     <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                     <p className="text-xs text-amber-700 leading-relaxed">
-                      {lang === "ml"
-                        ? "⚠️ ഒരു തവണ വോട്ട് ചെയ്‌തുകഴിഞ്ഞാൽ മാറ്റാൻ കഴിയില്ല. ശ്രദ്ധയോടെ തിരഞ്ഞെടുക്കുക."
-                        : "⚠️ Once submitted, your vote cannot be changed. Choose carefully."}
+                      {t("elections", "oneVoteWarning", lang)}
                     </p>
                   </div>
 
                   {/* Candidates */}
                   <p className="text-sm font-bold text-gray-800 mb-3">
-                    {lang === "ml" ? "സ്ഥാനാർത്ഥികൾ" : "Candidates"} ({activeElection.candidates.length})
+                    {t("elections", "candidates", lang)} ({activeElection.candidates.length})
                   </p>
                   <div className="space-y-3 mb-5">
                     {activeElection.candidates.map((c) => (
@@ -324,8 +323,8 @@ export default function ParentElectionsPage() {
                         onClick={() => setSelectedCandidate(c.id)}
                         className={`w-full text-left rounded-2xl border-2 transition-all p-4 ${
                           selectedCandidate === c.id
-                            ? "border-emerald-500 bg-emerald-50 shadow-sm shadow-emerald-100"
-                            : "border-gray-200 bg-white hover:border-gray-300"
+                          ? "border-emerald-500 bg-emerald-50 shadow-sm"
+                          : "border-gray-200 bg-white hover:border-gray-300"
                         }`}
                       >
                         <div className="flex items-start gap-3">
@@ -356,11 +355,11 @@ export default function ParentElectionsPage() {
                     onClick={() => setConfirmStep(true)}
                     className={`w-full py-3.5 rounded-2xl font-bold text-sm transition-all ${
                       selectedCandidate
-                        ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-200"
-                        : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
                     }`}
                   >
-                    {lang === "ml" ? "തുടരുക →" : "Continue →"}
+                    {t("elections", "continue", lang)}
                   </button>
                 </div>
               ) : (
@@ -371,10 +370,10 @@ export default function ParentElectionsPage() {
                       <Vote className="w-8 h-8 text-emerald-600" />
                     </div>
                     <h3 className="text-lg font-bold text-gray-900">
-                      {lang === "ml" ? "നിങ്ങളുടെ വോട്ട് ഉറപ്പുവരുത്തുക" : "Confirm Your Vote"}
+                      {t("elections", "confirmVote", lang)}
                     </h3>
                     <p className="text-sm text-gray-500 mt-1">
-                      {lang === "ml" ? "ഒരിക്കൽ സ്ഥിരീകരിച്ചാൽ മാറ്റം വരുത്താൻ കഴിയില്ല" : "This action cannot be undone"}
+                      {t("elections", "cannotUndo", lang)}
                     </p>
                   </div>
 
@@ -387,7 +386,7 @@ export default function ParentElectionsPage() {
                         <p className="font-bold text-gray-900">{c.name}</p>
                         <p className="text-xs text-gray-500">{c.class}</p>
                         <p className="text-xs text-emerald-700 font-semibold mt-1">
-                          {lang === "ml" ? "ഈ സ്ഥാനാർത്ഥിക്ക് വോട്ട് ചെയ്യുന്നു" : "You are voting for this candidate"}
+                          {t("elections", "votingFor", lang)}
                         </p>
                       </div>
                     ) : null;
@@ -398,13 +397,13 @@ export default function ParentElectionsPage() {
                       onClick={() => setConfirmStep(false)}
                       className="flex-1 py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-all"
                     >
-                      {lang === "ml" ? "← തിരികെ" : "← Back"}
+                      {t("common", "back", lang)}
                     </button>
                     <button
                       onClick={submitVote}
-                      className="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-sm shadow-emerald-200 transition-all"
+                      className="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-sm transition-all"
                     >
-                      {lang === "ml" ? "✅ വോട്ട് സ്ഥിരീകരിക്കുക" : "✅ Confirm Vote"}
+                      {t("elections", "submitConfirm", lang)}
                     </button>
                   </div>
                 </div>

@@ -1,72 +1,57 @@
-import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { useAuthStore } from "@/store/auth";
-import { getPosters, type PosterRecord } from "@/lib/posters-api";
+import { useLanguageStore } from "@/store/language";
+import { t } from "@/lib/i18n";
+import { useSocialFrames } from "@/lib/queries";
 import { getCoverImageUrl } from "@/lib/poster-utils";
 import { SkeletonGrid } from "@/components/ui/Skeleton";
 
-interface PublicPostersPageProps {
+interface PublicSocialFramesPageProps {
   basePath: string;
 }
 
-export default function PublicPostersPage({ basePath }: PublicPostersPageProps) {
+export default function PublicSocialFramesPage({ basePath }: PublicSocialFramesPageProps) {
   const { user } = useAuthStore();
+  const { lang } = useLanguageStore();
   const clientId = user?.clientId ?? "";
   const navigate = useNavigate();
 
-  const [posters, setPosters] = useState<PosterRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const loadPosters = useCallback(async () => {
-    if (!clientId) return;
-    setLoading(true);
-    try {
-      const res = await getPosters(clientId, { limit: 100 });
-      setPosters(res.data);
-    } catch {
-      setPosters([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [clientId]);
-
-  useEffect(() => {
-    loadPosters();
-  }, [loadPosters]);
+  const { data, isLoading } = useSocialFrames(clientId, { limit: 100 });
+  const frames = data?.data ?? [];
 
   return (
     <DashboardLayout>
       <div className="space-y-4">
-        <h1 className="text-lg font-semibold">Posters</h1>
+        <h1 className="text-lg font-semibold">{t("adminPages", "socialFramesTitle", lang)}</h1>
 
-        {loading ? (
+        {isLoading ? (
           <SkeletonGrid count={3} className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" />
-        ) : posters.length === 0 ? (
+        ) : frames.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
-            <p className="text-sm">No posters available.</p>
+            <p className="text-sm">{t("adminPages", "noSocialFrames", lang)}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {posters.map((poster) => (
+            {frames.map((frame) => (
               <div
-                key={poster.id}
-                onClick={() => navigate(`${basePath}/posters/${poster.id}`)}
+                key={frame.id}
+                onClick={() => navigate(`${basePath}/social-frames/${frame.id}`)}
                 className="border rounded-xl bg-white overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
               >
                 <div className="aspect-video bg-gray-100">
-                  {getCoverImageUrl(poster.sceneData) && (
+                  {getCoverImageUrl(frame.sceneData) && (
                     <img
-                      src={getCoverImageUrl(poster.sceneData)!}
-                      alt={poster.title}
+                      src={getCoverImageUrl(frame.sceneData)!}
+                      alt={frame.title}
                       className="w-full h-full object-cover"
                     />
                   )}
                 </div>
                 <div className="p-3">
-                  <p className="text-sm font-medium truncate">{poster.title}</p>
+                  <p className="text-sm font-medium truncate">{frame.title}</p>
                   <p className="text-[11px] text-gray-400">
-                    {new Date(poster.updatedAt).toLocaleDateString()}
+                    {new Date(frame.updatedAt).toLocaleDateString()}
                   </p>
                 </div>
               </div>

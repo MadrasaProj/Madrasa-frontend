@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
@@ -8,13 +8,8 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth";
-import {
-  createLeaveRequest,
-  getMyLeaveRequests,
-  type LeaveRequest,
-  type LeaveReasonType,
-  type LeaveRequestStatus,
-} from "@/lib/leave-requests-api";
+import type { LeaveReasonType, LeaveRequestStatus } from "@/lib/leave-requests-api";
+import { useMyLeaveRequests, useCreateLeaveRequest } from "@/lib/queries";
 import {
   Loader2,
   Send,
@@ -30,30 +25,26 @@ import {
 const STATUS_CONFIG: Record<
   LeaveRequestStatus,
   {
-    label: string;
-    labelMl: string;
+    labelKey: string;
     color: string;
     bg: string;
     icon: typeof Clock;
   }
 > = {
   PENDING: {
-    label: "Pending",
-    labelMl: "തീരുമാനമായിട്ടില്ല",
+    labelKey: "pendingLabel",
     color: "text-amber-600",
     bg: "bg-amber-50",
     icon: Clock,
   },
   APPROVED: {
-    label: "Approved",
-    labelMl: "അനുവദിച്ചു",
+    labelKey: "approvedLabel",
     color: "text-emerald-600",
     bg: "bg-emerald-50",
     icon: CheckCircle2,
   },
   REJECTED: {
-    label: "Rejected",
-    labelMl: "നിരസിച്ചു",
+    labelKey: "rejectedLabel",
     color: "text-red-600",
     bg: "bg-red-50",
     icon: XCircle,
@@ -62,17 +53,15 @@ const STATUS_CONFIG: Record<
 
 const REASON_CONFIG: Record<
   LeaveReasonType,
-  { label: string; labelMl: string; color: string; bg: string }
+  { labelKey: string; color: string; bg: string }
 > = {
   LEAVE: {
-    label: "Leave",
-    labelMl: "ലീവ്",
+    labelKey: "leaveLabel",
     color: "text-amber-600",
     bg: "bg-amber-50",
   },
   SICK: {
-    label: "Sick",
-    labelMl: "അസുഖം",
+    labelKey: "sickLabel",
     color: "text-orange-600",
     bg: "bg-orange-50",
   },
@@ -85,39 +74,24 @@ export default function ParentLeaveRequestsPage() {
   const token = accessToken ?? "";
   const studentId = activeStudentId ?? user?.accessibleStudentIds?.[0] ?? "";
 
-  const [requests, setRequests] = useState<LeaveRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   const [showForm, setShowForm] = useState(false);
   const [reasonType, setReasonType] = useState<LeaveReasonType>("LEAVE");
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [submitting, setSubmitting] = useState(false);
 
-  const loadRequests = async () => {
-    if (!cid || !token || !studentId) return;
-    setLoading(true);
-    try {
-      const res = await getMyLeaveRequests(cid, token, { studentId });
-      setRequests(res.requests);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data, isLoading, error, refetch } = useMyLeaveRequests(
+    { clientId: cid, token },
+    { studentId },
+  );
+  const requests = data?.requests ?? [];
 
-  useEffect(() => {
-    loadRequests();
-  }, [cid, token, studentId]);
+  const createMutation = useCreateLeaveRequest({ clientId: cid, token });
 
   const handleSubmit = async () => {
     if (!cid || !token || !studentId || !description || !startDate) return;
-    setSubmitting(true);
     try {
-      await createLeaveRequest(cid, token, {
+      await createMutation.mutateAsync({
         studentId,
         reasonType,
         description,
@@ -129,20 +103,20 @@ export default function ParentLeaveRequestsPage() {
       setStartDate("");
       setEndDate("");
       setShowForm(false);
-      loadRequests();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setSubmitting(false);
+      refetch();
+    } catch {
+      // surfaced via mutation state
     }
   };
 
   const today = new Date().toISOString().split("T")[0];
+  const errorMessage = error instanceof Error ? error.message : null;
+  const createError = createMutation.error instanceof Error ? createMutation.error.message : null;
 
   if (!studentId) {
     return (
       <DashboardLayout>
-        <div className="p-6 text-center text-gray-500">No student selected</div>
+        <div className="p-6 text-center text-gray-500">{t("parentPages", "noStudentSelected", lang)}</div>
       </DashboardLayout>
     );
   }
@@ -151,8 +125,8 @@ export default function ParentLeaveRequestsPage() {
     <DashboardLayout>
       <div className="p-4 sm:p-6 mx-auto">
         <PageHeader
-          title="Leave Requests"
-          subtitle="Apply for leave or sick leave"
+          title={t("parentPages", "leaveRequestsTitle", lang)}
+          subtitle={t("parentPages", "leaveRequestsSub", lang)}
           icon={FilePen}
           back
           backHref="/parent"
@@ -162,15 +136,15 @@ export default function ParentLeaveRequestsPage() {
               className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-all duration-200 active:scale-[0.98] shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
             >
               <Plus className="w-4 h-4" />
-              New Request
+              {t("parentPages", "newRequest", lang)}
             </button>
           }
         />
 
-        {error && <ApiErrorBanner message={error} />}
+        {(errorMessage || createError) && <ApiErrorBanner message={errorMessage ?? createError ?? ""} />}
 
         <div className="space-y-3">
-          {loading ? (
+          {isLoading ? (
             <div className="space-y-3">
               {[1, 2, 3, 4].map((i) => (
                 <Skeleton key={i} className="h-24 rounded-2xl" />
@@ -179,7 +153,7 @@ export default function ParentLeaveRequestsPage() {
           ) : requests.length === 0 ? (
             <div className="text-center py-12 text-gray-400">
               <AlertCircle className="w-8 h-8 mx-auto mb-2" />
-              <p className="text-sm">No leave requests yet</p>
+              <p className="text-sm">{t("parentPages", "noLeaveRequests", lang)}</p>
             </div>
           ) : (
             requests.map((r) => {
@@ -200,7 +174,7 @@ export default function ParentLeaveRequestsPage() {
                           rc.color,
                         )}
                       >
-                        {rc.label}
+                        {t("parentPages", rc.labelKey as any, lang)}
                       </span>
                       <span
                         className={cn(
@@ -210,7 +184,7 @@ export default function ParentLeaveRequestsPage() {
                         )}
                       >
                         <Icon className="w-3 h-3" />
-                        {sc.label}
+                        {t("parentPages", sc.labelKey as any, lang)}
                       </span>
                     </div>
                     <span className="text-xs text-gray-400">
@@ -260,7 +234,7 @@ export default function ParentLeaveRequestsPage() {
             >
               <div className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-sm shadow-xl overflow-hidden">
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                  <p className="font-bold text-gray-900">Apply for Leave</p>
+                  <p className="font-bold text-gray-900">{t("parentPages", "applyForLeave", lang)}</p>
                   <button
                     onClick={() => setShowForm(false)}
                     className="p-1 text-gray-400 hover:text-gray-600"
@@ -271,7 +245,7 @@ export default function ParentLeaveRequestsPage() {
                 <div className="px-5 py-4 space-y-4">
                   <div>
                     <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
-                      Reason Type
+                      {t("parentPages", "reasonType", lang)}
                     </label>
                     <div className="flex gap-2">
                       {(["LEAVE", "SICK"] as const).map((r) => (
@@ -287,7 +261,7 @@ export default function ParentLeaveRequestsPage() {
                               : "border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700",
                           )}
                         >
-                          {REASON_CONFIG[r].label}
+                          {t("parentPages", REASON_CONFIG[r].labelKey as any, lang)}
                         </button>
                       ))}
                     </div>
@@ -295,12 +269,12 @@ export default function ParentLeaveRequestsPage() {
 
                   <div>
                     <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
-                      Description
+                      {t("parentPages", "descriptionLabel", lang)}
                     </label>
                     <textarea
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Reason for leave..."
+                      placeholder={t("parentPages", "reasonPlaceholder", lang)}
                       rows={3}
                       className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 resize-none transition-all"
                     />
@@ -309,7 +283,7 @@ export default function ParentLeaveRequestsPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
-                        Start Date
+                        {t("parentPages", "startDateLabel", lang)}
                       </label>
                       <input
                         type="date"
@@ -321,7 +295,7 @@ export default function ParentLeaveRequestsPage() {
                     </div>
                     <div>
                       <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
-                        End Date (optional)
+                        {t("parentPages", "endDateLabel", lang)}
                       </label>
                       <input
                         type="date"
@@ -338,19 +312,19 @@ export default function ParentLeaveRequestsPage() {
                     onClick={() => setShowForm(false)}
                     className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 active:scale-[0.98] transition-all duration-200"
                   >
-                    Cancel
+                    {t("parentPages", "cancelLabel", lang)}
                   </button>
                   <button
                     onClick={handleSubmit}
-                    disabled={submitting || !description || !startDate}
+                    disabled={createMutation.isPending || !description || !startDate}
                     className="flex-[2] py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                   >
-                    {submitting ? (
+                    {createMutation.isPending ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <Send className="w-4 h-4" />
                     )}
-                    Submit
+                    {t("parentPages", "submitLabel", lang)}
                   </button>
                 </div>
               </div>

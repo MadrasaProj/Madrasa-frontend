@@ -14,7 +14,7 @@ interface PageHeaderProps {
 export function PageHeader({ title, subtitle, icon: Icon, back, backHref, action }: PageHeaderProps) {
   const navigate = useNavigate();
   return (
-    <div className="flex items-center justify-between gap-3 mb-5 lg:mb-6">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 mb-5 lg:mb-6">
       <div className="flex items-center gap-2.5 min-w-0 flex-1">
         {back && (
           <button

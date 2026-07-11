@@ -5,605 +5,612 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
-  getFeeTypes, getPayments, updatePayment, getPaymentReceipt,
-  cancelPayment as cancelPaymentApi,
-  undoCancelPayment as undoCancelPaymentApi,
-  type FeeType, type FeePayment, type ReceiptData,
-  type FeePaymentStatus,
+ getFeeTypes, getPayments, updatePayment, getPaymentReceipt,
+ cancelPayment as cancelPaymentApi,
+ undoCancelPayment as undoCancelPaymentApi,
+ type FeeType, type FeePayment, type ReceiptData,
+ type FeePaymentStatus,
 } from "@/lib/fees-api";
 import { useAuthStore } from "@/store/auth";
+import { useLanguageStore } from "@/store/language";
+import { t, type Lang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
-  CreditCard, Loader2, Receipt, CheckCircle, Search, RefreshCw, Printer, XCircle, ChevronDown,
+ CreditCard, Loader2, Receipt, CheckCircle, Search, RefreshCw, Printer, XCircle, ChevronDown,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const STATUS_META: Record<FeePaymentStatus, { label: string; color: string; bg: string }> = {
-  PENDING: { label: "Pending", color: "text-amber-700", bg: "bg-amber-50" },
-  PAID: { label: "Paid", color: "text-emerald-700", bg: "bg-emerald-50" },
-  PARTIAL: { label: "Partial", color: "text-blue-700", bg: "bg-blue-50" },
-  OVERDUE: { label: "Overdue", color: "text-red-700", bg: "bg-red-50" },
-  WAIVED: { label: "Waived", color: "text-gray-500", bg: "bg-gray-100" },
-};
+function getStatusMeta(lang: Lang): Record<FeePaymentStatus, { label: string; color: string; bg: string }> {
+  return {
+    PENDING: { label: t("common", "pending", lang), color: "text-amber-700", bg: "bg-amber-50" },
+    PAID: { label: t("common", "paid", lang), color: "text-emerald-700", bg: "bg-emerald-50" },
+    PARTIAL: { label: t("teacherPages", "partialLabel", lang), color: "text-blue-700", bg: "bg-blue-50" },
+    OVERDUE: { label: t("teacherPages", "overdueLabel", lang), color: "text-red-700", bg: "bg-red-50" },
+    WAIVED: { label: "Waived", color: "text-gray-500", bg: "bg-gray-100" },
+  };
+}
 
 const PAYMENT_METHODS = ["CASH", "BANK_TRANSFER", "UPI", "CHEQUE", "OTHER"] as const;
 
 function ReceiptModal({ receipt, onClose }: { receipt: ReceiptData; onClose: () => void }) {
+  const { lang } = useLanguageStore();
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <motion.div initial={{ scale: 0.94, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-        className="relative bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
-        <div className="bg-emerald-600 px-6 py-5 text-white text-center">
-          <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-2">
-            <Receipt className="w-6 h-6 text-white" />
-          </div>
-          <p className="font-bold text-lg">{receipt.client.name}</p>
-          <p className="text-emerald-100 text-xs uppercase tracking-widest mt-0.5">Fee Receipt</p>
-        </div>
-        <div className="px-6 py-5 space-y-2.5">
-          {([
-            ["Receipt No", receipt.reference ?? receipt.id.slice(0, 8).toUpperCase()],
-            ["Student", receipt.student.name],
-            ["Adm No", receipt.student.adno],
-            ["Class", receipt.student.class?.name ?? "—"],
-            ["Fee Type", receipt.feeType.name],
-            ["Paid On", receipt.paidAt ? new Date(receipt.paidAt).toLocaleDateString("en-GB") : "—"],
-            ["Method", receipt.method ?? "—"],
-          ] as [string, string][]).map(([label, value]) => (
-            <div key={label} className="flex justify-between items-start gap-4">
-              <p className="text-xs text-gray-400 shrink-0">{label}</p>
-              <p className="text-xs font-semibold text-gray-900 text-right">{value}</p>
-            </div>
-          ))}
-          <div className="border-t border-dashed border-gray-200 pt-3 flex justify-between items-center">
-            <p className="font-bold text-gray-900">Amount Paid</p>
-            <p className="text-xl font-bold text-emerald-600">₹{Number(receipt.paidAmount ?? 0).toLocaleString()}</p>
-          </div>
-        </div>
-        <div className="px-6 pb-5 flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 border rounded-xl text-sm font-semibold text-gray-600">Close</button>
-          <button onClick={() => window.print()} className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5">
-            <Printer className="w-4 h-4" /> Print
-          </button>
-        </div>
-      </motion.div>
-    </div>
-  );
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+ <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+ <motion.div initial={{ scale: 0.94, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+ className="relative bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
+ <div className="bg-emerald-600 px-6 py-5 text-white text-center">
+ <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-2">
+ <Receipt className="w-6 h-6 text-white" />
+ </div>
+ <p className="font-bold text-lg">{receipt.client.name}</p>
+  <p className="text-emerald-100 text-xs uppercase tracking-widest mt-0.5">{t("teacherPages", "feeReceiptTitle", lang)}</p>
+ </div>
+ <div className="px-6 py-5 space-y-2.5">
+ {([
+  [t("teacherPages", "receiptNoLabel", lang), receipt.reference ?? receipt.id.slice(0, 8).toUpperCase()],
+  [t("common", "name", lang), receipt.student.name],
+  [t("parentPages", "admNoLabel", lang), receipt.student.adno],
+  [t("common", "class", lang), receipt.student.class?.name ?? "—"],
+  [t("parentPages", "feeTypeLabel", lang), receipt.feeType.name],
+  [t("teacherPages", "paidOnLabel", lang), receipt.paidAt ? new Date(receipt.paidAt).toLocaleDateString("en-GB") : "—"],
+  [t("parentPages", "methodLabel", lang), receipt.method ?? "—"],
+ ] as [string, string][]).map(([label, value]) => (
+ <div key={label} className="flex justify-between items-start gap-4">
+ <p className="text-xs text-gray-400 shrink-0">{label}</p>
+ <p className="text-xs font-semibold text-gray-900 text-right">{value}</p>
+ </div>
+ ))}
+ <div className="border-t border-dashed border-gray-200 pt-3 flex justify-between items-center">
+  <p className="font-bold text-gray-900">{t("teacherPages", "amountPaidLabel", lang)}</p>
+ <p className="text-xl font-bold text-emerald-600">₹{Number(receipt.paidAmount ?? 0).toLocaleString()}</p>
+ </div>
+ </div>
+ <div className="px-6 pb-5 flex gap-2">
+  <button onClick={onClose} className="flex-1 py-2.5 border rounded-xl text-sm font-semibold text-gray-600">{t("common", "close", lang)}</button>
+  <button onClick={() => window.print()} className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5">
+  <Printer className="w-4 h-4" /> {t("common", "print", lang)}
+ </button>
+ </div>
+ </motion.div>
+ </div>
+ );
 }
 
 export default function TeacherFeesPage() {
   const { user, accessToken, activeClientId } = useAuthStore();
+  const { lang } = useLanguageStore();
+  const STATUS_META = getStatusMeta(lang);
   const cid = activeClientId ?? "";
-  const token = accessToken ?? "";
+ const token = accessToken ?? "";
 
-  const [feeTypes, setFeeTypes] = useState<FeeType[]>([]);
-  const [activeTypeId, setActiveTypeId] = useState<string | null>(null);
-  const [typesLoading, setTypesLoading] = useState(true);
+ const [feeTypes, setFeeTypes] = useState<FeeType[]>([]);
+ const [activeTypeId, setActiveTypeId] = useState<string | null>(null);
+ const [typesLoading, setTypesLoading] = useState(true);
 
-  const [payments, setPayments] = useState<FeePayment[]>([]);
-  const [payTotal, setPayTotal] = useState(0);
-  const [payLoading, setPayLoading] = useState(false);
-  const [paySkip, setPaySkip] = useState(0);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+ const [payments, setPayments] = useState<FeePayment[]>([]);
+ const [payTotal, setPayTotal] = useState(0);
+ const [payLoading, setPayLoading] = useState(false);
+ const [paySkip, setPaySkip] = useState(0);
+ const [search, setSearch] = useState("");
+ const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const [recording, setRecording] = useState<string | null>(null);
-  const [payMethod, setPayMethod] = useState("CASH");
-  const [payRef, setPayRef] = useState("");
-  const [saving, setSaving] = useState(false);
+ const [recording, setRecording] = useState<string | null>(null);
+ const [payMethod, setPayMethod] = useState("CASH");
+ const [payRef, setPayRef] = useState("");
+ const [saving, setSaving] = useState(false);
 
-  const [receipt, setReceipt] = useState<ReceiptData | null>(null);
-  const [loadingReceipt, setLoadingReceipt] = useState<string | null>(null);
+ const [receipt, setReceipt] = useState<ReceiptData | null>(null);
+ const [loadingReceipt, setLoadingReceipt] = useState<string | null>(null);
 
-  const [cancelling, setCancelling] = useState<string | null>(null);
-  const [cancellingNote, setCancellingNote] = useState("");
-  const [cancellingSave, setCancellingSave] = useState(false);
+ const [cancelling, setCancelling] = useState<string | null>(null);
+ const [cancellingNote, setCancellingNote] = useState("");
+ const [cancellingSave, setCancellingSave] = useState(false);
 
-  const [error, setError] = useState<string | null>(null);
-  const [typeDropdownOpen, setTypeDropdownOpen] = useState(false);
-  const typeDropdownRef = useRef<HTMLDivElement | null>(null);
-  const chevronBtnRef = useRef<HTMLButtonElement | null>(null);
-  const [chevronRect, setChevronRect] = useState<{ top: number; right: number } | null>(null);
+ const [error, setError] = useState<string | null>(null);
+ const [typeDropdownOpen, setTypeDropdownOpen] = useState(false);
+ const typeDropdownRef = useRef<HTMLDivElement | null>(null);
+ const chevronBtnRef = useRef<HTMLButtonElement | null>(null);
+ const [chevronRect, setChevronRect] = useState<{ top: number; right: number } | null>(null);
 
-  const loadTypes = useCallback(async () => {
-    if (!cid || !token) return;
-    setTypesLoading(true); setError(null);
-    try { setFeeTypes(await getFeeTypes(cid, token, user?.defaultAcademicYearId ?? undefined)); }
-    catch (e) { setError((e as Error).message); }
-    finally { setTypesLoading(false); }
-  }, [cid, token, user?.defaultAcademicYearId]);
+ const loadTypes = useCallback(async () => {
+ if (!cid || !token) return;
+ setTypesLoading(true); setError(null);
+ try { setFeeTypes(await getFeeTypes(cid, token, user?.defaultAcademicYearId ?? undefined)); }
+ catch (e) { setError((e as Error).message); }
+ finally { setTypesLoading(false); }
+ }, [cid, token, user?.defaultAcademicYearId]);
 
-  useEffect(() => { if (cid && token) loadTypes(); }, [cid, token, loadTypes]);
+ useEffect(() => { if (cid && token) loadTypes(); }, [cid, token, loadTypes]);
 
-  const loadPayments = useCallback(async () => {
-    if (!cid || !token) return;
-    setPayLoading(true);
-    try {
-      const res = await getPayments(cid, token, {
-        feeTypeId: activeTypeId ?? undefined,
-        status: statusFilter !== "all" ? (statusFilter as FeePaymentStatus) : undefined,
-        skip: paySkip, take: 30,
-      });
-      setPayments(res.payments); setPayTotal(res.total);
-    } catch (e) { setError((e as Error).message); }
-    finally { setPayLoading(false); }
-  }, [cid, token, activeTypeId, statusFilter, paySkip]);
+ const loadPayments = useCallback(async () => {
+ if (!cid || !token) return;
+ setPayLoading(true);
+ try {
+ const res = await getPayments(cid, token, {
+ feeTypeId: activeTypeId ?? undefined,
+ status: statusFilter !== "all" ? (statusFilter as FeePaymentStatus) : undefined,
+ skip: paySkip, take: 30,
+ });
+ setPayments(res.payments); setPayTotal(res.total);
+ } catch (e) { setError((e as Error).message); }
+ finally { setPayLoading(false); }
+ }, [cid, token, activeTypeId, statusFilter, paySkip]);
 
-  useEffect(() => { loadPayments(); }, [loadPayments]);
+ useEffect(() => { loadPayments(); }, [loadPayments]);
 
-  useEffect(() => {
-    if (!typeDropdownOpen) return;
-    const onClick = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (
-        typeDropdownRef.current && !typeDropdownRef.current.contains(t) &&
-        !(t as HTMLElement).closest?.("[data-fee-dropdown-panel]")
-      ) {
-        setTypeDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, [typeDropdownOpen]);
+ useEffect(() => {
+ if (!typeDropdownOpen) return;
+ const onClick = (e: MouseEvent) => {
+ const t = e.target as Node;
+ if (
+ typeDropdownRef.current && !typeDropdownRef.current.contains(t) &&
+ !(t as HTMLElement).closest?.("[data-fee-dropdown-panel]")
+ ) {
+ setTypeDropdownOpen(false);
+ }
+ };
+ document.addEventListener("mousedown", onClick);
+ return () => document.removeEventListener("mousedown", onClick);
+ }, [typeDropdownOpen]);
 
-  useEffect(() => {
-    if (!typeDropdownOpen) return;
-    const updatePos = () => {
-      const r = chevronBtnRef.current?.getBoundingClientRect();
-      if (r) setChevronRect({ top: r.bottom + 8, right: window.innerWidth - r.right });
-    };
-    updatePos();
-    window.addEventListener("scroll", updatePos, true);
-    window.addEventListener("resize", updatePos);
-    return () => {
-      window.removeEventListener("scroll", updatePos, true);
-      window.removeEventListener("resize", updatePos);
-    };
-  }, [typeDropdownOpen]);
+ useEffect(() => {
+ if (!typeDropdownOpen) return;
+ const updatePos = () => {
+ const r = chevronBtnRef.current?.getBoundingClientRect();
+ if (r) setChevronRect({ top: r.bottom + 8, right: window.innerWidth - r.right });
+ };
+ updatePos();
+ window.addEventListener("scroll", updatePos, true);
+ window.addEventListener("resize", updatePos);
+ return () => {
+ window.removeEventListener("scroll", updatePos, true);
+ window.removeEventListener("resize", updatePos);
+ };
+ }, [typeDropdownOpen]);
 
-  const toggleTypeDropdown = () => {
-    if (!typeDropdownOpen && chevronBtnRef.current) {
-      const r = chevronBtnRef.current.getBoundingClientRect();
-      setChevronRect({ top: r.bottom + 8, right: window.innerWidth - r.right });
-    }
-    setTypeDropdownOpen((o) => !o);
-  };
+ const toggleTypeDropdown = () => {
+ if (!typeDropdownOpen && chevronBtnRef.current) {
+ const r = chevronBtnRef.current.getBoundingClientRect();
+ setChevronRect({ top: r.bottom + 8, right: window.innerWidth - r.right });
+ }
+ setTypeDropdownOpen((o) => !o);
+ };
 
-  const selectType = (id: string | null) => {
-    setActiveTypeId(id);
-    setPaySkip(0);
-    setStatusFilter("all");
-    setSearch("");
-    setTypeDropdownOpen(false);
-  };
+ const selectType = (id: string | null) => {
+ setActiveTypeId(id);
+ setPaySkip(0);
+ setStatusFilter("all");
+ setSearch("");
+ setTypeDropdownOpen(false);
+ };
 
-  const activeType = feeTypes.find((f) => f.id === activeTypeId) ?? null;
+ const activeType = feeTypes.find((f) => f.id === activeTypeId) ?? null;
 
-  const filtered = search
-    ? payments.filter((p) => p.student.name.toLowerCase().includes(search.toLowerCase()) || p.student.adno.includes(search))
-    : payments;
+ const filtered = search
+ ? payments.filter((p) => p.student.name.toLowerCase().includes(search.toLowerCase()) || p.student.adno.includes(search))
+ : payments;
 
-  const markPaid = async (p: FeePayment) => {
-    setSaving(true);
-    try {
-      await updatePayment(cid, token, p.id, {
-        paidAmount: Number(p.dueAmount), method: payMethod as any,
-        reference: payRef || undefined, status: "PAID", paidAt: new Date().toISOString(),
-      });
-      setRecording(null); setPayRef(""); loadPayments();
-    } catch (e) { setError((e as Error).message); }
-    finally { setSaving(false); }
-  };
+ const markPaid = async (p: FeePayment) => {
+ setSaving(true);
+ try {
+ await updatePayment(cid, token, p.id, {
+ paidAmount: Number(p.dueAmount), method: payMethod as any,
+ reference: payRef || undefined, status: "PAID", paidAt: new Date().toISOString(),
+ });
+ setRecording(null); setPayRef(""); loadPayments();
+ } catch (e) { setError((e as Error).message); }
+ finally { setSaving(false); }
+ };
 
-  const showReceiptFor = async (id: string) => {
-    setLoadingReceipt(id);
-    try { setReceipt(await getPaymentReceipt(cid, token, id)); }
-    catch (e) { setError((e as Error).message); }
-    finally { setLoadingReceipt(null); }
-  };
+ const showReceiptFor = async (id: string) => {
+ setLoadingReceipt(id);
+ try { setReceipt(await getPaymentReceipt(cid, token, id)); }
+ catch (e) { setError((e as Error).message); }
+ finally { setLoadingReceipt(null); }
+ };
 
-  const cancelPayment = async (p: FeePayment) => {
-    setCancellingSave(true);
-    try {
-      await cancelPaymentApi(cid, token, p.id, cancellingNote || undefined);
-      setCancelling(null);
-      setCancellingNote("");
-      loadPayments();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setCancellingSave(false);
-    }
-  };
+ const cancelPayment = async (p: FeePayment) => {
+ setCancellingSave(true);
+ try {
+ await cancelPaymentApi(cid, token, p.id, cancellingNote || undefined);
+ setCancelling(null);
+ setCancellingNote("");
+ loadPayments();
+ } catch (e) {
+ setError((e as Error).message);
+ } finally {
+ setCancellingSave(false);
+ }
+ };
 
-  const undoCancel = async (p: FeePayment) => {
-    setCancellingSave(true);
-    try {
-      await undoCancelPaymentApi(cid, token, p.id);
-      loadPayments();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setCancellingSave(false);
-    }
-  };
+ const undoCancel = async (p: FeePayment) => {
+ setCancellingSave(true);
+ try {
+ await undoCancelPaymentApi(cid, token, p.id);
+ loadPayments();
+ } catch (e) {
+ setError((e as Error).message);
+ } finally {
+ setCancellingSave(false);
+ }
+ };
 
-  const cancellingPayment = cancelling
-    ? payments.find((p) => p.id === cancelling) ?? null
-    : null;
+ const cancellingPayment = cancelling
+ ? payments.find((p) => p.id === cancelling) ?? null
+ : null;
 
-  return (
-    <DashboardLayout>
-      <PageHeader title="Fees & Payments" subtitle="View and record payments" icon={CreditCard} />
+ return (
+ <DashboardLayout>
+  <PageHeader title={t("teacherPages", "feesPaymentsTitle", lang)} subtitle={t("teacherPages", "feesPaymentsSub", lang)} icon={CreditCard} />
 
-      {error && <ApiErrorBanner message={error} onRetry={loadPayments} />}
+ {error && <ApiErrorBanner message={error} onRetry={loadPayments} />}
 
-      {typesLoading ? (
-        <div className="space-y-5">
-          <div className="flex items-center gap-1.5 mb-5">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-10 w-24 rounded-full shrink-0" />
-            ))}
-            <Skeleton className="h-10 w-10 rounded-full shrink-0" />
-          </div>
-          <div className="flex gap-2">
-            <Skeleton className="h-10 flex-1 rounded-xl" />
-            <Skeleton className="h-10 w-48 rounded-xl" />
-          </div>
-          <div className="space-y-0 divide-y divide-gray-50 rounded-2xl border border-gray-100 overflow-hidden">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 px-4 py-3.5">
-                <Skeleton className="w-9 h-9 rounded-xl shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="h-4 w-2/3" />
-                  <Skeleton className="h-3 w-1/2" />
-                </div>
-                <Skeleton className="h-4 w-16 shrink-0" />
-                <Skeleton className="h-6 w-16 rounded-full shrink-0" />
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <>
-          <div className="flex items-center gap-1.5 mb-5 overflow-x-auto pb-1">
-            <button onClick={() => selectType(null)}
-              className={cn("h-10 px-4 rounded-md text-xs font-semibold whitespace-nowrap transition-all shrink-0 inline-flex items-center gap-1.5",
-                activeTypeId === null
-                  ? "bg-emerald-600 text-white shadow-sm shadow-emerald-200"
-                  : " text-gray-600 hover:bg-gray-200")}>
-              <CreditCard className="w-3.5 h-3.5" />
-              All Fees
-            </button>
+ {typesLoading ? (
+ <div className="space-y-5">
+ <div className="flex items-center gap-1.5 mb-5">
+ {Array.from({ length: 5 }).map((_, i) => (
+ <Skeleton key={i} className="h-10 w-24 rounded-full shrink-0" />
+ ))}
+ <Skeleton className="h-10 w-10 rounded-full shrink-0" />
+ </div>
+ <div className="flex gap-2">
+ <Skeleton className="h-10 flex-1 rounded-xl" />
+ <Skeleton className="h-10 w-48 rounded-xl" />
+ </div>
+ <div className="space-y-0 divide-y divide-gray-50 rounded-2xl border border-gray-100 overflow-hidden">
+ {Array.from({ length: 6 }).map((_, i) => (
+ <div key={i} className="flex items-center gap-3 px-4 py-3.5">
+ <Skeleton className="w-9 h-9 rounded-xl shrink-0" />
+ <div className="flex-1 space-y-2">
+ <Skeleton className="h-4 w-2/3" />
+ <Skeleton className="h-3 w-1/2" />
+ </div>
+ <Skeleton className="h-4 w-16 shrink-0" />
+ <Skeleton className="h-6 w-16 rounded-full shrink-0" />
+ </div>
+ ))}
+ </div>
+ </div>
+ ) : (
+ <>
+ <div className="flex items-center gap-1.5 mb-5 overflow-x-auto pb-1">
+ <button onClick={() => selectType(null)}
+ className={cn("h-10 px-4 rounded-md text-xs font-semibold whitespace-nowrap transition-all shrink-0 inline-flex items-center gap-1.5",
+ activeTypeId === null
+ ? "bg-emerald-600 text-white shadow-sm"
+ : " text-gray-600 hover:bg-gray-200")}>
+          <CreditCard className="w-3.5 h-3.5" />
+          {t("teacherPages", "allFeesBtn", lang)}
+        </button>
 
-            {feeTypes.map((ft) => {
-              const isActive = ft.id === activeTypeId;
-              return (
-                <button key={ft.id} onClick={() => selectType(ft.id)}
-                  className={cn("h-10 px-4 rounded-md text-xs font-semibold whitespace-nowrap transition-all shrink-0 inline-flex items-center gap-1.5",
-                    isActive
-                      ? "bg-emerald-600 text-white shadow-sm shadow-emerald-200"
-                      : "bg-gray-50 text-gray-600 hover:bg-gray-100")}>
-                  <CreditCard className="w-3.5 h-3.5" />
-                  {ft.name}
-                </button>
-              );
-            })}
+        {feeTypes.map((ft) => {
+ const isActive = ft.id === activeTypeId;
+ return (
+ <button key={ft.id} onClick={() => selectType(ft.id)}
+ className={cn("h-10 px-4 rounded-md text-xs font-semibold whitespace-nowrap transition-all shrink-0 inline-flex items-center gap-1.5",
+ isActive
+ ? "bg-emerald-600 text-white shadow-sm"
+ : "bg-gray-50 text-gray-600 hover:bg-gray-100")}>
+ <CreditCard className="w-3.5 h-3.5" />
+ {ft.name}
+ </button>
+ );
+ })}
 
-            <div className="sticky right-0 z-10 flex items-center   bg-gradient-to-l from-white via-white/95 to-transparent">
-              <button ref={chevronBtnRef} onClick={toggleTypeDropdown}
-                className="h-10 w-10 rounded-full inline-flex items-center justify-center transition-all text-gray-500 hover:text-gray-700"
-                title="All fee types"
-                aria-label="All fee types"
-                aria-expanded={typeDropdownOpen}>
-                <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", typeDropdownOpen && "rotate-180")} />
-              </button>
-            </div>
-          </div>
+ <div className="sticky right-0 ml-auto z-10 flex items-center bg-gradient-to-l from-white via-white/95 to-transparent">
+ <button ref={chevronBtnRef} onClick={toggleTypeDropdown}
+ className="h-10 w-10 rounded-full inline-flex items-center ml-auto justify-center transition-all text-gray-500 hover:text-gray-700"
+ title="All fee types"
+ aria-label="All fee types"
+ aria-expanded={typeDropdownOpen}>
+ <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", typeDropdownOpen && "rotate-180")} />
+ </button>
+ </div>
+ </div>
 
-          {typeDropdownOpen && chevronRect && createPortal(
-            <AnimatePresence>
-              <motion.div
-                key="fee-dropdown"
-                data-fee-dropdown-panel
-                ref={typeDropdownRef}
-                initial={{ opacity: 0, y: -4, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -4, scale: 0.98 }}
-                transition={{ duration: 0.12 }}
-                style={{ position: "fixed", top: chevronRect.top, right: chevronRect.right }}
-                className="z-50 w-72 bg-white rounded-2xl shadow-xl shadow-gray-300/50 ring-1 ring-gray-100 overflow-hidden">
-                <div className="px-3 py-2 bg-gray-50">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">All Fee Types</p>
-                </div>
-                <div className="max-h-80 overflow-y-auto py-1">
-                  <button onClick={() => selectType(null)}
-                    className={cn("w-full flex items-center gap-2.5 px-3 py-2.5 text-xs hover:bg-gray-50 text-left",
-                      activeTypeId === null && "bg-emerald-50 text-emerald-700 font-semibold")}>
-                    <CreditCard className={cn("w-4 h-4 shrink-0", activeTypeId === null ? "text-emerald-600" : "text-gray-400")} />
-                    <span className="flex-1 truncate">All Fees</span>
-                    <span className="text-[10px] text-gray-400">{feeTypes.length} types</span>
-                  </button>
-                  {feeTypes.map((ft) => {
-                    const isActive = ft.id === activeTypeId;
-                    return (
-                      <button key={ft.id} onClick={() => selectType(ft.id)}
-                        className={cn("w-full flex items-center gap-2.5 px-3 py-2.5 text-xs hover:bg-gray-50 text-left",
-                          isActive && "bg-emerald-50 text-emerald-700 font-semibold")}>
-                        <CreditCard className={cn("w-4 h-4 shrink-0", isActive ? "text-emerald-600" : "text-gray-400")} />
-                        <span className="flex-1 truncate">{ft.name}</span>
-                        <span className="text-[10px] text-gray-400 shrink-0">₹{Number(ft.amount).toLocaleString()}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </motion.div>
-            </AnimatePresence>,
-            document.body,
-          )}
+ {typeDropdownOpen && chevronRect && createPortal(
+ <AnimatePresence>
+ <motion.div
+ key="fee-dropdown"
+ data-fee-dropdown-panel
+ ref={typeDropdownRef}
+ initial={{ opacity: 0, y: -4, scale: 0.98 }}
+ animate={{ opacity: 1, y: 0, scale: 1 }}
+ exit={{ opacity: 0, y: -4, scale: 0.98 }}
+ transition={{ duration: 0.12 }}
+ style={{ position: "fixed", top: chevronRect.top, right: chevronRect.right }}
+ className="z-50 w-72 bg-white rounded-2xl shadow-xl ring-1 ring-gray-100 overflow-hidden">
+ <div className="px-3 py-2 bg-gray-50">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("teacherPages", "allFeeTypes", lang)}</p>
+ </div>
+ <div className="max-h-80 overflow-y-auto py-1">
+ <button onClick={() => selectType(null)}
+ className={cn("w-full flex items-center gap-2.5 px-3 py-2.5 text-xs hover:bg-gray-50 text-left",
+ activeTypeId === null && "bg-emerald-50 text-emerald-700 font-semibold")}>
+ <CreditCard className={cn("w-4 h-4 shrink-0", activeTypeId === null ? "text-emerald-600" : "text-gray-400")} />
+  <span className="flex-1 truncate">{t("teacherPages", "allFeesBtn", lang)}</span>
+  <span className="text-[10px] text-gray-400">{feeTypes.length} types</span>
+ </button>
+ {feeTypes.map((ft) => {
+ const isActive = ft.id === activeTypeId;
+ return (
+ <button key={ft.id} onClick={() => selectType(ft.id)}
+ className={cn("w-full flex items-center gap-2.5 px-3 py-2.5 text-xs hover:bg-gray-50 text-left",
+ isActive && "bg-emerald-50 text-emerald-700 font-semibold")}>
+ <CreditCard className={cn("w-4 h-4 shrink-0", isActive ? "text-emerald-600" : "text-gray-400")} />
+ <span className="flex-1 truncate">{ft.name}</span>
+ <span className="text-[10px] text-gray-400 shrink-0">₹{Number(ft.amount).toLocaleString()}</span>
+ </button>
+ );
+ })}
+ </div>
+ </motion.div>
+ </AnimatePresence>,
+ document.body,
+ )}
 
-          <div className="flex gap-2 mb-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input value={search} onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search student name or adm no…"
-                className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:border-emerald-400" />
-            </div>
-            <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
-              {(["all", "PAID", "PENDING", "OVERDUE"] as const).map((s) => (
-                <button key={s} onClick={() => { setStatusFilter(s); setPaySkip(0); }}
-                  className={cn("px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
-                    statusFilter === s ? "bg-white shadow-sm text-gray-900" : "text-gray-500")}>
-                  {s === "all" ? "All" : STATUS_META[s as FeePaymentStatus].label}
-                </button>
-              ))}
-            </div>
-          </div>
+ <div className="flex gap-2 mb-3">
+ <div className="relative flex-1">
+ <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+ <input value={search} onChange={(e) => setSearch(e.target.value)}
+  placeholder={t("teacherPages", "searchStudentName", lang)}
+ className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:border-emerald-400" />
+ </div>
+ <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
+ {(["all", "PAID", "PENDING", "OVERDUE"] as const).map((s) => (
+ <button key={s} onClick={() => { setStatusFilter(s); setPaySkip(0); }}
+ className={cn("px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
+ statusFilter === s ? "bg-white shadow-sm text-gray-900" : "text-gray-500")}>
+  {s === "all" ? t("common", "all", lang) : STATUS_META[s as FeePaymentStatus].label}
+ </button>
+ ))}
+ </div>
+ </div>
 
-          {payLoading ? (
-            <div className="flex items-center justify-center py-10 text-gray-400">
-              <Loader2 className="w-4 h-4 animate-spin" />
-            </div>
-          ) : (
-            <>
-              <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
-                  <p className="text-xs font-semibold text-gray-500">
-                    {activeType ? activeType.name : "All Fee Types"} — {payTotal} total
-                  </p>
-                  <button onClick={loadPayments} className="text-xs text-gray-400 flex items-center gap-1">
-                    <RefreshCw className="w-3 h-3" /> Refresh
-                  </button>
-                </div>
+ {payLoading ? (
+ <div className="flex items-center justify-center py-10 text-gray-400">
+ <Loader2 className="w-4 h-4 animate-spin" />
+ </div>
+ ) : (
+ <>
+ <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+ <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+ <p className="text-xs font-semibold text-gray-500">
+  {activeType ? activeType.name : t("teacherPages", "allFeeTypes", lang)} — {payTotal} total
+ </p>
+ <button onClick={loadPayments} className="text-xs text-gray-400 flex items-center gap-1">
+  <RefreshCw className="w-3 h-3" /> {t("teacherPages", "refreshBtn", lang)}
+ </button>
+ </div>
 
-                <div className="divide-y divide-gray-50">
-                  {filtered.length === 0 ? (
-                    <div className="py-12 text-center text-gray-400 text-sm">No payment records found</div>
-                  ) : (
-                    filtered.map((p) => {
-                      const meta = STATUS_META[p.status] ?? STATUS_META.PENDING;
-                      const isPaid = p.status === "PAID";
-                      return (
-                        <div key={p.id}>
-                          <div className="flex items-center gap-3 px-4 py-3.5">
-                            <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0",
-                              isPaid ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700")}>
-                              {p.student.name.charAt(0)}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-gray-900 truncate">{p.student.name}</p>
-                              <p className="text-xs text-gray-400">
-                                {p.student.adno}{p.student.class ? ` · ${p.student.class.name}` : ""}
-                                {!activeType ? ` · ${p.feeType.name}` : ""}
-                              </p>
-                            </div>
-                            <div className="text-right shrink-0 mr-1">
-                              <p className="text-sm font-bold text-gray-900">₹{Number(p.dueAmount).toLocaleString()}</p>
-                              {isPaid && p.paidAt ? (
-                                <p className="text-[10px] text-emerald-600">{new Date(p.paidAt).toLocaleDateString("en-GB")}</p>
-                              ) : p.dueDate ? (
-                                <p className="text-[10px] text-amber-600">Due: {new Date(p.dueDate).toLocaleDateString("en-GB")}</p>
-                              ) : null}
-                            </div>
-                            <span className={cn("px-2.5 py-1 rounded-full text-[11px] font-semibold shrink-0", meta.bg, meta.color)}>
-                              {isPaid ? "✓ " : ""}{meta.label}
-                            </span>
-                            {isPaid ? (
-                              <>
-                                <button onClick={() => showReceiptFor(p.id)} disabled={loadingReceipt === p.id} className="shrink-0 p-1" title="View receipt">
-                                  {loadingReceipt === p.id ? (
-                                    <Loader2 className="w-4 h-4 text-gray-300 animate-spin" />
-                                  ) : (
-                                    <Receipt className="w-4 h-4 text-gray-300 hover:text-blue-500 transition-colors" />
-                                  )}
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setCancelling(p.id);
-                                    setCancellingNote("");
-                                  }}
-                                  className="shrink-0 p-1"
-                                  title="Cancel fee"
-                                >
-                                  <XCircle
-                                    className={cn(
-                                      "w-5 h-5 transition-colors",
-                                      cancelling === p.id
-                                        ? "text-red-500"
-                                        : "text-gray-300 hover:text-red-500",
-                                    )}
-                                  />
-                                </button>
-                              </>
-                            ) : p.status === "WAIVED" ? (
-                              <button
-                                onClick={() => undoCancel(p)}
-                                disabled={cancellingSave}
-                                className="shrink-0 p-1"
-                                title="Undo cancel"
-                              >
-                                <RefreshCw
-                                  className={cn(
-                                    "w-4 h-4 transition-colors",
-                                    cancellingSave
-                                      ? "text-gray-300 animate-spin"
-                                      : "text-gray-300 hover:text-amber-500",
-                                  )}
-                                />
-                              </button>
-                            ) : (
-                              <>
-                                <button onClick={() => { setRecording(p.id); setPayMethod("CASH"); setPayRef(""); }} className="shrink-0 p-1" title="Mark paid">
-                                  <CheckCircle className={cn("w-5 h-5 transition-colors",
-                                    recording === p.id ? "text-emerald-500" : "text-gray-300 hover:text-emerald-500")} />
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setCancelling(p.id);
-                                    setCancellingNote("");
-                                  }}
-                                  className="shrink-0 p-1"
-                                  title="Cancel fee"
-                                >
-                                  <XCircle
-                                    className={cn(
-                                      "w-5 h-5 transition-colors",
-                                      cancelling === p.id
-                                        ? "text-red-500"
-                                        : "text-gray-300 hover:text-red-500",
-                                    )}
-                                  />
-                                </button>
-                              </>
-                            )}
-                          </div>
+ <div className="divide-y divide-gray-50">
+ {filtered.length === 0 ? (
+  <div className="py-12 text-center text-gray-400 text-sm">{t("teacherPages", "noPaymentRecords", lang)}</div>
+ ) : (
+ filtered.map((p) => {
+ const meta = STATUS_META[p.status] ?? STATUS_META.PENDING;
+ const isPaid = p.status === "PAID";
+ return (
+ <div key={p.id}>
+ <div className="flex items-center gap-3 px-4 py-3.5">
+ <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0",
+ isPaid ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700")}>
+ {p.student.name.charAt(0)}
+ </div>
+ <div className="flex-1 min-w-0">
+ <p className="text-sm font-semibold text-gray-900 truncate">{p.student.name}</p>
+ <p className="text-xs text-gray-400">
+ {p.student.adno}{p.student.class ? ` · ${p.student.class.name}` : ""}
+ {!activeType ? ` · ${p.feeType.name}` : ""}
+ </p>
+ </div>
+ <div className="text-right shrink-0 mr-1">
+ <p className="text-sm font-bold text-gray-900">₹{Number(p.dueAmount).toLocaleString()}</p>
+ {isPaid && p.paidAt ? (
+ <p className="text-[10px] text-emerald-600">{new Date(p.paidAt).toLocaleDateString("en-GB")}</p>
+ ) : p.dueDate ? (
+  <p className="text-[10px] text-amber-600">{t("parentPages", "duePrefix", lang)} {new Date(p.dueDate).toLocaleDateString("en-GB")}</p>
+ ) : null}
+ </div>
+ <span className={cn("px-2.5 py-1 rounded-full text-[11px] font-semibold shrink-0", meta.bg, meta.color)}>
+ {isPaid ? "✓ " : ""}{meta.label}
+ </span>
+ {isPaid ? (
+ <>
+  <button onClick={() => showReceiptFor(p.id)} disabled={loadingReceipt === p.id} className="shrink-0 p-1" title={t("teacherPages", "viewReceiptTitle", lang)}>
+ {loadingReceipt === p.id ? (
+ <Loader2 className="w-4 h-4 text-gray-300 animate-spin" />
+ ) : (
+ <Receipt className="w-4 h-4 text-gray-300 hover:text-blue-500 transition-colors" />
+ )}
+ </button>
+  <button
+  onClick={() => {
+  setCancelling(p.id);
+  setCancellingNote("");
+  }}
+  className="shrink-0 p-1"
+  title={t("teacherPages", "cancelFeeTitle", lang)}
+  >
+  <XCircle
+  className={cn(
+  "w-5 h-5 transition-colors",
+  cancelling === p.id
+  ? "text-red-500"
+  : "text-gray-300 hover:text-red-500",
+  )}
+  />
+  </button>
+  </>
+  ) : p.status === "WAIVED" ? (
+ <button
+ onClick={() => undoCancel(p)}
+ disabled={cancellingSave}
+ className="shrink-0 p-1"
+ title="Undo cancel"
+ >
+ <RefreshCw
+ className={cn(
+ "w-4 h-4 transition-colors",
+ cancellingSave
+ ? "text-gray-300 animate-spin"
+ : "text-gray-300 hover:text-amber-500",
+ )}
+ />
+ </button>
+ ) : (
+ <>
+  <button onClick={() => { setRecording(p.id); setPayMethod("CASH"); setPayRef(""); }} className="shrink-0 p-1" title={t("teacherPages", "markPaidTitle", lang)}>
+ <CheckCircle className={cn("w-5 h-5 transition-colors",
+ recording === p.id ? "text-emerald-500" : "text-gray-300 hover:text-emerald-500")} />
+ </button>
+  <button
+  onClick={() => {
+  setCancelling(p.id);
+  setCancellingNote("");
+  }}
+  className="shrink-0 p-1"
+  title={t("teacherPages", "cancelFeeTitle", lang)}
+  >
+  <XCircle
+  className={cn(
+  "w-5 h-5 transition-colors",
+  cancelling === p.id
+  ? "text-red-500"
+  : "text-gray-300 hover:text-red-500",
+  )}
+  />
+  </button>
+  </>
+  )}
+  </div>
 
-                          <AnimatePresence>
-                            {recording === p.id && (
-                              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                                <div className="px-4 pb-3 border-t border-gray-50 pt-2 space-y-2">
-                                  <div className="grid grid-cols-2 gap-2">
-                                    <select value={payMethod} onChange={(e) => setPayMethod(e.target.value)}
-                                      className="px-3 py-2 rounded-xl border text-xs bg-white focus:outline-none">
-                                      {PAYMENT_METHODS.map((m) => (<option key={m} value={m}>{m.replace(/_/g, " ")}</option>))}
-                                    </select>
-                                    <input type="text" value={payRef} onChange={(e) => setPayRef(e.target.value)}
-                                      placeholder="Receipt / Ref no." className="px-3 py-2 rounded-xl border text-xs focus:outline-none focus:border-emerald-400" />
-                                  </div>
-                                  <div className="flex gap-2">
-                                    <button onClick={() => setRecording(null)} className="flex-1 py-2 rounded-xl border text-xs font-semibold text-gray-600">Cancel</button>
-                                    <button onClick={() => markPaid(p)} disabled={saving}
-                                      className="flex-1 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold disabled:opacity-60 flex items-center justify-center gap-1">
-                                      {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
-                                      Mark Paid
-                                    </button>
-                                  </div>
-                                </div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
+ <AnimatePresence>
+ {recording === p.id && (
+ <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
+ exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+ <div className="px-4 pb-3 border-t border-gray-50 pt-2 space-y-2">
+ <div className="grid grid-cols-2 gap-2">
+ <select value={payMethod} onChange={(e) => setPayMethod(e.target.value)}
+ className="px-3 py-2 rounded-xl border text-xs bg-white focus:outline-none">
+ {PAYMENT_METHODS.map((m) => (<option key={m} value={m}>{m.replace(/_/g, " ")}</option>))}
+ </select>
+ <input type="text" value={payRef} onChange={(e) => setPayRef(e.target.value)}
+  placeholder={t("teacherPages", "receiptRefPlc", lang)} className="px-3 py-2 rounded-xl border text-xs focus:outline-none focus:border-emerald-400" />
+ </div>
+ <div className="flex gap-2">
+  <button onClick={() => setRecording(null)} className="flex-1 py-2 rounded-xl border text-xs font-semibold text-gray-600">{t("common", "cancel", lang)}</button>
+ <button onClick={() => markPaid(p)} disabled={saving}
+ className="flex-1 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold disabled:opacity-60 flex items-center justify-center gap-1">
+  {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
+  {t("teacherPages", "markPaidBtn", lang)}
+ </button>
+ </div>
+ </div>
+ </motion.div>
+ )}
+ </AnimatePresence>
+ </div>
+ );
+ })
+ )}
+ </div>
 
-                <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs">
-                  <span className="text-gray-500">{payments.filter((p) => p.status === "PAID").length} paid · {payments.filter((p) => p.status !== "PAID" && p.status !== "WAIVED").length} pending</span>
-                  <div className="flex gap-3">
-                    <span className="text-emerald-600 font-bold">
-                      ₹{payments.filter((p) => p.status === "PAID").reduce((s, p) => s + Number(p.paidAmount ?? p.dueAmount), 0).toLocaleString()} collected
-                    </span>
-                    <span className="text-amber-600 font-bold">
-                      ₹{payments.filter((p) => p.status !== "PAID" && p.status !== "WAIVED").reduce((s, p) => s + Number(p.dueAmount), 0).toLocaleString()} pending
-                    </span>
-                  </div>
-                </div>
-              </div>
+ <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs">
+  <span className="text-gray-500">{t("teacherPages", "paidPendingSummary", lang).replace("{paid}", String(payments.filter((p) => p.status === "PAID").length)).replace("{pending}", String(payments.filter((p) => p.status !== "PAID" && p.status !== "WAIVED").length))}</span>
+ <div className="flex gap-3">
+ <span className="text-emerald-600 font-bold">
+  {t("teacherPages", "collectedAmount", lang).replace("{amount}", payments.filter((p) => p.status === "PAID").reduce((s, p) => s + Number(p.paidAmount ?? p.dueAmount), 0).toLocaleString())}
+ </span>
+ <span className="text-amber-600 font-bold">
+  {t("teacherPages", "pendingAmount", lang).replace("{amount}", payments.filter((p) => p.status !== "PAID" && p.status !== "WAIVED").reduce((s, p) => s + Number(p.dueAmount), 0).toLocaleString())}
+ </span>
+ </div>
+ </div>
+ </div>
 
-              {payTotal > 30 && (
-                <div className="flex items-center justify-center gap-3 mt-4">
-                  <button disabled={paySkip === 0} onClick={() => setPaySkip(Math.max(0, paySkip - 30))}
-                    className="px-4 py-2 rounded-xl border text-sm disabled:opacity-40">Prev</button>
-                  <span className="text-sm text-gray-500">{paySkip + 1}–{Math.min(paySkip + 30, payTotal)} of {payTotal}</span>
-                  <button disabled={paySkip + 30 >= payTotal} onClick={() => setPaySkip(paySkip + 30)}
-                    className="px-4 py-2 rounded-xl border text-sm disabled:opacity-40">Next</button>
-                </div>
-              )}
-            </>
-          )}
-        </>
-      )}
+ {payTotal > 30 && (
+ <div className="flex items-center justify-center gap-3 mt-4">
+ <button disabled={paySkip === 0} onClick={() => setPaySkip(Math.max(0, paySkip - 30))}
+  className="px-4 py-2 rounded-xl border text-sm disabled:opacity-40">{t("teacherPages", "prevBtn", lang)}</button>
+ <span className="text-sm text-gray-500">{paySkip + 1}–{Math.min(paySkip + 30, payTotal)} of {payTotal}</span>
+ <button disabled={paySkip + 30 >= payTotal} onClick={() => setPaySkip(paySkip + 30)}
+  className="px-4 py-2 rounded-xl border text-sm disabled:opacity-40">{t("teacherPages", "nextBtn", lang)}</button>
+ </div>
+ )}
+ </>
+ )}
+ </>
+ )}
 
-      {receipt && <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />}
+ {receipt && <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />}
 
-      {/* Cancel Payment Modal */}
-      <AnimatePresence>
-        {cancellingPayment && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
-              onClick={() => setCancelling(null)}
-            />
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            >
-              <div className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-sm shadow-xl overflow-hidden">
-                <div className="bg-red-50 px-5 py-4 border-b border-red-100">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
-                      <XCircle className="w-5 h-5 text-red-600" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-gray-900">Cancel Fee Payment</p>
-                      <p className="text-xs text-gray-500">This action will mark the payment as waived</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="px-5 py-4 space-y-3">
-                  <div className="bg-gray-50 rounded-xl p-3 space-y-1.5">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Student</span>
-                      <span className="font-semibold text-gray-900">{cancellingPayment.student.name}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Adm No</span>
-                      <span className="font-semibold text-gray-900">{cancellingPayment.student.adno}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Fee Type</span>
-                      <span className="font-semibold text-gray-900">{cancellingPayment.feeType.name}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Amount</span>
-                      <span className="font-semibold text-gray-900">₹{Number(cancellingPayment.paidAmount ?? cancellingPayment.dueAmount).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Status</span>
-                      <span className="font-semibold text-amber-600">{cancellingPayment.status}</span>
-                    </div>
-                  </div>
-                  <input type="text" value={cancellingNote} onChange={(e) => setCancellingNote(e.target.value)}
-                    placeholder="Reason for cancellation (optional)"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-red-400" />
-                </div>
-                <div className="px-5 pb-5 flex gap-2">
-                  <button onClick={() => { setCancelling(null); setCancellingNote(""); }}
-                    className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Keep</button>
-                  <button onClick={() => cancelPayment(cancellingPayment)} disabled={cancellingSave}
-                    className="flex-1 py-3 rounded-xl bg-red-600 text-white text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5"
-                  >
-                    {cancellingSave ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
-                    Confirm Cancel
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-    </DashboardLayout>
-  );
+ {/* Cancel Payment Modal */}
+ <AnimatePresence>
+ {cancellingPayment && (
+ <>
+ <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+ className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+ onClick={() => setCancelling(null)}
+ />
+ <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+ className="fixed inset-0 z-50 flex items-center justify-center p-4"
+ >
+ <div className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-sm shadow-xl overflow-hidden">
+ <div className="bg-red-50 px-5 py-4 border-b border-red-100">
+ <div className="flex items-center gap-3">
+ <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+ <XCircle className="w-5 h-5 text-red-600" />
+ </div>
+ <div>
+  <p className="font-bold text-gray-900">{t("teacherPages", "cancelFeePaymentTitle", lang)}</p>
+  <p className="text-xs text-gray-500">{t("teacherPages", "cancelFeeDesc", lang)}</p>
+ </div>
+ </div>
+ </div>
+ <div className="px-5 py-4 space-y-3">
+ <div className="bg-gray-50 rounded-xl p-3 space-y-1.5">
+ <div className="flex justify-between text-sm">
+  <span className="text-gray-500">{t("common", "name", lang)}</span>
+  <span className="font-semibold text-gray-900">{cancellingPayment.student.name}</span>
+ </div>
+ <div className="flex justify-between text-sm">
+  <span className="text-gray-500">{t("parentPages", "admNoLabel", lang)}</span>
+  <span className="font-semibold text-gray-900">{cancellingPayment.student.adno}</span>
+ </div>
+ <div className="flex justify-between text-sm">
+  <span className="text-gray-500">{t("parentPages", "feeTypeLabel", lang)}</span>
+  <span className="font-semibold text-gray-900">{cancellingPayment.feeType.name}</span>
+ </div>
+ <div className="flex justify-between text-sm">
+  <span className="text-gray-500">{t("common", "amount", lang)}</span>
+  <span className="font-semibold text-gray-900">₹{Number(cancellingPayment.paidAmount ?? cancellingPayment.dueAmount).toLocaleString()}</span>
+ </div>
+ <div className="flex justify-between text-sm">
+  <span className="text-gray-500">{t("common", "status", lang)}</span>
+  <span className="font-semibold text-amber-600">{cancellingPayment.status}</span>
+ </div>
+ </div>
+ <input type="text" value={cancellingNote} onChange={(e) => setCancellingNote(e.target.value)}
+  placeholder={t("teacherPages", "reasonForCancel", lang)}
+ className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-red-400" />
+ </div>
+ <div className="px-5 pb-5 flex gap-2">
+ <button onClick={() => { setCancelling(null); setCancellingNote(""); }}
+  className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">{t("teacherPages", "keepBtn", lang)}</button>
+ <button onClick={() => cancelPayment(cancellingPayment)} disabled={cancellingSave}
+ className="flex-1 py-3 rounded-xl bg-red-600 text-white text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5"
+ >
+  {cancellingSave ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+  {t("teacherPages", "confirmCancelBtn", lang)}
+ </button>
+ </div>
+ </div>
+ </motion.div>
+ </>
+ )}
+ </AnimatePresence>
+ </DashboardLayout>
+ );
 }

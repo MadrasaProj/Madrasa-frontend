@@ -107,7 +107,7 @@ export default function TeacherPresentPage() {
             onClick={() => selectedClass && loadAttendance(selectedClass)}
             className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600"
           >
-            <RefreshCw className="w-3 h-3" /> Refresh
+            <RefreshCw className="w-3 h-3" /> {t("teacherPages", "refreshBtn", lang)}
           </button>
         </div>
       )}

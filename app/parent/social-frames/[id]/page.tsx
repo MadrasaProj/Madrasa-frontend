@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
-import PosterViewer from "../../../posters/PosterViewer";
+import SocialFrameViewer from "../../../social-frames/SocialFrameViewer";
 
-export default function ParentPosterViewPage() {
+export default function ParentSocialFrameViewPage() {
   const { id } = useParams<{ id: string }>();
 
   useEffect(() => {
@@ -12,5 +12,5 @@ export default function ParentPosterViewPage() {
 
   if (!id) return null;
 
-  return <PosterViewer posterId={id} fullScreen />;
+  return <SocialFrameViewer frameId={id} fullScreen />;
 }

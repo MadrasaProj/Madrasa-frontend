@@ -24,20 +24,33 @@ const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
   const notificationTitle = payload.notification?.title || "Smart Madrasa";
+  const tag = "fcm:" + (payload.messageId || notificationTitle);
   const notificationOptions = {
     body: payload.notification?.body || "",
     icon: "/icons/icon-192.png",
     badge: "/icons/icon-192.png",
+    tag,
+    renotify: true,
     data: payload.data || {},
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
+self.addEventListener("message", (event) => {
+  const data = event.data || {};
+  if (data.type !== "FCM_SHOW_NOTIFICATION") return;
+  event.waitUntil(
+    self.registration.showNotification(data.title, data.options || {})
+  );
+});
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const data = event.notification.data || {};
-  const targetUrl = data?.url || "/parent/notifications";
+  const audience = data?.audience || "parent";
+  const fallback = audience === "teacher" ? "/teacher/notifications" : "/parent/notifications";
+  const targetUrl = data?.url || fallback;
   event.waitUntil(
     clients
       .matchAll({ type: "window", includeUncontrolled: true })

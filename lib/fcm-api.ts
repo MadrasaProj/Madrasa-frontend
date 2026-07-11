@@ -1,14 +1,15 @@
 import { AuthApiError, postJson } from "@/lib/auth-api";
 
-export async function registerParentFcmToken(
+async function registerFcmToken(
   clientId: string,
   token: string,
   accessToken: string,
+  role: "parent" | "teacher",
   platform = "web",
 ): Promise<void> {
   const API_ORIGIN = import.meta.env.VITE_API_ORIGIN ?? "http://localhost:3000";
   const API_BASE_PATH = import.meta.env.VITE_API_BASE_PATH ?? "/api/v2";
-  const url = `${API_ORIGIN}${API_BASE_PATH}/${clientId}/notifications/parent/fcm-token`;
+  const url = `${API_ORIGIN}${API_BASE_PATH}/${clientId}/notifications/${role}/fcm-token`;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15_000);
@@ -38,4 +39,22 @@ export async function registerParentFcmToken(
   } finally {
     clearTimeout(timer);
   }
+}
+
+export function registerParentFcmToken(
+  clientId: string,
+  token: string,
+  accessToken: string,
+  platform = "web",
+): Promise<void> {
+  return registerFcmToken(clientId, token, accessToken, "parent", platform);
+}
+
+export function registerTeacherFcmToken(
+  clientId: string,
+  token: string,
+  accessToken: string,
+  platform = "web",
+): Promise<void> {
+  return registerFcmToken(clientId, token, accessToken, "teacher", platform);
 }
