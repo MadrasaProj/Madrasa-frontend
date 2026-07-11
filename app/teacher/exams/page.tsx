@@ -389,11 +389,13 @@ export default function TeacherExamsPage() {
  examId={queryExamId}
  classId={queryClassId}
  accademicYearId={ayId}
-  subjects={classSubjects.find((s) => s.id === querySubjectId) ? [{
-  id: querySubjectId,
-  name: classSubjects.find((s) => s.id === querySubjectId)!.name,
-  maxMarks: classSubjects.find((s) => s.id === querySubjectId)?.classSubject?.maxMarks ?? activeExam?.maxMarks ?? 50
-  }] : []}
+   subjects={classSubjects.find((s) => s.id === querySubjectId) ? [{
+   id: querySubjectId,
+   name: classSubjects.find((s) => s.id === querySubjectId)!.name,
+   maxMarks: classSubjects.find((s) => s.id === querySubjectId)?.classSubject?.maxMarks ?? activeExam?.maxMarks ?? 50,
+   passMarks: classSubjects.find((s) => s.id === querySubjectId)?.classSubject?.passMarks ?? null,
+   gradeConfig: null
+   }] : []}
  students={students.map((s) => ({ id: s.id, name: s.name, adno: s.adno }))}
  onClose={() => setImportOpen(false)}
  onSuccess={async () => {

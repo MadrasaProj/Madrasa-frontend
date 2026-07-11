@@ -36,6 +36,8 @@ import {
   X,
   ChevronDown,
   Languages,
+  MapPin,
+  Receipt,
 } from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useAuthStore } from "@/store/auth";
