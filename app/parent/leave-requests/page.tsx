@@ -2,6 +2,7 @@ import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -130,15 +131,6 @@ export default function ParentLeaveRequestsPage() {
           icon={FilePen}
           back
           backHref="/parent"
-          action={
-            <button
-              onClick={() => setShowForm(true)}
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-all duration-200 active:scale-[0.98] shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-            >
-              <Plus className="w-4 h-4" />
-              {t("parentPages", "newRequest", lang)}
-            </button>
-          }
         />
 
         {(errorMessage || createError) && <ApiErrorBanner message={errorMessage ?? createError ?? ""} />}
@@ -151,10 +143,20 @@ export default function ParentLeaveRequestsPage() {
               ))}
             </div>
           ) : requests.length === 0 ? (
-            <div className="text-center py-12 text-gray-400">
-              <AlertCircle className="w-8 h-8 mx-auto mb-2" />
-              <p className="text-sm">{t("parentPages", "noLeaveRequests", lang)}</p>
-            </div>
+            <EmptyState
+              icon={AlertCircle}
+              title={t("parentPages", "noLeaveRequests", lang)}
+              description={t("parentPages", "leaveRequestsSub", lang)}
+              action={
+                <button
+                  onClick={() => setShowForm(true)}
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-all duration-200 active:scale-[0.98] shadow-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  {t("parentPages", "newRequest", lang)}
+                </button>
+              }
+            />
           ) : (
             requests.map((r) => {
               const sc = STATUS_CONFIG[r.status];
@@ -214,6 +216,22 @@ export default function ParentLeaveRequestsPage() {
           )}
         </div>
       </div>
+
+      {/* FAB — New Request */}
+      <AnimatePresence>
+        {!showForm && (
+          <motion.button
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            onClick={() => setShowForm(true)}
+            className="fixed z-30 bottom-24 right-4 md:bottom-8 p-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            aria-label={t("parentPages", "newRequest", lang)}
+          >
+            <Plus className="w-6 h-6" />
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       {/* New request modal */}
       <AnimatePresence>

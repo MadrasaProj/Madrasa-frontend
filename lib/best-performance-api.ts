@@ -25,12 +25,13 @@ export interface BestPerformanceResponse {
 export const getBestPerformers = (
   clientId: string,
   token: string,
-  params?: { from?: string; to?: string; classId?: string; academicYearId?: string; limit?: number },
+  params?: { from?: string; to?: string; classId?: string; gender?: string; academicYearId?: string; limit?: number },
 ) => {
   const q = new URLSearchParams();
   if (params?.from) q.set("from", params.from);
   if (params?.to) q.set("to", params.to);
   if (params?.classId) q.set("classId", params.classId);
+  if (params?.gender) q.set("gender", params.gender);
   if (params?.academicYearId) q.set("academicYearId", params.academicYearId);
   if (params?.limit) q.set("limit", String(params.limit));
   const qs = q.toString();

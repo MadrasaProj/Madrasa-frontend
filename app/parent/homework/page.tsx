@@ -35,7 +35,13 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const STATUS_CONFIG: Record<
   HomeworkStatus,
-  { labelKey: string; color: string; dot: string; icon: React.ElementType; bg: string }
+  {
+    labelKey: string;
+    color: string;
+    dot: string;
+    icon: React.ElementType;
+    bg: string;
+  }
 > = {
   NOT_SUBMITTED: {
     labelKey: "pendingLabel",
@@ -53,7 +59,8 @@ const STATUS_CONFIG: Record<
   },
   CHECKED: {
     labelKey: "checkedLabel",
-    color: "bg-emerald-50 text-emerald-700 border-emerald-200 ring-emerald-400/20",
+    color:
+      "bg-emerald-50 text-emerald-700 border-emerald-200 ring-emerald-400/20",
     dot: "bg-emerald-500",
     bg: "bg-emerald-500",
     icon: CheckCircle2,
@@ -68,10 +75,13 @@ function daysLeftText(dueDate: string): {
 } {
   const due = new Date(dueDate);
   const diff = due.getTime() - Date.now();
-  if (diff < 0) return { textKey: "overdueText", days: 0, urgent: false, overdue: true };
+  if (diff < 0)
+    return { textKey: "overdueText", days: 0, urgent: false, overdue: true };
   const days = Math.ceil(diff / 86400_000);
-  if (days === 0) return { textKey: "dueToday", days: 0, urgent: true, overdue: false };
-  if (days === 1) return { textKey: "dayLeft", days: 1, urgent: true, overdue: false };
+  if (days === 0)
+    return { textKey: "dueToday", days: 0, urgent: true, overdue: false };
+  if (days === 1)
+    return { textKey: "dayLeft", days: 1, urgent: true, overdue: false };
   return { textKey: "daysLeft", days, urgent: false, overdue: false };
 }
 
@@ -99,35 +109,54 @@ export default function ParentHomeworkPage() {
   const effectiveId = activeStudentId ?? ids[0] ?? "";
 
   const [filter, setFilter] = useState<HomeworkStatus | "all">("all");
-  const [selectedHw, setSelectedHw] = useState<StudentHomeworkItem | null>(null);
-  const [confirmSubmitHw, setConfirmSubmitHw] = useState<StudentHomeworkItem | null>(null);
+  const [selectedHw, setSelectedHw] = useState<StudentHomeworkItem | null>(
+    null,
+  );
+  const [confirmSubmitHw, setConfirmSubmitHw] =
+    useState<StudentHomeworkItem | null>(null);
 
-  const { data: hwData, isLoading, error, refetch, isRefetching } = useStudentHomework(
+  const {
+    data: hwData,
+    isLoading,
+    error,
+    refetch,
+    isRefetching,
+  } = useStudentHomework({ clientId: cid, token }, effectiveId);
+  const { data: student } = useStudentRecord(
     { clientId: cid, token },
     effectiveId,
   );
-  const { data: student } = useStudentRecord({ clientId: cid, token }, effectiveId);
 
   const submitMutation = useParentSubmitHomework({ clientId: cid, token });
 
   const homework = hwData?.homework ?? [];
 
-  const pendingCount = homework.filter((hw) => hw.submission.status === "NOT_SUBMITTED").length;
-  const submittedCount = homework.filter((hw) => hw.submission.status === "SUBMITTED").length;
-  const checkedCount = homework.filter((hw) => hw.submission.status === "CHECKED").length;
+  const pendingCount = homework.filter(
+    (hw) => hw.submission.status === "NOT_SUBMITTED",
+  ).length;
+  const submittedCount = homework.filter(
+    (hw) => hw.submission.status === "SUBMITTED",
+  ).length;
+  const checkedCount = homework.filter(
+    (hw) => hw.submission.status === "CHECKED",
+  ).length;
 
   const handleSubmitHomework = async (submissionId: string) => {
     try {
-      await submitMutation.mutateAsync({ studentId: effectiveId, submissionId });
+      await submitMutation.mutateAsync({
+        studentId: effectiveId,
+        submissionId,
+      });
       setConfirmSubmitHw(null);
     } catch (e) {
       alert((e as Error).message);
     }
   };
 
-  const filtered = filter === "all"
-    ? homework
-    : homework.filter((hw) => hw.submission.status === filter);
+  const filtered =
+    filter === "all"
+      ? homework
+      : homework.filter((hw) => hw.submission.status === filter);
 
   const errorMessage = error instanceof Error ? error.message : null;
 
@@ -144,24 +173,31 @@ export default function ParentHomeworkPage() {
             disabled={isRefetching}
             className="p-2.5 rounded-xl bg-white border border-gray-200 text-gray-500 hover:text-gray-800 hover:border-gray-300 transition-all active:scale-95 shadow-sm"
           >
-            <RefreshCw className={cn("w-4 h-4", isRefetching && "animate-spin")} />
+            <RefreshCw
+              className={cn("w-4 h-4", isRefetching && "animate-spin")}
+            />
           </button>
         }
       />
 
-      {errorMessage && <ApiErrorBanner message={errorMessage} onRetry={() => refetch()} />}
+      {errorMessage && (
+        <ApiErrorBanner message={errorMessage} onRetry={() => refetch()} />
+      )}
 
       {isLoading ? (
         <div className="space-y-8 px-1">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-28 rounded-2xl" />
+              <Skeleton key={i} className="h-20 md:h-28 rounded-2xl" />
             ))}
           </div>
           <Skeleton className="h-10 rounded-xl w-72" />
           <div className="hidden md:block rounded-2xl border border-gray-100 bg-white overflow-hidden">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="flex items-center gap-6 p-5 border-b border-gray-50">
+              <div
+                key={i}
+                className="flex items-center gap-6 p-5 border-b border-gray-50"
+              >
                 <Skeleton className="h-5 w-56" />
                 <Skeleton className="h-5 w-24" />
                 <Skeleton className="h-6 w-24 rounded-lg" />
@@ -179,8 +215,12 @@ export default function ParentHomeworkPage() {
       ) : !effectiveId ? (
         <div className="text-center py-24 text-gray-400">
           <User className="w-14 h-14 mx-auto mb-4 text-gray-200" />
-          <p className="font-semibold text-lg">{t("parentPages", "noChildrenLinked", lang)}</p>
-          <p className="text-sm text-gray-400 mt-1">{t("parentPages", "addChildTrack", lang)}</p>
+          <p className="font-semibold text-lg">
+            {t("parentPages", "noChildrenLinked", lang)}
+          </p>
+          <p className="text-sm text-gray-400 mt-1">
+            {t("parentPages", "addChildTrack", lang)}
+          </p>
         </div>
       ) : (
         <>
@@ -195,9 +235,7 @@ export default function ParentHomeworkPage() {
                     <GraduationCap className="w-6 h-6" />
                   </div>
                   <div>
-                    <p className="font-bold text-gray-900">
-                      {student.name}
-                    </p>
+                    <p className="font-bold text-gray-900">{student.name}</p>
                     <p className="text-sm text-gray-500">
                       Class {student.class?.name ?? "—"} &middot;{" "}
                       {homework.length} homework assignments
@@ -220,10 +258,15 @@ export default function ParentHomeworkPage() {
               )}
 
               {/* Stats */}
-              <div className="grid grid-cols-3 gap-4">
+              {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {(["NOT_SUBMITTED", "SUBMITTED", "CHECKED"] as const).map(
                   (s: HomeworkStatus) => {
-                    const count = s === "NOT_SUBMITTED" ? pendingCount : s === "SUBMITTED" ? submittedCount : checkedCount;
+                    const count =
+                      s === "NOT_SUBMITTED"
+                        ? pendingCount
+                        : s === "SUBMITTED"
+                          ? submittedCount
+                          : checkedCount;
                     const cfg = STATUS_CONFIG[s];
                     const Icon = cfg.icon;
                     const activeFilter = filter === s;
@@ -232,7 +275,7 @@ export default function ParentHomeworkPage() {
                         key={s}
                         onClick={() => setFilter(s === filter ? "all" : s)}
                         className={cn(
-                          "rounded-2xl p-5 border-2 transition-all text-left relative overflow-hidden group",
+                          "rounded-2xl p-4 md:p-5 border-2 transition-all text-left relative overflow-hidden group",
                           activeFilter
                             ? "border-gray-900 bg-gray-50 shadow-sm"
                             : "border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm",
@@ -244,30 +287,42 @@ export default function ParentHomeworkPage() {
                             activeFilter ? "bg-gray-900" : cfg.bg,
                           )}
                         />
-                        <div className="flex items-center justify-between mb-3">
+                        <div className="flex md:flex-col items-center md:items-stretch gap-3 md:gap-0">
+                          <div className="">
+                            <div
+                              className={cn(
+                                "w-10 h-10 md:w-11 md:h-11 rounded-xl flex items-center justify-center transition-all shrink-0",
+                                activeFilter
+                                  ? "bg-gray-900 text-white"
+                                  : "bg-gray-50 text-gray-500 group-hover:scale-105",
+                              )}
+                            >
+                              <Icon className="w-5 h-5" />
+                            </div>
+                            <p className="text-xs md:text-sm font-medium mt-2 text-gray-500 truncate">
+                              {t("parentPages", cfg.labelKey as any, lang)}
+                            </p>
+                          </div>
+
+                          <div className="flex ml-auto md:flex-col items-baseline md:items-stretch gap-2 md:gap-0   min-w-0">
+                            <p className="text-xl md:text-3xl font-bold text-gray-900 leading-none md:mb-1">
+                              {count}
+                            </p>
+                          </div>
                           <div
                             className={cn(
-                              "w-11 h-11 rounded-xl flex items-center justify-center transition-all",
-                              activeFilter
-                                ? "bg-gray-900 text-white"
-                                : "bg-gray-50 text-gray-500 group-hover:scale-105",
+                              "md:hidden w-1.5 h-1.5 rounded-full ",
+                              activeFilter ? "bg-gray-900" : cfg.dot,
                             )}
-                          >
-                            <Icon className="w-5 h-5" />
-                          </div>
-                          <div className={cn("w-1.5 h-1.5 rounded-full opacity-0 transition-opacity", activeFilter ? "opacity-100 bg-gray-900" : cfg.dot)} />
+                          />
+                          
+                           
                         </div>
-                        <p className="text-3xl font-bold text-gray-900 leading-none mb-1">
-                          {count}
-                        </p>
-                        <p className="text-sm font-medium text-gray-500">
-                          {t("parentPages", cfg.labelKey as any, lang)}
-                        </p>
                       </button>
                     );
                   },
                 )}
-              </div>
+              </div> */}
 
               {/* Filter tabs */}
               <div className="flex items-center justify-between">
@@ -285,12 +340,19 @@ export default function ParentHomeworkPage() {
                           : "text-gray-500 hover:text-gray-700",
                       )}
                     >
-                      {f === "all" ? t("parentPages", "allFilterTab", lang) : t("parentPages", STATUS_CONFIG[f].labelKey as any, lang)}
+                      {f === "all"
+                        ? t("parentPages", "allFilterTab", lang)
+                        : t(
+                            "parentPages",
+                            STATUS_CONFIG[f].labelKey as any,
+                            lang,
+                          )}
                     </button>
                   ))}
                 </div>
                 <p className="text-sm text-gray-400 hidden sm:block">
-                  {filtered.length} {t("parentPages", "homeworkAssignments", lang)}
+                  {filtered.length}{" "}
+                  {t("parentPages", "homeworkAssignments", lang)}
                 </p>
               </div>
 
@@ -324,7 +386,9 @@ export default function ParentHomeworkPage() {
                           className="text-center py-20 text-gray-400"
                         >
                           <BookOpen className="w-12 h-12 mx-auto mb-3 text-gray-200" />
-                          <p className="font-semibold">{t("parentPages", "noHomeworkFound", lang)}</p>
+                          <p className="font-semibold">
+                            {t("parentPages", "noHomeworkFound", lang)}
+                          </p>
                           <p className="text-sm text-gray-400 mt-1">
                             {filter !== "all"
                               ? `${t("parentPages", "noHomeworkCategory", lang)}`
@@ -386,7 +450,13 @@ export default function ParentHomeworkPage() {
                                             : "bg-gray-100 text-gray-500",
                                       )}
                                     >
-                                      {due.textKey === "daysLeft" ? `${due.days} ${t("parentPages", "daysLeft", lang)}` : t("parentPages", due.textKey as any, lang)}
+                                      {due.textKey === "daysLeft"
+                                        ? `${due.days} ${t("parentPages", "daysLeft", lang)}`
+                                        : t(
+                                            "parentPages",
+                                            due.textKey as any,
+                                            lang,
+                                          )}
                                     </span>
                                   )}
                                 </div>
@@ -450,7 +520,9 @@ export default function ParentHomeworkPage() {
                 {filtered.length === 0 ? (
                   <div className="text-center py-20 text-gray-400">
                     <BookOpen className="w-14 h-14 mx-auto mb-3 text-gray-200" />
-                    <p className="font-semibold">{t("parentPages", "noHomeworkCategory", lang)}</p>
+                    <p className="font-semibold">
+                      {t("parentPages", "noHomeworkCategory", lang)}
+                    </p>
                   </div>
                 ) : (
                   <AnimatePresence mode="popLayout">
@@ -473,7 +545,16 @@ export default function ParentHomeworkPage() {
                             onClick={() => setSelectedHw(hw)}
                             className="p-5 cursor-pointer active:scale-[0.99] transition-all"
                           >
-                            <div className="flex items-start justify-between gap-3 mb-3">
+                            <div className="flex flex-col items-start justify-between gap-3 mb-3">
+                              <span
+                                className={cn(
+                                  "inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1.5 rounded-lg border shrink-0",
+                                  cfg.color,
+                                )}
+                              >
+                                <Icon className="w-3 h-3" />
+                                {t("parentPages", cfg.labelKey as any, lang)}
+                              </span>
                               <div className="flex items-center gap-3 min-w-0 flex-1">
                                 <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 shrink-0">
                                   <BookText className="w-5 h-5" />
@@ -488,19 +569,10 @@ export default function ParentHomeworkPage() {
                                   </p>
                                 </div>
                               </div>
-                              <span
-                                className={cn(
-                                  "inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1.5 rounded-lg border shrink-0",
-                                  cfg.color,
-                                )}
-                              >
-                                <Icon className="w-3 h-3" />
-                                {t("parentPages", cfg.labelKey as any, lang)}
-                              </span>
                             </div>
 
                             {hw.description && (
-                              <p className="text-sm text-gray-500 mb-4 line-clamp-2 leading-relaxed">
+                              <p className="text-sm hidden sm:block text-gray-500 mb-4 line-clamp-2 leading-relaxed">
                                 {hw.description}
                               </p>
                             )}
@@ -532,7 +604,13 @@ export default function ParentHomeworkPage() {
                                         : "bg-gray-100 text-gray-500",
                                   )}
                                 >
-                                  {due.textKey === "daysLeft" ? `${due.days} ${t("parentPages", "daysLeft", lang)}` : t("parentPages", due.textKey as any, lang)}
+                                  {due.textKey === "daysLeft"
+                                    ? `${due.days} ${t("parentPages", "daysLeft", lang)}`
+                                    : t(
+                                        "parentPages",
+                                        due.textKey as any,
+                                        lang,
+                                      )}
                                 </span>
                               )}
                             </div>
@@ -565,10 +643,16 @@ export default function ParentHomeworkPage() {
                               <>
                                 <button
                                   onClick={() => setConfirmSubmitHw(hw)}
-                                  disabled={submitMutation.isPending && submitMutation.variables?.submissionId === hw.submission.id}
+                                  disabled={
+                                    submitMutation.isPending &&
+                                    submitMutation.variables?.submissionId ===
+                                      hw.submission.id
+                                  }
                                   className="flex-1 py-3.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
                                 >
-                                  {submitMutation.isPending && submitMutation.variables?.submissionId === hw.submission.id ? (
+                                  {submitMutation.isPending &&
+                                  submitMutation.variables?.submissionId ===
+                                    hw.submission.id ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
                                   ) : (
                                     <Send className="w-4 h-4" />
@@ -667,9 +751,12 @@ export default function ParentHomeworkPage() {
                         STATUS_CONFIG[confirmSubmitHw.submission.status].icon;
                       return <Icon className="w-3 h-3" />;
                     })()}
-                    {
-                      t("parentPages", STATUS_CONFIG[confirmSubmitHw.submission.status].labelKey as any, lang)
-                    }
+                    {t(
+                      "parentPages",
+                      STATUS_CONFIG[confirmSubmitHw.submission.status]
+                        .labelKey as any,
+                      lang,
+                    )}
                   </span>
                 </div>
               </div>
@@ -697,8 +784,8 @@ export default function ParentHomeworkPage() {
                     Confirm Submission
                   </p>
                   <p className="text-sm text-amber-700 mt-0.5 leading-relaxed">
-                    By submitting, you confirm that your child has completed this
-                    homework. This action can be reversed by the teacher.
+                    By submitting, you confirm that your child has completed
+                    this homework. This action can be reversed by the teacher.
                   </p>
                 </div>
               </div>
@@ -749,7 +836,11 @@ export default function ParentHomeworkPage() {
                   const Icon = STATUS_CONFIG[selectedHw.submission.status].icon;
                   return <Icon className="w-3.5 h-3.5" />;
                 })()}
-                {t("parentPages", STATUS_CONFIG[selectedHw.submission.status].labelKey as any, lang)}
+                {t(
+                  "parentPages",
+                  STATUS_CONFIG[selectedHw.submission.status].labelKey as any,
+                  lang,
+                )}
               </span>
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <Calendar className="w-4 h-4" />

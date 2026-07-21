@@ -34,7 +34,7 @@ export function PageHeader({ title, subtitle, icon: Icon, back, backHref, action
           {subtitle && <p className="text-xs lg:text-sm text-gray-500 truncate mt-0.5">{subtitle}</p>}
         </div>
       </div>
-      {action && <div className="shrink-0">{action}</div>}
+      {action && <div className="shrink-0 hidden sm:block">{action}</div>}
     </div>
   );
 }

@@ -189,6 +189,7 @@ const parentLinks = [
     icon: ClipboardList,
     key: "attendance" as NavKey,
   },
+  { href: "/parent/ibadah", icon: Moon, key: "ibadah" as NavKey },
   {
     href: "/parent/leave-requests",
     icon: FilePen,
@@ -196,7 +197,6 @@ const parentLinks = [
   },
   { href: "/parent/homework", icon: BookOpen, key: "homework" as NavKey },
   { href: "/parent/diary", icon: FileText, key: "diary" as NavKey },
-  { href: "/parent/ibadah", icon: Moon, key: "ibadah" as NavKey },
   { href: "/parent/fees", icon: CreditCard, key: "fees" as NavKey },
   { href: "/parent/id-cards", icon: BadgeCheck, key: "idCards" as NavKey },
   { href: "/parent/social-frames", icon: Image, key: "socialFrames" as NavKey },

@@ -22,12 +22,14 @@ export default function ParentBestPerformancePage() {
   const students = user?.accessibleStudents ?? [];
   const activeId = activeStudentId ?? ids[0] ?? "";
   const activeStudent = students.find((s) => s.id === activeId);
+  const classId = activeStudent?.classId ?? undefined;
+  const gender = activeStudent?.gender ?? undefined;
 
   const isParent = user?.role === "parent";
 
   const { data: response, isLoading, error } = useBestPerformers(
     { clientId: cid, token },
-    { limit: 100 },
+    { limit: 100, ...(classId && { classId }), ...(gender && { gender }) },
   );
 
   const data = response?.performers ?? [];

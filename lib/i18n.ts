@@ -1990,7 +1990,7 @@ const translations = {
     writeResponse: { en: "Write a response...", ml: "പ്രതികരണം എഴുതുക..." },
     selectStudentRespond: { en: "Select a student to respond", ml: "പ്രതികരിക്കാൻ വിദ്യാർത്ഥിയെ തിരഞ്ഞെടുക്കുക" },
     searchDiary: { en: "Search diary entries...", ml: "ഡയറി എൻട്രികൾ തിരയുക..." },
-    thisMonth: { en: "This month", ml: "ഈ മാസം" },
+    allMonth: { en: "All months", ml: "എല്ലാ മാസങ്ങളിലും" },
     // Notifications page
     notifPageTitle: { en: "Notifications", ml: "അറിയിപ്പുകൾ" },
     unreadCount: { en: "{count} unread", ml: "{count} എണ്ണം വായിക്കാത്തത്" },

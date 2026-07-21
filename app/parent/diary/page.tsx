@@ -311,7 +311,7 @@ export default function ParentDiaryPage() {
           <FilterPill
             active={selectedMonth === "this"}
             onClick={() => setSelectedMonth("this")}
-            label={t("parentPages", "thisMonth", lang)}
+            label={t("parentPages", "allMonth", lang)}
           />
           {availableMonths.map((m) => (
             <FilterPill

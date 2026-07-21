@@ -8,7 +8,7 @@ import type { AuthCtx } from "./useNotifications";
 
 export function useBestPerformers(
   ctx: AuthCtx,
-  params?: { from?: string; to?: string; classId?: string; academicYearId?: string; limit?: number },
+  params?: { from?: string; to?: string; classId?: string; gender?: string; academicYearId?: string; limit?: number },
   options?: Omit<UseQueryOptions<BestPerformanceResponse, Error>, "queryKey" | "queryFn">,
 ) {
   return useQuery<BestPerformanceResponse, Error>({
