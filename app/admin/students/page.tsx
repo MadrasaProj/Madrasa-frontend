@@ -13,6 +13,7 @@ import {
   getStudents,
   createStudent,
   deleteStudent,
+  bulkImportStudents,
   type StudentRecord,
   type CreateStudentPayload,
 } from "@/lib/students-api";
@@ -313,6 +314,18 @@ export default function AdminStudentsPage() {
             ? { accademicYearId: user.defaultAcademicYearId }
             : {}),
         }),
+      createBulk: async (rows) => {
+        const enriched = rows.map((r) => ({
+          ...r,
+          ...(user?.defaultAcademicYearId
+            ? { accademicYearId: user.defaultAcademicYearId }
+            : {}),
+        }));
+        await bulkImportStudents(activeClientId!, accessToken!, enriched);
+        return {
+          imported: enriched.map((_, i) => ({ rowIndex: i + 1, action: "created" as const })),
+        };
+      },
       context: { classes },
     }),
     [activeClientId, accessToken, user?.defaultAcademicYearId, classes],

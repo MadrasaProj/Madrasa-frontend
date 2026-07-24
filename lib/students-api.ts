@@ -214,3 +214,20 @@ export function deleteStudent(
     { method: "DELETE", signal },
   );
 }
+
+export interface BulkImportResponse {
+  message: string;
+  total: number;
+}
+
+export function bulkImportStudents(
+  clientId: string,
+  token: string,
+  rows: CreateStudentPayload[],
+): Promise<BulkImportResponse> {
+  return apiFetch<BulkImportResponse>(
+    `${V1_BASE}/${clientId}/students/bulk`,
+    token,
+    { method: "POST", body: JSON.stringify(rows) },
+  );
+}
