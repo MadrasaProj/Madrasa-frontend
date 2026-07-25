@@ -44,7 +44,8 @@ import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { useState, useEffect, useRef } from "react";
-import { getClientConfig, type ClientConfig } from "@/lib/config-api";
+import { type ClientConfig } from "@/lib/config-api";
+import { useClientConfig } from "@/lib/queries";
 
 type NavKey =
   | "dashboard"
@@ -524,28 +525,18 @@ export function Sidebar({
   const { user, activeClientId, accessToken, logout } = useAuthStore();
   const { lang } = useLanguageStore();
   const slugPrefix = useSlugPrefix();
-  const [commConfig, setCommConfig] = useState<
-    Pick<
-      ClientConfig,
-      "showCommitteeAttendance" | "showCommitteeTeacherCheckin"
-    >
-  >({});
-  const [disabledModules, setDisabledModules] = useState<string[]>([]);
+  const { data: clientConfig } = useClientConfig({
+    clientId: activeClientId ?? "",
+    token: accessToken ?? "",
+  });
+
+  const commConfig = {
+    showCommitteeAttendance: clientConfig?.showCommitteeAttendance,
+    showCommitteeTeacherCheckin: clientConfig?.showCommitteeTeacherCheckin,
+  };
+  const disabledModules = clientConfig?.disabledParentModules ?? [];
 
   const activeRef = useRef<HTMLAnchorElement>(null);
-
-  useEffect(() => {
-    if (!activeClientId || !accessToken) return;
-    getClientConfig(activeClientId, accessToken)
-      .then((cfg) => {
-        setCommConfig({
-          showCommitteeAttendance: cfg.showCommitteeAttendance,
-          showCommitteeTeacherCheckin: cfg.showCommitteeTeacherCheckin,
-        });
-        setDisabledModules(cfg.disabledParentModules ?? []);
-      })
-      .catch(() => {});
-  }, [activeClientId, accessToken]);
 
   useEffect(() => {
     if (activeRef.current) {
@@ -895,26 +886,16 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
   const { user, activeClientId, accessToken, logout } = useAuthStore();
   const { lang } = useLanguageStore();
   const slugPrefix = useSlugPrefix();
-  const [commConfig, setCommConfig] = useState<
-    Pick<
-      ClientConfig,
-      "showCommitteeAttendance" | "showCommitteeTeacherCheckin"
-    >
-  >({});
-  const [disabledModules, setDisabledModules] = useState<string[]>([]);
+  const { data: clientConfig } = useClientConfig({
+    clientId: activeClientId ?? "",
+    token: accessToken ?? "",
+  });
 
-  useEffect(() => {
-    if (!activeClientId || !accessToken) return;
-    getClientConfig(activeClientId, accessToken)
-      .then((cfg) => {
-        setCommConfig({
-          showCommitteeAttendance: cfg.showCommitteeAttendance,
-          showCommitteeTeacherCheckin: cfg.showCommitteeTeacherCheckin,
-        });
-        setDisabledModules(cfg.disabledParentModules ?? []);
-      })
-      .catch(() => {});
-  }, [activeClientId, accessToken]);
+  const commConfig = {
+    showCommitteeAttendance: clientConfig?.showCommitteeAttendance,
+    showCommitteeTeacherCheckin: clientConfig?.showCommitteeTeacherCheckin,
+  };
+  const disabledModules = clientConfig?.disabledParentModules ?? [];
 
   if (!user) return null;
 

@@ -4,10 +4,13 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
-  listDiary, upsertDiary, updateDiary, deleteDiary,
+  upsertDiary, updateDiary, deleteDiary,
   type DiaryEntry, type DiaryComment,
 } from "@/lib/diary-api";
-import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
+import { type ClassRecord } from "@/lib/classes-api";
+import { useClasses, useDiaryList } from "@/lib/queries";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
 import { getStudents, type StudentRecord } from "@/lib/students-api";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
@@ -195,13 +198,20 @@ export default function TeacherDiaryPage() {
   const token = accessToken ?? "";
   const teacherId = user?.id ?? "";
 
-  const [entries, setEntries] = useState<DiaryEntry[]>([]);
-  const [classes, setClasses] = useState<ClassRecord[]>([]);
+  const qc = useQueryClient();
+  const { data: classesData } = useClasses({ clientId: cid, token });
+  const classes = useMemo(() => {
+    return (classesData ?? []).filter((c) => c.classTeacherId === teacherId);
+  }, [classesData, teacherId]);
+
+  const { data: diaryData, isLoading: loadingDiary } = useDiaryList({ clientId: cid, token });
+  const entries = diaryData ?? [];
   const [students, setStudents] = useState<StudentRecord[]>([]);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [customError, setCustomError] = useState<string | null>(null);
+  const loading = loadingDiary || saving;
+  const error = customError;
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Drawer state
@@ -276,26 +286,13 @@ export default function TeacherDiaryPage() {
     }
   }, [theme]);
 
-  const loadEntries = useCallback(async () => {
-    if (!cid || !token) return;
-    setLoading(true); setError(null);
-    try {
-      const data = await listDiary(cid, token);
-      setEntries(data);
-    } catch (e) { setError((e as Error).message); }
-    finally { setLoading(false); }
-  }, [cid, token]);
 
-  useEffect(() => { loadEntries(); }, [loadEntries]);
 
   useEffect(() => {
-    if (!cid || !token) return;
-    getMyClasses(cid, token).then((cls) => {
-      const own = cls.filter((c) => c.classTeacherId === teacherId);
-      setClasses(own);
-      if (own.length > 0) setSelectedClassId(own[0].id);
-    });
-  }, [cid, token]);
+    if (classes.length > 0 && !selectedClassId) {
+      setSelectedClassId(classes[0].id);
+    }
+  }, [classes, selectedClassId]);
 
   const loadStudents = useCallback(async (classId: string) => {
     if (!cid || !token || !classId) return;
@@ -399,8 +396,8 @@ export default function TeacherDiaryPage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
       closeDrawer();
-      loadEntries();
-    } catch (e) { setError((e as Error).message); }
+      qc.invalidateQueries({ queryKey: queryKeys.diary.all });
+    } catch (e) { setCustomError((e as Error).message); }
     finally { setSaving(false); }
   };
 
@@ -408,8 +405,8 @@ export default function TeacherDiaryPage() {
     setDeletingId(id);
     try {
       await deleteDiary(cid, token, id);
-      loadEntries();
-    } catch (e) { setError((e as Error).message); }
+      qc.invalidateQueries({ queryKey: queryKeys.diary.all });
+    } catch (e) { setCustomError((e as Error).message); }
     finally { setDeletingId(null); }
   };
 
@@ -442,7 +439,12 @@ export default function TeacherDiaryPage() {
         }
       />
 
-      {error && <ApiErrorBanner message={error} onRetry={loadEntries} />}
+      {error && (
+        <ApiErrorBanner
+          message={error}
+          onRetry={() => qc.invalidateQueries({ queryKey: queryKeys.diary.all })}
+        />
+      )}
 
       {loading ? (
         <div className="space-y-3">

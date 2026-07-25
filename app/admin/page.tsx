@@ -4,11 +4,8 @@ import { ActionCard } from "@/components/ui/Cards";
 import { SectionHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { DataTable, type Column, type SortDir } from "@/components/ui/DataTable";
-import { getStudentStats, getFeeSummary, getAttendanceSummary } from "@/lib/reports-api";
-import {
-  listClients,
-  type ClientListItem,
-} from "@/lib/super-admin-api";
+import { type ClientListItem } from "@/lib/super-admin-api";
+import { useStudentStats, useFeeSummary, useAttendanceSummary, useClients } from "@/lib/queries";
 import { useAuthStore } from "@/store/auth";
 import OperationsDashboard from "./crm/operations";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -23,23 +20,10 @@ import { cn } from "@/lib/utils";
 function PlatformOverview() {
   const { user, accessToken } = useAuthStore();
   const navigate = useNavigate();
-  const [clients, setClients] = useState<ClientListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const loadClients = () => {
-    if (!accessToken) return;
-    setError(null);
-    setLoading(true);
-    listClients(accessToken)
-      .then((r) => setClients(r.data))
-      .catch((e) => { setError((e as Error).message); })
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    loadClients();
-  }, [accessToken]); // eslint-disable-line
+  const { data: clientsData, isLoading: loading, error: clientsError, refetch } = useClients(accessToken ?? "");
+  const clients = clientsData?.data ?? [];
+  const error = clientsError ? clientsError.message : null;
 
   const totalClients = clients.length;
   const activeClients = clients.filter((c) => c.status === "ACTIVE").length;
@@ -62,7 +46,7 @@ function PlatformOverview() {
 
   return (
     <>
-      {error && <ApiErrorBanner message={error} onRetry={loadClients} />}
+      {error && <ApiErrorBanner message={error} onRetry={() => refetch()} />}
 
       {/* Stats banner */}
       <div className="mb-5">
@@ -112,26 +96,27 @@ function MadrasaAdminDashboard() {
   const token = accessToken ?? "";
   const ayId  = user?.defaultAcademicYearId ?? "";
 
-  const [stats, setStats] = useState({ totalStudents: 0, activeStudents: 0, collectionPct: 0, attRate: 0 });
-  const [loading, setLoading] = useState(true);
+  const { data: studentStats, isLoading: loadingStudentStats } = useStudentStats({ clientId: cid, token });
+  const { data: feeSummary, isLoading: loadingFeeSummary } = useFeeSummary({ clientId: cid, token }, ayId || undefined);
+  const { data: attendanceSummary, isLoading: loadingAttendanceSummary } = useAttendanceSummary({ clientId: cid, token });
 
-  useEffect(() => {
-    if (!cid || !token) return;
-    Promise.all([
-      getStudentStats(cid, token).catch(() => null),
-      getFeeSummary(cid, token, ayId || undefined).catch(() => null),
-      getAttendanceSummary(cid, token).catch(() => null),
-    ]).then(([stu, fee, att]) => {
-      setStats({
-        totalStudents: stu?.total ?? 0,
-        activeStudents: stu?.byStatus.find((s: any) => s.status === "ACTIVE")?._count.id ?? 0,
-        collectionPct: fee
-          ? (() => { const c = Number(fee.totalCollected); const p = Number(fee.totalPending); const t = c + p; return t > 0 ? Math.round((c / t) * 100) : 0; })()
-          : 0,
-        attRate: att?.rate ?? 0,
-      });
-    }).finally(() => setLoading(false));
-  }, [cid, token, ayId]);
+  const loading = loadingStudentStats || loadingFeeSummary || loadingAttendanceSummary;
+
+  const stats = useMemo(() => {
+    return {
+      totalStudents: studentStats?.total ?? 0,
+      activeStudents: studentStats?.byStatus.find((s: any) => s.status === "ACTIVE")?._count.id ?? 0,
+      collectionPct: feeSummary
+        ? (() => {
+            const c = Number(feeSummary.totalCollected);
+            const p = Number(feeSummary.totalPending);
+            const t = c + p;
+            return t > 0 ? Math.round((c / t) * 100) : 0;
+          })()
+        : 0,
+      attRate: attendanceSummary?.rate ?? 0,
+    };
+  }, [studentStats, feeSummary, attendanceSummary]);
 
   const statCards = [
     { label: "Total Students",  value: stats.totalStudents,       color: "text-blue-600" },

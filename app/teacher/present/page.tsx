@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { getClassAttendance, type ClassAttendanceRecord } from "@/lib/attendance-api";
-import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
+import { type ClassRecord } from "@/lib/classes-api";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
+import { useClasses } from "@/lib/queries";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { UserCheck, RefreshCw } from "lucide-react";
@@ -22,7 +23,6 @@ export default function TeacherPresentPage() {
   const { lang } = useLanguageStore();
   const { user, accessToken } = useAuthStore();
 
-  const [classes, setClasses]           = useState<ClassRecord[]>([]);
   const [selectedClass, setSelectedClass] = useState<ClassRecord | null>(null);
   const [records, setRecords]           = useState<ClassAttendanceRecord[]>([]);
   const [loading, setLoading]           = useState(true);
@@ -30,21 +30,19 @@ export default function TeacherPresentPage() {
 
   const today = todayISO();
 
-  // Load teacher's classes once
+  // Load teacher's classes using cached query hook
+  const { data: classesData } = useClasses({ clientId: user?.clientId ?? "", token: accessToken ?? "" });
+  const classes = classesData ?? [];
+
+  // Set default class once loaded
   useEffect(() => {
-    if (!user?.clientId || !accessToken) return;
-    const ac = new AbortController();
-    getMyClasses(user.clientId, accessToken, ac.signal)
-      .then((data) => {
-        setClasses(data);
-        if (data.length > 0) setSelectedClass(data[0]);
-      })
-      .catch(() => {});
-    return () => ac.abort();
-  }, [user?.clientId, accessToken]);
+    if (classes.length > 0 && !selectedClass) {
+      setSelectedClass(classes[0]);
+    }
+  }, [classes, selectedClass]);
 
   // Load attendance when class changes
-  const loadAttendance = useCallback(async (cls: ClassRecord) => {
+  const loadAttendance = useCallback(async (cls: ClassRecord, signal?: AbortSignal) => {
     if (!user?.clientId || !accessToken) return;
     setLoading(true);
     setError(null);
@@ -53,9 +51,10 @@ export default function TeacherPresentPage() {
         date: today,
         classId: cls.id,
         ...(user.defaultAcademicYearId ? { academicYearId: user.defaultAcademicYearId } : {}),
-      });
+      }, signal);
       setRecords(res.records);
     } catch (err) {
+      if ((err as Error).name === "AbortError") return;
       setError((err as Error).message);
     } finally {
       setLoading(false);
@@ -63,7 +62,9 @@ export default function TeacherPresentPage() {
   }, [user?.clientId, user?.defaultAcademicYearId, accessToken, today]);
 
   useEffect(() => {
-    if (selectedClass) loadAttendance(selectedClass);
+    const ac = new AbortController();
+    if (selectedClass) loadAttendance(selectedClass, ac.signal);
+    return () => ac.abort();
   }, [selectedClass, loadAttendance]);
 
   const present = records.filter((r) => r.status === "PRESENT");

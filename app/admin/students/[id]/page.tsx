@@ -5,7 +5,8 @@ import { PageHeader, SectionHeader } from "@/components/ui/PageHeader";
 import {
   getStudentProfileV2, type StudentRecord,
 } from "@/lib/students-api";
-import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
+import { type ClassRecord } from "@/lib/classes-api";
+import { useClasses } from "@/lib/queries";
 import { getStudentAttendance, type StudentAttendanceResponse } from "@/lib/attendance-api";
 import { useAuthStore } from "@/store/auth";
 import { motion, AnimatePresence } from "framer-motion";
@@ -33,7 +34,6 @@ export default function StudentDetailPage() {
 
   const [student, setStudent] = useState<StudentRecord | null>(null);
   const [attendance, setAttendance] = useState<StudentAttendanceResponse | null>(null);
-  const [classes, setClasses] = useState<ClassRecord[]>([]);
   const [loadingStudent, setLoadingStudent] = useState(true);
   const [loadingAtt, setLoadingAtt] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,26 +42,31 @@ export default function StudentDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  const { data: classesData } = useClasses({
+    clientId: activeClientId ?? "",
+    token: accessToken ?? "",
+  });
+  const classes = classesData ?? [];
+
   useEffect(() => {
-  if (!activeClientId || !accessToken) return;
-  const ac = new AbortController();
+    if (!activeClientId || !accessToken) return;
+    const ac = new AbortController();
 
-  getStudentProfileV2(activeClientId, accessToken, id!, ac.signal)
-  .then((s) => { setStudent(s); })
-  .catch((e) => setError((e as Error).message))
-  .finally(() => setLoadingStudent(false));
+    getStudentProfileV2(activeClientId, accessToken, id!, ac.signal)
+      .then((s) => { setStudent(s); })
+      .catch((e) => {
+        if ((e as Error).name === "AbortError") return;
+        setError((e as Error).message);
+      })
+      .finally(() => setLoadingStudent(false));
 
-  getStudentAttendance(activeClientId, accessToken, id!,
-  { ...(user?.defaultAcademicYearId ? { academicYearId: user.defaultAcademicYearId } : {}), take: 365 },
-  ac.signal)
-  .then(setAttendance)
-  .finally(() => setLoadingAtt(false));
+    getStudentAttendance(activeClientId, accessToken, id!,
+      { ...(user?.defaultAcademicYearId ? { academicYearId: user.defaultAcademicYearId } : {}), take: 365 },
+      ac.signal)
+      .then(setAttendance)
+      .finally(() => setLoadingAtt(false));
 
-  getAllClasses(activeClientId, accessToken, ac.signal)
-  .then(setClasses)
-  .catch(() => {});
-
-  return () => ac.abort();
+    return () => ac.abort();
   }, [activeClientId, user?.defaultAcademicYearId, accessToken, id]);
 
   if (loadingStudent) {

@@ -4,12 +4,15 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import {
-  getAllClasses, createClass, updateClass, deleteClass, getGradeLevels,
+  createClass, updateClass, deleteClass,
   type ClassRecord, type CreateClassPayload, type UpdateClassPayload, type GradeLevelRecord,
 } from "@/lib/classes-api";
-import { getTeachers, type TeacherRecord } from "@/lib/teachers-api";
+import { useClasses, useGradeLevels, useTeachers } from "@/lib/queries";
+import { type TeacherRecord } from "@/lib/teachers-api";
 import { useAuthStore } from "@/store/auth";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
 import {
   School, Plus, Pencil, Loader2, BookOpen, Users, Trash2, X, Search,
 } from "lucide-react";
@@ -54,14 +57,9 @@ export default function AdminClassesPage() {
 
   const isAdmin = user?.actorType === "CLIENT_ADMIN" || user?.actorType === "SUPER_ADMIN";
 
-  const [classes, setClasses]   = useState<ClassRecord[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState<string | null>(null);
-  const [search, setSearch]     = useState("");
-  const searchTimer             = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [teachers, setTeachers] = useState<TeacherRecord[]>([]);
-  const [gradeLevels, setGradeLevels] = useState<GradeLevelRecord[]>([]);
-
+  const qc = useQueryClient();
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [showDrawer, setShowDrawer] = useState(false);
   const [editTarget, setEditTarget] = useState<ClassRecord | null>(null);
   const [form, setForm]             = useState<FormState>(EMPTY_FORM);
@@ -71,26 +69,32 @@ export default function AdminClassesPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget]           = useState<ClassRecord | null>(null);
 
-  const load = useCallback(async (srch?: string) => {
-    if (!cid || !token) return;
-    setLoading(true); setError(null);
-    try {
-      const [cls, tch, gls] = await Promise.all([
-        getAllClasses(cid, token, { search: srch }),
-        getTeachers(cid, token),
-        getGradeLevels(cid, token),
-      ]);
-      setClasses(cls);
-      setTeachers(tch.data ?? []);
-      setGradeLevels(gls);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [cid, token]);
+  // Debounce searchInput to searchQuery
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(searchInput);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
-  useEffect(() => { load(); }, [load]);
+  // Load classes using cached query hook
+  const { data: classesData, isLoading: loadingClasses, error: classesError } = useClasses(
+    { clientId: cid, token },
+    { search: searchQuery || undefined }
+  );
+
+  // Load grade levels using cached query hook
+  const { data: gradeLevelsData, isLoading: loadingGradeLevels } = useGradeLevels({ clientId: cid, token });
+
+  // Load teachers using cached query hook
+  const { data: teachersData, isLoading: loadingTeachers } = useTeachers({ clientId: cid, token });
+
+  const classes = classesData ?? [];
+  const gradeLevels = gradeLevelsData ?? [];
+  const teachers = teachersData?.data ?? [];
+  const loading = loadingClasses || loadingGradeLevels || loadingTeachers;
+  const [actionError, setActionError] = useState<string | null>(null);
+  const error = classesError ? classesError.message : actionError;
 
   const glMap = useRef(new Map<string, string>());
   glMap.current = new Map(gradeLevels.map((g) => [g.id, g.name]));
@@ -103,12 +107,6 @@ export default function AdminClassesPage() {
     const computed = form.division ? `${glName} ${form.division}` : glName;
     setForm((f) => ({ ...f, name: computed }));
   }, [form.gradeLevelId, form.division]);
-
-  const handleSearch = (val: string) => {
-    setSearch(val);
-    if (searchTimer.current) clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => load(val), 400);
-  };
 
   const openAdd = () => {
     setEditTarget(null);
@@ -126,24 +124,23 @@ export default function AdminClassesPage() {
     setSaving(true); setSaveError("");
     try {
       if (editTarget) {
-        const updated = await updateClass(cid, token, editTarget.id, {
+        await updateClass(cid, token, editTarget.id, {
           name: form.name.trim(),
           gradeLevelId: form.gradeLevelId || null,
           division: divisionVal || null,
           classTeacherId: form.classTeacherId || null,
           status: form.status,
         } as UpdateClassPayload);
-        setClasses((prev) => prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c)));
       } else {
-        const created = await createClass(cid, token, {
+        await createClass(cid, token, {
           name: form.name.trim(),
           gradeLevelId: form.gradeLevelId || undefined,
           division: divisionVal || undefined,
           classTeacherId: form.classTeacherId || null,
           accademicYearId: user?.defaultAcademicYearId ?? undefined,
         } as CreateClassPayload);
-        setClasses((prev) => [...prev, created]);
       }
+      qc.invalidateQueries({ queryKey: queryKeys.classes.all });
       setShowDrawer(false);
     } catch (e) {
       setSaveError((e as Error).message);
@@ -155,12 +152,13 @@ export default function AdminClassesPage() {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(deleteTarget.id);
+    setActionError(null);
     try {
       await deleteClass(cid, token, deleteTarget.id);
-      setClasses((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+      qc.invalidateQueries({ queryKey: queryKeys.classes.all });
       setShowDeleteConfirm(false);
     } catch (e) {
-      setError((e as Error).message);
+      setActionError((e as Error).message);
       setShowDeleteConfirm(false);
     } finally {
       setDeleting(null);
@@ -271,14 +269,14 @@ export default function AdminClassesPage() {
         }
       />
 
-      {error && <ApiErrorBanner message={error} onRetry={() => load(search)} />}
+      {error && <ApiErrorBanner message={error} onRetry={() => qc.invalidateQueries({ queryKey: queryKeys.classes.all })} />}
 
       {/* Search */}
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <input
-          value={search}
-          onChange={(e) => handleSearch(e.target.value)}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
           placeholder="Search classes…"
           className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
         />

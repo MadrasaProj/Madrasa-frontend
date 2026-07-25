@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -24,10 +24,11 @@ import {
   type FeeTransaction,
   type TransactionSummary,
 } from "@/lib/fees-api";
-import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
-import { getTeachers, type TeacherRecord } from "@/lib/teachers-api";
+import { type ClassRecord } from "@/lib/classes-api";
+import { type TeacherRecord } from "@/lib/teachers-api";
 import { apiFetch } from "@/lib/fetch";
 import { useAuthStore } from "@/store/auth";
+import { useClasses, useTeachers, useUsers } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import {
   CreditCard,
@@ -177,7 +178,7 @@ export default function AdminFeesPage() {
   const [filterClass, setFilterClass] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const [classes, setClasses] = useState<ClassRecord[]>([]);
+
   const [tab, setTab] = useState<"records" | "reports" | "transactions">(
     "records",
   );
@@ -201,10 +202,7 @@ export default function AdminFeesPage() {
   const [editingAmount, setEditingAmount] = useState<string | null>(null);
   const [customAmount, setCustomAmount] = useState("");
 
-  // Teachers lookup (for collectedBy)
-  const [teachers, setTeachers] = useState<Record<string, string>>({});
-  // Teachers only (for transaction modal — excludes admins)
-  const [teachersOnly, setTeachersOnly] = useState<Record<string, string>>({});
+
 
   // Transactions tab state
   const [transactions, setTransactions] = useState<FeeTransaction[]>([]);
@@ -259,34 +257,35 @@ export default function AdminFeesPage() {
     }
   }, [cid, token, user?.defaultAcademicYearId]);
 
+  // Load classes using cached query hook
+  const { data: classesData } = useClasses({ clientId: cid, token });
+  const classes = classesData ?? [];
+
+  // Load teachers using cached query hook
+  const { data: teachersData } = useTeachers({ clientId: cid, token });
+
+  // Load users using cached query hook
+  const { data: usersData } = useUsers({ clientId: cid, token });
+
+  const { teachers, teachersOnly } = useMemo<{ teachers: Record<string, string>; teachersOnly: Record<string, string> }>(() => {
+    const map: Record<string, string> = {};
+    const teacherOnlyMap: Record<string, string> = {};
+    
+    for (const t of teachersData?.data ?? []) {
+      map[t.id] = t.name;
+      teacherOnlyMap[t.id] = t.name;
+    }
+    
+    for (const u of usersData?.data ?? []) {
+      map[u.id] = u.name;
+    }
+    
+    return { teachers: map, teachersOnly: teacherOnlyMap };
+  }, [teachersData, usersData]);
+
   useEffect(() => {
     if (!cid || !token) return;
     loadTypes();
-    getAllClasses(cid, token)
-      .then(setClasses)
-      .catch(() => {});
-    (async () => {
-      const map: Record<string, string> = {};
-      const teacherOnlyMap: Record<string, string> = {};
-      try {
-        const teachersRes = await getTeachers(cid, token, { limit: 500 });
-        for (const t of teachersRes.data ?? []) {
-          map[t.id] = t.name;
-          teacherOnlyMap[t.id] = t.name;
-        }
-      } catch {}
-      try {
-        const usersRes = await apiFetch<{
-          data: { id: string; name: string }[];
-        }>(
-          `${import.meta.env.VITE_API_ORIGIN ?? "http://localhost:3000"}/api/v2/${cid}/users`,
-          token,
-        );
-        for (const u of usersRes.data ?? []) map[u.id] = u.name;
-      } catch {}
-      setTeachers(map);
-      setTeachersOnly(teacherOnlyMap);
-    })();
   }, [cid, token, loadTypes]);
 
   // Load payments

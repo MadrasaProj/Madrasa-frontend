@@ -13,7 +13,8 @@ import {
   type ExamStatus,
 } from "@/lib/exams-api";
 import { getResults, bulkUpsertResults } from "@/lib/results-api";
-import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
+import { type ClassRecord } from "@/lib/classes-api";
+import { useClasses } from "@/lib/queries";
 import { getSubjects, type SubjectRecord } from "@/lib/subjects-api";
 import { getStudents } from "@/lib/students-api";
 import { useAuthStore } from "@/store/auth";
@@ -99,7 +100,6 @@ export default function AdminExamsPage() {
   };
 
   const [exams, setExams] = useState<ExamRecord[]>([]);
-  const [classes, setClasses] = useState<ClassRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
 
@@ -139,23 +139,24 @@ export default function AdminExamsPage() {
     useState<ExamRecord | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Load classes using cached query hook
+  const { data: classesData } = useClasses({ clientId: cid, token });
+  const classes = classesData ?? [];
+
   // ── Load ───────────────────────────────────────────────────────────────────
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (signal?: AbortSignal) => {
     if (!cid || !token) return;
     setPageError(null);
     setLoading(true);
     try {
-      const [examData, classData] = await Promise.all([
-        getExams(cid, token, { limit: 200 }),
-        getAllClasses(cid, token),
-      ]);
+      const examData = await getExams(cid, token, { limit: 200, signal });
       const termExams = (examData.data ?? []).filter(
         (e) => e.type === "TERM_EXAM" || !e.type,
       );
       setExams(termExams);
-      setClasses(classData);
     } catch (e: any) {
+      if (e.name === "AbortError") return;
       setPageError(e.message ?? "Load failed");
     } finally {
       setLoading(false);
@@ -163,7 +164,9 @@ export default function AdminExamsPage() {
   }, [cid, token]);
 
   useEffect(() => {
-    loadData();
+    const ac = new AbortController();
+    loadData(ac.signal);
+    return () => ac.abort();
   }, [loadData]);
 
   // ── Form Actions ────────────────────────────────────────────────────────────

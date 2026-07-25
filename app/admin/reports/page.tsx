@@ -1,12 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import {
-  getStudentStats, getFeeSummary, getAttendanceSummary, getHomeworkSummary,
   type StudentStats, type FeeSummary, type AttendanceSummary, type HomeworkSummary,
 } from "@/lib/reports-api";
 import { useAuthStore } from "@/store/auth";
+import { useStudentStats, useFeeSummary, useAttendanceSummary, useHomeworkSummary } from "@/lib/queries";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
 import { cn } from "@/lib/utils";
 import {
   BarChart3, Users, IndianRupee, ClipboardList, BookOpen,
@@ -38,33 +40,24 @@ export default function AdminReportsPage() {
   const token = accessToken ?? "";
   const ayId  = user?.defaultAcademicYearId ?? "";
 
-  const [students, setStudents]     = useState<StudentStats | null>(null);
-  const [fees, setFees]             = useState<FeeSummary | null>(null);
-  const [attendance, setAttendance] = useState<AttendanceSummary | null>(null);
-  const [homework, setHomework]     = useState<HomeworkSummary | null>(null);
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState<string | null>(null);
+  const qc = useQueryClient();
 
-  const load = useCallback(async () => {
-    if (!cid || !token) return;
-    setError(null); setLoading(true);
-    try {
-      const [s, f, a, h] = await Promise.all([
-        getStudentStats(cid, token).catch((e) => { setError((e as Error).message); return null; }),
-        getFeeSummary(cid, token, ayId || undefined).catch((e) => { setError((e as Error).message); return null; }),
-        getAttendanceSummary(cid, token).catch((e) => { setError((e as Error).message); return null; }),
-        getHomeworkSummary(cid, token).catch((e) => { setError((e as Error).message); return null; }),
-      ]);
-      setStudents(s);
-      setFees(f);
-      setAttendance(a);
-      setHomework(h);
-    } finally {
-      setLoading(false);
-    }
-  }, [cid, token, ayId]);
+  const { data: studentStats, isLoading: loadingStudentStats, error: studentError } = useStudentStats({ clientId: cid, token });
+  const { data: feeSummary, isLoading: loadingFeeSummary, error: feeError } = useFeeSummary({ clientId: cid, token }, ayId || undefined);
+  const { data: attendanceSummary, isLoading: loadingAttendanceSummary, error: attendanceError } = useAttendanceSummary({ clientId: cid, token });
+  const { data: homeworkSummary, isLoading: loadingHomeworkSummary, error: homeworkError } = useHomeworkSummary({ clientId: cid, token });
 
-  useEffect(() => { load(); }, [load]);
+  const students = studentStats ?? null;
+  const fees = feeSummary ?? null;
+  const attendance = attendanceSummary ?? null;
+  const homework = homeworkSummary ?? null;
+
+  const loading = loadingStudentStats || loadingFeeSummary || loadingAttendanceSummary || loadingHomeworkSummary;
+  const error = studentError?.message || feeError?.message || attendanceError?.message || homeworkError?.message || null;
+
+  const load = useCallback(() => {
+    qc.invalidateQueries({ queryKey: queryKeys.reports.all });
+  }, [qc]);
 
   const genderData = students?.byGender.map((g) => ({
     name: g.gender,

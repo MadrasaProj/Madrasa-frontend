@@ -7,8 +7,9 @@ import {
   getSubjects, createSubject, updateSubject, bulkAssignTeacher,
   type SubjectRecord,
 } from "@/lib/subjects-api";
-import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
-import { getTeachers, type TeacherRecord } from "@/lib/teachers-api";
+import { type ClassRecord } from "@/lib/classes-api";
+import { type TeacherRecord } from "@/lib/teachers-api";
+import { useClasses, useTeachers } from "@/lib/queries";
 import { useAuthStore } from "@/store/auth";
 import { useLocation } from "react-router-dom";
 import {
@@ -60,9 +61,6 @@ export default function AdminSubjectsPage() {
   const [filterClassId, setFilterClassId] = useState(defaultClassId);
   const [search, setSearch]               = useState("");
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [classes, setClasses]             = useState<ClassRecord[]>([]);
-  const [teachers, setTeachers]           = useState<TeacherRecord[]>([]);
-
   const [showDrawer, setShowDrawer]   = useState(false);
   const [editTarget, setEditTarget]   = useState<SubjectRecord | null>(null);
   const [form, setForm]               = useState<FormState>(EMPTY_FORM);
@@ -76,26 +74,33 @@ export default function AdminSubjectsPage() {
   const [bulkSaving, setBulkSaving]       = useState(false);
   const [bulkError, setBulkError]         = useState("");
 
-  const load = useCallback(async (clsId?: string, srch?: string) => {
+  // Load classes using cached query hook
+  const { data: classesData } = useClasses({ clientId: cid, token });
+  const classes = classesData ?? [];
+
+  // Load teachers using cached query hook
+  const { data: teachersData } = useTeachers({ clientId: cid, token });
+  const teachers = teachersData?.data ?? [];
+
+  const load = useCallback(async (clsId?: string, srch?: string, signal?: AbortSignal) => {
     if (!cid || !token) return;
     setLoading(true); setError(null);
     try {
-      const [subs, cls, tch] = await Promise.all([
-        getSubjects(cid, token, { classId: clsId || undefined, search: srch || undefined }),
-        getAllClasses(cid, token),
-        getTeachers(cid, token),
-      ]);
+      const subs = await getSubjects(cid, token, { classId: clsId || undefined, search: srch || undefined, signal });
       setSubjects(subs.data);
-      setClasses(cls);
-      setTeachers(tch.data ?? []);
     } catch (e) {
+      if ((e as Error).name === "AbortError") return;
       setError((e as Error).message);
     } finally {
       setLoading(false);
     }
   }, [cid, token]);
 
-  useEffect(() => { load(filterClassId, search); }, [load]); // eslint-disable-line
+  useEffect(() => {
+    const ac = new AbortController();
+    load(filterClassId, search, ac.signal);
+    return () => ac.abort();
+  }, [filterClassId, search, load]);
 
   const handleFilterClass = (id: string) => {
     setFilterClassId(id);

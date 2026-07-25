@@ -33,6 +33,7 @@ export interface GetSubjectsParams {
   /** kept for backward compat — ignored by V2 (no server-side pagination for subjects list) */
   page?: number;
   limit?: number;
+  signal?: AbortSignal;
 }
 
 /**
@@ -52,6 +53,7 @@ export function getSubjects(
   return apiFetch<SubjectRecord[]>(
     `${V2_BASE}/${clientId}/subjects${qs ? `?${qs}` : ""}`,
     token,
+    { signal: params.signal },
   ).then((data) => ({ data, total: data.length }));
 }
 

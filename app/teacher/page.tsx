@@ -1,10 +1,6 @@
-import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { ActionCard } from "@/components/ui/Cards";
 import { SectionHeader } from "@/components/ui/PageHeader";
-import { listHomework } from "@/lib/homework-api";
-import { getAttendanceSummary } from "@/lib/reports-api";
-import { getUnreadCount } from "@/lib/notifications-api";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
@@ -14,6 +10,7 @@ import {
   Star, Bell, Users, TrendingUp,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useHomeworkList, useAttendanceSummary, useUnreadCount } from "@/lib/queries";
 
 export default function TeacherDashboard() {
   const { user, accessToken } = useAuthStore();
@@ -22,23 +19,16 @@ export default function TeacherDashboard() {
   const cid   = user?.clientId ?? "";
   const token = accessToken ?? "";
 
-  const [stats, setStats]   = useState({ hw: 0, att: 0, unread: 0 });
-  const [loading, setLoading] = useState(true);
+  const { data: hwData, isLoading: loadingHw } = useHomeworkList({ clientId: cid, token });
+  const { data: attData, isLoading: loadingAtt } = useAttendanceSummary({ clientId: cid, token });
+  const { data: unreadData, isLoading: loadingUnread } = useUnreadCount({ clientId: cid, token });
 
-  useEffect(() => {
-    if (!cid || !token) return;
-    Promise.all([
-      listHomework(cid, token).catch(() => [] as any[]),
-      getAttendanceSummary(cid, token).catch(() => null),
-      getUnreadCount(cid, token).catch(() => ({ count: 0 })),
-    ]).then(([hw, att, notif]) => {
-      setStats({
-        hw: hw.length,
-        att: att?.rate ?? 0,
-        unread: notif.count,
-      });
-    }).finally(() => setLoading(false));
-  }, [cid, token]);
+  const stats = {
+    hw: hwData?.length ?? 0,
+    att: attData?.rate ?? 0,
+    unread: unreadData?.count ?? 0,
+  };
+  const loading = loadingHw || loadingAtt || loadingUnread;
 
   const today = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
 

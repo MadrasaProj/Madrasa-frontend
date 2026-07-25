@@ -231,3 +231,21 @@ export function bulkImportStudents(
     { method: "POST", body: JSON.stringify(rows) },
   );
 }
+
+export interface BulkImportResponseV2 {
+  message: string;
+  imported: Array<{ rowIndex: number; action: "created" | "updated" }>;
+  failed: Array<{ rowIndex: number; message: string }>;
+}
+
+export function bulkImportStudentsV2(
+  clientId: string,
+  token: string,
+  rows: CreateStudentPayload[],
+): Promise<BulkImportResponseV2> {
+  return apiFetch<BulkImportResponseV2>(
+    `${V2_BASE}/${clientId}/students/bulk`,
+    token,
+    { method: "POST", body: JSON.stringify(rows) },
+  );
+}

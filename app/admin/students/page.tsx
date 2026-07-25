@@ -14,10 +14,12 @@ import {
   createStudent,
   deleteStudent,
   bulkImportStudents,
+  bulkImportStudentsV2,
   type StudentRecord,
   type CreateStudentPayload,
 } from "@/lib/students-api";
-import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
+import { type ClassRecord } from "@/lib/classes-api";
+import { useClasses } from "@/lib/queries";
 import StudentEditDrawer from "@/components/admin/StudentEditDrawer";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
@@ -160,6 +162,61 @@ const STUDENT_IMPORT_COLUMNS: ImportColumnDef[] = [
       return null;
     },
   },
+  {
+    header: "UID",
+    field: "uid",
+    example: "UID12345",
+  },
+  {
+    header: "Address",
+    field: "address",
+    example: "123 Main St",
+  },
+  {
+    header: "City",
+    field: "city",
+    example: "Kozhikode",
+  },
+  {
+    header: "State",
+    field: "state",
+    example: "Kerala",
+  },
+  {
+    header: "Country",
+    field: "country",
+    example: "India",
+  },
+  {
+    header: "Pincode",
+    field: "pincode",
+    example: "673001",
+  },
+  {
+    header: "Blood Group",
+    field: "bloodGroup",
+    example: "O+",
+  },
+  {
+    header: "Emergency Contact Name",
+    field: "emergencyContactName",
+    example: "Uncle John",
+  },
+  {
+    header: "Emergency Contact Phone",
+    field: "emergencyContactPhone",
+    example: "9876543212",
+    validate: (val) => {
+      if (!val) return null;
+      if (!/^\d{10}$/.test(String(val))) return `Emergency phone must be 10 digits`;
+      return null;
+    },
+  },
+  {
+    header: "Medical Notes",
+    field: "medicalNotes",
+    example: "Asthma",
+  },
 ];
 
 // ── Page component ────────────────────────────────────────────────────────────
@@ -178,8 +235,8 @@ export default function AdminStudentsPage() {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [classes, setClasses] = useState<ClassRecord[]>([]);
-  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeClassId, setActiveClassId] = useState<string | "all">("all");
   const [gender, setGender] = useState<"all" | "MALE" | "FEMALE">("all");
   const [loading, setLoading] = useState(true);
@@ -192,19 +249,13 @@ export default function AdminStudentsPage() {
   const [deleteTarget, setDeleteTarget] = useState<StudentRecord | null>(null);
 
   const [showImport, setShowImport] = useState(false);
-  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load classes once
-  useEffect(() => {
-    if (!activeClientId || !accessToken) return;
-    const ac = new AbortController();
-    getAllClasses(activeClientId, accessToken, ac.signal)
-      .then(setClasses)
-      .catch((e) => {
-        setError((e as Error).message);
-      });
-    return () => ac.abort();
-  }, [activeClientId, accessToken]);
+  // Load classes using cached query hook
+  const { data: classesData } = useClasses({
+    clientId: activeClientId ?? "",
+    token: accessToken ?? "",
+  });
+  const classes = classesData ?? [];
 
   const loadStudents = useCallback(
     async (
@@ -241,28 +292,26 @@ export default function AdminStudentsPage() {
     [activeClientId, accessToken],
   );
 
+  const handleSearch = (val: string) => {
+    setSearchInput(val);
+    setPage(1);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
+      loadStudents(1, val, activeClassId, gender, pageSize, sortBy, sortDir);
+    }, 400);
+  };
+
   useEffect(() => {
     loadStudents(
       page,
-      search,
+      searchInput,
       activeClassId,
       gender,
       pageSize,
       sortBy,
       sortDir,
     );
-  }, [page, activeClassId, gender, pageSize, sortBy, sortDir, loadStudents]); // eslint-disable-line
-
-  const handleSearch = (val: string) => {
-    setSearch(val);
-    setPage(1);
-    if (searchTimer.current) clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(
-      () =>
-        loadStudents(1, val, activeClassId, gender, pageSize, sortBy, sortDir),
-      400,
-    );
-  };
+  }, [page, activeClassId, gender, pageSize, sortBy, sortDir]); // eslint-disable-line
 
   const handleSort = (key: string, dir: "asc" | "desc") => {
     setSortBy(key);
@@ -277,7 +326,7 @@ export default function AdminStudentsPage() {
   const handleStudentSaved = () => {
     setDrawer(null);
     setPage(1);
-    loadStudents(1, search, activeClassId, gender, pageSize, sortBy, sortDir);
+    loadStudents(1, searchInput, activeClassId, gender, pageSize, sortBy, sortDir);
   };
 
   const handleDelete = async () => {
@@ -288,7 +337,7 @@ export default function AdminStudentsPage() {
       setDrawer(null);
       setShowDeleteConfirm(false);
       setPage(1);
-      loadStudents(1, search, activeClassId, gender, pageSize, sortBy, sortDir);
+      loadStudents(1, searchInput, activeClassId, gender, pageSize, sortBy, sortDir);
     } catch (err: any) {
       setError(err?.message ?? "Failed to delete student.");
       setShowDeleteConfirm(false);
@@ -321,9 +370,10 @@ export default function AdminStudentsPage() {
             ? { accademicYearId: user.defaultAcademicYearId }
             : {}),
         }));
-        await bulkImportStudents(activeClientId!, accessToken!, enriched);
+        const res = await bulkImportStudentsV2(activeClientId!, accessToken!, enriched);
         return {
-          imported: enriched.map((_, i) => ({ rowIndex: i + 1, action: "created" as const })),
+          imported: res.imported || [],
+          failed: res.failed || [],
         };
       },
       context: { classes },
@@ -505,7 +555,7 @@ export default function AdminStudentsPage() {
           onRetry={() =>
             loadStudents(
               page,
-              search,
+              searchInput,
               activeClassId,
               gender,
               pageSize,
@@ -520,7 +570,7 @@ export default function AdminStudentsPage() {
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <input
-          value={search}
+          value={searchInput}
           onChange={(e) => handleSearch(e.target.value)}
           placeholder={t("adminPages", "searchNameOrAdm", lang)}
           className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
@@ -706,7 +756,7 @@ export default function AdminStudentsPage() {
           setPage(1);
           loadStudents(
             1,
-            search,
+            searchInput,
             activeClassId,
             gender,
             pageSize,

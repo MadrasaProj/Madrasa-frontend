@@ -10,3 +10,8 @@ export * from "./useResults";
 export * from "./useStudents";
 export * from "./useClientConfig";
 export * from "./useSocialFrames";
+export * from "./useClasses";
+export * from "./useTeachers";
+export * from "./useReports";
+export * from "./useSuperAdmin";
+export * from "./useUsers";

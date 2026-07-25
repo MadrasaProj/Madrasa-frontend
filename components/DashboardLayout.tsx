@@ -12,7 +12,7 @@ import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { getRoleFromPath, getTenantSlugFromPath } from "@/lib/tenant-routing";
 import RoleLoginPage from "@/components/auth/RoleLoginPage";
-import { getClientConfig } from "@/lib/config-api";
+import { useClientConfig } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 // ── Super Admin Viewing Banner ─────────────────────────────────────────────────
@@ -422,9 +422,18 @@ function UserMenu({
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const { user, activeClientId, activeTenantSlug, hasHydrated, accessToken, setAttendanceMode, logout } = useAuthStore();
+  const { user, activeClientId, activeTenantSlug, hasHydrated, accessToken, setAttendanceMode, logout, switchToClient } = useAuthStore();
   const { lang } = useLanguageStore();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [resolvingClient, setResolvingClient] = useState(false);
+
+  const slug = getTenantSlugFromPath(pathname);
+  const needsResolution = !!(
+    hasHydrated &&
+    user?.actorType === "SUPER_ADMIN" &&
+    slug &&
+    (activeTenantSlug?.toLowerCase() !== slug.toLowerCase() || !activeClientId)
+  );
 
   // Global 401 handler — any API that dispatches "auth:unauthorized" triggers logout
   useEffect(() => {
@@ -435,13 +444,58 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("auth:unauthorized", handler);
   }, [logout]);
 
-  // Sync attendanceMode when super admin switches to a madrasa
+  // For super admin, sync activeClientId when URL slug changes
   useEffect(() => {
-    if (user?.actorType !== "SUPER_ADMIN" || !activeClientId || !accessToken) return;
-    getClientConfig(activeClientId, accessToken)
-      .then((cfg) => { if (cfg.attendanceMode) setAttendanceMode(cfg.attendanceMode); })
-      .catch(() => {});
-  }, [activeClientId]); // eslint-disable-line
+    if (!hasHydrated || !user || user.actorType !== "SUPER_ADMIN" || !accessToken) return;
+
+    const slug = getTenantSlugFromPath(pathname);
+    if (!slug) {
+      // If we are on a platform page (e.g. /admin), clear the active client
+      if (activeClientId !== null) {
+        switchToClient(null, null);
+      }
+      return;
+    }
+
+    if (activeTenantSlug?.toLowerCase() === slug.toLowerCase() && activeClientId) {
+      // Already synced
+      return;
+    }
+
+    // Otherwise, we need to resolve the clientId for this slug
+    setResolvingClient(true);
+    import("@/lib/super-admin-api")
+      .then(({ listClients }) => listClients(accessToken))
+      .then(({ data }) => {
+        const client = data.find((c) => c.slug.toLowerCase() === slug.toLowerCase());
+        if (client) {
+          switchToClient(client.id, client.slug);
+        } else {
+          console.error(`Client not found for slug: ${slug}`);
+          navigate("/admin", { replace: true });
+        }
+      })
+      .catch((e) => {
+        console.error("Failed to list clients for super-admin slug sync:", e);
+      })
+      .finally(() => {
+        setResolvingClient(false);
+      });
+  }, [hasHydrated, user, accessToken, pathname, activeTenantSlug, activeClientId, switchToClient, navigate]);
+
+  // Fetch client config using cached query hook
+  const { data: clientConfig } = useClientConfig({
+    clientId: activeClientId ?? "",
+    token: accessToken ?? "",
+  });
+
+  // Sync attendanceMode when super admin switches to a madrasa or clientConfig is loaded
+  useEffect(() => {
+    if (user?.actorType !== "SUPER_ADMIN" || !clientConfig) return;
+    if (clientConfig.attendanceMode) {
+      setAttendanceMode(clientConfig.attendanceMode);
+    }
+  }, [clientConfig, user?.actorType, setAttendanceMode]);
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -468,10 +522,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     navigate(slugBase ?? roleBase, { replace: true });
   }, [hasHydrated, pathname, navigate, user]); // eslint-disable-line
 
-  if (!hasHydrated) {
+  const isResolving = resolvingClient || needsResolution;
+
+  if (!hasHydrated || isResolving) {
     return (
       <div className="min-h-screen bg-[#faf9f6] flex items-center justify-center text-sm text-gray-500">
-        Loading...
+        {isResolving ? "Loading tenant settings..." : "Loading..."}
       </div>
     );
   }

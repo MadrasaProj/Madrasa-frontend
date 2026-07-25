@@ -3,7 +3,9 @@ import { queryKeys } from "@/lib/queryKeys";
 import {
   getStudentHomework,
   parentSubmitHomework,
+  listHomework,
   type StudentHomeworkResponse,
+  type HomeworkAssignment,
 } from "@/lib/homework-api";
 import { getStudent, type StudentRecord } from "@/lib/students-api";
 import type { AuthCtx } from "./useNotifications";
@@ -51,5 +53,18 @@ export function useParentSubmitHomework(ctx: AuthCtx) {
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: queryKeys.homework.student(ctx.clientId, vars.studentId) });
     },
+  });
+}
+
+export function useHomeworkList(
+  ctx: AuthCtx,
+  params?: { classId?: string; studentId?: string; from?: string; to?: string; academicYearId?: string },
+  options?: Omit<UseQueryOptions<HomeworkAssignment[], Error>, "queryKey" | "queryFn">,
+) {
+  return useQuery<HomeworkAssignment[], Error>({
+    queryKey: queryKeys.homework.list(ctx.clientId, params),
+    queryFn: () => listHomework(ctx.clientId, ctx.token, params),
+    enabled: !!ctx.clientId && !!ctx.token,
+    ...options,
   });
 }

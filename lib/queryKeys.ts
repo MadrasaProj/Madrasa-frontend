@@ -37,6 +37,7 @@ export const queryKeys = {
   homework: {
     all: ["homework"] as const,
     student: (cid: string, sid: string) => ["homework", "student", cid, sid] as const,
+    list: (cid: string, params?: object) => ["homework", "list", cid, params ?? {}] as const,
   },
 
   ibadah: {
@@ -80,10 +81,39 @@ export const queryKeys = {
       ["results", "classReport", cid, params ?? {}] as const,
   },
 
+  teachers: {
+    all: ["teachers"] as const,
+    list: (cid: string, params?: object) => ["teachers", "list", cid, params ?? {}] as const,
+  },
+
+  classes: {
+    all: ["classes"] as const,
+    list: (cid: string, params?: object) => ["classes", "list", cid, params ?? {}] as const,
+    gradeLevels: (cid: string) => ["classes", "gradeLevels", cid] as const,
+  },
+
   students: {
     all: ["students"] as const,
     profile: (cid: string, sid: string) => ["students", "profile", cid, sid] as const,
     fullFromParent: (sid: string) => ["students", "fullFromParent", sid] as const,
+  },
+
+  users: {
+    all: ["users"] as const,
+    list: (cid: string) => ["users", "list", cid] as const,
+  },
+
+  superAdmin: {
+    all: ["superAdmin"] as const,
+    clients: () => ["superAdmin", "clients"] as const,
+  },
+
+  reports: {
+    all: ["reports"] as const,
+    studentStats: (cid: string) => ["reports", "studentStats", cid] as const,
+    feeSummary: (cid: string, ay?: string) => ["reports", "feeSummary", cid, ay ?? ""] as const,
+    attendanceSummary: (cid: string, from?: string, to?: string) => ["reports", "attendanceSummary", cid, from ?? "", to ?? ""] as const,
+    homeworkSummary: (cid: string) => ["reports", "homeworkSummary", cid] as const,
   },
 
   config: {

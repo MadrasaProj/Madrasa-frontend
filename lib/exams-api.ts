@@ -38,7 +38,7 @@ export interface ExamListResponse {
 
 export const getExams = (
   clientId: string, token: string,
-  params?: { accademicYearId?: string; examStatus?: ExamStatus; type?: ExamType; classId?: string; studentId?: string; page?: number; limit?: number },
+  params?: { accademicYearId?: string; examStatus?: ExamStatus; type?: ExamType; classId?: string; studentId?: string; page?: number; limit?: number; signal?: AbortSignal },
 ) => {
   const q = new URLSearchParams();
   if (params?.accademicYearId) q.set("accademicYearId", params.accademicYearId);
@@ -48,7 +48,7 @@ export const getExams = (
   if (params?.studentId)       q.set("studentId", params.studentId);
   if (params?.page)            q.set("page", String(params.page));
   if (params?.limit)           q.set("limit", String(params.limit));
-  return apiFetch<ExamListResponse>(`${V2_BASE}/${clientId}/exams?${q}`, token);
+  return apiFetch<ExamListResponse>(`${V2_BASE}/${clientId}/exams?${q}`, token, { signal: params?.signal });
 };
 
 export const getExam = (clientId: string, token: string, id: string) =>

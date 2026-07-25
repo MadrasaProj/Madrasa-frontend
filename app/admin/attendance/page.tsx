@@ -3,7 +3,8 @@ import { useLocation } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader, SectionHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
-import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
+import { type ClassRecord } from "@/lib/classes-api";
+import { useClasses } from "@/lib/queries";
 import { getStudents } from "@/lib/students-api";
 import {
  getClassAttendance, bulkUpsertAttendance, bulkDeleteAttendance,
@@ -44,70 +45,62 @@ export default function AdminAttendancePage() {
  const token = accessToken ?? "";
 
  const [date, setDate] = useState(todayISO());
- const [classes, setClasses] = useState<ClassRecord[]>([]);
- const [classesLoading, setClassesLoading] = useState(false);
- const [activeClassId, setActiveClassId] = useState<string | null>(null);
- const [students, setStudents] = useState<{ id: string; name: string; adno: string; gender?: string }[]>([]);
- const [records, setRecords] = useState<Map<string, LocalRecord>>(new Map());
- const [loading, setLoading] = useState(false);
- const [saving, setSaving] = useState(false);
- const [error, setError] = useState<string | null>(null);
- const [saveError, setSaveError] = useState<string | null>(null);
- const [saveSuccess, setSaveSuccess] = useState(false);
- const [confirmClear, setConfirmClear] = useState(false);
+  const [activeClassId, setActiveClassId] = useState<string | null>(null);
+  const [students, setStudents] = useState<{ id: string; name: string; adno: string; gender?: string }[]>([]);
+  const [records, setRecords] = useState<Map<string, LocalRecord>>(new Map());
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
 
- // Load classes once — don't auto-select
- useEffect(() => {
- if (!cid || !token) return;
- const ac = new AbortController();
- setClassesLoading(true);
- setError(null);
- getAllClasses(cid, token, ac.signal)
- .then((cls) => setClasses(cls))
- .catch((e) => { setError((e as Error).message); })
- .finally(() => setClassesLoading(false));
- return () => ac.abort();
- }, [cid, token]);
+  // Load classes using cached query hook
+  const { data: classesData, isLoading: classesLoading } = useClasses({ clientId: cid, token });
+  const classes = classesData ?? [];
 
- // Load attendance + students lazily when class OR date changes
- const loadAttendance = useCallback(async (classId: string, dateStr: string) => {
- if (!cid || !token || !classId) return;
- setLoading(true); setError(null);
+  // Load attendance + students lazily when class OR date changes
+  const loadAttendance = useCallback(async (classId: string, dateStr: string, signal?: AbortSignal) => {
+    if (!cid || !token || !classId) return;
+    setLoading(true); setError(null);
 
- try {
- const [attendanceRes, studentsRes] = await Promise.all([
- getClassAttendance(cid, token, {
- date: dateStr, classId,
- ...(user?.defaultAcademicYearId ? { academicYearId: user.defaultAcademicYearId } : {}),
- take: 500,
- }),
- getStudents(cid, token, { classId, status: "ACTIVE", limit: 500 }),
- ]);
+    try {
+      const [attendanceRes, studentsRes] = await Promise.all([
+        getClassAttendance(cid, token, {
+          date: dateStr, classId,
+          ...(user?.defaultAcademicYearId ? { academicYearId: user.defaultAcademicYearId } : {}),
+          take: 500,
+        }, signal),
+        getStudents(cid, token, { classId, status: "ACTIVE", limit: 500, signal }),
+      ]);
 
- const map = new Map<string, LocalRecord>();
- for (const s of studentsRes.data) {
- map.set(s.id, { status: null, dirty: false });
- }
- for (const rec of attendanceRes.records) {
- map.set(rec.student.id, {
- attendanceId: rec.id,
- status: rec.status,
- dirty: false,
- });
- }
- setStudents(studentsRes.data.map((s) => ({ id: s.id, name: s.name, adno: s.adno, gender: s.gender ?? undefined })));
- setRecords(map);
- } catch (e) {
- setError((e as Error).message);
- } finally {
- setLoading(false);
- }
- }, [cid, token, user?.defaultAcademicYearId]);
+      const map = new Map<string, LocalRecord>();
+      for (const s of studentsRes.data) {
+        map.set(s.id, { status: null, dirty: false });
+      }
+      for (const rec of attendanceRes.records) {
+        map.set(rec.student.id, {
+          attendanceId: rec.id,
+          status: rec.status,
+          dirty: false,
+        });
+      }
+      setStudents(studentsRes.data.map((s) => ({ id: s.id, name: s.name, adno: s.adno, gender: s.gender ?? undefined })));
+      setRecords(map);
+    } catch (e) {
+      if ((e as Error).name === "AbortError") return;
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, [cid, token, user?.defaultAcademicYearId]);
 
- useEffect(() => {
- if (activeClassId) loadAttendance(activeClassId, date);
- else { setStudents([]); setRecords(new Map()); }
- }, [activeClassId, date, loadAttendance]);
+  useEffect(() => {
+    const ac = new AbortController();
+    if (activeClassId) loadAttendance(activeClassId, date, ac.signal);
+    else { setStudents([]); setRecords(new Map()); }
+    return () => ac.abort();
+  }, [activeClassId, date, loadAttendance]);
 
  const setStatus = (studentId: string, status: ActiveStatus) => {
  setRecords((prev) => {

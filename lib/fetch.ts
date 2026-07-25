@@ -2,7 +2,7 @@
 // Classifies network/timeout errors into human-readable messages.
 
 export class ApiError extends Error {
-  constructor(message: string, public readonly code: string) {
+  constructor(message: string, public readonly code: string, public readonly details?: any) {
     super(message);
     this.name = "ApiError";
   }
@@ -64,7 +64,7 @@ export async function apiFetch<T>(
       if (res.status === 401 && typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("auth:unauthorized"));
       }
-      throw new ApiError(extractMessage(payload, res.status), String(res.status));
+      throw new ApiError(extractMessage(payload, res.status), String(res.status), payload?.errors || payload || null);
     }
 
     return payload as T;
@@ -73,6 +73,9 @@ export async function apiFetch<T>(
 
     const msg = (err as Error)?.message ?? "";
     if ((err as Error)?.name === "AbortError") {
+      if (externalSignal?.aborted) {
+        throw err;
+      }
       throw new ApiError(TIMEOUT_ERROR, "TIMEOUT");
     }
     if (

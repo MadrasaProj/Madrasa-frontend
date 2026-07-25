@@ -4,8 +4,11 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { listHomework, getSubmissions, type HomeworkAssignment, type SubmissionsResponse } from "@/lib/homework-api";
-import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
+import { getSubmissions, type HomeworkAssignment, type SubmissionsResponse } from "@/lib/homework-api";
+import { type ClassRecord } from "@/lib/classes-api";
+import { useClasses, useHomeworkList } from "@/lib/queries";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
@@ -24,42 +27,42 @@ export default function TeacherHomeworkListPage() {
   const cid   = user?.clientId ?? "";
   const token = accessToken ?? "";
 
-  const [classes, setClasses]     = useState<ClassRecord[]>([]);
-  const [homework, setHomework]   = useState<HomeworkAssignment[]>([]);
+  const qc = useQueryClient();
   const [activeClassId, setActiveClassId] = useState("");
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState<string | null>(null);
+  const [customError, setCustomError] = useState<string | null>(null);
+
+  const { data: classesData, isLoading: loadingClasses } = useClasses({ clientId: cid, token });
+  const classes = classesData ?? [];
+
+  const { data: homeworkData, isLoading: loadingHomework, error: homeworkError } = useHomeworkList({ clientId: cid, token });
+  const homework = homeworkData ?? [];
+
+  const loading = loadingClasses || loadingHomework;
+  const error = customError || homeworkError?.message || null;
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [subsMap, setSubsMap]     = useState<Record<string, SubmissionsResponse>>({});
   const [loadingSubs, setLoadingSubs] = useState<string | null>(null);
+  const loadData = useCallback(() => {
+    setCustomError(null);
+    qc.invalidateQueries({ queryKey: queryKeys.classes.all });
+    qc.invalidateQueries({ queryKey: queryKeys.homework.all });
+  }, [qc]);
 
-  const loadData = useCallback(async () => {
-    if (!cid || !token) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const [cls, hw] = await Promise.all([
-        getMyClasses(cid, token),
-        listHomework(cid, token),
-      ]);
-      setClasses(cls);
-      setHomework(hw);
-      if (cls.length > 0) setActiveClassId(cls[0].id);
-    } catch (e) { setError((e as Error).message); }
-    finally { setLoading(false); }
-  }, [cid, token]);
-
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    if (classes.length > 0 && !activeClassId) {
+      setActiveClassId(classes[0].id);
+    }
+  }, [classes, activeClassId]);
 
   const loadSubs = async (hwId: string) => {
     if (subsMap[hwId]) { setExpandedId(expandedId === hwId ? null : hwId); return; }
     setLoadingSubs(hwId);
-    setError(null);
+    setCustomError(null);
     try {
       const data = await getSubmissions(cid, token, hwId);
       setSubsMap((prev) => ({ ...prev, [hwId]: data }));
       setExpandedId(hwId);
-    } catch (e) { setError((e as Error).message); }
+    } catch (e) { setCustomError((e as Error).message); }
     finally { setLoadingSubs(null); }
   };
 

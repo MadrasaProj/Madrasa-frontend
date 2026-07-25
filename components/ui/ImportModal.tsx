@@ -584,73 +584,83 @@ export function ImportModal<TPayload>({ show, config, onComplete, onClose }: Imp
   }, [config])
 
   const handleImport = async () => {
-  const valid = rows.filter(r => r.status === "valid")
-  const nameField = config.columns[0]?.field ?? ""
-  const updated = rows.map(r => ({ ...r }))
-  const failed: typeof failedRows = []
+    const valid = rows.filter(r => r.status === "valid")
+    const nameField = config.columns[0]?.field ?? ""
+    const updated = rows.map(r => ({ ...r }))
+    const failed: typeof failedRows = []
 
-  setProgress({ done: 0, total: valid.length })
-  setScreen("importing")
+    setProgress({ done: 0, total: valid.length })
+    setScreen("importing")
 
-  if (config.createBulk) {
-  // Single network round-trip; backend reports per-row status.
-  try {
-  const result = await config.createBulk(valid.map(r => r.parsed as TPayload))
-  const importedSet = new Set((result.imported ?? []).map(r => r.rowIndex))
-  const failedMap = new Map(
-   (result.failed ?? []).map(f => [f.rowIndex, f.message] as const),
-  )
-  for (const row of valid) {
-   const idx = updated.findIndex(r => r.index === row.index)
-   if (idx < 0) continue
-   if (failedMap.has(row.index)) {
-   const msg = failedMap.get(row.index) || "Failed"
-   updated[idx].status = "failed"
-   updated[idx].failMessage = msg
-   failed.push({
-   index: row.index,
-   name: String(row.raw[nameField] ?? `Row ${row.index}`),
-   error: msg,
-   })
-   } else {
-   updated[idx].status = "imported"
-   }
-   void importedSet
-  }
-  setProgress({ done: valid.length, total: valid.length })
-  } catch (e) {
-  // Whole-batch failure: mark every valid row as failed.
-  const msg = (e as Error).message || "Import failed"
-  for (const row of valid) {
-   const idx = updated.findIndex(r => r.index === row.index)
-   if (idx >= 0) {
-   updated[idx].status = "failed"
-   updated[idx].failMessage = msg
-   }
-   failed.push({
-   index: row.index,
-   name: String(row.raw[nameField] ?? `Row ${row.index}`),
-   error: msg,
-   })
-  }
-  setProgress({ done: valid.length, total: valid.length })
-  }
-  } else {
-  // Per-row fallback loop.
-  for (let i = 0; i < valid.length; i++) {
-   const row = valid[i]
-   const idx = updated.findIndex(r => r.index === row.index)
-   try {
-   await config.createRow(row.parsed as TPayload)
-   if (idx >= 0) updated[idx].status = "imported"
-   } catch (e) {
-   const msg = (e as Error).message || "Failed"
-   if (idx >= 0) { updated[idx].status = "failed"; updated[idx].failMessage = msg }
-   failed.push({ index: row.index, name: String(row.raw[nameField] ?? `Row ${row.index}`), error: msg })
-   }
-   setProgress({ done: i + 1, total: valid.length })
-  }
-  }
+    if (config.createBulk) {
+      const chunkSize = 100;
+      let doneCount = 0;
+
+      for (let i = 0; i < valid.length; i += chunkSize) {
+        const chunk = valid.slice(i, i + chunkSize);
+        
+        try {
+          const result = await config.createBulk(chunk.map(r => r.parsed as TPayload));
+          const failedMap = new Map(
+            (result.failed ?? []).map(f => [f.rowIndex, f.message] as const)
+          );
+
+          chunk.forEach((row, localIdx) => {
+            const idx = updated.findIndex(r => r.index === row.index);
+            if (idx >= 0) {
+              const isLocalFailed = failedMap.has(localIdx + 1);
+              if (isLocalFailed) {
+                const msg = failedMap.get(localIdx + 1) || "Failed";
+                updated[idx].status = "failed";
+                updated[idx].failMessage = msg;
+                failed.push({
+                  index: row.index,
+                  name: String(row.raw[nameField] ?? `Row ${row.index}`),
+                  error: msg,
+                });
+              } else {
+                updated[idx].status = "imported";
+              }
+            }
+          });
+        } catch (e) {
+          // Whole-chunk failure: mark all rows in this chunk as failed.
+          const msg = (e as Error).message || "Import failed";
+          chunk.forEach(row => {
+            const idx = updated.findIndex(r => r.index === row.index);
+            if (idx >= 0) {
+              updated[idx].status = "failed";
+              updated[idx].failMessage = msg;
+            }
+            failed.push({
+              index: row.index,
+              name: String(row.raw[nameField] ?? `Row ${row.index}`),
+              error: msg,
+            });
+          });
+        }
+        doneCount += chunk.length;
+        setProgress({ done: doneCount, total: valid.length });
+        
+        // Brief delay to allow progress bar animation to smoothly render
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+    } else {
+      // Per-row fallback loop.
+      for (let i = 0; i < valid.length; i++) {
+        const row = valid[i]
+        const idx = updated.findIndex(r => r.index === row.index)
+        try {
+          await config.createRow(row.parsed as TPayload)
+          if (idx >= 0) updated[idx].status = "imported"
+        } catch (e) {
+          const msg = (e as Error).message || "Failed"
+          if (idx >= 0) { updated[idx].status = "failed"; updated[idx].failMessage = msg }
+          failed.push({ index: row.index, name: String(row.raw[nameField] ?? `Row ${row.index}`), error: msg })
+        }
+        setProgress({ done: i + 1, total: valid.length })
+      }
+    }
 
   setRows(updated)
   setFailedRows(failed)

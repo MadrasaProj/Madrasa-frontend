@@ -67,6 +67,9 @@ export async function postJson<T>(
     if (err instanceof AuthApiError) throw err;
 
     if ((err as Error).name === "AbortError") {
+      if (signal?.aborted) {
+        throw err;
+      }
       throw new AuthApiError(TIMEOUT_ERROR, {
         code: "TIMEOUT",
         statusCode: 408,
