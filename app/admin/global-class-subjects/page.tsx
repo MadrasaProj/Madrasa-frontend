@@ -420,13 +420,15 @@ export default function AdminGlobalClassSubjectsPage() {
               >
                 {/* Header */}
                 <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 shrink-0">
-                  <button onClick={() => setDrawerSys(null)} className="p-2 rounded-xl hover:bg-gray-100 text-gray-500">
-                    <X className="w-5 h-5" />
-                  </button>
+                
                   <div>
                     <h2 className="font-bold text-gray-900">{drawerSys.name}</h2>
                     <p className="text-xs text-gray-400">{drawerSys.code} · {gradeLevels.length} classes</p>
                   </div>
+
+                    <button onClick={() => setDrawerSys(null)} className=" absolute right-4 p-2 rounded-xl hover:bg-gray-100 text-gray-500">
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
 
                 {/* Body: split layout */}
@@ -569,8 +571,8 @@ export default function AdminGlobalClassSubjectsPage() {
                 className="w-full max-w-md bg-white shadow-2xl pointer-events-auto flex flex-col"
               >
                 <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 shrink-0">
-                  <button onClick={() => setGlFormDrawer(false)} className="p-2 rounded-xl hover:bg-gray-100 text-gray-500"><X className="w-5 h-5" /></button>
                   <h2 className="font-bold text-gray-900">{editingGl ? "Edit Class" : "Add Class"}</h2>
+                  <button onClick={() => setGlFormDrawer(false)} className="p-2 absolute right-3 rounded-xl hover:bg-gray-100 text-gray-500"><X className="w-5 h-5" /></button>
                 </div>
                 <div className="flex-1 px-6 py-4 space-y-4">
                   <div><label className={labelCls}>Name *</label><input value={glForm.name} onChange={(e) => setGlForm((f) => ({ ...f, name: e.target.value }))} className={inputCls} placeholder="e.g. Class 1" /></div>
@@ -597,11 +599,11 @@ export default function AdminGlobalClassSubjectsPage() {
             <div className="fixed inset-0 z-50 flex justify-end pointer-events-none">
               <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
                 transition={{ type: "spring", damping: 30, stiffness: 300 }}
-                className="w-full max-w-[75vw] bg-white shadow-2xl pointer-events-auto flex flex-col"
+                className="w-full max-w-[40vw] bg-white shadow-2xl pointer-events-auto flex flex-col"
               >
                 <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 shrink-0">
-                  <button onClick={cancelSubjForm} className="p-2 rounded-xl hover:bg-gray-100 text-gray-500"><X className="w-5 h-5" /></button>
                   <h2 className="font-bold text-gray-900">{editingSubj ? "Edit Subject" : "Add Subject"}</h2>
+                  <button onClick={cancelSubjForm} className="absolute right-3 p-2 rounded-xl hover:bg-gray-100 text-gray-500"><X className="w-5 h-5" /></button>
                 </div>
                 <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
                   <div>

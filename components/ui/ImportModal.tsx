@@ -52,6 +52,8 @@ export interface ImportConfig<TPayload = Record<string, unknown>> {
   imported?: Array<{ rowIndex: number; action?: "created" | "updated" }>
   failed?: Array<{ rowIndex: number; message: string }>
  }>
+ /** Sample rows for the template — one per class/division etc. Maps column header → value. */
+ templateSamples?: Record<string, string>[]
  /** Passed as second arg to every `parse` / `validate` callback. */
  context?: ImportContext
 }
@@ -76,23 +78,28 @@ async function getXlsx() {
  return xlsxMod
 }
 
-async function downloadTemplate(columns: ImportColumnDef[], filename: string) {
+async function downloadTemplate(columns: ImportColumnDef[], filename: string, samples?: Record<string, string>[]) {
  const XLSX = await getXlsx()
  const wb = XLSX.utils.book_new()
  const headers = columns.map(c => c.header)
- const examples = columns.map(c => c.example ?? "")
- const ws = XLSX.utils.aoa_to_sheet([headers, examples])
 
- // Style header row (bold + light fill) and example row (italic + grey)
+ const dataRows: string[][] = []
+ if (samples && samples.length > 0) {
+  for (const sample of samples) {
+   dataRows.push(columns.map(c => sample[c.header] ?? c.example ?? ""))
+  }
+ } else {
+  dataRows.push(columns.map(c => c.example ?? ""))
+ }
+ const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows])
+
+ // Style header row
  const headerStyle = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "10B981" } } }
- const exampleStyle = { font: { italic: true, color: { rgb: "6B7280" } } }
  const range = XLSX.utils.decode_range(ws["!ref"] ?? "A1")
  for (let c = range.s.c; c <= range.e.c; c++) {
   const addr = XLSX.utils.encode_cell({ r: 0, c })
   ws[addr] = ws[addr] ?? { t: "s", v: headers[c] }
   ws[addr].s = headerStyle
-  const exAddr = XLSX.utils.encode_cell({ r: 1, c })
-  if (ws[exAddr]) ws[exAddr].s = exampleStyle
  }
  // Set reasonable column widths
  ws["!cols"] = columns.map(c => ({ wch: Math.max(14, (c.header.length + 4)) }))
@@ -264,7 +271,7 @@ function UploadScreen({
  <p className="text-xs text-emerald-600 mt-0.5">Fill it in, then upload below</p>
  </div>
  <button
- onClick={() => downloadTemplate(config.columns, config.templateFilename)}
+ onClick={() => downloadTemplate(config.columns, config.templateFilename, config.templateSamples)}
  className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-colors shrink-0"
  >
  <Download className="w-4 h-4" /> Template

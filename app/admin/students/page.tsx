@@ -356,6 +356,16 @@ export default function AdminStudentsPage() {
       entityName: "Students",
       templateFilename: "student-import-template",
       columns: STUDENT_IMPORT_COLUMNS,
+      templateSamples: classes.map((c) => ({
+        "Name": "Mohammed Abdullah",
+        "Admission No": `ADM${(c.classLevel ?? 0).toString().padStart(2, "0")}${c.division ?? ""}001`,
+        "Class": c.name,
+        "Gender": "MALE",
+        "Date of Birth": "15/06/2010",
+        "Guardian Name": "Ahmed Abdullah",
+        "Phone": "9876543210",
+        "Relation": "father",
+      })),
       createRow: (row) =>
         createStudent(activeClientId!, accessToken!, {
           ...row,
