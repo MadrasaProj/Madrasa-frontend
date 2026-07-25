@@ -269,6 +269,7 @@ export interface ClassSubjectInfo {
   subjectName: string;
   maxMarks?: number | null;
   passMarks?: number | null;
+  annualPassMarks?: number | null;
   gradeConfig?: Record<string, any> | null;
 }
 
@@ -276,6 +277,7 @@ export interface CreateClassSubjectDto {
   subjectName: string;
   maxMarks?: number;
   passMarks?: number;
+  annualPassMarks?: number;
   gradeConfig?: Record<string, any>;
 }
 
@@ -283,6 +285,7 @@ export interface UpdateClassSubjectDto {
   subjectName?: string;
   maxMarks?: number | null;
   passMarks?: number | null;
+  annualPassMarks?: number | null;
   gradeConfig?: Record<string, any> | null;
 }
 

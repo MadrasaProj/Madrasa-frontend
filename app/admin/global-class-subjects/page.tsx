@@ -40,11 +40,12 @@ interface SubjectForm {
   subjectName: string;
   maxMarks: string;
   passMarks: string;
+  annualPassMarks: string;
   grades: GradeEntry[];
 }
 
 const EMPTY_GL: GradeLevelForm = { name: "", level: 1 };
-const EMPTY_SUBJECT: SubjectForm = { subjectName: "", maxMarks: "", passMarks: "", grades: [] };
+const EMPTY_SUBJECT: SubjectForm = { subjectName: "", maxMarks: "", passMarks: "", annualPassMarks: "", grades: [] };
 
 const inputCls = "w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all";
 const labelCls = "text-xs font-semibold text-gray-600 mb-1.5 block";
@@ -223,6 +224,7 @@ export default function AdminGlobalClassSubjectsPage() {
       subjectName: s.subjectName,
       maxMarks: s.maxMarks?.toString() ?? "",
       passMarks: s.passMarks?.toString() ?? "",
+      annualPassMarks: s.annualPassMarks?.toString() ?? "",
       grades,
     });
     setShowSubjForm(true);
@@ -238,6 +240,7 @@ export default function AdminGlobalClassSubjectsPage() {
       const dto: any = { subjectName: subjForm.subjectName.trim() };
       if (subjForm.maxMarks) dto.maxMarks = parseInt(subjForm.maxMarks, 10);
       if (subjForm.passMarks) dto.passMarks = parseInt(subjForm.passMarks, 10);
+      if (subjForm.annualPassMarks) dto.annualPassMarks = parseInt(subjForm.annualPassMarks, 10);
       if (subjForm.grades.length > 0) {
         const config: Record<string, { min: number }> = {};
         for (const g of subjForm.grades) {
@@ -413,7 +416,7 @@ export default function AdminGlobalClassSubjectsPage() {
             <div className="fixed inset-0 z-50 flex justify-end pointer-events-none">
               <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
                 transition={{ type: "spring", damping: 30, stiffness: 300 }}
-                className="w-full max-w-5xl bg-white shadow-2xl pointer-events-auto flex flex-col"
+                className="w-full max-w-[75vw] bg-white shadow-2xl pointer-events-auto flex flex-col"
               >
                 {/* Header */}
                 <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 shrink-0">
@@ -506,16 +509,18 @@ export default function AdminGlobalClassSubjectsPage() {
                                 <th className="text-left px-4 py-3">Subject</th>
                                 <th className="text-left px-4 py-3">Max Marks</th>
                                 <th className="text-left px-4 py-3">Pass Marks</th>
+                                <th className="text-left px-4 py-3">Annual Pass</th>
                                 <th className="text-left px-4 py-3">Grade Config</th>
                                 <th className="text-right px-4 py-3"></th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                               {subjects.map((s) => (
-                                <tr key={s.id} className="hover:bg-gray-50 transition-colors">
+                                  <tr key={s.id} className="hover:bg-gray-50 transition-colors">
                                   <td className="px-4 py-3.5 text-sm font-medium text-gray-900">{s.subjectName}</td>
                                   <td className="px-4 py-3.5 text-sm text-gray-600">{s.maxMarks ?? "—"}</td>
                                   <td className="px-4 py-3.5 text-sm text-gray-600">{s.passMarks ?? "—"}</td>
+                                  <td className="px-4 py-3.5 text-sm text-gray-600">{s.annualPassMarks ?? "—"}</td>
                                   <td className="px-4 py-3.5">
                                     {s.gradeConfig ? (
                                       <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">Set</span>
@@ -535,7 +540,7 @@ export default function AdminGlobalClassSubjectsPage() {
                               ))}
                               {subjects.length === 0 && (
                                 <tr>
-                                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-400 italic">No subjects yet</td>
+                                  <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-400 italic">No subjects yet</td>
                                 </tr>
                               )}
                             </tbody>
@@ -592,7 +597,7 @@ export default function AdminGlobalClassSubjectsPage() {
             <div className="fixed inset-0 z-50 flex justify-end pointer-events-none">
               <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
                 transition={{ type: "spring", damping: 30, stiffness: 300 }}
-                className="w-full max-w-md bg-white shadow-2xl pointer-events-auto flex flex-col"
+                className="w-full max-w-[75vw] bg-white shadow-2xl pointer-events-auto flex flex-col"
               >
                 <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 shrink-0">
                   <button onClick={cancelSubjForm} className="p-2 rounded-xl hover:bg-gray-100 text-gray-500"><X className="w-5 h-5" /></button>
@@ -612,6 +617,10 @@ export default function AdminGlobalClassSubjectsPage() {
                       <label className={labelCls}>Pass Marks</label>
                       <input type="number" value={subjForm.passMarks} onChange={(e) => setSubjForm((f) => ({ ...f, passMarks: e.target.value }))} className={inputCls} placeholder="e.g. 30" />
                     </div>
+                  </div>
+                  <div>
+                    <label className={labelCls}>Annual Pass Marks</label>
+                    <input type="number" value={subjForm.annualPassMarks} onChange={(e) => setSubjForm((f) => ({ ...f, annualPassMarks: e.target.value }))} className={inputCls} placeholder="e.g. 30" />
                   </div>
                   <div>
                     <label className={labelCls}>Grade Config <span className="text-gray-400 font-normal">(optional)</span></label>
