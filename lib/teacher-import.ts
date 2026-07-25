@@ -1,14 +1,6 @@
 import type { ImportColumnDef, ParseResult } from "@/components/ui/ImportModal";
 import type { BulkUpsertTeacherRow } from "@/lib/teachers-api";
 
-/**
- * Teacher import column definitions.
- *
- * Headers here must match what the backend expects to read from the .xlsx.
- * `required: true` columns are verified against the uploaded template —
- * missing required columns throw `ImportTemplateError` before any data is
- * sent to the server.
- */
 export const TEACHER_IMPORT_COLUMNS: ImportColumnDef[] = [
   {
     header: "Name",
@@ -79,6 +71,89 @@ export const TEACHER_IMPORT_COLUMNS: ImportColumnDef[] = [
     },
   },
   {
+    header: "Qualification",
+    field: "qualification",
+    required: false,
+    example: "B.Ed, M.Sc",
+  },
+  {
+    header: "Address",
+    field: "address",
+    required: false,
+    example: "123 Main St",
+  },
+  {
+    header: "City",
+    field: "city",
+    required: false,
+    example: "Kozhikode",
+  },
+  {
+    header: "State",
+    field: "state",
+    required: false,
+    example: "Kerala",
+  },
+  {
+    header: "Country",
+    field: "country",
+    required: false,
+    example: "India",
+  },
+  {
+    header: "Pincode",
+    field: "pincode",
+    required: false,
+    example: "673001",
+  },
+  {
+    header: "Date of Birth",
+    field: "dateOfBirth",
+    required: false,
+    example: "15/06/1990",
+  },
+  {
+    header: "Blood Group",
+    field: "bloodGroup",
+    required: false,
+    example: "O+",
+  },
+  {
+    header: "Gender",
+    field: "gender",
+    required: false,
+    example: "MALE",
+    parse: (val): ParseResult => {
+      const v = val.trim().toUpperCase();
+      if (!v) return { ok: true, value: undefined };
+      if (v !== "MALE" && v !== "FEMALE") {
+        return { ok: false, error: `Gender must be MALE or FEMALE (got "${val}")` };
+      }
+      return { ok: true, value: v };
+    },
+  },
+  {
+    header: "Emergency Contact Name",
+    field: "emergencyContactName",
+    required: false,
+    example: "Spouse Name",
+  },
+  {
+    header: "Emergency Contact Phone",
+    field: "emergencyContactPhone",
+    required: false,
+    example: "9876543210",
+    parse: (val): ParseResult => {
+      const v = val.trim();
+      if (!v) return { ok: true, value: undefined };
+      const digits = v.replace(/\D/g, "");
+      if (digits.length < 7 || digits.length > 15) {
+        return { ok: false, error: `Emergency phone "${val}" looks invalid` };
+      }
+      return { ok: true, value: digits };
+    },
+  },
+  {
     header: "Status",
     field: "status",
     required: false,
@@ -94,7 +169,6 @@ export const TEACHER_IMPORT_COLUMNS: ImportColumnDef[] = [
   },
 ];
 
-/** Drop parsed fields that the backend doesn't expect. */
 export function toBulkUpsertTeacherRow(
   parsed: Record<string, unknown>,
 ): BulkUpsertTeacherRow {
@@ -104,6 +178,17 @@ export function toBulkUpsertTeacherRow(
     password: parsed.password ? String(parsed.password) : undefined,
     phone: parsed.phone ? String(parsed.phone) : undefined,
     email: parsed.email ? String(parsed.email) : undefined,
+    qualification: parsed.qualification ? String(parsed.qualification) : undefined,
+    address: parsed.address ? String(parsed.address) : undefined,
+    city: parsed.city ? String(parsed.city) : undefined,
+    state: parsed.state ? String(parsed.state) : undefined,
+    country: parsed.country ? String(parsed.country) : undefined,
+    pincode: parsed.pincode ? String(parsed.pincode) : undefined,
+    dateOfBirth: parsed.dateOfBirth ? String(parsed.dateOfBirth) : undefined,
+    bloodGroup: parsed.bloodGroup ? String(parsed.bloodGroup) : undefined,
+    gender: parsed.gender ? String(parsed.gender) : undefined,
+    emergencyContactName: parsed.emergencyContactName ? String(parsed.emergencyContactName) : undefined,
+    emergencyContactPhone: parsed.emergencyContactPhone ? String(parsed.emergencyContactPhone) : undefined,
     status: (parsed.status as "ACTIVE" | "INACTIVE" | undefined) ?? "ACTIVE",
   };
 }

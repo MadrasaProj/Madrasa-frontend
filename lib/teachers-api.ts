@@ -1,7 +1,6 @@
 import { apiFetch } from "@/lib/fetch";
 
 const API_ORIGIN = import.meta.env.VITE_API_ORIGIN ?? "http://localhost:3000";
-const V1_BASE    = `${API_ORIGIN}/api/madrasa`;
 const V2_BASE    = `${API_ORIGIN}/api/v2`;
 
 export interface TeacherRecord {
@@ -11,6 +10,20 @@ export interface TeacherRecord {
   role: string;
   status: string;
   clientId: string;
+  phone?: string | null;
+  email?: string | null;
+  qualification?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  pincode?: string | null;
+  dateOfBirth?: string | null;
+  bloodGroup?: string | null;
+  gender?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  photoUrl?: string | null;
   classes?: { id: string; name: string }[];
   subjects?: { id: string; name: string; classId?: string; class?: { id: string; name: string } }[];
 }
@@ -31,9 +44,32 @@ export const getTeachers = (
   );
 };
 
+export const getTeacher = (clientId: string, token: string, id: string) =>
+  apiFetch<TeacherRecord>(`${V2_BASE}/${clientId}/teachers/${id}`, token);
+
+export interface CreateTeacherPayload {
+  name: string;
+  username: string;
+  password: string;
+  status?: string;
+  phone?: string;
+  email?: string;
+  qualification?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  pincode?: string;
+  dateOfBirth?: string;
+  bloodGroup?: string;
+  gender?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+}
+
 export const createTeacher = (
   clientId: string, token: string,
-  data: { name: string; username: string; password: string; status?: string },
+  data: CreateTeacherPayload,
 ) =>
   apiFetch<TeacherRecord>(`${V2_BASE}/${clientId}/teachers`, token, {
     method: "POST",
@@ -44,10 +80,21 @@ export interface UpdateTeacherPayload {
   name?: string;
   password?: string;
   status?: string;
-  /** Full replacement list — empty array unassigns from all classes */
   classIds?: string[];
-  /** period-based only — full replacement list */
   subjectIds?: string[];
+  phone?: string | null;
+  email?: string | null;
+  qualification?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  pincode?: string | null;
+  dateOfBirth?: string | null;
+  bloodGroup?: string | null;
+  gender?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
 }
 
 export const updateTeacher = (
@@ -64,25 +111,49 @@ export const deleteTeacher = (clientId: string, token: string, id: string) =>
     method: "DELETE",
   });
 
+export const uploadTeacherPhoto = (clientId: string, token: string, teacherId: string, file: File) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return apiFetch<{ photoUrl: string }>(
+    `${V2_BASE}/${clientId}/teachers/${teacherId}/photo`,
+    token,
+    { method: "POST", body: formData },
+  );
+};
+
+export const deleteTeacherPhoto = (clientId: string, token: string, teacherId: string) =>
+  apiFetch<{ message: string }>(
+    `${V2_BASE}/${clientId}/teachers/${teacherId}/photo`,
+    token,
+    { method: "DELETE" },
+  );
+
 /** Payload for one row in a teacher bulk-upsert request. */
 export interface BulkUpsertTeacherRow {
   name: string;
   username: string;
-  /** Required when creating, optional when updating an existing teacher. */
   password?: string;
   status?: "ACTIVE" | "INACTIVE";
   phone?: string;
   email?: string;
+  qualification?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  pincode?: string;
+  dateOfBirth?: string;
+  bloodGroup?: string;
+  gender?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
 }
 
 /** One entry returned by the bulk-upsert endpoint. */
 export interface BulkUpsertTeacherResult {
-  /** 1-based row index from the submitted payload (matches spreadsheet row number minus header). */
   rowIndex: number;
-  /** Username from the row (echoed back so the UI can match results). */
   username: string;
   name: string;
-  /** Whether this row inserted a new teacher or updated an existing one. */
   action: "created" | "updated";
   teacherId: string;
 }
@@ -95,10 +166,6 @@ export interface BulkUpsertTeachersResponse {
   errors: Array<{ rowIndex: number; username?: string; message: string }>;
 }
 
-/**
- * Upsert many teachers in a single request.
- * Backend matches by `username`; missing rows insert, existing rows update.
- */
 export const bulkUpsertTeachers = (
   clientId: string,
   token: string,
@@ -109,4 +176,3 @@ export const bulkUpsertTeachers = (
     token,
     { method: "POST", body: JSON.stringify({ teachers: rows }) },
   );
-

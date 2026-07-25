@@ -8,9 +8,9 @@ import {
  type ImportConfig,
 } from "@/components/ui/ImportModal";
 import {
- getTeachers, createTeacher, updateTeacher, deleteTeacher,
- bulkUpsertTeachers,
- type TeacherRecord, type UpdateTeacherPayload,
+ getTeachers, getTeacher, createTeacher, updateTeacher, deleteTeacher,
+ bulkUpsertTeachers, uploadTeacherPhoto, deleteTeacherPhoto,
+ type TeacherRecord, type UpdateTeacherPayload, type CreateTeacherPayload,
  type BulkUpsertTeacherRow,
 } from "@/lib/teachers-api";
 import {
@@ -71,10 +71,25 @@ export default function AdminTeachersPage() {
  const [fStatus, setFStatus] = useState<"ACTIVE" | "INACTIVE">("ACTIVE");
  const [fClassIds, setFClassIds] = useState<Set<string>>(new Set());
  const [fSubjectIds, setFSubjectIds] = useState<Set<string>>(new Set());
- const [showPw, setShowPw] = useState(false);
- const [showNewPw, setShowNewPw] = useState(false);
- const [saving, setSaving] = useState(false);
- const [saveError, setSaveError] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [fPhone, setFPhone] = useState("");
+  const [fEmail, setFEmail] = useState("");
+  const [fQualification, setFQualification] = useState("");
+  const [fAddress, setFAddress] = useState("");
+  const [fCity, setFCity] = useState("");
+  const [fState, setFState] = useState("");
+  const [fCountry, setFCountry] = useState("");
+  const [fPincode, setFPincode] = useState("");
+  const [fDateOfBirth, setFDateOfBirth] = useState("");
+  const [fBloodGroup, setFBloodGroup] = useState("");
+  const [fGender, setFGender] = useState("");
+  const [fEmergencyName, setFEmergencyName] = useState("");
+  const [fEmergencyPhone, setFEmergencyPhone] = useState("");
+  const [fPhotoUrl, setFPhotoUrl] = useState<string | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
  const [deleting, setDeleting] = useState(false);
 
@@ -121,14 +136,19 @@ export default function AdminTeachersPage() {
  };
 
  // ── Drawer open ────────────────────────────────────────────────────────────
- const resetForm = () => {
- setFName(""); setFUsername(""); setFPassword(""); setFNewPassword("");
- setFStatus("ACTIVE"); setFClassIds(new Set()); setFSubjectIds(new Set());
- setSaveError(""); setShowPw(false); setShowNewPw(false);
- setAllClasses([]); setAllSubjects([]); setAssignError("");
- setSubjectSearch(""); setExpandedGroups(new Set());
- setShowDeleteConfirm(false); setDeleting(false);
- };
+  const resetForm = () => {
+  setFName(""); setFUsername(""); setFPassword(""); setFNewPassword("");
+  setFStatus("ACTIVE"); setFClassIds(new Set()); setFSubjectIds(new Set());
+  setFPhone(""); setFEmail(""); setFQualification("");
+  setFAddress(""); setFCity(""); setFState(""); setFCountry(""); setFPincode("");
+  setFDateOfBirth(""); setFBloodGroup(""); setFGender("");
+  setFEmergencyName(""); setFEmergencyPhone("");
+  setFPhotoUrl(null);
+  setSaveError(""); setShowPw(false); setShowNewPw(false);
+  setAllClasses([]); setAllSubjects([]); setAssignError("");
+  setSubjectSearch(""); setExpandedGroups(new Set());
+  setShowDeleteConfirm(false); setDeleting(false);
+  };
 
  const handleDelete = async () => {
  if (!editTarget || !cid || !token) return;
@@ -154,70 +174,140 @@ export default function AdminTeachersPage() {
  setShowDrawer(true);
  };
 
- const openEdit = async (t: TeacherRecord) => {
- const teacherSubjectIds = new Set(t.subjects?.map((s) => s.id) ?? []);
- setEditTarget(t);
- setFName(t.name);
- setFUsername(t.username);
- setFPassword(""); setFNewPassword("");
- setFStatus((t.status as "ACTIVE" | "INACTIVE") ?? "ACTIVE");
- setFClassIds(new Set(t.classes?.map((c) => c.id) ?? []));
- setFSubjectIds(teacherSubjectIds);
- setSaveError(""); setShowPw(false); setShowNewPw(false);
- setAllClasses([]); setAllSubjects([]); setAssignError("");
- setSubjectSearch(""); setExpandedGroups(new Set());
- setShowDrawer(true);
+  const openEdit = async (t: TeacherRecord) => {
+   if (!cid) { setAssignError("No active madrasa selected."); return; }
+   const teacherSubjectIds = new Set(t.subjects?.map((s) => s.id) ?? []);
+   setEditTarget(t);
+   setFName(t.name);
+   setFUsername(t.username);
+   setFPassword(""); setFNewPassword("");
+   setFStatus((t.status as "ACTIVE" | "INACTIVE") ?? "ACTIVE");
+   setFClassIds(new Set(t.classes?.map((c) => c.id) ?? []));
+   setFSubjectIds(teacherSubjectIds);
+   setSaveError(""); setShowPw(false); setShowNewPw(false);
+   setAllClasses([]); setAllSubjects([]); setAssignError("");
+   setSubjectSearch(""); setExpandedGroups(new Set());
+   setShowDrawer(true);
 
- setLoadingAssign(true);
- try {
- const [cls, subjs] = await Promise.all([
- getAllClasses(cid, token),
- isPeriodBased ? getSubjects(cid, token, {}).then((r) => r.data) : Promise.resolve([]),
- ]);
- setAllClasses(cls);
- setAllSubjects(subjs);
- // Auto-expand groups that have pre-selected subjects
- const preExpanded = new Set(
- subjs.filter((s) => teacherSubjectIds.has(s.id)).map((s) => s.classId ?? "__none__"),
- );
- setExpandedGroups(preExpanded);
- } catch (e) {
- setAssignError((e as Error).message);
- } finally {
- setLoadingAssign(false);
- }
- };
+   setLoadingAssign(true);
+   try {
+   const [detail, cls, subjs] = await Promise.all([
+    getTeacher(cid, token, t.id),
+    getAllClasses(cid, token),
+    isPeriodBased ? getSubjects(cid, token, {}).then((r) => r.data) : Promise.resolve([]),
+   ]);
+   setFPhone(detail.phone ?? "");
+   setFEmail(detail.email ?? "");
+   setFQualification(detail.qualification ?? "");
+   setFAddress(detail.address ?? "");
+   setFCity(detail.city ?? "");
+   setFState(detail.state ?? "");
+   setFCountry(detail.country ?? "");
+   setFPincode(detail.pincode ?? "");
+   setFDateOfBirth(detail.dateOfBirth ?? "");
+   setFBloodGroup(detail.bloodGroup ?? "");
+   setFGender(detail.gender ?? "");
+   setFEmergencyName(detail.emergencyContactName ?? "");
+   setFEmergencyPhone(detail.emergencyContactPhone ?? "");
+   setFPhotoUrl(detail.photoUrl ?? null);
+  setAllClasses(cls);
+  setAllSubjects(subjs);
+  // Auto-expand groups that have pre-selected subjects
+  const preExpanded = new Set(
+  subjs.filter((s) => teacherSubjectIds.has(s.id)).map((s) => s.classId ?? "__none__"),
+  );
+  setExpandedGroups(preExpanded);
+  } catch (e) {
+  setAssignError((e as Error).message);
+  } finally {
+  setLoadingAssign(false);
+  }
+  };
 
- // ── Save (single call for everything) ─────────────────────────────────────
- const handleSave = async () => {
- if (!fName.trim() || !fUsername.trim() || (!editTarget && !fPassword)) return;
- setSaveError(""); setSaving(true);
- try {
- if (editTarget) {
- const payload: UpdateTeacherPayload = {
- name: fName.trim(),
- status: fStatus,
- classIds: [...fClassIds],
- };
- if (fNewPassword.trim()) payload.password = fNewPassword.trim();
- if (isPeriodBased) payload.subjectIds = [...fSubjectIds];
- await updateTeacher(cid, token, editTarget.id, payload);
- } else {
- await createTeacher(cid, token, {
- name: fName.trim(), username: fUsername.trim(), password: fPassword,
- });
- }
- setShowDrawer(false);
- setPage(1);
- load(search, 1, pageSize, sortBy, sortDir);
- } catch (e) {
- setSaveError((e as Error).message);
- } finally {
- setSaving(false);
- }
- };
+  // ── Save (single call for everything) ─────────────────────────────────────
+  const handleSave = async () => {
+  if (!fName.trim() || !fUsername.trim() || (!editTarget && !fPassword)) return;
+  setSaveError(""); setSaving(true);
+  try {
+  if (editTarget) {
+  const payload: UpdateTeacherPayload = {
+  name: fName.trim(),
+  status: fStatus,
+  classIds: [...fClassIds],
+  phone: fPhone.trim() || null,
+  email: fEmail.trim() || null,
+  qualification: fQualification.trim() || null,
+  address: fAddress.trim() || null,
+  city: fCity.trim() || null,
+  state: fState.trim() || null,
+  country: fCountry.trim() || null,
+  pincode: fPincode.trim() || null,
+  dateOfBirth: fDateOfBirth.trim() || null,
+  bloodGroup: fBloodGroup.trim() || null,
+  gender: fGender.trim() || null,
+  emergencyContactName: fEmergencyName.trim() || null,
+  emergencyContactPhone: fEmergencyPhone.trim() || null,
+  };
+  if (fNewPassword.trim()) payload.password = fNewPassword.trim();
+  if (isPeriodBased) payload.subjectIds = [...fSubjectIds];
+  await updateTeacher(cid, token, editTarget.id, payload);
+  } else {
+  const payload: CreateTeacherPayload = {
+  name: fName.trim(), username: fUsername.trim(), password: fPassword,
+  };
+  if (fPhone.trim()) payload.phone = fPhone.trim();
+  if (fEmail.trim()) payload.email = fEmail.trim();
+  if (fQualification.trim()) payload.qualification = fQualification.trim();
+  if (fAddress.trim()) payload.address = fAddress.trim();
+  if (fCity.trim()) payload.city = fCity.trim();
+  if (fState.trim()) payload.state = fState.trim();
+  if (fCountry.trim()) payload.country = fCountry.trim();
+  if (fPincode.trim()) payload.pincode = fPincode.trim();
+  if (fDateOfBirth.trim()) payload.dateOfBirth = fDateOfBirth.trim();
+  if (fBloodGroup.trim()) payload.bloodGroup = fBloodGroup.trim();
+  if (fGender.trim()) payload.gender = fGender.trim();
+  if (fEmergencyName.trim()) payload.emergencyContactName = fEmergencyName.trim();
+  if (fEmergencyPhone.trim()) payload.emergencyContactPhone = fEmergencyPhone.trim();
+  await createTeacher(cid, token, payload);
+  }
+  setShowDrawer(false);
+  setPage(1);
+  load(search, 1, pageSize, sortBy, sortDir);
+  } catch (e) {
+  setSaveError((e as Error).message);
+  } finally {
+  setSaving(false);
+  }
+  };
 
- const toggleSubject = (id: string) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+   const file = e.target.files?.[0];
+   if (!file || !editTarget) return;
+   setPhotoUploading(true);
+   try {
+    const res = await uploadTeacherPhoto(cid, token, editTarget.id, file);
+    setFPhotoUrl(res.photoUrl);
+   } catch (err) {
+    setSaveError((err as Error).message);
+   } finally {
+    setPhotoUploading(false);
+   }
+  };
+
+  const handlePhotoRemove = async () => {
+   if (!editTarget) return;
+   setPhotoUploading(true);
+   try {
+    await deleteTeacherPhoto(cid, token, editTarget.id);
+    setFPhotoUrl(null);
+   } catch (err) {
+    setSaveError((err as Error).message);
+   } finally {
+    setPhotoUploading(false);
+   }
+  };
+
+  const toggleSubject = (id: string) => {
   setFSubjectIds((prev) => {
   const next = new Set(prev);
   next.has(id) ? next.delete(id) : next.add(id);
@@ -233,20 +323,33 @@ export default function AdminTeachersPage() {
    entityName: "Teachers",
    templateFilename: "teacher-import-template",
    columns: TEACHER_IMPORT_COLUMNS,
-   createRow: (row) =>
-    createTeacher(cid, token, {
-     name: row.name,
-     username: row.username,
-     password: row.password ?? "pass1234",
-     status: row.status,
-    }),
-   createBulk: async (rows) => {
-    const res = await bulkUpsertTeachers(cid, token, rows);
-    return {
-     imported: res.results.map((r) => ({ rowIndex: r.rowIndex, action: r.action })),
-     failed: res.errors.map((e) => ({ rowIndex: e.rowIndex, message: e.message })),
-    };
-   },
+    createRow: (row) =>
+     createTeacher(cid, token, {
+      name: row.name,
+      username: row.username,
+      password: row.password ?? "pass1234",
+      status: row.status,
+      phone: row.phone,
+      email: row.email,
+      qualification: row.qualification,
+      address: row.address,
+      city: row.city,
+      state: row.state,
+      country: row.country,
+      pincode: row.pincode,
+      dateOfBirth: row.dateOfBirth,
+      bloodGroup: row.bloodGroup,
+      gender: row.gender,
+      emergencyContactName: row.emergencyContactName,
+      emergencyContactPhone: row.emergencyContactPhone,
+     }),
+    createBulk: async (rows) => {
+     const res = await bulkUpsertTeachers(cid, token, rows);
+     return {
+      imported: (res.results ?? []).map((r) => ({ rowIndex: r.rowIndex, action: r.action })),
+      failed: (res.errors ?? []).map((e) => ({ rowIndex: e.rowIndex, message: e.message })),
+     };
+    },
   }),
   [cid, token],
  ); // eslint-disable-line
@@ -614,33 +717,175 @@ export default function AdminTeachersPage() {
  </div>
  )}
 
- {/* Status — edit only */}
- {editTarget && (
- <div>
- <label className="block text-xs font-semibold text-gray-600 mb-1.5">Status</label>
- <div className="flex gap-2">
- {(["ACTIVE", "INACTIVE"] as const).map((s) => (
- <button key={s} type="button" onClick={() => setFStatus(s)}
- className={cn(
- "flex-1 py-2.5 rounded-xl text-xs font-bold border transition-colors",
- fStatus === s
- ? s === "ACTIVE"
- ? "bg-emerald-100 border-emerald-300 text-emerald-700"
- : "bg-red-100 border-red-300 text-red-600"
- : "bg-gray-50 border-gray-200 text-gray-400 hover:border-gray-300",
- )}
- >
- {s}
- </button>
- ))}
- </div>
- </div>
- )}
+  {/* Status — edit only */}
+  {editTarget && (
+  <div>
+  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Status</label>
+  <div className="flex gap-2">
+  {(["ACTIVE", "INACTIVE"] as const).map((s) => (
+  <button key={s} type="button" onClick={() => setFStatus(s)}
+  className={cn(
+  "flex-1 py-2.5 rounded-xl text-xs font-bold border transition-colors",
+  fStatus === s
+  ? s === "ACTIVE"
+  ? "bg-emerald-100 border-emerald-300 text-emerald-700"
+  : "bg-red-100 border-red-300 text-red-600"
+  : "bg-gray-50 border-gray-200 text-gray-400 hover:border-gray-300",
+  )}
+  >
+  {s}
+  </button>
+  ))}
+  </div>
+  </div>
+  )}
 
- {/* ── Class & Subject assignment (edit only) ── */}
- {editTarget && (
- <>
- <div className="border-t border-dashed border-gray-200 pt-1" />
+  {/* ── Profile Photo (edit only) ── */}
+  {editTarget && (
+  <div>
+  <label className="block text-xs font-semibold text-gray-600 mb-2">Profile Photo</label>
+  <div className="flex items-center gap-4">
+  <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center overflow-hidden shrink-0">
+  {fPhotoUrl ? (
+  <img src={fPhotoUrl} alt="Profile" className="w-full h-full object-cover" />
+  ) : (
+  <Users className="w-7 h-7 text-gray-400" />
+  )}
+  </div>
+  <div className="flex gap-2">
+  <label className="cursor-pointer px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-semibold text-gray-700 transition-colors">
+  {photoUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Upload"}
+  <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={photoUploading} />
+  </label>
+  {fPhotoUrl && (
+  <button onClick={handlePhotoRemove} disabled={photoUploading}
+  className="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-xs font-semibold text-red-600 transition-colors">
+  Remove
+  </button>
+  )}
+  </div>
+  </div>
+  </div>
+  )}
+
+  {/* ── Basic Info ── */}
+  <div>
+  <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Basic Info</p>
+  <div className="space-y-3">
+  <div>
+  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Qualification</label>
+  <input type="text" value={fQualification} placeholder="e.g. B.Ed, M.Sc"
+  onChange={(e) => setFQualification(e.target.value)}
+  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
+  </div>
+  <div className="grid grid-cols-2 gap-3">
+  <div>
+  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Phone</label>
+  <input type="text" value={fPhone} placeholder="9876543210"
+  onChange={(e) => setFPhone(e.target.value)}
+  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
+  </div>
+  <div>
+  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Email</label>
+  <input type="email" value={fEmail} placeholder="teacher@madrasa.org"
+  onChange={(e) => setFEmail(e.target.value)}
+  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
+  </div>
+  </div>
+  <div className="grid grid-cols-2 gap-3">
+  <div>
+  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Date of Birth</label>
+  <input type="date" value={fDateOfBirth}
+  onChange={(e) => setFDateOfBirth(e.target.value)}
+  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
+  </div>
+  <div>
+  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Gender</label>
+  <select value={fGender} onChange={(e) => setFGender(e.target.value)}
+  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors appearance-none cursor-pointer">
+  <option value="">Select</option>
+  <option value="MALE">Male</option>
+  <option value="FEMALE">Female</option>
+  </select>
+  </div>
+  </div>
+  <div>
+  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Blood Group</label>
+  <select value={fBloodGroup} onChange={(e) => setFBloodGroup(e.target.value)}
+  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors appearance-none cursor-pointer">
+  <option value="">Select</option>
+  {["A+","A-","B+","B-","AB+","AB-","O+","O-"].map((bg) => (
+  <option key={bg} value={bg}>{bg}</option>
+  ))}
+  </select>
+  </div>
+  </div>
+  </div>
+
+  {/* ── Address ── */}
+  <div>
+  <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Address</p>
+  <div className="space-y-3">
+  <div>
+  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Address</label>
+  <textarea value={fAddress} placeholder="Street, building, area…" rows={2}
+  onChange={(e) => setFAddress(e.target.value)}
+  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors resize-none" />
+  </div>
+  <div className="grid grid-cols-2 gap-3">
+  <div>
+  <label className="block text-xs font-semibold text-gray-600 mb-1.5">City</label>
+  <input type="text" value={fCity} placeholder="Kozhikode"
+  onChange={(e) => setFCity(e.target.value)}
+  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
+  </div>
+  <div>
+  <label className="block text-xs font-semibold text-gray-600 mb-1.5">State</label>
+  <input type="text" value={fState} placeholder="Kerala"
+  onChange={(e) => setFState(e.target.value)}
+  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
+  </div>
+  </div>
+  <div className="grid grid-cols-2 gap-3">
+  <div>
+  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Country</label>
+  <input type="text" value={fCountry} placeholder="India"
+  onChange={(e) => setFCountry(e.target.value)}
+  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
+  </div>
+  <div>
+  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Pincode</label>
+  <input type="text" value={fPincode} placeholder="673001"
+  onChange={(e) => setFPincode(e.target.value)}
+  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
+  </div>
+  </div>
+  </div>
+  </div>
+
+  {/* ── Emergency Contact ── */}
+  <div>
+  <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Emergency Contact</p>
+  <div className="grid grid-cols-2 gap-3">
+  <div>
+  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Contact Name</label>
+  <input type="text" value={fEmergencyName} placeholder="Spouse / parent"
+  onChange={(e) => setFEmergencyName(e.target.value)}
+  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
+  </div>
+  <div>
+  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Contact Phone</label>
+  <input type="text" value={fEmergencyPhone} placeholder="9876543210"
+  onChange={(e) => setFEmergencyPhone(e.target.value)}
+  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
+  </div>
+  </div>
+  </div>
+
+  {/* ── Class & Subject assignment (edit only) ── */}
+  {editTarget && (
+  <>
+  <div className="border-t border-dashed border-gray-200 pt-1" />
 
  {assignError && (
  <div className="bg-red-50 text-red-600 text-sm px-4 py-2 rounded-xl">{assignError}</div>
