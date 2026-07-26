@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
@@ -37,6 +36,9 @@ import {
   Clock,
   ClipboardCheck,
   Trophy,
+  RefreshCw,
+  FileSpreadsheet,
+  FileText,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -44,9 +46,19 @@ import {
   getExamStatusInfo,
 } from "@/components/exam/ExamStatusBadge";
 import { MarkEntryGrid } from "@/components/exam/MarkEntryGrid";
+import { ClassResultTable } from "@/components/exam/ClassResultTable";
+import { RankPoster } from "@/components/exam/RankPoster";
+import { MarklistPoster } from "@/components/exam/MarklistPoster";
+import { ResultAnnouncementPoster } from "@/components/exam/ResultAnnouncementPoster";
+import { ExcelImportModal } from "@/components/exam/ExcelImportModal";
 import { useExamColumns } from "@/components/exam/ExamColumns";
 import { ExamMobileCard } from "@/components/exam/ExamMobileCard";
 import { fmt, shortDate, getExamCategories, PAGE_SIZE_OPTIONS } from "@/lib/exam-utils";
+import {
+  getClassReport, computeSummary, setFinalStatus,
+  type ClassReport, type ClassReportRow, type ResultStatus, type TotalGrade,
+  TOTAL_GRADE_LABELS,
+} from "@/lib/results-api";
 
 interface ExamForm {
   name: string;
@@ -82,22 +94,24 @@ interface MarkEntryState {
   error: string | null;
 }
 
+type ReportTab = "table" | "marklist" | "status" | "posters";
+
+const TOTAL_GRADE_OPTIONS: { value: TotalGrade; label: string }[] = [
+  { value: "DISTINCTION", label: "Distinction" },
+  { value: "FIRST_CLASS", label: "First Class" },
+  { value: "SECOND_CLASS", label: "Second Class" },
+  { value: "THIRD_CLASS", label: "Third Class" },
+  { value: "TOP_PLUS", label: "Top Plus" },
+  { value: "FAILED", label: "Failed" },
+];
+
 const DEFAULT_PAGE_SIZE = 10;
 
 export default function AdminExamsPage() {
   const { user, accessToken, activeClientId } = useAuthStore();
-  const navigate = useNavigate();
-  const location = useLocation();
   const cid = activeClientId ?? "";
   const token = accessToken ?? "";
   const ayId = user?.defaultAcademicYearId ?? "";
-
-  const goToClassReport = (examId: string, classId: string) => {
-    const back = location.pathname;
-    navigate(
-      `${location.pathname.replace(/\/exams.*/, "/exams")}/class-report?examId=${examId}&classId=${classId}&ayId=${ayId}&back=${encodeURIComponent(back)}`,
-    );
-  };
 
   const [exams, setExams] = useState<ExamRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,6 +147,23 @@ export default function AdminExamsPage() {
   const [form, setForm] = useState<ExamForm>(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [editTargetId, setEditTargetId] = useState<string | null>(null);
+
+  const [contentTab, setContentTab] = useState<"markentry" | "report">("markentry");
+  const [reportData, setReportData] = useState<ClassReport | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [computing, setComputing] = useState(false);
+  const [computeMsg, setComputeMsg] = useState<string | null>(null);
+
+  // Report sub-tabs (inside the drawer)
+  const [reportTab, setReportTab] = useState<ReportTab>("table");
+  const [marklistStudId, setMarklistStudId] = useState<string | null>(null);
+  const [statusMap, setStatusMap] = useState<Record<string, { finalStatus: ResultStatus; totalGrade?: TotalGrade | null }>>({});
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  const [savingAll, setSavingAll] = useState(false);
+  const [posterStudentId, setPosterStudentId] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const [showDeleteExamConfirm, setShowDeleteExamConfirm] = useState(false);
   const [deleteExamTarget, setDeleteExamTarget] =
@@ -289,10 +320,30 @@ export default function AdminExamsPage() {
     setClassDrawerExamId(null);
     setMarkEntryOpen(null);
     setSelectedClassTab(null);
+    setContentTab("markentry");
+    setReportData(null);
+    setReportError(null);
+    setComputeMsg(null);
+    setReportTab("table");
+    setMarklistStudId(null);
+    setStatusMap({});
+    setStatusMsg(null);
+    setPosterStudentId(null);
+    setImportOpen(false);
   };
 
   const selectClassTab = (classId: string) => {
     setSelectedClassTab(classId);
+    setContentTab("markentry");
+    setReportData(null);
+    setReportError(null);
+    setComputeMsg(null);
+    setReportTab("table");
+    setMarklistStudId(null);
+    setStatusMap({});
+    setStatusMsg(null);
+    setPosterStudentId(null);
+    setImportOpen(false);
     setMarkEntry((p) => ({
       ...p,
       classId: "",
@@ -430,6 +481,108 @@ export default function AdminExamsPage() {
       setTimeout(() => setMarkEntry((p) => ({ ...p, saved: false })), 2000);
     } catch (e: any) {
       setMarkEntry((p) => ({ ...p, saving: false, error: e.message }));
+    }
+  };
+
+  // ── Class Report Load ──────────────────────────────────────────────────────
+
+  const loadClassReport = useCallback(async () => {
+    if (!cid || !token || !classDrawerExamId || !selectedClassTab) return;
+    setReportLoading(true);
+    setReportError(null);
+    try {
+      const rep = await getClassReport(cid, token, {
+        examId: classDrawerExamId,
+        classId: selectedClassTab,
+      });
+      setReportData(rep);
+    } catch (e: any) {
+      setReportError(e.message ?? "Failed to load report");
+    } finally {
+      setReportLoading(false);
+    }
+  }, [cid, token, classDrawerExamId, selectedClassTab]);
+
+  const handleCompute = async () => {
+    if (!classDrawerExamId || !selectedClassTab || computing) return;
+    setComputing(true);
+    setComputeMsg(null);
+    try {
+      const res = await computeSummary(cid, token, {
+        examId: classDrawerExamId,
+        classId: selectedClassTab,
+        accademicYearId: ayId || undefined,
+      });
+      setComputeMsg(`Computed ${res.computed} results · ${res.ranked} students ranked`);
+      await loadClassReport();
+    } catch (e: any) {
+      setComputeMsg(`Error: ${e.message}`);
+    } finally {
+      setComputing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (contentTab === "report" && classDrawerExamId && selectedClassTab) {
+      loadClassReport();
+    }
+  }, [contentTab, classDrawerExamId, selectedClassTab, loadClassReport]);
+
+  useEffect(() => {
+    if (reportData) {
+      const map: Record<string, { finalStatus: ResultStatus; totalGrade?: TotalGrade | null }> = {};
+      for (const r of reportData.students) {
+        if (r.summary.finalStatus) {
+          map[r.student.id] = {
+            finalStatus: r.summary.finalStatus,
+            totalGrade: r.summary.totalGrade ?? null,
+          };
+        }
+      }
+      setStatusMap(map);
+    }
+  }, [reportData]);
+
+  const handleSaveAll = async () => {
+    if (!reportData || savingAll || !classDrawerExamId) return;
+    setSavingAll(true);
+    setStatusMsg(null);
+    let saved = 0;
+    try {
+      for (const row of reportData.students) {
+        const entry = statusMap[row.student.id];
+        if (!entry?.finalStatus) continue;
+        await setFinalStatus(cid, token, row.student.id, classDrawerExamId, {
+          finalStatus: entry.finalStatus,
+          totalGrade: entry.totalGrade ?? null,
+        });
+        saved++;
+      }
+      setStatusMsg(`Saved status for ${saved} student${saved !== 1 ? "s" : ""}`);
+      await loadClassReport();
+    } catch (e: any) {
+      setStatusMsg(`Error: ${e.message}`);
+    } finally {
+      setSavingAll(false);
+    }
+  };
+
+  const handleSaveStatus = async (row: ClassReportRow) => {
+    const entry = statusMap[row.student.id];
+    if (!entry?.finalStatus || !classDrawerExamId) return;
+    setSavingId(row.student.id);
+    setStatusMsg(null);
+    try {
+      await setFinalStatus(cid, token, row.student.id, classDrawerExamId, {
+        finalStatus: entry.finalStatus,
+        totalGrade: entry.totalGrade ?? null,
+      });
+      setStatusMsg(`Status saved for ${row.student.name}`);
+      await loadClassReport();
+    } catch (e: any) {
+      setStatusMsg(`Error: ${e.message}`);
+    } finally {
+      setSavingId(null);
     }
   };
 
@@ -618,7 +771,7 @@ export default function AdminExamsPage() {
               className="fixed inset-0 bg-black z-40 backdrop-blur-xs pointer-events-auto"
             />
             <motion.div
-                            className="fixed top-0 right-0 h-full w-full max-w-[75vw] bg-white border-l border-gray-100 shadow-2xl z-50 pointer-events-auto flex flex-col"
+                            className="fixed top-0 right-0 h-full w-full   bg-white border-l border-gray-100 shadow-2xl z-50 pointer-events-auto flex flex-col"
             >
               <div className="flex items-center justify-between p-5 border-b border-gray-100">
                 <div className="min-w-0">
@@ -639,7 +792,7 @@ export default function AdminExamsPage() {
 
               <div className="flex flex-1 overflow-hidden">
                 {/* Side tabs — desktop */}
-                <div className="hidden md:flex flex-col gap-1 pt-5 overflow-y-auto shrink-0 border-r border-b border-gray-100">
+                <div className="hidden md:flex w-[200px] flex-col gap-1 pt-5 overflow-y-auto shrink-0 border-r border-b border-gray-100">
                   {classes.map((cls) => (
                     <button
                       key={cls.id}
@@ -684,73 +837,248 @@ export default function AdminExamsPage() {
                   </div>
 
                   {selectedClass ? (
-                    <>
-                      <div className="flex-1 overflow-y-auto overflow-x-hidden">
-                        <div className="px-5 space-y-6 pt-5 pb-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h4 className="font-bold text-gray-900 text-base">
-                                {selectedClass.name}
-                              </h4>
-                              {selectedClass.classTeacher?.name && (
-                                <p className="text-xs text-gray-400 mt-0.5">
-                                  {selectedClass.classTeacher.name}
-                                </p>
-                              )}
-                            </div>
-                            <button
-                              onClick={() => {
-                                goToClassReport(
-                                  classDrawerExam.id,
-                                  selectedClass.id,
-                                );
-                                closeClassDrawer();
-                              }}
-                              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors text-xs font-bold"
-                            >
-                              <BarChart2 className="w-4 h-4" /> Report
-                            </button>
-                          </div>
+                    <div className="flex-1 flex flex-col min-h-0">
+                      <div className="px-5 pt-4 pb-2 shrink-0">
+                        <h4 className="font-bold text-gray-900 text-base">
+                          {selectedClass.name}
+                        </h4>
+                        {selectedClass.classTeacher?.name && (
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {selectedClass.classTeacher.name}
+                          </p>
+                        )}
+                      </div>
 
-                          <MarkEntryGrid
-                            exams={classDrawerExam ? [classDrawerExam] : []}
-                            classes={selectedClass ? [selectedClass] : []}
-                            subjects={markEntry.subjects}
-                            students={markEntry.students}
-                            examId={classDrawerExam?.id ?? ""}
-                            classId={markEntry.classId}
-                            subjectId={markEntry.subjectId}
-                            scores={markEntry.scores}
-                            isLocked={false}
-                            saving={markEntry.saving}
-                            saved={markEntry.saved}
-                            error={markEntry.error}
-                            loading={markEntry.loading}
-                            activeExam={classDrawerExam}
-                            onExamChange={() => {}}
-                            onClassChange={() => {}}
-                            onSubjectChange={(val) =>
-                              loadMarkEntrySubject(classDrawerExam.id, val)
-                            }
-                            onScoreChange={(sid, val) =>
-                              setMarkEntry((p) => ({
-                                ...p,
-                                scores: { ...p.scores, [sid]: val },
-                              }))
-                            }
-                            onSave={() => handleMarkEntrySave(classDrawerExam.id)}
-                            showExamSelector={false}
-                            showClassSelector={false}
-                            showRemarks={false}
-                            showExcelImport={false}
-                            showDraftButton={false}
-                            showResetButton={false}
-                            showLockPeriod={false}
-                          />
+                      {/* Contained tabs */}
+                      <div className="px-5 shrink-0">
+                        <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+                          <button
+                            onClick={() => setContentTab("markentry")}
+                            className={cn(
+                              "px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-1.5",
+                              contentTab === "markentry"
+                                ? "bg-white text-emerald-700 shadow-sm"
+                                : "text-gray-500 hover:text-gray-700",
+                            )}
+                          >
+                            <PenLine className="w-4 h-4" />
+                            Mark Entry
+                          </button>
+                          <button
+                            onClick={() => setContentTab("report")}
+                            className={cn(
+                              "px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-1.5",
+                              contentTab === "report"
+                                ? "bg-white text-emerald-700 shadow-sm"
+                                : "text-gray-500 hover:text-gray-700",
+                            )}
+                          >
+                            <BarChart2 className="w-4 h-4" />
+                            Report
+                          </button>
                         </div>
                       </div>
 
-                    </>
+                      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+                        <div className="px-5 pt-4 pb-4">
+                          {contentTab === "markentry" && (
+                            <MarkEntryGrid
+                              exams={classDrawerExam ? [classDrawerExam] : []}
+                              classes={selectedClass ? [selectedClass] : []}
+                              subjects={markEntry.subjects}
+                              students={markEntry.students}
+                              examId={classDrawerExam?.id ?? ""}
+                              classId={markEntry.classId}
+                              subjectId={markEntry.subjectId}
+                              scores={markEntry.scores}
+                              isLocked={false}
+                              saving={markEntry.saving}
+                              saved={markEntry.saved}
+                              error={markEntry.error}
+                              loading={markEntry.loading}
+                              activeExam={classDrawerExam}
+                              onExamChange={() => {}}
+                              onClassChange={() => {}}
+                              onSubjectChange={(val) =>
+                                loadMarkEntrySubject(classDrawerExam.id, val)
+                              }
+                              onScoreChange={(sid, val) =>
+                                setMarkEntry((p) => ({
+                                  ...p,
+                                  scores: { ...p.scores, [sid]: val },
+                                }))
+                              }
+                              onSave={() => handleMarkEntrySave(classDrawerExam.id)}
+                              showExamSelector={false}
+                              showClassSelector={false}
+                              showRemarks={false}
+                              showExcelImport={false}
+                              showDraftButton={false}
+                              showResetButton={false}
+                              showLockPeriod={false}
+                            />
+                          )}
+
+                          {contentTab === "report" && (
+                            <div className="space-y-4">
+                              {/* Compute feedback */}
+                              {computeMsg && (
+                                <div className={cn(
+                                  "flex items-center gap-2 px-4 py-3 rounded-xl text-sm",
+                                  computeMsg.startsWith("Error")
+                                    ? "bg-red-50 text-red-700 border border-red-100"
+                                    : "bg-emerald-50 text-emerald-700 border border-emerald-100",
+                                )}>
+                                  {computeMsg.startsWith("Error")
+                                    ? <AlertCircle className="w-4 h-4" />
+                                    : <CheckCircle2 className="w-4 h-4" />}
+                                  {computeMsg}
+                                </div>
+                              )}
+
+                              {/* Actions */}
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <button
+                                  onClick={handleCompute}
+                                  disabled={computing}
+                                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-50 transition-all shadow-sm"
+                                >
+                                  {computing
+                                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                                    : <RefreshCw className="w-4 h-4" />}
+                                  Compute Grades
+                                </button>
+                                <button
+                                  onClick={() => setImportOpen(true)}
+                                  className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 bg-white hover:bg-gray-50 transition-colors shadow-xs"
+                                >
+                                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                                  Import Excel
+                                </button>
+                              </div>
+
+                              {/* Report content */}
+                              {reportLoading ? (
+                                <div className="flex items-center justify-center py-12 text-gray-400">
+                                  <Loader2 className="w-6 h-6 animate-spin" />
+                                </div>
+                              ) : reportError ? (
+                                <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm bg-red-50 text-red-700 border border-red-100">
+                                  <AlertCircle className="w-4 h-4" />
+                                  {reportError}
+                                </div>
+                              ) : reportData ? (
+                                <div className="space-y-4">
+                                  {/* Stats cards */}
+                                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                                    {[
+                                      { label: "Total Students", value: reportData.stats.totalStudents, color: "text-gray-800", bg: "bg-gray-50" },
+                                      { label: "Passed", value: reportData.stats.passedCount, color: "text-emerald-700", bg: "bg-emerald-50" },
+                                      { label: "Failed", value: reportData.stats.failedCount, color: "text-red-700", bg: "bg-red-50" },
+                                      { label: "Ranked", value: reportData.stats.rankedCount, color: "text-emerald-700", bg: "bg-emerald-50" },
+                                      { label: "Class Average", value: `${reportData.stats.classAverage.toFixed(1)}%`, color: "text-teal-700", bg: "bg-teal-50" },
+                                    ].map(({ label, value, color, bg }) => (
+                                      <div key={label} className={cn("rounded-xl p-4 text-center", bg)}>
+                                        <div className={cn("text-2xl font-bold", color)}>{value}</div>
+                                        <div className="text-xs text-gray-500 mt-0.5">{label}</div>
+                                      </div>
+                                    ))}
+                                  </div>
+
+                                  {/* Report sub-tabs */}
+                                  <div className="flex gap-1 border-b border-gray-200 overflow-x-auto">
+                                    {([
+                                      { key: "table" as ReportTab, label: "Result Sheet" },
+                                      { key: "marklist" as ReportTab, label: "Mark Cards" },
+                                      { key: "status" as ReportTab, label: "Final Status" },
+                                      { key: "posters" as ReportTab, label: "Rank Posters" },
+                                    ]).map(({ key, label }) => (
+                                      <button key={key} onClick={() => { setReportTab(key); setMarklistStudId(null); setPosterStudentId(null); }}
+                                        className={cn(
+                                          "px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap",
+                                          reportTab === key
+                                            ? "text-emerald-600 border-emerald-600"
+                                            : "text-gray-500 border-transparent hover:text-gray-700",
+                                        )}>
+                                        {label}
+                                      </button>
+                                    ))}
+                                  </div>
+
+                                  {/* Tab content */}
+                                  {reportTab === "table" && (
+                                    <ClassResultTable report={reportData} madrasaName={reportData.clientName ?? ""} />
+                                  )}
+
+                                  {reportTab === "marklist" && (
+                                    <ReportMarklistTab
+                                      report={reportData}
+                                      marklistStudId={marklistStudId}
+                                      setMarklistStudId={setMarklistStudId}
+                                      madrasaName={reportData.clientName ?? ""}
+                                      madrasaLogo={reportData.clientLogo ?? null}
+                                      studentPhotoMap={{}}
+                                    />
+                                  )}
+
+                                  {reportTab === "status" && (
+                                    <ReportStatusTab
+                                      report={reportData}
+                                      statusMap={statusMap}
+                                      setStatusMap={setStatusMap}
+                                      savingId={savingId}
+                                      savingAll={savingAll}
+                                      statusMsg={statusMsg}
+                                      onSave={handleSaveStatus}
+                                      onSaveAll={handleSaveAll}
+                                    />
+                                  )}
+
+                                  {reportTab === "posters" && (
+                                    <ReportPostersTab
+                                      report={reportData}
+                                      posterStudentId={posterStudentId}
+                                      setPosterStudentId={setPosterStudentId}
+                                      madrasaName={reportData.clientName ?? ""}
+                                      madrasaLogo={reportData.clientLogo ?? null}
+                                      studentPhotoMap={{}}
+                                    />
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-2">
+                                  <FileText className="w-8 h-8 opacity-30" />
+                                  <p className="text-sm font-semibold">
+                                    No report data loaded
+                                  </p>
+                                  <p className="text-xs">
+                                    Click "Compute Grades" to generate the report
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Excel Import Modal */}
+                          {importOpen && reportData && (
+                            <ExcelImportModal
+                              clientId={cid}
+                              token={token}
+                              examId={classDrawerExamId ?? ""}
+                              classId={selectedClassTab ?? ""}
+                              accademicYearId={ayId}
+                              subjects={reportData.subjects}
+                              students={reportData.students.map((r) => ({ id: r.student.id, name: r.student.name, adno: r.student.adno }))}
+                              onClose={() => setImportOpen(false)}
+                              onSuccess={async () => {
+                                setImportOpen(false);
+                                await loadClassReport();
+                              }}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   ) : (
                     <div className="flex-1 flex items-center justify-center text-gray-400">
                       <div className="text-center">
@@ -1033,5 +1361,247 @@ export default function AdminExamsPage() {
         )}
       </AnimatePresence>
     </DashboardLayout>
+  );
+}
+
+// ── Report sub-tab: Mark Cards ──────────────────────────────────────────────
+
+function ReportMarklistTab({ report, marklistStudId, setMarklistStudId, madrasaName, madrasaLogo, studentPhotoMap }: {
+  report: ClassReport;
+  marklistStudId: string | null;
+  setMarklistStudId: (id: string | null) => void;
+  madrasaName: string;
+  madrasaLogo?: string | null;
+  studentPhotoMap?: Record<string, string | null>;
+}) {
+  const { students } = report;
+  const activeRow = marklistStudId ? students.find((s) => s.student.id === marklistStudId) : null;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex gap-2 flex-wrap">
+        {students.map((r) => (
+          <button key={r.student.id}
+            onClick={() => setMarklistStudId(r.student.id === marklistStudId ? null : r.student.id)}
+            className={cn(
+              "px-3 py-1.5 rounded-lg text-sm font-medium border transition-all",
+              marklistStudId === r.student.id
+                ? "border-emerald-600 bg-emerald-50 text-emerald-700"
+                : "border-gray-200 bg-white text-gray-700 hover:border-emerald-300",
+            )}
+          >
+            {r.summary.rank === 1 ? "🥇 " : r.summary.rank === 2 ? "🥈 " : r.summary.rank === 3 ? "🥉 " : ""}
+            {r.student.name}
+          </button>
+        ))}
+      </div>
+
+      {activeRow ? (
+        <motion.div
+          key={activeRow.student.id}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-sm mx-auto"
+        >
+          <MarklistPoster row={activeRow} report={report} madrasaName={madrasaName} madrasaLogo={madrasaLogo} studentPhotoMap={studentPhotoMap} />
+        </motion.div>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-16 text-gray-400 gap-3">
+          <span className="text-5xl">📋</span>
+          <p className="text-sm">Select a student above to view their mark card</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Report sub-tab: Final Status ────────────────────────────────────────────
+
+function ReportStatusTab({ report, statusMap, setStatusMap, savingId, savingAll, statusMsg, onSave, onSaveAll }: {
+  report: ClassReport;
+  statusMap: Record<string, { finalStatus: ResultStatus; totalGrade?: TotalGrade | null }>;
+  setStatusMap: React.Dispatch<React.SetStateAction<typeof statusMap>>;
+  savingId: string | null;
+  savingAll: boolean;
+  statusMsg: string | null;
+  onSave: (row: ClassReportRow) => void;
+  onSaveAll: () => void;
+}) {
+  const { config } = report;
+
+  const statusOpts = [
+    { value: "PASSED", label: config.passedLabel },
+    { value: "FAILED", label: config.failedLabel },
+    { value: "PROMOTED", label: config.promotedLabel },
+    { value: "WITHHELD", label: config.withheldLabel },
+  ] as const;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <p className="text-sm text-gray-500">Set final result status for each student. Grade is optional.</p>
+        <button
+          onClick={onSaveAll}
+          disabled={savingAll || !report.students.some((r) => statusMap[r.student.id]?.finalStatus)}
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold disabled:opacity-40 transition-colors"
+        >
+          {savingAll ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+          Save All
+        </button>
+      </div>
+      {statusMsg && (
+        <div className={cn(
+          "px-4 py-3 rounded-xl text-sm flex items-center gap-2",
+          statusMsg.startsWith("Error") ? "bg-red-50 text-red-700 border border-red-100" : "bg-emerald-50 text-emerald-700 border border-emerald-100",
+        )}>
+          {statusMsg.startsWith("Error") ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+          {statusMsg}
+        </div>
+      )}
+      <div className="rounded-xl border border-gray-200 overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Student</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Score</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Rank</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Final Status</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Total Grade</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Action</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {report.students.map((row) => {
+              const entry = statusMap[row.student.id];
+              const isSaving = savingId === row.student.id;
+              return (
+                <tr key={row.student.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3">
+                    <div className="font-medium text-gray-900">{row.student.name}</div>
+                    <div className="text-xs text-gray-400 font-mono">{row.student.adno}</div>
+                  </td>
+                  <td className="px-4 py-3 text-center text-sm text-gray-700">
+                    {row.summary.totalPercentage != null ? `${row.summary.totalPercentage.toFixed(1)}%` : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-center font-bold text-gray-700">
+                    {row.summary.rank ?? "—"}
+                  </td>
+                  <td className="px-4 py-3">
+                    <select
+                      value={entry?.finalStatus ?? ""}
+                      onChange={(e) => setStatusMap((m) => ({
+                        ...m,
+                        [row.student.id]: { ...(m[row.student.id] ?? {}), finalStatus: e.target.value as ResultStatus },
+                      }))}
+                      className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 w-full max-w-36"
+                    >
+                      <option value="">— Select —</option>
+                      {statusOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                  </td>
+                  <td className="px-4 py-3">
+                    <select
+                      value={entry?.totalGrade ?? ""}
+                      onChange={(e) => setStatusMap((m) => ({
+                        ...m,
+                        [row.student.id]: { ...(m[row.student.id] ?? {}), totalGrade: (e.target.value || null) as TotalGrade | null },
+                      }))}
+                      className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 w-full max-w-40"
+                    >
+                      <option value="">— Optional —</option>
+                      {TOTAL_GRADE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <button
+                      onClick={() => onSave(row)}
+                      disabled={!entry?.finalStatus || isSaving}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium disabled:opacity-40 transition-colors"
+                    >
+                      {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+                      Save
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ── Report sub-tab: Rank Posters ────────────────────────────────────────────
+
+function ReportPostersTab({ report, posterStudentId, setPosterStudentId, madrasaName, madrasaLogo, studentPhotoMap }: {
+  report: ClassReport;
+  posterStudentId: string | null;
+  setPosterStudentId: (id: string | null) => void;
+  madrasaName: string;
+  madrasaLogo?: string | null;
+  studentPhotoMap?: Record<string, string | null>;
+}) {
+  const rankedStudents = report.students.filter((r) => r.summary.rank !== null && r.summary.rank <= 3);
+  const posterRow = posterStudentId ? report.students.find((r) => r.student.id === posterStudentId) : null;
+  const totalStudents = report.stats?.totalStudents ?? report.students.length;
+  const passCount = report.stats?.passedCount ?? undefined;
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+          Result Announcement Poster
+        </h3>
+        <div className="max-w-sm mx-auto">
+          <ResultAnnouncementPoster
+            exam={report.exam}
+            madrasaName={madrasaName}
+            madrasaLogo={madrasaLogo}
+            stats={{
+              totalStudents,
+              passCount: passCount > 0 ? passCount : undefined,
+              className: report.class.name,
+            }}
+          />
+        </div>
+      </div>
+
+      {rankedStudents.length > 0 && (
+        <div>
+          <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+            Rank Posters
+          </h3>
+          <div className="flex gap-2 flex-wrap mb-4">
+            {rankedStudents.map((r) => (
+              <button key={r.student.id}
+                onClick={() => setPosterStudentId(r.student.id === posterStudentId ? null : r.student.id)}
+                className={cn(
+                  "px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all",
+                  posterStudentId === r.student.id
+                    ? "border-emerald-600 bg-emerald-50 text-emerald-700"
+                    : "border-gray-200 bg-white text-gray-700 hover:border-emerald-300",
+                )}
+              >
+                {r.summary.rank === 1 ? "🥇" : r.summary.rank === 2 ? "🥈" : "🥉"} {r.student.name}
+              </button>
+            ))}
+          </div>
+
+          {posterRow && (
+            <motion.div
+              key={posterRow.student.id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="max-w-sm mx-auto"
+            >
+              <RankPoster row={posterRow} report={report} madrasaName={madrasaName} madrasaLogo={madrasaLogo} studentPhotoMap={studentPhotoMap} />
+            </motion.div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
