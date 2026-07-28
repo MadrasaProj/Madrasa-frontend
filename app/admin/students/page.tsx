@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
@@ -10,20 +10,20 @@ import {
   type ParseResult,
 } from "@/components/ui/ImportModal";
 import {
-  getStudents,
   createStudent,
-  deleteStudent,
-  bulkImportStudents,
   bulkImportStudentsV2,
   type StudentRecord,
   type CreateStudentPayload,
 } from "@/lib/students-api";
 import { type ClassRecord } from "@/lib/classes-api";
-import { useClasses } from "@/lib/queries";
+import { useClasses, useStudentsList, useDeleteStudent } from "@/lib/queries";
+import { queryKeys } from "@/lib/queryKeys";
+import { useQueryClient } from "@tanstack/react-query";
 import StudentEditDrawer from "@/components/admin/StudentEditDrawer";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
+import { parse, isValid, format } from "date-fns";
 import {
   Plus,
   Search,
@@ -228,90 +228,67 @@ export default function AdminStudentsPage() {
   const { user, accessToken, activeClientId } = useAuthStore();
   const slugMatch = pathname.match(/^\/m\/([^/]+)\//);
   const slugPrefix = slugMatch ? `/m/${slugMatch[1]}` : "";
+  const qc = useQueryClient();
 
-  const [students, setStudents] = useState<StudentRecord[]>([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeClassId, setActiveClassId] = useState<string | "all">("all");
   const [gender, setGender] = useState<"all" | "MALE" | "FEMALE">("all");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  // Drawer state: null = closed, "add" = adding, StudentRecord = editing
   const [drawer, setDrawer] = useState<null | "add" | StudentRecord>(null);
-  const [deleting, setDeleting] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<StudentRecord | null>(null);
-
   const [showImport, setShowImport] = useState(false);
 
-  // Load classes using cached query hook
+  const ctx = useMemo(
+    () => ({ clientId: activeClientId!, token: accessToken! }),
+    [activeClientId, accessToken],
+  );
+  const queryParams = useMemo(
+    () => ({
+      page,
+      limit: pageSize,
+      search: search || undefined,
+      classId: activeClassId !== "all" ? activeClassId : undefined,
+      gender: gender !== "all" ? gender : undefined,
+      status: "ACTIVE" as const,
+      sortBy: sortBy,
+      sortOrder: sortDir,
+    }),
+    [page, pageSize, search, activeClassId, gender, sortBy, sortDir],
+  );
+
+  const { data, isLoading, error } = useStudentsList(ctx, queryParams, {
+    enabled: !!activeClientId && !!accessToken,
+  });
+  const deleteMutation = useDeleteStudent(ctx);
+
+  const students = data?.data ?? [];
+  const total = data?.total ?? 0;
+
   const { data: classesData } = useClasses({
     clientId: activeClientId ?? "",
     token: accessToken ?? "",
   });
   const classes = classesData ?? [];
 
-  const loadStudents = useCallback(
-    async (
-      pg: number,
-      srch: string,
-      clsId: string,
-      gen: "all" | "MALE" | "FEMALE",
-      lim: number,
-      sb?: string,
-      sd?: "asc" | "desc",
-    ) => {
-      if (!activeClientId || !accessToken) return;
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await getStudents(activeClientId, accessToken, {
-          page: pg,
-          limit: lim,
-          search: srch || undefined,
-          classId: clsId !== "all" ? clsId : undefined,
-          gender: gen !== "all" ? gen : undefined,
-          status: "ACTIVE",
-          sortBy: sb,
-          sortOrder: sd,
-        });
-        setStudents(res.data);
-        setTotal(res.total);
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [activeClientId, accessToken],
-  );
-
   const handleSearch = (val: string) => {
     setSearchInput(val);
     setPage(1);
     if (searchTimer.current) clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => {
-      loadStudents(1, val, activeClassId, gender, pageSize, sortBy, sortDir);
-    }, 400);
+    searchTimer.current = setTimeout(() => setSearch(val), 400);
   };
 
   useEffect(() => {
-    loadStudents(
-      page,
-      searchInput,
-      activeClassId,
-      gender,
-      pageSize,
-      sortBy,
-      sortDir,
-    );
-  }, [page, activeClassId, gender, pageSize, sortBy, sortDir]); // eslint-disable-line
+    return () => {
+      if (searchTimer.current) clearTimeout(searchTimer.current);
+    };
+  }, []);
 
   const handleSort = (key: string, dir: "asc" | "desc") => {
     setSortBy(key);
@@ -323,34 +300,34 @@ export default function AdminStudentsPage() {
   const openEdit = (student: StudentRecord) => setDrawer(student);
   const closeDrawer = () => setDrawer(null);
 
+  const invalidateList = useCallback(() => {
+    qc.invalidateQueries({ queryKey: queryKeys.students.all });
+  }, [qc]);
+
   const handleStudentSaved = () => {
     setDrawer(null);
     setPage(1);
-    loadStudents(1, searchInput, activeClassId, gender, pageSize, sortBy, sortDir);
+    invalidateList();
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!deleteTarget) return;
-    setDeleting(deleteTarget.id);
-    try {
-      await deleteStudent(activeClientId!, accessToken!, deleteTarget.id);
-      setDrawer(null);
-      setShowDeleteConfirm(false);
-      setPage(1);
-      loadStudents(1, searchInput, activeClassId, gender, pageSize, sortBy, sortDir);
-    } catch (err: any) {
-      setError(err?.message ?? "Failed to delete student.");
-      setShowDeleteConfirm(false);
-    } finally {
-      setDeleting(null);
-    }
+    deleteMutation.mutate(deleteTarget.id, {
+      onSuccess: () => {
+        setDrawer(null);
+        setShowDeleteConfirm(false);
+        setPage(1);
+      },
+      onError: (err) => {
+        setShowDeleteConfirm(false);
+      },
+    });
   };
 
   const totalPages = Math.ceil(total / pageSize);
   const isEditing = typeof drawer === "object" && drawer !== null;
   const canWrite = user?.actorType !== "TEAM_LEADER";
 
-  // Import config (bound to current auth + classes)
   const importConfig = useMemo<ImportConfig<CreateStudentPayload>>(
     () => ({
       entityName: "Students",
@@ -389,9 +366,8 @@ export default function AdminStudentsPage() {
       context: { classes },
     }),
     [activeClientId, accessToken, user?.defaultAcademicYearId, classes],
-  ); // eslint-disable-line
+  );
 
-  // DataTable column definitions
   const columns = useMemo(
     (): Column<StudentRecord>[] => [
       {
@@ -491,7 +467,6 @@ export default function AdminStudentsPage() {
                   className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors text-xs font-semibold"
                 >
                   <Pencil className="w-3.5 h-3.5" />
-                  {/* <span className="hidden sm:inline">Edit</span> */}
                 </button>
                 <button
                   onClick={(e) => {
@@ -499,11 +474,11 @@ export default function AdminStudentsPage() {
                     setDeleteTarget(s);
                     setShowDeleteConfirm(true);
                   }}
-                  disabled={deleting === s.id}
+                  disabled={deleteMutation.isPending && deleteTarget?.id === s.id}
                   className="p-1.5 rounded-lg text-red-400 bg-red-50 hover:bg-red-100 hover:text-red-500 transition-colors disabled:opacity-40"
                   title={t("adminPages", "deleteStudentTitle", lang)}
                 >
-                  {deleting === s.id ? (
+                  {deleteMutation.isPending && deleteTarget?.id === s.id ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   ) : (
                     <Trash2 className="w-3.5 h-3.5" />
@@ -519,15 +494,14 @@ export default function AdminStudentsPage() {
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors text-xs font-semibold"
             >
               <Eye className="w-3.5 h-3.5" />
-              {/* <span className="hidden sm:inline">{t("adminPages", "viewBtn", lang)}</span> */}
             </button>
           </div>
         ),
         className: "text-right",
       },
     ],
-    [lang, navigate, canWrite],
-  ); // eslint-disable-line
+    [lang, navigate, canWrite, deleteMutation.isPending, deleteTarget],
+  );
 
   return (
     <DashboardLayout>
@@ -561,22 +535,11 @@ export default function AdminStudentsPage() {
 
       {error && (
         <ApiErrorBanner
-          message={error}
-          onRetry={() =>
-            loadStudents(
-              page,
-              searchInput,
-              activeClassId,
-              gender,
-              pageSize,
-              sortBy,
-              sortDir,
-            )
-          }
+          message={(error as Error).message}
+          onRetry={() => qc.invalidateQueries({ queryKey: queryKeys.students.all })}
         />
       )}
 
-      {/* Search */}
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <input
@@ -587,7 +550,6 @@ export default function AdminStudentsPage() {
         />
       </div>
 
-      {/* Filters row — class dropdown + gender select */}
       <div className="flex gap-3 mb-5">
         <div className="flex-1 relative">
           <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
@@ -628,13 +590,12 @@ export default function AdminStudentsPage() {
         </div>
       </div>
 
-      {/* Table */}
       <DataTable
         columns={columns}
         data={students}
         keyExtractor={(s) => s.id}
-        loading={loading}
-        error={error}
+        loading={isLoading}
+        error={error ? (error as Error).message : null}
         emptyIcon={Users}
         emptyMessage={t("adminPages", "noStudentsFound", lang)}
         emptySubtext={t("adminPages", "tryAdjustFilter", lang)}
@@ -654,91 +615,84 @@ export default function AdminStudentsPage() {
             setPage(1);
           },
         }}
-        mobileRender={(s) => {
-          return (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {s.photoUrl ? (
-                  <img
-                    src={s.photoUrl}
-                    alt={s.name}
-                    className="w-12 h-12 rounded-2xl object-cover shrink-0 border border-gray-200"
-                  />
-                ) : (
-                  <div
-                    className={cn(
-                      "w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg shrink-0",
-                      s.gender === "FEMALE"
-                        ? "bg-pink-100 text-pink-700"
-                        : "bg-indigo-100 text-indigo-700",
-                    )}
-                  >
-                    {s.name.charAt(0)}
-                  </div>
-                )}
-                <div>
-                  <p className="font-semibold text-gray-900 text-sm">
-                    {s.name}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {s.adno}
-                    {s.class?.name ? ` · ${s.class.name}` : ""}
-                  </p>
-                  {s.guardianName && (
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {s.guardianName}
-                    </p>
+        mobileRender={(s) => (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {s.photoUrl ? (
+                <img
+                  src={s.photoUrl}
+                  alt={s.name}
+                  className="w-12 h-12 rounded-2xl object-cover shrink-0 border border-gray-200"
+                />
+              ) : (
+                <div
+                  className={cn(
+                    "w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg shrink-0",
+                    s.gender === "FEMALE"
+                      ? "bg-pink-100 text-pink-700"
+                      : "bg-indigo-100 text-indigo-700",
                   )}
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                {canWrite && (
-                  <>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openEdit(s);
-                      }}
-                      className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeleteTarget(s);
-                        setShowDeleteConfirm(true);
-                      }}
-                      disabled={deleting === s.id}
-                      className="p-2 rounded-xl text-red-400 bg-red-50 hover:bg-red-100 hover:text-red-500 transition-colors disabled:opacity-40"
-                    >
-                      {deleting === s.id ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-3.5 h-3.5" />
-                      )}
-                    </button>
-                  </>
-                )}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`${slugPrefix}/admin/students/${s.id}`);
-                  }}
-                  className="flex items-center gap-1 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors text-xs font-semibold"
                 >
-                  <Eye className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">
-                    {t("adminPages", "viewBtn", lang)}
-                  </span>
-                </button>
+                  {s.name.charAt(0)}
+                </div>
+              )}
+              <div>
+                <p className="font-semibold text-gray-900 text-sm">{s.name}</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {s.adno}
+                  {s.class?.name ? ` · ${s.class.name}` : ""}
+                </p>
+                {s.guardianName && (
+                  <p className="text-xs text-gray-400 mt-0.5">{s.guardianName}</p>
+                )}
               </div>
             </div>
-          );
-        }}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {canWrite && (
+                <>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEdit(s);
+                    }}
+                    className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteTarget(s);
+                      setShowDeleteConfirm(true);
+                    }}
+                    disabled={deleteMutation.isPending && deleteTarget?.id === s.id}
+                    className="p-2 rounded-xl text-red-400 bg-red-50 hover:bg-red-100 hover:text-red-500 transition-colors disabled:opacity-40"
+                  >
+                    {deleteMutation.isPending && deleteTarget?.id === s.id ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                </>
+              )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`${slugPrefix}/admin/students/${s.id}`);
+                }}
+                className="flex items-center gap-1 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors text-xs font-semibold"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">
+                  {t("adminPages", "viewBtn", lang)}
+                </span>
+              </button>
+            </div>
+          </div>
+        )}
       />
 
-      {/* ── Add / Edit Drawer (shared component) ────────────────────── */}
       <StudentEditDrawer
         open={drawer !== null}
         onClose={closeDrawer}
@@ -758,26 +712,16 @@ export default function AdminStudentsPage() {
         }
       />
 
-      {/* ── Import Modal ── */}
       <ImportModal
         show={showImport}
         config={importConfig}
         onComplete={() => {
           setPage(1);
-          loadStudents(
-            1,
-            searchInput,
-            activeClassId,
-            gender,
-            pageSize,
-            sortBy,
-            sortDir,
-          );
+          invalidateList();
         }}
         onClose={() => setShowImport(false)}
       />
 
-      {/* Standalone Delete Confirm Dialog */}
       <AnimatePresence>
         {showDeleteConfirm && (
           <>
@@ -786,7 +730,7 @@ export default function AdminStudentsPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => !deleting && setShowDeleteConfirm(false)}
+              onClick={() => !deleteMutation.isPending && setShowDeleteConfirm(false)}
               className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
             />
             <motion.div
@@ -813,18 +757,18 @@ export default function AdminStudentsPage() {
               <div className="grid grid-cols-2 gap-3 mt-6">
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
-                  disabled={deleting !== null}
+                  disabled={deleteMutation.isPending}
                   className="py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
                   {t("common", "cancel", lang)}
                 </button>
                 <button
                   onClick={handleDelete}
-                  disabled={deleting !== null}
+                  disabled={deleteMutation.isPending}
                   className="py-3 rounded-2xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors disabled:opacity-60"
                 >
-                  {deleting !== null ? (
-                    <span className="flex items-center justify-center gap-2">
+                  {deleteMutation.isPending ? (
+                      <span className="flex items-center justify-center gap-2">
                       <Loader2 className="w-4 h-4 animate-spin" />{" "}
                       {t("adminPages", "deletingLabel", lang)}
                     </span>

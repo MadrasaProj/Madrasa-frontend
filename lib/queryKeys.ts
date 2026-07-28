@@ -94,6 +94,7 @@ export const queryKeys = {
 
   students: {
     all: ["students"] as const,
+    list: (cid: string, params?: object) => ["students", "list", cid, params ?? {}] as const,
     profile: (cid: string, sid: string) => ["students", "profile", cid, sid] as const,
     fullFromParent: (sid: string) => ["students", "fullFromParent", sid] as const,
   },

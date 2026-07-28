@@ -5,9 +5,13 @@ import {
   type StudentInfo,
 } from "@/lib/auth-api";
 import {
+  deleteStudent,
+  getStudents,
   getStudentProfileV2,
   updateStudent as updateStudentV2,
   uploadStudentPhoto,
+  type GetStudentsParams,
+  type StudentListResponse,
   type StudentRecord,
 } from "@/lib/students-api";
 import type { AuthCtx } from "./useNotifications";
@@ -70,6 +74,30 @@ export function useUploadStudentPhoto(ctx: AuthCtx) {
           photoUrl: result.photoUrl,
         });
       }
+    },
+  });
+}
+
+export function useStudentsList(
+  ctx: AuthCtx,
+  params: GetStudentsParams & { classId?: string; gender?: string },
+  options?: Omit<UseQueryOptions<StudentListResponse, Error>, "queryKey" | "queryFn">,
+) {
+  return useQuery<StudentListResponse, Error>({
+    queryKey: queryKeys.students.list(ctx.clientId, params),
+    queryFn: ({ signal }) =>
+      getStudents(ctx.clientId, ctx.token, { ...params, signal }),
+    enabled: !!ctx.clientId && !!ctx.token,
+    ...options,
+  });
+}
+
+export function useDeleteStudent(ctx: AuthCtx) {
+  const qc = useQueryClient();
+  return useMutation<{ message: string }, Error, string>({
+    mutationFn: (studentId) => deleteStudent(ctx.clientId, ctx.token, studentId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.students.all });
     },
   });
 }
