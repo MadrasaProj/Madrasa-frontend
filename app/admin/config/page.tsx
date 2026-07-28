@@ -5,6 +5,7 @@ import * as Tabs from "@radix-ui/react-tabs";
 import {
   getClientConfig,
   updateClientConfig,
+  updateAdminUsername,
   type ClientConfig,
 } from "@/lib/config-api";
 import { useAuthStore } from "@/store/auth";
@@ -22,6 +23,7 @@ import {
   UserCog,
   Radio,
   ShieldCheck,
+  KeyRound,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -114,6 +116,7 @@ const TABS = [
   { value: "management", label: "Management", icon: UserCog },
   { value: "attendance", label: "Attendance", icon: Radio },
   { value: "parent-modules", label: "Parent Modules", icon: ShieldCheck },
+  { value: "admin-account", label: "Admin Account", icon: KeyRound },
 ];
 
 export default function AdminConfigPage() {
@@ -155,6 +158,18 @@ export default function AdminConfigPage() {
   const [disabledModules, setDisabledModules] = useState<string[]>([]);
   const [savingParentToggles, setSavingParentToggles] = useState(false);
   const [savedParentToggles, setSavedParentToggles] = useState(false);
+
+  const [newUsername, setNewUsername] = useState("");
+  const [savingUsername, setSavingUsername] = useState(false);
+  const [savedUsername, setSavedUsername] = useState(false);
+  const [usernameError, setUsernameError] = useState("");
+
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPasswords, setShowPasswords] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [savedPassword, setSavedPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
 
   useEffect(() => {
     if (!cid || !token) return;
@@ -272,6 +287,52 @@ export default function AdminConfigPage() {
       /* ignore */
     } finally {
       setSavingCommTC(false);
+    }
+  };
+
+  const handleSaveUsername = async () => {
+    if (!cid || !token || !newUsername.trim()) return;
+    setSavingUsername(true);
+    setUsernameError("");
+    try {
+      await updateAdminUsername(cid, token, newUsername.trim());
+      setConfig((prev) => {
+        const isEmail = newUsername.includes("@");
+        return { ...prev, loginEmail: isEmail ? newUsername : null, loginPhone: isEmail ? null : newUsername };
+      });
+      setSavedUsername(true);
+      setTimeout(() => setSavedUsername(false), 3000);
+    } catch (e) {
+      setUsernameError((e as Error).message);
+    } finally {
+      setSavingUsername(false);
+    }
+  };
+
+  const handleSavePassword = async () => {
+    if (!cid || !token) return;
+    setSavingPassword(true);
+    setPasswordError("");
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Passwords do not match");
+      setSavingPassword(false);
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordError("Password must be at least 6 characters");
+      setSavingPassword(false);
+      return;
+    }
+    try {
+      await updateClientConfig(cid, token, { password: newPassword });
+      setSavedPassword(true);
+      setNewPassword("");
+      setConfirmPassword("");
+      setTimeout(() => setSavedPassword(false), 3000);
+    } catch (e) {
+      setPasswordError((e as Error).message);
+    } finally {
+      setSavingPassword(false);
     }
   };
 
@@ -613,6 +674,139 @@ export default function AdminConfigPage() {
                   <>
                     <Save className="w-4 h-4" /> Save
                   </>
+                )}
+              </button>
+            </motion.div>
+          </Tabs.Content>
+
+          {/* ── Admin Account Tab ── */}
+          <Tabs.Content value="admin-account" className="space-y-5">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Admin Account</h2>
+              <p className="text-sm text-gray-500 mt-1">Update your admin login credentials</p>
+            </div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-2xl border border-gray-100 p-5"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <KeyRound className="w-4 h-4 text-emerald-600" />
+                <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide">
+                  Username
+                </p>
+              </div>
+              <div className="mb-4">
+                <p className="text-xs text-gray-500 mb-1">Current username</p>
+                <p className="text-sm font-semibold text-gray-800 bg-gray-50 px-3 py-2 rounded-xl border border-gray-200">
+                  {config.loginEmail ?? config.loginPhone ?? "—"}
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                  New username (email or phone)
+                </label>
+                <input
+                  type="text"
+                  value={newUsername}
+                  onChange={(e) => setNewUsername(e.target.value)}
+                  placeholder="admin@madrasa.com or +91 9876543210"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              {usernameError && (
+                <div className="bg-red-50 text-red-600 text-xs px-3 py-2 rounded-xl mt-3">
+                  {usernameError}
+                </div>
+              )}
+              <button
+                onClick={handleSaveUsername}
+                disabled={savingUsername || !newUsername.trim()}
+                className={cn(
+                  "flex items-center justify-center gap-2 w-full py-3 mt-4 rounded-xl text-sm font-bold transition-colors",
+                  savedUsername
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60",
+                )}
+              >
+                {savingUsername ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : savedUsername ? (
+                  <><CheckCircle2 className="w-4 h-4" /> Saved!</>
+                ) : (
+                  <><Save className="w-4 h-4" /> Update Username</>
+                )}
+              </button>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-2xl border border-gray-100 p-5"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide">
+                    Password
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPasswords((v) => !v)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  {showPasswords ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                    New password
+                  </label>
+                  <input
+                    type={showPasswords ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="At least 6 characters"
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                    Confirm new password
+                  </label>
+                  <input
+                    type={showPasswords ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter new password"
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+              {passwordError && (
+                <div className="bg-red-50 text-red-600 text-xs px-3 py-2 rounded-xl mt-3">
+                  {passwordError}
+                </div>
+              )}
+              <button
+                onClick={handleSavePassword}
+                disabled={savingPassword || !newPassword || !confirmPassword}
+                className={cn(
+                  "flex items-center justify-center gap-2 w-full py-3 mt-4 rounded-xl text-sm font-bold transition-colors",
+                  savedPassword
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60",
+                )}
+              >
+                {savingPassword ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : savedPassword ? (
+                  <><CheckCircle2 className="w-4 h-4" /> Saved!</>
+                ) : (
+                  <><Save className="w-4 h-4" /> Change Password</>
                 )}
               </button>
             </motion.div>

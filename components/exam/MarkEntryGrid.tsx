@@ -99,6 +99,9 @@ export function MarkEntryGrid({
   const filled = Object.values(scores).filter((v) => v !== "").length;
   const currentSubject = subjects.find((s) => s.id === subjectId);
   const effectiveMaxMarks = currentSubject?.classSubject?.maxMarks ?? 50;
+  const hasInvalidMarks = Object.values(scores).some(
+    (v) => v !== "" && (Number(v) > effectiveMaxMarks || Number(v) < 0),
+  );
 
   return (
     <div className="space-y-6">
@@ -252,9 +255,12 @@ export function MarkEntryGrid({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {students.map((s, idx) => {
+                  {students.map((s, idx) => {
                   const score = scores[s.id] ?? "";
                   const remark = remarks[s.id] ?? "";
+                  const invalid =
+                    score !== "" &&
+                    (Number(score) > effectiveMaxMarks || Number(score) < 0);
                   return (
                     <tr
                       key={s.id}
@@ -290,7 +296,9 @@ export function MarkEntryGrid({
                             "w-24 text-center px-3 py-2 border rounded-xl text-sm font-bold focus:outline-none transition-all",
                             isLocked
                               ? "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed"
-                              : "border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/20",
+                              : invalid
+                                ? "border-red-400 bg-red-50 text-red-700 focus:border-red-500 focus:ring-2 focus:ring-red-400/20"
+                                : "border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/20",
                           )}
                         />
                       </td>
@@ -320,6 +328,9 @@ export function MarkEntryGrid({
             {students.map((s, idx) => {
               const score = scores[s.id] ?? "";
               const remark = remarks[s.id] ?? "";
+              const invalid =
+                score !== "" &&
+                (Number(score) > effectiveMaxMarks || Number(score) < 0);
               return (
                 <div key={s.id} className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-3">
@@ -356,7 +367,9 @@ export function MarkEntryGrid({
                           "w-16 text-center py-1.5 px-2 border rounded-xl text-sm font-bold focus:outline-none transition-all",
                           isLocked
                             ? "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed"
-                            : "border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/20",
+                            : invalid
+                              ? "border-red-400 bg-red-50 text-red-700 focus:border-red-500 focus:ring-2 focus:ring-red-400/20"
+                              : "border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/20",
                         )}
                       />
                     </div>
@@ -416,8 +429,8 @@ export function MarkEntryGrid({
               {showDraftButton && (
                 <button
                   onClick={() => onSave(false)}
-                  disabled={saving || isLocked}
-                  className="inline-flex items-center gap-1.5 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs px-4 py-2.5 rounded-xl transition-colors shadow-xs"
+                  disabled={saving || isLocked || hasInvalidMarks}
+                  className="inline-flex items-center gap-1.5 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs px-4 py-2.5 rounded-xl transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -429,8 +442,8 @@ export function MarkEntryGrid({
               )}
               <button
                 onClick={() => onSave(true)}
-                disabled={saving || isLocked}
-                className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-sm hover:scale-[1.01]"
+                disabled={saving || isLocked || hasInvalidMarks}
+                className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-sm hover:scale-[1.01] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 {saving ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />

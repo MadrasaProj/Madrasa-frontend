@@ -30,6 +30,8 @@ export interface ClientConfig {
   principalPhone?: string | null;
   principalEmail?: string | null;
   establishedYear?: number | null;
+  loginEmail?: string | null;
+  loginPhone?: string | null;
 }
 
 export const getClientConfig = (clientId: string, token: string) =>
@@ -37,9 +39,20 @@ export const getClientConfig = (clientId: string, token: string) =>
 
 export const updateClientConfig = (
   clientId: string, token: string,
-  data: Partial<Omit<ClientConfig, "id">>,
+  data: Partial<Omit<ClientConfig, "id">> & Record<string, unknown>,
 ) =>
   apiFetch<ClientConfig>(`${V2_BASE}/${clientId}/config`, token, {
     method: "PATCH",
     body: JSON.stringify(data),
   });
+
+export const updateAdminUsername = (
+  clientId: string,
+  token: string,
+  username: string,
+) => {
+  const isEmail = username.includes("@");
+  return updateClientConfig(clientId, token, {
+    ...(isEmail ? { loginEmail: username } : { loginPhone: username }),
+  });
+};
