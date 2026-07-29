@@ -42,7 +42,7 @@ export function ExamMobileCard({
         </div>
         <ExamStatusBadge exam={exam} />
       </div>
-      <div className="grid grid-cols-3 gap-3 text-[10px]">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[10px]">
         <div className="bg-gray-50 rounded-xl p-2.5">
           <p className="text-gray-400 uppercase font-bold tracking-wider">Exam Period</p>
           <p className="text-gray-800 font-bold mt-1 leading-tight">
@@ -62,7 +62,7 @@ export function ExamMobileCard({
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
         {onEdit && (
           <button
             onClick={(e) => {
@@ -121,10 +121,9 @@ export function ExamMobileCard({
               e.stopPropagation();
               onDelete(exam);
             }}
-            className="p-2.5 rounded-xl text-red-400 bg-red-50 hover:bg-red-100 hover:text-red-500 transition-colors"
-            title="Delete Exam"
+            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-red-400 bg-red-50 hover:bg-red-100 hover:text-red-500 transition-colors text-xs font-bold"
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            <Trash2 className="w-3.5 h-3.5" /> Delete
           </button>
         )}
       </div>

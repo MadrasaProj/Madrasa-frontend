@@ -53,6 +53,7 @@ import { ResultAnnouncementPoster } from "@/components/exam/ResultAnnouncementPo
 import { ExcelImportModal } from "@/components/exam/ExcelImportModal";
 import { useExamColumns } from "@/components/exam/ExamColumns";
 import { ExamMobileCard } from "@/components/exam/ExamMobileCard";
+import { ExamStatsCards } from "@/components/exam/ExamStatsCards";
 import { fmt, shortDate, getExamCategories, PAGE_SIZE_OPTIONS } from "@/lib/exam-utils";
 import {
   getClassReport, computeSummary, setFinalStatus,
@@ -633,7 +634,7 @@ export default function AdminExamsPage() {
 
   return (
     <DashboardLayout>
-      <div className="px-4 py-3 lg:px-8 lg:py-6 space-y-6">
+      <div className="py-3 lg:px-8 lg:py-6 space-y-6">
         <PageHeader
           title="Exams"
           subtitle="Manage term examinations"
@@ -648,13 +649,12 @@ export default function AdminExamsPage() {
           }
         />
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
+        <ExamStatsCards
+          stats={[
             {
               label: "Upcoming Exams",
               value: upcomingExams.length,
-              color:
-                "bg-emerald-50 text-emerald-600 border border-emerald-100",
+              color: "bg-emerald-50 text-emerald-600 border border-emerald-100",
               icon: Clock,
             },
             {
@@ -675,30 +675,8 @@ export default function AdminExamsPage() {
               color: "bg-teal-50 text-teal-600 border border-teal-100",
               icon: Trophy,
             },
-          ].map((st, i) => (
-            <div
-              key={i}
-              className="bg-white rounded-3xl border border-gray-100 p-5 flex items-center gap-4 shadow-xs"
-            >
-              <div
-                className={cn(
-                  "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-inner",
-                  st.color,
-                )}
-              >
-                <st.icon className="w-5.5 h-5.5" />
-              </div>
-              <div>
-                <p className="text-2xl font-extrabold text-gray-900 leading-none">
-                  {st.value}
-                </p>
-                <p className="text-[10px] text-gray-400 mt-1.5 uppercase font-bold tracking-wider">
-                  {st.label}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
+          ]}
+        />
 
         {pageError && (
           <ApiErrorBanner

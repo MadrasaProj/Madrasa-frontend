@@ -76,7 +76,7 @@ export default function ParentBestPerformancePage() {
 
   return (
     <DashboardLayout>
-      <div className="px-4 py-3 lg:px-8 lg:py-6 space-y-6">
+      <div className=" py-3 lg:px-8 lg:py-6 space-y-6">
 
         {/* Header */}
         <motion.div
