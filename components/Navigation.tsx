@@ -38,8 +38,10 @@ import {
   Languages,
   MapPin,
   Receipt,
+  Download,
 } from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import PwaInstallButton from "@/components/PwaInstallButton";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
@@ -865,16 +867,21 @@ export function Sidebar({
           </div>
         </div>
 
-        <div className="p-4 border-t border-gray-100 shrink-0">
-          <button
-            onClick={() => {
-              logout();
-            }}
-            className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-all w-full focus-visible:ring-2 focus-visible:ring-red-500 outline-none"
-          >
-            <LogOut className="w-5 h-5" />
-            {t("common", "signOut", lang)}
-          </button>
+        <div className="border-t border-gray-100 shrink-0">
+          <div className="px-4 pt-2 pb-1">
+            <PwaInstallButton />
+          </div>
+          <div className="p-4 pt-2">
+            <button
+              onClick={() => {
+                logout();
+              }}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-all w-full focus-visible:ring-2 focus-visible:ring-red-500 outline-none"
+            >
+              <LogOut className="w-5 h-5" />
+              {t("common", "signOut", lang)}
+            </button>
+          </div>
         </div>
       </aside>
     </>
