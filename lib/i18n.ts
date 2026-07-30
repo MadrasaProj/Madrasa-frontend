@@ -826,6 +826,10 @@ const translations = {
     },
     deleteConfirm: { en: "Delete", ml: "ഇല്ലാതാക്കുക" },
     deletingLabel: { en: "Deleting…", ml: "ഇല്ലാതാക്കുന്നു…" },
+    bulkDeleteStudentsConfirm: {
+      en: "Are you sure you want to delete {count} student(s)? This action cannot be undone and will delete all parent link mappings.",
+      ml: "നിങ്ങൾക്ക് ഉറപ്പാണോ {count} വിദ്യാർത്ഥി(കളെ) ഇല്ലാതാക്കാൻ? ഇത് പഴയപടിയാക്കാൻ കഴിയില്ല, എല്ലാ രക്ഷിതാവ് ലിങ്കുകളും ഇല്ലാതാക്കും.",
+    },
     // Seat generator placeholder
     examNamePlaceholder: {
       en: "e.g. Second Semester Exam",

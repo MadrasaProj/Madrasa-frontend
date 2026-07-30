@@ -92,6 +92,19 @@ export function useStudentsList(
   });
 }
 
+export function useBulkDeleteStudents(ctx: AuthCtx) {
+  const qc = useQueryClient();
+  return useMutation<{ message: string; count: number }, Error, string[]>({
+    mutationFn: (ids) =>
+      import("@/lib/students-api").then((m) =>
+        m.bulkDeleteStudents(ctx.clientId, ctx.token, ids),
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.students.all });
+    },
+  });
+}
+
 export function useDeleteStudent(ctx: AuthCtx) {
   const qc = useQueryClient();
   return useMutation<{ message: string }, Error, string>({

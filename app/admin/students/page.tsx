@@ -16,7 +16,7 @@ import {
   type CreateStudentPayload,
 } from "@/lib/students-api";
 import { type ClassRecord } from "@/lib/classes-api";
-import { useClasses, useStudentsList, useDeleteStudent } from "@/lib/queries";
+import { useClasses, useStudentsList, useDeleteStudent, useBulkDeleteStudents } from "@/lib/queries";
 import { queryKeys } from "@/lib/queryKeys";
 import { useQueryClient } from "@tanstack/react-query";
 import StudentEditDrawer from "@/components/admin/StudentEditDrawer";
@@ -36,6 +36,7 @@ import {
   Check,
   Users,
   Upload,
+  X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -50,6 +51,30 @@ const GENDER_AVATAR = {
 
 const DEFAULT_PAGE_SIZE = 20;
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+
+function IndeterminateCheckbox({
+  checked,
+  indeterminate,
+  onChange,
+}: {
+  checked: boolean;
+  indeterminate: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      checked={checked}
+      onChange={(e) => onChange(e.target.checked)}
+      className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+    />
+  );
+}
 
 // ── Import column definitions (static — no auth deps here) ───────────────────
 
@@ -249,6 +274,10 @@ export default function AdminStudentsPage() {
     () => ({ clientId: activeClientId!, token: accessToken! }),
     [activeClientId, accessToken],
   );
+
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const bulkDeleteMutation = useBulkDeleteStudents(ctx);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const queryParams = useMemo(
     () => ({
       page,
@@ -368,8 +397,49 @@ export default function AdminStudentsPage() {
     [activeClientId, accessToken, user?.defaultAcademicYearId, classes],
   );
 
+  const handleSelectAll = useCallback(
+    (checked: boolean) => {
+      if (checked) {
+        setSelectedIds(new Set(students.map((s) => s.id)));
+      } else {
+        setSelectedIds(new Set());
+      }
+    },
+    [students],
+  );
+
+  const handleSelectOne = useCallback((id: string, checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+
   const columns = useMemo(
     (): Column<StudentRecord>[] => [
+      {
+        key: "__checkbox",
+        header: (
+          <IndeterminateCheckbox
+            checked={students.length > 0 && selectedIds.size === students.length}
+            indeterminate={selectedIds.size > 0 && selectedIds.size < students.length}
+            onChange={(checked) => handleSelectAll(checked)}
+          />
+        ),
+        render: (s) => (
+          <input
+            type="checkbox"
+            checked={selectedIds.has(s.id)}
+            onChange={(e) => handleSelectOne(s.id, e.target.checked)}
+            onClick={(e) => e.stopPropagation()}
+            className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+          />
+        ),
+        className: "w-10",
+        headerClass: "w-10",
+      },
       {
         key: "name",
         header: t("adminPages", "studentCol", lang),
@@ -500,7 +570,7 @@ export default function AdminStudentsPage() {
         className: "text-right",
       },
     ],
-    [lang, navigate, canWrite, deleteMutation.isPending, deleteTarget],
+    [lang, navigate, canWrite, deleteMutation.isPending, deleteTarget, students, selectedIds, handleSelectAll, handleSelectOne],
   );
 
   return (
@@ -590,6 +660,36 @@ export default function AdminStudentsPage() {
         </div>
       </div>
 
+      {selectedIds.size > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3 mb-4"
+        >
+          <span className="text-sm font-semibold text-emerald-800">
+            {selectedIds.size} {t("common", "selected", lang)}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-gray-600 text-xs font-semibold hover:bg-gray-50 transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+              {t("common", "cancel", lang)}
+            </button>
+            {canWrite && (
+              <button
+                onClick={() => setShowBulkDeleteConfirm(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-600 text-white text-xs font-semibold hover:bg-red-700 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                {t("adminPages", "deleteStudentTitle", lang)}
+              </button>
+            )}
+          </div>
+        </motion.div>
+      )}
+
       <DataTable
         columns={columns}
         data={students}
@@ -618,6 +718,13 @@ export default function AdminStudentsPage() {
         mobileRender={(s) => (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={selectedIds.has(s.id)}
+                onChange={(e) => handleSelectOne(s.id, e.target.checked)}
+                onClick={(e) => e.stopPropagation()}
+                className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer shrink-0"
+              />
               {s.photoUrl ? (
                 <img
                   src={s.photoUrl}
@@ -769,6 +876,77 @@ export default function AdminStudentsPage() {
                 >
                   {deleteMutation.isPending ? (
                       <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />{" "}
+                      {t("adminPages", "deletingLabel", lang)}
+                    </span>
+                  ) : (
+                    t("adminPages", "deleteConfirm", lang)
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showBulkDeleteConfirm && (
+          <>
+            <motion.div
+              key="bulk-del-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !bulkDeleteMutation.isPending && setShowBulkDeleteConfirm(false)}
+              className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
+            />
+            <motion.div
+              key="bulk-del-dialog"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 bg-white rounded-3xl p-6 max-w-sm mx-auto shadow-2xl"
+            >
+              <div className="text-center space-y-3">
+                <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto animate-bounce">
+                  <Trash2 className="w-7 h-7 text-red-600" />
+                </div>
+                <h3 className="font-bold text-gray-900 text-lg">
+                  {t("adminPages", "deleteStudentTitle", lang)}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {t("adminPages", "bulkDeleteStudentsConfirm", lang).replace(
+                    "{count}",
+                    String(selectedIds.size),
+                  )}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mt-6">
+                <button
+                  onClick={() => setShowBulkDeleteConfirm(false)}
+                  disabled={bulkDeleteMutation.isPending}
+                  className="py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  {t("common", "cancel", lang)}
+                </button>
+                <button
+                  onClick={() => {
+                    bulkDeleteMutation.mutate(Array.from(selectedIds), {
+                      onSuccess: () => {
+                        setShowBulkDeleteConfirm(false);
+                        setSelectedIds(new Set());
+                        setPage(1);
+                      },
+                      onError: () => {
+                        setShowBulkDeleteConfirm(false);
+                      },
+                    });
+                  }}
+                  disabled={bulkDeleteMutation.isPending}
+                  className="py-3 rounded-2xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors disabled:opacity-60"
+                >
+                  {bulkDeleteMutation.isPending ? (
+                    <span className="flex items-center justify-center gap-2">
                       <Loader2 className="w-4 h-4 animate-spin" />{" "}
                       {t("adminPages", "deletingLabel", lang)}
                     </span>

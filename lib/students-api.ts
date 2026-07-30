@@ -238,6 +238,18 @@ export interface BulkImportResponseV2 {
   failed: Array<{ rowIndex: number; message: string }>;
 }
 
+export function bulkDeleteStudents(
+  clientId: string,
+  token: string,
+  ids: string[],
+): Promise<{ message: string; count: number }> {
+  return apiFetch<{ message: string; count: number }>(
+    `${V1_BASE}/${clientId}/students/bulk`,
+    token,
+    { method: "DELETE", body: JSON.stringify(ids) },
+  );
+}
+
 export function bulkImportStudentsV2(
   clientId: string,
   token: string,

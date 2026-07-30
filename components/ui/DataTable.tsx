@@ -7,7 +7,7 @@ export type SortDir = "asc" | "desc"
 
 export interface Column<T> {
   key: string
-  header: string
+  header: React.ReactNode
   render: (row: T, index: number) => React.ReactNode
   sortable?: boolean
   className?: string
