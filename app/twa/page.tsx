@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { GraduationCap, Users, ArrowRight } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { roleHomePath } from "@/lib/tenant-routing";
+import PwaInstallButton from "@/components/PwaInstallButton";
 
 type LandingRole = "parent" | "teacher";
 
@@ -157,20 +158,24 @@ export default function TwaLandingPage() {
  </motion.div>
  )}
 
- {role && (
- <motion.button
- type="submit"
- disabled={!slug.trim()}
- initial={{ opacity: 0 }}
- animate={{ opacity: 1 }}
- className="w-full bg-emerald-600 text-white font-semibold py-3.5 rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
- >
- Continue to Login
- <ArrowRight className="w-4 h-4" />
- </motion.button>
- )}
- </form>
- </motion.div>
- </div>
+    {role && (
+        <motion.button
+          type="submit"
+          disabled={!slug.trim()}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="w-full bg-emerald-600 text-white font-semibold py-3.5 rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
+        >
+          Continue to Login
+          <ArrowRight className="w-4 h-4" />
+        </motion.button>
+      )}
+    </form>
+
+      <div className="mt-6 text-center">
+        <PwaInstallButton />
+      </div>
+    </motion.div>
+    </div>
  );
 }
