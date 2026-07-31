@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { GraduationCap, Users, ArrowRight, Download } from "lucide-react";
+import { GraduationCap, Users, ArrowRight } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { roleHomePath } from "@/lib/tenant-routing";
 import PwaInstallButton from "@/components/PwaInstallButton";
@@ -172,23 +172,9 @@ export default function TwaLandingPage() {
       )}
     </form>
 
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.3, delay: 0.05 }}
-        className="mt-6 p-4 rounded-2xl border-2 border-gray-200 bg-white shadow-sm text-center"
-      >
-        <div className="flex items-center justify-center gap-2 mb-3">
-          <Download className="w-5 h-5 text-emerald-600" />
-          <span className="text-sm font-semibold text-gray-800">
-            Install App
-          </span>
-        </div>
-        <p className="text-xs text-gray-500 mb-3">
-          Add to your home screen for quick access
-        </p>
+      <div className="mt-6 py-4 bg-gray-100 rounded-2xl text-center">
         <PwaInstallButton />
-      </motion.div>
+      </div>
     </motion.div>
     </div>
  );
