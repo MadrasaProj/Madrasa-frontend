@@ -179,7 +179,7 @@ export default function TwaLandingPage() {
           )}
         </form>
 
-        <div className="">
+        <div className="mt-4">
           <PwaInstallButton />
         </div>
       </motion.div>
