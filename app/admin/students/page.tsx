@@ -305,6 +305,7 @@ export default function AdminStudentsPage() {
     token: accessToken ?? "",
   });
   const classes = classesData ?? [];
+console.log(classes);
 
   const handleSearch = (val: string) => {
     setSearchInput(val);
