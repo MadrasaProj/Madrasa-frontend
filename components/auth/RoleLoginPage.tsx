@@ -89,6 +89,12 @@ export default function RoleLoginPage({
  const [error, setError] = useState("");
  const [info, setInfo] = useState("");
 
+ const [mustSetPassword, setMustSetPassword] = useState(false);
+ const [newPassword, setNewPassword] = useState("");
+ const [confirmNewPassword, setConfirmNewPassword] = useState("");
+ const [showNewPassword, setShowNewPassword] = useState(false);
+ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
  const meta = useMemo(() => metaByType[type], [type]);
  const Icon = meta.icon;
  const isTenantRole = type !== "SUPER_ADMIN";
@@ -194,11 +200,35 @@ export default function RoleLoginPage({
  session = await loginCommittee(slug!, identifier.trim(), password);
  } else {
  const slug = requireTenantSlug();
+ if (mustSetPassword) {
+ if (!newPassword || newPassword.trim().length < 6) {
+ setError("New password must be at least 6 characters long.");
+ setLoading(false);
+ return;
+ }
+ if (newPassword !== confirmNewPassword) {
+ setError("Passwords do not match.");
+ setLoading(false);
+ return;
+ }
+ session = await loginParent(
+ slug!,
+ parentPhone.trim(),
+ { password, newPassword: newPassword.trim() },
+ );
+ } else {
  session = await loginParent(
  slug!,
  parentPhone.trim(),
  { password },
  );
+ if (session && (session as any).mustSetPassword) {
+ setMustSetPassword(true);
+ setInfo("Parent account found without password. Please set a new secure password to proceed.");
+ setLoading(false);
+ return;
+ }
+ }
  }
 
  const normalized = normalizeUserSession(
@@ -283,84 +313,161 @@ export default function RoleLoginPage({
  )}
 
  {type === "PARENT" && (
- <div>
- <label className="block text-sm font-medium text-gray-700 mb-1.5">
- Parent Phone
- </label>
- <input
- type="tel"
- value={parentPhone}
- onChange={(e) => setParentPhone(e.target.value)}
- placeholder="9876543210"
- className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-gray-900 text-sm"
- required
- />
- </div>
- )}
+  <div>
+  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+  Parent Phone
+  </label>
+  <input
+  type="tel"
+  value={parentPhone}
+  onChange={(e) => setParentPhone(e.target.value)}
+  placeholder="9876543210"
+  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-gray-900 text-sm disabled:opacity-60"
+  required
+  disabled={mustSetPassword}
+  />
+  </div>
+  )}
 
- <div>
- <label className="block text-sm font-medium text-gray-700 mb-1.5">
- {t("login", "password", lang)}
- </label>
- <div className="relative">
- <input
- type={showPassword ? "text" : "password"}
- value={password}
- onChange={(e) => setPassword(e.target.value)}
- placeholder={t("login", "enterPassword", lang)}
- className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-gray-900 text-sm pr-12"
- required
- />
- <button
- type="button"
- onClick={() => setShowPassword(!showPassword)}
- className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
- >
- {showPassword ? (
- <EyeOff className="w-5 h-5" />
- ) : (
- <Eye className="w-5 h-5" />
- )}
- </button>
- </div>
- </div>
+  <div>
+  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+  {type === "PARENT" && mustSetPassword ? "Temporary Password (Date of Birth)" : t("login", "password", lang)}
+  </label>
+  <div className="relative">
+  <input
+  type={showPassword ? "text" : "password"}
+  value={password}
+  onChange={(e) => setPassword(e.target.value)}
+  placeholder={t("login", "enterPassword", lang)}
+  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-gray-900 text-sm pr-12 disabled:opacity-60"
+  required
+  disabled={mustSetPassword}
+  />
+  <button
+  type="button"
+  onClick={() => setShowPassword(!showPassword)}
+  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
+  disabled={mustSetPassword}
+  >
+  {showPassword ? (
+  <EyeOff className="w-5 h-5" />
+  ) : (
+  <Eye className="w-5 h-5" />
+  )}
+  </button>
+  </div>
+  </div>
 
- {error && (
- <motion.p
- initial={{ opacity: 0 }}
- animate={{ opacity: 1 }}
- className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3"
- >
- {error}
- </motion.p>
- )}
+  {mustSetPassword && (
+  <>
+  <div>
+  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+  New Password
+  </label>
+  <div className="relative">
+  <input
+  type={showNewPassword ? "text" : "password"}
+  value={newPassword}
+  onChange={(e) => setNewPassword(e.target.value)}
+  placeholder="Enter new password (min 6 characters)"
+  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-gray-900 text-sm pr-12"
+  required
+  />
+  <button
+  type="button"
+  onClick={() => setShowNewPassword(!showNewPassword)}
+  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
+  >
+  {showNewPassword ? (
+  <EyeOff className="w-5 h-5" />
+  ) : (
+  <Eye className="w-5 h-5" />
+  )}
+  </button>
+  </div>
+  </div>
 
- {info && (
- <motion.p
- initial={{ opacity: 0 }}
- animate={{ opacity: 1 }}
- className="text-sm text-emerald-700 bg-emerald-50 rounded-xl px-4 py-3"
- >
- {info}
- </motion.p>
- )}
+  <div>
+  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+  Confirm New Password
+  </label>
+  <div className="relative">
+  <input
+  type={showConfirmPassword ? "text" : "password"}
+  value={confirmNewPassword}
+  onChange={(e) => setConfirmNewPassword(e.target.value)}
+  placeholder="Confirm new password"
+  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-gray-900 text-sm pr-12"
+  required
+  />
+  <button
+  type="button"
+  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
+  >
+  {showConfirmPassword ? (
+  <EyeOff className="w-5 h-5" />
+  ) : (
+  <Eye className="w-5 h-5" />
+  )}
+  </button>
+  </div>
+  </div>
 
- <button
- type="submit"
- disabled={loading}
- className="w-full bg-emerald-600 text-white font-semibold py-3.5 rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-70 flex items-center justify-center gap-2 text-sm"
- >
- {loading ? (
- <>
- <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
- {t("login", "signingIn", lang)}
- </>
- ) : (
- <>
- <Smartphone className="w-4 h-4" /> Secure Sign In
- </>
- )}
- </button>
+  <div className="text-right">
+  <button
+  type="button"
+  onClick={() => {
+  setMustSetPassword(false);
+  setNewPassword("");
+  setConfirmNewPassword("");
+  setInfo("");
+  setError("");
+  }}
+  className="text-xs text-emerald-600 hover:underline"
+  >
+  Cancel & Edit Details
+  </button>
+  </div>
+  </>
+  )}
+
+  {error && (
+  <motion.p
+  initial={{ opacity: 0 }}
+  animate={{ opacity: 1 }}
+  className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3"
+  >
+  {error}
+  </motion.p>
+  )}
+
+  {info && (
+  <motion.p
+  initial={{ opacity: 0 }}
+  animate={{ opacity: 1 }}
+  className="text-sm text-emerald-700 bg-emerald-50 rounded-xl px-4 py-3"
+  >
+  {info}
+  </motion.p>
+  )}
+
+  <button
+  type="submit"
+  disabled={loading}
+  className="w-full bg-emerald-600 text-white font-semibold py-3.5 rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-70 flex items-center justify-center gap-2 text-sm"
+  >
+  {loading ? (
+  <>
+  <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+  {t("login", "signingIn", lang)}
+  </>
+  ) : (
+  <>
+  <Smartphone className="w-4 h-4" /> {mustSetPassword ? "Set Password & Sign In" : "Secure Sign In"}
+  </>
+  )}
+  </button>
  </form>
  </div>
  </motion.div>

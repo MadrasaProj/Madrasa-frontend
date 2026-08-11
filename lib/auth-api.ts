@@ -220,7 +220,7 @@ export async function requestParentOtp(
 export async function loginParent(
   madrasaSlug: string,
   parentPhone: string,
-  options: { password?: string; otpCode?: string; challengeId?: string },
+  options: { password?: string; otpCode?: string; challengeId?: string; newPassword?: string },
   signal?: AbortSignal,
 ) {
   return postJson<AuthSessionPayload>(
