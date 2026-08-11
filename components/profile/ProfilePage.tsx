@@ -39,6 +39,43 @@ function passwordStrength(pw: string): Strength {
   return Math.min(s, 4) as Strength;
 }
 
+const validatePasswordStrength = (password: string, phone?: string): string | null => {
+  if (!password || password.length < 8) {
+    return "Password must be at least 8 characters long.";
+  }
+
+  const hasUppercase = /[A-Z]/.test(password);
+  const hasLowercase = /[a-z]/.test(password);
+  const hasDigit = /[0-9]/.test(password);
+  const hasSpecial = /[^A-Za-z0-9]/.test(password);
+
+  if (!hasUppercase || !hasLowercase || !hasDigit || !hasSpecial) {
+    return "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.";
+  }
+
+  const normalized = password.toLowerCase();
+
+  const WEAK_PASSWORDS = [
+    'password', '123456', '12345678', '123456789', 'qwerty', '123123', '111111',
+    'password123', 'admin123', 'madrasa', 'madrasa123', 'welcome', 'letmein',
+    'school123', 'parent123', 'student123', 'pass123', 'user123', 'changekey'
+  ];
+
+  const isWeak = WEAK_PASSWORDS.some((weak) => normalized.includes(weak));
+  if (isWeak) {
+    return "Password is too common or easy to guess. Please choose a stronger password.";
+  }
+
+  if (phone) {
+    const cleanPhone = phone.replace(/\+/g, '').trim();
+    if (cleanPhone.length >= 4 && normalized.includes(cleanPhone.toLowerCase())) {
+      return "Password must not contain your phone number.";
+    }
+  }
+
+  return null;
+};
+
 const STRENGTH_KEYS: Record<number, string> = {
   0: "—",
   1: "weakPw",
@@ -244,7 +281,8 @@ export default function ProfilePage({ config }: ProfilePageProps) {
 
     if (drawerTab === "security" && newPassword) {
       if (!currentPassword) { setError("Current password is required."); return; }
-      if (newPassword.length < 8) { setError("New password must be at least 8 characters."); return; }
+      const strengthError = validatePasswordStrength(newPassword, phone);
+      if (strengthError) { setError(strengthError); return; }
       if (newPassword !== confirmPassword) { setError("New passwords do not match."); return; }
       dto.currentPassword = currentPassword;
       dto.newPassword = newPassword;

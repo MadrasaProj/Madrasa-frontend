@@ -68,6 +68,51 @@ export interface StudentEditDrawerProps {
   onDelete?: () => void;
 }
 
+const validatePasswordStrength = (password: string, phone?: string, dobVal?: string): string | null => {
+  if (!password || password.length < 8) {
+    return "Password must be at least 8 characters long.";
+  }
+
+  const hasUppercase = /[A-Z]/.test(password);
+  const hasLowercase = /[a-z]/.test(password);
+  const hasDigit = /[0-9]/.test(password);
+  const hasSpecial = /[^A-Za-z0-9]/.test(password);
+
+  if (!hasUppercase || !hasLowercase || !hasDigit || !hasSpecial) {
+    return "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.";
+  }
+
+  const normalized = password.toLowerCase();
+
+  const WEAK_PASSWORDS = [
+    'password', '123456', '12345678', '123456789', 'qwerty', '123123', '111111',
+    'password123', 'admin123', 'madrasa', 'madrasa123', 'welcome', 'letmein',
+    'school123', 'parent123', 'student123', 'pass123', 'user123', 'changekey'
+  ];
+
+  const isWeak = WEAK_PASSWORDS.some((weak) => normalized.includes(weak));
+  if (isWeak) {
+    return "Password is too common or easy to guess. Please choose a stronger password.";
+  }
+
+  if (phone) {
+    const cleanPhone = phone.replace(/\+/g, '').trim();
+    if (cleanPhone.length >= 4 && normalized.includes(cleanPhone.toLowerCase())) {
+      return "Password must not contain parent's phone number.";
+    }
+  }
+
+  if (dobVal) {
+    const match = dobVal.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const dobStr = match ? `${match[3]}${match[2]}${match[1]}` : dobVal.replace(/[^0-9]/g, "");
+    if (dobStr.length >= 6 && normalized.includes(dobStr)) {
+      return "Password must not contain student's date of birth.";
+    }
+  }
+
+  return null;
+};
+
 export default function StudentEditDrawer({
   open, onClose, mode, student, classes, onSaved, onDelete,
 }: StudentEditDrawerProps) {
@@ -141,8 +186,11 @@ export default function StudentEditDrawer({
   if (form.parentAltPhone && !/^\+?\d{7,15}$/.test(form.parentAltPhone.replace(/[\s\-()]/g, ""))) {
   errs.parentAltPhone = "Enter a valid phone (7–15 digits)";
   }
-  if (form.parentPassword && form.parentPassword.length < 6) {
-  errs.parentPassword = "Min 6 characters";
+  if (form.parentPassword) {
+    const strengthError = validatePasswordStrength(form.parentPassword, form.parentPhone, form.dateOfBirth);
+    if (strengthError) {
+      errs.parentPassword = strengthError;
+    }
   }
   if (form.emergencyContactPhone && !/^\+?\d{7,15}$/.test(form.emergencyContactPhone.replace(/[\s\-()]/g, ""))) {
   errs.emergencyContactPhone = "Enter a valid phone (7–15 digits)";

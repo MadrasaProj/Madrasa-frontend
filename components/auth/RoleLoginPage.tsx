@@ -67,6 +67,50 @@ const metaByType = {
  { title: string; subtitle: string; icon: typeof Shield }
 >;
 
+const validatePasswordStrength = (password: string, phone?: string, dob?: string): string | null => {
+  if (!password || password.length < 8) {
+    return "Password must be at least 8 characters long.";
+  }
+
+  const hasUppercase = /[A-Z]/.test(password);
+  const hasLowercase = /[a-z]/.test(password);
+  const hasDigit = /[0-9]/.test(password);
+  const hasSpecial = /[^A-Za-z0-9]/.test(password);
+
+  if (!hasUppercase || !hasLowercase || !hasDigit || !hasSpecial) {
+    return "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.";
+  }
+
+  const normalized = password.toLowerCase();
+
+  const WEAK_PASSWORDS = [
+    'password', '123456', '12345678', '123456789', 'qwerty', '123123', '111111',
+    'password123', 'admin123', 'madrasa', 'madrasa123', 'welcome', 'letmein',
+    'school123', 'parent123', 'student123', 'pass123', 'user123', 'changekey'
+  ];
+
+  const isWeak = WEAK_PASSWORDS.some((weak) => normalized.includes(weak));
+  if (isWeak) {
+    return "Password is too common or easy to guess. Please choose a stronger password.";
+  }
+
+  if (phone) {
+    const cleanPhone = phone.replace(/\+/g, '').trim();
+    if (cleanPhone.length >= 4 && normalized.includes(cleanPhone.toLowerCase())) {
+      return "Password must not contain your phone number.";
+    }
+  }
+
+  if (dob) {
+    const cleanDob = dob.trim().toLowerCase();
+    if (cleanDob.length >= 6 && normalized.includes(cleanDob)) {
+      return "Password must not contain your date of birth.";
+    }
+  }
+
+  return null;
+};
+
 export default function RoleLoginPage({
  type,
  tenantSlug,
@@ -201,8 +245,9 @@ export default function RoleLoginPage({
  } else {
  const slug = requireTenantSlug();
  if (mustSetPassword) {
- if (!newPassword || newPassword.trim().length < 6) {
- setError("New password must be at least 6 characters long.");
+ const strengthError = validatePasswordStrength(newPassword.trim(), parentPhone, password);
+ if (strengthError) {
+ setError(strengthError);
  setLoading(false);
  return;
  }
