@@ -24,9 +24,6 @@ import {
   type FeeTransaction,
   type TransactionSummary,
 } from "@/lib/fees-api";
-import { type ClassRecord } from "@/lib/classes-api";
-import { type TeacherRecord } from "@/lib/teachers-api";
-import { apiFetch } from "@/lib/fetch";
 import { useAuthStore } from "@/store/auth";
 import { useClasses, useTeachers, useUsers } from "@/lib/queries";
 import { cn } from "@/lib/utils";
@@ -152,6 +149,116 @@ function ReceiptModal({
             className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5"
           >
             <Printer className="w-4 h-4" /> Print
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+// ── Record Payment Modal ───────────────────────────────────────────────────
+function RecordPaymentModal({
+  payment,
+  method,
+  reference,
+  saving,
+  onMethodChange,
+  onReferenceChange,
+  onConfirm,
+  onClose,
+}: {
+  payment: FeePayment;
+  method: string;
+  reference: string;
+  saving: boolean;
+  onMethodChange: (v: string) => void;
+  onReferenceChange: (v: string) => void;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ scale: 0.94, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.94, opacity: 0 }}
+        className="relative bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden"
+      >
+        <div className="bg-emerald-600 px-6 py-5 text-white">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center shrink-0">
+              <CheckCircle className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="font-bold text-base leading-tight">
+                Mark Payment
+              </p>
+              <p className="text-emerald-100 text-xs mt-0.5">
+                {payment.student.name}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <div className="flex items-center justify-between bg-emerald-50 rounded-xl px-4 py-3">
+            <p className="text-xs text-emerald-700 font-medium">
+              {payment.feeType.name}
+            </p>
+            <p className="text-lg font-bold text-emerald-700">
+              ₹{Number(payment.dueAmount).toLocaleString()}
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-gray-500">
+              Payment Method
+            </label>
+            <select
+              value={method}
+              onChange={(e) => onMethodChange(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-emerald-400"
+            >
+              {PAYMENT_METHODS.map((m) => (
+                <option key={m} value={m}>
+                  {m.replace(/_/g, " ")}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-gray-500">
+              Receipt / Reference No.
+            </label>
+            <input
+              type="text"
+              value={reference}
+              onChange={(e) => onReferenceChange(e.target.value)}
+              placeholder="Optional"
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-400"
+            />
+          </div>
+        </div>
+        <div className="px-6 pb-5 flex gap-2">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={saving}
+            className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5"
+          >
+            {saving ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <CheckCircle className="w-4 h-4" />
+            )}
+            Confirm Payment
           </button>
         </div>
       </motion.div>
@@ -1278,66 +1385,21 @@ export default function AdminFeesPage() {
                 }}
               />
 
-              {/* Inline mark-paid panel (outside table) */}
-              <AnimatePresence>
-                {recordingPayment && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    className="bg-white rounded-2xl border border-emerald-200 shadow-lg overflow-hidden mt-3"
-                  >
-                    <div className="px-4 py-3 bg-emerald-50 border-b border-emerald-100">
-                      <p className="text-sm font-semibold text-emerald-800">
-                        Mark Paid — {recordingPayment.student.name} · ₹
-                        {Number(recordingPayment.dueAmount).toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="p-4 space-y-3">
-                      <div className="grid grid-cols-2 gap-3">
-                        <select
-                          value={payMethod}
-                          onChange={(e) => setPayMethod(e.target.value)}
-                          className="px-3 py-2.5 rounded-xl border text-sm bg-white focus:outline-none focus:border-emerald-400"
-                        >
-                          {PAYMENT_METHODS.map((m) => (
-                            <option key={m} value={m}>
-                              {m.replace(/_/g, " ")}
-                            </option>
-                          ))}
-                        </select>
-                        <input
-                          type="text"
-                          value={payRef}
-                          onChange={(e) => setPayRef(e.target.value)}
-                          placeholder="Receipt / Ref no."
-                          className="px-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-emerald-400"
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setRecording(null)}
-                          className="flex-1 py-2.5 rounded-xl border text-sm font-semibold text-gray-600"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={() => markPaid(recordingPayment)}
-                          disabled={saving}
-                          className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5"
-                        >
-                          {saving ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <CheckCircle className="w-4 h-4" />
-                          )}
-                          Confirm Payment
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
+              {/* Mark-paid modal */}
+              {recordingPayment &&
+                createPortal(
+                  <RecordPaymentModal
+                    payment={recordingPayment}
+                    method={payMethod}
+                    reference={payRef}
+                    saving={saving}
+                    onMethodChange={setPayMethod}
+                    onReferenceChange={setPayRef}
+                    onConfirm={() => markPaid(recordingPayment)}
+                    onClose={() => setRecording(null)}
+                  />,
+                  document.body,
                 )}
-              </AnimatePresence>
 
               {/* Inline edit amount / discount panel (outside table) */}
               <AnimatePresence>

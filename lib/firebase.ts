@@ -14,6 +14,7 @@ const firebaseConfig = {
   storageBucket: "madrasa-app-push-notification.firebasestorage.app",
   messagingSenderId: "140700185441",
   appId: "1:140700185441:web:cec6824f02e0656025cb20",
+  measurementId: "G-X7VVB79F28"
 };
 
 let app: FirebaseApp | null = null;
@@ -83,12 +84,12 @@ export async function requestFcmToken(
 
   try {
     const vKey = vapidKey ?? "BLefby21O0x24Kf2RF8ghutZX7yizb2eI-JZR7Nn76poxn2e_QbyvyJe7f8dIM5Hun5hTFI4QM-ufIGO7NRNAWc";
-    console.log("[FCM] Requesting token, vapidKey present:", !!vKey, "swReg:", !!swReg);
+
     const token = await getToken(msg, {
       vapidKey: vKey,
       serviceWorkerRegistration: swReg,
     });
-    console.log("[FCM] Token result:", token ? "GOT TOKEN" : "EMPTY");
+    console.log("[FCM] Token result:", token );
     return token || null;
   } catch (err) {
     console.error("[FCM] getToken failed:", err);
@@ -102,6 +103,6 @@ export function onForegroundMessage(
   const msg = getFirebaseMessaging();
   if (!msg) return undefined;
   return onMessage(msg, (payload) => {
-    handler(payload);
+     handler(payload);
   });
 }
