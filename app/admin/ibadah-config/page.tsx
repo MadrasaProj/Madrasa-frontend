@@ -735,11 +735,10 @@ function CustomItemForm({
               type="number"
               value={item.max ?? 100}
               min={1}
-              max={10000}
               onChange={(e) =>
                 onChange({
                   ...item,
-                  max: Math.min(10000, Math.max(1, Number(e.target.value))),
+                  max:   Number(e.target.value),
                 })
               }
               className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"

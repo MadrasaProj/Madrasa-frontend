@@ -44,7 +44,7 @@ export default function PwaRegister() {
         // actually bind to THIS worker (not navigator.serviceWorker.ready,
         // which resolves to /sw.js and cannot handle FCM pushes).
         if (fcmRegistration.installing) {
-          await fcmRegistration.installing.finished;
+          await (fcmRegistration.installing as unknown as { finished?: Promise<void> }).finished;
         }
         console.log("[PWA] FCM service worker registered:", fcmRegistration.scope);
       } catch (err) {

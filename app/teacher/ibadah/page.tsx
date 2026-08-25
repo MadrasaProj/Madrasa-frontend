@@ -12,11 +12,80 @@ import { t } from "@/lib/i18n";
 import {
   Moon, BookOpen, ChevronLeft, ChevronRight,
   Loader2, AlertCircle, CheckCircle2, Calendar, List,
+  Users, Check, Sun, Minus, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Section = "prayers" | "quran" | "custom";
 type ViewMode = "daily" | "weekly";
+
+export const PRAYER_STATUS_META: Record<PrayerStatus, {
+  labelKey: "jama" | "adaLabel" | "qalaLabel" | "excusedLabel";
+  icon: typeof Check;
+  bg: string;
+  text: string;
+  border: string;
+}> = {
+  JAMA: {
+    labelKey: "jama",
+    icon: Users,
+    bg: "bg-blue-100",
+    text: "text-blue-700",
+    border: "border-blue-200",
+  },
+  ADA: {
+    labelKey: "adaLabel",
+    icon: Check,
+    bg: "bg-emerald-100",
+    text: "text-emerald-700",
+    border: "border-emerald-200",
+  },
+  QALA: {
+    labelKey: "qalaLabel",
+    icon: Sun,
+    bg: "bg-amber-100",
+    text: "text-amber-700",
+    border: "border-amber-200",
+  },
+  NOT_PRAYABLE: {
+    labelKey: "excusedLabel",
+    icon: Moon,
+    bg: "bg-purple-100",
+    text: "text-purple-700",
+    border: "border-purple-200",
+  },
+};
+
+function PrayerStatusIcon({ status, lang }: { status: PrayerStatus | null; lang: "en" | "ml" }) {
+  if (!status) {
+    return (
+      <div
+        title={t("parentPages", "missedLabel", lang)}
+        className="w-8 h-8 mx-auto rounded-xl text-xs font-bold flex items-center justify-center bg-gray-50 text-gray-300 border border-gray-100"
+      >
+        <Minus className="w-3.5 h-3.5" />
+      </div>
+    );
+  }
+
+  const meta = PRAYER_STATUS_META[status];
+  if (!meta) return null;
+  const Icon = meta.icon;
+
+  return (
+    <div
+      title={t("parentPages", meta.labelKey, lang)}
+      className={cn(
+        "w-8 h-8 mx-auto rounded-xl text-xs font-bold flex items-center justify-center border transition-all hover:scale-105",
+        meta.bg,
+        meta.text,
+        meta.border
+      )}
+    >
+      <Icon className="w-4 h-4" />
+    </div>
+  );
+}
 
 const ALL_PRAYERS: { key: "fajr" | "dhuhr" | "asr" | "maghrib" | "isha"; label: string; configKey: keyof IbadahConfig }[] = [
   { key: "fajr",    label: "Fajr",    configKey: "enableFajr"    },
@@ -309,37 +378,68 @@ export default function TeacherIbadahPage() {
 
                       {/* Prayers table */}
                       {activeSection === "prayers" && activePrayers.length > 0 && (
-                        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-4">
+                        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-4 shadow-xs">
                           {/* Table header */}
                           <div className="overflow-x-auto">
                             <table className="w-full">
-                              <thead className="bg-gray-50 sticky top-0 z-10">
+                              <thead className="bg-gray-50 sticky top-0 z-10 border-b border-gray-100">
                                 <tr>
-                                  <th className="text-left px-4 py-2.5 text-[10px] font-bold text-gray-400 uppercase w-48 sticky left-0 bg-gray-50">{t("teacherPages", "studentHeader", lang)}</th>
+                                  <th className="text-left px-4 py-3 text-[10px] font-bold text-gray-400 uppercase w-48 sticky left-0 bg-gray-50">{t("teacherPages", "studentHeader", lang)}</th>
                                   {activePrayers.map((p) => (
-                                    <th key={p.key} className="text-center px-2 py-2.5 text-[10px] font-bold text-gray-400 uppercase">{p.label.slice(0,3)}</th>
+                                    <th key={p.key} className="text-center px-2 py-3 text-[10px] font-bold text-gray-400 uppercase">{p.label}</th>
                                   ))}
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-gray-50">
                                 {rows.map((r) => (
-                                  <tr key={r.studentId} className="hover:bg-gray-50/50 transition-colors">
-                                    <td className="px-4 py-2.5 sticky left-0 bg-white">
+                                  <tr key={r.studentId} className="hover:bg-gray-50/60 transition-colors">
+                                    <td className="px-4 py-2.5 sticky left-0 bg-white shadow-[1px_0_0_0_rgba(0,0,0,0.03)]">
                                       <p className="text-sm font-semibold text-gray-900 truncate max-w-[160px]">{r.name}</p>
                                       <p className="text-[10px] text-gray-400">{r.adno}</p>
                                     </td>
                                     {activePrayers.map((p) => (
                                       <td key={p.key} className="px-2 py-2.5 text-center">
-                                        <div className={cn("w-8 h-8 mx-auto rounded-lg text-sm font-bold flex items-center justify-center",
-                                          r[p.key] ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-400")}>
-                                          {r[p.key] ? "✓" : "–"}
-                                        </div>
+                                        <PrayerStatusIcon status={r[p.key]} lang={lang} />
                                       </td>
                                     ))}
                                   </tr>
                                 ))}
                               </tbody>
                             </table>
+                          </div>
+
+                          {/* Prayer Status Legend */}
+                          <div className="px-4 py-3 bg-gray-50/70 border-t border-gray-100 flex flex-wrap items-center gap-4 text-xs">
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-5 h-5 rounded-lg bg-blue-100 text-blue-700 border border-blue-200 flex items-center justify-center">
+                                <Users className="w-3 h-3" />
+                              </span>
+                              <span className="font-medium text-gray-700">{t("parentPages", "jama", lang)}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-5 h-5 rounded-lg bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center justify-center">
+                                <Check className="w-3 h-3" />
+                              </span>
+                              <span className="font-medium text-gray-700">{t("parentPages", "adaLabel", lang)}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-5 h-5 rounded-lg bg-amber-100 text-amber-700 border border-amber-200 flex items-center justify-center">
+                                <Sun className="w-3 h-3" />
+                              </span>
+                              <span className="font-medium text-gray-700">{t("parentPages", "qalaLabel", lang)}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-5 h-5 rounded-lg bg-purple-100 text-purple-700 border border-purple-200 flex items-center justify-center">
+                                <Moon className="w-3 h-3" />
+                              </span>
+                              <span className="font-medium text-gray-700">{t("parentPages", "excusedLabel", lang)}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-5 h-5 rounded-lg bg-gray-100 text-gray-400 border border-gray-200 flex items-center justify-center">
+                                <Minus className="w-3 h-3" />
+                              </span>
+                              <span className="font-medium text-gray-400">{t("parentPages", "missedLabel", lang)}</span>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -460,29 +560,49 @@ export default function TeacherIbadahPage() {
                                             {count}/{total}
                                           </button>
                                           {isExpanded && (
-                                            <div className="flex flex-col items-center gap-0.5 mt-1 bg-white rounded-xl border border-gray-100 shadow-sm p-1.5">
-                                              {activePrayers.map((p) => (
-                                                <div key={p.key} className="flex items-center gap-1 text-[10px]">
-                                                  <span className={log[p.key] ? "text-emerald-600" : "text-gray-300"}>
-                                                    {log[p.key] ? "✓" : "–"}
-                                                  </span>
-                                                  <span className="text-gray-500">{p.label.slice(0,3)}</span>
-                                                </div>
-                                              ))}
+                                            <div className="flex flex-col gap-1 mt-1.5 bg-white rounded-xl border border-gray-100 shadow-md p-2 min-w-[110px] z-20 relative">
+                                              {activePrayers.map((p) => {
+                                                const status = log[p.key];
+                                                const meta = status ? PRAYER_STATUS_META[status] : null;
+                                                const Icon = meta?.icon ?? Minus;
+                                                return (
+                                                  <div key={p.key} className="flex items-center justify-between gap-1.5 text-[10px] py-0.5 border-b border-gray-50 last:border-0">
+                                                    <span className="text-gray-500 font-medium">{p.label.slice(0, 3)}</span>
+                                                    <div className="flex items-center gap-1">
+                                                      <span className={cn(
+                                                        "w-4 h-4 rounded flex items-center justify-center shrink-0",
+                                                        meta ? cn(meta.bg, meta.text) : "bg-gray-100 text-gray-400"
+                                                      )}>
+                                                        <Icon className="w-2.5 h-2.5" />
+                                                      </span>
+                                                      <span className={cn(
+                                                        "text-[9px] font-semibold",
+                                                        meta ? meta.text : "text-gray-400"
+                                                      )}>
+                                                        {meta ? t("parentPages", meta.labelKey, lang) : "—"}
+                                                      </span>
+                                                    </div>
+                                                  </div>
+                                                );
+                                              })}
                                               {config?.enableQuranPages && (
-                                                <div className="flex items-center gap-1 text-[10px] border-t border-gray-50 pt-0.5 mt-0.5">
-                                                  <BookOpen className="w-2.5 h-2.5 text-blue-400" />
-                                                  <span className="text-gray-500">{log.quranPages}p</span>
+                                                <div className="flex items-center justify-between gap-1 text-[10px] border-t border-gray-100 pt-1 mt-0.5">
+                                                  <div className="flex items-center gap-1 text-blue-600">
+                                                    <BookOpen className="w-2.5 h-2.5 text-blue-500" />
+                                                    <span className="text-gray-500">{t("teacherPages", "quran", lang) || "Quran"}</span>
+                                                  </div>
+                                                  <span className="font-bold text-blue-700">{log.quranPages}p</span>
                                                 </div>
                                               )}
                                               {customItems.length > 0 && log.customData && (
-                                                <div className="flex flex-col items-center gap-0.5 border-t border-gray-50 pt-0.5 mt-0.5">
+                                                <div className="flex flex-col gap-0.5 border-t border-gray-100 pt-1 mt-0.5">
                                                   {customItems.map((item) => {
                                                     const val = log.customData?.[item.key];
                                                     if (val === undefined || val === null) return null;
                                                     return (
-                                                      <div key={item.key} className="text-[9px] text-blue-600 font-semibold truncate max-w-[80px]">
-                                                        {item.label.slice(0, 8)}: {item.type === "boolean" ? (val ? "✓" : "—") : val}
+                                                      <div key={item.key} className="flex items-center justify-between text-[9px]">
+                                                        <span className="text-gray-500 truncate max-w-[50px]">{item.label}</span>
+                                                        <span className="text-blue-600 font-semibold">{item.type === "boolean" ? (val ? "✓" : "—") : String(val)}</span>
                                                       </div>
                                                     );
                                                   })}
@@ -501,11 +621,11 @@ export default function TeacherIbadahPage() {
                         </tbody>
                       </table>
                     </div>
-                    <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex gap-4 text-xs text-gray-500">
+                    <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex flex-wrap gap-4 text-xs text-gray-500">
                       <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-100 inline-block" /> {t("teacherPages", "legendAllPrayers", lang)}</div>
                       <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-100 inline-block" /> {t("teacherPages", "legendPartial", lang)}</div>
                       <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-red-100 inline-block" /> {t("teacherPages", "legendFew", lang)}</div>
-                      <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-gray-50 inline-block" /> {t("teacherPages", "legendNotRecorded", lang)}</div>
+                      <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-gray-50 border inline-block" /> {t("teacherPages", "legendNotRecorded", lang)}</div>
                     </div>
                   </div>
                 )
