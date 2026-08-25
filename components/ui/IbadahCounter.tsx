@@ -11,7 +11,7 @@ interface IbadahCounterProps {
   suffix?: string;
 }
 
-export function IbadahCounter({ label, icon, value, onChange, min = 0, max = 1000, suffix }: IbadahCounterProps) {
+export function IbadahCounter({ label, icon, value, onChange, min = 0, max = Number.MAX_SAFE_INTEGER, suffix }: IbadahCounterProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(value));
   const inputRef = useRef<HTMLInputElement>(null);

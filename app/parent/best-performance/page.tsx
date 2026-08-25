@@ -6,7 +6,7 @@ import { t } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth";
 import { useState } from "react";
 import { useBestPerformers } from "@/lib/queries";
-import { Trophy, Star, BookOpen, Flame, Target, Medal, ChevronDown, ChevronUp } from "lucide-react";
+import { Trophy, Star, BookOpen, Flame, Target, Medal, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const medalEmoji = ["🥇", "🥈", "🥉", "🏅", "🌟", "⭐", "✨", "💫", "🔥", "🌙"];
@@ -34,6 +34,7 @@ export default function ParentBestPerformancePage() {
 
   const data = response?.performers ?? [];
   const period = response?.period ?? null;
+  const customItems = response?.customItems ?? [];
 
   const formatDateRange = () => {
     if (!period) return "";
@@ -227,6 +228,20 @@ export default function ParentBestPerformancePage() {
                           <BookOpen className="w-3 h-3" />
                           {child.totalQuranPages} {t("parentPages", "pagesLabel", lang)}
                         </span>
+                        {Object.entries(child.customCounts ?? {}).map(([key, val]) => {
+                          if (!val) return null;
+                          const itemDef = customItems.find((i) => i.key === key);
+                          const label = itemDef?.label ?? key;
+                          return (
+                            <span
+                              key={key}
+                              className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 bg-purple-50 text-purple-700 rounded-xl"
+                            >
+                              <Sparkles className="w-3 h-3" />
+                              {val} {label}
+                            </span>
+                          );
+                        })}
                         <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 bg-orange-50 text-orange-700 rounded-xl">
                           <Flame className="w-3 h-3" />
                           {child.streak}d {t("parentPages", "streakLabel", lang)}
@@ -338,6 +353,20 @@ export default function ParentBestPerformancePage() {
                                 <BookOpen className="w-3 h-3" />
                                 {performer.totalQuranPages} {t("parentPages", "pagesLabel", lang)}
                               </span>
+                              {Object.entries(performer.customCounts ?? {}).map(([key, val]) => {
+                                if (!val) return null;
+                                const itemDef = customItems.find((i) => i.key === key);
+                                const label = itemDef?.label ?? key;
+                                return (
+                                  <span
+                                    key={key}
+                                    className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 bg-purple-50 text-purple-700 rounded-full"
+                                  >
+                                    <Sparkles className="w-3 h-3" />
+                                    {val} {label}
+                                  </span>
+                                );
+                              })}
                               <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 bg-orange-50 text-orange-700 rounded-full">
                                 <Flame className="w-3 h-3" />
                                 {performer.streak}d {t("parentPages", "streakLabel", lang)}

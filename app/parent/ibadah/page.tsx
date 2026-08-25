@@ -152,10 +152,10 @@ export default function ParentIbadahPage() {
     setSaved(false);
   };
 
-  const setCustomNumber = (key: string, val: number, min = 0, max = 10000) => {
+  const setCustomNumber = (key: string, val: number, min = 0, max = Number.MAX_SAFE_INTEGER) => {
     setForm((prev) => {
       const next = { ...prev.customData };
-      next[key] = Math.min(max, Math.max(min, val));
+      next[key] = Math.min(max ?? Number.MAX_SAFE_INTEGER, Math.max(min, val));
       return { ...prev, customData: next };
     });
     setSaved(false);
@@ -469,7 +469,7 @@ export default function ParentIbadahPage() {
                 value={(form.customData[item.key] as number) ?? 0}
                 onChange={(val) => setCustomNumber(item.key, val, item.min, item.max)}
                 min={item.min ?? 0}
-                max={item.max ?? 10000}
+                max={item.max ?? Number.MAX_SAFE_INTEGER}
               />
             </div>
             )

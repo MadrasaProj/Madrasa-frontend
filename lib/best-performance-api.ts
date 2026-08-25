@@ -10,6 +10,7 @@ export interface BestPerformer {
   score: number;
   totalPrayers: number;
   totalQuranPages: number;
+  customCounts?: Record<string, number>;
   daysWithLog: number;
   consistency: number;
   streak: number;
@@ -19,6 +20,13 @@ export interface BestPerformanceResponse {
   period: { from: string; to: string };
   totalDays: number;
   enabledPrayers: string[];
+  customItems?: {
+    key: string;
+    label: string;
+    type: "boolean" | "number" | "enum";
+    min?: number;
+    max?: number;
+  }[];
   performers: BestPerformer[];
 }
 

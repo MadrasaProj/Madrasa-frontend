@@ -8,7 +8,7 @@ import {
   getBestPerformers,
   type BestPerformer,
 } from "@/lib/best-performance-api";
-import { Trophy, Star, BookOpen, Flame, Target } from "lucide-react";
+import { Trophy, Star, BookOpen, Flame, Target, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const medalEmoji = ["🥇", "🥈", "🥉", "🏅", "🌟", "⭐", "✨", "💫", "🔥", "🌙"];
@@ -17,6 +17,7 @@ export default function BestPerformancePage() {
   const { lang } = useLanguageStore();
   const { user, accessToken } = useAuthStore();
   const [data, setData] = useState<BestPerformer[]>([]);
+  const [customItems, setCustomItems] = useState<{ key: string; label: string; type: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<{ from: string; to: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +43,7 @@ export default function BestPerformancePage() {
         if (cancelled) return;
         setData(res.performers);
         setPeriod(res.period);
+        setCustomItems(res.customItems ?? []);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -300,6 +302,20 @@ export default function BestPerformancePage() {
                         {performer.totalQuranPages}{" "}
                         {lang === "ml" ? "പേജ്" : "pages"}
                       </span>
+                      {Object.entries(performer.customCounts ?? {}).map(([key, val]) => {
+                        if (!val) return null;
+                        const itemDef = customItems.find((i) => i.key === key);
+                        const label = itemDef?.label ?? key;
+                        return (
+                          <span
+                            key={key}
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 bg-purple-50 text-purple-700 rounded-full"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            {val} {label}
+                          </span>
+                        );
+                      })}
                       <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 bg-orange-50 text-orange-700 rounded-full">
                         <Flame className="w-3 h-3" />
                         {performer.streak}d{" "}
