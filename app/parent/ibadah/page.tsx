@@ -72,7 +72,7 @@ export default function ParentIbadahPage() {
 
   const prayerOptions = [
     { value: null as PrayerStatus | null, label: t("parentPages", "missedLabel", lang), sub: t("parentPages", "missedSub", lang), icon: X, color: "bg-gray-50 text-gray-500" },
-    { value: "NOT_PRAYABLE" as PrayerStatus, label: t("parentPages", "excusedLabel", lang), sub: t("parentPages", "excusedSub", lang), icon: Moon, color: "bg-purple-50 text-purple-600" },
+    { value: "NOT_PRAYABLE" as PrayerStatus, label: t("parentPages", "excusedLabel", lang), sub: t("parentPages", "excusedSub", lang), icon: Check, color: "bg-emerald-50 text-emerald-600" },
     { value: "QALA" as PrayerStatus, label: t("parentPages", "qalaLabel", lang), sub: t("parentPages", "qalaSub", lang), icon: Sun, color: "bg-amber-50 text-amber-600" },
     { value: "ADA" as PrayerStatus, label: t("parentPages", "adaLabel", lang), sub: t("parentPages", "adaSub", lang), icon: Check, color: "bg-emerald-50 text-emerald-600" },
     { value: "JAMA" as PrayerStatus, label: t("parentPages", "jama", lang), sub: t("parentPages", "jamaSub", lang), icon: Users, color: "bg-blue-50 text-blue-600" },
@@ -372,19 +372,18 @@ export default function ParentIbadahPage() {
                   className={cn(
                     "flex items-center gap-3 px-4 py-3 cursor-pointer active:opacity-80 transition-all first:rounded-t-none last:rounded-b-none",
                     status === "ADA" && "bg-gradient-to-r from-emerald-50/60 to-transparent",
+                    status === "NOT_PRAYABLE" && "bg-gradient-to-r from-emerald-50/60 to-transparent",
                     status === "QALA" && "bg-gradient-to-r from-amber-50/60 to-transparent",
                     status === "JAMA" && "bg-gradient-to-r from-blue-50/60 to-transparent",
-                    status === "NOT_PRAYABLE" && "bg-gradient-to-r from-purple-50/60 to-transparent",
                     !status && "hover:bg-gray-50",
                   )}
                   onClick={() => setDrawerPrayer(p)}
                 >
                   <div className={cn(
                     "w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 transition-all",
-                    status === "ADA" && "text-emerald-500",
+                    (status === "ADA" || status === "NOT_PRAYABLE") && "text-emerald-500",
                     status === "QALA" && "text-amber-500",
                     status === "JAMA" && "text-blue-500",
-                    status === "NOT_PRAYABLE" && "text-purple-500",
                     !status && "text-gray-300",
                   )}>
                     <Icon className="w-4 h-4" />
@@ -397,10 +396,9 @@ export default function ParentIbadahPage() {
                   </div>
                   <span className={cn(
                     "text-[11px] font-medium transition-all",
-                    status === "ADA" && "text-emerald-500",
+                    (status === "ADA" || status === "NOT_PRAYABLE") && "text-emerald-500",
                     status === "QALA" && "text-amber-500",
                     status === "JAMA" && "text-blue-500",
-                    status === "NOT_PRAYABLE" && "text-purple-500",
                     !status && "text-gray-300",
                   )}>
                     {opt?.label ?? "—"}

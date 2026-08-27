@@ -26,6 +26,15 @@ export interface IbadahRecord {
   teacher?: { id: string; name: string } | null;
 }
 
+export interface IbadahScoringConfig {
+  jamaPoints?: number;
+  adaPoints?: number;
+  qalaPoints?: number;
+  excusedPoints?: number;
+  quranPointsPerPage?: number;
+  maxQuranPagesPerDay?: number;
+}
+
 export interface IbadahConfig {
   id: string;
   enableFajr: boolean;
@@ -34,7 +43,16 @@ export interface IbadahConfig {
   enableMaghrib: boolean;
   enableIsha: boolean;
   enableQuranPages: boolean;
-  customItems: { key: string; label: string; type: "boolean" | "number" | "enum"; min?: number; max?: number; options?: { icon: string; label: string; color: string }[] }[];
+  customItems: {
+    key: string;
+    label: string;
+    type: "boolean" | "number" | "enum";
+    min?: number;
+    max?: number;
+    points?: number;
+    options?: { icon: string; label: string; color: string }[];
+  }[];
+  scoringConfig?: IbadahScoringConfig;
 }
 
 export interface ClassIbadahResponse {
@@ -96,6 +114,7 @@ export interface UpdateIbadahConfigPayload {
   enableIsha?: boolean;
   enableQuranPages?: boolean;
   customItems?: IbadahConfig["customItems"];
+  scoringConfig?: IbadahScoringConfig;
 }
 
 class IbadahApiError extends Error {
@@ -163,11 +182,32 @@ export const getStudentIbadah = (
   );
 };
 
-export const getSuperAdminIbadahConfig = (token: string) =>
-  apiFetch<IbadahConfig>(`${API_BASE}/super-admin/ibadah-config`, token);
+/** Get ibadah config for madrasa admin or super admin */
+export const getIbadahConfig = (token: string, clientId?: string) => {
+  if (clientId) {
+    return apiFetch<IbadahConfig>(`${API_BASE}/${clientId}/ibadah/config`, token);
+  }
+  return apiFetch<IbadahConfig>(`${API_BASE}/super-admin/ibadah-config`, token);
+};
 
-export const updateSuperAdminIbadahConfig = (token: string, dto: UpdateIbadahConfigPayload) =>
-  apiFetch<IbadahConfig>(`${API_BASE}/super-admin/ibadah-config`, token, {
+/** Update ibadah config & scoring for madrasa admin or super admin */
+export const updateIbadahConfig = (
+  token: string,
+  dto: UpdateIbadahConfigPayload,
+  clientId?: string,
+) => {
+  const url = clientId
+    ? `${API_BASE}/${clientId}/ibadah/config`
+    : `${API_BASE}/super-admin/ibadah-config`;
+  return apiFetch<IbadahConfig>(url, token, {
     method: "PATCH",
     body: JSON.stringify(dto),
   });
+};
+
+export const getSuperAdminIbadahConfig = (token: string) =>
+  getIbadahConfig(token);
+
+export const updateSuperAdminIbadahConfig = (token: string, dto: UpdateIbadahConfigPayload) =>
+  updateIbadahConfig(token, dto);
+

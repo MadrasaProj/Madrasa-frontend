@@ -49,10 +49,10 @@ export const PRAYER_STATUS_META: Record<PrayerStatus, {
   },
   NOT_PRAYABLE: {
     labelKey: "excusedLabel",
-    icon: Moon,
-    bg: "bg-purple-100",
-    text: "text-purple-700",
-    border: "border-purple-200",
+    icon: Check,
+    bg: "bg-emerald-100",
+    text: "text-emerald-700",
+    border: "border-emerald-200",
   },
 };
 
@@ -429,8 +429,8 @@ export default function TeacherIbadahPage() {
                               <span className="font-medium text-gray-700">{t("parentPages", "qalaLabel", lang)}</span>
                             </div>
                             <div className="flex items-center gap-1.5">
-                              <span className="w-5 h-5 rounded-lg bg-purple-100 text-purple-700 border border-purple-200 flex items-center justify-center">
-                                <Moon className="w-3 h-3" />
+                              <span className="w-5 h-5 rounded-lg bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center justify-center">
+                                <Check className="w-3 h-3" />
                               </span>
                               <span className="font-medium text-gray-700">{t("parentPages", "excusedLabel", lang)}</span>
                             </div>

@@ -47,10 +47,10 @@ const PRAYER_STATUS_META: Record<PrayerStatus, {
   },
   NOT_PRAYABLE: {
     label: "Excused",
-    icon: Moon,
-    bg: "bg-purple-100",
-    text: "text-purple-700",
-    border: "border-purple-200",
+    icon: Check,
+    bg: "bg-emerald-100",
+    text: "text-emerald-700",
+    border: "border-emerald-200",
   },
 };
 
@@ -254,12 +254,12 @@ export default function AdminIbadahPage() {
         subtitle={activeClass?.name ?? "Prayer Tracking"}
         icon={Moon}
         action={
-          isSuperAdmin ? (
+          (isSuperAdmin || user?.actorType === "CLIENT_ADMIN" || user?.role === "admin") ? (
             <button
               onClick={() => navigate("/admin/ibadah-config")}
               className="flex items-center gap-1.5 px-3 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
             >
-              <Settings className="w-4 h-4" /> Config
+              <Settings className="w-4 h-4" /> Config & Scoring
             </button>
           ) : undefined
         }
@@ -428,10 +428,10 @@ export default function AdminIbadahPage() {
                             <span className="font-medium text-gray-700">Qala'</span>
                           </div>
                           <div className="flex items-center gap-1.5">
-                            <span className="w-5 h-5 rounded-lg bg-purple-100 text-purple-700 border border-purple-200 flex items-center justify-center">
-                              <Moon className="w-3 h-3" />
+                            <span className="w-5 h-5 rounded-lg bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center justify-center">
+                              <Check className="w-3 h-3" />
                             </span>
-                            <span className="font-medium text-gray-700">Excused</span>
+                            <span className="font-medium text-gray-700">Excused (Done)</span>
                           </div>
                           <div className="flex items-center gap-1.5">
                             <span className="w-5 h-5 rounded-lg bg-gray-100 text-gray-400 border border-gray-200 flex items-center justify-center">
