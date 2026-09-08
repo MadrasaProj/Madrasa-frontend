@@ -173,7 +173,7 @@ export default function BestPerformancePage() {
                 {
                   icon: Star,
                   label: lang === "ml" ? "മികച്ച സ്കോർ" : "Best Score",
-                  value: displayData[0] ? `${displayData[0].score}%` : "—",
+                  value: displayData[0] ? `${displayData[0].score}` : "—",
                 },
                 {
                   icon: BookOpen,
