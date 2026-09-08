@@ -428,7 +428,7 @@ export default function BestPerformancePage() {
                     <div className="mt-3 w-full bg-gray-100 rounded-full h-2 overflow-hidden">
                       <div
                         className="h-2 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full transition-all duration-700"
-                        style={{ width: `${performer.score}%` }}
+                        style={{ width: `${performer.scorePercentage}%` }}
                       />
                     </div>
                   </motion.div>

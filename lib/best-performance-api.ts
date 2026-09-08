@@ -14,6 +14,7 @@ export interface BestPerformer {
   daysWithLog: number;
   consistency: number;
   streak: number;
+  scorePercentage:number
 }
 
 export interface BestPerformanceResponse {
