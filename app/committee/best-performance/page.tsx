@@ -84,7 +84,7 @@ export default function BestPerformancePage() {
   };
 
   const topPerformer = data[0] ?? null;
-  const avgScore = data.length > 0 ? Math.round(data.reduce((s, p) => s + p.score, 0) / data.length) : 0;
+  const avgScore = data.length > 0 ? Math.round(data.reduce((s, p) => s + p.score, 0)) : 0;
 
   const handleDownloadPDF = async () => {
     if (!printRef.current) return;
