@@ -171,6 +171,7 @@ const teacherLinks = [
     key: "classTests" as NavKey,
   },
   { href: "/teacher/performance", icon: Star, key: "performance" as NavKey },
+  { href: "/teacher/reports/individual", icon: FileText, key: "reports" as NavKey },
   {
     href: "/teacher/best-performance",
     icon: Trophy,

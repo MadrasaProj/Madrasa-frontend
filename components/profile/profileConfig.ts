@@ -2,7 +2,7 @@ import { t } from "@/lib/i18n";
 import {
   Bell, Star, Users, IndianRupee, GraduationCap, Activity, TrendingUp,
   LayoutDashboard, Megaphone, BarChart3, FileBarChart2, ClipboardList,
-  BookMarked, Layers, FileSpreadsheet,
+  BookMarked, Layers, FileSpreadsheet, FileText,
 } from "lucide-react";
 import type { ProfileConfig } from "./ProfilePage";
 
@@ -22,6 +22,7 @@ export const teacherProfileConfig: ProfileConfig = {
     { label: t("nav", "notifications", "en"),   icon: Bell,         href: "/teacher/notifications" },
     { label: t("nav", "performance", "en"),     icon: Star,         href: "/teacher/performance" },
     { label: t("nav", "attendance", "en"),      icon: ClipboardList,href: "/teacher/attendance" },
+    { label: "Individual Reports",                icon: FileText,      href: "/teacher/reports/individual" },
   ],
   showMsrId: true,
 };
@@ -87,6 +88,7 @@ export const committeeProfileConfig: ProfileConfig = {
     { label: t("nav", "dashboard", "en"),       icon: LayoutDashboard, href: "/committee" },
     { label: t("nav", "students", "en"),        icon: Users,           href: "/committee/students" },
     { label: t("nav", "reports", "en"),         icon: FileBarChart2,   href: "/committee/reports" },
+    { label: "Individual Reports",                icon: FileText,        href: "/committee/reports/individual" },
     { label: t("nav", "announcements", "en"),   icon: Megaphone,       href: "/committee/announcements" },
   ],
 };

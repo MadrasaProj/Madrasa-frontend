@@ -71,6 +71,7 @@ import TeacherDashboard from "../app/teacher/page";
 import TeacherFeesPage from "../app/teacher/fees/page";
 import TeacherPerformancePage from "../app/teacher/performance/page";
 import TeacherBestPerformancePage from "../app/teacher/best-performance/page";
+import TeacherIndividualReportPage from "../app/teacher/reports/individual/page";
 import TeacherPresentPage from "../app/teacher/present/page";
 import TeacherSocialFramesPage from "../app/teacher/social-frames/page";
 import TeacherSocialFrameViewPage from "../app/teacher/social-frames/[id]/page";
@@ -101,6 +102,7 @@ import CommitteeReportsPage from "../app/committee/reports/page";
 import CommitteeStudentsPage from "../app/committee/students/page";
 import CommitteeTeacherAttendancePage from "../app/committee/teacher-attendance/page";
 import CommitteeBestPerformancePage from "../app/committee/best-performance/page";
+import CommitteeIndividualReportPage from "../app/committee/reports/individual/page";
 
 export default function App() {
   return (
@@ -306,6 +308,7 @@ export default function App() {
         <Route path="/teacher/notifications" element={<TeacherNotificationsPage />} />
         <Route path="/teacher/performance" element={<TeacherPerformancePage />} />
         <Route path="/teacher/best-performance" element={<TeacherBestPerformancePage />} />
+        <Route path="/teacher/reports/individual" element={<TeacherIndividualReportPage />} />
         <Route path="/teacher/social-frames" element={<TeacherSocialFramesPage />} />
         <Route path="/teacher/social-frames/:id" element={<TeacherSocialFrameViewPage />} />
 
@@ -345,6 +348,7 @@ export default function App() {
         <Route path="/m/:slug/teacher/notifications" element={<TeacherNotificationsPage />} />
         <Route path="/m/:slug/teacher/performance" element={<TeacherPerformancePage />} />
         <Route path="/m/:slug/teacher/best-performance" element={<TeacherBestPerformancePage />} />
+        <Route path="/m/:slug/teacher/reports/individual" element={<TeacherIndividualReportPage />} />
         <Route path="/m/:slug/teacher/social-frames" element={<TeacherSocialFramesPage />} />
         <Route path="/m/:slug/teacher/social-frames/:id" element={<TeacherSocialFrameViewPage />} />
 
@@ -405,6 +409,7 @@ export default function App() {
           element={<CommitteeAnnouncementsPage />}
         />
         <Route path="/committee/reports" element={<CommitteeReportsPage />} />
+        <Route path="/committee/reports/individual" element={<CommitteeIndividualReportPage />} />
         <Route
           path="/committee/teacher-attendance"
           element={<CommitteeTeacherAttendancePage />}
@@ -435,6 +440,10 @@ export default function App() {
         <Route
           path="/m/:slug/committee/reports"
           element={<CommitteeReportsPage />}
+        />
+        <Route
+          path="/m/:slug/committee/reports/individual"
+          element={<CommitteeIndividualReportPage />}
         />
         <Route
           path="/m/:slug/committee/teacher-attendance"
