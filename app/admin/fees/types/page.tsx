@@ -152,6 +152,14 @@ export default function AdminFeeTypesPage() {
         }
       />
 
+      <button
+        type="button"
+        onClick={() => { setShowCreate(true); setCreateError(null); }}
+        className="sm:hidden w-full mb-5 flex items-center justify-center gap-1.5 px-4 py-3 bg-emerald-600 text-white rounded-xl text-sm font-semibold"
+      >
+        <Plus className="w-4 h-4" /> New Fee Type
+      </button>
+
       {error && <ApiErrorBanner message={error} onRetry={load} />}
 
       {loading ? (
