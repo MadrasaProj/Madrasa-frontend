@@ -422,7 +422,7 @@ function UserMenu({
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const { user, activeClientId, activeTenantSlug, hasHydrated, accessToken, setAttendanceMode, logout, switchToClient } = useAuthStore();
+  const { user, activeClientId, activeTenantSlug, hasHydrated, accessToken, setAttendanceMode, logout, switchToClient, syncActiveForPath } = useAuthStore();
   const { lang } = useLanguageStore();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [resolvingClient, setResolvingClient] = useState(false);
@@ -472,7 +472,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           switchToClient(client.id, client.slug);
         } else {
           console.error(`Client not found for slug: ${slug}`);
-          navigate("/admin", { replace: true });
+          // No redirect per spec – stay on page and let inline handling show fallback
         }
       })
       .catch((e) => {
@@ -497,30 +497,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     }
   }, [clientConfig, user?.actorType, setAttendanceMode]);
 
+  // Per-role auth: sync active session to current path's role (no redirects)
   useEffect(() => {
     if (!hasHydrated) return;
-    if (!user) return;
-
-    const isSuperAdmin = user.actorType === "SUPER_ADMIN";
-
-    if (isSuperAdmin) {
-      // Valid: /admin (platform), /m/{slug}/admin/* (viewing madrasa)
-      if (pathname === "/admin" || pathname.startsWith("/admin/")) return;
-      if (pathname.match(/^\/m\/[^/]+\/admin/)) return;
-      navigate("/admin", { replace: true });
-      return;
-    }
-
-    // Tenant users: valid at /{role}/* or /m/{slug}/{role}/*
-    const slug = user.tenantSlug;
-    const roleBase = `/${user.role}`;
-    const slugBase = slug ? `/m/${slug}/${user.role}` : null;
-
-    if (pathname.startsWith(roleBase)) return;
-    if (slugBase && pathname.startsWith(slugBase)) return;
-
-    navigate(slugBase ?? roleBase, { replace: true });
-  }, [hasHydrated, pathname, navigate, user]); // eslint-disable-line
+    syncActiveForPath(pathname);
+  }, [hasHydrated, pathname, syncActiveForPath]);
 
   const isResolving = resolvingClient || needsResolution;
 
@@ -536,24 +517,22 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     const pathRole = getRoleFromPath(pathname);
     const pathSlug = getTenantSlugFromPath(pathname);
 
-    if (pathname === "/" || (!pathRole && !pathSlug)) {
-      return (
-        <div className="min-h-screen bg-[#faf9f6] flex items-center justify-center text-sm text-gray-500">
-          Redirecting...
-        </div>
-      );
-    }
-
-    if (!pathSlug && pathRole !== "admin") {
-      return <RoleLoginPage type="TEACHER" />;
-    }
-
+    // No redirects – inline login per spec: if(!auth) return <LoginComp/> else children
     const typeMap: Record<string, "SUPER_ADMIN" | "CLIENT_ADMIN" | "TEACHER" | "PARENT" | "COMMITTEE"> = {
       admin: pathSlug ? "CLIENT_ADMIN" : "SUPER_ADMIN",
       teacher: "TEACHER",
       parent: "PARENT",
       committee: "COMMITTEE",
     };
+
+    // Unknown path inside layout – fallback to admin login
+    if (!pathRole && !pathSlug) {
+      return <RoleLoginPage type="CLIENT_ADMIN" tenantSlug={undefined} />;
+    }
+
+    if (!pathSlug && pathRole !== "admin") {
+      return <RoleLoginPage type={typeMap[pathRole!]} />;
+    }
 
     return <RoleLoginPage type={typeMap[pathRole ?? "admin"]} tenantSlug={pathSlug ?? undefined} />;
   }
