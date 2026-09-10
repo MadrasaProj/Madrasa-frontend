@@ -90,10 +90,14 @@ export default function PwaRegister() {
       const targetUrl = payload.data?.url;
       const messageId = (payload as any).messageId || "";
       const tag = `fcm:${payload.data?.pushId || messageId || title}`;
+      const notificationIcon = new URL(
+        "/icons/icon-192.png",
+        window.location.origin,
+      ).href;
       const options = {
         body,
-        icon: "/icons/icon-192.png",
-        badge: "/icons/icon-192.png",
+        icon: notificationIcon,
+        badge: notificationIcon,
         tag,
         data: { ...(payload.data || {}), url: targetUrl },
       };

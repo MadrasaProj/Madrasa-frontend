@@ -21,6 +21,7 @@ firebase.initializeApp({
 });
 
 const messaging = firebase.messaging();
+const notificationIcon = new URL("/icons/icon-192.png", self.location.origin).href;
 
 const recentlyShown = new Map();
 const DEDUPE_WINDOW_MS = 30_000;
@@ -56,8 +57,8 @@ messaging.onBackgroundMessage((payload) => {
     "fcm:" + (payload.data?.pushId || payload.messageId || notificationTitle);
   const notificationOptions = {
     body: payload.data?.body || "",
-    icon: "/icons/icon-192.png",
-    badge: "/icons/icon-192.png",
+    icon: notificationIcon,
+    badge: notificationIcon,
     tag,
     renotify: false,
     data: payload.data || {},
