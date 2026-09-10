@@ -22,26 +22,55 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+const recentlyShown = new Map();
+const DEDUPE_WINDOW_MS = 30_000;
+
+async function showNotificationOnce(title, options) {
+  const tag = options.tag;
+  const now = Date.now();
+
+  for (const [shownTag, shownAt] of recentlyShown) {
+    if (now - shownAt > DEDUPE_WINDOW_MS) recentlyShown.delete(shownTag);
+  }
+
+  if (tag) {
+    if (recentlyShown.has(tag)) return;
+    recentlyShown.set(tag, now);
+
+    // This also covers duplicate delivery to old FCM tokens if the worker was
+    // restarted between deliveries.
+    const visible = await self.registration.getNotifications({ tag });
+    if (visible.length > 0) return;
+  }
+
+  await self.registration.showNotification(title, options);
+}
+
 messaging.onBackgroundMessage((payload) => {
-  const notificationTitle = payload.notification?.title || "Smart Madrasa";
-  const tag = "fcm:" + (payload.messageId || notificationTitle);
+  // Firebase has already displayed legacy notification payloads before this
+  // callback executes. Only data-only messages should be rendered here.
+  if (payload.notification) return;
+
+  const notificationTitle = payload.data?.title || "Smart Madrasa";
+  const tag =
+    "fcm:" + (payload.data?.pushId || payload.messageId || notificationTitle);
   const notificationOptions = {
-    body: payload.notification?.body || "",
+    body: payload.data?.body || "",
     icon: "/icons/icon-192.png",
     badge: "/icons/icon-192.png",
     tag,
-    renotify: true,
+    renotify: false,
     data: payload.data || {},
   };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  return showNotificationOnce(notificationTitle, notificationOptions);
 });
 
 self.addEventListener("message", (event) => {
   const data = event.data || {};
   if (data.type !== "FCM_SHOW_NOTIFICATION") return;
   event.waitUntil(
-    self.registration.showNotification(data.title, data.options || {})
+    showNotificationOnce(data.title, data.options || {})
   );
 });
 

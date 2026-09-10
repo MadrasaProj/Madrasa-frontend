@@ -81,16 +81,17 @@ export default function PwaRegister() {
     });
 
     // Show browser notifications for foreground FCM messages via the SW
-    // (single notification path — avoids duplicate notifications when both
-    // onMessage and the SW's onBackgroundMessage fire on focus changes)
+    // (the SW is the single renderer for both foreground and background).
     const unsubscribe = onForegroundMessage((payload) => {
       if (Notification.permission !== "granted") return;
-      const title = payload.notification?.title || "Smart Madrasa";
+      const title =
+        payload.data?.title || payload.notification?.title || "Smart Madrasa";
+      const body = payload.data?.body || payload.notification?.body || "";
       const targetUrl = payload.data?.url;
       const messageId = (payload as any).messageId || "";
-      const tag = `fcm:${messageId || title}`;
+      const tag = `fcm:${payload.data?.pushId || messageId || title}`;
       const options = {
-        body: payload.notification?.body || "",
+        body,
         icon: "/icons/icon-192.png",
         badge: "/icons/icon-192.png",
         tag,
