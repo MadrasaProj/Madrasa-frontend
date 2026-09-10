@@ -13,8 +13,10 @@ import {
   Moon, BookOpen, ChevronLeft, ChevronRight,
   Loader2, AlertCircle, CheckCircle2, Calendar, List,
   Users, Check, Sun, Minus, X,
+  Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { jsPDF } from "jspdf";
 
 type Section = "prayers" | "quran" | "custom";
 type ViewMode = "daily" | "weekly";
@@ -135,6 +137,14 @@ function countBadgeColor(count: number, total: number) {
   if (count >= total * 0.6) return "bg-amber-100 text-amber-700";
   if (count > 0) return "bg-red-100 text-red-600";
   return "bg-gray-100 text-gray-400";
+}
+
+function reportPrayerType(status: PrayerStatus | null): string {
+  if (!status) return "—";
+  if (status === "JAMA") return "Jamaath";
+  if (status === "QALA") return "Qada";
+  if (status === "NOT_PRAYABLE") return "Excused";
+  return "Ada";
 }
 
 export default function TeacherIbadahPage() {
@@ -258,6 +268,78 @@ export default function TeacherIbadahPage() {
 
   const activeClass = classes.find((c) => c.id === activeClassId);
 
+  const downloadWeeklyReport = useCallback(() => {
+    if (!activeClass || weeklyStudents.length === 0) return;
+
+    const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const margin = 10;
+    const rowHeight = 7;
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const columns = ["Student", "Admission No.", "Date", ...activePrayers.map((p) => p.label), "Quran"];
+    const widths = [42, 25, 22, ...activePrayers.map(() => 22), 18];
+    const totalWidth = widths.reduce((sum, width) => sum + width, 0);
+    const startX = Math.max(margin, (pageWidth - totalWidth) / 2);
+    let y = 10;
+
+    const drawHeader = () => {
+      pdf.setFontSize(15);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Weekly Ibadah Report", startX, y);
+      y += 7;
+      pdf.setFontSize(9);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(`${activeClass.name}  •  ${fmtShort(weekDates[0])} — ${fmtShort(weekDates[6])}`, startX, y);
+      y += 7;
+      let x = startX;
+      pdf.setFillColor(16, 185, 129);
+      pdf.rect(startX, y, totalWidth, rowHeight, "F");
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFont("helvetica", "bold");
+      columns.forEach((column, index) => {
+        pdf.text(column, x + 2, y + 4.7);
+        x += widths[index];
+      });
+      pdf.setTextColor(0, 0, 0);
+      y += rowHeight;
+    };
+
+    drawHeader();
+    pdf.setFontSize(7.5);
+    pdf.setFont("helvetica", "normal");
+    for (const student of weeklyStudents) {
+      const studentLogs = logMap.get(student.id);
+      for (const day of weekDates) {
+        if (y > pageHeight - 18) {
+          pdf.addPage();
+          y = 10;
+          drawHeader();
+          pdf.setFontSize(7.5);
+          pdf.setFont("helvetica", "normal");
+        }
+        const log = studentLogs?.get(day);
+        const values = [student.name, student.adno, fmtShort(day), ...activePrayers.map((p) => reportPrayerType(log?.[p.key] ?? null)), String(log?.quranPages ?? 0)];
+        let x = startX;
+        if (Math.round(y / rowHeight) % 2 === 0) {
+          pdf.setFillColor(248, 250, 252);
+          pdf.rect(startX, y, totalWidth, rowHeight, "F");
+        }
+        values.forEach((value, index) => {
+          pdf.setTextColor(31, 41, 55);
+          pdf.text(String(value).slice(0, 18), x + 2, y + 4.7);
+          pdf.setDrawColor(226, 232, 240);
+          pdf.rect(x, y, widths[index], rowHeight);
+          x += widths[index];
+        });
+        y += rowHeight;
+      }
+    }
+    pdf.setFontSize(8);
+    pdf.setTextColor(75, 85, 99);
+    pdf.text("Prayer type: Jamaath = performed in congregation • Qada = made up later • Ada = performed • Excused = not prayable", startX, pageHeight - 8);
+    pdf.save(`ibadah-weekly-${activeClass.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-${weekDates[6]}.pdf`);
+  }, [activeClass, activePrayers, logMap, weekDates, weeklyStudents]);
+
   return (
     <DashboardLayout>
       <PageHeader
@@ -340,6 +422,12 @@ export default function TeacherIbadahPage() {
                 </p>
               )}
             </div>
+            {viewMode === "weekly" && (
+              <button onClick={downloadWeeklyReport} disabled={weeklyStudents.length === 0}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold disabled:opacity-40">
+                <Download className="w-3.5 h-3.5" /> Download PDF
+              </button>
+            )}
             <button onClick={viewMode === "daily" ? nextDay : nextWeek}
               disabled={date >= fmt(new Date())}
               className="p-2 rounded-xl bg-white border border-gray-200 disabled:opacity-40">
