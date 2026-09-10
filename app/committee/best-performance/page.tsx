@@ -8,6 +8,7 @@ import {
   getBestPerformers,
   type BestPerformer,
 } from "@/lib/best-performance-api";
+import { getMyClasses } from "@/lib/classes-api";
 import {
   Trophy,
   Star,
@@ -32,6 +33,8 @@ export default function BestPerformancePage() {
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [period, setPeriod] = useState<{ from: string; to: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [periodType, setPeriodType] = useState<"week" | "month">("month");
+  const [classRankings, setClassRankings] = useState<{ className: string; performers: BestPerformer[] }[]>([]);
 
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -45,13 +48,23 @@ export default function BestPerformancePage() {
   const isParent = user?.role === "parent";
   const accessibleIds = user?.accessibleStudentIds ?? [];
 
+  const getPeriodDates = (type: "week" | "month") => {
+    const end = new Date();
+    const start = new Date(end);
+    if (type === "week") start.setDate(end.getDate() - 6);
+    else start.setDate(1);
+    const iso = (date: Date) => date.toISOString().slice(0, 10);
+    return { from: iso(start), to: iso(end) };
+  };
+
   useEffect(() => {
     if (!cid || !token) return;
     let cancelled = false;
     setLoading(true);
     setError(null);
 
-    getBestPerformers(cid, token, { limit: isParent ? 100 : 20 })
+    const dates = getPeriodDates(periodType);
+    getBestPerformers(cid, token, { ...dates, limit: isParent ? 100 : 20 })
       .then((res) => {
         if (cancelled) return;
         setData(res.performers);
@@ -66,8 +79,18 @@ export default function BestPerformancePage() {
         if (!cancelled) setLoading(false);
       });
 
+      if (user?.role === "teacher") {
+        getMyClasses(cid, token).then(async (teacherClasses) => {
+          if (cancelled) return;
+          const rankings = await Promise.all(teacherClasses.map(async (cls) => ({
+            className: cls.name,
+            performers: (await getBestPerformers(cid, token, { ...dates, classId: cls.id, limit: 100 })).performers,
+          })));
+          if (!cancelled) setClassRankings(rankings);
+        }).catch(() => { if (!cancelled) setClassRankings([]); });
+      }
     return () => { cancelled = true; };
-  }, [cid, token]);
+  }, [cid, token, periodType, user?.role]);
 
   const formatDateRange = () => {
     if (!period) return "";
@@ -203,6 +226,17 @@ export default function BestPerformancePage() {
           </motion.div>
 
           {/* Period info */}
+          <div className="flex items-center gap-2 bg-white border border-gray-100 rounded-2xl p-2 shadow-xs w-fit">
+            {(["week", "month"] as const).map((value) => (
+              <button key={value} onClick={() => setPeriodType(value)} className={cn(
+                "px-4 py-2 rounded-xl text-sm font-semibold transition-colors",
+                periodType === value ? "bg-emerald-600 text-white" : "text-gray-500 hover:bg-emerald-50",
+              )}>
+                {value === "week" ? (lang === "ml" ? "ആഴ്ചയിലെ മികച്ച പ്രകടനം" : "Weekly Best Performance") : (lang === "ml" ? "മാസത്തിലെ മികച്ച പ്രകടനം" : "Monthly Best Performance")}
+              </button>
+            ))}
+          </div>
+
           {period && (
             <motion.div
               initial={{ opacity: 0 }}
@@ -435,6 +469,28 @@ export default function BestPerformancePage() {
                 );
               })}
             </div>
+          )}
+
+          {!isParent && user?.role === "teacher" && !loading && classRankings.length > 0 && (
+            <section className="space-y-3">
+              <h2 className="text-lg font-bold text-gray-900">
+                {lang === "ml" ? "ക്ലാസ് അടിസ്ഥാനത്തിലുള്ള മികച്ച ഇബാദത്ത് പ്രകടനം" : "Best Ibada Performance Ranking — Class-wise"}
+              </h2>
+              <div className="grid gap-4 md:grid-cols-2">
+                {classRankings.map(({ className, performers }) => (
+                  <div key={className} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-xs">
+                    <h3 className="font-bold text-emerald-700 mb-3">{className}</h3>
+                    {performers.length === 0 ? <p className="text-sm text-gray-400">No ibadah data</p> : performers.slice(0, 5).map((performer, index) => (
+                      <div key={performer.studentId} className="flex items-center gap-3 py-2 border-t border-gray-50">
+                        <span className="w-6 text-center font-bold text-gray-500">#{index + 1}</span>
+                        <span className="flex-1 text-sm font-semibold text-gray-800">{performer.name}</span>
+                        <span className="font-black text-emerald-600">{performer.score}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </section>
           )}
         </div>
       </div>
