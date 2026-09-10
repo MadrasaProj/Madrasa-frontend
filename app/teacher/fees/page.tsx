@@ -98,6 +98,7 @@ export default function TeacherFeesPage() {
  const [recording, setRecording] = useState<string | null>(null);
  const [payMethod, setPayMethod] = useState("CASH");
  const [payRef, setPayRef] = useState("");
+ const [donationAmount, setDonationAmount] = useState("");
  const [saving, setSaving] = useState(false);
 
  const [receipt, setReceipt] = useState<ReceiptData | null>(null);
@@ -194,11 +195,13 @@ export default function TeacherFeesPage() {
  const markPaid = async (p: FeePayment) => {
  setSaving(true);
  try {
+ const amount = p.feeType.isDonation ? Number(donationAmount) : Number(p.dueAmount);
+ if (!amount || amount <= 0) { setError("Enter a donation amount greater than zero"); return; }
  await updatePayment(cid, token, p.id, {
- paidAmount: Number(p.dueAmount), method: payMethod as any,
+ paidAmount: amount, ...(p.feeType.isDonation ? { dueAmount: amount } : {}), method: payMethod as any,
  reference: payRef || undefined, status: "PAID", paidAt: new Date().toISOString(),
  });
- setRecording(null); setPayRef(""); loadPayments();
+ setRecording(null); setPayRef(""); setDonationAmount(""); loadPayments();
  } catch (e) { setError((e as Error).message); }
  finally { setSaving(false); }
  };
@@ -406,7 +409,7 @@ export default function TeacherFeesPage() {
  </p>
  </div>
  <div className="text-right shrink-0 mr-1">
- <p className="text-sm font-bold text-gray-900">₹{Number(p.dueAmount).toLocaleString()}</p>
+ <p className="text-sm font-bold text-gray-900">{p.feeType.isDonation ? "Variable" : `₹${Number(p.dueAmount).toLocaleString()}`}</p>
  {isPaid && p.paidAt ? (
  <p className="text-[10px] text-emerald-600">{new Date(p.paidAt).toLocaleDateString("en-GB")}</p>
  ) : p.dueDate ? (
@@ -461,7 +464,7 @@ export default function TeacherFeesPage() {
  </button>
  ) : (
  <>
-  <button onClick={() => { setRecording(p.id); setPayMethod("CASH"); setPayRef(""); }} className="shrink-0 p-1" title={t("teacherPages", "markPaidTitle", lang)}>
+  <button onClick={() => { setRecording(p.id); setPayMethod("CASH"); setPayRef(""); setDonationAmount(p.feeType.isDonation && Number(p.dueAmount) > 0 ? String(p.dueAmount) : ""); }} className="shrink-0 p-1" title={t("teacherPages", "markPaidTitle", lang)}>
  <CheckCircle className={cn("w-5 h-5 transition-colors",
  recording === p.id ? "text-emerald-500" : "text-gray-300 hover:text-emerald-500")} />
  </button>
@@ -491,6 +494,7 @@ export default function TeacherFeesPage() {
  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
  exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
  <div className="px-4 pb-3 border-t border-gray-50 pt-2 space-y-2">
+ {p.feeType.isDonation && <input type="number" min="0.01" step="0.01" value={donationAmount} onChange={(e) => setDonationAmount(e.target.value)} placeholder="Donation amount (₹)" className="w-full px-3 py-2 rounded-xl border border-amber-200 bg-amber-50 text-xs focus:outline-none focus:border-amber-400" autoFocus />}
  <div className="grid grid-cols-2 gap-2">
  <select value={payMethod} onChange={(e) => setPayMethod(e.target.value)}
  className="px-3 py-2 rounded-xl border text-xs bg-white focus:outline-none">

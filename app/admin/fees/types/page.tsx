@@ -6,14 +6,14 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
-  getFeeTypes, createFeeType, updateFeeType, generatePayments,
+  getFeeTypes, createFeeType, updateFeeType, deleteFeeType, generatePayments,
   type FeeType, type CreateFeeTypePayload,
 } from "@/lib/fees-api";
 import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
-  CreditCard, Plus, Loader2, Zap, X, RefreshCw, ArrowLeft, Pencil,
+  CreditCard, Plus, Loader2, Zap, X, RefreshCw, ArrowLeft, Pencil, Trash2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -32,6 +32,7 @@ export default function AdminFeeTypesPage() {
   const [newFee, setNewFee] = useState<Partial<CreateFeeTypePayload>>({
     kind: "ONE_TIME",
     amount: 0,
+    isDonation: false,
   });
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -43,6 +44,10 @@ export default function AdminFeeTypesPage() {
   const [editFee, setEditFee] = useState<Partial<CreateFeeTypePayload & { status?: string }>>({});
   const [updating, setUpdating] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+
+  const [deleteTarget, setDeleteTarget] = useState<FeeType | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!cid || !token) return;
@@ -65,13 +70,13 @@ export default function AdminFeeTypesPage() {
   useEffect(() => { load(); }, [load]);
 
   const handleCreate = async () => {
-    if (!newFee.name || !newFee.amount) return;
+    if (!newFee.name || (!newFee.isDonation && !newFee.amount)) return;
     setCreating(true);
     setCreateError(null);
     try {
       await createFeeType(cid, token, newFee as CreateFeeTypePayload);
       setShowCreate(false);
-      setNewFee({ kind: "ONE_TIME", amount: 0 });
+      setNewFee({ kind: "ONE_TIME", amount: 0, isDonation: false });
       load();
     } catch (e) {
       setCreateError((e as Error).message);
@@ -86,6 +91,7 @@ export default function AdminFeeTypesPage() {
       name: ft.name,
       description: ft.description ?? undefined,
       amount: Number(ft.amount),
+      isDonation: ft.isDonation,
       kind: ft.kind,
       frequency: ft.frequency ?? undefined,
       dueDay: ft.dueDay ?? undefined,
@@ -125,6 +131,21 @@ export default function AdminFeeTypesPage() {
       setError((e as Error).message);
     } finally {
       setGenerating(null);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteFeeType(cid, token, deleteTarget.id);
+      setFeeTypes((current) => current.filter((ft) => ft.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (e) {
+      setDeleteError((e as Error).message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -205,10 +226,12 @@ export default function AdminFeeTypesPage() {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <span className="font-bold text-gray-900">₹{Number(ft.amount).toLocaleString()}</span>
+                      <span className="font-bold text-gray-900">{ft.isDonation ? "Variable" : `₹${Number(ft.amount).toLocaleString()}`}</span>
                     </td>
                     <td className="px-4 py-3 hidden sm:table-cell">
                       <span className="text-xs text-gray-600">
+                        {ft.isDonation ? "Donation" : null}
+                        {ft.isDonation ? " · " : ""}
                         {ft.kind === "RECURRING" ? `${ft.frequency ?? "recurring"}` : "one-time"}
                         {ft.dueDay ? ` · day ${ft.dueDay}` : ""}
                       </span>
@@ -250,6 +273,14 @@ export default function AdminFeeTypesPage() {
                             <Zap className="w-3 h-3" />
                           )}
                           Generate
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setDeleteTarget(ft); setDeleteError(null); }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-50 text-red-600 text-[11px] font-semibold hover:bg-red-100 transition-all"
+                          aria-label={`Delete ${ft.name}`}
+                        >
+                          <Trash2 className="w-3 h-3" /> Delete
                         </button>
                       </div>
                     </td>
@@ -302,13 +333,18 @@ export default function AdminFeeTypesPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Amount (₹) *</label>
+                    <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Amount (₹) {newFee.isDonation ? "(not applicable)" : "*"}</label>
                     <input
-                      type="number" value={newFee.amount ?? ""} placeholder="500"
+                      type="number" value={newFee.isDonation ? "" : (newFee.amount ?? "")} placeholder={newFee.isDonation ? "Entered during collection" : "500"}
+                      disabled={newFee.isDonation}
                       onChange={(e) => setNewFee((n) => ({ ...n, amount: Number(e.target.value) }))}
                       className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
                     />
                   </div>
+                  <label className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 cursor-pointer">
+                    <input type="checkbox" checked={!!newFee.isDonation} onChange={(e) => setNewFee((n) => ({ ...n, isDonation: e.target.checked, amount: e.target.checked ? 0 : (n.amount ?? 0) }))} className="h-4 w-4 accent-amber-600" />
+                    <span><span className="block text-sm font-semibold text-amber-800">This is a donation</span><span className="block text-[11px] text-amber-700">No fixed amount; enter it when marking payment.</span></span>
+                  </label>
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Description (optional)</label>
                     <input
@@ -398,13 +434,75 @@ export default function AdminFeeTypesPage() {
                 <div className="px-5 pb-5">
                   <button
                     onClick={handleCreate}
-                    disabled={creating || !newFee.name || !newFee.amount}
+                    disabled={creating || !newFee.name || (!newFee.isDonation && !newFee.amount)}
                     className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl disabled:opacity-60 flex items-center justify-center gap-2"
                   >
                     {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                     Create Fee Type
                   </button>
                 </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── Delete fee type confirmation ── */}
+      <AnimatePresence>
+        {deleteTarget && (
+          <>
+            <motion.div
+              key="delete-bd"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
+              onClick={() => { if (!deleting) setDeleteTarget(null); }}
+            />
+            <motion.div
+              key="delete-dialog"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="delete-fee-type-title"
+              aria-describedby="delete-fee-type-description"
+              className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 bg-white rounded-3xl p-6 max-w-sm mx-auto shadow-2xl"
+            >
+              <div className="text-center space-y-3">
+                <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto">
+                  <Trash2 className="w-7 h-7 text-red-600" />
+                </div>
+                <h3 id="delete-fee-type-title" className="font-bold text-gray-900 text-lg">Delete Fee Type?</h3>
+                <p id="delete-fee-type-description" className="text-sm text-gray-500">
+                  <strong>{deleteTarget.name}</strong> will be removed from the active fee types. Existing payment records will be preserved.
+                </p>
+                {deleteError && (
+                  <div className="bg-red-50 text-red-600 text-sm px-3 py-2 rounded-xl text-left">{deleteError}</div>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(null)}
+                  disabled={deleting}
+                  className="py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="py-3 rounded-2xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors disabled:opacity-60"
+                >
+                  {deleting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Deleting…
+                    </span>
+                  ) : "Delete"}
+                </button>
               </div>
             </motion.div>
           </>
@@ -452,13 +550,17 @@ export default function AdminFeeTypesPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Amount (₹) *</label>
+                    <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Amount (₹) {editFee.isDonation ? "(not applicable)" : "*"}</label>
                     <input
-                      type="number" value={editFee.amount ?? ""} placeholder="500"
+                      type="number" value={editFee.isDonation ? "" : (editFee.amount ?? "")} placeholder={editFee.isDonation ? "Entered during collection" : "500"} disabled={editFee.isDonation}
                       onChange={(e) => setEditFee((n) => ({ ...n, amount: Number(e.target.value) }))}
                       className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
                     />
                   </div>
+                  <label className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 cursor-pointer">
+                    <input type="checkbox" checked={!!editFee.isDonation} onChange={(e) => setEditFee((n) => ({ ...n, isDonation: e.target.checked, amount: e.target.checked ? 0 : (n.amount ?? 0) }))} className="h-4 w-4 accent-amber-600" />
+                    <span><span className="block text-sm font-semibold text-amber-800">This is a donation</span><span className="block text-[11px] text-amber-700">No fixed amount; enter it when marking payment.</span></span>
+                  </label>
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Description (optional)</label>
                     <input
@@ -571,7 +673,7 @@ export default function AdminFeeTypesPage() {
                 <div className="px-5 pb-5">
                   <button
                     onClick={handleUpdate}
-                    disabled={updating || !editFee.name || !editFee.amount}
+                    disabled={updating || !editFee.name || (!editFee.isDonation && !editFee.amount)}
                     className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl disabled:opacity-60 flex items-center justify-center gap-2"
                   >
                     {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}

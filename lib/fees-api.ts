@@ -16,6 +16,7 @@ export interface FeeType {
   name: string;
   description: string | null;
   amount: string;
+  isDonation: boolean;
   kind: FeeTypeKind;
   frequency: string | null;
   dueDay: number | null;
@@ -42,7 +43,7 @@ export interface FeePayment {
   academicYearId: string | null;
   createdAt: string;
   student: { id: string; name: string; adno: string; class?: { id: string; name: string } | null };
-  feeType: { id: string; name: string; kind: FeeTypeKind };
+  feeType: { id: string; name: string; kind: FeeTypeKind; isDonation?: boolean };
   recordedBy?: string | null;
   collectedBy?: string | null;
 }
@@ -58,13 +59,13 @@ export interface ReceiptData {
   notes: string | null;
   status: FeePaymentStatus;
   student: { id: string; name: string; adno: string; class?: { name: string } | null };
-  feeType: { id: string; name: string; kind: FeeTypeKind };
+  feeType: { id: string; name: string; kind: FeeTypeKind; isDonation?: boolean };
   client: { name: string; arabicName: string | null; address: string | null; phone: string | null };
 }
 
 export interface StudentFeeSummary {
   studentId: string;
-  feeTypes: Pick<FeeType, "id" | "name" | "amount" | "kind" | "frequency" | "dueDay">[];
+  feeTypes: Pick<FeeType, "id" | "name" | "amount" | "kind" | "frequency" | "dueDay" | "isDonation">[];
   payments: Omit<FeePayment, "student">[];
   totalDue: number;
   totalPaid: number;
@@ -80,7 +81,8 @@ export interface PaymentsListResponse {
 
 export interface CreateFeeTypePayload {
   name: string;
-  amount: number;
+  amount?: number;
+  isDonation?: boolean;
   kind: FeeTypeKind;
   description?: string;
   frequency?: string;

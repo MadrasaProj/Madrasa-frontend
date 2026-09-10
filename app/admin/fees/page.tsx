@@ -161,18 +161,22 @@ function RecordPaymentModal({
   payment,
   method,
   reference,
+  amount,
   saving,
   onMethodChange,
   onReferenceChange,
+  onAmountChange,
   onConfirm,
   onClose,
 }: {
   payment: FeePayment;
   method: string;
   reference: string;
+  amount: string;
   saving: boolean;
   onMethodChange: (v: string) => void;
   onReferenceChange: (v: string) => void;
+  onAmountChange: (v: string) => void;
   onConfirm: () => void;
   onClose: () => void;
 }) {
@@ -209,9 +213,15 @@ function RecordPaymentModal({
               {payment.feeType.name}
             </p>
             <p className="text-lg font-bold text-emerald-700">
-              ₹{Number(payment.dueAmount).toLocaleString()}
+              {payment.feeType.isDonation ? "Variable" : `₹${Number(payment.dueAmount).toLocaleString()}`}
             </p>
           </div>
+          {payment.feeType.isDonation && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-gray-500">Donation Amount (₹) *</label>
+              <input type="number" min="0.01" step="0.01" value={amount} onChange={(e) => onAmountChange(e.target.value)} placeholder="Enter amount received" className="w-full px-3 py-2.5 rounded-xl border border-amber-200 bg-amber-50 text-sm focus:outline-none focus:border-amber-400" autoFocus />
+            </div>
+          )}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-gray-500">
               Payment Method
@@ -294,6 +304,7 @@ export default function AdminFeesPage() {
   const [recording, setRecording] = useState<string | null>(null);
   const [payMethod, setPayMethod] = useState("CASH");
   const [payRef, setPayRef] = useState("");
+  const [donationAmount, setDonationAmount] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Cancel state
@@ -614,20 +625,23 @@ export default function AdminFeesPage() {
   const markPaid = async (p: FeePayment) => {
     setSaving(true);
     try {
+      const amount = p.feeType.isDonation ? Number(donationAmount) : Number(p.dueAmount);
+      if (!amount || amount <= 0) { setError("Enter a donation amount greater than zero"); return; }
       if (p.virtual) {
         await recordPayment(cid, token, {
           studentId: p.student.id,
           feeTypeId: p.feeType.id,
           dueDate: p.dueDate,
-          dueAmount: Number(p.dueAmount),
-          paidAmount: Number(p.dueAmount),
+          dueAmount: amount,
+          paidAmount: amount,
           method: payMethod as any,
           reference: payRef || undefined,
           status: "PAID",
         });
       } else {
         await updatePayment(cid, token, p.id, {
-          paidAmount: Number(p.dueAmount),
+          paidAmount: amount,
+          ...(p.feeType.isDonation ? { dueAmount: amount } : {}),
           method: payMethod as any,
           reference: payRef || undefined,
           status: "PAID",
@@ -1230,6 +1244,7 @@ export default function AdminFeesPage() {
                                 setRecording(p.id);
                                 setPayMethod("CASH");
                                 setPayRef("");
+                                setDonationAmount(p.feeType.isDonation && Number(p.dueAmount) > 0 ? String(p.dueAmount) : "");
                               }}
                               className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
                               title="Mark paid"
@@ -1356,6 +1371,7 @@ export default function AdminFeesPage() {
                                   setRecording(p.id);
                                   setPayMethod("CASH");
                                   setPayRef("");
+                                  setDonationAmount(p.feeType.isDonation && Number(p.dueAmount) > 0 ? String(p.dueAmount) : "");
                                 }}
                                 className="p-1"
                               >
@@ -1392,9 +1408,11 @@ export default function AdminFeesPage() {
                     payment={recordingPayment}
                     method={payMethod}
                     reference={payRef}
+                    amount={donationAmount}
                     saving={saving}
                     onMethodChange={setPayMethod}
                     onReferenceChange={setPayRef}
+                    onAmountChange={setDonationAmount}
                     onConfirm={() => markPaid(recordingPayment)}
                     onClose={() => setRecording(null)}
                   />,

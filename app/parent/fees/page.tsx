@@ -246,7 +246,7 @@ export default function ParentFeesPage() {
       headerClass: "text-right",
       render: (p) => (
         <span className="font-bold text-gray-900 tabular-nums whitespace-nowrap">
-          ₹{Number(p.dueAmount).toLocaleString()}
+          {p.feeType.isDonation ? "Variable" : `₹${Number(p.dueAmount).toLocaleString()}`}
         </span>
       ),
     },
@@ -329,7 +329,7 @@ export default function ParentFeesPage() {
           </div>
           <div className="text-right shrink-0">
             <p className="font-bold text-gray-900 text-lg tabular-nums">
-              ₹{Number(p.dueAmount).toLocaleString()}
+              {p.feeType.isDonation ? "Variable" : `₹${Number(p.dueAmount).toLocaleString()}`}
             </p>
             <div className="mt-1.5">
               <StatusBadge status={p.status} lang={lang} />
@@ -537,7 +537,7 @@ export default function ParentFeesPage() {
                           <IndianRupee className="w-3.5 h-3.5 text-emerald-600" />
                           <span>{ft.name}</span>
                           {freq && <span className="text-gray-400">· {freq}</span>}
-                          <span className="text-gray-400 ml-1">₹{Number(ft.amount).toLocaleString()}</span>
+                          <span className="text-gray-400 ml-1">{ft.isDonation ? "Variable" : `₹${Number(ft.amount).toLocaleString()}`}</span>
                         </div>
                       );
                     })}
