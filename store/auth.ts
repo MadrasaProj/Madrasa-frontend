@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { StudentInfo } from "@/lib/auth-api";
 import { getProfile, getParentStudents } from "@/lib/auth-api";
+import { saveTenantSlug } from "@/lib/slug-storage";
 
 export type UserRole = "admin" | "teacher" | "parent" | "committee";
 export type AuthActorType =
@@ -304,6 +305,9 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
 
   login: ({ user, accessToken }) => {
     persistTokenForRole(user.role, accessToken);
+    if (user.tenantSlug) {
+      saveTenantSlug(user.tenantSlug, user.role);
+    }
     set({
       user,
       accessToken,
@@ -416,9 +420,19 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
     try {
       const res = await getProfile(token);
       profile = { photo: res.photo, photoUrl: res.photoUrl };
-    } catch {
-      removeTokenForRole(role);
-      return null;
+    } catch (err: unknown) {
+      const isAuthError =
+        (err as { statusCode?: number })?.statusCode === 401 ||
+        (err as { code?: string })?.code === "AUTH_INVALID_CREDENTIALS";
+      if (isAuthError) {
+        removeTokenForRole(role);
+        return null;
+      }
+      // Tolerate network/offline/server errors - fallback to JWT payload
+      profile = {
+        photo: (payload as any).photo ?? null,
+        photoUrl: (payload as any).photoUrl ?? null,
+      };
     }
     const rawActorType = payload.actorType ?? payload.role;
     const actorType: AuthActorType = validActorTypes.includes(
@@ -436,6 +450,9 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
       }
     }
     const user = buildUser(payload, profile, students);
+    if (user.tenantSlug) {
+      saveTenantSlug(user.tenantSlug, user.role);
+    }
     // Ensure role consistency: if JWT role mismatches storageKey role, migrate
     if (user.role !== role) {
       // Keep token under correct role key as well
@@ -536,9 +553,19 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
       try {
         const res = await getProfile(token);
         profile = { photo: res.photo, photoUrl: res.photoUrl };
-      } catch {
-        removeTokenForRole(role);
-        continue;
+      } catch (err: unknown) {
+        const isAuthError =
+          (err as { statusCode?: number })?.statusCode === 401 ||
+          (err as { code?: string })?.code === "AUTH_INVALID_CREDENTIALS";
+        if (isAuthError) {
+          removeTokenForRole(role);
+          continue;
+        }
+        // Tolerate network/offline/server errors - fallback to JWT payload
+        profile = {
+          photo: (payload as any).photo ?? null,
+          photoUrl: (payload as any).photoUrl ?? null,
+        };
       }
       const rawActorType = payload.actorType ?? payload.role;
       const actorType: AuthActorType = validActorTypes.includes(
@@ -558,6 +585,9 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
       // Check race: token may have been removed
       if (getAllStoredTokens()[role] !== token) continue;
       const user = buildUser(payload, profile, students);
+      if (user.tenantSlug) {
+        saveTenantSlug(user.tenantSlug, user.role);
+      }
       // Correct role mapping if mismatch
       if (user.role !== role) {
         persistTokenForRole(user.role, token);
