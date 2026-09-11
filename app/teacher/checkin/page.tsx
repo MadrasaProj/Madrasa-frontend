@@ -75,52 +75,87 @@ export default function TeacherCheckinPage() {
 
  useEffect(() => { load(); }, [cid, token]); // eslint-disable-line
 
- const fetchLocation = useCallback(async () => {
- if (!navigator.geolocation) {
- setLocError("Geolocation is not supported by your browser");
- return;
- }
+  const fetchLocation = useCallback(async () => {
+  // Secure context required for geolocation in production (HTTPS)
+  if (typeof window !== "undefined" && !window.isSecureContext) {
+  setLocError(
+  `Location requires HTTPS. You are on ${window.location.protocol}//${window.location.host} which is not secure. Please open the site via https:// or contact admin.`
+  );
+  setLocLoading(false);
+  return;
+  }
 
- if (navigator.permissions?.query) {
- try {
- const perm = await navigator.permissions.query({ name: "geolocation" });
- if (perm.state === "denied") {
- setLocError(
- "Location access is blocked for this app. Open your phone Settings → Apps → Madrasa → Permissions → Location, set to \"Allow only while using the app\", then come back and tap Retry.",
- );
- setLocLoading(false);
- return;
- }
- } catch {
- }
- }
+  if (!navigator.geolocation) {
+  setLocError("Geolocation is not supported by your browser. Try Chrome on Android or Safari on iPhone.");
+  return;
+  }
 
- setLocLoading(true);
- setLocError(null);
- navigator.geolocation.getCurrentPosition(
- (pos) => {
- setLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
- setLocError(null);
- setLocLoading(false);
- },
- (err) => {
- if (err.code === err.PERMISSION_DENIED) {
- setLocError(
- "Location access is blocked for Madrasa. Open your phone Settings → Apps → Madrasa → Permissions → Location, set it to “Allow only while using the app”, then come back and tap Check In again.",
- );
- } else if (err.code === err.TIMEOUT) {
- setLocError("We couldn’t find your location in time. Make sure GPS is on, then tap Check In again.");
- } else if (err.code === err.POSITION_UNAVAILABLE) {
- setLocError("Your location is currently unavailable. Step near a window or go outside for a stronger GPS signal, then try again.");
- } else {
- setLocError("Something went wrong while getting your location. Please try again in a moment.");
- }
- setLocation(null);
- setLocLoading(false);
- },
- { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 },
- );
- }, []);
+  // If Permissions-Policy blocks geolocation, navigator.permissions.query will
+  // report "denied" even before user is prompted. Detect insecure embedding.
+  if (navigator.permissions?.query) {
+  try {
+  const perm = await navigator.permissions.query({ name: "geolocation" as PermissionName });
+  if (perm.state === "denied") {
+  // Don't silently return — show diagnostics to distinguish header-block
+  // vs user-block. In production, a header like geolocation=() causes this.
+  const diag = typeof window !== "undefined"
+  ? ` (secure=${String(window.isSecureContext)}, proto=${window.location.protocol}, host=${window.location.host})`
+  : "";
+  setLocError(
+  `Location access is blocked for this page${diag}. If you previously denied, reset: browser Settings → Site settings → Location → Allow. If this just deployed, hard-refresh (Ctrl+Shift+R) or reinstall the PWA. Admin: verify response header Permissions-Policy contains geolocation=(self).`,
+  );
+  // Still attempt getCurrentPosition — on some browsers it will re-prompt
+  // after user changes site setting. Don't early-return on denied.
+  }
+  } catch {
+  // Firefox throws on unknown permission name when gated
+  }
+  }
+
+  setLocLoading(true);
+  setLocError(null);
+
+  const requestPosition = (opts: PositionOptions): Promise<GeolocationPosition> =>
+  new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, opts));
+
+  try {
+  // First try high-accuracy (GPS) — best for check-in
+  let pos: GeolocationPosition;
+  try {
+  pos = await requestPosition({ enableHighAccuracy: true, timeout: 12_000, maximumAge: 0 });
+  } catch (e: unknown) {
+  const err = e as GeolocationPositionError;
+  // On TIMEOUT or POSITION_UNAVAILABLE, retry once with low accuracy (network)
+  if (err?.code === err.TIMEOUT || err?.code === err.POSITION_UNAVAILABLE) {
+  pos = await requestPosition({ enableHighAccuracy: false, timeout: 15_000, maximumAge: 30_000 });
+  } else {
+  throw e;
+  }
+  }
+  setLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+  setLocError(null);
+  } catch (err: unknown) {
+  const e = err as GeolocationPositionError;
+  const code = (e as unknown as { code?: number })?.code;
+  const msg = (e as unknown as { message?: string })?.message ?? "";
+  // Diagnostic suffix helps admin confirm prod headers vs device
+  const diag = typeof window !== "undefined" && !window.isSecureContext ? " [insecure context]" : "";
+  if (code === 1 /* PERMISSION_DENIED */) {
+  setLocError(
+  `Location permission denied${diag}. Allow location for this site: tap the lock icon in address bar → Site settings → Location → Allow, then tap Retry. On PWA: uninstall & reinstall after admin fixes Permissions-Policy header.${msg ? ` (${msg})` : ""}`,
+  );
+  } else if (code === 3 /* TIMEOUT */) {
+  setLocError(`We couldn’t find your location in time${diag}. Ensure GPS/Location is ON, go near a window, then tap Retry.${msg ? ` (${msg})` : ""}`);
+  } else if (code === 2 /* POSITION_UNAVAILABLE */) {
+  setLocError(`Your location is currently unavailable${diag}. Check GPS/data, try outdoors, then tap Retry.${msg ? ` (${msg})` : ""}`);
+  } else {
+  setLocError(`Something went wrong while getting your location${diag}. Please tap Retry. ${msg || ""}`.trim());
+  }
+  setLocation(null);
+  } finally {
+  setLocLoading(false);
+  }
+  }, []);
 
  useEffect(() => { fetchLocation(); }, [fetchLocation]);
 
@@ -137,19 +172,54 @@ export default function TeacherCheckinPage() {
  return () => document.removeEventListener("visibilitychange", onVisibility);
  }, [fetchLocation, location]);
 
- const handleCheckIn = async () => {
- if (!location) {
- setLocError("We need your location to check you in. Please allow location access and try again.");
- fetchLocation();
- return;
- }
- setActionLoading(true); setError(null);
- try {
- const s = await checkIn(cid, token, location);
- setTodaySessions((prev) => [s, ...prev]);
- } catch (e) { setError((e as Error).message); }
- finally { setActionLoading(false); }
- };
+   const handleCheckIn = async () => {
+   let coords = location;
+   // If no cached location, acquire fresh one inline and use it directly
+   // (React state is async, so don't rely on fetchLocation's setLocation)
+   if (!coords) {
+   if (typeof window !== "undefined" && !window.isSecureContext) {
+   setLocError(`Location requires HTTPS (${window.location.protocol}//${window.location.host}). Open via https://`);
+   return;
+   }
+   if (!navigator.geolocation) {
+   setLocError("Geolocation not supported by this browser.");
+   return;
+   }
+   setActionLoading(true); setLocLoading(true); setLocError(null);
+   try {
+   const pos = await new Promise<GeolocationPosition>((res, rej) =>
+   navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 12_000, maximumAge: 0 })
+   ).catch(async (err: GeolocationPositionError) => {
+   if (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE) {
+   return await new Promise<GeolocationPosition>((res2, rej2) =>
+   navigator.geolocation.getCurrentPosition(res2, rej2, { enableHighAccuracy: false, timeout: 15_000, maximumAge: 30_000 })
+   );
+   }
+   throw err;
+   });
+   coords = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+   setLocation(coords);
+   } catch (err: unknown) {
+   const e = err as GeolocationPositionError & { message?: string };
+   if (e.code === 1) setLocError(`Permission denied — allow location in site settings then retry. ${e.message ?? ""}`.trim());
+   else if (e.code === 3) setLocError("Location timeout — ensure GPS is ON and retry.");
+   else setLocError(`Location unavailable — try outdoors then retry. ${e.message ?? ""}`.trim());
+   setActionLoading(false); setLocLoading(false);
+   return;
+   } finally {
+   setLocLoading(false);
+   }
+   // actionLoading already true from above; keep it true for the API call
+   } else {
+   setActionLoading(true);
+   }
+   setError(null);
+   try {
+   const s = await checkIn(cid, token, coords!);
+   setTodaySessions((prev) => [s, ...prev]);
+   } catch (e) { setError((e as Error).message); }
+   finally { setActionLoading(false); }
+  };
 
  const handleCheckOut = async () => {
  setActionLoading(true); setError(null);
@@ -233,26 +303,41 @@ export default function TeacherCheckinPage() {
  <MapPin className="w-3.5 h-3.5" />
   {t("teacherPages", "locationReady", lang)}
  </div>
- ) : (
- <div className="rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-left">
- <p className="text-xs font-semibold text-red-700 flex items-center gap-1.5">
+  ) : (
+  <div className="rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-left">
+  <p className="text-xs font-semibold text-red-700 flex items-center gap-1.5">
 <MapPinOff className="w-3.5 h-3.5" />
-  {t("teacherPages", "locationRequired", lang)}
- </p>
- <p className="text-[11px] text-red-600 mt-1 leading-relaxed">
- {locError ?? t("teacherPages", "locationHelp", lang)}
- </p>
- <a
- href={LOCATION_HOWTO_VIDEO_URL}
- target="_blank"
- rel="noopener noreferrer"
- className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-700 hover:text-red-900 underline underline-offset-2 mt-2"
- >
- <ExternalLink className="w-3 h-3" />
-  {t("teacherPages", "howToTurnOn", lang)}
- </a>
- </div>
- )}
+   {t("teacherPages", "locationRequired", lang)}
+  </p>
+  <p className="text-[11px] text-red-600 mt-1 leading-relaxed">
+  {locError ?? t("teacherPages", "locationHelp", lang)}
+  </p>
+  <div className="flex flex-wrap gap-2 mt-2">
+  <button
+  onClick={fetchLocation}
+  disabled={locLoading}
+  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold disabled:opacity-50 transition-colors"
+  >
+  {locLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <MapPin className="w-3 h-3" />}
+  Retry
+  </button>
+  <a
+  href={LOCATION_HOWTO_VIDEO_URL}
+  target="_blank"
+  rel="noopener noreferrer"
+  className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-700 hover:text-red-900 underline underline-offset-2 px-2 py-1.5"
+  >
+  <ExternalLink className="w-3 h-3" />
+   {t("teacherPages", "howToTurnOn", lang)}
+  </a>
+  </div>
+  {!location && typeof window !== "undefined" && !window.isSecureContext && (
+  <p className="text-[10px] text-red-500 mt-2 font-mono break-all">
+  Debug: insecure context — {window.location.protocol}//{window.location.host} (needs https)
+  </p>
+  )}
+  </div>
+  )}
  </div>
 
   <button onClick={handleCheckIn} disabled={actionLoading || locLoading}

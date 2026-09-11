@@ -1,4 +1,4 @@
-const CACHE_NAME = "smartmadrasa-v1prod";
+const CACHE_NAME = "smartmadrasa-v2-geofix";
 const STATIC_ASSETS = [
   "/",
   "/manifest.webmanifest",
