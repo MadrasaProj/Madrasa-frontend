@@ -1,5 +1,8 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { useEffect } from "react";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import PwaRegister from "../components/PwaRegister";
+import { initPersistentStorage, saveTenantSlug } from "@/lib/slug-storage";
+import { getTenantSlugFromPath, getRoleFromPath } from "@/lib/tenant-routing";
 
 // ── TWA Landing ───────────────────────────────────────────────────────────────
 import TwaLandingPage from "../app/twa/page";
@@ -103,6 +106,20 @@ import CommitteeTeacherAttendancePage from "../app/committee/teacher-attendance/
 import CommitteeBestPerformancePage from "../app/committee/best-performance/page";
 
 export default function App() {
+  const location = useLocation();
+
+  useEffect(() => {
+    initPersistentStorage();
+  }, []);
+
+  useEffect(() => {
+    const slug = getTenantSlugFromPath(location.pathname);
+    const role = getRoleFromPath(location.pathname);
+    if (slug) {
+      saveTenantSlug(slug, role);
+    }
+  }, [location.pathname]);
+
   return (
     <>
       <PwaRegister />

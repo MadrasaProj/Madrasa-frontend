@@ -20,6 +20,7 @@ import {
   loginTeacher,
 } from "@/lib/auth-api";
 import { roleHomePath } from "@/lib/tenant-routing";
+import { getTenantSlugSync, saveTenantSlug } from "@/lib/slug-storage";
 import { normalizeUserSession, useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
@@ -171,14 +172,23 @@ export default function RoleLoginPage({
     fallbackKey: "otpRequestFailed" | "signInFailed",
   ) => {
     if (error instanceof AuthApiError) {
+      // Do not reveal whether slug, user, or students exist to attackers
+      if (
+        error.statusCode === 401 ||
+        error.statusCode === 404 ||
+        error.statusCode === 403 ||
+        error.code === "AUTH_INVALID_CREDENTIALS" ||
+        error.code === "AUTH_MADRASA_NOT_FOUND" ||
+        error.code === "AUTH_MADRASA_LOGIN_DISABLED" ||
+        error.code === "AUTH_STUDENTS_NOT_FOUND_FOR_PARENT"
+      ) {
+        return t("authErrors", "invalidCredentials", lang);
+      }
+
       const codeMap: Record<
         string,
         keyof (typeof import("@/lib/i18n").translations)["authErrors"]
       > = {
-        AUTH_INVALID_CREDENTIALS: "invalidCredentials",
-        AUTH_MADRASA_NOT_FOUND: "madrasaNotFound",
-        AUTH_MADRASA_LOGIN_DISABLED: "madrasaLoginDisabled",
-        AUTH_STUDENTS_NOT_FOUND_FOR_PARENT: "studentsNotFoundForParent",
         AUTH_BACKEND_SCHEMA_MISMATCH: "backendSchemaMismatch",
         AUTH_DB_UNAVAILABLE: "dbUnavailable",
         AUTH_SERVICE_UNAVAILABLE: "dbUnavailable",
@@ -193,6 +203,17 @@ export default function RoleLoginPage({
     }
 
     if (error instanceof Error && error.message) {
+      const lower = error.message.toLowerCase();
+      if (
+        lower.includes("not found") ||
+        lower.includes("does not exist") ||
+        lower.includes("disabled") ||
+        lower.includes("invalid") ||
+        lower.includes("credential") ||
+        lower.includes("unauthorized")
+      ) {
+        return t("authErrors", "invalidCredentials", lang);
+      }
       return error.message;
     }
 
@@ -201,7 +222,7 @@ export default function RoleLoginPage({
 
   const requireTenantSlug = () => {
     if (!isTenantRole) return undefined;
-    const slug = (tenantSlug ?? querySlug).trim().toLowerCase();
+    const slug = (tenantSlug ?? querySlug ?? getTenantSlugSync().slug).trim().toLowerCase();
     if (!slug) throw new Error(t("authErrors", "tenantUrlMissing", lang));
     return slug;
   };
@@ -305,8 +326,10 @@ export default function RoleLoginPage({
       const normalized = normalizeUserSession(
         session as import("@/store/auth").AuthSessionPayload,
       );
-      if (!normalized.user.tenantSlug && tenantSlug) {
-        normalized.user.tenantSlug = tenantSlug;
+      const finalSlug = normalized.user.tenantSlug || tenantSlug || requireTenantSlug();
+      if (finalSlug) {
+        normalized.user.tenantSlug = finalSlug;
+        saveTenantSlug(finalSlug, normalized.user.role);
       }
       login(normalized);
 

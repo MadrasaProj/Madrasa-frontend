@@ -8,28 +8,12 @@ import PwaInstallButton from "@/components/PwaInstallButton";
 
 type LandingRole = "parent" | "teacher";
 
-const TWA_PREFS_KEY = "twa-landing-prefs";
-
-function loadPrefs(): { role: LandingRole | null; slug: string } {
-  try {
-    const raw = localStorage.getItem(TWA_PREFS_KEY);
-    if (!raw) return { role: null, slug: "" };
-    const parsed = JSON.parse(raw);
-    return {
-      role:
-        parsed.role === "parent" || parsed.role === "teacher"
-          ? parsed.role
-          : null,
-      slug: typeof parsed.slug === "string" ? parsed.slug : "",
-    };
-  } catch {
-    return { role: null, slug: "" };
-  }
-}
-
-function savePrefs(role: LandingRole, slug: string) {
-  localStorage.setItem(TWA_PREFS_KEY, JSON.stringify({ role, slug }));
-}
+import {
+  clearTenantSlug,
+  getTenantSlugAsync,
+  getTenantSlugSync,
+  saveTenantSlug,
+} from "@/lib/slug-storage";
 
 const roleMeta: Record<UserRole, { label: string; icon: typeof Shield; color: string }> = {
   admin: { label: "Admin", icon: Shield, color: "bg-slate-600" },
@@ -133,25 +117,86 @@ function SessionsList() {
 
 export default function TwaLandingPage() {
   const navigate = useNavigate();
-  const { hasHydrated } = useAuthStore();
+  const { hasHydrated, sessions } = useAuthStore();
 
   const [role, setRole] = useState<LandingRole | null>(null);
   const [slug, setSlug] = useState("");
 
   useEffect(() => {
     if (!hasHydrated) return;
-    // No auto-redirect – just restore prefs for form defaults
-    const prefs = loadPrefs();
-    if (prefs.role) setRole(prefs.role);
-    if (prefs.slug) setSlug(prefs.slug);
-  }, [hasHydrated]);
+
+    // 1. If exactly one session exists, auto-open it directly!
+    const stored = getStoredSessionsSync();
+    if (stored.length === 1) {
+      const single = stored[0];
+      const fullUser = (sessions as Record<string, unknown>)[single.role] as
+        | { tenantSlug?: string; actorType?: string }
+        | undefined;
+      const targetSlug =
+        fullUser?.tenantSlug ??
+        single.payload?.client?.slug ??
+        single.payload?.client?.subdomain ??
+        "";
+      const targetActor =
+        fullUser?.actorType ??
+        single.payload?.actorType ??
+        single.payload?.role ??
+        "";
+      const isSuperAdmin = targetActor === "SUPER_ADMIN";
+      navigate(
+        roleHomePath({
+          role: single.role,
+          actorType: targetActor as never,
+          tenantSlug: isSuperAdmin ? undefined : targetSlug || undefined,
+        }),
+        { replace: true }
+      );
+      return;
+    }
+
+    // 2. Synchronous check for remembered slug + role (localStorage + Cookie)
+    const syncPrefs = getTenantSlugSync();
+    if (syncPrefs.slug) {
+      setSlug(syncPrefs.slug);
+      if (syncPrefs.role === "parent" || syncPrefs.role === "teacher") {
+        setRole(syncPrefs.role);
+      }
+    }
+
+    // 3. Asynchronous fallback check (IndexedDB) in case localStorage was evicted
+    void getTenantSlugAsync().then((asyncPrefs) => {
+      if (asyncPrefs.slug) {
+        setSlug((prev) => prev || asyncPrefs.slug);
+        if (asyncPrefs.role === "parent" || asyncPrefs.role === "teacher") {
+          const matchedRole: LandingRole = asyncPrefs.role;
+          setRole((prev) => prev ?? matchedRole);
+        }
+      }
+    });
+
+    // 4. If in standalone PWA mode and slug + role are remembered with no sessions, auto-redirect directly to role page/login!
+    const isStandalone =
+      typeof window !== "undefined" &&
+      (window.matchMedia("(display-mode: standalone)").matches ||
+        (window.navigator as unknown as { standalone?: boolean }).standalone === true);
+
+    if (isStandalone && syncPrefs.slug && (syncPrefs.role === "parent" || syncPrefs.role === "teacher")) {
+      navigate(`/m/${syncPrefs.slug}/${syncPrefs.role}`, { replace: true });
+    }
+  }, [hasHydrated, sessions, navigate]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!role || !slug.trim()) return;
     const normalizedSlug = slug.trim().toLowerCase();
-    savePrefs(role, normalizedSlug);
+    saveTenantSlug(normalizedSlug, role);
     navigate(`/m/${normalizedSlug}/${role}`);
+  };
+
+  const handleClearSlug = () => {
+    clearTenantSlug();
+    setSlug("");
+    setRole(null);
   };
 
   return (
@@ -252,9 +297,20 @@ export default function TwaLandingPage() {
                 autoFocus
                 required
               />
-              <p className="text-xs text-gray-400 mt-1.5">
-                Enter your madrasa's slug to proceed to login
-              </p>
+              <div className="flex items-center justify-between mt-1.5">
+                <p className="text-xs text-gray-400">
+                  Enter your madrasa's slug to proceed to login
+                </p>
+                {slug && (
+                  <button
+                    type="button"
+                    onClick={handleClearSlug}
+                    className="text-xs text-emerald-600 hover:text-emerald-700 font-medium hover:underline"
+                  >
+                    Change
+                  </button>
+                )}
+              </div>
             </motion.div>
           )}
 
