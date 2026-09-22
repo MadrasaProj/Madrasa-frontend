@@ -8,6 +8,7 @@ import { type ClientListItem } from "@/lib/super-admin-api";
 import { useStudentStats, useFeeSummary, useAttendanceSummary, useClients } from "@/lib/queries";
 import { useAuthStore } from "@/store/auth";
 import OperationsDashboard from "./crm/operations";
+import { PortalLinksCard } from "@/components/admin/PortalLinksCard";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Users, CreditCard, BookOpen, BarChart3, Settings, GraduationCap,
@@ -86,7 +87,7 @@ function PlatformOverview() {
 // ── Madrasa Admin Dashboard ────────────────────────────────────────────────────
 
 function MadrasaAdminDashboard() {
-  const { user, accessToken, activeClientId } = useAuthStore();
+  const { user, accessToken, activeClientId, activeTenantSlug } = useAuthStore();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const slugMatch = pathname.match(/^\/m\/([^/]+)\//);
@@ -158,6 +159,13 @@ function MadrasaAdminDashboard() {
           )}
         </motion.div>
       </div>
+
+      {/* Staff & Parent Portal Links Card */}
+      <PortalLinksCard
+        slug={slugMatch ? slugMatch[1] : (activeTenantSlug ?? user?.tenantSlug ?? "")}
+        madrasaName={user?.madrasaName}
+      />
+
       <SectionHeader title="Quick Actions" className="mb-3" />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pb-20">
         {quickActions.map((a, i) => (

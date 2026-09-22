@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, Plus, Loader2, Upload, Trash2, User, MapPin,
-  HeartPulse, Check, X as XIcon,
+  HeartPulse, Check, X as XIcon, AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   createStudent, updateStudent, uploadStudentPhoto, getStudentProfileV2,
+  checkParentPhone, type CheckParentPhoneResponse,
   type StudentRecord, type CreateStudentPayload,
 } from "@/lib/students-api";
 import type { ClassRecord } from "@/lib/classes-api";
@@ -131,6 +132,11 @@ export default function StudentEditDrawer({
   const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
+  // Sibling detection and deliberate password change confirmation
+  const [siblingInfo, setSiblingInfo] = useState<CheckParentPhoneResponse | null>(null);
+  const [checkingSiblings, setCheckingSiblings] = useState(false);
+  const [showPasswordConfirmModal, setShowPasswordConfirmModal] = useState(false);
+
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth < 768 : true
   );
@@ -148,7 +154,31 @@ export default function StudentEditDrawer({
     setFieldErrors({});
     setAvatarPreview(null);
     setUploadedPhotoUrl(null);
+    setSiblingInfo(null);
+    setShowPasswordConfirmModal(false);
   }, [open, isEditing, student]);
+
+  // Debounced check for sibling accounts sharing the same parent phone
+  useEffect(() => {
+    if (!open || !activeClientId || !accessToken) return;
+    const cleanDigits = form.parentPhone.replace(/\D/g, "");
+    if (cleanDigits.length < 7) {
+      setSiblingInfo(null);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setCheckingSiblings(true);
+      try {
+        const res = await checkParentPhone(activeClientId, accessToken, form.parentPhone, student?.id);
+        setSiblingInfo(res.exists && res.students.length > 0 ? res : null);
+      } catch {
+        setSiblingInfo(null);
+      } finally {
+        setCheckingSiblings(false);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [open, activeClientId, accessToken, form.parentPhone, student?.id]);
 
   useEffect(() => {
     if (!open) return;
@@ -176,6 +206,8 @@ export default function StudentEditDrawer({
       setFieldErrors({});
       setAvatarPreview(null);
       setUploadedPhotoUrl(null);
+      setSiblingInfo(null);
+      setShowPasswordConfirmModal(false);
     }, 250);
   };
 
@@ -199,15 +231,8 @@ export default function StudentEditDrawer({
     return Object.keys(errs).length === 0;
   };
 
-  const handleSubmit = async () => {
+  const executeSave = async (confirmSiblingUpdate: boolean) => {
     if (!activeClientId || !accessToken) return;
-    if (!validateAll()) {
-      setSubmitError("Please fix the highlighted errors before saving.");
-      if (fieldErrors.name || fieldErrors.adno) setTab("personal");
-      else if (fieldErrors.parentPhone || fieldErrors.parentAltPhone || fieldErrors.parentPassword) setTab("parent");
-      else if (fieldErrors.emergencyContactPhone) setTab("emergency");
-      return;
-    }
     setSubmitting(true);
     setSubmitError(null);
     try {
@@ -224,6 +249,7 @@ export default function StudentEditDrawer({
         ...(form.parentEmail ? { parentEmail: form.parentEmail.trim() } : {}),
         ...(form.relationToStudent ? { relationToStudent: form.relationToStudent } : {}),
         ...(form.parentPassword ? { parentPassword: form.parentPassword } : {}),
+        ...(confirmSiblingUpdate ? { confirmParentPasswordChange: true } : {}),
         ...(form.address ? { address: form.address.trim() } : {}),
         ...(form.city ? { city: form.city.trim() } : {}),
         ...(form.state ? { state: form.state.trim() } : {}),
@@ -249,11 +275,34 @@ export default function StudentEditDrawer({
       closeDrawer();
     } catch (e) {
       const apiErr = e as import("@/lib/students-api").StudentsApiError;
-      setSubmitError(apiErr.message);
-      if (apiErr.fieldErrors) setFieldErrors(apiErr.fieldErrors);
+      if (apiErr.statusCode === 409) {
+        setShowPasswordConfirmModal(true);
+      } else {
+        setSubmitError(apiErr.message);
+        if (apiErr.fieldErrors) setFieldErrors(apiErr.fieldErrors);
+      }
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleSubmit = async () => {
+    if (!activeClientId || !accessToken) return;
+    if (!validateAll()) {
+      setSubmitError("Please fix the highlighted errors before saving.");
+      if (fieldErrors.name || fieldErrors.adno) setTab("personal");
+      else if (fieldErrors.parentPhone || fieldErrors.parentAltPhone || fieldErrors.parentPassword) setTab("parent");
+      else if (fieldErrors.emergencyContactPhone) setTab("emergency");
+      return;
+    }
+
+    // If password is being set/changed and sibling students exist with this phone number, require explicit confirmation
+    if (form.parentPassword && siblingInfo && siblingInfo.students.length > 0) {
+      setShowPasswordConfirmModal(true);
+      return;
+    }
+
+    await executeSave(false);
   };
 
   const handleAvatarUpload = async (file: File) => {
@@ -534,6 +583,35 @@ export default function StudentEditDrawer({
                         </p>
                       </div>
 
+                      {/* Sibling accounts info banner */}
+                      {siblingInfo && siblingInfo.students.length > 0 && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 space-y-1.5">
+                          <div className="flex items-center gap-2">
+                            <Users className="w-4 h-4 text-amber-700 shrink-0" />
+                            <p className="text-xs font-bold text-amber-900">
+                              Shared Parent Account ({siblingInfo.count} Sibling{siblingInfo.count > 1 ? "s" : ""})
+                            </p>
+                          </div>
+                          <p className="text-xs text-amber-800 leading-relaxed">
+                            This phone number is linked to{" "}
+                            <span className="font-semibold">
+                              {siblingInfo.students.map((s) => `${s.name}${s.className ? ` (${s.className})` : ""}`).join(", ")}
+                            </span>.
+                          </p>
+                          <p className="text-[11px] text-amber-700 leading-normal">
+                            {form.parentPassword ? (
+                              <span className="font-semibold text-amber-900">
+                                ⚠️ Changing the password here will update the login credentials for all siblings.
+                              </span>
+                            ) : siblingInfo.hasExistingPassword ? (
+                              "✓ Parent already has an active password. Leave blank to retain it."
+                            ) : (
+                              "No password is set yet for this family."
+                            )}
+                          </p>
+                        </div>
+                      )}
+
                       {[
                         { key: "guardianName" as const,   label: t("adminPages", "fatherNameForm", lang), placeholder: t("adminPages", "fatherFullName", lang), type: "text" },
                         { key: "parentPhone" as const,    label: t("adminPages", "phoneNumber", lang),    placeholder: t("adminPages", "tenDigitMobile", lang), type: "tel" },
@@ -650,6 +728,74 @@ export default function StudentEditDrawer({
             </motion.div>
           </div>
         </>
+      )}
+
+      {/* Password change confirmation modal for shared phone */}
+      {showPasswordConfirmModal && siblingInfo && (
+        <div className="fixed inset-0 z-70 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-amber-200"
+          >
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-900">
+                  Confirm Password Update
+                </h3>
+                <p className="text-xs text-amber-700 font-medium">
+                  Shared Parent Phone Account
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-600 leading-relaxed mb-3">
+              The phone number <span className="font-mono font-bold text-gray-900">{form.parentPhone}</span> is already linked to{" "}
+              <span className="font-semibold text-gray-900">{siblingInfo.count} other student(s)</span>:
+            </p>
+
+            <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-3 mb-4 max-h-36 overflow-y-auto space-y-1.5">
+              {siblingInfo.students.map((s) => (
+                <div key={s.id} className="text-xs text-amber-900 flex items-center justify-between">
+                  <span className="font-semibold">{s.name}</span>
+                  <span className="text-[11px] text-amber-700 font-mono">
+                    {s.className || s.adno}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-rose-50 border border-rose-200/60 text-rose-700 text-xs p-3 rounded-xl mb-5 leading-relaxed font-medium">
+              ⚠️ Updating the password will change the parent login credentials for <strong>all {siblingInfo.count + 1} students</strong> sharing this phone number.
+            </div>
+
+            <div className="flex gap-2.5">
+              <button
+                type="button"
+                onClick={() => setShowPasswordConfirmModal(false)}
+                className="flex-1 py-2.5 text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={async () => {
+                  setShowPasswordConfirmModal(false);
+                  await executeSave(true);
+                }}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-colors shadow-xs cursor-pointer disabled:opacity-60"
+              >
+                {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                Yes, Update for All
+              </button>
+            </div>
+          </motion.div>
+        </div>
       )}
     </AnimatePresence>
   );

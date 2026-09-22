@@ -381,6 +381,41 @@ console.log(classes);
             : {}),
         }),
       createBulk: async (rows) => {
+        // Frontend pre-validation: check that students sharing a parent phone have consistent passwords
+        const phoneGroups = new Map<string, Array<{ rowNum: number; password: string }>>();
+        rows.forEach((r, idx) => {
+          let digits = r.parentPhone ? String(r.parentPhone).replace(/\D/g, "") : "";
+          if (digits.length === 12 && digits.startsWith("91")) {
+            digits = digits.slice(2);
+          }
+          if (digits && digits.length >= 7) {
+            if (!phoneGroups.has(digits)) phoneGroups.set(digits, []);
+            phoneGroups.get(digits)!.push({
+              rowNum: idx + 1,
+              password: r.parentPassword ? String(r.parentPassword).trim() : "",
+            });
+          }
+        });
+
+        for (const [phone, group] of phoneGroups.entries()) {
+          if (group.length > 1) {
+            const distinct = Array.from(new Set(group.map((g) => g.password)));
+            if (distinct.length > 1) {
+              const rowList = group.map((g) => `Row ${g.rowNum}`).join(", ");
+              const hasEmpty = distinct.some((p) => !p);
+              if (hasEmpty) {
+                throw new Error(
+                  `Conflict in import file: ${rowList} share parent phone (${phone}), but some have passwords while others are blank. In bulk import, all students with the same parent phone must have the same password or leave it blank.`
+                );
+              } else {
+                throw new Error(
+                  `Conflict in import file: ${rowList} share parent phone (${phone}), but have conflicting passwords. All students with the same parent phone must have the same password.`
+                );
+              }
+            }
+          }
+        }
+
         const enriched = rows.map((r) => ({
           ...r,
           ...(user?.defaultAcademicYearId

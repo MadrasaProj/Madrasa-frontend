@@ -61,6 +61,7 @@ export interface CreateStudentPayload {
   guardianName?: string;
   relationToStudent?: string;
   parentPassword?: string;
+  confirmParentPasswordChange?: boolean;
   status?: string;
   address?: string;
   city?: string;
@@ -261,3 +262,30 @@ export function bulkImportStudentsV2(
     { method: "POST", body: JSON.stringify(rows) },
   );
 }
+
+export interface CheckParentPhoneResponse {
+  exists: boolean;
+  count: number;
+  hasExistingPassword: boolean;
+  students: Array<{
+    id: string;
+    name: string;
+    adno: string;
+    className: string | null;
+  }>;
+}
+
+export function checkParentPhone(
+  clientId: string,
+  token: string,
+  phone: string,
+  excludeId?: string,
+): Promise<CheckParentPhoneResponse> {
+  const params = new URLSearchParams({ phone });
+  if (excludeId) params.append("excludeId", excludeId);
+  return apiFetch<CheckParentPhoneResponse>(
+    `${V2_BASE}/${clientId}/students/check-parent-phone?${params.toString()}`,
+    token,
+  );
+}
+

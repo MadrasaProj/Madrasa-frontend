@@ -38,12 +38,14 @@ import {
   X,
   Pencil,
   Save,
+  Share2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { ClassDivisionsPicker } from "@/components/ui/ClassDivisionsPicker";
 import { Toaster, toast } from "sonner";
+import { ShareMadrasaLinksModal } from "@/components/admin/ShareMadrasaLinksModal";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -1176,6 +1178,7 @@ export default function AdminMadrasasPage() {
   const [editingClient, setEditingClient] = useState<ClientListItem | null>(
     null,
   );
+  const [sharingClient, setSharingClient] = useState<ClientListItem | null>(null);
   const [showNew, setShowNew] = useState(false);
 
   // Pagination states
@@ -1316,6 +1319,13 @@ export default function AdminMadrasasPage() {
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button
+                        onClick={() => setSharingClient(client)}
+                        className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-100 hover:text-emerald-600 transition-all cursor-pointer"
+                        title="Share login links"
+                      >
+                        <Share2 className="w-4 h-4" />
+                      </button>
+                      <button
                         onClick={() => setEditingClient(client)}
                         className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-all cursor-pointer"
                         title="Edit madrasa"
@@ -1451,6 +1461,13 @@ export default function AdminMadrasasPage() {
           />
         )}
       </AnimatePresence>
+      {/* Share Links modal */}
+      <ShareMadrasaLinksModal
+        open={!!sharingClient}
+        onClose={() => setSharingClient(null)}
+        client={sharingClient}
+      />
+
       <Toaster position="top-right" richColors closeButton />
     </DashboardLayout>
   );
