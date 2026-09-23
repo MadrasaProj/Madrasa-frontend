@@ -1,7 +1,7 @@
 import { Sidebar, BottomNav } from "@/components/Navigation";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import {
-  Bell, ShieldAlert, X, Menu, ChevronDown, UserCircle, LogOut,
+  Bell, ShieldAlert, X, ChevronDown, UserCircle, LogOut,
   HelpCircle, Check,
 } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
@@ -556,45 +556,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       <Sidebar isOpen={isMobileSidebarOpen} onClose={() => setIsMobileSidebarOpen(false)} />
       <div className="lg:ml-64">
         <SuperAdminViewingBanner />
-
-        {/* ── Mobile top bar ─────────────────────────────────── */}
-        <header
-          className="lg:hidden sticky top-0 z-30 bg-white/95   border-b border-gray-100 px-4 py-0 flex items-center justify-between"
-          style={{ minHeight: 56 }}
-        >
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsMobileSidebarOpen(true)}
-              className="p-1.5 text-gray-500 hover:bg-gray-100 active:bg-gray-200 rounded-xl active:scale-95 transition-all"
-              aria-label="Open menu"
-            >
-              <Menu className="w-5.5 h-5.5" />
-            </button>
-
-            <UserMenu
-              user={user}
-              roleLabel={roleLabel(user.role)}
-              isSuperAdmin={isSuperAdmin}
-              isViewingMadrasa={isViewingMadrasa}
-              notifPath={notifPath}
-              compact
-              variant="drawer"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            {(!isSuperAdmin || isViewingMadrasa) && (
-              <Link
-                to={notifPath}
-                className="relative w-9 h-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center active:scale-95 transition-transform"
-              >
-                <Bell className="w-4.5 h-4.5 text-gray-600" />
-                {user.role !== "committee" && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white" />
-                )}
-              </Link>
-            )}
-          </div>
-        </header>
 
         {/* ── Desktop top bar ────────────────────────────────── */}
         <header className="hidden lg:flex sticky top-0 z-30  /90 backdrop-blur-md border-b border-gray-100 px-8 py-4 items-center justify-between">

@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -35,11 +35,14 @@ import {
   Menu,
   X,
   ChevronDown,
+  ChevronRight,
   Languages,
   MapPin,
   Receipt,
   Download,
 } from "lucide-react";
+import { Drawer } from "@/components/ui/Drawer";
+import OnboardingDrawer from "@/components/twa/OnboardingDrawer";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import PwaInstallButton from "@/components/PwaInstallButton";
 import { useAuthStore } from "@/store/auth";
@@ -891,8 +894,13 @@ export function Sidebar({
 
 export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const { user, activeClientId, accessToken, logout } = useAuthStore();
   const { lang } = useLanguageStore();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [onboardingRole, setOnboardingRole] = useState<"parent" | "teacher" | "admin" | null>(null);
+  const [onboardingSlug, setOnboardingSlug] = useState("");
   const slugPrefix = useSlugPrefix();
   const { data: clientConfig } = useClientConfig({
     clientId: activeClientId ?? "",
@@ -932,11 +940,41 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
     allLinks = allLinks.filter((l) => !disabledModules.includes(l.key));
   }
 
-  const showMore = allLinks.length > 5;
-  const links = showMore ? allLinks.slice(0, 4) : allLinks;
+  const showMore = allLinks.length > 3;
+  const links = showMore ? allLinks.slice(0, 3) : allLinks;
+  const moreLinks = showMore ? allLinks.slice(3) : [];
+  const sessionCount = Object.keys(useAuthStore.getState().sessions).length;
+  const profileHref = `/${user.role}/profile`;
+
+  const openNewSession = () => {
+    setMoreOpen(false);
+    setOnboardingRole(null);
+    setOnboardingSlug("");
+    setOnboardingOpen(true);
+  };
+
+  const renderMoreLink = (l: (typeof allLinks)[number]) => {
+    const fullHref = l.isExternal ? l.href : slugPrefix ? `${slugPrefix}${l.href}` : l.href;
+    const active = !l.isExternal && isLinkActive(pathname, fullHref, slugPrefix);
+    const Icon = l.icon;
+    const className = cn(
+      "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-colors active:scale-[0.98]",
+      active ? "bg-emerald-50 text-emerald-700" : "text-gray-700 hover:bg-gray-50",
+    );
+    return l.isExternal ? (
+      <a key={l.href} href={fullHref} target="_blank" rel="noopener noreferrer" className={className} onClick={() => setMoreOpen(false)}>
+        <Icon className="h-5 w-5 text-emerald-600" />{t("nav", l.key, lang)}
+      </a>
+    ) : (
+      <Link key={l.href} to={fullHref} className={className} onClick={() => setMoreOpen(false)}>
+        <Icon className={cn("h-5 w-5", active ? "text-emerald-600" : "text-gray-400")} />{t("nav", l.key, lang)}
+      </Link>
+    );
+  };
 
   return (
-    <nav className="lg:hidden fixed bottom-0  left-0 right-0 bg-white border-t border-gray-100 z-30 pb-safe">
+    <>
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 border-t border-white/60 bg-white/70 shadow-[0_-8px_30px_rgba(15,67,45,0.08)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/55 pb-safe">
       <div className="flex items-stretch justify-around px-1">
         {links.map((l) => {
           const fullHref = l.isExternal
@@ -1005,7 +1043,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
 
         {showMore && (
           <button
-            onClick={onOpenMenu}
+            onClick={() => setMoreOpen(true)}
             className="flex flex-col items-center justify-center gap-1 py-2.5 px-2 min-w-0 flex-1 relative transition-all active:scale-95 text-gray-400"
           >
             <div className="flex items-center justify-center rounded-xl w-10 h-7">
@@ -1034,5 +1072,22 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
         )}
       </div>
     </nav>
+    <Drawer open={moreOpen} onOpenChange={setMoreOpen} side="bottom" title={lang === "ml" ? "കൂടുതൽ" : "More"} description={lang === "ml" ? "നാവിഗേഷൻ ഓപ്ഷനുകൾ" : "All navigation options"} className="border-t border-white/70 bg-white/90 backdrop-blur-xl" contentClassName="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <div className="mb-3 overflow-hidden rounded-2xl border border-emerald-100 bg-emerald-50/70">
+        <Link to={profileHref} onClick={() => setMoreOpen(false)} className="flex items-center gap-3 px-4 py-3.5">
+          {user.photoUrl ? <img src={user.photoUrl} alt="Profile" className="h-11 w-11 rounded-full object-cover" /> : <span className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-600 text-lg font-bold text-white">{user.name.charAt(0)}</span>}
+          <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold text-gray-900">{user.name}</span><span className="block truncate text-xs capitalize text-emerald-700">{user.role}</span></span>
+          <ChevronRight className="h-5 w-5 shrink-0 text-emerald-600" />
+        </Link>
+        <div className="grid grid-cols-3 gap-px border-t border-emerald-100 bg-emerald-100">
+          {sessionCount > 1 && <button type="button" onClick={() => { setMoreOpen(false); navigate("/"); }} className="bg-white/70 px-2 py-3 text-xs font-semibold text-gray-700">{lang === "ml" ? "സെഷൻ മാറ്റുക" : "Switch session"}</button>}
+          <button type="button" onClick={openNewSession} className="bg-white/70 px-2 py-3 text-xs font-semibold text-gray-700"><span className="block text-base leading-none">+</span>{lang === "ml" ? "സെഷൻ ചേർക്കുക" : "Add session"}</button>
+          <button type="button" onClick={() => { setMoreOpen(false); logout(); }} className="bg-white/70 px-2 py-3 text-xs font-semibold text-red-600">{lang === "ml" ? "പുറത്തുകടക്കുക" : "Sign out"}</button>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2 pb-2">{moreLinks.map(renderMoreLink)}</div>
+    </Drawer>
+    <OnboardingDrawer open={onboardingOpen} onOpenChange={setOnboardingOpen} role={onboardingRole} setRole={setOnboardingRole} slug={onboardingSlug} setSlug={setOnboardingSlug} onClearSlug={() => { setOnboardingSlug(""); setOnboardingRole(null); }} onSubmit={(event) => { event.preventDefault(); if (onboardingRole && onboardingSlug.trim()) navigate(`/m/${onboardingSlug.trim().toLowerCase()}/${onboardingRole}`); }} />
+    </>
   );
 }

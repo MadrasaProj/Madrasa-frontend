@@ -2,7 +2,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Geist:ital,wght@0,100..900;1,100..900&display=swap');
 
 :root {
-  --background: #faf9f6;
+  /* --background: #faf9f6; */
   --foreground: #1a1a1a;
   --primary: #059669;
   --primary-light: #d1fae5;
@@ -20,7 +20,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #faf9f6;
+    /* --background: #faf9f6; */
     --foreground: #1a1a1a;
   }
 }
