@@ -507,7 +507,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   if (!hasHydrated || isResolving) {
     return (
-      <div className="min-h-screen bg-[#faf9f6] flex items-center justify-center text-sm text-gray-500">
+      <div className="min-h-screen   flex items-center justify-center text-sm text-gray-500">
         {isResolving ? "Loading tenant settings..." : "Loading..."}
       </div>
     );
@@ -552,7 +552,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-    <div className="min-h-[100svh] overflow-auto bg-[#faf9f6]">
+    <div className="min-h-[100svh] overflow-auto  ">
       <Sidebar isOpen={isMobileSidebarOpen} onClose={() => setIsMobileSidebarOpen(false)} />
       <div className="lg:ml-64">
         <SuperAdminViewingBanner />
@@ -597,7 +597,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* ── Desktop top bar ────────────────────────────────── */}
-        <header className="hidden lg:flex sticky top-0 z-30 bg-[#faf9f6]/90 backdrop-blur-md border-b border-gray-100 px-8 py-4 items-center justify-between">
+        <header className="hidden lg:flex sticky top-0 z-30  /90 backdrop-blur-md border-b border-gray-100 px-8 py-4 items-center justify-between">
           <div className="text-sm text-gray-500">
             {new Date().toLocaleDateString(lang === "ml" ? "ml-IN" : "en-IN", {
               weekday: "long", year: "numeric", month: "long", day: "numeric",

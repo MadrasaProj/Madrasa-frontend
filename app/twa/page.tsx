@@ -1,12 +1,42 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { GraduationCap, Users, ArrowRight, LogOut, Shield, Building2 } from "lucide-react";
+import { Swiper, SwiperSlide } from "swiper/react";
+import type { Swiper as SwiperInstance } from "swiper";
+import "swiper/css";
+import { GraduationCap, Users, LogOut, Shield, Building2 } from "lucide-react";
 import { useAuthStore, getStoredSessionsSync, storageKeyForRole, type UserRole } from "@/store/auth";
 import { roleHomePath } from "@/lib/tenant-routing";
-import PwaInstallButton from "@/components/PwaInstallButton";
+import { Button } from "@/components/ui/button";
+import OnboardingDrawer from "@/components/twa/OnboardingDrawer";
 
-type LandingRole = "parent" | "teacher";
+type LandingRole = "parent" | "teacher" | "admin";
+
+const onboardingSlides = [
+  {
+    eyebrow: "Welcome to Smart Madrasa",
+    title: "One place for your whole madrasa",
+    description:
+      "Connect management, teachers, students, and parents with one simple system built for better learning.",
+    image: "/imgs/onboarding/1.png",
+    alt: "Madrasa community",
+  },
+  {
+    eyebrow: "Stay connected to learning",
+    title: "Make every ibada count",
+    description:
+      "Track ibada gently and consistently, helping students build meaningful daily habits with support from their madrasa and family.",
+    image: "/imgs/onboarding/2.png",
+    alt: "Quran and prayer beads",
+  },
+  {
+    eyebrow: "Plan. Conduct. Improve.",
+    title: "Exams made simple",
+    description:
+      "Create exams, manage results, and understand progress clearly—so teachers can focus on helping every student grow.",
+    image: "/imgs/onboarding/3.png",
+    alt: "Exam papers and pencil",
+  },
+] as const;
 
 import {
   clearTenantSlug,
@@ -121,6 +151,9 @@ export default function TwaLandingPage() {
 
   const [role, setRole] = useState<LandingRole | null>(null);
   const [slug, setSlug] = useState("");
+  const [onboardingStep, setOnboardingStep] = useState(0);
+  const [hasStarted, setHasStarted] = useState(false);
+  const [onboardingSwiper, setOnboardingSwiper] = useState<SwiperInstance | null>(null);
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -199,139 +232,75 @@ export default function TwaLandingPage() {
     setRole(null);
   };
 
-  return (
-    <div className="min-h-[100dvh] bg-[#faf9f6] flex flex-col items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35 }}
-        className="w-full max-w-md"
-      >
-        <div className="text-center mb-8">
-          <img
-            src="/icons/icon.svg"
-            alt="Smart Madrasa"
-            className="inline-block w-16 h-16 mb-4 shadow-lg rounded-2xl"
-          />
-          <h1 className="text-2xl font-bold text-gray-900">Madrasa Portal</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Select your role to continue
-          </p>
-        </div>
+  
+    const isLastSlide = onboardingStep === onboardingSlides.length - 1;
 
-        {/* ── Signed-in sessions (multi-role) ── */}
-        <SessionsList />
+    return (
+      <main className="relative min-h-[100dvh] overflow-hidden bg-[#f8fbf7] text-slate-900">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 opacity-70"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(16, 111, 76, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(16, 111, 76, 0.08) 1px, transparent 1px)",
+            backgroundSize: "32px 32px",
+          }}
+        />
+        <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-md flex-col   pb-7 pt-8 sm:px-8">
+          <div className="flex justify-end">
+           </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="grid grid-cols-2 gap-3">
-            <button
+          <Swiper
+          autoplay
+            onSwiper={setOnboardingSwiper}
+            onSlideChange={(swiper) => setOnboardingStep(swiper.activeIndex)}
+            // spaceBetween={28}
+            slidesPerView={1}
+            className="flex w-full flex-1 !overflow-visible !px-2"
+            allowTouchMove
+            resistanceRatio={1}
+          >
+            {onboardingSlides.map((item) => (
+              <SwiperSlide key={item.title} className="!flex flex-col px-6 items-center justify-center px-2 text-center">
+                <div className="mb-3 flex h-[min(48vh,530px)] w-full items-center justify-center">
+                  <img src={item.image} alt={item.alt} className="max-h-full mt-auto  w-full object-contain drop-shadow-[0_18px_18px_rgba(14,78,54,0.12)]" />
+                </div>
+                <div className="mb-5 flex h-14 w-14 items-center justify-center ">
+                  <img src="/icons/icon.svg" alt="Smart Madrasa" className="h-10 w-10  " />
+                </div>
+                {/* <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">{item.eyebrow}</p> */}
+                <h1 className="max-w-sm bg-gradient-to-r from-emerald-800 via-emerald-600 to-emerald-900 bg-clip-text text-[2.5rem] font-semibold leading-[1.06] tracking-[-0.045em] text-transparent">{item.title}</h1>
+                <p className="mt-4 max-w-sm text-sm leading-6 text-slate-600">{item.description}</p>
+              </SwiperSlide>
+            ))}
+          </Swiper>
+
+          <div className="space-y-5 px-6">
+            <div className="flex justify-center gap-2" aria-label="Onboarding progress">
+              {onboardingSlides.map((item, index) => (
+                <button
+                  key={item.title}
+                  type="button"
+                  aria-label={`Go to slide ${index + 1}`}
+                  onClick={() => onboardingSwiper?.slideTo(index)}
+                  className={`h-1.5 rounded-full transition-all ${index === onboardingStep ? "w-8 bg-emerald-700" : "w-1.5 bg-emerald-700/20"}`}
+                />
+              ))}
+            </div>
+            <Button
               type="button"
-              onClick={() => setRole("parent")}
-              className={`flex flex-col items-center gap-2 p-5 rounded-2xl border-2 transition-all ${
-                role === "parent"
-                  ? "border-emerald-500 bg-emerald-50 shadow-sm"
-                  : "border-gray-200 bg-white hover:border-gray-300"
-              }`}
+              onClick={() => (  setHasStarted(true)  )}
+              className="h-auto w-full rounded-2xl px-5 py-4 text-sm font-bold shadow-[0_10px_24px_rgba(16,111,76,0.22)] active:scale-[0.99]"
             >
-              <div
-                className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                  role === "parent"
-                    ? "bg-emerald-600 text-white"
-                    : "bg-gray-100 text-gray-500"
-                }`}
-              >
-                <Users className="w-6 h-6" />
-              </div>
-              <span
-                className={`text-sm font-semibold ${
-                  role === "parent" ? "text-emerald-800" : "text-gray-700"
-                }`}
-              >
-                Parent
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setRole("teacher")}
-              className={`flex flex-col items-center gap-2 p-5 rounded-2xl border-2 transition-all ${
-                role === "teacher"
-                  ? "border-emerald-500 bg-emerald-50 shadow-sm"
-                  : "border-gray-200 bg-white hover:border-gray-300"
-              }`}
-            >
-              <div
-                className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                  role === "teacher"
-                    ? "bg-emerald-600 text-white"
-                    : "bg-gray-100 text-gray-500"
-                }`}
-              >
-                <GraduationCap className="w-6 h-6" />
-              </div>
-              <span
-                className={`text-sm font-semibold ${
-                  role === "teacher" ? "text-emerald-800" : "text-gray-700"
-                }`}
-              >
-                Teacher
-              </span>
-            </button>
+              Get started
+             </Button>
           </div>
-
-          {role && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              transition={{ duration: 0.2 }}
-            >
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Madrasa Slug
-              </label>
-              <input
-                type="text"
-                value={slug}
-                onChange={(e) => setSlug(e.target.value)}
-                placeholder="e.g. noorul-islam"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-gray-900 text-sm"
-                autoFocus
-                required
-              />
-              <div className="flex items-center justify-between mt-1.5">
-                <p className="text-xs text-gray-400">
-                  Enter your madrasa's slug to proceed to login
-                </p>
-                {slug && (
-                  <button
-                    type="button"
-                    onClick={handleClearSlug}
-                    className="text-xs text-emerald-600 hover:text-emerald-700 font-medium hover:underline"
-                  >
-                    Change
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          {role && (
-            <motion.button
-              type="submit"
-              disabled={!slug.trim()}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="w-full bg-emerald-600 text-white font-semibold py-3.5 rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
-            >
-              Continue to Login
-              <ArrowRight className="w-4 h-4" />
-            </motion.button>
-          )}
-        </form>
-
-        <div className="mt-4">
-          <PwaInstallButton />
         </div>
-      </motion.div>
-    </div>
-  );
-}
+     <OnboardingDrawer open={hasStarted} onOpenChange={setHasStarted} role={role} setRole={setRole} slug={slug} setSlug={setSlug} onSubmit={handleSubmit} onClearSlug={handleClearSlug} sessionsContent={<SessionsList />} />;
+
+     
+      </main>
+    );
+   
+
+  }

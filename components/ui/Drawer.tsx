@@ -92,7 +92,7 @@ export function Drawer({
           {title || showCloseButton ? (
             <div
               className={cn(
-                "flex items-start justify-between gap-3 border-b border-gray-100 shrink-0",
+                "flex items-start justify-between gap-3 shrink-0",
                 isBottom ? "px-5 pt-5 pb-3.5" : "px-5 pt-4 pb-4"
               )}
             >
