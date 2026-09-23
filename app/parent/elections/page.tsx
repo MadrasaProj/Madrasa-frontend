@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/Button";
+import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { motion, AnimatePresence } from "framer-motion";
@@ -268,18 +269,12 @@ export default function ParentElectionsPage() {
       )}
 
       {/* ── Voting Modal ── */}
-      <AnimatePresence>
+      <Dialog
+        open={!!activeElection}
+        onOpenChange={(open) => { if (!open) { setActiveElection(null); setConfirmStep(false); setSelectedCandidate(null); } }}
+      >
         {activeElection && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-50 flex items-end lg:items-center justify-center p-0 lg:p-4"
-            onClick={() => { setActiveElection(null); setConfirmStep(false); setSelectedCandidate(null); }}
-          >
-            <motion.div
-              initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
-              className="bg-white rounded-t-3xl lg:rounded-3xl w-full max-w-lg max-h-[92vh] overflow-y-auto shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
+            <DialogContent className="w-full max-w-lg max-h-[92vh] overflow-y-auto p-0">
               {/* Modal Header */}
               <div className="bg-linear-to-br from-emerald-600 to-teal-600 rounded-t-3xl p-5 text-white">
                 <div className="flex items-start justify-between gap-3">
@@ -409,10 +404,9 @@ export default function ParentElectionsPage() {
                   </div>
                 </div>
               )}
-            </motion.div>
-          </motion.div>
+            </DialogContent>
         )}
-      </AnimatePresence>
+      </Dialog>
     </DashboardLayout>
   );
 }
