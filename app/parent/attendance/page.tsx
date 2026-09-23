@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useState, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -219,23 +220,23 @@ export default function ParentAttendancePage() {
             <div className="bg-white rounded-2xl border border-gray-100 p-5 lg:max-w-sm lg:flex-1">
               {/* Month nav */}
               <div className="flex items-center justify-between mb-5">
-                <button
+                <Button
                   onClick={() => setMonthIndex((i) => Math.max(i - 1, 0))}
                   disabled={monthIndex === 0}
                   className="p-2 rounded-xl hover:bg-gray-100 disabled:opacity-30 transition-colors"
                 >
                   <ChevronLeft className="w-5 h-5 text-gray-600" />
-                </button>
+                </Button>
                 <h2 className="text-sm font-bold text-gray-800">
                   {currentMonth ? monthLabel(currentMonth, locale) : ""}
                 </h2>
-                <button
+                <Button
                   onClick={() => setMonthIndex((i) => Math.min(i + 1, availableMonths.length - 1))}
                   disabled={monthIndex === availableMonths.length - 1}
                   className="p-2 rounded-xl hover:bg-gray-100 disabled:opacity-30 transition-colors"
                 >
                   <ChevronRight className="w-5 h-5 text-gray-600" />
-                </button>
+                </Button>
               </div>
 
               {/* Day headers */}

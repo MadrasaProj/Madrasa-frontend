@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -168,7 +169,7 @@ export default function ParentHomeworkPage() {
         back
         backHref="/parent"
         action={
-          <button
+          <Button
             onClick={() => refetch()}
             disabled={isRefetching}
             className="p-2.5 rounded-xl bg-white border border-gray-200 text-gray-500 hover:text-gray-800 hover:border-gray-300 transition-all active:scale-95 shadow-sm"
@@ -176,7 +177,7 @@ export default function ParentHomeworkPage() {
             <RefreshCw
               className={cn("w-4 h-4", isRefetching && "animate-spin")}
             />
-          </button>
+          </Button>
         }
       />
 
@@ -271,7 +272,7 @@ export default function ParentHomeworkPage() {
                     const Icon = cfg.icon;
                     const activeFilter = filter === s;
                     return (
-                      <button
+                      <Button
                         key={s}
                         onClick={() => setFilter(s === filter ? "all" : s)}
                         className={cn(
@@ -318,7 +319,7 @@ export default function ParentHomeworkPage() {
                           
                            
                         </div>
-                      </button>
+                      </Button>
                     );
                   },
                 )}
@@ -330,7 +331,7 @@ export default function ParentHomeworkPage() {
                   {(
                     ["all", "NOT_SUBMITTED", "SUBMITTED", "CHECKED"] as const
                   ).map((f) => (
-                    <button
+                    <Button
                       key={f}
                       onClick={() => setFilter(f)}
                       className={cn(
@@ -347,7 +348,7 @@ export default function ParentHomeworkPage() {
                             STATUS_CONFIG[f].labelKey as any,
                             lang,
                           )}
-                    </button>
+                    </Button>
                   ))}
                 </div>
                 <p className="text-sm text-gray-400 hidden sm:block">
@@ -484,7 +485,7 @@ export default function ParentHomeworkPage() {
                             </td>
                             <td className="px-6 py-5 text-right">
                               {hw.submission.status === "NOT_SUBMITTED" ? (
-                                <button
+                                <Button
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setConfirmSubmitHw(hw);
@@ -493,9 +494,9 @@ export default function ParentHomeworkPage() {
                                 >
                                   <Send className="w-3.5 h-3.5" />
                                   {t("parentPages", "submitBtn", lang)}
-                                </button>
+                                </Button>
                               ) : (
-                                <button
+                                <Button
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setSelectedHw(hw);
@@ -504,7 +505,7 @@ export default function ParentHomeworkPage() {
                                 >
                                   {t("parentPages", "viewBtn", lang)}
                                   <ChevronRight className="w-4 h-4" />
-                                </button>
+                                </Button>
                               )}
                             </td>
                           </tr>
@@ -641,7 +642,7 @@ export default function ParentHomeworkPage() {
                           <div className="flex items-stretch border-t border-gray-100">
                             {hw.submission.status === "NOT_SUBMITTED" ? (
                               <>
-                                <button
+                                <Button
                                   onClick={() => setConfirmSubmitHw(hw)}
                                   disabled={
                                     submitMutation.isPending &&
@@ -658,22 +659,22 @@ export default function ParentHomeworkPage() {
                                     <Send className="w-4 h-4" />
                                   )}
                                   Mark as Submitted
-                                </button>
-                                <button
+                                </Button>
+                                <Button
                                   onClick={() => setSelectedHw(hw)}
                                   className="px-5 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors"
                                 >
                                   <ChevronRight className="w-5 h-5" />
-                                </button>
+                                </Button>
                               </>
                             ) : (
-                              <button
+                              <Button
                                 onClick={() => setSelectedHw(hw)}
                                 className="flex-1 py-3.5 bg-gray-50 text-gray-600 text-sm font-semibold flex items-center justify-center gap-2 hover:bg-gray-100 transition-colors active:scale-[0.99]"
                               >
                                 <ExternalLink className="w-4 h-4" />
                                 View Details
-                              </button>
+                              </Button>
                             )}
                           </div>
                         </motion.div>
@@ -791,7 +792,7 @@ export default function ParentHomeworkPage() {
               </div>
             </div>
 
-            <button
+            <Button
               onClick={() =>
                 handleSubmitHomework(confirmSubmitHw.submission.id)
               }
@@ -804,7 +805,7 @@ export default function ParentHomeworkPage() {
                 <CheckCheck className="w-4 h-4" />
               )}
               Confirm — Mark as Submitted
-            </button>
+            </Button>
           </div>
         )}
       </Drawer>
@@ -916,7 +917,7 @@ export default function ParentHomeworkPage() {
             {/* Submit action */}
             {selectedHw.submission.status === "NOT_SUBMITTED" && (
               <div className="pt-2">
-                <button
+                <Button
                   onClick={() => {
                     setSelectedHw(null);
                     setConfirmSubmitHw(selectedHw);
@@ -925,7 +926,7 @@ export default function ParentHomeworkPage() {
                 >
                   <Send className="w-4 h-4" />
                   Mark as Submitted
-                </button>
+                </Button>
               </div>
             )}
 

@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { Sidebar, BottomNav } from "@/components/Navigation";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import {
@@ -34,13 +35,13 @@ function SuperAdminViewingBanner() {
         <ShieldAlert className="w-4 h-4 shrink-0" />
         <span>Super Admin — viewing <strong>{activeTenantSlug ?? activeClientId}</strong></span>
       </div>
-      <button
+      <Button
         onClick={handleExit}
         className="flex items-center gap-1 px-3 py-1 rounded-lg bg-white/20 hover:bg-white/30 transition-colors text-xs font-semibold shrink-0"
       >
         <X className="w-3.5 h-3.5" />
         Exit
-      </button>
+      </Button>
     </div>
   );
 }
@@ -204,7 +205,7 @@ function UserMenu({
               const sub = info?.className ?? info?.adno ?? "";
               const isActive = currentStudentId === id;
               return (
-                <button
+                <Button
                   key={id}
                   onClick={() => handleSelectStudent(id)}
                   className={cn(
@@ -244,7 +245,7 @@ function UserMenu({
                   {isActive && (
                     <Check className="w-4 h-4 text-emerald-600 shrink-0" />
                   )}
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -280,7 +281,7 @@ function UserMenu({
           </Link>
         )}
 
-        <button
+        <Button
           onClick={() => {
             setOpen(false);
             if (typeof window !== "undefined") {
@@ -294,11 +295,11 @@ function UserMenu({
             <HelpCircle className="w-4 h-4 text-gray-500" />
           </span>
           <span className="font-medium">Help & Support</span>
-        </button>
+        </Button>
       </div>
 
       <div className="border-t border-gray-100 py-1.5 bg-gray-50/40">
-        <button
+        <Button
           onClick={handleLogout}
           className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors"
           role="menuitem"
@@ -307,14 +308,14 @@ function UserMenu({
             <LogOut className="w-4 h-4 text-red-600" />
           </span>
           <span className="font-semibold">Sign Out</span>
-        </button>
+        </Button>
       </div>
     </>
   );
 
   // Trigger button
   const trigger = (
-    <button
+    <Button
       onClick={() => setOpen((o) => !o)}
       className={cn(
         "group flex items-center gap-2.5 pl-1.5 pr-2.5 py-1.5 rounded-xl bg-white border border-gray-200",
@@ -342,7 +343,7 @@ function UserMenu({
           open && "rotate-180 text-gray-600",
         )}
       />
-    </button>
+    </Button>
   );
 
   if (isDrawer) {
@@ -374,13 +375,13 @@ function UserMenu({
               >
                 <div className="pt-2.5 pb-1 flex justify-center shrink-0 relative">
                   <div className="w-10 h-1 bg-gray-300 rounded-full" />
-                  <button
+                  <Button
                     onClick={() => setOpen(false)}
                     className="absolute right-3 top-1.5 p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg active:scale-95 transition-all"
                     aria-label="Close menu"
                   >
                     <X className="w-4 h-4" />
-                  </button>
+                  </Button>
                 </div>
                 <div className="overflow-y-auto flex-1 overscroll-contain pb-[max(0.5rem,env(safe-area-inset-bottom))]">
                   {menuBody}
@@ -563,13 +564,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           style={{ minHeight: 56 }}
         >
           <div className="flex items-center gap-2">
-            <button
+            <Button
               onClick={() => setIsMobileSidebarOpen(true)}
               className="p-1.5 text-gray-500 hover:bg-gray-100 active:bg-gray-200 rounded-xl active:scale-95 transition-all"
               aria-label="Open menu"
             >
               <Menu className="w-5.5 h-5.5" />
-            </button>
+            </Button>
 
             <UserMenu
               user={user}

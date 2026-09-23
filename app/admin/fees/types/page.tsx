@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -163,23 +166,23 @@ export default function AdminFeeTypesPage() {
             >
               <ArrowLeft className="w-4 h-4" /> Back to Fees
             </a>
-            <button
+            <Button
               onClick={() => { setShowCreate(true); setCreateError(null); }}
               className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold"
             >
               <Plus className="w-4 h-4" /> New Fee Type
-            </button>
+            </Button>
           </div>
         }
       />
 
-      <button
+      <Button
         type="button"
         onClick={() => { setShowCreate(true); setCreateError(null); }}
         className="sm:hidden w-full mb-5 flex items-center justify-center gap-1.5 px-4 py-3 bg-emerald-600 text-white rounded-xl text-sm font-semibold"
       >
         <Plus className="w-4 h-4" /> New Fee Type
-      </button>
+      </Button>
 
       {error && <ApiErrorBanner message={error} onRetry={load} />}
 
@@ -193,12 +196,12 @@ export default function AdminFeeTypesPage() {
         <div className="text-center py-16 text-gray-400">
           <CreditCard className="w-10 h-10 mx-auto mb-3 opacity-30" />
           <p className="text-sm">No fee types yet. Create one to start collecting.</p>
-          <button
+          <Button
             onClick={() => { setShowCreate(true); setCreateError(null); }}
             className="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold inline-flex items-center gap-1.5"
           >
             <Plus className="w-4 h-4" /> Create Fee Type
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 overflow-auto w-full">
@@ -256,13 +259,13 @@ export default function AdminFeeTypesPage() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <button
+                        <Button
                           onClick={() => handleEdit(ft)}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-50 text-gray-600 text-[11px] font-semibold hover:bg-gray-100 transition-all"
                         >
                           <Pencil className="w-3 h-3" /> Edit
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           onClick={() => handleGenerate(ft)}
                           disabled={generating === ft.id}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-700 text-[11px] font-semibold hover:bg-amber-100 transition-all disabled:opacity-50"
@@ -273,15 +276,15 @@ export default function AdminFeeTypesPage() {
                             <Zap className="w-3 h-3" />
                           )}
                           Generate
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="button"
                           onClick={() => { setDeleteTarget(ft); setDeleteError(null); }}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-50 text-red-600 text-[11px] font-semibold hover:bg-red-100 transition-all"
                           aria-label={`Delete ${ft.name}`}
                         >
                           <Trash2 className="w-3 h-3" /> Delete
-                        </button>
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -315,9 +318,9 @@ export default function AdminFeeTypesPage() {
               <div className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-md shadow-xl max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between px-5 py-4 border-b">
                   <p className="font-bold text-gray-900">New Fee Type</p>
-                  <button onClick={() => setShowCreate(false)}>
+                  <Button onClick={() => setShowCreate(false)}>
                     <X className="w-5 h-5 text-gray-400" />
-                  </button>
+                  </Button>
                 </div>
                 <div className="px-5 py-4 space-y-4">
                   {createError && (
@@ -325,7 +328,7 @@ export default function AdminFeeTypesPage() {
                   )}
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Name *</label>
-                    <input
+                    <Input
                       type="text" value={newFee.name ?? ""}
                       placeholder="e.g. Monthly Fee, SKSBV Fund"
                       onChange={(e) => setNewFee((n) => ({ ...n, name: e.target.value }))}
@@ -334,7 +337,7 @@ export default function AdminFeeTypesPage() {
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Amount (₹) {newFee.isDonation ? "(not applicable)" : "*"}</label>
-                    <input
+                    <Input
                       type="number" value={newFee.isDonation ? "" : (newFee.amount ?? "")} placeholder={newFee.isDonation ? "Entered during collection" : "500"}
                       disabled={newFee.isDonation}
                       onChange={(e) => setNewFee((n) => ({ ...n, amount: Number(e.target.value) }))}
@@ -342,12 +345,12 @@ export default function AdminFeeTypesPage() {
                     />
                   </div>
                   <label className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 cursor-pointer">
-                    <input type="checkbox" checked={!!newFee.isDonation} onChange={(e) => setNewFee((n) => ({ ...n, isDonation: e.target.checked, amount: e.target.checked ? 0 : (n.amount ?? 0) }))} className="h-4 w-4 accent-amber-600" />
+                    <Input type="checkbox" checked={!!newFee.isDonation} onChange={(e) => setNewFee((n) => ({ ...n, isDonation: e.target.checked, amount: e.target.checked ? 0 : (n.amount ?? 0) }))} className="h-4 w-4 accent-amber-600" />
                     <span><span className="block text-sm font-semibold text-amber-800">This is a donation</span><span className="block text-[11px] text-amber-700">No fixed amount; enter it when marking payment.</span></span>
                   </label>
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Description (optional)</label>
-                    <input
+                    <Input
                       type="text" value={newFee.description ?? ""} placeholder="Details…"
                       onChange={(e) => setNewFee((n) => ({ ...n, description: e.target.value }))}
                       className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
@@ -366,7 +369,7 @@ export default function AdminFeeTypesPage() {
                               : "border-gray-200 bg-gray-50 text-gray-700",
                           )}
                         >
-                          <input
+                          <Input
                             type="radio" className="sr-only"
                             checked={newFee.kind === k}
                             onChange={() => setNewFee((n) => ({ ...n, kind: k }))}
@@ -380,7 +383,7 @@ export default function AdminFeeTypesPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Frequency</label>
-                        <select
+                        <Select
                           value={newFee.frequency ?? "monthly"}
                           onChange={(e) => setNewFee((n) => ({ ...n, frequency: e.target.value }))}
                           className="w-full px-3 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm"
@@ -388,11 +391,11 @@ export default function AdminFeeTypesPage() {
                           {["monthly", "quarterly", "yearly"].map((f) => (
                             <option key={f} value={f}>{f}</option>
                           ))}
-                        </select>
+                        </Select>
                       </div>
                       <div>
                         <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Due Day</label>
-                        <input
+                        <Input
                           type="number" min={1} max={31} placeholder="5"
                           value={newFee.dueDay ?? ""}
                           onChange={(e) => setNewFee((n) => ({ ...n, dueDay: Number(e.target.value) }))}
@@ -408,7 +411,7 @@ export default function AdminFeeTypesPage() {
                         {classes.map((c) => {
                           const selected = (newFee.targetClassIds ?? []).includes(c.id);
                           return (
-                            <button
+                            <Button
                               key={c.id} type="button"
                               onClick={() =>
                                 setNewFee((n) => ({
@@ -424,7 +427,7 @@ export default function AdminFeeTypesPage() {
                               )}
                             >
                               {c.name}
-                            </button>
+                            </Button>
                           );
                         })}
                       </div>
@@ -432,14 +435,14 @@ export default function AdminFeeTypesPage() {
                   )}
                 </div>
                 <div className="px-5 pb-5">
-                  <button
+                  <Button
                     onClick={handleCreate}
                     disabled={creating || !newFee.name || (!newFee.isDonation && !newFee.amount)}
                     className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl disabled:opacity-60 flex items-center justify-center gap-2"
                   >
                     {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                     Create Fee Type
-                  </button>
+                  </Button>
                 </div>
               </div>
             </motion.div>
@@ -483,15 +486,15 @@ export default function AdminFeeTypesPage() {
                 )}
               </div>
               <div className="grid grid-cols-2 gap-3 mt-6">
-                <button
+                <Button
                   type="button"
                   onClick={() => setDeleteTarget(null)}
                   disabled={deleting}
                   className="py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   onClick={handleDelete}
                   disabled={deleting}
@@ -502,7 +505,7 @@ export default function AdminFeeTypesPage() {
                       <Loader2 className="w-4 h-4 animate-spin" /> Deleting…
                     </span>
                   ) : "Delete"}
-                </button>
+                </Button>
               </div>
             </motion.div>
           </>
@@ -532,9 +535,9 @@ export default function AdminFeeTypesPage() {
               <div className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-md shadow-xl max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between px-5 py-4 border-b">
                   <p className="font-bold text-gray-900">Edit Fee Type</p>
-                  <button onClick={() => { setShowEdit(false); setEditingFee(null); }}>
+                  <Button onClick={() => { setShowEdit(false); setEditingFee(null); }}>
                     <X className="w-5 h-5 text-gray-400" />
-                  </button>
+                  </Button>
                 </div>
                 <div className="px-5 py-4 space-y-4">
                   {editError && (
@@ -542,7 +545,7 @@ export default function AdminFeeTypesPage() {
                   )}
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Name *</label>
-                    <input
+                    <Input
                       type="text" value={editFee.name ?? ""}
                       placeholder="e.g. Monthly Fee, SKSBV Fund"
                       onChange={(e) => setEditFee((n) => ({ ...n, name: e.target.value }))}
@@ -551,19 +554,19 @@ export default function AdminFeeTypesPage() {
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Amount (₹) {editFee.isDonation ? "(not applicable)" : "*"}</label>
-                    <input
+                    <Input
                       type="number" value={editFee.isDonation ? "" : (editFee.amount ?? "")} placeholder={editFee.isDonation ? "Entered during collection" : "500"} disabled={editFee.isDonation}
                       onChange={(e) => setEditFee((n) => ({ ...n, amount: Number(e.target.value) }))}
                       className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
                     />
                   </div>
                   <label className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 cursor-pointer">
-                    <input type="checkbox" checked={!!editFee.isDonation} onChange={(e) => setEditFee((n) => ({ ...n, isDonation: e.target.checked, amount: e.target.checked ? 0 : (n.amount ?? 0) }))} className="h-4 w-4 accent-amber-600" />
+                    <Input type="checkbox" checked={!!editFee.isDonation} onChange={(e) => setEditFee((n) => ({ ...n, isDonation: e.target.checked, amount: e.target.checked ? 0 : (n.amount ?? 0) }))} className="h-4 w-4 accent-amber-600" />
                     <span><span className="block text-sm font-semibold text-amber-800">This is a donation</span><span className="block text-[11px] text-amber-700">No fixed amount; enter it when marking payment.</span></span>
                   </label>
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Description (optional)</label>
-                    <input
+                    <Input
                       type="text" value={editFee.description ?? ""} placeholder="Details…"
                       onChange={(e) => setEditFee((n) => ({ ...n, description: e.target.value }))}
                       className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
@@ -582,7 +585,7 @@ export default function AdminFeeTypesPage() {
                               : "border-gray-200 bg-gray-50 text-gray-700",
                           )}
                         >
-                          <input
+                          <Input
                             type="radio" className="sr-only"
                             checked={editFee.kind === k}
                             onChange={() => setEditFee((n) => ({ ...n, kind: k }))}
@@ -596,7 +599,7 @@ export default function AdminFeeTypesPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Frequency</label>
-                        <select
+                        <Select
                           value={editFee.frequency ?? "monthly"}
                           onChange={(e) => setEditFee((n) => ({ ...n, frequency: e.target.value }))}
                           className="w-full px-3 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm"
@@ -604,11 +607,11 @@ export default function AdminFeeTypesPage() {
                           {["monthly", "quarterly", "yearly"].map((f) => (
                             <option key={f} value={f}>{f}</option>
                           ))}
-                        </select>
+                        </Select>
                       </div>
                       <div>
                         <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Due Day</label>
-                        <input
+                        <Input
                           type="number" min={1} max={31} placeholder="5"
                           value={editFee.dueDay ?? ""}
                           onChange={(e) => setEditFee((n) => ({ ...n, dueDay: Number(e.target.value) }))}
@@ -630,7 +633,7 @@ export default function AdminFeeTypesPage() {
                               : "border-gray-200 bg-gray-50 text-gray-700",
                           )}
                         >
-                          <input
+                          <Input
                             type="radio" className="sr-only"
                             checked={editFee.status === s}
                             onChange={() => setEditFee((n) => ({ ...n, status: s }))}
@@ -647,7 +650,7 @@ export default function AdminFeeTypesPage() {
                         {classes.map((c) => {
                           const selected = (editFee.targetClassIds ?? []).includes(c.id);
                           return (
-                            <button
+                            <Button
                               key={c.id} type="button"
                               onClick={() =>
                                 setEditFee((n) => ({
@@ -663,7 +666,7 @@ export default function AdminFeeTypesPage() {
                               )}
                             >
                               {c.name}
-                            </button>
+                            </Button>
                           );
                         })}
                       </div>
@@ -671,14 +674,14 @@ export default function AdminFeeTypesPage() {
                   )}
                 </div>
                 <div className="px-5 pb-5">
-                  <button
+                  <Button
                     onClick={handleUpdate}
                     disabled={updating || !editFee.name || (!editFee.isDonation && !editFee.amount)}
                     className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl disabled:opacity-60 flex items-center justify-center gap-2"
                   >
                     {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
                     Update Fee Type
-                  </button>
+                  </Button>
                 </div>
               </div>
             </motion.div>

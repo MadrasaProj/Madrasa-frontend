@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -41,10 +42,10 @@ export default function CommitteeAttendancePage() {
           <ShieldOff className="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <p className="text-sm font-semibold text-gray-500">This section is not available</p>
           <p className="text-xs text-gray-400 mt-1">Contact admin to enable access</p>
-          <button onClick={() => navigate("/committee")}
+          <Button onClick={() => navigate("/committee")}
             className="mt-6 px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors">
             Go Back
-          </button>
+          </Button>
         </div>
       </DashboardLayout>
     );
@@ -128,9 +129,9 @@ function CommitteeAttendanceContent() {
 
       <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="flex gap-2 mb-5 bg-gray-100 rounded-2xl p-1">
         {([ { key: "students" as Tab, label_en: "Students Attendance", label_ml: "വിദ്യാർത്ഥി ഹാജർ", icon: GraduationCap }, { key: "staff" as Tab, label_en: "Staff Attendance", label_ml: "സ്റ്റാഫ് ഹാജർ", icon: Users } ]).map((tab) => (
-          <button key={tab.key} onClick={() => setActiveTab(tab.key)} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === tab.key ? "bg-white text-teal-700 shadow-sm" : "text-gray-500"}`}>
+          <Button key={tab.key} onClick={() => setActiveTab(tab.key)} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === tab.key ? "bg-white text-teal-700 shadow-sm" : "text-gray-500"}`}>
             <tab.icon className="w-4 h-4" />{lang === "ml" ? tab.label_ml : tab.label_en}
-          </button>
+          </Button>
         ))}
       </motion.div>
 

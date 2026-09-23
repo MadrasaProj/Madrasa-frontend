@@ -2,6 +2,8 @@ import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown } fro
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/Skeleton"
+import { Button } from "@/components/ui/Button"
+import { Select } from "@/components/ui/Select"
 
 export type SortDir = "asc" | "desc"
 
@@ -90,18 +92,18 @@ export function DataTable<T>({
         </span>
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-gray-400 hidden sm:inline">Show</span>
-          <select
+          <Select
             value={pagination.pageSize}
             onChange={(e) => {
               pagination.onPageSizeChange(Number(e.target.value))
               pagination.onPageChange(1)
             }}
-            className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+            className="h-8 w-auto rounded-lg text-xs bg-white cursor-pointer"
           >
             {pageSizeOptions.map(n => (
               <option key={n} value={n}>{n}</option>
             ))}
-          </select>
+          </Select>
           <span className="text-xs text-gray-400 hidden sm:inline">per page</span>
         </div>
       </div>
@@ -109,23 +111,25 @@ export function DataTable<T>({
       {/* Right: prev/next */}
       {pagination.totalPages > 1 && (
         <div className="flex items-center gap-2">
-          <button
+          <Button
+            variant="outline" size="icon"
             disabled={pagination.page <= 1}
             onClick={() => pagination.onPageChange(pagination.page - 1)}
-            className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center disabled:opacity-40 hover:bg-gray-50 transition-colors"
+            className="w-8 h-8 rounded-xl"
           >
             <ChevronLeft className="w-4 h-4" />
-          </button>
+          </Button>
           <span className="text-sm text-gray-600 font-medium min-w-[5rem] text-center">
             {pagination.page} / {pagination.totalPages}
           </span>
-          <button
+          <Button
+            variant="outline" size="icon"
             disabled={pagination.page >= pagination.totalPages}
             onClick={() => pagination.onPageChange(pagination.page + 1)}
-            className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center disabled:opacity-40 hover:bg-gray-50 transition-colors"
+            className="w-8 h-8 rounded-xl"
           >
             <ChevronRight className="w-4 h-4" />
-          </button>
+          </Button>
         </div>
       )}
     </div>

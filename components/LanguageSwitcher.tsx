@@ -2,14 +2,16 @@
 import { useLanguageStore } from "@/store/language";
 import { motion } from "framer-motion";
 import { Languages } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 
 export default function LanguageSwitcher() {
   const { lang, toggleLang } = useLanguageStore();
 
   return (
-    <button
+    <Button
+      variant="outline" size="sm"
       onClick={toggleLang}
-      className="flex items-center gap-1.5 rounded-full  bg-white/80   px-3 py-1.5 text-xs font-semibold shadow-sm border border-gray-200   hover:shadow-md transition-all"
+      className="h-auto rounded-full bg-white/80 px-3 py-1.5 text-xs shadow-sm hover:shadow-md"
       title={lang === "en" ? "Switch to Malayalam" : "Switch to English"}
     >
       <Languages className="h-3.5 w-3.5 text-emerald-600" />
@@ -21,6 +23,6 @@ export default function LanguageSwitcher() {
       >
         {lang === "en" ? "മല" : "EN"}
       </motion.span>
-    </button>
+    </Button>
   );
 }

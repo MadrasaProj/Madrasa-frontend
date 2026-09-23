@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useState, useMemo } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -84,9 +85,9 @@ export default function StudentDetailPage() {
         <div className="text-center py-20 text-gray-400">
           <User className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="font-semibold text-lg">{error ? (error as Error).message : "Student not found"}</p>
-          <button onClick={() => navigate(-1)} className="mt-4 text-emerald-600 font-semibold text-sm underline">
+          <Button onClick={() => navigate(-1)} className="mt-4 text-emerald-600 font-semibold text-sm underline">
             Go back
-          </button>
+          </Button>
         </div>
       </DashboardLayout>
     );
@@ -107,18 +108,18 @@ export default function StudentDetailPage() {
         action={
           canWrite ? (
             <div className="flex items-center gap-2">
-              <button
+              <Button
                 onClick={() => setShowEdit(true)}
                 className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 px-3 py-2 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
               >
                 <Pencil className="w-4 h-4" /> Edit
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => setConfirmDelete(true)}
                 className="flex items-center gap-1.5 bg-red-50 text-red-600 px-3 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition-colors"
               >
                 <Trash2 className="w-4 h-4" />
-              </button>
+              </Button>
             </div>
           ) : undefined
         }
@@ -276,14 +277,14 @@ export default function StudentDetailPage() {
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3 mt-6">
-                <button
+                <Button
                   onClick={() => setConfirmDelete(false)}
                   disabled={deleteMutation.isPending}
                   className="py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => {
                     deleteMutation.mutate(student.id, {
                       onSuccess: () => navigate(`${slugPrefix}/admin/students`),
@@ -297,7 +298,7 @@ export default function StudentDetailPage() {
                       <Loader2 className="w-4 h-4 animate-spin" /> Deleting…
                     </span>
                   ) : "Delete"}
-                </button>
+                </Button>
               </div>
             </motion.div>
           </>

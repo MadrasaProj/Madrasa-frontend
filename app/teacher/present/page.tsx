@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -82,7 +83,7 @@ export default function TeacherPresentPage() {
       {/* Class selector */}
       <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide">
         {classes.map((cls) => (
-          <button
+          <Button
             key={cls.id}
             onClick={() => setSelectedClass(cls)}
             className={cn(
@@ -93,7 +94,7 @@ export default function TeacherPresentPage() {
             )}
           >
             {cls.name}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -104,12 +105,12 @@ export default function TeacherPresentPage() {
             <span className="text-emerald-700 font-bold text-lg">{present.length}</span>
             {" "}{t("teacherPages", "totalPresent", lang)}
           </p>
-          <button
+          <Button
             onClick={() => selectedClass && loadAttendance(selectedClass)}
             className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600"
           >
             <RefreshCw className="w-3 h-3" /> {t("teacherPages", "refreshBtn", lang)}
-          </button>
+          </Button>
         </div>
       )}
 

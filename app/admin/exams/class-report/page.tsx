@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Select";
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -222,16 +224,16 @@ export default function ClassReportPage() {
  action={
  canCompute && (
  <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
- <button onClick={() => setImportOpen(true)}
+ <Button onClick={() => setImportOpen(true)}
  className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 bg-white hover:bg-gray-50 transition-colors shadow-xs">
  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
  Import Excel
- </button>
- <button onClick={handleCompute} disabled={computing}
+ </Button>
+ <Button onClick={handleCompute} disabled={computing}
  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-50 transition-all shadow-sm hover:scale-[1.01]">
  {computing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
  Compute Grades
- </button>
+ </Button>
  </div>
  )
  }
@@ -281,7 +283,7 @@ export default function ClassReportPage() {
  { key: "status", label: "Final Status" },
  { key: "posters", label: "Rank Posters" },
  ] as { key: Tab; label: string }[]).map(({ key, label }) => (
- <button key={key} onClick={() => setTab(key)}
+ <Button key={key} onClick={() => setTab(key)}
  className={cn(
  "px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap",
  tab === key
@@ -289,7 +291,7 @@ export default function ClassReportPage() {
  : "text-gray-500 border-transparent hover:text-gray-700",
  )}>
  {label}
- </button>
+ </Button>
  ))}
  </div>
 
@@ -375,7 +377,7 @@ function MarklistTab({ report, marklistStudId, setMarklistStudId, madrasaName, m
  {/* Student selector */}
  <div className="flex gap-2 flex-wrap">
  {students.map((r) => (
- <button key={r.student.id}
+ <Button key={r.student.id}
  onClick={() => setMarklistStudId(r.student.id === marklistStudId ? null : r.student.id)}
  className={cn(
  "px-3 py-1.5 rounded-lg text-sm font-medium border transition-all",
@@ -386,7 +388,7 @@ function MarklistTab({ report, marklistStudId, setMarklistStudId, madrasaName, m
  >
  {r.summary.rank === 1 ? "🥇 " : r.summary.rank === 2 ? "🥈 " : r.summary.rank === 3 ? "🥉 " : ""}
  {r.student.name}
- </button>
+ </Button>
  ))}
  </div>
 
@@ -434,14 +436,14 @@ function StatusTab({ report, statusMap, setStatusMap, savingId, savingAll, statu
  <div className="space-y-4">
  <div className="flex items-center justify-between flex-wrap gap-3">
  <p className="text-sm text-gray-500">Set final result status for each student. Grade is optional.</p>
- <button
+ <Button
  onClick={onSaveAll}
  disabled={savingAll || !report.students.some((r) => statusMap[r.student.id]?.finalStatus)}
  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold disabled:opacity-40 transition-colors"
  >
  {savingAll ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
  Save All
- </button>
+ </Button>
  </div>
  {statusMsg && (
  <div className={cn(
@@ -481,7 +483,7 @@ function StatusTab({ report, statusMap, setStatusMap, savingId, savingAll, statu
  {row.summary.rank ?? "—"}
  </td>
  <td className="px-4 py-3">
- <select
+ <Select
  value={entry?.finalStatus ?? ""}
  onChange={(e) => setStatusMap((m) => ({
  ...m,
@@ -491,10 +493,10 @@ function StatusTab({ report, statusMap, setStatusMap, savingId, savingAll, statu
  >
  <option value="">— Select —</option>
  {statusOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
- </select>
+ </Select>
  </td>
  <td className="px-4 py-3">
- <select
+ <Select
  value={entry?.totalGrade ?? ""}
  onChange={(e) => setStatusMap((m) => ({
  ...m,
@@ -504,17 +506,17 @@ function StatusTab({ report, statusMap, setStatusMap, savingId, savingAll, statu
  >
  <option value="">— Optional —</option>
  {TOTAL_GRADE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
- </select>
+ </Select>
  </td>
  <td className="px-4 py-3 text-center">
- <button
+ <Button
  onClick={() => onSave(row)}
  disabled={!entry?.finalStatus || isSaving}
  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium disabled:opacity-40 transition-colors"
  >
  {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
  Save
- </button>
+ </Button>
  </td>
  </tr>
  );
@@ -574,7 +576,7 @@ function PostersTab({ rankedStudents, report, posterStudentId, setPosterStudentI
  {/* Selector */}
  <div className="flex gap-2 flex-wrap mb-4">
  {rankedStudents.map((r) => (
- <button key={r.student.id}
+ <Button key={r.student.id}
  onClick={() => setPosterStudentId(r.student.id === posterStudentId ? null : r.student.id)}
  className={cn(
  "px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all",
@@ -584,7 +586,7 @@ function PostersTab({ rankedStudents, report, posterStudentId, setPosterStudentI
  )}
  >
  {r.summary.rank === 1 ? "🥇" : r.summary.rank === 2 ? "🥈" : "🥉"} {r.student.name}
- </button>
+ </Button>
  ))}
  </div>
 

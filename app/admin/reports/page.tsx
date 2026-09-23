@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -89,9 +90,9 @@ export default function AdminReportsPage() {
         title="Reports & Analytics"
         icon={BarChart3}
         action={
-          <button onClick={load} className="p-2 rounded-xl bg-gray-100 text-gray-600">
+          <Button onClick={load} className="p-2 rounded-xl bg-gray-100 text-gray-600">
             <RefreshCw className="w-4 h-4" />
-          </button>
+          </Button>
         }
       />
 

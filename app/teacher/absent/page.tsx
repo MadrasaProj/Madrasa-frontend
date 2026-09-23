@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -88,7 +89,7 @@ export default function TeacherAbsentPage() {
       {/* Class selector */}
       <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide">
         {classes.map((cls) => (
-          <button
+          <Button
             key={cls.id}
             onClick={() => setSelectedClass(cls)}
             className={cn(
@@ -99,7 +100,7 @@ export default function TeacherAbsentPage() {
             )}
           >
             {cls.name}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -110,9 +111,9 @@ export default function TeacherAbsentPage() {
             <span className="text-red-600 font-bold text-lg">{nonPresent.length}</span>
             {" "}{t("teacherPages", "totalAbsent", lang)}
           </p>
-          <button className="flex items-center gap-1.5 text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-xl">
+          <Button className="flex items-center gap-1.5 text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-xl">
             <Bell className="w-3.5 h-3.5" /> {t("teacherPages", "notifyParents", lang)}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -163,12 +164,12 @@ export default function TeacherAbsentPage() {
       </div>
 
       {!loading && !error && (
-        <button
+        <Button
           onClick={() => selectedClass && loadAttendance(selectedClass)}
           className="mt-3 flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 mx-auto"
         >
           <RefreshCw className="w-3 h-3" /> {t("teacherPages", "refreshBtn", lang)}
-        </button>
+        </Button>
       )}
     </DashboardLayout>
   );

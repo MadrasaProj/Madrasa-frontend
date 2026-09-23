@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useState, useEffect, useCallback } from "react";
 
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -101,7 +102,7 @@ export default function TeacherHomeworkListPage() {
           {/* Class filter */}
           <div className="flex gap-2 mb-4 flex-wrap">
             {classes.map((cls) => (
-              <button
+              <Button
                 key={cls.id}
                 onClick={() => setActiveClassId(cls.id)}
                 className={cn(
@@ -110,7 +111,7 @@ export default function TeacherHomeworkListPage() {
                 )}
               >
                 {cls.name}
-              </button>
+              </Button>
             ))}
           </div>
 

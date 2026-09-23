@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useState, useEffect } from "react";
 import { getGlobalMetrics, listLeads, type LeadListItem } from "@/lib/crm-api";
 import { useAuthStore } from "@/store/auth";
@@ -117,25 +118,25 @@ export default function RenewalsDashboard() {
             <h1 className="text-2xl font-black text-gray-800">Subscription Renewals Center</h1>
             <p className="text-gray-500 text-xs">Monitor subscription validity, expirations, and projected renewal probability.</p>
           </div>
-          <button
+          <Button
             onClick={loadData}
             className="flex items-center justify-center gap-1.5 bg-gray-100 hover:bg-gray-250 text-gray-700 font-bold text-xs py-2.5 px-4 rounded-xl transition-all"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             Refresh Registry
-          </button>
+          </Button>
         </div>
 
         {successMsg && (
           <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl p-4 text-sm flex justify-between items-center shadow-sm">
             <span>{successMsg}</span>
-            <button onClick={() => setSuccessMsg(null)} className="font-bold underline text-xs">Dismiss</button>
+            <Button onClick={() => setSuccessMsg(null)} className="font-bold underline text-xs">Dismiss</Button>
           </div>
         )}
         {error && (
           <div className="bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl p-4 text-sm flex justify-between items-center shadow-sm">
             <span>{error}</span>
-            <button onClick={() => setError(null)} className="font-bold underline text-xs">Dismiss</button>
+            <Button onClick={() => setError(null)} className="font-bold underline text-xs">Dismiss</Button>
           </div>
         )}
 
@@ -218,7 +219,7 @@ export default function RenewalsDashboard() {
                           </span>
                         </td>
                         <td className="py-4 px-6 text-right">
-                          <button
+                          <Button
                             onClick={() => handleSendReminder(r.id, r.daysRemaining)}
                             disabled={triggerLoading === r.id || r.status === "SAFE"}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:bg-gray-100 disabled:text-gray-400 font-bold text-[10px] py-1.5 px-3 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-1.5 ml-auto"
@@ -230,7 +231,7 @@ export default function RenewalsDashboard() {
                                 <Send className="w-3 h-3" /> Trigger Alert
                               </>
                             )}
-                          </button>
+                          </Button>
                         </td>
                       </tr>
                     ))}
@@ -277,7 +278,7 @@ export default function RenewalsDashboard() {
                     </div>
 
                     <div className="border-t border-gray-50 pt-3 flex justify-end">
-                      <button
+                      <Button
                         onClick={() => handleSendReminder(r.id, r.daysRemaining)}
                         disabled={triggerLoading === r.id || r.status === "SAFE"}
                         className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:bg-gray-100 disabled:text-gray-400 font-bold text-[10px] py-2 px-4.5 rounded-xl transition-all active:scale-95 flex items-center gap-1"
@@ -289,7 +290,7 @@ export default function RenewalsDashboard() {
                             <Send className="w-3 h-3" /> Trigger Alert
                           </>
                         )}
-                      </button>
+                      </Button>
                     </div>
                   </motion.div>
                 ))}

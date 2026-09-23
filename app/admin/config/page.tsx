@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -401,7 +403,7 @@ export default function AdminConfigPage() {
                         <label className="block text-xs font-semibold text-gray-500 mb-1.5">
                           {label}
                         </label>
-                        <input
+                        <Input
                           type={type}
                           value={String(config[key] ?? "")}
                           onChange={(e) => handleChange(key, e.target.value)}
@@ -447,7 +449,7 @@ export default function AdminConfigPage() {
                         <label className="block text-xs font-semibold text-gray-500 mb-1.5">
                           {label}
                         </label>
-                        <input
+                        <Input
                           type={type}
                           value={String(config[key] ?? "")}
                           onChange={(e) => handleChange(key, e.target.value)}
@@ -496,7 +498,7 @@ export default function AdminConfigPage() {
                         : "border-gray-200 bg-gray-50",
                     )}
                   >
-                    <input
+                    <Input
                       type="radio"
                       name="attendanceMode"
                       value={mode}
@@ -525,7 +527,7 @@ export default function AdminConfigPage() {
                   {attError}
                 </div>
               )}
-              <button
+              <Button
                 onClick={handleSaveAttendanceMode}
                 disabled={savingAtt || attMode === config.attendanceMode}
                 className={cn(
@@ -546,7 +548,7 @@ export default function AdminConfigPage() {
                     <Save className="w-4 h-4" /> Save Attendance Mode
                   </>
                 )}
-              </button>
+              </Button>
             </motion.div>
 
             <motion.div
@@ -574,7 +576,7 @@ export default function AdminConfigPage() {
                     committee dashboard
                   </p>
                 </div>
-                <button
+                <Button
                   onClick={() => setShowCommAtt((v) => !v)}
                   className={`relative w-12 h-6 rounded-full transition-colors duration-200 shrink-0 ${
                     showCommAtt ? "bg-emerald-500" : "bg-gray-300"
@@ -585,9 +587,9 @@ export default function AdminConfigPage() {
                       showCommAtt ? "translate-x-6" : "translate-x-0"
                     }`}
                   />
-                </button>
+                </Button>
               </div>
-              <button
+              <Button
                 onClick={handleSaveCommitteeAttendance}
                 disabled={
                   savingCommAtt || showCommAtt === config.showCommitteeAttendance
@@ -610,7 +612,7 @@ export default function AdminConfigPage() {
                     <Save className="w-4 h-4" /> Save
                   </>
                 )}
-              </button>
+              </Button>
             </motion.div>
 
             <motion.div
@@ -638,7 +640,7 @@ export default function AdminConfigPage() {
                     committee dashboard
                   </p>
                 </div>
-                <button
+                <Button
                   onClick={() => setShowCommTC((v) => !v)}
                   className={`relative w-12 h-6 rounded-full transition-colors duration-200 shrink-0 ${
                     showCommTC ? "bg-emerald-500" : "bg-gray-300"
@@ -649,9 +651,9 @@ export default function AdminConfigPage() {
                       showCommTC ? "translate-x-6" : "translate-x-0"
                     }`}
                   />
-                </button>
+                </Button>
               </div>
-              <button
+              <Button
                 onClick={handleSaveCommitteeTeacherCheckin}
                 disabled={
                   savingCommTC ||
@@ -675,7 +677,7 @@ export default function AdminConfigPage() {
                     <Save className="w-4 h-4" /> Save
                   </>
                 )}
-              </button>
+              </Button>
             </motion.div>
           </Tabs.Content>
 
@@ -707,7 +709,7 @@ export default function AdminConfigPage() {
                 <label className="block text-xs font-semibold text-gray-500 mb-1.5">
                   New username (email or phone)
                 </label>
-                <input
+                <Input
                   type="text"
                   value={newUsername}
                   onChange={(e) => setNewUsername(e.target.value)}
@@ -720,7 +722,7 @@ export default function AdminConfigPage() {
                   {usernameError}
                 </div>
               )}
-              <button
+              <Button
                 onClick={handleSaveUsername}
                 disabled={savingUsername || !newUsername.trim()}
                 className={cn(
@@ -737,7 +739,7 @@ export default function AdminConfigPage() {
                 ) : (
                   <><Save className="w-4 h-4" /> Update Username</>
                 )}
-              </button>
+              </Button>
             </motion.div>
 
             <motion.div
@@ -752,20 +754,20 @@ export default function AdminConfigPage() {
                     Password
                   </p>
                 </div>
-                <button
+                <Button
                   type="button"
                   onClick={() => setShowPasswords((v) => !v)}
                   className="text-gray-400 hover:text-gray-600"
                 >
                   {showPasswords ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+                </Button>
               </div>
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1.5">
                     New password
                   </label>
-                  <input
+                  <Input
                     type={showPasswords ? "text" : "password"}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
@@ -777,7 +779,7 @@ export default function AdminConfigPage() {
                   <label className="block text-xs font-semibold text-gray-500 mb-1.5">
                     Confirm new password
                   </label>
-                  <input
+                  <Input
                     type={showPasswords ? "text" : "password"}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
@@ -791,7 +793,7 @@ export default function AdminConfigPage() {
                   {passwordError}
                 </div>
               )}
-              <button
+              <Button
                 onClick={handleSavePassword}
                 disabled={savingPassword || !newPassword || !confirmPassword}
                 className={cn(
@@ -808,7 +810,7 @@ export default function AdminConfigPage() {
                 ) : (
                   <><Save className="w-4 h-4" /> Change Password</>
                 )}
-              </button>
+              </Button>
             </motion.div>
           </Tabs.Content>
 
@@ -835,7 +837,7 @@ export default function AdminConfigPage() {
                         <p className="text-sm font-semibold text-gray-800">{mod.label}</p>
                         <p className="text-xs text-gray-500 mt-0.5">{mod.desc}</p>
                       </div>
-                      <button
+                      <Button
                         onClick={() =>
                           setDisabledModules((prev) =>
                             enabled ? [...prev, mod.key] : prev.filter((k) => k !== mod.key)
@@ -850,12 +852,12 @@ export default function AdminConfigPage() {
                             enabled ? "translate-x-6" : "translate-x-0"
                           }`}
                         />
-                      </button>
+                      </Button>
                     </div>
                   );
                 })}
               </div>
-              <button
+              <Button
                 onClick={handleSaveParentModules}
                 disabled={savingParentToggles}
                 className={cn(
@@ -866,7 +868,7 @@ export default function AdminConfigPage() {
                 {savingParentToggles ? <Loader2 className="w-4 h-4 animate-spin" /> :
                  savedParentToggles  ? <><CheckCircle2 className="w-4 h-4" /> Saved!</> :
                                         <><Save className="w-4 h-4" /> Save Module Settings</>}
-              </button>
+              </Button>
             </motion.div>
           </Tabs.Content>
           </div>
@@ -887,7 +889,7 @@ function StickySaveButton({
 }) {
   return (
     <div className="sticky bottom-20 lg:bottom-6">
-      <button
+      <Button
         onClick={onSave}
         disabled={saving}
         className={`w-full lg:w-auto lg:px-10 flex items-center justify-center gap-2.5 py-4 rounded-2xl font-bold text-sm transition-all shadow-lg ${
@@ -907,7 +909,7 @@ function StickySaveButton({
             <Save className="w-5 h-5" /> Save Configuration
           </>
         )}
-      </button>
+      </Button>
     </div>
   );
 }

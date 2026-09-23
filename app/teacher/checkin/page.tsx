@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -271,11 +272,11 @@ export default function TeacherCheckinPage() {
  {activeSession.location.address ?? `${activeSession.location.lat?.toFixed(4)}, ${activeSession.location.lng?.toFixed(4)}`}
  </p>
  )}
- <button onClick={handleCheckOut} disabled={actionLoading}
+ <Button onClick={handleCheckOut} disabled={actionLoading}
  className="mt-6 inline-flex items-center gap-2 px-8 py-3 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm disabled:opacity-50 transition-colors shadow-lg">
  {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
   {t("teacherPages", "checkOutBtn", lang)}
- </button>
+ </Button>
  </div>
  ) : (
  <div className="rounded-3xl p-8 text-center border-2 bg-white border-gray-200 transition-all">
@@ -313,14 +314,14 @@ export default function TeacherCheckinPage() {
   {locError ?? t("teacherPages", "locationHelp", lang)}
   </p>
   <div className="flex flex-wrap gap-2 mt-2">
-  <button
+  <Button
   onClick={fetchLocation}
   disabled={locLoading}
   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold disabled:opacity-50 transition-colors"
   >
   {locLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <MapPin className="w-3 h-3" />}
   Retry
-  </button>
+  </Button>
   <a
   href={LOCATION_HOWTO_VIDEO_URL}
   target="_blank"
@@ -340,7 +341,7 @@ export default function TeacherCheckinPage() {
   )}
  </div>
 
-  <button onClick={handleCheckIn} disabled={actionLoading || locLoading}
+  <Button onClick={handleCheckIn} disabled={actionLoading || locLoading}
   className={cn(
   "mt-6 inline-flex items-center gap-2 px-8 py-3 rounded-2xl text-white font-bold text-sm transition-colors shadow-lg",
   location
@@ -349,7 +350,7 @@ export default function TeacherCheckinPage() {
  )}>
  {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
   {t("teacherPages", "checkInBtn", lang)}
-  </button>
+  </Button>
  </div>
  )}
 

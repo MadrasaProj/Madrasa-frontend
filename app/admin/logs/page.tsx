@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -97,7 +100,7 @@ export default function ActivityLogsPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-4">
-        <select
+        <Select
           value={actorType}
           onChange={(e) => {
             setActorType(e.target.value);
@@ -111,8 +114,8 @@ export default function ActivityLogsPage() {
               {a}
             </option>
           ))}
-        </select>
-        <input
+        </Select>
+        <Input
           type="text"
           value={action}
           onChange={(e) => {
@@ -122,7 +125,7 @@ export default function ActivityLogsPage() {
           placeholder="Filter by action…"
           className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 min-w-[180px]"
         />
-        <button
+        <Button
           onClick={() => {
             setActorType("");
             setAction("");
@@ -131,13 +134,13 @@ export default function ActivityLogsPage() {
           className="text-xs text-gray-400 hover:text-gray-700 px-3 py-2 rounded-xl hover:bg-gray-50 transition-all"
         >
           Clear
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={load}
           className="ml-auto flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition-all"
         >
           <RefreshCw className="w-3.5 h-3.5" /> Refresh
-        </button>
+        </Button>
       </div>
 
       {/* Summary */}
@@ -227,23 +230,23 @@ export default function ActivityLogsPage() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-3 pb-24">
-          <button
+          <Button
             onClick={() => setPage((p) => Math.max(0, p - 1))}
             disabled={page === 0}
             className="flex items-center gap-1 px-3 py-2 text-xs font-semibold rounded-xl border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-all"
           >
             <ChevronLeft className="w-3.5 h-3.5" /> Prev
-          </button>
+          </Button>
           <span className="text-xs text-gray-500">
             Page {page + 1} of {totalPages}
           </span>
-          <button
+          <Button
             onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
             disabled={page >= totalPages - 1}
             className="flex items-center gap-1 px-3 py-2 text-xs font-semibold rounded-xl border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-all"
           >
             Next <ChevronRight className="w-3.5 h-3.5" />
-          </button>
+          </Button>
         </div>
       )}
     </DashboardLayout>

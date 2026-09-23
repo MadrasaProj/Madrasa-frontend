@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { motion, AnimatePresence } from "framer-motion";
@@ -173,14 +174,14 @@ export default function ParentElectionsPage() {
                         </div>
                       </div>
                     ) : (
-                      <button
+                      <Button
                         onClick={() => openVote(el)}
                         className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm py-3 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-sm"
                       >
                         <Vote className="w-4 h-4" />
                         {t("elections", "castVoteNow", lang)}
                         <ChevronRight className="w-4 h-4" />
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </motion.div>
@@ -293,12 +294,12 @@ export default function ParentElectionsPage() {
                       {t("elections", "chooseCandidate", lang)}
                     </p>
                   </div>
-                  <button
+                  <Button
                     onClick={() => { setActiveElection(null); setSelectedCandidate(null); setConfirmStep(false); }}
                     className="bg-white/20 hover:bg-white/30 rounded-full p-1.5 shrink-0"
                   >
                     <X className="w-4 h-4" />
-                  </button>
+                  </Button>
                 </div>
               </div>
 
@@ -318,7 +319,7 @@ export default function ParentElectionsPage() {
                   </p>
                   <div className="space-y-3 mb-5">
                     {activeElection.candidates.map((c) => (
-                      <button
+                      <Button
                         key={c.id}
                         onClick={() => setSelectedCandidate(c.id)}
                         className={`w-full text-left rounded-2xl border-2 transition-all p-4 ${
@@ -346,11 +347,11 @@ export default function ParentElectionsPage() {
                             {selectedCandidate === c.id && <div className="w-2 h-2 bg-white rounded-full" />}
                           </div>
                         </div>
-                      </button>
+                      </Button>
                     ))}
                   </div>
 
-                  <button
+                  <Button
                     disabled={!selectedCandidate}
                     onClick={() => setConfirmStep(true)}
                     className={`w-full py-3.5 rounded-2xl font-bold text-sm transition-all ${
@@ -360,7 +361,7 @@ export default function ParentElectionsPage() {
                     }`}
                   >
                     {t("elections", "continue", lang)}
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 /* Confirm Step */
@@ -393,18 +394,18 @@ export default function ParentElectionsPage() {
                   })()}
 
                   <div className="flex gap-3">
-                    <button
+                    <Button
                       onClick={() => setConfirmStep(false)}
                       className="flex-1 py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-all"
                     >
                       {t("common", "back", lang)}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={submitVote}
                       className="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-sm transition-all"
                     >
                       {t("elections", "submitConfirm", lang)}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}

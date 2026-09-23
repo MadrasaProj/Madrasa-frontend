@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/Dialog";
 import { useState, useRef } from "react";
 import { FileDown, Upload, CheckCircle2, AlertCircle, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -126,25 +129,25 @@ export function ExcelImportModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col">
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="w-full max-w-lg p-0">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900">Import Marks from Excel</h2>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 text-gray-400">
+        <DialogHeader className="border-b border-gray-100 px-6 py-4">
+          <DialogTitle className="text-lg text-gray-900">Import Marks from Excel</DialogTitle>
+          <Button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 text-gray-400">
             <X className="w-5 h-5" />
-          </button>
-        </div>
+          </Button>
+        </DialogHeader>
 
         <div className="px-6 py-5 space-y-5">
           {/* Step 1 */}
           <div>
             <p className="text-sm font-medium text-gray-700 mb-2">Step 1 — Download template</p>
-            <button onClick={downloadTemplate}
+            <Button onClick={downloadTemplate}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-sm font-medium transition-colors">
               <FileDown className="w-4 h-4" />
               Download Template (.xlsx)
-            </button>
+            </Button>
             <p className="text-xs text-gray-400 mt-1">
               Pre-filled with {students.length} students · {subjects.length} subjects (max marks in header)
             </p>
@@ -169,7 +172,7 @@ export function ExcelImportModal({
                   <span className="text-sm text-gray-500">Click or drag .xlsx file here</span>
                 </>
               )}
-              <input ref={fileRef} type="file" accept=".xlsx,.xls" className="sr-only" onChange={handleFile} />
+              <Input ref={fileRef} type="file" accept=".xlsx,.xls" className="sr-only" onChange={handleFile} />
             </label>
           </div>
 
@@ -192,18 +195,18 @@ export function ExcelImportModal({
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">
+          <Button onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleSubmit}
             disabled={!rows || saving}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium disabled:opacity-50 transition-colors">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
             {saving ? "Uploading…" : "Upload Marks"}
-          </button>
+          </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

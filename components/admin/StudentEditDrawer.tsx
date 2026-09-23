@@ -1,3 +1,7 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Textarea } from "@/components/ui/Textarea";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -309,13 +313,13 @@ export default function StudentEditDrawer({
                     {t("adminPages", "fillStudentDetails", lang)}
                   </p>
                 </div>
-                <button
+                <Button
                   onClick={closeDrawer}
                   className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 active:scale-95 transition-all"
                   aria-label="Close"
                 >
                   <XIcon className="w-4 h-4" />
-                </button>
+                </Button>
               </div>
 
               <div className="px-5 pt-3 border-b border-gray-100 shrink-0">
@@ -328,7 +332,7 @@ export default function StudentEditDrawer({
                     const Icon = tDef.icon;
                     const active = tab === tDef.id;
                     return (
-                      <button
+                      <Button
                         key={tDef.id}
                         type="button"
                         onClick={() => switchTab(tDef.id)}
@@ -347,7 +351,7 @@ export default function StudentEditDrawer({
                         <Icon className="w-3.5 h-3.5 relative z-10" />
                         <span className="relative z-10 hidden sm:inline">{tDef.label}</span>
                         <span className="relative z-10 sm:hidden">{tDef.label.split(" ")[0]}</span>
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>
@@ -389,7 +393,7 @@ export default function StudentEditDrawer({
                               bg-emerald-600 text-white rounded-lg cursor-pointer hover:bg-emerald-700 transition-colors active:scale-95">
                               {uploadingPhoto ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                               {avatarPreview ? "Change Photo" : "Upload Photo"}
-                              <input type="file" accept="image/*" disabled={uploadingPhoto} className="hidden"
+                              <Input type="file" accept="image/*" disabled={uploadingPhoto} className="hidden"
                                 onChange={async (e) => {
                                   const file = e.target.files?.[0];
                                   if (!file) return;
@@ -426,7 +430,7 @@ export default function StudentEditDrawer({
                           <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                             {label}{required && <span className="text-rose-500 ml-0.5">*</span>}
                           </label>
-                          <input
+                          <Input
                             type={type}
                             placeholder={placeholder}
                             value={form[key]}
@@ -458,7 +462,7 @@ export default function StudentEditDrawer({
                                   ? "border-emerald-500 bg-emerald-50 text-emerald-700"
                                   : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50",
                               )}>
-                              <input type="radio" name="gender" value={g} checked={form.gender === g}
+                              <Input type="radio" name="gender" value={g} checked={form.gender === g}
                                 onChange={() => setForm((f) => ({ ...f, gender: g }))} className="sr-only" />
                               {g === "MALE" ? t("adminPages", "male", lang) : t("adminPages", "female", lang)}
                             </label>
@@ -471,21 +475,21 @@ export default function StudentEditDrawer({
                           <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                             {t("adminPages", "classField", lang)}
                           </label>
-                          <select value={form.classId}
+                          <Select value={form.classId}
                             onChange={(e) => setForm((f) => ({ ...f, classId: e.target.value }))}
                             className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-emerald-400">
                             <option value="">— No class —</option>
                             {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                          </select>
+                          </Select>
                         </div>
                         <div>
                           <label className="block text-xs font-semibold text-gray-600 mb-1.5">Blood Group</label>
-                          <select value={form.bloodGroup}
+                          <Select value={form.bloodGroup}
                             onChange={(e) => setForm((f) => ({ ...f, bloodGroup: e.target.value }))}
                             className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-emerald-400">
                             <option value="">— Select —</option>
                             {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bg) => <option key={bg} value={bg}>{bg}</option>)}
-                          </select>
+                          </Select>
                         </div>
                       </div>
 
@@ -495,23 +499,23 @@ export default function StudentEditDrawer({
                           <p className="text-xs font-bold text-gray-700 uppercase tracking-wide">Address</p>
                         </div>
                         <div className="space-y-3">
-                          <textarea value={form.address}
+                          <Textarea value={form.address}
                             onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
                             rows={2} placeholder="House, street, area"
                             className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-emerald-400 resize-none" />
                           <div className="grid grid-cols-2 gap-2">
-                            <input type="text" placeholder="City" value={form.city}
+                            <Input type="text" placeholder="City" value={form.city}
                               onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
                               className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-emerald-400" />
-                            <input type="text" placeholder="State" value={form.state}
+                            <Input type="text" placeholder="State" value={form.state}
                               onChange={(e) => setForm((f) => ({ ...f, state: e.target.value }))}
                               className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-emerald-400" />
                           </div>
                           <div className="grid grid-cols-2 gap-2">
-                            <input type="text" placeholder="Country" value={form.country}
+                            <Input type="text" placeholder="Country" value={form.country}
                               onChange={(e) => setForm((f) => ({ ...f, country: e.target.value }))}
                               className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-emerald-400" />
-                            <input type="text" placeholder="Pincode" value={form.pincode}
+                            <Input type="text" placeholder="Pincode" value={form.pincode}
                               onChange={(e) => setForm((f) => ({ ...f, pincode: e.target.value }))}
                               className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-emerald-400" />
                           </div>
@@ -542,7 +546,7 @@ export default function StudentEditDrawer({
                       ].map(({ key, label, placeholder, type }) => (
                         <div key={key}>
                           <label className="block text-xs font-semibold text-gray-600 mb-1.5">{label}</label>
-                          <input type={type} placeholder={placeholder} value={form[key]}
+                          <Input type={type} placeholder={placeholder} value={form[key]}
                             onChange={(e) => {
                               setForm((f) => ({ ...f, [key]: e.target.value }));
                               setFieldErrors((fe) => ({ ...fe, [key]: "" }));
@@ -557,13 +561,13 @@ export default function StudentEditDrawer({
 
                       <div>
                         <label className="block text-xs font-semibold text-gray-600 mb-1.5">Relation to student</label>
-                        <select value={form.relationToStudent}
+                        <Select value={form.relationToStudent}
                           onChange={(e) => setForm((f) => ({ ...f, relationToStudent: e.target.value }))}
                           className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-emerald-400">
                           {["father", "mother", "guardian", "uncle", "aunt", "grandparent"].map((r) => (
                             <option key={r} value={r} className="capitalize">{r.charAt(0).toUpperCase() + r.slice(1)}</option>
                           ))}
-                        </select>
+                        </Select>
                       </div>
                     </motion.div>
                   )}
@@ -588,7 +592,7 @@ export default function StudentEditDrawer({
                       ].map(({ key, label, placeholder, type }) => (
                         <div key={key}>
                           <label className="block text-xs font-semibold text-gray-600 mb-1.5">{label}</label>
-                          <input type={type} placeholder={placeholder} value={form[key]}
+                          <Input type={type} placeholder={placeholder} value={form[key]}
                             onChange={(e) => {
                               setForm((f) => ({ ...f, [key]: e.target.value }));
                               setFieldErrors((fe) => ({ ...fe, [key]: "" }));
@@ -603,7 +607,7 @@ export default function StudentEditDrawer({
 
                       <div>
                         <label className="block text-xs font-semibold text-gray-600 mb-1.5">Medical Notes</label>
-                        <textarea value={form.medicalNotes}
+                        <Textarea value={form.medicalNotes}
                           onChange={(e) => setForm((f) => ({ ...f, medicalNotes: e.target.value }))}
                           rows={3} placeholder="Allergies, conditions, medications…"
                           className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-emerald-400 resize-none" />
@@ -616,23 +620,23 @@ export default function StudentEditDrawer({
               <div className="px-5 py-4 border-t border-gray-100 shrink-0 bg-gray-50/50">
                 <div className="flex items-center gap-2">
                   {isEditing && canWrite && onDelete && (
-                    <button
+                    <Button
                       onClick={onDelete}
                       type="button"
                       className="px-3 py-3 bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 font-bold rounded-2xl text-sm active:scale-[0.98] transition-colors"
                       aria-label="Delete"
                     >
                       <Trash2 className="w-4 h-4" />
-                    </button>
+                    </Button>
                   )}
-                  <button
+                  <Button
                     onClick={closeDrawer}
                     disabled={submitting}
                     className="px-4 py-3 text-sm font-semibold border border-gray-200 rounded-2xl text-gray-700 bg-white hover:bg-gray-50 transition-colors active:scale-95 disabled:opacity-50"
                   >
                     Cancel
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={handleSubmit}
                     disabled={submitting || !form.name.trim() || !form.adno.trim()}
                     className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-bold bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-colors active:scale-[0.98] shadow-lg disabled:opacity-60"
@@ -644,7 +648,7 @@ export default function StudentEditDrawer({
                     ) : (
                       <>{t("adminPages", "admitStudent", lang)}</>
                     )}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </motion.div>

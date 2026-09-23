@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useState, useEffect } from "react";
 import { getGlobalMetrics, getDailyOperations, type GlobalMetrics, type DailyOperations, runChurnCheck } from "@/lib/crm-api";
 import { useAuthStore } from "@/store/auth";
@@ -96,23 +97,23 @@ export default function OperationsDashboard() {
           Role: <span className="font-semibold text-white uppercase tracking-wider">{user?.actorType.replace(/_/g, " ")}</span>
         </p>
         <div className="flex gap-2 mt-4">
-          <button
+          <Button
             onClick={() => { setRefreshing(true); loadData(); }}
             disabled={refreshing}
             className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white font-bold text-xs px-4 py-2 rounded-xl backdrop-blur transition-all active:scale-95 disabled:opacity-50"
           >
             <RefreshCw className={cn("w-3.5 h-3.5", refreshing && "animate-spin")} />
             Refresh Queue
-          </button>
+          </Button>
           {["SUPER_ADMIN", "CUSTOMER_SUCCESS_MANAGER"].includes(user?.actorType ?? "") && (
-            <button
+            <Button
               onClick={handleChurnCheck}
               disabled={refreshing}
               className="flex items-center gap-1.5 bg-rose-600/35 hover:bg-rose-600/50 text-rose-100 border border-rose-500/30 font-bold text-xs px-4 py-2 rounded-xl backdrop-blur transition-all active:scale-95 disabled:opacity-50"
             >
               <AlertTriangle className="w-3.5 h-3.5" />
               Diagnose CS Churn
-            </button>
+            </Button>
           )}
         </div>
       </motion.div>
@@ -120,7 +121,7 @@ export default function OperationsDashboard() {
       {error && (
         <div className="bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl p-4 text-sm flex items-center justify-between">
           <span>{error}</span>
-          <button onClick={loadData} className="font-bold underline">Retry</button>
+          <Button onClick={loadData} className="font-bold underline">Retry</Button>
         </div>
       )}
 
@@ -182,12 +183,12 @@ export default function OperationsDashboard() {
               <Calendar className="w-5 h-5 text-emerald-600" />
               Follow-up Queue
             </h2>
-            <button
+            <Button
               onClick={() => navigate("/admin/crm/leads")}
               className="text-xs font-bold text-emerald-600 flex items-center gap-1 hover:underline"
             >
               CRM Pipeline <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+            </Button>
           </div>
 
           {/* Today's Queue Card */}
@@ -299,12 +300,12 @@ export default function OperationsDashboard() {
                   <MessageSquare className="w-5 h-5 text-emerald-600" />
                   Active Support Tickets ({ops?.activeTickets.length ?? 0})
                 </h2>
-                <button
+                <Button
                   onClick={() => navigate("/admin/crm/support")}
                   className="text-xs font-bold text-emerald-600 hover:underline"
                 >
                   Support Portal
-                </button>
+                </Button>
               </div>
               <div className="bg-white rounded-3xl border border-gray-100 p-5 shadow-sm space-y-3">
                 {ops?.activeTickets.length === 0 ? (
@@ -357,12 +358,12 @@ export default function OperationsDashboard() {
                           <h4 className="text-xs font-bold text-rose-950">{c.client.name}</h4>
                           <p className="text-[9px] text-rose-700/80 mt-0.5">{c.riskReason}</p>
                         </div>
-                        <button
+                        <Button
                           onClick={() => navigate(`/admin/crm/leads?id=${c.id}`)}
                           className="bg-rose-100 text-rose-800 hover:bg-rose-200 text-[10px] font-bold py-1 px-3 rounded-lg transition-all"
                         >
                           Review CSM
-                        </button>
+                        </Button>
                       </div>
                     ))}
                   </div>

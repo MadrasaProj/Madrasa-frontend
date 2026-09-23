@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguageStore } from "@/store/language";
@@ -170,7 +171,7 @@ export default function CommitteeAnnouncementsPage() {
       >
         <Filter className="w-4 h-4 text-gray-400 shrink-0" />
         {tabs.map((tab) => (
-          <button
+          <Button
             key={tab.key}
             onClick={() => setFilter(tab.key)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${filter === tab.key ? tab.active : tab.inactive}`}
@@ -181,7 +182,7 @@ export default function CommitteeAnnouncementsPage() {
             >
               {tab.count}
             </span>
-          </button>
+          </Button>
         ))}
       </motion.div>
 

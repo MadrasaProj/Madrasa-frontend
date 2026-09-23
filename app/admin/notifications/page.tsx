@@ -1,3 +1,8 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Textarea } from "@/components/ui/Textarea";
+import { Drawer } from "@/components/ui/Drawer";
 import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -138,10 +143,10 @@ export default function AdminNotificationsPage() {
         subtitle={`${total} sent`}
         icon={Bell}
         action={
-          <button onClick={handleComposeClick}
+          <Button onClick={handleComposeClick}
             className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold">
             <Plus className="w-4 h-4" /> Compose
-          </button>
+          </Button>
         }
       />
 
@@ -191,14 +196,14 @@ export default function AdminNotificationsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    <button onClick={() => handleEditClick(n)}
+                    <Button onClick={() => handleEditClick(n)}
                       className="p-1 text-gray-300 hover:text-emerald-600 transition-colors">
                       <Pencil className="w-4.5 h-4.5" />
-                    </button>
-                    <button onClick={() => handleDelete(n.id)} disabled={deletingId === n.id}
+                    </Button>
+                    <Button onClick={() => handleDelete(n.id)} disabled={deletingId === n.id}
                       className="p-1 text-gray-300 hover:text-red-500 transition-colors">
                       {deletingId === n.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </motion.div>
@@ -208,62 +213,50 @@ export default function AdminNotificationsPage() {
       )}
 
       {/* Compose modal */}
-      <AnimatePresence>
-        {showCompose && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/30 z-40 backdrop-blur-sm" onClick={() => setShowCompose(false)} />
-            <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-none md:p-4">
-              <motion.div
-                initial={isMobile ? { y: "100%", opacity: 1, scale: 1 } : { y: 0, opacity: 0, scale: 0.95 }}
-                animate={{ y: 0, opacity: 1, scale: 1 }}
-                exit={isMobile ? { y: "100%", opacity: 1, scale: 1 } : { y: 0, opacity: 0, scale: 0.95 }}
-                transition={isMobile ? { type: "spring", damping: 30, stiffness: 300 } : { duration: 0.2 }}
-                className={cn(
-                  "w-full bg-white flex flex-col pointer-events-auto shadow-2xl relative",
-                  isMobile 
-                    ? "rounded-t-3xl max-h-[90dvh]" 
-                    : "rounded-3xl max-w-xl max-h-[85dvh]"
-                )}
-              >
+      <Drawer
+        open={showCompose}
+        onClose={() => setShowCompose(false)}
+        title={editTarget ? "Edit Notification" : "Compose Notification"}
+        contentClassName="p-5 space-y-4"
+      >
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
                   <p className="font-bold text-gray-900 text-lg">{editTarget ? "Edit Notification" : "Compose Notification"}</p>
-                  <button onClick={() => setShowCompose(false)}><X className="w-5 h-5 text-gray-400" /></button>
+                  <Button onClick={() => setShowCompose(false)}><X className="w-5 h-5 text-gray-400" /></Button>
                 </div>
-                <div className="overflow-y-auto flex-1 p-5 space-y-4">
+                <div className="space-y-4">
                 {sendError && (
                   <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl">{sendError}</div>
                 )}
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1.5">Title *</label>
-                  <input value={cTitle} onChange={(e) => setCTitle(e.target.value)}
+                  <Input value={cTitle} onChange={(e) => setCTitle(e.target.value)}
                     placeholder="Notification title"
                     className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1.5">Message *</label>
-                  <textarea value={cBody} onChange={(e) => setCBody(e.target.value)} rows={3}
+                  <Textarea value={cBody} onChange={(e) => setCBody(e.target.value)} rows={3}
                     placeholder="Write your message..."
                     className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1.5">Type</label>
-                  <select value={cType} onChange={(e) => setCType(e.target.value as NotificationType)}
+                  <Select value={cType} onChange={(e) => setCType(e.target.value as NotificationType)}
                     className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none bg-white">
                     {Object.entries(TYPE_CONFIG).map(([k, v]) => (
                       <option key={k} value={k}>{v.label}</option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-2">Target Roles</label>
                   <div className="flex gap-2 flex-wrap">
                     {ROLES.map((r) => (
-                      <button key={r} onClick={() => toggleRole(r)}
+                      <Button key={r} onClick={() => toggleRole(r)}
                         className={cn("px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all",
                           cRoles.includes(r) ? "bg-emerald-600 text-white border-emerald-600" : "bg-white text-gray-600 border-gray-200")}>
                         {r}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -274,13 +267,13 @@ export default function AdminNotificationsPage() {
                     </label>
                     <div className="flex gap-2 flex-wrap">
                       {classes.map((c) => (
-                        <button key={c.id} onClick={() =>
+                        <Button key={c.id} onClick={() =>
                           setCClassIds((prev) => prev.includes(c.id) ? prev.filter((x) => x !== c.id) : [...prev, c.id])
                         }
                           className={cn("px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all",
                             cClassIds.includes(c.id) ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200")}>
                           {c.name}
-                        </button>
+                        </Button>
                       ))}
                     </div>
                   </div>
@@ -289,26 +282,22 @@ export default function AdminNotificationsPage() {
                   <label className="block text-xs font-semibold text-gray-500 mb-1.5">
                     Event Date <span className="text-gray-400 font-normal">(optional — shows in diary)</span>
                   </label>
-                  <input type="date" value={cEventDate} onChange={(e) => setCEventDate(e.target.value)}
+                  <Input type="date" value={cEventDate} onChange={(e) => setCEventDate(e.target.value)}
                     className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white" />
                 </div>
               </div>
 
               {/* Footer */}
               <div className="px-5 py-4 border-t border-gray-100 shrink-0 flex gap-3">
-                <button onClick={() => setShowCompose(false)}
-                  className="flex-1 py-3.5 border border-gray-200 rounded-2xl text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all">Cancel</button>
-                <button onClick={handleSend} disabled={!cTitle || !cBody || !cRoles.length || sending}
+                <Button onClick={() => setShowCompose(false)}
+                  className="flex-1 py-3.5 border border-gray-200 rounded-2xl text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all">Cancel</Button>
+                <Button onClick={handleSend} disabled={!cTitle || !cBody || !cRoles.length || sending}
                   className="flex-1 py-3.5 bg-emerald-600 text-white rounded-2xl text-sm font-semibold disabled:opacity-60 flex items-center justify-center gap-2">
                   {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   Send
-                </button>
+                </Button>
               </div>
-            </motion.div>
-          </div>
-          </>
-        )}
-      </AnimatePresence>
+      </Drawer>
     </DashboardLayout>
   );
 }

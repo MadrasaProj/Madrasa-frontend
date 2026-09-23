@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useState, useEffect } from "react";
 import { getCommissions, payCommission, type CommissionRecord, type DistrictAllowanceItem } from "@/lib/crm-api";
 import { useAuthStore } from "@/store/auth";
@@ -99,25 +100,25 @@ export default function CommissionsDashboard() {
             <h1 className="text-2xl font-black text-gray-800">Commissions & Revenue Splits</h1>
             <p className="text-gray-500 text-xs">Track sales achievements, split attribution balances, flat bonuses, and district allowances.</p>
           </div>
-          <button
+          <Button
             onClick={loadData}
             className="flex items-center justify-center gap-1.5 bg-gray-150 hover:bg-gray-200 text-gray-700 font-bold text-xs py-2.5 px-4 rounded-xl transition-all"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             Refresh Registry
-          </button>
+          </Button>
         </div>
 
         {successMsg && (
           <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl p-4 text-sm flex justify-between items-center">
             <span>{successMsg}</span>
-            <button onClick={() => setSuccessMsg(null)} className="font-bold underline text-xs">Dismiss</button>
+            <Button onClick={() => setSuccessMsg(null)} className="font-bold underline text-xs">Dismiss</Button>
           </div>
         )}
         {error && (
           <div className="bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl p-4 text-sm flex justify-between items-center">
             <span>{error}</span>
-            <button onClick={() => setError(null)} className="font-bold underline text-xs">Dismiss</button>
+            <Button onClick={() => setError(null)} className="font-bold underline text-xs">Dismiss</Button>
           </div>
         )}
 
@@ -285,13 +286,13 @@ export default function CommissionsDashboard() {
                         {isFinanceOrAdmin && (
                           <td className="py-4 px-6 text-right">
                             {r.paymentStatus === "UNPAID" ? (
-                              <button
+                              <Button
                                 onClick={() => handlePayCommission(r.id)}
                                 disabled={actionLoading}
                                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] py-1.5 px-3 rounded-xl transition-all active:scale-95 disabled:opacity-50"
                               >
                                 Approve Payout
-                              </button>
+                              </Button>
                             ) : (
                               <span className="text-[10px] text-gray-400 font-semibold flex items-center justify-end gap-1">
                                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-650" /> Paid
@@ -358,13 +359,13 @@ export default function CommissionsDashboard() {
                       </span>
 
                       {isFinanceOrAdmin && r.paymentStatus === "UNPAID" && (
-                        <button
+                        <Button
                           onClick={() => handlePayCommission(r.id)}
                           disabled={actionLoading}
                           className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] py-1.5 px-3 rounded-xl transition-all active:scale-95"
                         >
                           Approve Payout
-                        </button>
+                        </Button>
                       )}
                     </div>
                   </motion.div>

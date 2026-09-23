@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -42,10 +43,10 @@ export default function CommitteeTeacherAttendancePage() {
           <ShieldOff className="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <p className="text-sm font-semibold text-gray-500">This section is not available</p>
           <p className="text-xs text-gray-400 mt-1">Contact admin to enable access</p>
-          <button onClick={() => navigate("/committee")}
+          <Button onClick={() => navigate("/committee")}
             className="mt-6 px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors">
             Go Back
-          </button>
+          </Button>
         </div>
       </DashboardLayout>
     );

@@ -1,6 +1,11 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Textarea } from "@/components/ui/Textarea";
 import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Drawer as SharedDrawer } from "@/components/ui/Drawer";
 import { updateProfile, uploadProfilePhoto, deleteProfilePhoto, type UpdateProfileDto } from "@/lib/super-admin-api";
 import { useAuthStore, type AuthActorType } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
@@ -101,51 +106,16 @@ interface DrawerProps {
 }
 
 function Drawer({ open, onClose, children, title, subtitle }: DrawerProps) {
-  const { lang } = useLanguageStore();
-  useEffect(() => {
-    if (!open) return;
-    document.body.style.overflow = "hidden";
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", handler);
-    return () => {
-      document.body.style.overflow = "";
-      window.removeEventListener("keydown", handler);
-    };
-  }, [open, onClose]);
-
   return (
-    <AnimatePresence>
-      {open && (
-        <div className="fixed inset-0 z-50">
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-          />
-          <motion.div
-            initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
-            transition={{ type: "spring", stiffness: 350, damping: 36 }}
-            className="absolute right-0 top-0 bottom-0 w-full sm:max-w-lg bg-white shadow-2xl flex flex-col"
-          >
-            <div className="flex items-center justify-between gap-3 p-5 border-b border-gray-100 shrink-0">
-              <div className="min-w-0">
-                <h2 className="text-base font-bold text-gray-900 truncate">{title}</h2>
-                {subtitle && <p className="text-xs text-gray-500 mt-0.5 truncate">{subtitle}</p>}
-              </div>
-              <button
-                onClick={onClose}
-                className="p-2 rounded-xl hover:bg-gray-100 text-gray-500 transition-colors active:scale-95 shrink-0"
-                aria-label={t("common", "close", lang)}
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto">{children}</div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+    <SharedDrawer
+      open={open}
+      onClose={onClose}
+      title={title}
+      subtitle={subtitle}
+      contentClassName="px-0"
+    >
+      {children}
+    </SharedDrawer>
   );
 }
 
@@ -597,7 +567,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
               const Icon = t.icon;
               const active = drawerTab === t.id;
               return (
-                <button
+                <Button
                   key={t.id}
                   onClick={() => { setDrawerTab(t.id); setError(""); }}
                   className={cn(
@@ -614,7 +584,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                   )}
                   <Icon className="w-3.5 h-3.5 relative z-10" />
                   <span className="relative z-10">{t.label}</span>
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -654,14 +624,14 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                                         hover:bg-emerald-700 transition-colors active:scale-95 disabled:opacity-50">
                         <Camera className="w-3.5 h-3.5" />
                         {picPreview ? t("common", "changePhoto", lang) : t("common", "uploadPhoto", lang)}
-                        <input type="file" accept="image/*" className="hidden" onChange={handlePicFile} disabled={uploadingPhoto} />
+                        <Input type="file" accept="image/*" className="hidden" onChange={handlePicFile} disabled={uploadingPhoto} />
                       </label>
                       {picPreview && (
-                        <button type="button" onClick={handleRemovePhoto} disabled={uploadingPhoto}
+                        <Button type="button" onClick={handleRemovePhoto} disabled={uploadingPhoto}
                           className="inline-flex items-center gap-1 px-3 py-1.5 text-[11px] font-semibold
                                      text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors disabled:opacity-50">
                           <X className="w-3 h-3" /> {t("common", "remove", lang)}
-                        </button>
+                        </Button>
                       )}
                     </div>
                   </div>
@@ -671,7 +641,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                   <label className={labelCls}>{t("common", "displayName", lang)} *</label>
                   <div className="relative">
                     <User className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input value={name} onChange={(e) => setName(e.target.value)}
+                    <Input value={name} onChange={(e) => setName(e.target.value)}
                       className={cn(inputCls, "pl-9")} placeholder={t("common", "displayName", lang).toLowerCase()} autoFocus />
                   </div>
                 </div>
@@ -681,7 +651,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                     <label className={labelCls}>{isParent ? t("common", "primaryPhone", lang) : t("common", "phone", lang)}</label>
                     <div className="relative">
                       <Phone className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                      <input value={phone} onChange={(e) => setPhone(e.target.value)}
+                      <Input value={phone} onChange={(e) => setPhone(e.target.value)}
                         className={cn(inputCls, "pl-9")} placeholder="e.g. +919876543210" type="tel" inputMode="tel" />
                     </div>
                   </div>
@@ -690,7 +660,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                     <label className={labelCls}>{t("common", "email", lang)}</label>
                     <div className="relative">
                       <Mail className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                      <input value={email} onChange={(e) => setEmail(e.target.value)}
+                      <Input value={email} onChange={(e) => setEmail(e.target.value)}
                         className={cn(inputCls, "pl-9")} placeholder="you@email.com" type="email" />
                     </div>
                   </div>
@@ -700,7 +670,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                       <label className={labelCls}>{t("common", "msrId", lang)}</label>
                       <div className="relative">
                         <Briefcase className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input value={msrId} onChange={(e) => setMsrId(e.target.value)}
+                        <Input value={msrId} onChange={(e) => setMsrId(e.target.value)}
                           className={cn(inputCls, "pl-9 font-mono")} placeholder="e.g. MSR-0001" />
                       </div>
                     </div>
@@ -710,7 +680,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                     <label className={labelCls}>{t("common", "address", lang)}</label>
                     <div className="relative">
                       <MapPin className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
-                      <textarea value={address} onChange={(e) => setAddress(e.target.value)}
+                      <Textarea value={address} onChange={(e) => setAddress(e.target.value)}
                         className={cn(inputCls, "pl-9 min-h-[72px] resize-none")}
                         placeholder="House, street, city, state, pincode" rows={2} />
                     </div>
@@ -728,40 +698,40 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                       <label className={labelCls}>{t("common", "alternatePhone", lang)}</label>
                       <div className="relative">
                         <Phone className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input value={parentAltPhone} onChange={(e) => setParentAltPhone(e.target.value)}
+                        <Input value={parentAltPhone} onChange={(e) => setParentAltPhone(e.target.value)}
                           className={cn(inputCls, "pl-9")} placeholder="10-digit mobile number" type="tel" inputMode="tel" />
                       </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className={labelCls}>{t("common", "city", lang)}</label>
-                        <input value={city} onChange={(e) => setCity(e.target.value)}
+                        <Input value={city} onChange={(e) => setCity(e.target.value)}
                           className={inputCls} placeholder={t("common", "city", lang)} />
                       </div>
                       <div>
                         <label className={labelCls}>{t("common", "state", lang)}</label>
-                        <input value={stateField} onChange={(e) => setStateField(e.target.value)}
+                        <Input value={stateField} onChange={(e) => setStateField(e.target.value)}
                           className={inputCls} placeholder={t("common", "state", lang)} />
                       </div>
                       <div>
                         <label className={labelCls}>{t("common", "country", lang)}</label>
-                        <input value={country} onChange={(e) => setCountry(e.target.value)}
+                        <Input value={country} onChange={(e) => setCountry(e.target.value)}
                           className={inputCls} placeholder={t("common", "country", lang)} />
                       </div>
                       <div>
                         <label className={labelCls}>{t("common", "pincode", lang)}</label>
-                        <input value={pincode} onChange={(e) => setPincode(e.target.value)}
+                        <Input value={pincode} onChange={(e) => setPincode(e.target.value)}
                           className={inputCls} placeholder={t("common", "pincode", lang)} inputMode="numeric" />
                       </div>
                       <div className="sm:col-span-2">
                         <label className={labelCls}>{t("common", "bloodGroup", lang)}</label>
-                        <select value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)}
+                        <Select value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)}
                           className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/60">
                           <option value="">— Select —</option>
                           {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bg) => (
                             <option key={bg} value={bg}>{bg}</option>
                           ))}
-                        </select>
+                        </Select>
                       </div>
                     </div>
                   </>
@@ -784,26 +754,26 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                 <div>
                   <label className={labelCls}>{t("common", "currentPassword", lang)}</label>
                   <div className="relative">
-                    <input type={showCur ? "text" : "password"}
+                    <Input type={showCur ? "text" : "password"}
                       value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)}
                       className={cn(inputCls, "pr-10")} placeholder={t("common", "enterCurrentPassword", lang)} />
-                    <button type="button" onClick={() => setShowCur((v) => !v)}
+                    <Button type="button" onClick={() => setShowCur((v) => !v)}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100">
                       {showCur ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
                 <div>
                   <label className={labelCls}>{t("common", "newPassword", lang)}</label>
                   <div className="relative">
-                    <input type={showNew ? "text" : "password"}
+                    <Input type={showNew ? "text" : "password"}
                       value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
                       className={cn(inputCls, "pr-10")} placeholder={t("common", "min8Chars", lang)} />
-                    <button type="button" onClick={() => setShowNew((v) => !v)}
+                    <Button type="button" onClick={() => setShowNew((v) => !v)}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100">
                       {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
+                    </Button>
                   </div>
 
                   {newPassword && (
@@ -825,14 +795,14 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                 <div>
                   <label className={labelCls}>{t("common", "confirmPassword", lang)}</label>
                   <div className="relative">
-                    <input type={showCon ? "text" : "password"}
+                    <Input type={showCon ? "text" : "password"}
                       value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
                       className={cn(inputCls, "pr-10", pwMismatch && "border-rose-300 focus:ring-rose-300/60 focus:border-rose-400")}
                       placeholder={t("common", "repeatNewPassword", lang)} />
-                    <button type="button" onClick={() => setShowCon((v) => !v)}
+                    <Button type="button" onClick={() => setShowCon((v) => !v)}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100">
                       {showCon ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
+                    </Button>
                   </div>
                   {pwMismatch && (
                     <p className="text-[10px] text-rose-600 font-semibold mt-1.5 flex items-center gap-1">
@@ -877,19 +847,19 @@ export default function ProfilePage({ config }: ProfilePageProps) {
         </div>
 
         <div className="border-t border-gray-100 p-4 bg-gray-50/60 backdrop-blur-sm flex items-center gap-2">
-          <button onClick={closeDrawer} disabled={saving}
+          <Button onClick={closeDrawer} disabled={saving}
             className="px-4 py-3 text-sm font-semibold border border-gray-200 rounded-2xl
                        text-gray-600 bg-white hover:bg-gray-50 transition-all active:scale-95
                        disabled:opacity-50">
             {t("common", "cancel", lang)}
-          </button>
-          <button onClick={handleSave} disabled={saving}
+          </Button>
+          <Button onClick={handleSave} disabled={saving}
             className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-bold
                        bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700
                        shadow-lg transition-colors active:scale-[0.98] disabled:opacity-60">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
             {saving ? t("common", "updating", lang) : t("common", "updateProfile", lang)}
-          </button>
+          </Button>
         </div>
       </Drawer>
     </DashboardLayout>

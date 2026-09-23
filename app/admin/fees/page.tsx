@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -138,18 +141,18 @@ function ReceiptModal({
           </div>
         </div>
         <div className="px-6 pb-5 flex gap-2">
-          <button
+          <Button
             onClick={onClose}
             className="flex-1 py-2.5 border rounded-xl text-sm font-semibold text-gray-600"
           >
             Close
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => window.print()}
             className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5"
           >
             <Printer className="w-4 h-4" /> Print
-          </button>
+          </Button>
         </div>
       </motion.div>
     </div>
@@ -219,14 +222,14 @@ function RecordPaymentModal({
           {payment.feeType.isDonation && (
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-gray-500">Donation Amount (₹) *</label>
-              <input type="number" min="0.01" step="0.01" value={amount} onChange={(e) => onAmountChange(e.target.value)} placeholder="Enter amount received" className="w-full px-3 py-2.5 rounded-xl border border-amber-200 bg-amber-50 text-sm focus:outline-none focus:border-amber-400" autoFocus />
+              <Input type="number" min="0.01" step="0.01" value={amount} onChange={(e) => onAmountChange(e.target.value)} placeholder="Enter amount received" className="w-full px-3 py-2.5 rounded-xl border border-amber-200 bg-amber-50 text-sm focus:outline-none focus:border-amber-400" autoFocus />
             </div>
           )}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-gray-500">
               Payment Method
             </label>
-            <select
+            <Select
               value={method}
               onChange={(e) => onMethodChange(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-emerald-400"
@@ -236,13 +239,13 @@ function RecordPaymentModal({
                   {m.replace(/_/g, " ")}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-gray-500">
               Receipt / Reference No.
             </label>
-            <input
+            <Input
               type="text"
               value={reference}
               onChange={(e) => onReferenceChange(e.target.value)}
@@ -252,13 +255,13 @@ function RecordPaymentModal({
           </div>
         </div>
         <div className="px-6 pb-5 flex gap-2">
-          <button
+          <Button
             onClick={onClose}
             className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={onConfirm}
             disabled={saving}
             className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5"
@@ -269,7 +272,7 @@ function RecordPaymentModal({
               <CheckCircle className="w-4 h-4" />
             )}
             Confirm Payment
-          </button>
+          </Button>
         </div>
       </motion.div>
     </div>
@@ -798,7 +801,7 @@ export default function AdminFeesPage() {
         <>
           {/* Fee type buttons */}
           <div className="flex items-center gap-1.5 mb-5 overflow-x-auto pb-1">
-            <button
+            <Button
               onClick={() => selectType(null)}
               className={cn(
                 "h-10 px-4 rounded-md text-xs font-semibold whitespace-nowrap transition-all shrink-0 inline-flex items-center gap-1.5",
@@ -809,12 +812,12 @@ export default function AdminFeesPage() {
             >
               <Users className="w-3.5 h-3.5" />
               All Fees
-            </button>
+            </Button>
 
             {feeTypes.map((ft) => {
               const isActive = ft.id === activeTypeId;
               return (
-                <button
+                <Button
                   key={ft.id}
                   onClick={() => selectType(ft.id)}
                   className={cn(
@@ -826,12 +829,12 @@ export default function AdminFeesPage() {
                 >
                   <CreditCard className="w-3.5 h-3.5" />
                   {ft.name}
-                </button>
+                </Button>
               );
             })}
 
             <div className="max-md:sticky max-md:right-0 md:ml-auto z-10 flex items-center max-md:pl-8 max-md:bg-gradient-to-l from-white via-white/95 to-transparent">
-              <button
+              <Button
                 ref={chevronBtnRef}
                 onClick={toggleTypeDropdown}
                 className="h-10 w-10 rounded-full inline-flex items-center justify-center transition-all text-gray-500 hover:text-gray-700 shrink-0"
@@ -845,7 +848,7 @@ export default function AdminFeesPage() {
                     typeDropdownOpen && "rotate-180",
                   )}
                 />
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -874,7 +877,7 @@ export default function AdminFeesPage() {
                     </p>
                   </div>
                   <div className="max-h-80 overflow-y-auto py-1">
-                    <button
+                    <Button
                       onClick={() => selectType(null)}
                       className={cn(
                         "w-full flex items-center gap-2.5 px-3 py-2.5 text-xs hover:bg-gray-50 text-left",
@@ -894,11 +897,11 @@ export default function AdminFeesPage() {
                       <span className="text-[10px] text-gray-400">
                         {feeTypes.length} types
                       </span>
-                    </button>
+                    </Button>
                     {feeTypes.map((ft) => {
                       const isActive = ft.id === activeTypeId;
                       return (
-                        <button
+                        <Button
                           key={ft.id}
                           onClick={() => selectType(ft.id)}
                           className={cn(
@@ -917,7 +920,7 @@ export default function AdminFeesPage() {
                           <span className="text-[10px] text-gray-400 shrink-0">
                             ₹{Number(ft.amount).toLocaleString()}
                           </span>
-                        </button>
+                        </Button>
                       );
                     })}
                   </div>
@@ -1001,7 +1004,7 @@ export default function AdminFeesPage() {
           {/* Tabs */}
           <div className="flex gap-1.5 mb-4 bg-gray-100 p-1 rounded-xl w-fit">
             {(["records", "transactions", "reports"] as const).map((t) => (
-              <button
+              <Button
                 key={t}
                 onClick={() => setTab(t)}
                 className={cn(
@@ -1016,7 +1019,7 @@ export default function AdminFeesPage() {
                   : t === "transactions"
                     ? "Transactions"
                     : "Reports"}
-              </button>
+              </Button>
             ))}
           </div>
 
@@ -1026,14 +1029,14 @@ export default function AdminFeesPage() {
               <div className="flex gap-2 mb-3 flex-wrap">
                 <div className="relative flex-1 min-w-[200px]">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
+                  <Input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search student name or adm no…"
                     className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:border-emerald-400"
                   />
                 </div>
-                <select
+                <Select
                   value={filterClass}
                   onChange={(e) => {
                     setFilterClass(e.target.value);
@@ -1047,10 +1050,10 @@ export default function AdminFeesPage() {
                       {c.name}
                     </option>
                   ))}
-                </select>
+                </Select>
                 <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
                   {(["all", "PAID", "PENDING", "OVERDUE"] as const).map((s) => (
-                    <button
+                    <Button
                       key={s}
                       onClick={() => {
                         setStatusFilter(s);
@@ -1066,7 +1069,7 @@ export default function AdminFeesPage() {
                       {s === "all"
                         ? "All"
                         : STATUS_META[s as FeePaymentStatus].label}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
@@ -1188,7 +1191,7 @@ export default function AdminFeesPage() {
                       <div className="flex items-center justify-end gap-0.5">
                         {p.status === "PAID" ? (
                           <>
-                            <button
+                            <Button
                               onClick={() => showReceiptFor(p.id)}
                               disabled={loadingReceipt === p.id}
                               className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
@@ -1199,8 +1202,8 @@ export default function AdminFeesPage() {
                               ) : (
                                 <Receipt className="w-3.5 h-3.5 text-gray-400 hover:text-blue-500" />
                               )}
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               onClick={() => {
                                 setCancelling(p.id);
                                 setCancellingNote("");
@@ -1209,10 +1212,10 @@ export default function AdminFeesPage() {
                               title="Cancel/Refund"
                             >
                               <XCircle className="w-3.5 h-3.5 text-gray-400 hover:text-red-500" />
-                            </button>
+                            </Button>
                           </>
                         ) : p.status === "WAIVED" ? (
-                          <button
+                          <Button
                             onClick={() => undoCancel(p)}
                             disabled={cancellingSave}
                             className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
@@ -1226,10 +1229,10 @@ export default function AdminFeesPage() {
                                   : "text-gray-400 hover:text-amber-500",
                               )}
                             />
-                          </button>
+                          </Button>
                         ) : (
                           <>
-                            <button
+                            <Button
                               onClick={() => {
                                 setEditingAmount(p.id);
                                 setCustomAmount(String(p.dueAmount));
@@ -1238,8 +1241,8 @@ export default function AdminFeesPage() {
                               title="Discount"
                             >
                               <Pencil className="w-3.5 h-3.5 text-gray-400 hover:text-blue-500" />
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               onClick={() => {
                                 setRecording(p.id);
                                 setPayMethod("CASH");
@@ -1250,8 +1253,8 @@ export default function AdminFeesPage() {
                               title="Mark paid"
                             >
                               <CheckCircle className="w-3.5 h-3.5 text-gray-400 hover:text-emerald-500" />
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               onClick={() => {
                                 setCancelling(p.id);
                                 setCancellingNote("");
@@ -1260,7 +1263,7 @@ export default function AdminFeesPage() {
                               title="Cancel"
                             >
                               <XCircle className="w-3.5 h-3.5 text-gray-400 hover:text-red-500" />
-                            </button>
+                            </Button>
                           </>
                         )}
                       </div>
@@ -1343,7 +1346,7 @@ export default function AdminFeesPage() {
                         <div className="flex gap-1">
                           {p.status === "PAID" ? (
                             <>
-                              <button
+                              <Button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   showReceiptFor(p.id);
@@ -1351,11 +1354,11 @@ export default function AdminFeesPage() {
                                 className="p-1"
                               >
                                 <Receipt className="w-3.5 h-3.5 text-gray-400" />
-                              </button>
+                              </Button>
                             </>
                           ) : p.status !== "WAIVED" ? (
                             <>
-                              <button
+                              <Button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setEditingAmount(p.id);
@@ -1364,8 +1367,8 @@ export default function AdminFeesPage() {
                                 className="p-1"
                               >
                                 <Pencil className="w-3.5 h-3.5 text-gray-400" />
-                              </button>
-                              <button
+                              </Button>
+                              <Button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setRecording(p.id);
@@ -1376,10 +1379,10 @@ export default function AdminFeesPage() {
                                 className="p-1"
                               >
                                 <CheckCircle className="w-3.5 h-3.5 text-gray-400" />
-                              </button>
+                              </Button>
                             </>
                           ) : null}
-                          <button
+                          <Button
                             onClick={(e) => {
                               e.stopPropagation();
                               p.status === "WAIVED"
@@ -1393,7 +1396,7 @@ export default function AdminFeesPage() {
                             ) : (
                               <XCircle className="w-3.5 h-3.5 text-gray-400" />
                             )}
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -1439,7 +1442,7 @@ export default function AdminFeesPage() {
                         <span className="text-sm text-gray-500 shrink-0">
                           New Amount:
                         </span>
-                        <input
+                        <Input
                           type="number"
                           value={customAmount}
                           onChange={(e) => setCustomAmount(e.target.value)}
@@ -1448,13 +1451,13 @@ export default function AdminFeesPage() {
                         />
                       </div>
                       <div className="flex gap-2">
-                        <button
+                        <Button
                           onClick={() => setEditingAmount(null)}
                           className="flex-1 py-2.5 rounded-xl border text-sm font-semibold text-gray-600"
                         >
                           Cancel
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           onClick={() => saveDiscount(editingPayment)}
                           disabled={saving}
                           className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5"
@@ -1465,7 +1468,7 @@ export default function AdminFeesPage() {
                             <Save className="w-4 h-4" />
                           )}
                           Save Amount
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   </motion.div>
@@ -1585,7 +1588,7 @@ export default function AdminFeesPage() {
 
               {/* Filters + new transaction */}
               <div className="flex gap-2 flex-wrap items-center">
-                <select
+                <Select
                   value={txTeacherId}
                   onChange={(e) => {
                     setTxTeacherId(e.target.value);
@@ -1599,8 +1602,8 @@ export default function AdminFeesPage() {
                       {name}
                     </option>
                   ))}
-                </select>
-                <input
+                </Select>
+                <Input
                   type="date"
                   value={txFromDate}
                   onChange={(e) => {
@@ -1609,7 +1612,7 @@ export default function AdminFeesPage() {
                   }}
                   className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-emerald-400"
                 />
-                <input
+                <Input
                   type="date"
                   value={txToDate}
                   onChange={(e) => {
@@ -1618,7 +1621,7 @@ export default function AdminFeesPage() {
                   }}
                   className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-emerald-400"
                 />
-                <button
+                <Button
                   onClick={() => {
                     setTxForm({
                       amount: "",
@@ -1632,7 +1635,7 @@ export default function AdminFeesPage() {
                   className="ml-auto px-3 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold inline-flex items-center gap-1.5"
                 >
                   <Plus className="w-4 h-4" /> New Transaction
-                </button>
+                </Button>
               </div>
 
               {/* Transactions table */}
@@ -1691,13 +1694,13 @@ export default function AdminFeesPage() {
                     header: "",
                     className: "text-right",
                     render: (t: FeeTransaction) => (
-                      <button
+                      <Button
                         onClick={() => setDeletingTx(t.id)}
                         className="p-1.5 rounded-lg hover:bg-red-50 transition-colors"
                         title="Delete transaction"
                       >
                         <Trash2 className="w-3.5 h-3.5 text-gray-400 hover:text-red-500" />
-                      </button>
+                      </Button>
                     ),
                   },
                 ]}
@@ -1738,7 +1741,7 @@ export default function AdminFeesPage() {
                         <span className="text-sm font-bold text-emerald-700">
                           ₹{Number(t.amount).toLocaleString()}
                         </span>
-                        <button
+                        <Button
                           onClick={(e) => {
                             e.stopPropagation();
                             setDeletingTx(t.id);
@@ -1746,7 +1749,7 @@ export default function AdminFeesPage() {
                           className="p-1"
                         >
                           <Trash2 className="w-3.5 h-3.5 text-gray-400" />
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -1760,7 +1763,7 @@ export default function AdminFeesPage() {
             <div className="space-y-4">
               {/* Filters */}
               <div className="flex flex-wrap gap-2">
-                <select
+                <Select
                   value={reportClassId}
                   onChange={(e) => setReportClassId(e.target.value)}
                   className="px-3 py-2 rounded-xl border border-gray-200 text-sm bg-white"
@@ -1771,7 +1774,7 @@ export default function AdminFeesPage() {
                       {c.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
 
               {reportPayLoading ? (
@@ -2088,7 +2091,7 @@ export default function AdminFeesPage() {
                       </span>
                     </div>
                   </div>
-                  <input
+                  <Input
                     type="text"
                     value={cancellingNote}
                     onChange={(e) => setCancellingNote(e.target.value)}
@@ -2097,7 +2100,7 @@ export default function AdminFeesPage() {
                   />
                 </div>
                 <div className="px-5 pb-5 flex gap-2">
-                  <button
+                  <Button
                     onClick={() => {
                       setCancelling(null);
                       setCancellingNote("");
@@ -2105,8 +2108,8 @@ export default function AdminFeesPage() {
                     className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600"
                   >
                     Keep
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => cancelPayment(cancellingPayment)}
                     disabled={cancellingSave}
                     className="flex-1 py-3 rounded-xl bg-red-600 text-white text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5"
@@ -2117,7 +2120,7 @@ export default function AdminFeesPage() {
                       <XCircle className="w-4 h-4" />
                     )}
                     Confirm Cancel
-                  </button>
+                  </Button>
                 </div>
               </div>
             </motion.div>
@@ -2172,7 +2175,7 @@ export default function AdminFeesPage() {
                       <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1">
                         Amount
                       </label>
-                      <input
+                      <Input
                         type="number"
                         value={txForm.amount}
                         onChange={(e) =>
@@ -2186,7 +2189,7 @@ export default function AdminFeesPage() {
                       <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1">
                         Date
                       </label>
-                      <input
+                      <Input
                         type="date"
                         value={txForm.date}
                         onChange={(e) =>
@@ -2200,7 +2203,7 @@ export default function AdminFeesPage() {
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1">
                       Fee Type
                     </label>
-                    <select
+                    <Select
                       value={txForm.feeTypeId}
                       onChange={(e) =>
                         setTxForm((f) => ({ ...f, feeTypeId: e.target.value }))
@@ -2213,13 +2216,13 @@ export default function AdminFeesPage() {
                           {ft.name}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1">
                       Teacher
                     </label>
-                    <select
+                    <Select
                       value={txForm.teacherId}
                       onChange={(e) =>
                         setTxForm((f) => ({ ...f, teacherId: e.target.value }))
@@ -2232,7 +2235,7 @@ export default function AdminFeesPage() {
                           {name}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
                   <div className="rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2.5 text-xs text-emerald-800">
                     <span className="font-semibold">Receiving Admin:</span>{" "}
@@ -2248,13 +2251,13 @@ export default function AdminFeesPage() {
                   )}
                 </div>
                 <div className="px-5 pb-5 pt-3 flex gap-2 border-t border-gray-100">
-                  <button
+                  <Button
                     onClick={() => setTxCreating(false)}
                     className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600"
                   >
                     Cancel
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={async () => {
                       const amt = Number(txForm.amount);
                       if (!amt || amt <= 0) {
@@ -2297,7 +2300,7 @@ export default function AdminFeesPage() {
                     className="flex-1 py-3 rounded-xl bg-emerald-600 text-white text-sm font-bold flex items-center justify-center gap-1.5"
                   >
                     <CheckCircle className="w-4 h-4" /> Save Transaction
-                  </button>
+                  </Button>
                 </div>
               </div>
             </motion.div>
@@ -2383,13 +2386,13 @@ export default function AdminFeesPage() {
                   })()}
                 </div>
                 <div className="px-5 pb-5 flex gap-2">
-                  <button
+                  <Button
                     onClick={() => setDeletingTx(null)}
                     className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600"
                   >
                     Cancel
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={async () => {
                       setDeletingTxSave(true);
                       try {
@@ -2412,7 +2415,7 @@ export default function AdminFeesPage() {
                       <Trash2 className="w-4 h-4" />
                     )}
                     Delete
-                  </button>
+                  </Button>
                 </div>
               </div>
             </motion.div>

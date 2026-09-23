@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 
 interface StatCardProps {
   title: string;
@@ -38,9 +39,9 @@ export function StatCard({ title, value, icon: Icon, iconColor = "text-emerald-6
   // Render button wrapper if clickable
   if (onClick) {
     return (
-      <button onClick={onClick} className="w-full text-left">
+      <Button variant="ghost" onClick={onClick} className="h-auto w-full justify-start p-0 text-left hover:bg-transparent">
         {Content}
-      </button>
+      </Button>
     );
   }
 
@@ -68,7 +69,8 @@ const colorMap = {
 export function ActionCard({ title, description, icon: Icon, onClick, color = "emerald", badge }: ActionCardProps) {
   const c = colorMap[color];
   return (
-    <button
+    <Button
+      variant="ghost"
       onClick={onClick}
       className={cn(
         "bg-white rounded-2xl p-4 lg:p-5 shadow-sm border text-left w-full h-full card-hover active:scale-95 transition-all",
@@ -87,6 +89,6 @@ export function ActionCard({ title, description, icon: Icon, onClick, color = "e
       </div>
       <p className="font-semibold text-gray-900 text-sm lg:text-base leading-tight">{title}</p>
       {description && <p className="text-xs text-gray-500 mt-0.5 leading-tight">{description}</p>}
-    </button>
+    </Button>
   );
 }

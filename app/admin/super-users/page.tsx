@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -98,9 +101,9 @@ function UserDrawer({
             <h2 className="text-base font-bold text-gray-900">
               {mode === "add" ? "Add Admin User" : "Edit Admin User"}
             </h2>
-            <button onClick={onClose} className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-100 transition-all">
+            <Button onClick={onClose} className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-100 transition-all">
               <X className="w-5 h-5" />
-            </button>
+            </Button>
           </div>
 
           {/* Body */}
@@ -112,23 +115,23 @@ function UserDrawer({
             <div className="space-y-3">
               <div>
                 <label className={labelCls}>Name *</label>
-                <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} placeholder="Full name" />
+                <Input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} placeholder="Full name" />
               </div>
               {mode === "add" && (
                 <div>
                   <label className={labelCls}>Username / Identifier *</label>
-                  <input value={identifier} onChange={(e) => setIdentifier(e.target.value)}
+                  <Input value={identifier} onChange={(e) => setIdentifier(e.target.value)}
                     className={inputCls} placeholder="e.g. superadmin" />
                 </div>
               )}
               <div>
                 <label className={labelCls}>{mode === "add" ? "Password *" : "New Password (leave blank to keep)"}</label>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
                   className={inputCls} placeholder={mode === "edit" ? "Optional" : "Min 8 characters"} />
               </div>
               <div>
                 <label className={labelCls}>Role *</label>
-                <select value={role} onChange={(e) => setRole(e.target.value)} className={inputCls}>
+                <Select value={role} onChange={(e) => setRole(e.target.value)} className={inputCls}>
                   <option value="SUPER_ADMIN">Super Admin</option>
                   <option value="SALES_EXECUTIVE">Sales Executive</option>
                   <option value="SALES_MANAGER">Sales Manager</option>
@@ -138,22 +141,22 @@ function UserDrawer({
                   <option value="SUPPORT_EXECUTIVE">Support Executive</option>
                   <option value="CUSTOMER_SUCCESS_MANAGER">Customer Success Manager</option>
                   <option value="FINANCE_EXECUTIVE">Finance Executive</option>
-                </select>
+                </Select>
               </div>
             </div>
           </div>
 
           {/* Footer */}
           <div className="px-5 py-4 border-t border-gray-100 shrink-0 flex gap-3">
-            <button onClick={onClose}
+            <Button onClick={onClose}
               className="flex-1 py-3 text-sm font-semibold text-gray-500 bg-gray-100 rounded-2xl hover:bg-gray-200 transition-all">
               Cancel
-            </button>
-            <button onClick={handleSubmit} disabled={saving}
+            </Button>
+            <Button onClick={handleSubmit} disabled={saving}
               className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-all disabled:opacity-60">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               {mode === "add" ? "Add User" : "Save Changes"}
-            </button>
+            </Button>
           </div>
         </motion.div>
       </div>
@@ -215,12 +218,12 @@ export default function AdminSuperUsersPage() {
         title="Admin Users"
         icon={ShieldCheck}
         action={
-          <button
+          <Button
             onClick={() => setDrawer({ mode: "add" })}
             className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-xl hover:bg-emerald-700 transition-all"
           >
             <UserPlus className="w-4 h-4" /> Add Admin User
-          </button>
+          </Button>
         }
       />
 
@@ -270,37 +273,37 @@ export default function AdminSuperUsersPage() {
                 <p className="text-[11px] text-gray-300 mt-0.5">Added {fmtDate(u.createdAt)}</p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <button
+                <Button
                   onClick={() => setDrawer({ mode: "edit", user: u })}
                   className="p-2 rounded-xl text-gray-400 hover:bg-gray-50 hover:text-emerald-600 transition-all"
                 >
                   <Pencil className="w-4 h-4" />
-                </button>
+                </Button>
                 {!u.isPrimary && (
                   confirmDelete === u.id ? (
                     <div className="flex items-center gap-1">
-                      <button
+                      <Button
                         onClick={() => handleDelete(u.id)}
                         disabled={deleting === u.id}
                         className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-red-600 text-white hover:bg-red-700 disabled:opacity-60 transition-all"
                       >
                         {deleting === u.id ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
                         Confirm
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         onClick={() => setConfirmDelete(null)}
                         className="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-gray-500 hover:bg-gray-100 transition-all"
                       >
                         Cancel
-                      </button>
+                      </Button>
                     </div>
                   ) : (
-                    <button
+                    <Button
                       onClick={() => setConfirmDelete(u.id)}
                       className="p-2 rounded-xl text-gray-400 hover:bg-red-50 hover:text-red-500 transition-all"
                     >
                       <Trash2 className="w-4 h-4" />
-                    </button>
+                    </Button>
                   )
                 )}
               </div>

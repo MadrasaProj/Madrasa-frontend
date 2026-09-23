@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import SocialFrameViewer from "../SocialFrameViewer";
@@ -16,13 +17,13 @@ export default function SocialFrameViewPage({ basePath }: SocialFrameViewPagePro
   return (
     <DashboardLayout>
       <div className="space-y-4">
-        <button
+        <Button
           onClick={() => navigate(`${basePath}/social-frames`)}
           className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Social Frames
-        </button>
+        </Button>
         <SocialFrameViewer frameId={id} />
       </div>
     </DashboardLayout>

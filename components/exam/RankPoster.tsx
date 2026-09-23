@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { useRef, useState, useEffect } from "react";
 import { Download, Share2, Loader2, Upload, X, Crown, Trophy, Medal } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -106,24 +108,24 @@ export function RankPoster({ row, report, madrasaName, madrasaLogo, studentPhoto
         <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 cursor-pointer transition-colors">
           <Upload className="w-4 h-4" />
           {photo ? "Change Photo" : "Upload Photo"}
-          <input type="file" accept="image/*" className="sr-only" onChange={handlePhoto} />
+          <Input type="file" accept="image/*" className="sr-only" onChange={handlePhoto} />
         </label>
         {photo && (
-          <button onClick={() => setPhoto(null)}
+          <Button onClick={() => setPhoto(null)}
             className="p-1.5 rounded-lg border border-gray-200 hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors">
             <X className="w-4 h-4" />
-          </button>
+          </Button>
         )}
-        <button onClick={() => run("png")} disabled={!!exporting}
+        <Button onClick={() => run("png")} disabled={!!exporting}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
           {exporting === "png" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
           Download PNG
-        </button>
-        <button onClick={() => run("share")} disabled={!!exporting}
+        </Button>
+        <Button onClick={() => run("share")} disabled={!!exporting}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 transition-colors">
           {exporting === "share" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
           Share
-        </button>
+        </Button>
       </div>
 
       {/* ── Poster ── */}

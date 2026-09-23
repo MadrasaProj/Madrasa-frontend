@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/Button";
+import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { useState, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -65,8 +67,8 @@ function ReceiptModal({
   receipt, onClose, lang,
 }: { receipt: ReceiptData; onClose: () => void; lang: "en" | "ml" }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="w-full sm:max-w-sm p-0">
       <motion.div
         initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
         className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-6 shadow-2xl"
@@ -103,21 +105,22 @@ function ReceiptModal({
           </p>
         )}
         <div className="flex gap-2">
-          <button
+          <Button
             onClick={onClose}
             className="flex-1 py-2.5 rounded-xl border text-sm font-semibold text-gray-600"
           >
             {t("parentPages", "closeBtn", lang)}
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => window.print()}
             className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold flex items-center justify-center gap-1.5"
           >
             <Printer className="w-4 h-4" /> {t("parentPages", "printBtn", lang)}
-          </button>
+          </Button>
         </div>
       </motion.div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -296,7 +299,7 @@ export default function ParentFeesPage() {
         if (p.status !== "PAID") return null;
         const isLoading = receiptMutation.isPending && receiptMutation.variables === p.id;
         return (
-          <button
+          <Button
             onClick={(e) => { e.stopPropagation(); showReceipt(p.id); }}
             disabled={isLoading}
             className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-emerald-700 hover:bg-emerald-50 border border-emerald-100 transition-colors disabled:opacity-50"
@@ -307,7 +310,7 @@ export default function ParentFeesPage() {
               <Receipt className="w-3 h-3" />
             )}
             {t("parentPages", "viewReceiptBtn", lang)}
-          </button>
+          </Button>
         );
       },
     },
@@ -350,7 +353,7 @@ export default function ParentFeesPage() {
         )}
 
         {p.status === "PAID" ? (
-          <button
+          <Button
             onClick={() => showReceipt(p.id)}
             disabled={isLoading}
             className="w-full py-2 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-semibold flex items-center justify-center gap-1.5 disabled:opacity-50"
@@ -361,7 +364,7 @@ export default function ParentFeesPage() {
               <Receipt className="w-3 h-3" />
             )}
             {t("parentPages", "viewReceiptBtn", lang)}
-          </button>
+          </Button>
         ) : (
           <div className="bg-amber-50 rounded-lg px-3 py-2 text-xs text-amber-700 font-semibold flex items-center gap-1.5">
             <AlertCircle className="w-3 h-3 shrink-0" />
@@ -379,14 +382,14 @@ export default function ParentFeesPage() {
         subtitle={t("parentPages", "feesSub", lang)}
         icon={IndianRupee}
         action={
-          <button
+          <Button
             onClick={() => refetch()}
             disabled={isRefetching}
             aria-label="Refresh"
             className="p-2 rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
             <RefreshCw className={cn("w-4 h-4", isRefetching && "animate-spin")} />
-          </button>
+          </Button>
         }
       />
 
@@ -422,7 +425,7 @@ export default function ParentFeesPage() {
                 const s = getSummary(sid);
                 const childError = s ? null : data?.[sid] instanceof Error ? (data[sid] as Error).message : null;
                 return (
-                  <button
+                  <Button
                     key={sid}
                     onClick={() => setActiveIdx(i)}
                     className={cn(
@@ -434,7 +437,7 @@ export default function ParentFeesPage() {
                   >
                     {info?.name ?? `Child ${i + 1}`}
                     {childError && <XCircle className="w-3 h-3 inline ml-1 opacity-60" />}
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -485,7 +488,7 @@ export default function ParentFeesPage() {
                     const isActive = filter === f.id;
                     const count = counts[f.id];
                     return (
-                      <button
+                      <Button
                         key={f.id}
                         onClick={() => setFilter(f.id)}
                         className={cn(
@@ -504,7 +507,7 @@ export default function ParentFeesPage() {
                         >
                           {count}
                         </span>
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>

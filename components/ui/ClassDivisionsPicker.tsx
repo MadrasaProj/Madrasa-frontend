@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 
 const PREDEFINED_DIVISIONS = ["A", "B", "C", "D", "E", "F"];
 
@@ -68,7 +70,8 @@ export function ClassDivisionsPicker({ value, onChange, gradeLevels, emptyLabel 
                 {PREDEFINED_DIVISIONS.map((d) => {
                   const active = divs.includes(d);
                   return (
-                    <button
+                    <Button
+                      size="icon"
                       key={d}
                       type="button"
                       onClick={() => toggleDiv(d)}
@@ -80,21 +83,23 @@ export function ClassDivisionsPicker({ value, onChange, gradeLevels, emptyLabel 
                       )}
                     >
                       {d}
-                    </button>
+                    </Button>
                   );
                 })}
                 {customDivs.map((d) => (
-                  <button
+                  <Button
+                    size="icon"
                     key={d}
                     type="button"
                     onClick={() => toggleDiv(d)}
                     className="w-8 h-8 rounded-lg text-xs font-bold border bg-emerald-600 border-emerald-600 text-white shadow-sm"
                   >
                     {d}
-                  </button>
+                  </Button>
                 ))}
                 {divs.length === 0 && (
-                  <button
+                  <Button
+                    variant="ghost" size="sm"
                     type="button"
                     onClick={() =>
                       onChange((prev) => {
@@ -106,9 +111,9 @@ export function ClassDivisionsPicker({ value, onChange, gradeLevels, emptyLabel 
                     className="px-2.5 py-1 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
                   >
                     + Add
-                  </button>
+                  </Button>
                 )}
-                <input
+                <Input
                   value={customInput[gl.id] ?? ""}
                   onChange={(e) =>
                     setCustomInput((prev) => ({
@@ -125,11 +130,12 @@ export function ClassDivisionsPicker({ value, onChange, gradeLevels, emptyLabel 
                       setCustomInput((prev) => ({ ...prev, [gl.id]: "" }));
                     }
                   }}
-                  className="w-12 px-1.5 py-1 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  className="h-8 w-12 px-1.5 py-1 text-xs rounded-lg"
                   placeholder="+"
                   maxLength={10}
                 />
-                <button
+                <Button
+                  variant="ghost" size="sm"
                   type="button"
                   onClick={() => {
                     const val = customInput[gl.id]?.trim().toUpperCase();
@@ -138,12 +144,13 @@ export function ClassDivisionsPicker({ value, onChange, gradeLevels, emptyLabel 
                     setCustomInput((prev) => ({ ...prev, [gl.id]: "" }));
                   }}
                   disabled={!customInput[gl.id]?.trim()}
-                  className="px-2 py-1 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 rounded-lg disabled:opacity-40 transition-all"
+                  className="h-8 px-2 text-xs text-emerald-600"
                 >
                   Add
-                </button>
+                </Button>
                 {divs.length > 0 && (
-                  <button
+                  <Button
+                    variant="ghost" size="sm"
                     type="button"
                     onClick={() =>
                       onChange((prev) => {
@@ -155,7 +162,7 @@ export function ClassDivisionsPicker({ value, onChange, gradeLevels, emptyLabel 
                     className="px-2 py-1 text-xs font-semibold text-red-400 hover:bg-red-50 rounded-lg transition-all"
                   >
                     Remove
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>

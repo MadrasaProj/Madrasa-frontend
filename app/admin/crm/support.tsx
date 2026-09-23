@@ -1,3 +1,7 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Textarea } from "@/components/ui/Textarea";
 import { useState, useEffect } from "react";
 import {
   createTicket,
@@ -162,25 +166,25 @@ export default function SupportDashboard() {
           <h1 className="text-2xl font-black text-gray-800">Support Desk Center</h1>
           <p className="text-gray-500 text-xs">Track client issues, bug reports, and SLA breach timelines.</p>
         </div>
-        <button
+        <Button
           onClick={() => setShowAddTicket(true)}
           className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-4 py-2.5 rounded-xl transition-all shadow-sm active:scale-95 w-full sm:w-auto justify-center"
         >
           <Plus className="w-4 h-4" />
           Open Support Ticket
-        </button>
+        </Button>
       </div>
 
       {successMsg && (
         <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl p-4 text-sm flex justify-between items-center shadow-sm">
           <span>{successMsg}</span>
-          <button onClick={() => setSuccessMsg(null)} className="font-bold underline text-xs">Dismiss</button>
+          <Button onClick={() => setSuccessMsg(null)} className="font-bold underline text-xs">Dismiss</Button>
         </div>
       )}
       {error && (
         <div className="bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl p-4 text-sm flex justify-between items-center shadow-sm">
           <span>{error}</span>
-          <button onClick={() => setError(null)} className="font-bold underline text-xs">Dismiss</button>
+          <Button onClick={() => setError(null)} className="font-bold underline text-xs">Dismiss</Button>
         </div>
       )}
 
@@ -196,22 +200,22 @@ export default function SupportDashboard() {
               </h2>
 
               <div className="flex gap-2">
-                <select
+                <Select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
                   className="bg-gray-55 bg-gray-50 border border-gray-100 text-xs py-1.5 px-3 rounded-xl focus:outline-none text-gray-600"
                 >
                   <option value="">All Statuses</option>
                   {TICKET_STATUSES.map(s => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
-                </select>
-                <select
+                </Select>
+                <Select
                   value={categoryFilter}
                   onChange={(e) => setCategoryFilter(e.target.value)}
                   className="bg-gray-50 border border-gray-100 text-xs py-1.5 px-3 rounded-xl focus:outline-none text-gray-600"
                 >
                   <option value="">All Categories</option>
                   {TICKET_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                </Select>
               </div>
             </div>
 
@@ -271,7 +275,7 @@ export default function SupportDashboard() {
             </h2>
             <div className="relative">
               <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-              <input
+              <Input
                 type="text"
                 value={kbQuery}
                 onChange={(e) => setKbQuery(e.target.value)}
@@ -330,9 +334,9 @@ export default function SupportDashboard() {
                   <h2 className="text-base font-black text-gray-800 mt-1">{selectedTicket.title}</h2>
                   <p className="text-[10px] text-gray-400">Madrasa: {selectedTicket.client?.name}</p>
                 </div>
-                <button onClick={() => setSelectedTicket(null)} className="p-2 text-gray-400 hover:bg-gray-100 rounded-xl">
+                <Button onClick={() => setSelectedTicket(null)} className="p-2 text-gray-400 hover:bg-gray-100 rounded-xl">
                   <X className="w-5 h-5" />
-                </button>
+                </Button>
               </div>
 
               {/* Description */}
@@ -343,24 +347,24 @@ export default function SupportDashboard() {
 
               {/* Status Actions */}
               <div className="flex flex-wrap gap-2">
-                <button
+                <Button
                   onClick={() => handleResolveTicket(selectedTicket.id, "RESOLVED")}
                   className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold py-2 px-4 rounded-xl transition-all"
                 >
                   Mark Resolved
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => handleResolveTicket(selectedTicket.id, "CLOSED")}
                   className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold py-2 px-4 rounded-xl transition-all"
                 >
                   Close Ticket
-                </button>
+                </Button>
               </div>
 
               {/* Reply Form */}
               <form onSubmit={handlePostReply} className="space-y-3 pt-4 border-t border-gray-100">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">Post Reply Response</h3>
-                <textarea
+                <Textarea
                   required
                   rows={4}
                   value={replyContent}
@@ -368,14 +372,14 @@ export default function SupportDashboard() {
                   placeholder="Type advice or resolution details here..."
                   className="w-full bg-gray-50 border border-gray-100 text-xs p-3 rounded-2xl focus:outline-none focus:border-emerald-600 focus:bg-white"
                 />
-                <button
+                <Button
                   type="submit"
                   disabled={actionLoading}
                   className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-5 rounded-xl transition-all active:scale-95 disabled:opacity-50"
                 >
                   <CornerDownLeft className="w-3.5 h-3.5" />
                   Post Reply
-                </button>
+                </Button>
               </form>
             </motion.div>
           </>
@@ -396,7 +400,7 @@ export default function SupportDashboard() {
               <form onSubmit={handleCreateTicket} className="space-y-4">
                 <div>
                   <label className="block text-[10px] font-bold uppercase text-gray-400 mb-1">Select Client Madrasa</label>
-                  <select
+                  <Select
                     required
                     value={newTicket.clientId}
                     onChange={(e) => {
@@ -407,35 +411,35 @@ export default function SupportDashboard() {
                   >
                     <option value="">Select active customer...</option>
                     {clients.map(c => <option key={c.id} value={c.clientId || c.id}>{c.name}</option>)}
-                  </select>
+                  </Select>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[10px] font-bold uppercase text-gray-400 mb-1">Category</label>
-                    <select
+                    <Select
                       value={newTicket.category}
                       onChange={(e) => setNewTicket(prev => ({ ...prev, category: e.target.value }))}
                       className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-xs text-gray-700 focus:outline-none text-gray-600"
                     >
                       {TICKET_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
+                    </Select>
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold uppercase text-gray-400 mb-1">Priority</label>
-                    <select
+                    <Select
                       value={newTicket.priority}
                       onChange={(e) => setNewTicket(prev => ({ ...prev, priority: e.target.value }))}
                       className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-xs text-gray-700 focus:outline-none text-gray-600 font-bold"
                     >
                       {TICKET_PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
-                    </select>
+                    </Select>
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-[10px] font-bold uppercase text-gray-400 mb-1">Ticket Title</label>
-                  <input
+                  <Input
                     required
                     type="text"
                     value={newTicket.title}
@@ -447,7 +451,7 @@ export default function SupportDashboard() {
 
                 <div>
                   <label className="block text-[10px] font-bold uppercase text-gray-400 mb-1">Detailed description</label>
-                  <textarea
+                  <Textarea
                     required
                     rows={4}
                     value={newTicket.description}
@@ -458,19 +462,19 @@ export default function SupportDashboard() {
                 </div>
 
                 <div className="flex gap-2 justify-end">
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setShowAddTicket(false)}
                     className="bg-gray-100 text-gray-600 font-bold text-xs py-2 px-4 rounded-xl"
                   >
                     Cancel
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="submit"
                     className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-4 rounded-xl"
                   >
                     Create Ticket
-                  </button>
+                  </Button>
                 </div>
               </form>
             </motion.div>

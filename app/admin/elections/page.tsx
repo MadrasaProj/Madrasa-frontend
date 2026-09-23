@@ -1,3 +1,7 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Textarea } from "@/components/ui/Textarea";
 import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { motion, AnimatePresence } from "framer-motion";
@@ -198,12 +202,12 @@ function ElectionDetailModal({
                 {election.class !== "all" && ` · ${election.class}`}
               </p>
             </div>
-            <button
+            <Button
               onClick={onClose}
               className="bg-white/20 hover:bg-white/30 rounded-full p-2 shrink-0"
             >
               <X className="w-4 h-4" />
-            </button>
+            </Button>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             <StatusPill status={election.status} lang={lang} />
@@ -488,14 +492,14 @@ function ElectionCard({
         </AnimatePresence>
 
         <div className="flex items-center gap-2">
-          <button
+          <Button
             onClick={onView}
             className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition-all"
           >
             <Eye className="w-3.5 h-3.5" />
             {lang === "ml" ? "വിശദാംശങ്ങൾ" : "View Details"}
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => setExpanded(!expanded)}
             className="flex items-center justify-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold px-3 py-2 rounded-xl transition-all"
           >
@@ -505,7 +509,7 @@ function ElectionCard({
               <ChevronDown className="w-3.5 h-3.5" />
             )}
             {lang === "ml" ? "ഫലം" : "Results"}
-          </button>
+          </Button>
         </div>
       </div>
     </motion.div>
@@ -773,12 +777,12 @@ function CreateElectionModal({
                   : "Create an Election"}
               </h2>
             </div>
-            <button
+            <Button
               onClick={onClose}
               className="bg-white/20 hover:bg-white/30 rounded-full p-2"
             >
               <X className="w-4 h-4" />
-            </button>
+            </Button>
           </div>
           {/* Step Bar */}
           <div className="flex items-center gap-1">
@@ -841,7 +845,7 @@ function CreateElectionModal({
                             ? "Class Vote"
                             : "Parent Vote";
                         return (
-                          <button
+                          <Button
                             key={cat}
                             onClick={() => selectCategory(cat)}
                             className={`flex items-center gap-2.5 p-3 rounded-2xl border-2 text-left transition-all ${sel ? "border-emerald-500 bg-emerald-50" : "border-gray-100 bg-gray-50 hover:border-emerald-200"}`}
@@ -860,7 +864,7 @@ function CreateElectionModal({
                             {sel && (
                               <Check className="w-4 h-4 text-emerald-600 ml-auto shrink-0" />
                             )}
-                          </button>
+                          </Button>
                         );
                       })}
                     </div>
@@ -910,7 +914,7 @@ function CreateElectionModal({
                     ? "തലക്കെട്ട് (English) *"
                     : "Title (English) *"}
                 </label>
-                <input
+                <Input
                   className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200"
                   placeholder="e.g. SKSBV Chairman Election 2026"
                   value={wizard.title}
@@ -923,7 +927,7 @@ function CreateElectionModal({
                     ? "തലക്കെട്ട് (Malayalam)"
                     : "Title (Malayalam)"}
                 </label>
-                <input
+                <Input
                   className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-400"
                   placeholder="ഉദാ: SKSBV ചെയർമാൻ തിരഞ്ഞെടുപ്പ് 2026"
                   value={wizard.title_ml}
@@ -936,7 +940,7 @@ function CreateElectionModal({
                   <label className="block text-xs font-bold text-gray-600 mb-1">
                     {lang === "ml" ? "പദവി (EN) *" : "Position (EN) *"}
                   </label>
-                  <input
+                  <Input
                     className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-400"
                     value={wizard.position}
                     onChange={(e) => setW({ position: e.target.value })}
@@ -946,7 +950,7 @@ function CreateElectionModal({
                   <label className="block text-xs font-bold text-gray-600 mb-1">
                     {lang === "ml" ? "പദവി (ML)" : "Position (ML)"}
                   </label>
-                  <input
+                  <Input
                     className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-400"
                     value={wizard.position_ml}
                     onChange={(e) => setW({ position_ml: e.target.value })}
@@ -958,7 +962,7 @@ function CreateElectionModal({
                 <label className="block text-xs font-bold text-gray-600 mb-1">
                   {lang === "ml" ? "വിവരണം" : "Description"}
                 </label>
-                <textarea
+                <Textarea
                   rows={3}
                   className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-400 resize-none"
                   placeholder="Brief description..."
@@ -972,7 +976,7 @@ function CreateElectionModal({
                   <label className="block text-xs font-bold text-gray-600 mb-1">
                     {lang === "ml" ? "ആരംഭ തീയതി *" : "Start Date *"}
                   </label>
-                  <input
+                  <Input
                     type="date"
                     className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-400"
                     value={wizard.startDate}
@@ -983,7 +987,7 @@ function CreateElectionModal({
                   <label className="block text-xs font-bold text-gray-600 mb-1">
                     {lang === "ml" ? "അവസാന തീയതി *" : "End Date *"}
                   </label>
-                  <input
+                  <Input
                     type="date"
                     className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-400"
                     value={wizard.endDate}
@@ -997,7 +1001,7 @@ function CreateElectionModal({
                   <label className="block text-xs font-bold text-gray-600 mb-1">
                     {lang === "ml" ? "ക്ലാസ് / സ്കോപ്" : "Class / Scope"}
                   </label>
-                  <select
+                  <Select
                     className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-400 bg-white"
                     value={wizard.forClass}
                     onChange={(e) => setW({ forClass: e.target.value })}
@@ -1007,13 +1011,13 @@ function CreateElectionModal({
                         {c}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-600 mb-1">
                     {lang === "ml" ? "ആകെ വോട്ടർമാർ" : "Eligible Voters"}
                   </label>
-                  <input
+                  <Input
                     type="number"
                     min={1}
                     className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-400"
@@ -1029,7 +1033,7 @@ function CreateElectionModal({
                 <label className="block text-xs font-bold text-gray-600 mb-1">
                   {lang === "ml" ? "മദ്‌റസ നാമം" : "Madrasa Name"}
                 </label>
-                <input
+                <Input
                   className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-400"
                   value={wizard.madrasaName}
                   onChange={(e) => setW({ madrasaName: e.target.value })}
@@ -1046,13 +1050,13 @@ function CreateElectionModal({
                   {lang === "ml" ? "സ്ഥാനാർത്ഥികളെ ചേർക്കുക" : "Add Candidates"}{" "}
                   ({wizard.candidates.length})
                 </p>
-                <button
+                <Button
                   onClick={addCandidate}
                   className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition-all"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   {lang === "ml" ? "ചേർക്കുക" : "Add"}
-                </button>
+                </Button>
               </div>
               <div className="space-y-3">
                 {wizard.candidates.map((cand, i) => (
@@ -1062,7 +1066,7 @@ function CreateElectionModal({
                   >
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <select
+                        <Select
                           className="border border-gray-200 rounded-xl px-2 py-1.5 text-lg bg-white focus:outline-none"
                           value={cand.symbol}
                           onChange={(e) =>
@@ -1074,7 +1078,7 @@ function CreateElectionModal({
                               {s}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                         <span className="text-xs font-bold text-gray-600">
                           {lang === "ml"
                             ? `സ്ഥാനാർത്ഥി ${i + 1}`
@@ -1082,12 +1086,12 @@ function CreateElectionModal({
                         </span>
                       </div>
                       {wizard.candidates.length > 2 && (
-                        <button
+                        <Button
                           onClick={() => removeCandidate(i)}
                           className="text-red-400 hover:text-red-600 transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
-                        </button>
+                        </Button>
                       )}
                     </div>
                     <div className="grid grid-cols-2 gap-2 mb-2">
@@ -1095,7 +1099,7 @@ function CreateElectionModal({
                         <label className="block text-[10px] font-bold text-gray-500 mb-1">
                           {lang === "ml" ? "പേര് *" : "Full Name *"}
                         </label>
-                        <input
+                        <Input
                           className="w-full border border-gray-200 rounded-xl px-2.5 py-2 text-sm focus:outline-none focus:border-emerald-400 bg-white"
                           placeholder="Student name"
                           value={cand.name}
@@ -1108,7 +1112,7 @@ function CreateElectionModal({
                         <label className="block text-[10px] font-bold text-gray-500 mb-1">
                           {lang === "ml" ? "ക്ലാസ്" : "Class"}
                         </label>
-                        <select
+                        <Select
                           className="w-full border border-gray-200 rounded-xl px-2.5 py-2 text-sm focus:outline-none focus:border-emerald-400 bg-white"
                           value={cand.class}
                           onChange={(e) =>
@@ -1121,7 +1125,7 @@ function CreateElectionModal({
                               {c}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       </div>
                     </div>
                     <div>
@@ -1130,7 +1134,7 @@ function CreateElectionModal({
                           ? "ബയോ / വാഗ്ദാനം"
                           : "Bio / Campaign Promise"}
                       </label>
-                      <textarea
+                      <Textarea
                         rows={2}
                         className="w-full border border-gray-200 rounded-xl px-2.5 py-2 text-sm focus:outline-none focus:border-emerald-400 bg-white resize-none"
                         placeholder="Brief bio..."
@@ -1267,16 +1271,16 @@ function CreateElectionModal({
         {/* Modal Footer */}
         <div className="p-4 border-t border-gray-100 flex items-center gap-3 shrink-0">
           {wizard.step > 1 && !toast && (
-            <button
+            <Button
               onClick={() => setW({ step: (wizard.step - 1) as 1 | 2 | 3 | 4 })}
               className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all"
             >
               {lang === "ml" ? "← തിരക്കെ" : "← Back"}
-            </button>
+            </Button>
           )}
           <div className="flex-1" />
           {wizard.step < 4 ? (
-            <button
+            <Button
               onClick={() =>
                 canAdvance() &&
                 setW({ step: (wizard.step + 1) as 1 | 2 | 3 | 4 })
@@ -1286,10 +1290,10 @@ function CreateElectionModal({
             >
               {lang === "ml" ? "തുടരുക" : "Continue"}
               <ChevronRight className="w-4 h-4" />
-            </button>
+            </Button>
           ) : (
             !toast && (
-              <button
+              <Button
                 onClick={handleCreate}
                 className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-all"
               >
@@ -1297,7 +1301,7 @@ function CreateElectionModal({
                 {lang === "ml"
                   ? "✅ തിരഞ്ഞെടുപ്പ് ആരംഭിക്കുക"
                   : "✅ Create Election"}
-              </button>
+              </Button>
             )
           )}
         </div>
@@ -1542,7 +1546,7 @@ export default function AdminElectionsPage() {
       {/* Category Filter */}
       <div className="flex gap-1.5 mb-2 overflow-x-auto no-scrollbar pb-1">
         {CATEGORY_FILTER_OPTIONS.map((opt) => (
-          <button
+          <Button
             key={opt.key}
             onClick={() => setCategoryFilter(opt.key)}
             className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all shrink-0 ${
@@ -1554,14 +1558,14 @@ export default function AdminElectionsPage() {
             {opt.key !== "all" &&
               CATEGORY_META[opt.key as ElectionCategory].emoji + " "}
             {lang === "ml" ? opt.label_ml : opt.label}
-          </button>
+          </Button>
         ))}
       </div>
 
       {/* Type Tabs */}
       <div className="flex gap-2 mb-2 overflow-x-auto no-scrollbar pb-1">
         {typeTabs.map((tab) => (
-          <button
+          <Button
             key={tab.key}
             onClick={() => setTypeFilter(tab.key)}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0 ${
@@ -1572,14 +1576,14 @@ export default function AdminElectionsPage() {
           >
             <tab.icon className="w-3.5 h-3.5" />
             {lang === "ml" ? tab.label_ml : tab.label}
-          </button>
+          </Button>
         ))}
       </div>
 
       {/* Status Tabs */}
       <div className="flex gap-1.5 mb-5 overflow-x-auto no-scrollbar pb-1">
         {statusTabs.map((s) => (
-          <button
+          <Button
             key={s.key}
             onClick={() => setStatusFilter(s.key)}
             className={`px-3 py-1.5 rounded-xl text-[11px] font-semibold whitespace-nowrap transition-all shrink-0 ${
@@ -1589,7 +1593,7 @@ export default function AdminElectionsPage() {
             }`}
           >
             {lang === "ml" ? s.label_ml : s.label}
-          </button>
+          </Button>
         ))}
       </div>
 

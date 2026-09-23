@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ExamRecord } from "@/lib/exams-api";
@@ -97,7 +98,7 @@ export function useExamColumns(options: UseExamColumnsOptions = {}) {
               render: (exam: ExamRecord) => (
                 <div className="flex items-center gap-1.5 justify-end">
                   {onEdit && (
-                    <button
+                    <Button
                       onClick={(e) => {
                         e.stopPropagation();
                         onEdit(exam);
@@ -107,10 +108,10 @@ export function useExamColumns(options: UseExamColumnsOptions = {}) {
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                       <span className="hidden sm:inline">Edit</span>
-                    </button>
+                    </Button>
                   )}
                   {exam.examStatus === "PUBLISHED" && onViewResults ? (
-                    <button
+                    <Button
                       onClick={(e) => {
                         e.stopPropagation();
                         onViewResults(exam);
@@ -120,12 +121,12 @@ export function useExamColumns(options: UseExamColumnsOptions = {}) {
                     >
                       <Eye className="w-3.5 h-3.5" />
                       <span className="hidden md:inline">Results</span>
-                    </button>
+                    </Button>
                   ) : exam.examStatus === "MARK_ENTRY" &&
                     (!exam.markEntryLastDate ||
                       new Date(exam.markEntryLastDate) >= new Date()) &&
                     onEnterMarks ? (
-                    <button
+                    <Button
                       onClick={(e) => {
                         e.stopPropagation();
                         onEnterMarks(exam);
@@ -135,9 +136,9 @@ export function useExamColumns(options: UseExamColumnsOptions = {}) {
                     >
                       <PenLine className="w-3.5 h-3.5" />
                       <span className="hidden md:inline">Enter</span>
-                    </button>
+                    </Button>
                   ) : onClasses ? (
-                    <button
+                    <Button
                       onClick={(e) => {
                         e.stopPropagation();
                         onClasses(exam);
@@ -147,19 +148,19 @@ export function useExamColumns(options: UseExamColumnsOptions = {}) {
                     >
                       <BarChart2 className="w-3.5 h-3.5" />
                       <span className="hidden md:inline">Classes</span>
-                    </button>
+                    </Button>
                   ) : (
-                    <button
+                    <Button
                       disabled
                       className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-50 text-gray-400 cursor-not-allowed transition-colors text-xs font-semibold"
                       title="No action available"
                     >
                       <Lock className="w-3.5 h-3.5" />
                       <span className="hidden md:inline">Locked</span>
-                    </button>
+                    </Button>
                   )}
                   {onDelete && (
-                    <button
+                    <Button
                       onClick={(e) => {
                         e.stopPropagation();
                         onDelete(exam);
@@ -168,7 +169,7 @@ export function useExamColumns(options: UseExamColumnsOptions = {}) {
                       title="Delete Exam"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    </Button>
                   )}
                 </div>
               ),

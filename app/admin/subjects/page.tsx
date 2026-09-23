@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -230,13 +233,13 @@ export default function AdminSubjectsPage() {
           header: "",
           render: (s: SubjectRecord) => (
             <div className="flex items-center justify-end">
-              <button
+              <Button
                 onClick={(e) => { e.stopPropagation(); openEdit(s); }}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors text-xs font-semibold"
               >
                 <Pencil className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Edit</span>
-              </button>
+              </Button>
             </div>
           ),
           className: "text-right",
@@ -254,13 +257,13 @@ export default function AdminSubjectsPage() {
           isAdmin ? (
             <div className="flex items-center gap-2">
               {isPeriodBased && (
-                <button
+                <Button
                   onClick={() => { setBulkError(""); setBulkClassId(filterClassId); setShowBulkModal(true); }}
                   className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 px-3 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
                 >
                   <Users className="w-4 h-4" />
                   <span className="hidden sm:inline">Sync Teacher</span>
-                </button>
+                </Button>
               )}
             </div>
           ) : undefined
@@ -273,7 +276,7 @@ export default function AdminSubjectsPage() {
       <div className="flex gap-3 mb-4">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
+          <Input
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
             placeholder="Search subjects…"
@@ -282,14 +285,14 @@ export default function AdminSubjectsPage() {
         </div>
         <div className="relative">
           <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-          <select
+          <Select
             value={filterClassId}
             onChange={(e) => handleFilterClass(e.target.value)}
             className="pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 appearance-none cursor-pointer"
           >
             <option value="">All Classes</option>
             {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
       </div>
 
@@ -317,12 +320,12 @@ export default function AdminSubjectsPage() {
               </div>
             </div>
             {isAdmin && (
-              <button
+              <Button
                 onClick={(e) => { e.stopPropagation(); openEdit(s); }}
                 className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
               >
                 <Pencil className="w-3.5 h-3.5" />
-              </button>
+              </Button>
             )}
           </div>
         )}
@@ -359,13 +362,13 @@ export default function AdminSubjectsPage() {
                 <h2 className="font-bold text-gray-900 text-lg">
                   {editTarget ? "Edit Subject" : "Add Subject"}
                 </h2>
-                <button
+                <Button
                   onClick={() => !saving && setShowDrawer(false)}
                   disabled={saving}
                   className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 disabled:opacity-50"
                 >
                   <X className="w-4 h-4" />
-                </button>
+                </Button>
               </div>
 
               <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4 pb-8">
@@ -377,7 +380,7 @@ export default function AdminSubjectsPage() {
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                     Display Name <span className="text-red-500">*</span>
                   </label>
-                  <input
+                  <Input
                     type="text"
                     value={form.name}
                     onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
@@ -390,61 +393,61 @@ export default function AdminSubjectsPage() {
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                     Class <span className="text-red-500">*</span>
                   </label>
-                  <select
+                  <Select
                     value={form.classId}
                     disabled
                     className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-100 text-sm text-gray-500 cursor-not-allowed"
                   >
                     <option value="">Select class</option>
                     {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  </Select>
                 </div>
 
                 {isPeriodBased && (
                   <div>
                     <label className="block text-xs font-semibold text-gray-600 mb-1.5">Assigned Teacher</label>
-                    <select
+                    <Select
                       value={form.teacherId}
                       onChange={(e) => setForm((f) => ({ ...f, teacherId: e.target.value }))}
                       className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
                     >
                       <option value="">(Unassigned)</option>
                       {teachers.map((t) => <option key={t.id} value={t.id}>{t.name} · @{t.username}</option>)}
-                    </select>
+                    </Select>
                   </div>
                 )}
 
                 {editTarget && (
                   <div>
                     <label className="block text-xs font-semibold text-gray-600 mb-1.5">Global Subject</label>
-                    <select
+                    <Select
                       value={editTarget.classSubject?.id ?? ""}
                       disabled
                       className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-100 text-sm text-gray-500 cursor-not-allowed"
                     >
                       <option value="">{editTarget.classSubject?.subjectName ?? "None"}</option>
-                    </select>
+                    </Select>
                   </div>
                 )}
 
               </div>
 
               <div className="px-5 py-4 border-t border-gray-100 flex gap-3 shrink-0">
-                <button
+                <Button
                   onClick={() => !saving && setShowDrawer(false)}
                   disabled={saving}
                   className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 disabled:opacity-50"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={handleSave}
                   disabled={saving}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 disabled:opacity-50"
                 >
                   {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                   {editTarget ? "Save Changes" : "Create Subject"}
-                </button>
+                </Button>
               </div>
             </motion.div>
             </div>
@@ -468,10 +471,10 @@ export default function AdminSubjectsPage() {
               <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="font-bold text-gray-900 text-lg">Sync Teacher to Class</h3>
-                  <button onClick={() => setShowBulkModal(false)}
+                  <Button onClick={() => setShowBulkModal(false)}
                     className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200">
                     <X className="w-4 h-4" />
-                  </button>
+                  </Button>
                 </div>
                 <p className="text-xs text-gray-500">Assigns one teacher to all active subjects in the selected class.</p>
 
@@ -481,32 +484,32 @@ export default function AdminSubjectsPage() {
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Class</label>
-                  <select value={bulkClassId} onChange={(e) => setBulkClassId(e.target.value)}
+                  <Select value={bulkClassId} onChange={(e) => setBulkClassId(e.target.value)}
                     className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors">
                     <option value="">Select class</option>
                     {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  </Select>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Teacher</label>
-                  <select value={bulkTeacherId} onChange={(e) => setBulkTeacherId(e.target.value)}
+                  <Select value={bulkTeacherId} onChange={(e) => setBulkTeacherId(e.target.value)}
                     className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors">
                     <option value="">Select teacher</option>
                     {teachers.map((t) => <option key={t.id} value={t.id}>{t.name} · @{t.username}</option>)}
-                  </select>
+                  </Select>
                 </div>
 
                 <div className="flex gap-3">
-                  <button onClick={() => setShowBulkModal(false)} disabled={bulkSaving}
+                  <Button onClick={() => setShowBulkModal(false)} disabled={bulkSaving}
                     className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 disabled:opacity-50">
                     Cancel
-                  </button>
-                  <button onClick={handleBulkAssign} disabled={bulkSaving}
+                  </Button>
+                  <Button onClick={handleBulkAssign} disabled={bulkSaving}
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 disabled:opacity-50">
                     {bulkSaving && <Loader2 className="w-4 h-4 animate-spin" />}
                     Assign
-                  </button>
+                  </Button>
                  </div>
               </div>
             </motion.div>

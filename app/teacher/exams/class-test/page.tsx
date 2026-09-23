@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -441,12 +444,12 @@ export default function TeacherClassTestsPage() {
           subtitle="Manage class tests and enter marks"
           icon={GraduationCap}
           action={
-            <button
+            <Button
               onClick={openAdd}
               className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-colors"
             >
               <Plus className="w-4 h-4" /> {t("teacherPages", "newClassTestBtn", lang)}
-            </button>
+            </Button>
           }
         />
 
@@ -534,7 +537,7 @@ export default function TeacherClassTestsPage() {
             <div className="flex gap-3">
               <div className="relative flex-1">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
+                <Input
                   type="text"
                   placeholder="Search class test by name..."
                   value={searchText}
@@ -542,15 +545,15 @@ export default function TeacherClassTestsPage() {
                   className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 focus:border-emerald-500 transition-all"
                 />
                 {searchText && (
-                  <button
+                  <Button
                     onClick={() => setSearchText("")}
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
                     <X className="w-4 h-4" />
-                  </button>
+                  </Button>
                 )}
               </div>
-              <select
+              <Select
                 value={filterClassId}
                 onChange={(e) => {
                   setFilterClassId(e.target.value);
@@ -563,7 +566,7 @@ export default function TeacherClassTestsPage() {
                     {c.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             <DataTable
@@ -643,13 +646,13 @@ export default function TeacherClassTestsPage() {
                   <h2 className="font-bold text-gray-900 text-lg">
                     {editTarget ? t("teacherPages", "editClassTestTitle", lang) : t("teacherPages", "newClassTestTitle", lang)}
                   </h2>
-                  <button
+                  <Button
                     onClick={() => !saving && setShowDrawer(false)}
                     disabled={saving}
                     className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200"
                   >
                     <X className="w-4 h-4" />
-                  </button>
+                  </Button>
                 </div>
                 <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4 pb-8">
                   {saveError && (
@@ -662,7 +665,7 @@ export default function TeacherClassTestsPage() {
                     <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                       {t("teacherPages", "testNameRequired", lang)} <span className="text-red-500">*</span>
                     </label>
-                    <input
+                    <Input
                       type="text"
                       value={formName}
                       onChange={(e) => setFormName(e.target.value)}
@@ -677,7 +680,7 @@ export default function TeacherClassTestsPage() {
                         <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                           {t("teacherPages", "classRequired", lang)} <span className="text-red-500">*</span>
                         </label>
-                        <select
+                        <Select
                           value={formClassId}
                           onChange={(e) => {
                             setFormClassId(e.target.value);
@@ -691,13 +694,13 @@ export default function TeacherClassTestsPage() {
                               {c.name}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       </div>
                       <div>
                         <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                           {t("teacherPages", "subjectRequired", lang)} <span className="text-red-500">*</span>
                         </label>
-                        <select
+                        <Select
                           value={formSubjectId}
                           onChange={(e) => handleSubjectChange(e.target.value)}
                           disabled={!formClassId}
@@ -715,7 +718,7 @@ export default function TeacherClassTestsPage() {
                                 {s.name}
                               </option>
                             ))}
-                        </select>
+                        </Select>
                       </div>
                     </>
                   )}
@@ -725,7 +728,7 @@ export default function TeacherClassTestsPage() {
                       <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                         {t("teacherPages", "startDateLabel", lang)}
                       </label>
-                      <input
+                      <Input
                         type="date"
                         value={formStartDate}
                         onChange={(e) => setFormStartDate(e.target.value)}
@@ -736,7 +739,7 @@ export default function TeacherClassTestsPage() {
                       <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                         {t("teacherPages", "endDateLabel", lang)}
                       </label>
-                      <input
+                      <Input
                         type="date"
                         value={formEndDate}
                         onChange={(e) => setFormEndDate(e.target.value)}
@@ -750,7 +753,7 @@ export default function TeacherClassTestsPage() {
                       <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                         {t("teacherPages", "maxMarksLabel", lang)}
                       </label>
-                      <input
+                      <Input
                         type="number"
                         min={1}
                         max={9999}
@@ -763,7 +766,7 @@ export default function TeacherClassTestsPage() {
                       <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                         {t("teacherPages", "passMarksLabel", lang)}
                       </label>
-                      <input
+                      <Input
                         type="number"
                         min={0}
                         max={9999}
@@ -780,7 +783,7 @@ export default function TeacherClassTestsPage() {
                       <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                         {t("common", "status", lang)}
                       </label>
-                      <select
+                      <Select
                         value={formStatus}
                         onChange={(e) =>
                           setFormStatus(e.target.value as ExamStatus)
@@ -794,26 +797,26 @@ export default function TeacherClassTestsPage() {
                             </option>
                           ),
                         )}
-                      </select>
+                      </Select>
                     </div>
                   )}
                 </div>
                 <div className="px-5 py-4 border-t border-gray-100 flex gap-3 shrink-0">
-                  <button
+                  <Button
                     onClick={() => !saving && setShowDrawer(false)}
                     disabled={saving}
                     className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 disabled:opacity-50"
                   >
                     {t("common", "cancel", lang)}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={handleSave}
                     disabled={saving}
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 disabled:opacity-50"
                   >
                     {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                     {editTarget ? t("teacherPages", "saveChangesBtn", lang) : t("teacherPages", "createTestBtn", lang)}
-                  </button>
+                  </Button>
                 </div>
               </motion.div>
             </div>
@@ -861,19 +864,19 @@ export default function TeacherClassTestsPage() {
                       {markEntryExam.name} — {markEntryExam.class?.name ?? ""}
                     </p>
                   </div>
-                  <button
+                  <Button
                     onClick={() => !meSaving && setShowMarkEntry(false)}
                     disabled={meSaving}
                     className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200"
                   >
                     <X className="w-4 h-4" />
-                  </button>
+                  </Button>
                 </div>
 
                 {/* Tabs */}
                 {meStudents.length > 0 && meSubjectId && (
                   <div className="flex border-b border-gray-100 shrink-0">
-                    <button
+                    <Button
                       onClick={() => setMarkEntryTab("marks")}
                       className={cn(
                         "flex-1 px-4 py-2.5 text-xs font-semibold transition-colors border-b-2",
@@ -883,8 +886,8 @@ export default function TeacherClassTestsPage() {
                       )}
                     >
                       {t("teacherPages", "enterMarksTab", lang)}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() => setMarkEntryTab("grades")}
                       className={cn(
                         "flex-1 px-4 py-2.5 text-xs font-semibold transition-colors border-b-2",
@@ -894,7 +897,7 @@ export default function TeacherClassTestsPage() {
                       )}
                     >
                       {t("teacherPages", "gradeCardTab", lang)}
-                    </button>
+                    </Button>
                   </div>
                 )}
 
@@ -909,13 +912,13 @@ export default function TeacherClassTestsPage() {
                         {canEditExam(markEntryExam) &&
                           markEntryExam._count?.results &&
                           markEntryExam._count.results > 0 && (
-                            <button
+                            <Button
                               onClick={() => handlePublish(markEntryExam)}
                               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shrink-0"
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" />
                               {t("teacherPages", "publishBtn", lang)}
-                            </button>
+                            </Button>
                           )}
                       </div>
 
@@ -946,7 +949,7 @@ export default function TeacherClassTestsPage() {
                                     {s.adno}
                                   </p>
                                 </div>
-                                <input
+                                <Input
                                   type="number"
                                   min={0}
                                   max={(() => {
@@ -984,14 +987,14 @@ export default function TeacherClassTestsPage() {
                   )}
                 </div>
                 <div className="px-5 py-4 border-t border-gray-100 flex gap-3 shrink-0">
-                  <button
+                  <Button
                     onClick={() => !meSaving && setShowMarkEntry(false)}
                     disabled={meSaving}
                     className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 disabled:opacity-50"
                   >
                     {t("common", "close", lang)}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => handleMeSave(markEntryExam.id)}
                     disabled={meSaving || !meSubjectId}
                     className={cn(
@@ -1009,7 +1012,7 @@ export default function TeacherClassTestsPage() {
                       <PenLine className="w-4 h-4" />
                     )}
                     {meSaved ? "Saved" : t("teacherPages", "saveMarksBtn", lang)}
-                  </button>
+                  </Button>
                 </div>
               </motion.div>
             </div>
@@ -1050,14 +1053,14 @@ export default function TeacherClassTestsPage() {
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3 mt-6">
-                <button
+                <Button
                   onClick={() => setShowDeleteConfirm(false)}
                   disabled={deleting !== null}
                   className="py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
                   {t("common", "cancel", lang)}
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={handleDelete}
                   disabled={deleting !== null}
                   className="py-3 rounded-2xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors disabled:opacity-60"
@@ -1069,7 +1072,7 @@ export default function TeacherClassTestsPage() {
                   ) : (
                     t("common", "delete", lang)
                   )}
-                </button>
+                </Button>
               </div>
             </motion.div>
           </>

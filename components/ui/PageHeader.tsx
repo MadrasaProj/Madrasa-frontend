@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { LucideIcon, ChevronLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/Button";
 
 interface PageHeaderProps {
   title: string;
@@ -17,12 +18,14 @@ export function PageHeader({ title, subtitle, icon: Icon, back, backHref, action
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 mb-5 lg:mb-6">
       <div className="flex items-center gap-2.5 min-w-0 flex-1">
         {back && (
-          <button
+          <Button
+            size="icon"
+            variant="outline"
             onClick={() => backHref ? navigate(backHref) : navigate(-1)}
-            className="p-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 transition-colors shrink-0 active:scale-95"
+            className="rounded-xl bg-white shrink-0"
           >
             <ChevronLeft className="w-5 h-5 text-gray-600" />
-          </button>
+          </Button>
         )}
         {Icon && (
           <div className="p-2 lg:p-2.5 bg-emerald-50 rounded-xl shrink-0">

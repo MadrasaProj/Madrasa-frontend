@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import type { ExamRecord } from "@/lib/exams-api";
 import { GraduationCap, Eye, PenLine, Lock, Edit2, BarChart2, Trash2 } from "lucide-react";
 import { ExamStatusBadge, getExamStatusInfo } from "@/components/exam/ExamStatusBadge";
@@ -64,7 +65,7 @@ export function ExamMobileCard({
       </div>
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
         {onEdit && (
-          <button
+          <Button
             onClick={(e) => {
               e.stopPropagation();
               onEdit(exam);
@@ -72,10 +73,10 @@ export function ExamMobileCard({
             className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors text-xs font-bold"
           >
             <Edit2 className="w-3.5 h-3.5" /> Edit
-          </button>
+          </Button>
         )}
         {exam.examStatus === "PUBLISHED" && onViewResults ? (
-          <button
+          <Button
             onClick={(e) => {
               e.stopPropagation();
               onViewResults(exam);
@@ -83,12 +84,12 @@ export function ExamMobileCard({
             className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 transition-colors text-xs font-bold"
           >
             <Eye className="w-3.5 h-3.5" /> View Results
-          </button>
+          </Button>
         ) : exam.examStatus === "MARK_ENTRY" &&
           (!exam.markEntryLastDate ||
             new Date(exam.markEntryLastDate) >= new Date()) &&
           onEnterMarks ? (
-          <button
+          <Button
             onClick={(e) => {
               e.stopPropagation();
               onEnterMarks(exam);
@@ -96,9 +97,9 @@ export function ExamMobileCard({
             className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors text-xs font-bold"
           >
             <PenLine className="w-3.5 h-3.5" /> Enter Marks
-          </button>
+          </Button>
         ) : onClasses ? (
-          <button
+          <Button
             onClick={(e) => {
               e.stopPropagation();
               onClasses(exam);
@@ -106,17 +107,17 @@ export function ExamMobileCard({
             className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors text-xs font-bold"
           >
             <BarChart2 className="w-3.5 h-3.5" /> Classes
-          </button>
+          </Button>
         ) : (
-          <button
+          <Button
             disabled
             className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-gray-50 text-gray-400 cursor-not-allowed transition-colors text-xs font-bold"
           >
             <Lock className="w-3.5 h-3.5" /> No Action
-          </button>
+          </Button>
         )}
         {onDelete && (
-          <button
+          <Button
             onClick={(e) => {
               e.stopPropagation();
               onDelete(exam);
@@ -124,7 +125,7 @@ export function ExamMobileCard({
             className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-red-400 bg-red-50 hover:bg-red-100 hover:text-red-500 transition-colors text-xs font-bold"
           >
             <Trash2 className="w-3.5 h-3.5" /> Delete
-          </button>
+          </Button>
         )}
       </div>
     </div>

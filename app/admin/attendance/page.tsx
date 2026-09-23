@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { Dialog, DialogContent } from "@/components/ui/Dialog";
+import { Input } from "@/components/ui/Input";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -203,7 +206,7 @@ export default function AdminAttendancePage() {
  action={
  <div className="flex items-center gap-2">
  {hasDirty ? (
- <button
+ <Button
  onClick={saveAll}
  disabled={saving}
  className="flex items-center gap-1.5 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 disabled:opacity-60 transition-colors"
@@ -211,19 +214,19 @@ export default function AdminAttendancePage() {
  {saving
  ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</>
  : <><Save className="w-4 h-4" /> Save</>}
- </button>
+ </Button>
  ) : saveSuccess ? (
  <span className="flex items-center gap-1 text-emerald-600 text-sm font-semibold">
  <CheckCircle2 className="w-4 h-4" /> Saved
  </span>
  ) : null}
  {hasExisting && (
- <button
+ <Button
  onClick={() => setConfirmClear(true)}
  className="flex items-center gap-1.5 bg-red-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-600 transition-colors"
  >
  <Trash2 className="w-4 h-4" /> Clear All
- </button>
+ </Button>
  )}
  </div>
  }
@@ -233,12 +236,12 @@ export default function AdminAttendancePage() {
 
  {/* Date nav */}
  <div className="flex items-center justify-between bg-white rounded-2xl border border-gray-100 px-4 py-3 mb-4">
- <button onClick={() => changeDate(-1)}
+ <Button onClick={() => changeDate(-1)}
  className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50">
  <ChevronLeft className="w-4 h-4" />
- </button>
+ </Button>
  <div className="flex items-center gap-3">
- <input
+ <Input
  type="date"
  value={date}
  max={todayISO()}
@@ -249,11 +252,11 @@ export default function AdminAttendancePage() {
  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">TODAY</span>
  )}
  </div>
- <button onClick={() => changeDate(1)}
+ <Button onClick={() => changeDate(1)}
  disabled={date >= todayISO()}
  className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 disabled:opacity-40">
  <ChevronRight className="w-4 h-4" />
- </button>
+ </Button>
  </div>
 
  {/* Class tabs */}
@@ -265,7 +268,7 @@ export default function AdminAttendancePage() {
  ) : classes.length === 0 ? (
  <p className="text-xs text-gray-400 px-3 py-2">No classes found</p>
  ) : classes.map((cls) => (
- <button key={cls.id}
+ <Button key={cls.id}
  onClick={() => setActiveClassId(cls.id)}
  className={cn(
  "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 transition-all",
@@ -280,7 +283,7 @@ export default function AdminAttendancePage() {
  activeClassId === cls.id ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
  )}>{cls.studentCount}</span>
  )}
- </button>
+ </Button>
  ))}
  </div>
 
@@ -313,8 +316,8 @@ export default function AdminAttendancePage() {
 
  {/* Clear all confirmation modal */}
  {confirmClear && (
- <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
- <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+ <Dialog open={confirmClear} onOpenChange={(open) => !open && setConfirmClear(false)}>
+ <DialogContent className="max-w-sm p-6">
  <div className="flex items-center gap-3 mb-4">
  <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
  <AlertCircle className="w-5 h-5 text-red-600" />
@@ -328,22 +331,22 @@ export default function AdminAttendancePage() {
  This will remove all attendance records for this class and date. This action cannot be undone.
  </p>
  <div className="flex gap-3">
- <button
+ <Button
  onClick={() => setConfirmClear(false)}
  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50"
  >
  Cancel
- </button>
- <button
+ </Button>
+ <Button
  onClick={clearAll}
  disabled={saving}
  className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-60"
  >
  {saving ? "Clearing..." : "Yes, Clear All"}
- </button>
+ </Button>
  </div>
- </div>
- </div>
+ </DialogContent>
+ </Dialog>
  )}
 
  {/* Bulk actions */}
@@ -351,7 +354,7 @@ export default function AdminAttendancePage() {
  <div className="flex gap-2 mb-4 flex-wrap">
  <span className="text-xs text-gray-400 self-center mr-1">Mark all:</span>
  {ACTIVE_STATUSES.map((s) => (
- <button key={s}
+ <Button key={s}
  onClick={() => markAll(s)}
  className={cn(
  "text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors",
@@ -359,7 +362,7 @@ export default function AdminAttendancePage() {
  )}
  >
  {STATUS_CONFIG[s].label}
- </button>
+ </Button>
  ))}
  </div>
  )}
@@ -406,7 +409,7 @@ export default function AdminAttendancePage() {
 
  <div className="flex items-center gap-1 shrink-0">
  {ACTIVE_STATUSES.map((s) => (
- <button
+ <Button
  key={s}
  onClick={() => setStatus(student.id, s)}
  title={STATUS_CONFIG[s].label}
@@ -418,7 +421,7 @@ export default function AdminAttendancePage() {
  )}
  >
  {STATUS_CONFIG[s].short}
- </button>
+ </Button>
  ))}
  </div>
  </div>

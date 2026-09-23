@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { motion, AnimatePresence } from "framer-motion";
@@ -190,37 +191,37 @@ export default function TeacherElectionsPage() {
                   {/* Actions */}
                   <div className="flex gap-2">
                     {!isLive ? (
-                      <button
+                      <Button
                         onClick={() => openSession(el)}
                         className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-xl transition-all"
                       >
                         <Play className="w-3.5 h-3.5" />
                         {t("elections", "openSession", lang)}
-                      </button>
+                      </Button>
                     ) : (
                       <>
-                        <button
+                        <Button
                           onClick={() => setManagingEl(el)}
                           className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-xl transition-all"
                         >
                           <UserCheck className="w-3.5 h-3.5" />
                           {t("elections", "recordVotes", lang)}
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           onClick={() => closeSession(el.id)}
                           className="flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs px-3 py-2.5 rounded-xl transition-all border border-red-200"
                         >
                           <Square className="w-3.5 h-3.5" />
                           {t("elections", "closeSession", lang)}
-                        </button>
+                        </Button>
                       </>
                     )}
-                    <button
+                    <Button
                       onClick={() => setResultsEl(el)}
                       className="flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-2.5 rounded-xl transition-all"
                     >
                       <BarChart3 className="w-3.5 h-3.5" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </motion.div>
@@ -249,13 +250,13 @@ export default function TeacherElectionsPage() {
                   <p className="font-bold text-gray-800 text-sm truncate">{lang === "ml" ? el.title_ml : el.title}</p>
                   <p className="text-xs text-gray-400">{el.class} · {lang === "ml" ? el.position_ml : el.position}</p>
                 </div>
-                <button
+                <Button
                   onClick={() => openSession(el)}
                   className="flex items-center gap-1 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition-all shrink-0"
                 >
                   <Play className="w-3 h-3" />
                   {t("elections", "openSession", lang)}
-                </button>
+                </Button>
               </motion.div>
             ))}
           </div>
@@ -289,13 +290,13 @@ export default function TeacherElectionsPage() {
                     )}
                     <p className="text-xs text-gray-400">{el.class} · {el.totalVotesCast} {t("elections", "votes", lang)}</p>
                   </div>
-                  <button
+                  <Button
                     onClick={() => setResultsEl(el)}
                     className="flex items-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-bold px-3 py-2 rounded-xl transition-all shrink-0"
                   >
                     <Eye className="w-3 h-3" />
                     {t("elections", "results", lang)}
-                  </button>
+                  </Button>
                 </motion.div>
               );
             })}
@@ -339,9 +340,9 @@ export default function TeacherElectionsPage() {
                       {managingEl.class} · {totalVotesForElection(managingEl.id, managingEl)}/{getStudentsForElection(managingEl).length} {t("elections", "votes", lang)}
                     </p>
                   </div>
-                  <button onClick={() => { setManagingEl(null); setVotingStudent(null); }} className="bg-white/20 rounded-full p-1.5">
+                  <Button onClick={() => { setManagingEl(null); setVotingStudent(null); }} className="bg-white/20 rounded-full p-1.5">
                     <X className="w-4 h-4" />
-                  </button>
+                  </Button>
                 </div>
               </div>
 
@@ -355,7 +356,7 @@ export default function TeacherElectionsPage() {
                     {getStudentsForElection(managingEl).map((s) => {
                       const voted = hasStudentVoted(managingEl.id, s.id, managingEl);
                       return (
-                        <button
+                        <Button
                           key={s.id}
                           disabled={voted}
                           onClick={() => { setVotingStudent({ id: s.id, name: s.name }); setStudentPick(null); }}
@@ -379,19 +380,19 @@ export default function TeacherElectionsPage() {
                           ) : (
                             <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
                           )}
-                        </button>
+                        </Button>
                       );
                     })}
                   </div>
 
                   <div className="mt-4 pt-4 border-t border-gray-100">
-                    <button
+                    <Button
                       onClick={() => closeSession(managingEl.id)}
                       className="w-full flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-sm py-3 rounded-2xl border border-red-200 transition-all"
                     >
                       <Square className="w-4 h-4" />
                       {t("elections", "closeSession", lang)}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ) : (
@@ -405,9 +406,9 @@ export default function TeacherElectionsPage() {
                       <p className="font-bold text-teal-800 text-sm">{votingStudent.name}</p>
                       <p className="text-xs text-teal-600">{t("elections", "nowVoting", lang)}</p>
                     </div>
-                    <button onClick={() => { setVotingStudent(null); setStudentPick(null); }} className="ml-auto">
+                    <Button onClick={() => { setVotingStudent(null); setStudentPick(null); }} className="ml-auto">
                       <RotateCcw className="w-4 h-4 text-teal-500" />
-                    </button>
+                    </Button>
                   </div>
 
                   <p className="text-xs text-gray-500 mb-3 font-medium">
@@ -416,7 +417,7 @@ export default function TeacherElectionsPage() {
 
                   <div className="space-y-2 mb-4">
                     {managingEl.candidates.map((c) => (
-                      <button
+                      <Button
                         key={c.id}
                         onClick={() => setStudentPick(c.id)}
                         className={`w-full flex items-center gap-3 p-3.5 rounded-2xl border-2 transition-all ${
@@ -435,18 +436,18 @@ export default function TeacherElectionsPage() {
                         }`}>
                           {studentPick === c.id && <div className="w-2 h-2 bg-white rounded-full" />}
                         </div>
-                      </button>
+                      </Button>
                     ))}
                   </div>
 
                   <div className="flex gap-2">
-                    <button
+                    <Button
                       onClick={() => { setVotingStudent(null); setStudentPick(null); }}
                       className="flex-1 py-3 rounded-2xl border border-gray-200 text-gray-600 font-semibold text-sm"
                     >
                       {t("common", "back", lang)}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       disabled={!studentPick}
                       onClick={submitStudentVote}
                       className={`flex-1 py-3 rounded-2xl font-bold text-sm transition-all ${
@@ -456,7 +457,7 @@ export default function TeacherElectionsPage() {
                       }`}
                     >
                       ✅ {t("elections", "submitVote", lang)}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -488,9 +489,9 @@ export default function TeacherElectionsPage() {
                     </p>
                     <h2 className="text-lg font-bold">{lang === "ml" ? resultsEl.title_ml : resultsEl.title}</h2>
                   </div>
-                  <button onClick={() => setResultsEl(null)} className="bg-white/20 rounded-full p-1.5">
+                  <Button onClick={() => setResultsEl(null)} className="bg-white/20 rounded-full p-1.5">
                     <X className="w-4 h-4" />
-                  </button>
+                  </Button>
                 </div>
               </div>
               <div className="p-5">

@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -176,7 +177,7 @@ export default function BestPerformancePage() {
               </div>
 
               {!isParent && displayData.length > 0 && (
-                <button
+                <Button
                   onClick={handleDownloadPDF}
                   disabled={downloadingPdf}
                   className="flex items-center gap-1.5 px-3 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl text-xs font-semibold backdrop-blur-xs transition-all disabled:opacity-50"
@@ -187,7 +188,7 @@ export default function BestPerformancePage() {
                     <Download className="w-3.5 h-3.5" />
                   )}
                   <span>{downloadingPdf ? "Exporting..." : "Download PDF"}</span>
-                </button>
+                </Button>
               )}
             </div>
 
@@ -228,12 +229,12 @@ export default function BestPerformancePage() {
           {/* Period info */}
           <div className="flex items-center gap-2 bg-white border border-gray-100 rounded-2xl p-2 shadow-xs w-fit">
             {(["week", "month"] as const).map((value) => (
-              <button key={value} onClick={() => setPeriodType(value)} className={cn(
+              <Button key={value} onClick={() => setPeriodType(value)} className={cn(
                 "px-4 py-2 rounded-xl text-sm font-semibold transition-colors",
                 periodType === value ? "bg-emerald-600 text-white" : "text-gray-500 hover:bg-emerald-50",
               )}>
                 {value === "week" ? (lang === "ml" ? "ആഴ്ചയിലെ മികച്ച പ്രകടനം" : "Weekly Best Performance") : (lang === "ml" ? "മാസത്തിലെ മികച്ച പ്രകടനം" : "Monthly Best Performance")}
-              </button>
+              </Button>
             ))}
           </div>
 

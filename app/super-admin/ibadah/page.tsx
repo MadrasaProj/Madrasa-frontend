@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -222,7 +224,7 @@ export default function SuperAdminIbadahPage() {
               {PRAYERS.map(({ field, label, time }) => {
                 const enabled = config[field] as boolean;
                 return (
-                  <button
+                  <Button
                     key={field}
                     onClick={() => togglePrayer(field)}
                     className="w-full flex items-center gap-4 px-4 py-3.5 transition-colors text-left hover:bg-gray-50"
@@ -258,12 +260,12 @@ export default function SuperAdminIbadahPage() {
                     >
                       {enabled ? "Enabled" : "Disabled"}
                     </span>
-                  </button>
+                  </Button>
                 );
               })}
 
               {/* Quran pages toggle */}
-              <button
+              <Button
                 onClick={() => togglePrayer("enableQuranPages")}
                 className="w-full flex items-center gap-4 px-4 py-3.5 transition-colors text-left hover:bg-gray-50"
               >
@@ -305,7 +307,7 @@ export default function SuperAdminIbadahPage() {
                 >
                   {config.enableQuranPages ? "Enabled" : "Disabled"}
                 </span>
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -315,12 +317,12 @@ export default function SuperAdminIbadahPage() {
               <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">
                 Custom Items
               </p>
-              <button
+              <Button
                 onClick={openAddItem}
                 className="flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1.5 rounded-lg transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" /> Add Item
-              </button>
+              </Button>
             </div>
 
             {config.customItems.length === 0 ? (
@@ -366,18 +368,18 @@ export default function SuperAdminIbadahPage() {
                       </p>
                     </div>
                     <div className="flex gap-1 shrink-0">
-                      <button
+                      <Button
                         onClick={() => openEditItem(idx)}
                         className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         onClick={() => deleteItem(idx)}
                         className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -392,12 +394,12 @@ export default function SuperAdminIbadahPage() {
                 <p className="text-sm font-bold text-gray-800">
                   {editingIdx !== null ? "Edit Item" : "New Custom Item"}
                 </p>
-                <button
+                <Button
                   onClick={() => setShowItemForm(false)}
                   className="p-1 rounded-lg hover:bg-gray-100"
                 >
                   <X className="w-4 h-4 text-gray-400" />
-                </button>
+                </Button>
               </div>
 
               <div>
@@ -407,7 +409,7 @@ export default function SuperAdminIbadahPage() {
                     (no spaces, unique)
                   </span>
                 </label>
-                <input
+                <Input
                   value={itemForm.key}
                   onChange={(e) =>
                     setItemForm((f) => ({ ...f, key: e.target.value }))
@@ -425,7 +427,7 @@ export default function SuperAdminIbadahPage() {
                     (shown to parents)
                   </span>
                 </label>
-                <input
+                <Input
                   value={itemForm.label}
                   onChange={(e) =>
                     setItemForm((f) => ({ ...f, label: e.target.value }))
@@ -441,7 +443,7 @@ export default function SuperAdminIbadahPage() {
                 </label>
                 <div className="flex gap-2">
                   {(["boolean", "number"] as const).map((t) => (
-                    <button
+                    <Button
                       key={t}
                       onClick={() => setItemForm((f) => ({ ...f, type: t }))}
                       className={cn(
@@ -457,7 +459,7 @@ export default function SuperAdminIbadahPage() {
                         <Hash className="w-3.5 h-3.5" />
                       )}
                       {t === "boolean" ? "Yes / No" : "Number"}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
@@ -471,7 +473,7 @@ export default function SuperAdminIbadahPage() {
                         (optional)
                       </span>
                     </label>
-                    <input
+                    <Input
                       type="number"
                       value={itemForm.min}
                       onChange={(e) =>
@@ -488,7 +490,7 @@ export default function SuperAdminIbadahPage() {
                         (optional)
                       </span>
                     </label>
-                    <input
+                    <Input
                       type="number"
                       value={itemForm.max}
                       onChange={(e) =>
@@ -507,12 +509,12 @@ export default function SuperAdminIbadahPage() {
                 </div>
               )}
 
-              <button
+              <Button
                 onClick={saveItem}
                 className="w-full py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors"
               >
                 {editingIdx !== null ? "Update Item" : "Add Item"}
-              </button>
+              </Button>
             </div>
           )}
 
@@ -525,7 +527,7 @@ export default function SuperAdminIbadahPage() {
 
           {/* Sticky save */}
           <div className="sticky bottom-6">
-            <button
+            <Button
               onClick={handleSave}
               disabled={saving}
               className={cn(
@@ -546,7 +548,7 @@ export default function SuperAdminIbadahPage() {
                   <Save className="w-5 h-5" /> Save Config
                 </>
               )}
-            </button>
+            </Button>
           </div>
         </div>
       ) : null}

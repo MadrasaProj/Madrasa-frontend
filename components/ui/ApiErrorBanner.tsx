@@ -1,5 +1,6 @@
 import { WifiOff, AlertCircle, RefreshCw, Clock } from "lucide-react";
 import { NETWORK_ERROR, TIMEOUT_ERROR } from "@/lib/fetch";
+import { Button } from "@/components/ui/Button";
 
 interface Props {
   message: string;
@@ -28,12 +29,13 @@ export function ApiErrorBanner({ message, onRetry, className }: Props) {
         <p className="text-xs text-gray-400 mt-1 max-w-xs">{message}</p>
       </div>
       {onRetry && (
-        <button
+        <Button
           onClick={onRetry}
-          className="flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white rounded-xl text-sm font-semibold hover:bg-gray-700 transition-colors"
+          size="sm"
+          className="bg-gray-900 hover:bg-gray-700"
         >
           <RefreshCw className="w-3.5 h-3.5" /> Try again
-        </button>
+        </Button>
       )}
     </div>
   );

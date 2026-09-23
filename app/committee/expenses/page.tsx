@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguageStore } from "@/store/language";
@@ -309,12 +312,12 @@ export default function CommitteeExpensesPage() {
                       </p>
                     </div>
                   </div>
-                  <button
+                  <Button
                     onClick={() => setShowForm(false)}
                     className="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center hover:bg-gray-200 transition-all"
                   >
                     <X className="w-4 h-4 text-gray-500" />
-                  </button>
+                  </Button>
                 </div>
 
                 {/* Scrollable body */}
@@ -331,7 +334,7 @@ export default function CommitteeExpensesPage() {
                           categoryColorMap.stationery;
                         const Icon = categoryIconMap[cat.id] ?? BookOpen;
                         return (
-                          <button
+                          <Button
                             key={cat.id}
                             type="button"
                             onClick={() =>
@@ -356,7 +359,7 @@ export default function CommitteeExpensesPage() {
                             >
                               {lang === "ml" ? cat.label_ml : cat.label_en}
                             </span>
-                          </button>
+                          </Button>
                         );
                       })}
                     </div>
@@ -367,7 +370,7 @@ export default function CommitteeExpensesPage() {
                     <label className="block text-xs font-bold text-gray-700 mb-1.5">
                       {lang === "ml" ? "ചെലവ് പേര്" : "Expense Title"} *
                     </label>
-                    <input
+                    <Input
                       value={form.title}
                       onChange={(e) =>
                         setForm((f) => ({ ...f, title: e.target.value }))
@@ -389,7 +392,7 @@ export default function CommitteeExpensesPage() {
                         ({lang === "ml" ? "ഓപ്ഷണൽ" : "optional"})
                       </span>
                     </label>
-                    <input
+                    <Input
                       value={form.title_ml}
                       onChange={(e) =>
                         setForm((f) => ({ ...f, title_ml: e.target.value }))
@@ -413,7 +416,7 @@ export default function CommitteeExpensesPage() {
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-bold">
                           ₹
                         </span>
-                        <input
+                        <Input
                           type="number"
                           min="0"
                           value={form.amount}
@@ -429,7 +432,7 @@ export default function CommitteeExpensesPage() {
                       <label className="block text-xs font-bold text-gray-700 mb-1.5">
                         {lang === "ml" ? "തീയതി" : "Date"} *
                       </label>
-                      <input
+                      <Input
                         type="date"
                         value={form.date}
                         onChange={(e) =>
@@ -445,7 +448,7 @@ export default function CommitteeExpensesPage() {
                     <label className="block text-xs font-bold text-gray-700 mb-1.5">
                       {lang === "ml" ? "നൽകിയത് ആർക്ക്" : "Paid To"} *
                     </label>
-                    <input
+                    <Input
                       value={form.paidTo}
                       onChange={(e) =>
                         setForm((f) => ({ ...f, paidTo: e.target.value }))
@@ -466,7 +469,7 @@ export default function CommitteeExpensesPage() {
                     </label>
                     <div className="flex gap-2">
                       {(["paid", "pending"] as const).map((st) => (
-                        <button
+                        <Button
                           key={st}
                           type="button"
                           onClick={() => setForm((f) => ({ ...f, status: st }))}
@@ -489,7 +492,7 @@ export default function CommitteeExpensesPage() {
                               {lang === "ml" ? "ബാക്കി" : "Pending"}
                             </>
                           )}
-                        </button>
+                        </Button>
                       ))}
                     </div>
                   </div>
@@ -502,7 +505,7 @@ export default function CommitteeExpensesPage() {
                         ({lang === "ml" ? "ഓപ്ഷണൽ" : "optional"})
                       </span>
                     </label>
-                    <textarea
+                    <Textarea
                       value={form.note}
                       onChange={(e) =>
                         setForm((f) => ({ ...f, note: e.target.value }))
@@ -520,7 +523,7 @@ export default function CommitteeExpensesPage() {
 
                 {/* Sticky Footer */}
                 <div className="p-5 border-t border-gray-100 shrink-0 bg-white">
-                  <button
+                  <Button
                     onClick={handleSave}
                     disabled={!isFormValid}
                     className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-black transition-all ${
@@ -542,7 +545,7 @@ export default function CommitteeExpensesPage() {
                         {lang === "ml" ? "ചെലവ് സേവ് ചെയ്യുക" : "Save Expense"}
                       </>
                     )}
-                  </button>
+                  </Button>
                 </div>
               </motion.div>
             </div>
@@ -573,7 +576,7 @@ export default function CommitteeExpensesPage() {
               </div>
             </div>
             {/* ── Add button ── */}
-            <button
+            <Button
               onClick={() => {
                 setShowForm(true);
                 setSaved(false);
@@ -582,7 +585,7 @@ export default function CommitteeExpensesPage() {
             >
               <Plus className="w-4 h-4" />
               {lang === "ml" ? "ചേർക്കുക" : "Add"}
-            </button>
+            </Button>
           </div>
           {/* Budget progress */}
           <div className="bg-white/15 rounded-2xl p-4">
@@ -744,12 +747,12 @@ export default function CommitteeExpensesPage() {
           })}
         </div>
         {activeFilter !== "all" && (
-          <button
+          <Button
             onClick={() => setActiveFilter("all")}
             className="mt-3 text-xs text-orange-600 font-bold underline underline-offset-2"
           >
             {lang === "ml" ? "എല്ലാം കാണുക" : "Clear filter — show all"}
-          </button>
+          </Button>
         )}
       </motion.div>
 
@@ -826,7 +829,7 @@ export default function CommitteeExpensesPage() {
                   ? (categoryColorMap[fid] ?? categoryColorMap.stationery)
                   : null;
               return (
-                <button
+                <Button
                   key={fid}
                   onClick={() => setActiveFilter(fid)}
                   className={`text-[11px] font-bold px-2.5 py-1 rounded-full border transition-all ${
@@ -847,7 +850,7 @@ export default function CommitteeExpensesPage() {
                       ? "എല്ലാം"
                       : "All"
                     : ((lang === "ml" ? cat?.label_ml : cat?.label_en) ?? fid)}
-                </button>
+                </Button>
               );
             },
           )}
@@ -931,7 +934,7 @@ export default function CommitteeExpensesPage() {
         </div>
 
         {filteredExpenses.length > 8 && (
-          <button
+          <Button
             onClick={() => setShowAll((p) => !p)}
             className="mt-4 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gray-100 text-sm font-bold text-gray-600 hover:bg-gray-200 transition-all"
           >
@@ -948,7 +951,7 @@ export default function CommitteeExpensesPage() {
                   : `Show ${filteredExpenses.length - 8} more`}
               </>
             )}
-          </button>
+          </Button>
         )}
       </motion.div>
 

@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/auth";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -152,12 +155,12 @@ export default function DistrictsPage() {
             </p>
           </div>
           {canManage && (
-            <button
+            <Button
               onClick={handleOpenAdd}
               className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-2xl shadow-sm transition-all text-sm shrink-0"
             >
               <Plus className="w-4 h-4" /> Add District
-            </button>
+            </Button>
           )}
         </div>
 
@@ -179,7 +182,7 @@ export default function DistrictsPage() {
         {/* Filter panel */}
         <div className="relative">
           <Search className="absolute left-4 top-3.5 w-4 h-4 text-gray-400" />
-          <input
+          <Input
             type="text"
             placeholder="Search districts or district heads..."
             value={searchTerm}
@@ -214,15 +217,15 @@ export default function DistrictsPage() {
                     <div className="flex items-center gap-1">
                       {canManage && (
                         <>
-                          <button
+                          <Button
                             onClick={() => handleOpenEdit(dist)}
                             className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
                             title="Edit District"
                           >
                             <Edit2 className="w-4 h-4" />
-                          </button>
+                          </Button>
                           {loggedInUser?.actorType === "SUPER_ADMIN" && (
-                            <button
+                            <Button
                               onClick={() => handleDelete(dist.id)}
                               disabled={deletingId === dist.id}
                               className="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
@@ -233,7 +236,7 @@ export default function DistrictsPage() {
                               ) : (
                                 <Trash2 className="w-4 h-4" />
                               )}
-                            </button>
+                            </Button>
                           )}
                         </>
                       )}
@@ -285,12 +288,12 @@ export default function DistrictsPage() {
                   <h3 className="font-bold text-gray-900 text-lg">
                     {modalMode === "add" ? "Add New District" : "Edit District"}
                   </h3>
-                  <button
+                  <Button
                     onClick={() => setShowModal(false)}
                     className="p-1 text-gray-400 hover:bg-gray-100 rounded-xl transition-all"
                   >
                     <X className="w-5 h-5" />
-                  </button>
+                  </Button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
@@ -298,7 +301,7 @@ export default function DistrictsPage() {
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">
                       District Name *
                     </label>
-                    <input
+                    <Input
                       type="text"
                       required
                       placeholder="e.g. Kozhikode, Malappuram"
@@ -312,7 +315,7 @@ export default function DistrictsPage() {
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">
                       Assign Sales District Head (Optional)
                     </label>
-                    <select
+                    <Select
                       value={headUserId}
                       onChange={(e) => setHeadUserId(e.target.value)}
                       className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium text-gray-800"
@@ -323,26 +326,26 @@ export default function DistrictsPage() {
                           {staff.name} — {staff.role.replace(/_/g, " ")}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                     <p className="text-[10px] text-gray-400 mt-1">Only CRM staff (Sales, Implementation, Support) are shown here.</p>
                   </div>
 
                   <div className="pt-4 flex gap-3">
-                    <button
+                    <Button
                       type="button"
                       onClick={() => setShowModal(false)}
                       className="flex-1 py-3 text-sm font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-2xl transition-all"
                     >
                       Cancel
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="submit"
                       disabled={submitting || !name.trim()}
                       className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition-all disabled:opacity-60"
                     >
                       {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                       {modalMode === "add" ? "Create District" : "Save Changes"}
-                    </button>
+                    </Button>
                   </div>
                 </form>
               </motion.div>

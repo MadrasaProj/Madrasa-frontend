@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { Dialog, DialogContent } from "@/components/ui/Dialog";
+import { Input } from "@/components/ui/Input";
 import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -11,8 +14,8 @@ import { SkeletonList } from "@/components/ui/Skeleton";
 
 function ReceiptModal({ receipt, onClose }: { receipt: ReceiptData; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="w-full sm:max-w-sm p-0">
       <motion.div initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
         className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-6 shadow-2xl"
       >
@@ -40,13 +43,14 @@ function ReceiptModal({ receipt, onClose }: { receipt: ReceiptData; onClose: () 
         </div>
         {receipt.notes && <p className="text-xs text-gray-400 italic mb-4">Note: {receipt.notes}</p>}
         <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border text-sm font-semibold text-gray-600">Close</button>
-          <button onClick={() => window.print()} className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold flex items-center justify-center gap-1.5">
+          <Button onClick={onClose} className="flex-1 py-2.5 rounded-xl border text-sm font-semibold text-gray-600">Close</Button>
+          <Button onClick={() => window.print()} className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold flex items-center justify-center gap-1.5">
             <Printer className="w-4 h-4" /> Print
-          </button>
+          </Button>
         </div>
       </motion.div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -113,7 +117,7 @@ export default function AdminFeesPaidPage() {
 
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input value={search} onChange={(e) => setSearch(e.target.value)}
+        <Input value={search} onChange={(e) => setSearch(e.target.value)}
           placeholder="Search student name or adm no..."
           className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none text-sm" />
       </div>
@@ -140,10 +144,10 @@ export default function AdminFeesPaidPage() {
                 </div>
                 <div className="text-right shrink-0 flex flex-col items-end gap-1">
                   <p className="font-bold text-emerald-700">₹{Number(p.paidAmount ?? p.dueAmount).toLocaleString()}</p>
-                  <button onClick={() => showReceipt(p.id)} disabled={loadingReceipt === p.id}
+                  <Button onClick={() => showReceipt(p.id)} disabled={loadingReceipt === p.id}
                     className="text-xs text-gray-500 flex items-center gap-1">
                     {loadingReceipt === p.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Receipt className="w-3 h-3" />} Receipt
-                  </button>
+                  </Button>
                 </div>
               </div>
             ))}
@@ -152,9 +156,9 @@ export default function AdminFeesPaidPage() {
 
           {total > 30 && (
             <div className="flex items-center justify-center gap-3 mt-4">
-              <button disabled={skip === 0} onClick={() => setSkip(Math.max(0, skip - 30))} className="px-4 py-2 rounded-xl border text-sm disabled:opacity-40">Prev</button>
+              <Button disabled={skip === 0} onClick={() => setSkip(Math.max(0, skip - 30))} className="px-4 py-2 rounded-xl border text-sm disabled:opacity-40">Prev</Button>
               <span className="text-sm text-gray-500">{skip + 1}–{Math.min(skip + 30, total)} of {total}</span>
-              <button disabled={skip + 30 >= total} onClick={() => setSkip(skip + 30)} className="px-4 py-2 rounded-xl border text-sm disabled:opacity-40">Next</button>
+              <Button disabled={skip + 30 >= total} onClick={() => setSkip(skip + 30)} className="px-4 py-2 rounded-xl border text-sm disabled:opacity-40">Next</Button>
             </div>
           )}
         </>

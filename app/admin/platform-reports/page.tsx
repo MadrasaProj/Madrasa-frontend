@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -127,13 +128,13 @@ export default function AdminPlatformReportsPage() {
         title="Platform Reports"
         icon={BarChart3}
         action={
-          <button
+          <Button
             onClick={load}
             disabled={loading}
             className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-xl hover:bg-gray-200 transition-all disabled:opacity-60"
           >
             <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} /> Refresh
-          </button>
+          </Button>
         }
       />
 

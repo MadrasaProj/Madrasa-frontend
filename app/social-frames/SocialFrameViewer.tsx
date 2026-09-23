@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Leafer, Frame } from "leafer-ui";
@@ -269,22 +271,22 @@ export default function SocialFrameViewer({ frameId, fullScreen }: SocialFrameVi
           />
         )}
 
-        <button
+        <Button
           onClick={() => navigate(-1)}
           className="absolute top-4 left-4 z-20 w-10 h-10 rounded-full bg-black/40 flex items-center justify-center text-white hover:bg-black/60 transition-colors"
         >
           <X className="w-5 h-5" />
-        </button>
+        </Button>
 
         <div className="absolute top-4 right-4 z-20 flex items-center gap-3">
           <h1 className="text-gray-600 text-lg font-semibold drop-shadow-md">{frame.title}</h1>
-          <button
+          <Button
             onClick={handleDownload}
             className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium"
           >
             <Download className="w-4 h-4" />
             Download PNG
-          </button>
+          </Button>
         </div>
 
         <div ref={canvasRef} className="absolute inset-0" />
@@ -299,7 +301,7 @@ export default function SocialFrameViewer({ frameId, fullScreen }: SocialFrameVi
                       {layer.label || layer.tag}
                     </label>
                     {layer.tag === "Text" && layer.text !== undefined ? (
-                      <input
+                      <Input
                         type="text"
                         value={layer.text}
                         onChange={(e) => updateText(layer, e.target.value)}
@@ -309,7 +311,7 @@ export default function SocialFrameViewer({ frameId, fullScreen }: SocialFrameVi
                       <label className="flex items-center gap-2 cursor-pointer text-white/80 hover:text-white bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg px-3 py-2 text-sm transition-colors">
                         <Upload className="w-4 h-4" />
                         <span>Choose image</span>
-                        <input
+                        <Input
                           type="file"
                           accept="image/*"
                           onChange={(e) => {
@@ -343,13 +345,13 @@ export default function SocialFrameViewer({ frameId, fullScreen }: SocialFrameVi
 
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">{frame.title}</h1>
-        <button
+        <Button
           onClick={handleDownload}
           className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium"
         >
           <Download className="w-4 h-4" />
           Download PNG
-        </button>
+        </Button>
       </div>
 
       <div className="flex gap-4">
@@ -374,7 +376,7 @@ export default function SocialFrameViewer({ frameId, fullScreen }: SocialFrameVi
                     {layer.label || layer.tag}
                   </label>
                   {layer.tag === "Text" && layer.text !== undefined ? (
-                    <input
+                    <Input
                       type="text"
                       value={layer.text}
                       onChange={(e) => updateText(layer, e.target.value)}
@@ -384,7 +386,7 @@ export default function SocialFrameViewer({ frameId, fullScreen }: SocialFrameVi
                     <label className="flex items-center gap-2 cursor-pointer text-white/80 hover:text-white bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg px-3 py-2 text-sm transition-colors">
                       <Upload className="w-4 h-4" />
                       <span>Choose image</span>
-                      <input
+                      <Input
                         type="file"
                         accept="image/*"
                         onChange={(e) => {

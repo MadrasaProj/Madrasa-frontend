@@ -1,3 +1,7 @@
+import { Button } from "@/components/ui/Button";
+import { Dialog, DialogContent } from "@/components/ui/Dialog";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
 import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -148,13 +152,13 @@ export default function ParentLeaveRequestsPage() {
               title={t("parentPages", "noLeaveRequests", lang)}
               description={t("parentPages", "leaveRequestsSub", lang)}
               action={
-                <button
+                <Button
                   onClick={() => setShowForm(true)}
                   className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-all duration-200 active:scale-[0.98] shadow-sm"
                 >
                   <Plus className="w-4 h-4" />
                   {t("parentPages", "newRequest", lang)}
-                </button>
+                </Button>
               }
             />
           ) : (
@@ -234,31 +238,16 @@ export default function ParentLeaveRequestsPage() {
       </AnimatePresence>
 
       {/* New request modal */}
-      <AnimatePresence>
-        {showForm && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
-              onClick={() => setShowForm(false)}
-            />
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            >
-              <div className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-sm shadow-xl overflow-hidden">
+      <Dialog open={showForm} onOpenChange={(open) => !open && setShowForm(false)}>
+              <DialogContent className="w-full max-w-sm overflow-hidden p-0">
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                   <p className="font-bold text-gray-900">{t("parentPages", "applyForLeave", lang)}</p>
-                  <button
+                  <Button
                     onClick={() => setShowForm(false)}
                     className="p-1 text-gray-400 hover:text-gray-600"
                   >
                     <X className="w-5 h-5" />
-                  </button>
+                  </Button>
                 </div>
                 <div className="px-5 py-4 space-y-4">
                   <div>
@@ -267,7 +256,7 @@ export default function ParentLeaveRequestsPage() {
                     </label>
                     <div className="flex gap-2">
                       {(["LEAVE", "SICK"] as const).map((r) => (
-                        <button
+                        <Button
                           key={r}
                           onClick={() => setReasonType(r)}
                           className={cn(
@@ -280,7 +269,7 @@ export default function ParentLeaveRequestsPage() {
                           )}
                         >
                           {t("parentPages", REASON_CONFIG[r].labelKey as any, lang)}
-                        </button>
+                        </Button>
                       ))}
                     </div>
                   </div>
@@ -289,7 +278,7 @@ export default function ParentLeaveRequestsPage() {
                     <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
                       {t("parentPages", "descriptionLabel", lang)}
                     </label>
-                    <textarea
+                    <Textarea
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       placeholder={t("parentPages", "reasonPlaceholder", lang)}
@@ -303,7 +292,7 @@ export default function ParentLeaveRequestsPage() {
                       <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
                         {t("parentPages", "startDateLabel", lang)}
                       </label>
-                      <input
+                      <Input
                         type="date"
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
@@ -315,7 +304,7 @@ export default function ParentLeaveRequestsPage() {
                       <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
                         {t("parentPages", "endDateLabel", lang)}
                       </label>
-                      <input
+                      <Input
                         type="date"
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
@@ -326,13 +315,13 @@ export default function ParentLeaveRequestsPage() {
                   </div>
                 </div>
                 <div className="px-5 pb-5 flex gap-2">
-                  <button
+                  <Button
                     onClick={() => setShowForm(false)}
                     className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 active:scale-[0.98] transition-all duration-200"
                   >
                     {t("parentPages", "cancelLabel", lang)}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={handleSubmit}
                     disabled={createMutation.isPending || !description || !startDate}
                     className="flex-[2] py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
@@ -343,13 +332,10 @@ export default function ParentLeaveRequestsPage() {
                       <Send className="w-4 h-4" />
                     )}
                     {t("parentPages", "submitLabel", lang)}
-                  </button>
+                  </Button>
                 </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+              </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -776,12 +779,12 @@ export default function IDCardsPage() {
         icon={CreditCard}
         action={
           <div className="flex gap-2">
-            <button
+            <Button
               onClick={handleExport}
               className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700"
             >
               <Download className="w-4 h-4" /> {t("common", "download", lang)}
-            </button>
+            </Button>
           </div>
         }
       />
@@ -792,7 +795,7 @@ export default function IDCardsPage() {
      
      
         {THEMES.map((t) => (
-          <button
+          <Button
             key={t.id}
             onClick={() => setTheme(t.id)}
             className={cn(
@@ -809,7 +812,7 @@ export default function IDCardsPage() {
             />
 
             {t.label}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -821,7 +824,7 @@ export default function IDCardsPage() {
 
           {bgImage ? "Change Background" : "Upload Background"}
 
-          <input
+          <Input
             type="file"
             accept="image/*"
             className="hidden"
@@ -840,18 +843,18 @@ export default function IDCardsPage() {
         </label>
 
         {bgImage && (
-          <button
+          <Button
             onClick={() => setBgImage(null)}
             className="p-2 text-gray-400 hover:text-red-500 transition-colors"
           >
             <X className="w-4 h-4" />
-          </button>
+          </Button>
         )}
       </div>
 
       {/* Mobile toggle for student list */}
 
-      <button
+      <Button
         onClick={() => setShowMobileList(!showMobileList)}
         className="w-full lg:hidden flex items-center gap-2 px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 mb-4"
       >
@@ -864,7 +867,7 @@ export default function IDCardsPage() {
             showMobileList && "rotate-180",
           )}
         />
-      </button>
+      </Button>
 
       <div className="flex gap-5">
         {/* Left sidebar: filters + student list */}
@@ -883,7 +886,7 @@ export default function IDCardsPage() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
 
-                <input
+                <Input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder={t("common", "searchByName", lang)}
@@ -892,7 +895,7 @@ export default function IDCardsPage() {
               </div>
 
               <div className="flex gap-2">
-                <select
+                <Select
                   value={classFilter}
                   onChange={(e) => setClassFilter(e.target.value)}
                   className="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 appearance-none cursor-pointer"
@@ -902,9 +905,9 @@ export default function IDCardsPage() {
                       {c === "All" ? "All Classes" : c}
                     </option>
                   ))}
-                </select>
+                </Select>
 
-                <select
+                <Select
                   value={genderFilter}
                   onChange={(e) => setGenderFilter(e.target.value)}
                   className="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 appearance-none cursor-pointer"
@@ -914,7 +917,7 @@ export default function IDCardsPage() {
                   <option value="MALE">Male</option>
 
                   <option value="FEMALE">Female</option>
-                </select>
+                </Select>
               </div>
 
               <p className="text-xs text-gray-400">
@@ -935,7 +938,7 @@ export default function IDCardsPage() {
                 </div>
               ) : (
                 filtered.map((s) => (
-                  <button
+                  <Button
                     key={s.id}
                     onClick={() => {
                       setSelectedId(s.id);
@@ -979,7 +982,7 @@ export default function IDCardsPage() {
                     <span className="text-[10px] text-gray-400 shrink-0 capitalize">
                       {s.gender?.toLowerCase()}
                     </span>
-                  </button>
+                  </Button>
                 ))
               )}
             </div>
@@ -1061,7 +1064,7 @@ export default function IDCardsPage() {
 
                     {avatars[selected.id] ? "Change Photo" : "Upload Photo"}
 
-                    <input
+                    <Input
                       type="file"
                       accept="image/*"
                       className="hidden"
@@ -1085,7 +1088,7 @@ export default function IDCardsPage() {
                   </label>
 
                   {avatars[selected.id] && (
-                    <button
+                    <Button
                       onClick={() => {
                         setAvatars((prev) => {
                           const next = { ...prev };
@@ -1098,7 +1101,7 @@ export default function IDCardsPage() {
                       className="text-xs text-red-500 hover:text-red-700 transition-colors"
                     >
                       Remove
-                    </button>
+                    </Button>
                   )}
                 </div>
 
@@ -1133,12 +1136,12 @@ export default function IDCardsPage() {
                 {/* Action buttons */}
 
                 <div className="mt-4 flex gap-3">
-                  <button
+                  <Button
                     onClick={handleExport}
                     className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700"
                   >
                     <Download className="w-4 h-4" /> Download PNG
-                  </button>
+                  </Button>
                 </div>
               </>
             )}

@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { seatArrangements } from "@/mock-data";
@@ -22,12 +25,12 @@ export default function AdminSeatsPage() {
         subtitle={arrangement.examName}
         icon={BookMarked}
         action={
-          <button
+          <Button
             onClick={() => setShowGenerator(true)}
             className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-colors"
           >
             {t("adminPages", "generateNew", lang)}
-          </button>
+          </Button>
         }
       />
 
@@ -86,8 +89,8 @@ export default function AdminSeatsPage() {
       </div>
 
       {/* Generator Modal */}
-      {showGenerator && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end lg:items-center justify-center p-4">
+      <Dialog open={showGenerator} onOpenChange={setShowGenerator}>
+        <DialogContent className="w-full max-w-md p-6">
           <motion.div
             initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}
             className="bg-white rounded-3xl p-6 w-full max-w-md"
@@ -102,7 +105,7 @@ export default function AdminSeatsPage() {
               ].map(({ label, placeholder, type }) => (
                 <div key={label}>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-                  <input type={type ?? "text"} placeholder={placeholder} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm" />
+                  <Input type={type ?? "text"} placeholder={placeholder} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm" />
                 </div>
               ))}
               <div>
@@ -110,27 +113,27 @@ export default function AdminSeatsPage() {
                 <div className="flex gap-2 flex-wrap">
                   {["Class 2","Class 3","Class 4","Class 5"].map((c) => (
                     <label key={c} className="flex items-center gap-1.5 bg-gray-50 rounded-lg px-3 py-1.5 cursor-pointer">
-                      <input type="checkbox" defaultChecked className="w-3.5 h-3.5 accent-emerald-600" />
+                      <Input type="checkbox" defaultChecked className="w-3.5 h-3.5 accent-emerald-600" />
                       <span className="text-sm text-gray-700">{c}</span>
                     </label>
                   ))}
                 </div>
               </div>
               <div className="flex gap-3 mt-2">
-                <button
+                <Button
                   onClick={() => { setShowGenerator(false); alert("✅ Seat arrangement generated! (Demo)"); }}
                   className="flex-1 bg-emerald-600 text-white font-semibold py-3 rounded-xl hover:bg-emerald-700 transition-colors text-sm"
                 >
                   {t("adminPages", "generate", lang)}
-                </button>
-                <button onClick={() => setShowGenerator(false)} className="flex-1 bg-gray-100 text-gray-700 font-semibold py-3 rounded-xl hover:bg-gray-200 transition-colors text-sm">
+                </Button>
+                <Button onClick={() => setShowGenerator(false)} className="flex-1 bg-gray-100 text-gray-700 font-semibold py-3 rounded-xl hover:bg-gray-200 transition-colors text-sm">
                   {t("adminPages", "cancel", lang)}
-                </button>
+                </Button>
               </div>
             </div>
           </motion.div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

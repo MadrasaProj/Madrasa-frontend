@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import {
@@ -194,7 +196,7 @@ export function ExamConfigForm({
               Override Max Marks
             </label>
             <p className="text-xs text-gray-400 mb-2">Leave empty to use the global default ({defaultMax})</p>
-            <input
+            <Input
               type="number"
               min={1}
               max={9999}
@@ -223,7 +225,7 @@ export function ExamConfigForm({
             ].map(({ id, label, value, set, color }) => (
               <div key={id}>
                 <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{label}</label>
-                <input
+                <Input
                   type="text"
                   value={value}
                   onChange={(e) => set(e.target.value)}
@@ -250,7 +252,7 @@ export function ExamConfigForm({
                 Default Maximum Marks
               </label>
               <div className="flex items-center gap-3">
-                <input
+                <Input
                   type="number"
                   min={1}
                   max={9999}
@@ -267,7 +269,7 @@ export function ExamConfigForm({
                 <p className="text-sm font-semibold text-gray-800">Hide Marks on Result Cards</p>
                 <p className="text-xs text-gray-400 mt-0.5">Only grades and percentages shown; raw scores hidden</p>
               </div>
-              <button
+              <Button
                 onClick={() => setHideMarks(!hideMarks)}
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors",
@@ -278,7 +280,7 @@ export function ExamConfigForm({
               >
                 {hideMarks ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 {hideMarks ? "Marks Hidden" : "Marks Visible"}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -328,7 +330,7 @@ export function ExamConfigForm({
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
-                          <input
+                          <Input
                             type="number"
                             min={1}
                             max={99}

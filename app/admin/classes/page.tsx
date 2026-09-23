@@ -1,3 +1,7 @@
+import { Button } from "@/components/ui/Button";
+import { Dialog, DialogContent } from "@/components/ui/Dialog";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -200,13 +204,13 @@ export default function AdminClassesPage() {
       key: "subjectCount",
       header: "Subjects",
       render: (c) => (
-        <button
+        <Button
           onClick={(e) => { e.stopPropagation(); navigate(`/admin/subjects?classId=${c.id}`); }}
           className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
         >
           <BookOpen className="w-3 h-3" />
           {c.subjectCount ?? 0} subjects
-        </button>
+        </Button>
       ),
       className: "hidden lg:table-cell",
       headerClass: "hidden lg:table-cell",
@@ -229,21 +233,21 @@ export default function AdminClassesPage() {
           header: "",
           render: (c: ClassRecord) => (
             <div className="flex items-center gap-1.5 justify-end">
-              <button
+              <Button
                 onClick={(e) => { e.stopPropagation(); openEdit(c); }}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors text-xs font-semibold"
               >
                 <Pencil className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Edit</span>
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={(e) => { e.stopPropagation(); setDeleteTarget(c); setShowDeleteConfirm(true); }}
                 disabled={deleting === c.id}
                 className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"
                 title="Delete Class"
               >
                 {deleting === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-              </button>
+              </Button>
             </div>
           ),
           className: "text-right",
@@ -259,12 +263,12 @@ export default function AdminClassesPage() {
         icon={School}
         action={
           isAdmin ? (
-            <button
+            <Button
               onClick={openAdd}
               className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-colors"
             >
               <Plus className="w-4 h-4" /> Add Class
-            </button>
+            </Button>
           ) : undefined
         }
       />
@@ -274,7 +278,7 @@ export default function AdminClassesPage() {
       {/* Search */}
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input
+        <Input
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           placeholder="Search classes…"
@@ -306,12 +310,12 @@ export default function AdminClassesPage() {
               </div>
             </div>
             {isAdmin && (
-              <button
+              <Button
                 onClick={(e) => { e.stopPropagation(); openEdit(c); }}
                 className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
               >
                 <Pencil className="w-3.5 h-3.5" />
-              </button>
+              </Button>
             )}
           </div>
         )}
@@ -349,13 +353,13 @@ export default function AdminClassesPage() {
                 <h2 className="font-bold text-gray-900 text-lg">
                   {editTarget ? "Edit Class" : "Add Class"}
                 </h2>
-                <button
+                <Button
                   onClick={() => !saving && setShowDrawer(false)}
                   disabled={saving}
                   className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 disabled:opacity-50"
                 >
                   <X className="w-4 h-4" />
-                </button>
+                </Button>
               </div>
 
               {/* Body */}
@@ -368,7 +372,7 @@ export default function AdminClassesPage() {
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                     Class <span className="text-red-500">*</span>
                   </label>
-                  <select
+                  <Select
                     value={form.gradeLevelId}
                     onChange={(e) => setForm((f) => ({ ...f, gradeLevelId: e.target.value }))}
                     className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
@@ -377,14 +381,14 @@ export default function AdminClassesPage() {
                     {gradeLevels.map((gl) => (
                       <option key={gl.id} value={gl.id}>{gl.name}</option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Division</label>
                   <div className="flex items-center gap-2 mb-2">
                     {DIVISION_OPTIONS.map((d) => (
-                      <button
+                      <Button
                         key={d}
                         type="button"
                         onClick={() => setForm((f) => ({ ...f, division: f.division === d ? "" : d }))}
@@ -396,10 +400,10 @@ export default function AdminClassesPage() {
                         )}
                       >
                         {d}
-                      </button>
+                      </Button>
                     ))}
                   </div>
-                  <input
+                  <Input
                     type="text"
                     value={form.division}
                     onChange={(e) => setForm((f) => ({ ...f, division: e.target.value }))}
@@ -412,7 +416,7 @@ export default function AdminClassesPage() {
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                     Display Name <span className="text-red-500">*</span>
                   </label>
-                  <input
+                  <Input
                     type="text"
                     value={form.name}
                     onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
@@ -423,7 +427,7 @@ export default function AdminClassesPage() {
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Class Teacher</label>
-                  <select
+                  <Select
                     value={form.classTeacherId}
                     onChange={(e) => setForm((f) => ({ ...f, classTeacherId: e.target.value }))}
                     className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
@@ -432,7 +436,7 @@ export default function AdminClassesPage() {
                     {teachers.map((t) => (
                       <option key={t.id} value={t.id}>{t.name} · @{t.username}</option>
                     ))}
-                  </select>
+                  </Select>
                   <p className="text-xs text-gray-400 mt-1">Each teacher can be class teacher of only one class</p>
                 </div>
 
@@ -442,7 +446,7 @@ export default function AdminClassesPage() {
                     <div className="flex gap-3">
                       {(["ACTIVE", "INACTIVE"] as const).map((s) => (
                         <label key={s} className="flex items-center gap-2 cursor-pointer">
-                          <input
+                          <Input
                             type="radio" name="cls-status" value={s}
                             checked={form.status === s}
                             onChange={() => setForm((f) => ({ ...f, status: s }))}
@@ -458,21 +462,21 @@ export default function AdminClassesPage() {
 
               {/* Footer */}
               <div className="px-5 py-4 border-t border-gray-100 flex gap-3 shrink-0">
-                <button
+                <Button
                   onClick={() => !saving && setShowDrawer(false)}
                   disabled={saving}
                   className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 disabled:opacity-50"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={handleSave}
                   disabled={saving}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 disabled:opacity-50"
                 >
                   {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                   {editTarget ? "Save Changes" : "Create Class"}
-                </button>
+                </Button>
               </div>
             </motion.div>
             </div>
@@ -481,18 +485,8 @@ export default function AdminClassesPage() {
       </AnimatePresence>
 
       {/* Standalone Delete Confirm Dialog */}
-      <AnimatePresence>
-        {showDeleteConfirm && (
-          <>
-            <motion.div key="del-backdrop"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => !deleting && setShowDeleteConfirm(false)}
-              className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
-            />
-            <motion.div key="del-dialog"
-              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 bg-white rounded-3xl p-6 max-w-sm mx-auto shadow-2xl"
-            >
+      <Dialog open={showDeleteConfirm} onOpenChange={(open) => !open && !deleting && setShowDeleteConfirm(false)}>
+            <DialogContent className="max-w-sm p-6">
               <div className="text-center space-y-3">
                 <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto animate-bounce">
                   <Trash2 className="w-7 h-7 text-red-600" />
@@ -503,14 +497,14 @@ export default function AdminClassesPage() {
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3 mt-6">
-                <button
+                <Button
                   onClick={() => setShowDeleteConfirm(false)}
                   disabled={deleting !== null}
                   className="py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={handleDelete}
                   disabled={deleting !== null}
                   className="py-3 rounded-2xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors disabled:opacity-60"
@@ -520,12 +514,10 @@ export default function AdminClassesPage() {
                       <Loader2 className="w-4 h-4 animate-spin" /> Deactivating…
                     </span>
                   ) : "Deactivate"}
-                </button>
+                </Button>
               </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+            </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

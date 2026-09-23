@@ -7,10 +7,12 @@ type Side = "right" | "bottom" | "responsive";
 
 interface DrawerProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onOpenChange?: (open: boolean) => void;
+  onClose?: () => void;
   side?: Side;
   title?: React.ReactNode;
   description?: React.ReactNode;
+  subtitle?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
   contentClassName?: string;
@@ -20,9 +22,11 @@ interface DrawerProps {
 export function Drawer({
   open,
   onOpenChange,
+  onClose,
   side = "responsive",
   title,
   description,
+  subtitle,
   children,
   className,
   contentClassName,
@@ -58,7 +62,7 @@ export function Drawer({
       );
 
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+    <DialogPrimitive.Root open={open} onOpenChange={(nextOpen) => { onOpenChange?.(nextOpen); if (!nextOpen) onClose?.(); }}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay
           className={cn(
@@ -102,15 +106,15 @@ export function Drawer({
                     {title}
                   </DialogPrimitive.Title>
                 )}
-                {description && (
+                {(description ?? subtitle) && (
                   <DialogPrimitive.Description className="text-xs text-gray-500">
-                    {description}
+                    {description ?? subtitle}
                   </DialogPrimitive.Description>
                 )}
               </div>
               {showCloseButton && (
                 <DialogPrimitive.Close
-                  className="shrink-0 p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   aria-label="Close"
                 >
                   <X className="w-4 h-4" />

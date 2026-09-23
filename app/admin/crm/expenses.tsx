@@ -1,3 +1,7 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Textarea } from "@/components/ui/Textarea";
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/auth";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -207,12 +211,12 @@ export default function ExpensesPage() {
               Submit business expenses. Pending submissions require Super Admin approval.
             </p>
           </div>
-          <button
+          <Button
             onClick={() => setShowModal(true)}
             className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-2xl shadow-sm transition-all text-sm shrink-0"
           >
             <Plus className="w-4 h-4" /> New Expense Request
-          </button>
+          </Button>
         </div>
 
         {/* Feedback Messages */}
@@ -322,7 +326,7 @@ export default function ExpensesPage() {
                         <td className="py-4 px-6 text-right">
                           {exp.status === "PENDING" ? (
                             <div className="flex items-center justify-end gap-2">
-                              <button
+                              <Button
                                 onClick={() => handleApprove(exp.id)}
                                 disabled={actionLoadingId === exp.id}
                                 className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
@@ -333,8 +337,8 @@ export default function ExpensesPage() {
                                   <Check className="w-3 h-3" />
                                 )}
                                 Approve
-                              </button>
-                              <button
+                              </Button>
+                              <Button
                                 onClick={() => handleReject(exp.id)}
                                 disabled={actionLoadingId === exp.id}
                                 className="flex items-center gap-1 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
@@ -345,7 +349,7 @@ export default function ExpensesPage() {
                                   <X className="w-3 h-3" />
                                 )}
                                 Reject
-                              </button>
+                              </Button>
                             </div>
                           ) : (
                             <span className="text-xs text-gray-300 italic font-medium">Decided</span>
@@ -397,7 +401,7 @@ export default function ExpensesPage() {
                     <div>{getStatusBadge(exp.status)}</div>
                     {isSuperAdmin && exp.status === "PENDING" && (
                       <div className="flex items-center gap-1.5">
-                        <button
+                        <Button
                           onClick={() => handleApprove(exp.id)}
                           disabled={actionLoadingId === exp.id}
                           className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition-all shadow-sm"
@@ -408,8 +412,8 @@ export default function ExpensesPage() {
                             <Check className="w-3 h-3" />
                           )}
                           Approve
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           onClick={() => handleReject(exp.id)}
                           disabled={actionLoadingId === exp.id}
                           className="flex items-center gap-1 px-2.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold transition-all shadow-sm"
@@ -420,7 +424,7 @@ export default function ExpensesPage() {
                             <X className="w-3 h-3" />
                           )}
                           Reject
-                        </button>
+                        </Button>
                       </div>
                     )}
                   </div>
@@ -453,12 +457,12 @@ export default function ExpensesPage() {
                     <Receipt className="w-5 h-5 text-emerald-650" />
                     Submit Expense Request
                   </h3>
-                  <button
+                  <Button
                     onClick={() => setShowModal(false)}
                     className="p-1 text-gray-400 hover:bg-gray-100 rounded-xl transition-all"
                   >
                     <X className="w-5 h-5" />
-                  </button>
+                  </Button>
                 </div>
 
                 <form onSubmit={handleCreate} className="p-6 space-y-4 overflow-y-auto">
@@ -466,7 +470,7 @@ export default function ExpensesPage() {
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">
                       Expense Title *
                     </label>
-                    <input
+                    <Input
                       type="text"
                       required
                       placeholder="e.g. Travel tickets to Malappuram, Hosting fees"
@@ -481,7 +485,7 @@ export default function ExpensesPage() {
                       <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">
                         Amount (INR) *
                       </label>
-                      <input
+                      <Input
                         type="number"
                         min="1"
                         required
@@ -496,7 +500,7 @@ export default function ExpensesPage() {
                       <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">
                         Category *
                       </label>
-                      <select
+                      <Select
                         value={category}
                         onChange={(e) => setCategory(e.target.value)}
                         className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-semibold text-gray-850"
@@ -506,7 +510,7 @@ export default function ExpensesPage() {
                         <option value="INFRASTRUCTURE">INFRASTRUCTURE</option>
                         <option value="SALARY">SALARY</option>
                         <option value="OTHER">OTHER</option>
-                      </select>
+                      </Select>
                     </div>
                   </div>
 
@@ -514,7 +518,7 @@ export default function ExpensesPage() {
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">
                       Description / Justification
                     </label>
-                    <textarea
+                    <Textarea
                       rows={3}
                       placeholder="Provide additional details or receipt references..."
                       value={description}
@@ -524,21 +528,21 @@ export default function ExpensesPage() {
                   </div>
 
                   <div className="pt-4 flex gap-3">
-                    <button
+                    <Button
                       type="button"
                       onClick={() => setShowModal(false)}
                       className="flex-1 py-3 text-sm font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-2xl transition-all"
                     >
                       Cancel
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="submit"
                       disabled={submitting || !title.trim() || !amount}
                       className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition-all disabled:opacity-60"
                     >
                       {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                       Submit Claim
-                    </button>
+                    </Button>
                   </div>
                 </form>
               </motion.div>

@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
 import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -298,11 +301,11 @@ export default function AdminGlobalClassSubjectsPage() {
         subtitle="Manage education systems, classes, and subjects"
         icon={BookOpen}
         action={
-          <button onClick={openAddSys}
+          <Button onClick={openAddSys}
             className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-colors"
           >
             <Plus className="w-4 h-4" /> Add System
-          </button>
+          </Button>
         }
       />
 
@@ -355,21 +358,21 @@ export default function AdminGlobalClassSubjectsPage() {
                   <span className="text-sm text-gray-600">{sys.gradeLevels.length} classes</span>
                 </td>
                 <td className="px-5 py-4 text-right">
-                  <button onClick={(e) => { e.stopPropagation(); openEditSys(sys); }}
+                  <Button onClick={(e) => { e.stopPropagation(); openEditSys(sys); }}
                     className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 mr-0.5"
                     title="Edit system">
                     <Pencil className="w-4 h-4" />
-                  </button>
-                  <button onClick={(e) => { e.stopPropagation(); openDrawer(sys); }}
+                  </Button>
+                  <Button onClick={(e) => { e.stopPropagation(); openDrawer(sys); }}
                     className="p-1.5 rounded-lg hover:bg-emerald-100 text-gray-400 hover:text-emerald-600 mr-0.5"
                     title="Manage classes & subjects">
                     <ArrowUpRight className="w-4 h-4" />
-                  </button>
-                  <button onClick={(e) => { e.stopPropagation(); handleDeleteSys(sys.id); }}
+                  </Button>
+                  <Button onClick={(e) => { e.stopPropagation(); handleDeleteSys(sys.id); }}
                     className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500"
                     title="Deactivate system">
                     <Trash2 className="w-4 h-4" />
-                  </button>
+                  </Button>
                 </td>
               </tr>
             ))}
@@ -388,18 +391,18 @@ export default function AdminGlobalClassSubjectsPage() {
                 className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl pointer-events-auto">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-bold text-lg">{editingSys ? "Edit System" : "Add System"}</h3>
-                  <button onClick={() => setShowSysModal(false)} className="p-1.5 rounded-xl hover:bg-gray-100"><X className="w-5 h-5" /></button>
+                  <Button onClick={() => setShowSysModal(false)} className="p-1.5 rounded-xl hover:bg-gray-100"><X className="w-5 h-5" /></Button>
                 </div>
                 <div className="space-y-3">
-                  <div><label className={labelCls}>Name *</label><input value={sysName} onChange={(e) => setSysName(e.target.value)} className={inputCls} placeholder="e.g. CBSE" /></div>
-                  <div><label className={labelCls}>Code *</label><input value={sysCode} onChange={(e) => setSysCode(e.target.value)} className={inputCls} placeholder="e.g. CBSE" /></div>
-                  <div><label className={labelCls}>Description</label><textarea value={sysDesc} onChange={(e) => setSysDesc(e.target.value)} className={inputCls} rows={2} /></div>
+                  <div><label className={labelCls}>Name *</label><Input value={sysName} onChange={(e) => setSysName(e.target.value)} className={inputCls} placeholder="e.g. CBSE" /></div>
+                  <div><label className={labelCls}>Code *</label><Input value={sysCode} onChange={(e) => setSysCode(e.target.value)} className={inputCls} placeholder="e.g. CBSE" /></div>
+                  <div><label className={labelCls}>Description</label><Textarea value={sysDesc} onChange={(e) => setSysDesc(e.target.value)} className={inputCls} rows={2} /></div>
                 </div>
                 <div className="flex gap-3 mt-6">
-                  <button onClick={() => setShowSysModal(false)} className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-gray-100 hover:bg-gray-200">Cancel</button>
-                  <button onClick={handleSaveSys} disabled={sysSaving} className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">
+                  <Button onClick={() => setShowSysModal(false)} className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-gray-100 hover:bg-gray-200">Cancel</Button>
+                  <Button onClick={handleSaveSys} disabled={sysSaving} className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">
                     {sysSaving && <Loader2 className="w-4 h-4 animate-spin" />}{editingSys ? "Save" : "Create"}
-                  </button>
+                  </Button>
                 </div>
               </motion.div>
             </div>
@@ -426,9 +429,9 @@ export default function AdminGlobalClassSubjectsPage() {
                     <p className="text-xs text-gray-400">{drawerSys.code} · {gradeLevels.length} classes</p>
                   </div>
 
-                    <button onClick={() => setDrawerSys(null)} className=" absolute right-4 p-2 rounded-xl hover:bg-gray-100 text-gray-500">
+                    <Button onClick={() => setDrawerSys(null)} className=" absolute right-4 p-2 rounded-xl hover:bg-gray-100 text-gray-500">
                     <X className="w-5 h-5" />
-                  </button>
+                  </Button>
                 </div>
 
                 {/* Body: split layout */}
@@ -437,10 +440,10 @@ export default function AdminGlobalClassSubjectsPage() {
                   <div className="w-72 border-r border-gray-200 flex flex-col shrink-0">
                     <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                       <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Classes</span>
-                      <button onClick={() => openGlFormDrawer()}
+                      <Button onClick={() => openGlFormDrawer()}
                         className="p-1 rounded-lg hover:bg-emerald-100 text-emerald-600 hover:text-emerald-700">
                         <Plus className="w-4 h-4" />
-                      </button>
+                      </Button>
                     </div>
                     <div className="flex-1 overflow-y-auto">
                       {glLoading ? (
@@ -464,14 +467,14 @@ export default function AdminGlobalClassSubjectsPage() {
                                 <span className="text-xs text-gray-400 ml-2">Lvl {gl.level}</span>
                               </div>
                               <div className="flex items-center gap-0.5">
-                                <button onClick={(e) => { e.stopPropagation(); openGlFormDrawer(gl); }}
+                                <Button onClick={(e) => { e.stopPropagation(); openGlFormDrawer(gl); }}
                                   className="p-1 rounded-lg hover:bg-gray-200 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity">
                                   <Pencil className="w-3.5 h-3.5" />
-                                </button>
-                                <button onClick={(e) => { e.stopPropagation(); deleteGl(gl.id); }}
+                                </Button>
+                                <Button onClick={(e) => { e.stopPropagation(); deleteGl(gl.id); }}
                                   className="p-1 rounded-lg hover:bg-red-100 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
                                   <Trash2 className="w-3.5 h-3.5" />
-                                </button>
+                                </Button>
                               </div>
                             </div>
                           ))}
@@ -497,10 +500,10 @@ export default function AdminGlobalClassSubjectsPage() {
                           <h3 className="font-bold text-gray-900">
                             Subjects — <span className="text-emerald-600">{gradeLevels.find((g) => g.id === activeGlId)?.name}</span>
                           </h3>
-                          <button onClick={openAddSubjForm}
+                          <Button onClick={openAddSubjForm}
                             className="flex items-center gap-1 px-3 py-2 rounded-xl bg-emerald-100 text-emerald-700 text-sm font-semibold hover:bg-emerald-200 transition-colors">
                             <Plus className="w-4 h-4" /> Add Subject
-                          </button>
+                          </Button>
                         </div>
 
                         {/* Subjects table */}
@@ -531,12 +534,12 @@ export default function AdminGlobalClassSubjectsPage() {
                                     )}
                                   </td>
                                   <td className="px-4 py-3.5 text-right">
-                                    <button onClick={() => editSubj(s)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 mr-1">
+                                    <Button onClick={() => editSubj(s)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 mr-1">
                                       <Pencil className="w-4 h-4" />
-                                    </button>
-                                    <button onClick={() => deleteSubj(s.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500">
+                                    </Button>
+                                    <Button onClick={() => deleteSubj(s.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500">
                                       <Trash2 className="w-4 h-4" />
-                                    </button>
+                                    </Button>
                                   </td>
                                 </tr>
                               ))}
@@ -572,17 +575,17 @@ export default function AdminGlobalClassSubjectsPage() {
               >
                 <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 shrink-0">
                   <h2 className="font-bold text-gray-900">{editingGl ? "Edit Class" : "Add Class"}</h2>
-                  <button onClick={() => setGlFormDrawer(false)} className="p-2 absolute right-3 rounded-xl hover:bg-gray-100 text-gray-500"><X className="w-5 h-5" /></button>
+                  <Button onClick={() => setGlFormDrawer(false)} className="p-2 absolute right-3 rounded-xl hover:bg-gray-100 text-gray-500"><X className="w-5 h-5" /></Button>
                 </div>
                 <div className="flex-1 px-6 py-4 space-y-4">
-                  <div><label className={labelCls}>Name *</label><input value={glForm.name} onChange={(e) => setGlForm((f) => ({ ...f, name: e.target.value }))} className={inputCls} placeholder="e.g. Class 1" /></div>
-                  <div><label className={labelCls}>Level</label><input type="number" value={glForm.level} onChange={(e) => setGlForm((f) => ({ ...f, level: parseInt(e.target.value) || 1 }))} className={inputCls} min={1} max={12} /></div>
+                  <div><label className={labelCls}>Name *</label><Input value={glForm.name} onChange={(e) => setGlForm((f) => ({ ...f, name: e.target.value }))} className={inputCls} placeholder="e.g. Class 1" /></div>
+                  <div><label className={labelCls}>Level</label><Input type="number" value={glForm.level} onChange={(e) => setGlForm((f) => ({ ...f, level: parseInt(e.target.value) || 1 }))} className={inputCls} min={1} max={12} /></div>
                 </div>
                 <div className="px-6 py-4 border-t border-gray-100 flex gap-3 shrink-0">
-                  <button onClick={() => setGlFormDrawer(false)} className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-gray-100 hover:bg-gray-200">Cancel</button>
-                  <button onClick={saveGl} disabled={glSaving} className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">
+                  <Button onClick={() => setGlFormDrawer(false)} className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-gray-100 hover:bg-gray-200">Cancel</Button>
+                  <Button onClick={saveGl} disabled={glSaving} className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">
                     {glSaving && <Loader2 className="w-4 h-4 animate-spin" />}{editingGl ? "Save" : "Create"}
-                  </button>
+                  </Button>
                 </div>
               </motion.div>
             </div>
@@ -603,56 +606,56 @@ export default function AdminGlobalClassSubjectsPage() {
               >
                 <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 shrink-0">
                   <h2 className="font-bold text-gray-900">{editingSubj ? "Edit Subject" : "Add Subject"}</h2>
-                  <button onClick={cancelSubjForm} className="absolute right-3 p-2 rounded-xl hover:bg-gray-100 text-gray-500"><X className="w-5 h-5" /></button>
+                  <Button onClick={cancelSubjForm} className="absolute right-3 p-2 rounded-xl hover:bg-gray-100 text-gray-500"><X className="w-5 h-5" /></Button>
                 </div>
                 <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
                   <div>
                     <label className={labelCls}>Subject Name *</label>
-                    <input value={subjForm.subjectName} onChange={(e) => setSubjForm((f) => ({ ...f, subjectName: e.target.value }))} className={inputCls} placeholder="e.g. Mathematics" />
+                    <Input value={subjForm.subjectName} onChange={(e) => setSubjForm((f) => ({ ...f, subjectName: e.target.value }))} className={inputCls} placeholder="e.g. Mathematics" />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className={labelCls}>Max Marks</label>
-                      <input type="number" value={subjForm.maxMarks} onChange={(e) => setSubjForm((f) => ({ ...f, maxMarks: e.target.value }))} className={inputCls} placeholder="e.g. 100" />
+                      <Input type="number" value={subjForm.maxMarks} onChange={(e) => setSubjForm((f) => ({ ...f, maxMarks: e.target.value }))} className={inputCls} placeholder="e.g. 100" />
                     </div>
                     <div>
                       <label className={labelCls}>Pass Marks</label>
-                      <input type="number" value={subjForm.passMarks} onChange={(e) => setSubjForm((f) => ({ ...f, passMarks: e.target.value }))} className={inputCls} placeholder="e.g. 30" />
+                      <Input type="number" value={subjForm.passMarks} onChange={(e) => setSubjForm((f) => ({ ...f, passMarks: e.target.value }))} className={inputCls} placeholder="e.g. 30" />
                     </div>
                   </div>
                   <div>
                     <label className={labelCls}>Annual Pass Marks</label>
-                    <input type="number" value={subjForm.annualPassMarks} onChange={(e) => setSubjForm((f) => ({ ...f, annualPassMarks: e.target.value }))} className={inputCls} placeholder="e.g. 30" />
+                    <Input type="number" value={subjForm.annualPassMarks} onChange={(e) => setSubjForm((f) => ({ ...f, annualPassMarks: e.target.value }))} className={inputCls} placeholder="e.g. 30" />
                   </div>
                   <div>
                     <label className={labelCls}>Grade Config <span className="text-gray-400 font-normal">(optional)</span></label>
                     <div className="space-y-2">
                       {subjForm.grades.map((g, i) => (
                         <div key={i} className="flex items-center gap-2">
-                          <input
+                          <Input
                             value={g.grade}
                             onChange={(e) => updateGradeRow(i, "grade", e.target.value)}
                             className="w-20 px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-emerald-400"
                             placeholder="A+"
                           />
                           <span className="text-xs text-gray-400">≥</span>
-                          <input
+                          <Input
                             type="number"
                             value={g.min}
                             onChange={(e) => updateGradeRow(i, "min", parseInt(e.target.value) || 0)}
                             className="w-24 px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-emerald-400"
                             placeholder="90"
                           />
-                          <button onClick={() => removeGradeRow(i)}
+                          <Button onClick={() => removeGradeRow(i)}
                             className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500">
                             <Trash2 className="w-4 h-4" />
-                          </button>
+                          </Button>
                         </div>
                       ))}
-                      <button onClick={addGradeRow}
+                      <Button onClick={addGradeRow}
                         className="flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition-colors">
                         <Plus className="w-3.5 h-3.5" /> Add Grade
-                      </button>
+                      </Button>
                     </div>
                     {subjForm.grades.length > 0 && (
                       <p className="text-xs text-gray-400 mt-2">Grades are evaluated top-down by min score. Highest min = best grade.</p>
@@ -660,10 +663,10 @@ export default function AdminGlobalClassSubjectsPage() {
                   </div>
                 </div>
                 <div className="px-6 py-4 border-t border-gray-100 flex gap-3 shrink-0">
-                  <button onClick={cancelSubjForm} className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-gray-100 hover:bg-gray-200">Cancel</button>
-                  <button onClick={saveSubj} disabled={subjSaving} className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">
+                  <Button onClick={cancelSubjForm} className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-gray-100 hover:bg-gray-200">Cancel</Button>
+                  <Button onClick={saveSubj} disabled={subjSaving} className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">
                     {subjSaving && <Loader2 className="w-4 h-4 animate-spin" />}{editingSubj ? "Save" : "Add"}
-                  </button>
+                  </Button>
                 </div>
               </motion.div>
             </div>

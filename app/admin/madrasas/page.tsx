@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -218,12 +221,12 @@ function EditMadrasaDrawer({
               {client.slug}
             </p>
           </div>
-          <button
+          <Button
             onClick={onClose}
             className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-100"
           >
             <X className="w-5 h-5" />
-          </button>
+          </Button>
         </div>
 
         {/* Body */}
@@ -239,7 +242,7 @@ function EditMadrasaDrawer({
           <p className={cn(sectionCls, "border-t-0 mt-0")}>Madrasa Info</p>
           <div>
             <label className={labelCls}>Name *</label>
-            <input
+            <Input
               value={form.name ?? ""}
               onChange={(e) => set("name", e.target.value)}
               className={inputCls}
@@ -248,7 +251,7 @@ function EditMadrasaDrawer({
           </div>
           <div>
             <label className={labelCls}>Arabic Name</label>
-            <input
+            <Input
               value={form.arabicName ?? ""}
               onChange={(e) => set("arabicName", e.target.value)}
               className={inputCls}
@@ -259,7 +262,7 @@ function EditMadrasaDrawer({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelCls}>City</label>
-              <input
+              <Input
                 value={form.city ?? ""}
                 onChange={(e) => set("city", e.target.value)}
                 className={inputCls}
@@ -268,7 +271,7 @@ function EditMadrasaDrawer({
             </div>
             <div>
               <label className={labelCls}>State</label>
-              <input
+              <Input
                 value={form.state ?? ""}
                 onChange={(e) => set("state", e.target.value)}
                 className={inputCls}
@@ -281,7 +284,7 @@ function EditMadrasaDrawer({
           <p className={sectionCls}>Admin Account</p>
           <div>
             <label className={labelCls}>Admin Username * (Email or Phone)</label>
-            <input
+            <Input
               value={form.adminIdentifier ?? ""}
               onChange={(e) => set("adminIdentifier", e.target.value)}
               className={inputCls}
@@ -290,7 +293,7 @@ function EditMadrasaDrawer({
           </div>
           <div>
             <label className={labelCls}>Admin Password (leave blank to keep unchanged)</label>
-            <input
+            <Input
               type="password"
               value={form.password ?? ""}
               onChange={(e) => set("password", e.target.value)}
@@ -303,7 +306,7 @@ function EditMadrasaDrawer({
           <p className={sectionCls}>Committee Account</p>
           <div>
             <label className={labelCls}>Committee Username</label>
-            <input
+            <Input
               value={form.committieUsername ?? ""}
               onChange={(e) => set("committieUsername", e.target.value)}
               className={inputCls}
@@ -312,7 +315,7 @@ function EditMadrasaDrawer({
           </div>
           <div>
             <label className={labelCls}>Committee Password (leave blank to keep unchanged)</label>
-            <input
+            <Input
               type="password"
               value={form.committiePassword ?? ""}
               onChange={(e) => set("committiePassword", e.target.value)}
@@ -325,7 +328,7 @@ function EditMadrasaDrawer({
           <p className={sectionCls}>Account Status</p>
           <div className="grid grid-cols-2 gap-2">
             {STATUS_OPTIONS.map((s) => (
-              <button
+              <Button
                 key={s}
                 onClick={() => set("status", s)}
                 className={cn(
@@ -336,7 +339,7 @@ function EditMadrasaDrawer({
                 )}
               >
                 {s}
-              </button>
+              </Button>
             ))}
           </div>
 
@@ -353,7 +356,7 @@ function EditMadrasaDrawer({
                 Allow users to log in to this madrasa
               </p>
             </div>
-            <button
+            <Button
               onClick={() => set("isLoginEnabled", !form.isLoginEnabled)}
               className={cn(
                 "relative w-12 h-6 rounded-full transition-colors duration-200 shrink-0",
@@ -366,7 +369,7 @@ function EditMadrasaDrawer({
                   form.isLoginEnabled ? "translate-x-6" : "translate-x-0",
                 )}
               />
-            </button>
+            </Button>
           </div>
 
           {/* Attendance mode toggle */}
@@ -376,7 +379,7 @@ function EditMadrasaDrawer({
             </p>
             <div className="flex gap-2">
               {(["CLASS_BASED", "PERIOD_BASED"] as const).map((m) => (
-                <button
+                <Button
                   key={m}
                   onClick={() => set("attendanceMode", m)}
                   className={cn(
@@ -387,7 +390,7 @@ function EditMadrasaDrawer({
                   )}
                 >
                   {m === "CLASS_BASED" ? "Class Based" : "Period Based"}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -411,13 +414,13 @@ function EditMadrasaDrawer({
 
         {/* Footer */}
         <div className="px-5 py-4 border-t border-gray-100 shrink-0 flex gap-3">
-          <button
+          <Button
             onClick={onClose}
             className="flex-1 py-3 text-sm font-semibold text-gray-500 bg-gray-100 rounded-2xl hover:bg-gray-200 transition-all"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleSave}
             disabled={saving || success}
             className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 disabled:opacity-60 transition-all"
@@ -435,7 +438,7 @@ function EditMadrasaDrawer({
                 <Save className="w-4 h-4" /> Save Changes
               </>
             )}
-          </button>
+          </Button>
         </div>
       </motion.div>
       </div>
@@ -537,7 +540,7 @@ function ClientDetail({
       {/* Tabs */}
       <div className="flex gap-1 mb-3">
         {(["payments", "logs"] as const).map((t) => (
-          <button
+          <Button
             key={t}
             onClick={() => handleTabChange(t)}
             className={cn(
@@ -548,15 +551,15 @@ function ClientDetail({
             )}
           >
             {t === "payments" ? "Payments" : "Activity Logs"}
-          </button>
+          </Button>
         ))}
         {tab === "payments" && (
-          <button
+          <Button
             onClick={() => setShowAddPayment((s) => !s)}
             className="ml-auto flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-all"
           >
             <Plus className="w-3.5 h-3.5" /> Record Payment
-          </button>
+          </Button>
         )}
       </div>
 
@@ -577,7 +580,7 @@ function ClientDetail({
                 <label className="text-xs text-gray-500 mb-1 block">
                   Amount (₹) *
                 </label>
-                <input
+                <Input
                   type="number"
                   min="0"
                   value={form.amount}
@@ -592,7 +595,7 @@ function ClientDetail({
                 <label className="text-xs text-gray-500 mb-1 block">
                   Paid On *
                 </label>
-                <input
+                <Input
                   type="date"
                   value={form.paidAt}
                   onChange={(e) =>
@@ -605,7 +608,7 @@ function ClientDetail({
                 <label className="text-xs text-gray-500 mb-1 block">
                   Period Start *
                 </label>
-                <input
+                <Input
                   type="date"
                   value={form.periodStart}
                   onChange={(e) =>
@@ -618,7 +621,7 @@ function ClientDetail({
                 <label className="text-xs text-gray-500 mb-1 block">
                   Period End *
                 </label>
-                <input
+                <Input
                   type="date"
                   value={form.periodEnd}
                   onChange={(e) =>
@@ -631,7 +634,7 @@ function ClientDetail({
                 <label className="text-xs text-gray-500 mb-1 block">
                   Method
                 </label>
-                <select
+                <Select
                   value={form.method}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, method: e.target.value }))
@@ -645,13 +648,13 @@ function ClientDetail({
                       </option>
                     ),
                   )}
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">
                   Reference / Receipt #
                 </label>
-                <input
+                <Input
                   type="text"
                   value={form.reference}
                   onChange={(e) =>
@@ -663,13 +666,13 @@ function ClientDetail({
               </div>
             </div>
             <div className="flex gap-2 justify-end">
-              <button
+              <Button
                 onClick={() => setShowAddPayment(false)}
                 className="px-4 py-2 text-xs font-semibold text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-50 transition-all"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleRecordPayment}
                 disabled={saving || !form.amount}
                 className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all disabled:opacity-60"
@@ -680,7 +683,7 @@ function ClientDetail({
                   <Plus className="w-3.5 h-3.5" />
                 )}
                 Save Payment
-              </button>
+              </Button>
             </div>
           </motion.div>
         )}
@@ -904,12 +907,12 @@ function NewMadrasaDrawer({
           <h2 className="text-base font-bold text-gray-900">
             Add New Madrasa
           </h2>
-          <button
+          <Button
             onClick={onClose}
             className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-100 transition-all"
           >
             <X className="w-5 h-5" />
-          </button>
+          </Button>
         </div>
 
         {/* Scrollable body */}
@@ -920,7 +923,7 @@ function NewMadrasaDrawer({
             </p>
             <div>
               <label className={labelCls}>Name *</label>
-              <input
+              <Input
                 value={form.name}
                 onChange={(e) => set("name", e.target.value)}
                 className={inputCls}
@@ -929,7 +932,7 @@ function NewMadrasaDrawer({
             </div>
             <div>
               <label className={labelCls}>Slug * (URL identifier)</label>
-              <input
+              <Input
                 value={form.slug}
                 onChange={(e) => set("slug", e.target.value)}
                 className={inputCls}
@@ -938,7 +941,7 @@ function NewMadrasaDrawer({
             </div>
             <div>
               <label className={labelCls}>Arabic Name</label>
-              <input
+              <Input
                 value={form.arabicName}
                 onChange={(e) => set("arabicName", e.target.value)}
                 className={inputCls}
@@ -949,7 +952,7 @@ function NewMadrasaDrawer({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelCls}>City</label>
-                <input
+                <Input
                   value={form.city}
                   onChange={(e) => set("city", e.target.value)}
                   className={inputCls}
@@ -958,7 +961,7 @@ function NewMadrasaDrawer({
               </div>
               <div>
                 <label className={labelCls}>State</label>
-                <input
+                <Input
                   value={form.state}
                   onChange={(e) => set("state", e.target.value)}
                   className={inputCls}
@@ -970,7 +973,7 @@ function NewMadrasaDrawer({
               <label className={labelCls}>Attendance Mode</label>
               <div className="flex gap-2">
                 {(["CLASS_BASED", "PERIOD_BASED"] as const).map((m) => (
-                  <button
+                  <Button
                     key={m}
                     type="button"
                     onClick={() =>
@@ -984,7 +987,7 @@ function NewMadrasaDrawer({
                     )}
                   >
                     {m === "CLASS_BASED" ? "Class Based" : "Period Based"}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -994,7 +997,7 @@ function NewMadrasaDrawer({
               <label className={labelCls}>Account Status</label>
               <div className="grid grid-cols-2 gap-2">
                 {STATUS_OPTIONS.map((s) => (
-                  <button
+                  <Button
                     key={s}
                     type="button"
                     onClick={() => setForm((f) => ({ ...f, status: s }))}
@@ -1006,7 +1009,7 @@ function NewMadrasaDrawer({
                     )}
                   >
                     {s}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -1023,7 +1026,7 @@ function NewMadrasaDrawer({
                     Allow users to log in to this madrasa
                   </p>
                 </div>
-                <button
+                <Button
                   type="button"
                   onClick={() => setForm((f) => ({ ...f, isLoginEnabled: !f.isLoginEnabled }))}
                   className={cn(
@@ -1037,7 +1040,7 @@ function NewMadrasaDrawer({
                       form.isLoginEnabled ? "translate-x-6" : "translate-x-0",
                     )}
                   />
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -1047,7 +1050,7 @@ function NewMadrasaDrawer({
             </p>
             <div>
               <label className={labelCls}>Education System *</label>
-              <select
+              <Select
                 value={selectedSystem?.id ?? ""}
                 onChange={(e) => {
                   const sys = eduSystems.find((s) => s.id === e.target.value) ?? null;
@@ -1066,7 +1069,7 @@ function NewMadrasaDrawer({
                     {sys.name} ({sys.code})
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             {/* Classes */}
@@ -1085,7 +1088,7 @@ function NewMadrasaDrawer({
             </p>
             <div>
               <label className={labelCls}>Admin Name *</label>
-              <input
+              <Input
                 value={form.adminName}
                 onChange={(e) => set("adminName", e.target.value)}
                 className={inputCls}
@@ -1094,7 +1097,7 @@ function NewMadrasaDrawer({
             </div>
             <div>
               <label className={labelCls}>Admin Username *</label>
-              <input
+              <Input
                 value={form.adminIdentifier}
                 onChange={(e) => set("adminIdentifier", e.target.value)}
                 className={inputCls}
@@ -1103,7 +1106,7 @@ function NewMadrasaDrawer({
             </div>
             <div>
               <label className={labelCls}>Admin Password *</label>
-              <input
+              <Input
                 type="password"
                 value={form.adminPassword}
                 onChange={(e) => set("adminPassword", e.target.value)}
@@ -1117,7 +1120,7 @@ function NewMadrasaDrawer({
             </p>
             <div>
               <label className={labelCls}>Committee Username</label>
-              <input
+              <Input
                 value={form.committieUsername ?? ""}
                 onChange={(e) => set("committieUsername", e.target.value)}
                 className={inputCls}
@@ -1126,7 +1129,7 @@ function NewMadrasaDrawer({
             </div>
             <div>
               <label className={labelCls}>Committee Password</label>
-              <input
+              <Input
                 type="password"
                 value={form.committiePassword ?? ""}
                 onChange={(e) => set("committiePassword", e.target.value)}
@@ -1139,13 +1142,13 @@ function NewMadrasaDrawer({
 
         {/* Footer */}
         <div className="px-5 py-4 border-t border-gray-100 shrink-0 flex gap-3">
-          <button
+          <Button
             onClick={onClose}
             className="flex-1 py-3 text-sm font-semibold text-gray-500 bg-gray-100 rounded-2xl hover:bg-gray-200 transition-all"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleSubmit}
             disabled={saving}
             className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-all disabled:opacity-60"
@@ -1156,7 +1159,7 @@ function NewMadrasaDrawer({
               <Plus className="w-4 h-4" />
             )}
             Create Madrasa
-          </button>
+          </Button>
         </div>
       </motion.div>
       </div>
@@ -1221,12 +1224,12 @@ export default function AdminMadrasasPage() {
         title="Madrasas"
         icon={Building2}
         action={
-          <button
+          <Button
             onClick={() => setShowNew(true)}
             className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-xl hover:bg-emerald-700 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" /> New Madrasa
-          </button>
+          </Button>
         }
       />
 
@@ -1236,12 +1239,12 @@ export default function AdminMadrasasPage() {
         <div className="text-center py-12">
           <Building2 className="w-12 h-12 text-gray-200 mx-auto mb-3" />
           <p className="text-sm text-gray-400">No madrasas registered yet.</p>
-          <button
+          <Button
             onClick={() => setShowNew(true)}
             className="mt-3 px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-xl hover:bg-emerald-700 transition-all cursor-pointer"
           >
             Add First Madrasa
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="space-y-4 pb-20">
@@ -1315,14 +1318,14 @@ export default function AdminMadrasasPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <button
+                      <Button
                         onClick={() => setEditingClient(client)}
                         className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-all cursor-pointer"
                         title="Edit madrasa"
                       >
                         <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         onClick={() => handleEnterClient(client.id, client.slug)}
                         disabled={entering === client.id}
                         className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 transition-all cursor-pointer"
@@ -1333,8 +1336,8 @@ export default function AdminMadrasasPage() {
                           <LogIn className="w-3.5 h-3.5" />
                         )}
                         Enter
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         onClick={() => setExpanded(isOpen ? null : client.id)}
                         className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-50 hover:text-gray-700 transition-all cursor-pointer"
                       >
@@ -1343,7 +1346,7 @@ export default function AdminMadrasasPage() {
                         ) : (
                           <ChevronDown className="w-4 h-4" />
                         )}
-                      </button>
+                      </Button>
                     </div>
                   </div>
 
@@ -1377,7 +1380,7 @@ export default function AdminMadrasasPage() {
               </span>
               <div className="flex items-center gap-1.5">
                 <span className="text-xs text-gray-400 hidden sm:inline">Show</span>
-                <select
+                <Select
                   value={pageSize}
                   onChange={(e) => {
                     setPageSize(Number(e.target.value));
@@ -1390,7 +1393,7 @@ export default function AdminMadrasasPage() {
                       {n}
                     </option>
                   ))}
-                </select>
+                </Select>
                 <span className="text-xs text-gray-400 hidden sm:inline">per page</span>
               </div>
             </div>
@@ -1398,25 +1401,25 @@ export default function AdminMadrasasPage() {
             {/* Right side: navigation */}
             {totalPages > 1 && (
               <div className="flex items-center gap-2">
-                <button
+                <Button
                   disabled={page <= 1}
                   onClick={() => setPage((p) => p - 1)}
                   className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center disabled:opacity-40 hover:bg-gray-50 transition-colors cursor-pointer"
                   aria-label="Previous page"
                 >
                   <ChevronLeft className="w-4 h-4" />
-                </button>
+                </Button>
                 <span className="text-sm text-gray-600 font-medium min-w-[5rem] text-center">
                   {page} / {totalPages}
                 </span>
-                <button
+                <Button
                   disabled={page >= totalPages}
                   onClick={() => setPage((p) => p + 1)}
                   className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center disabled:opacity-40 hover:bg-gray-50 transition-colors cursor-pointer"
                   aria-label="Next page"
                 >
                   <ChevronRight className="w-4 h-4" />
-                </button>
+                </Button>
               </div>
             )}
           </div>

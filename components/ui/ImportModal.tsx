@@ -5,6 +5,8 @@ import {
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/Button"
+import { Input } from "@/components/ui/Input"
 
 // ── Public types (imported by each module's config) ──────────────────────────
 
@@ -270,12 +272,13 @@ function UploadScreen({
  <p className="text-sm font-semibold text-emerald-800">Step 1: Download template</p>
  <p className="text-xs text-emerald-600 mt-0.5">Fill it in, then upload below</p>
  </div>
- <button
+ <Button
+ variant="outline" size="sm"
  onClick={() => downloadTemplate(config.columns, config.templateFilename, config.templateSamples)}
  className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-colors shrink-0"
  >
  <Download className="w-4 h-4" /> Template
- </button>
+ </Button>
  </div>
 
  {/* Drop zone */}
@@ -303,7 +306,7 @@ function UploadScreen({
  )}
  </div>
 
- <input
+ <Input
  ref={fileInputRef}
  type="file"
  accept=".xlsx,.xls,.csv"
@@ -418,13 +421,14 @@ function PreviewScreen({
  </table>
  </div>
 
- <button
+ <Button
+ variant="default"
  disabled={validCount === 0}
  onClick={onImport}
  className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl text-base shadow-lg disabled:opacity-40 active:scale-[0.98] transition-transform"
  >
  Import {validCount} {validCount === 1 ? "row" : "rows"}
- </button>
+ </Button>
  </div>
  )
 }
@@ -509,12 +513,13 @@ function ResultsScreen({
  </tbody>
  </table>
  </div>
- <button
+ <Button
+ variant="ghost" size="sm"
  onClick={() => downloadErrorReport(rows, columns, templateFilename)}
  className="flex items-center gap-2 text-sm text-red-600 font-semibold hover:underline"
  >
  <Download className="w-4 h-4" /> Download error report
- </button>
+ </Button>
  </div>
  )}
 
@@ -525,12 +530,12 @@ function ResultsScreen({
  </div>
  )}
 
- <button
+ <Button
  onClick={onDone}
  className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl text-base shadow-lg active:scale-[0.98] transition-transform"
  >
  Done
- </button>
+ </Button>
  </div>
  )
 }
@@ -715,12 +720,13 @@ export function ImportModal<TPayload>({ show, config, onComplete, onClose }: Imp
  <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
  <div className="flex items-center gap-3">
  {screen === "preview" && (
- <button
+ <Button
+ variant="ghost" size="icon"
  onClick={() => setScreen("upload")}
  className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200"
  >
  <ChevronLeft className="w-4 h-4" />
- </button>
+ </Button>
  )}
  <div>
  <h2 className="font-bold text-gray-900 text-lg">
@@ -731,12 +737,13 @@ export function ImportModal<TPayload>({ show, config, onComplete, onClose }: Imp
  </div>
  </div>
  {screen !== "importing" && (
- <button
+ <Button
+ variant="ghost" size="icon"
  onClick={onClose}
  className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200"
  >
  ✕
- </button>
+ </Button>
  )}
  </div>
 

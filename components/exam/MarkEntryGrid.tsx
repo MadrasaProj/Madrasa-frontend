@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import type { ExamRecord } from "@/lib/exams-api";
 import type { ClassRecord } from "@/lib/classes-api";
 import type { SubjectRecord } from "@/lib/subjects-api";
@@ -113,7 +116,7 @@ export function MarkEntryGrid({
               <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1.5">
                 Select Exam
               </label>
-              <select
+              <Select
                 value={examId}
                 onChange={(e) => onExamChange(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 bg-white"
@@ -123,7 +126,7 @@ export function MarkEntryGrid({
                     {ex.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           )}
           {showClassSelector && (
@@ -131,7 +134,7 @@ export function MarkEntryGrid({
               <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1.5">
                 Select Class
               </label>
-              <select
+              <Select
                 value={classId}
                 onChange={(e) => onClassChange(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 bg-white"
@@ -141,7 +144,7 @@ export function MarkEntryGrid({
                     {c.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           )}
           {subjects.length > 0 && (
@@ -149,7 +152,7 @@ export function MarkEntryGrid({
               <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1.5">
                 Select Subject
               </label>
-              <select
+              <Select
                 value={subjectId}
                 onChange={(e) => onSubjectChange(e.target.value)}
                 disabled={subjects.length === 0}
@@ -160,7 +163,7 @@ export function MarkEntryGrid({
                     {s.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           )}
         </div>
@@ -201,13 +204,13 @@ export function MarkEntryGrid({
           </div>
           {showExcelImport && onImportOpen && (
             <div className="flex items-center gap-2">
-              <button
+              <Button
                 onClick={onImportOpen}
                 className="inline-flex items-center gap-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm hover:scale-[1.01]"
               >
                 <FileSpreadsheet className="w-4 h-4 text-emerald-600" />{" "}
                 Import / Export Excel
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -284,7 +287,7 @@ export function MarkEntryGrid({
                         {effectiveMaxMarks}
                       </td>
                       <td className="px-4 py-3.5 text-center">
-                        <input
+                        <Input
                           type="number"
                           min={0}
                           max={effectiveMaxMarks}
@@ -304,7 +307,7 @@ export function MarkEntryGrid({
                       </td>
                       {showRemarks && (
                         <td className="px-6 py-3.5">
-                          <input
+                          <Input
                             type="text"
                             disabled={isLocked || saving}
                             value={remark}
@@ -355,7 +358,7 @@ export function MarkEntryGrid({
                       <span className="text-xs text-gray-400 font-medium mr-1">
                         /{effectiveMaxMarks}
                       </span>
-                      <input
+                      <Input
                         type="number"
                         min={0}
                         max={effectiveMaxMarks}
@@ -376,7 +379,7 @@ export function MarkEntryGrid({
                   </div>
                   {showRemarks && (
                     <div>
-                      <input
+                      <Input
                         type="text"
                         disabled={isLocked || saving}
                         value={remark}
@@ -419,15 +422,15 @@ export function MarkEntryGrid({
             </div>
             <div className="flex items-center gap-2">
               {showResetButton && onReset && (
-                <button
+                <Button
                   onClick={onReset}
                   className="inline-flex items-center gap-1.5 border border-gray-200 hover:bg-gray-100 text-gray-600 font-bold text-xs px-4 py-2.5 rounded-xl transition-colors bg-white shadow-xs"
                 >
                   <RotateCcw className="w-3.5 h-3.5" /> Reset
-                </button>
+                </Button>
               )}
               {showDraftButton && (
-                <button
+                <Button
                   onClick={() => onSave(false)}
                   disabled={saving || isLocked || hasInvalidMarks}
                   className="inline-flex items-center gap-1.5 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs px-4 py-2.5 rounded-xl transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
@@ -438,9 +441,9 @@ export function MarkEntryGrid({
                     <Save className="w-3.5 h-3.5" />
                   )}{" "}
                   Save as Draft
-                </button>
+                </Button>
               )}
-              <button
+              <Button
                 onClick={() => onSave(true)}
                 disabled={saving || isLocked || hasInvalidMarks}
                 className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-sm hover:scale-[1.01] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
@@ -453,7 +456,7 @@ export function MarkEntryGrid({
                   <Save className="w-3.5 h-3.5" />
                 )}
                 {saved ? "Saved" : "Save Marks"}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

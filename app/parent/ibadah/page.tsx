@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
 import { useState, useEffect, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -292,7 +295,7 @@ export default function ParentIbadahPage() {
 
         {/* Tab toggle */}
         <div className="flex gap-1 mb-5 bg-gray-50 rounded-xl p-1">
-          <button
+          <Button
             onClick={() => setView("form")}
             className={cn(
               "flex-1 py-2 rounded-lg text-sm font-medium transition-all",
@@ -300,8 +303,8 @@ export default function ParentIbadahPage() {
             )}
           >
             {t("parentPages", "record", lang)}
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => setView("history")}
             className={cn(
               "flex-1 py-2 rounded-lg text-sm font-medium transition-all",
@@ -309,7 +312,7 @@ export default function ParentIbadahPage() {
             )}
           >
             {t("parentPages", "historyLabel", lang)}
-          </button>
+          </Button>
         </div>
 
         {/* RECORD VIEW */}
@@ -317,11 +320,11 @@ export default function ParentIbadahPage() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 pb-28">
         {/* Date nav */}
         <div className="flex items-center gap-3">
-          <button onClick={prevDay} className="p-2 rounded-xl bg-white border border-emerald-100 text-emerald-600 hover:bg-emerald-50 transition-colors">
+          <Button onClick={prevDay} className="p-2 rounded-xl bg-white border border-emerald-100 text-emerald-600 hover:bg-emerald-50 transition-colors">
             <ChevronLeft className="w-4 h-4" />
-          </button>
+          </Button>
           <div className="flex-1 text-center">
-            <input
+            <Input
               type="date"
               value={date}
               max={fmt(new Date())}
@@ -329,13 +332,13 @@ export default function ParentIbadahPage() {
               className="text-sm font-semibold text-emerald-700 focus:outline-none bg-transparent text-center"
             />
           </div>
-          <button
+          <Button
             onClick={nextDay}
             disabled={date >= fmt(new Date())}
             className="p-2 rounded-xl bg-white border border-emerald-100 text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-40"
           >
             <ChevronRight className="w-4 h-4" />
-          </button>
+          </Button>
         </div>
 
         {/* Prayers */}
@@ -353,12 +356,12 @@ export default function ParentIbadahPage() {
               )}>
                 {prayerCount}/{activePrayers.length}
               </span>
-              <button
+              <Button
                 onClick={markAll}
                 className="text-[10px] font-semibold text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-1 rounded-lg transition-colors"
               >
                 {t("parentPages", "allAda", lang)}
-              </button>
+              </Button>
             </div>
           </div>
           <div className="divide-y divide-gray-50">
@@ -432,7 +435,7 @@ export default function ParentIbadahPage() {
             item.type === "boolean" ? (
             <div key={item.key} className="flex items-center justify-between px-4 py-3">
               <p className="text-sm text-gray-700">{item.label}</p>
-              <button
+              <Button
                 onClick={() => toggleCustomBoolean(item.key)}
                 className={cn(
                   "relative w-10 h-5 rounded-full transition-colors shrink-0",
@@ -443,7 +446,7 @@ export default function ParentIbadahPage() {
                   "absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-xs transition-transform",
                   form.customData[item.key] ? "translate-x-5" : "translate-x-0",
                 )} />
-              </button>
+              </Button>
             </div>
             ) : item.type === "enum" ? (
             <div
@@ -477,7 +480,7 @@ export default function ParentIbadahPage() {
 
         {/* Notes */}
         <div className="bg-white rounded-xl border border-emerald-100/50 px-4 py-3">
-          <textarea
+          <Textarea
             value={form.notes}
             onChange={(e) => { setForm((f) => ({ ...f, notes: e.target.value })); setSaved(false); }}
             placeholder={t("parentPages", "addNote", lang)}
@@ -495,7 +498,7 @@ export default function ParentIbadahPage() {
 
         {/* Sticky save */}
         <div className="sticky bottom-20 lg:bottom-6">
-          <button
+          <Button
             onClick={handleSave}
             disabled={saveMutation.isPending}
             className={cn(
@@ -512,7 +515,7 @@ export default function ParentIbadahPage() {
             ) : (
               <><Save className="w-4 h-4" /> {t("parentPages", "saveFor", lang)} {dateLabel}</>
             )}
-          </button>
+          </Button>
         </div>
         </motion.div>
         )}
@@ -628,12 +631,12 @@ export default function ParentIbadahPage() {
                           {log.notes && (
                             <p className="text-xs text-gray-400 italic">{log.notes}</p>
                           )}
-                          <button
+                          <Button
                             onClick={() => { setDate(fmt(new Date(log.date))); setView("form"); }}
                             className="text-xs font-medium text-emerald-600 hover:text-emerald-800 transition-colors"
                           >
                             {t("parentPages", "editRecord", lang)} →
-                          </button>
+                          </Button>
                         </div>
                       </motion.div>
                     )}
@@ -676,16 +679,16 @@ export default function ParentIbadahPage() {
                       <p className="text-base font-semibold text-gray-900">{prayerMeta[drawerPrayer].label}</p>
                     </div>
                   </div>
-                  <button onClick={() => setDrawerPrayer(null)} className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center">
+                  <Button onClick={() => setDrawerPrayer(null)} className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center">
                     <X className="w-4 h-4 text-gray-400" />
-                  </button>
+                  </Button>
                 </div>
 
                 <div className="space-y-1">
                   {prayerOptions.map((opt) => {
                     const selected = form[drawerPrayer] === opt.value;
                     return (
-                      <button
+                      <Button
                         key={opt.label}
                         onClick={() => {
                           setPrayer(drawerPrayer, opt.value);
@@ -724,7 +727,7 @@ export default function ParentIbadahPage() {
                             <Check className="w-3.5 h-3.5 text-current" />
                           </div>
                         )}
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>
@@ -763,9 +766,9 @@ export default function ParentIbadahPage() {
                       </div>
                       <p className="text-base font-semibold text-gray-900">{item.label}</p>
                     </div>
-                    <button onClick={() => setDrawerCustomEnum(null)} className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center">
+                    <Button onClick={() => setDrawerCustomEnum(null)} className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center">
                       <X className="w-4 h-4 text-gray-400" />
-                    </button>
+                    </Button>
                   </div>
 
                   <div className="space-y-1">
@@ -779,7 +782,7 @@ export default function ParentIbadahPage() {
                       };
                       const colorMatch = colorMap[opt.color] ?? "text-gray-600";
                       return (
-                        <button
+                        <Button
                           key={opt.label || "none"}
                           onClick={() => {
                             setCustomEnum(drawerCustomEnum, opt.label || null);
@@ -805,7 +808,7 @@ export default function ParentIbadahPage() {
                               <Check className="w-3.5 h-3.5 text-white" />
                             </div>
                           )}
-                        </button>
+                        </Button>
                       );
                     })}
                   </div>

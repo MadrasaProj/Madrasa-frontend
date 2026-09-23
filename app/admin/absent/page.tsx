@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -102,12 +103,12 @@ export default function AdminAbsentPage() {
           <div className="flex items-center gap-1.5 bg-blue-50 text-blue-700 text-xs font-bold px-3 py-1.5 rounded-xl">
             <span className="text-base font-bold">{excusedCount}</span> {t("adminPages", "excusedLower", lang)}
           </div>
-          <button
+          <Button
             onClick={load}
             className="ml-auto flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600"
           >
             <RefreshCw className="w-3 h-3" /> {t("adminPages", "refresh", lang)}
-          </button>
+          </Button>
         </div>
       )}
 

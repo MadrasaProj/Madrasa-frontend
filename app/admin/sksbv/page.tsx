@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -81,10 +84,10 @@ export default function SKSBVPage() {
         subtitle={sksbvData.fullName}
         icon={Star}
         action={
-          <button onClick={() => setShowAddProgram(true)}
+          <Button onClick={() => setShowAddProgram(true)}
             className="flex items-center gap-1.5 px-3 py-2 bg-amber-500 text-white rounded-xl text-sm font-semibold">
             <Plus className="w-4 h-4" /> {tr("sksbv", "addProgram", lang)}
-          </button>
+          </Button>
         }
       />
 
@@ -114,14 +117,14 @@ export default function SKSBVPage() {
       {/* ── Tabs ── */}
       <div className="flex gap-1 mb-5 bg-gray-100 p-1 rounded-xl overflow-x-auto">
         {(["overview","programs","executive","minutes"] as const).map((tab) => (
-          <button key={tab} onClick={() => setActiveTab(tab)}
+          <Button key={tab} onClick={() => setActiveTab(tab)}
             className={cn("px-4 py-2 rounded-lg text-sm font-semibold capitalize whitespace-nowrap transition-all",
               activeTab === tab ? "bg-white shadow-sm text-amber-700" : "text-gray-500")}>
             {tab === "minutes" ? tr("sksbv", "meetingMinutes", lang)
               : tab === "overview" ? tr("sksbv", "overview", lang)
               : tab === "programs" ? tr("sksbv", "programs", lang)
               : tr("sksbv", "executive", lang)}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -140,9 +143,9 @@ export default function SKSBVPage() {
           <div className="bg-white rounded-2xl border border-gray-100 p-5">
             <div className="flex items-center justify-between mb-4">
               <p className="font-bold text-gray-900 text-sm">{tr("sksbv", "budgetVsSpent", lang)}</p>
-              <button className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 font-semibold">
+              <Button className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 font-semibold">
                 <Download className="w-3.5 h-3.5" /> {tr("sksbv", "export", lang)}
-              </button>
+              </Button>
             </div>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={budgetData} barSize={16} barGap={3}>
@@ -213,21 +216,21 @@ export default function SKSBVPage() {
                 const cs = categoryStyle[c];
                 const Ic = cs?.icon;
                 return (
-                  <button key={c} onClick={() => setCatFilter(c)}
+                  <Button key={c} onClick={() => setCatFilter(c)}
                     className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all border",
                       catFilter === c ? "bg-amber-500 text-white border-transparent" : "bg-white border-gray-200 text-gray-600")}>
                     {Ic && <Ic className="w-3.5 h-3.5" />} {c}
-                  </button>
+                  </Button>
                 );
               })}
             </div>
             <div className="flex gap-1.5">
               {ALL_STATUS.map((s) => (
-                <button key={s} onClick={() => setStatusFilter(s)}
+                <Button key={s} onClick={() => setStatusFilter(s)}
                   className={cn("px-3 py-1.5 rounded-xl text-xs font-semibold capitalize transition-all border",
                     statusFilter === s ? "bg-gray-900 text-white border-transparent" : "bg-white border-gray-200 text-gray-500")}>
                   {s === "All" ? tr("sksbv", "allStatus", lang) : s}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -321,10 +324,10 @@ export default function SKSBVPage() {
               </div>
             </motion.div>
           ))}
-          <button onClick={() => setShowAddProgram(true)}
+          <Button onClick={() => setShowAddProgram(true)}
             className="w-full py-3 border-2 border-dashed border-amber-200 rounded-2xl text-sm font-semibold text-amber-600 flex items-center justify-center gap-2 hover:bg-amber-50 transition-colors">
             <Plus className="w-4 h-4" /> {tr("sksbv", "addExecMember", lang)}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -333,15 +336,15 @@ export default function SKSBVPage() {
         <div className="space-y-3">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm font-bold text-gray-700">{tr("sksbv", "meetingRecords", lang)}</p>
-            <button className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-white rounded-xl text-xs font-semibold">
+            <Button className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-white rounded-xl text-xs font-semibold">
               <Plus className="w-3.5 h-3.5" /> {tr("sksbv", "addMinutes", lang)}
-            </button>
+            </Button>
           </div>
           {meetingMinutes.map((m, i) => (
             <motion.div key={m.id}
               initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} transition={{ delay: i * 0.05 }}
               className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-              <button className="w-full text-left p-4 flex items-start gap-3"
+              <Button className="w-full text-left p-4 flex items-start gap-3"
                 onClick={() => setExpandedMinute(expandedMinute === m.id ? null : m.id)}>
                 <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center shrink-0">
                   <FileText className="w-5 h-5 text-amber-600" />
@@ -355,7 +358,7 @@ export default function SKSBVPage() {
                 </div>
                 <ChevronRight className={cn("w-4 h-4 text-gray-300 shrink-0 mt-0.5 transition-transform",
                   expandedMinute === m.id ? "rotate-90" : "")} />
-              </button>
+              </Button>
               <AnimatePresence>
                 {expandedMinute === m.id && (
                   <motion.div initial={{ height:0, opacity:0 }} animate={{ height:"auto", opacity:1 }} exit={{ height:0, opacity:0 }}
@@ -376,9 +379,9 @@ export default function SKSBVPage() {
                           ))}
                         </div>
                       </div>
-                      <button className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 hover:text-amber-700">
+                      <Button className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 hover:text-amber-700">
                         <Download className="w-3.5 h-3.5" /> {tr("sksbv", "downloadPdf", lang)}
-                      </button>
+                      </Button>
                     </div>
                   </motion.div>
                 )}
@@ -412,9 +415,9 @@ export default function SKSBVPage() {
                         <Ic className={cn("w-5 h-5", cs.color)} />
                         <p className={cn("font-bold", cs.color)}>{selectedProg.category}</p>
                       </div>
-                      <button onClick={() => setSelectedProgram(null)} className="p-1.5 rounded-lg hover:bg-white/40">
+                      <Button onClick={() => setSelectedProgram(null)} className="p-1.5 rounded-lg hover:bg-white/40">
                         <X className="w-5 h-5" />
-                      </button>
+                      </Button>
                     </div>
                     <div className="p-5 space-y-5">
                       {/* Title + Status */}
@@ -480,17 +483,17 @@ export default function SKSBVPage() {
                       {/* Actions */}
                       <div className="flex gap-3">
                         {selectedProg.status === "upcoming" && (
-                          <button className="flex-1 py-3 bg-emerald-600 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2">
+                          <Button className="flex-1 py-3 bg-emerald-600 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2">
                             <PlayCircle className="w-4 h-4" /> {tr("sksbv", "markOngoing", lang)}
-                          </button>
+                          </Button>
                         )}
                         {selectedProg.status === "ongoing" && (
-                          <button className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2">
+                          <Button className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2">
                             <CheckCircle className="w-4 h-4" /> {tr("sksbv", "markComplete", lang)}
-                          </button>
+                          </Button>
                         )}
-                        <button onClick={() => setSelectedProgram(null)}
-                          className="py-3 px-4 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700">{tr("sksbv", "close", lang)}</button>
+                        <Button onClick={() => setSelectedProgram(null)}
+                          className="py-3 px-4 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700">{tr("sksbv", "close", lang)}</Button>
                       </div>
                     </div>
                   </>
@@ -517,7 +520,7 @@ export default function SKSBVPage() {
                     </div>
                     <p className="font-bold text-gray-900 text-lg">{tr("sksbv", "newProgram", lang)}</p>
                   </div>
-                  <button onClick={() => setShowAddProgram(false)}><X className="w-5 h-5 text-gray-400" /></button>
+                  <Button onClick={() => setShowAddProgram(false)}><X className="w-5 h-5 text-gray-400" /></Button>
                 </div>
                 <div className="space-y-4">
                   <AddField label={tr("sksbv", "programName", lang)}    placeholder={tr("sksbv", "programNamePlc", lang)} />
@@ -537,8 +540,8 @@ export default function SKSBVPage() {
                   <AddField label={tr("sksbv", "description", lang)} placeholder={tr("sksbv", "descPlc", lang)} />
                 </div>
                 <div className="flex gap-3 mt-6">
-                  <button onClick={() => setShowAddProgram(false)} className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700">{tr("sksbv", "cancel", lang)}</button>
-                  <button onClick={() => setShowAddProgram(false)} className="flex-1 py-3 bg-amber-500 text-white rounded-xl text-sm font-semibold">{tr("sksbv", "addProgram", lang)}</button>
+                  <Button onClick={() => setShowAddProgram(false)} className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700">{tr("sksbv", "cancel", lang)}</Button>
+                  <Button onClick={() => setShowAddProgram(false)} className="flex-1 py-3 bg-amber-500 text-white rounded-xl text-sm font-semibold">{tr("sksbv", "addProgram", lang)}</Button>
                 </div>
               </div>
             </motion.div>
@@ -595,11 +598,11 @@ function AddField({ label, placeholder, type="text", options }: { label:string; 
     <div>
       <label className="block text-xs font-semibold text-gray-600 mb-1.5">{label}</label>
       {type === "select" ? (
-        <select className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white">
+        <Select className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white">
           {options?.map((o) => <option key={o}>{o}</option>)}
-        </select>
+        </Select>
       ) : (
-        <input type={type} placeholder={placeholder}
+        <Input type={type} placeholder={placeholder}
           className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
       )}
     </div>

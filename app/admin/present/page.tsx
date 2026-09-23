@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -91,12 +92,12 @@ export default function AdminPresentPage() {
               {t("common", "present", lang)} {t("adminPages", "todayLabel", lang)}
             </span>
           </div>
-          <button
+          <Button
             onClick={load}
             className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600"
           >
             <RefreshCw className="w-3 h-3" /> {t("adminPages", "refresh", lang)}
-          </button>
+          </Button>
         </div>
       )}
 

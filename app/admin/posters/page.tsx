@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { useAuthStore } from "@/store/auth";
@@ -73,13 +75,13 @@ export default function AdminPostersPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-semibold">Posters</h1>
           {isSuperAdmin && (
-            <button
+            <Button
               onClick={() => setShowUpload(!showUpload)}
               className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium"
             >
               <Plus className="w-4 h-4" />
               Upload Poster
-            </button>
+            </Button>
           )}
         </div>
 
@@ -87,7 +89,7 @@ export default function AdminPostersPage() {
           <div className="border rounded-xl bg-white p-4 space-y-3">
             <h3 className="text-sm font-semibold">Upload New Poster</h3>
             <div className="flex flex-wrap gap-3">
-              <input
+              <Input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -97,21 +99,21 @@ export default function AdminPostersPage() {
               <label className="flex items-center gap-2 cursor-pointer bg-gray-50 border rounded-lg px-3 py-2 text-sm hover:bg-gray-100">
                 <Upload className="w-4 h-4 text-gray-500" />
                 <span>{file ? file.name : "Choose image"}</span>
-                <input
+                <Input
                   type="file"
                   accept="image/*"
                   onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                   className="hidden"
                 />
               </label>
-              <button
+              <Button
                 onClick={handleUpload}
                 disabled={uploading || !title.trim() || !file}
                 className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 flex items-center gap-2"
               >
                 {uploading && <Loader2 className="w-4 h-4 animate-spin" />}
                 Upload
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -155,13 +157,13 @@ export default function AdminPostersPage() {
                       <Download className="w-4 h-4 text-gray-500" />
                     </a>
                     {isSuperAdmin && (
-                      <button
+                      <Button
                         onClick={() => handleDelete(poster)}
                         className="p-1.5 rounded-lg hover:bg-red-50"
                         title="Delete"
                       >
                         <Trash2 className="w-4 h-4 text-red-400" />
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </div>

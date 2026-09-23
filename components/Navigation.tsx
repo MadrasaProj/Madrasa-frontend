@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
@@ -757,13 +758,13 @@ export function Sidebar({
             </div>
           </div>
           {isOpen && (
-            <button
+            <Button
               onClick={onClose}
               className="lg:hidden p-1.5 rounded-xl text-gray-400 hover:bg-gray-100 active:scale-95 transition-transform"
               aria-label="Close menu"
             >
               <X className="w-5 h-5" />
-            </button>
+            </Button>
           )}
         </div>
         <div className="px-4 py-3 border-b border-gray-100 shrink-0">
@@ -821,7 +822,7 @@ export function Sidebar({
 
                 return (
                   <div key={cat.id} className="space-y-1">
-                    <button
+                    <Button
                       onClick={() => toggleCategory(cat.id)}
                       className={cn(
                         "flex items-center justify-between w-full px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors",
@@ -840,7 +841,7 @@ export function Sidebar({
                           isExpanded ? "transform rotate-180" : "",
                         )}
                       />
-                    </button>
+                    </Button>
                     {isExpanded && (
                       <div className="space-y-1 pt-1">
                         {cat.links.map((l) => renderLink(l, true))}
@@ -873,7 +874,7 @@ export function Sidebar({
             <PwaInstallButton />
           </div>
           <div className="p-4 pt-2">
-            <button
+            <Button
               onClick={() => {
                 logout();
               }}
@@ -881,7 +882,7 @@ export function Sidebar({
             >
               <LogOut className="w-5 h-5" />
               {t("common", "signOut", lang)}
-            </button>
+            </Button>
           </div>
         </div>
       </aside>
@@ -1004,7 +1005,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
         })}
 
         {showMore && (
-          <button
+          <Button
             onClick={onOpenMenu}
             className="flex flex-col items-center justify-center gap-1 py-2.5 px-2 min-w-0 flex-1 relative transition-all active:scale-95 text-gray-400"
           >
@@ -1014,11 +1015,11 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
             <span className="text-[10px] font-semibold leading-none">
               {lang === "ml" ? "കൂടുതൽ" : "More"}
             </span>
-          </button>
+          </Button>
         )}
 
         {isSuperAdmin && !hasActiveClient && !showMore && (
-          <button
+          <Button
             onClick={() => {
               logout();
             }}
@@ -1030,7 +1031,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
             <span className="text-[10px] font-semibold leading-none">
               Logout
             </span>
-          </button>
+          </Button>
         )}
       </div>
     </nav>

@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -357,7 +359,7 @@ export default function IbadahConfigPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <input
+                    <Input
                       type="number"
                       min={0}
                       max={100}
@@ -383,7 +385,7 @@ export default function IbadahConfigPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <input
+                    <Input
                       type="number"
                       min={0}
                       max={100}
@@ -409,7 +411,7 @@ export default function IbadahConfigPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <input
+                    <Input
                       type="number"
                       min={0}
                       max={100}
@@ -435,7 +437,7 @@ export default function IbadahConfigPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <input
+                    <Input
                       type="number"
                       min={0}
                       max={100}
@@ -466,7 +468,7 @@ export default function IbadahConfigPage() {
                     Points per Quran Page
                   </label>
                   <div className="flex items-center gap-2">
-                    <input
+                    <Input
                       type="number"
                       min={0}
                       max={50}
@@ -488,7 +490,7 @@ export default function IbadahConfigPage() {
                     Max Daily Tracked Pages
                   </label>
                   <div className="flex items-center gap-2">
-                    <input
+                    <Input
                       type="number"
                       min={1}
                       max={100}
@@ -542,7 +544,7 @@ export default function IbadahConfigPage() {
                     </p>
                     <p className="text-xs text-gray-400">{desc}</p>
                   </div>
-                  <button
+                  <Button
                     onClick={() =>
                       setToggles((prev) => ({ ...prev, [key]: !prev[key] }))
                     }
@@ -558,7 +560,7 @@ export default function IbadahConfigPage() {
                         toggles[key] ? "translate-x-6" : "translate-x-0",
                       )}
                     />
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
@@ -582,7 +584,7 @@ export default function IbadahConfigPage() {
                 </p>
               </div>
               {!addingItem && (
-                <button
+                <Button
                   onClick={() => {
                     setAddingItem(true);
                     setNewItem({ ...EMPTY_ITEM });
@@ -591,7 +593,7 @@ export default function IbadahConfigPage() {
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-semibold hover:bg-emerald-100 transition-colors"
                 >
                   <Plus className="w-3.5 h-3.5" /> Add Item
-                </button>
+                </Button>
               )}
             </div>
 
@@ -659,18 +661,18 @@ export default function IbadahConfigPage() {
                           )}
                         </div>
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
+                          <Button
                             onClick={() => startEdit(idx)}
                             className="px-2.5 py-1.5 rounded-xl hover:bg-white text-gray-500 hover:text-gray-900 transition-colors text-xs font-semibold"
                           >
                             Edit
-                          </button>
-                          <button
+                          </Button>
+                          <Button
                             onClick={() => handleDeleteItem(idx)}
                             className="p-1.5 rounded-xl hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     )}
@@ -715,7 +717,7 @@ export default function IbadahConfigPage() {
 
           {/* Sticky save */}
           <div className="sticky bottom-20 lg:bottom-6">
-            <button
+            <Button
               onClick={handleSave}
               disabled={saving}
               className={cn(
@@ -736,7 +738,7 @@ export default function IbadahConfigPage() {
                   <Save className="w-5 h-5" /> Save Configuration & Scoring
                 </>
               )}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -837,12 +839,12 @@ function EnumOptionsEditor({
             <span className="text-sm font-medium text-gray-800 flex-1">
               {opt.label}
             </span>
-            <button
+            <Button
               onClick={() => removeOption(idx)}
               className="p-1 rounded-lg hover:bg-white text-gray-400 hover:text-red-500 transition-colors"
             >
               <X className="w-3.5 h-3.5" />
-            </button>
+            </Button>
           </div>
         ))}
       </div>
@@ -856,7 +858,7 @@ function EnumOptionsEditor({
               >
                 <Icon icon={newOpt.icon} className="w-5 h-5" />
               </div>
-              <input
+              <Input
                 type="text"
                 value={search}
                 onChange={(e) => {
@@ -869,7 +871,7 @@ function EnumOptionsEditor({
               {results.length > 0 && (
                 <div className="absolute mt-16 z-10 bg-white border border-gray-200 rounded-xl shadow-lg p-2 grid grid-cols-4 gap-1 w-48">
                   {results.map((ic) => (
-                    <button
+                    <Button
                       key={ic}
                       onClick={() => {
                         setNewOpt({ ...newOpt, icon: ic });
@@ -879,14 +881,14 @@ function EnumOptionsEditor({
                       className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-600"
                     >
                       <Icon icon={ic} className="w-4 h-4" />
-                    </button>
+                    </Button>
                   ))}
                 </div>
               )}
             </div>
 
             <div className="flex-1 space-y-2">
-              <input
+              <Input
                 type="text"
                 value={newOpt.label}
                 onChange={(e) =>
@@ -897,7 +899,7 @@ function EnumOptionsEditor({
               />
               <div className="flex gap-1.5 flex-wrap">
                 {ICON_COLORS.map((c) => (
-                  <button
+                  <Button
                     key={c.value}
                     onClick={() => setNewOpt({ ...newOpt, color: c.value })}
                     className={cn(
@@ -915,13 +917,13 @@ function EnumOptionsEditor({
           </div>
 
           <div className="flex gap-2">
-            <button
+            <Button
               onClick={addOption}
               className="flex-1 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors"
             >
               Add Option
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => {
                 setAdding(false);
                 setResults([]);
@@ -930,16 +932,16 @@ function EnumOptionsEditor({
               className="px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
-        <button
+        <Button
           onClick={() => setAdding(true)}
           className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-800 transition-colors"
         >
           <Plus className="w-3.5 h-3.5" /> Add Option
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -975,7 +977,7 @@ function CustomItemForm({
           <label className="block text-xs font-semibold text-gray-500 mb-1">
             Label *
           </label>
-          <input
+          <Input
             type="text"
             value={item.label}
             onChange={(e) => onChange({ ...item, label: e.target.value })}
@@ -987,7 +989,7 @@ function CustomItemForm({
           <label className="block text-xs font-semibold text-gray-500 mb-1">
             Key *
           </label>
-          <input
+          <Input
             type="text"
             value={item.key}
             onChange={(e) =>
@@ -1018,7 +1020,7 @@ function CustomItemForm({
                     : "border-gray-200 text-gray-600 bg-white",
                 )}
               >
-                <input
+                <Input
                   type="radio"
                   name={`type-${mode}`}
                   value={t}
@@ -1043,7 +1045,7 @@ function CustomItemForm({
           <label className="block text-xs font-semibold text-gray-500 mb-1">
             Scoring Points Awarded
           </label>
-          <input
+          <Input
             type="number"
             min={0}
             max={100}
@@ -1063,7 +1065,7 @@ function CustomItemForm({
             <label className="block text-xs font-semibold text-gray-500 mb-1">
               Min value
             </label>
-            <input
+            <Input
               type="number"
               value={item.min ?? 0}
               min={0}
@@ -1077,7 +1079,7 @@ function CustomItemForm({
             <label className="block text-xs font-semibold text-gray-500 mb-1">
               Max value
             </label>
-            <input
+            <Input
               type="number"
               value={item.max ?? 100}
               min={1}
@@ -1104,18 +1106,18 @@ function CustomItemForm({
       )}
 
       <div className="flex gap-2 pt-1">
-        <button
+        <Button
           onClick={onSave}
           className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors"
         >
           {mode === "add" ? "Add Item" : "Save Changes"}
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={onCancel}
           className="px-4 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
         >
           Cancel
-        </button>
+        </Button>
       </div>
     </div>
   );

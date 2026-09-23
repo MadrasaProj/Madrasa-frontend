@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -119,14 +122,14 @@ function JournalList({ entries, openEdit, handleDelete, deletingId, lang }: {
                         </div>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        <button onClick={() => openEdit(entry)} className="p-2 rounded-xl hover:bg-black/5 text-gray-400 hover:text-blue-500 transition-colors">
+                        <Button onClick={() => openEdit(entry)} className="p-2 rounded-xl hover:bg-black/5 text-gray-400 hover:text-blue-500 transition-colors">
                           <Pencil className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleDelete(entry.id)} disabled={deletingId === entry.id} className="p-2 rounded-xl hover:bg-black/5 text-gray-400 hover:text-red-500 transition-colors">
+                        </Button>
+                        <Button onClick={() => handleDelete(entry.id)} disabled={deletingId === entry.id} className="p-2 rounded-xl hover:bg-black/5 text-gray-400 hover:text-red-500 transition-colors">
                           {deletingId === entry.id
                             ? <Loader2 className="w-4 h-4 animate-spin" />
                             : <Trash2 className="w-4 h-4" />}
-                        </button>
+                        </Button>
                       </div>
                     </div>
 
@@ -135,13 +138,13 @@ function JournalList({ entries, openEdit, handleDelete, deletingId, lang }: {
 
                     {/* Footer */}
                     <div className="flex items-center gap-3 mt-4 pt-3 border-t border-black/5">
-                      <button
+                      <Button
                         onClick={() => setCommentViewId(entry.id)}
                         className="flex items-center gap-1.5 text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors px-3 py-1.5 rounded-full hover:bg-gray-100"
                       >
                         <MessageSquare className="w-3.5 h-3.5" />
                         {entry.comments?.length ?? 0}
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </motion.div>
@@ -160,9 +163,9 @@ function JournalList({ entries, openEdit, handleDelete, deletingId, lang }: {
             <div className="p-5">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-gray-900">{t("teacherPages", "responsesTitle", lang)}</h3>
-                <button onClick={() => setCommentViewId(null)} className="p-2 rounded-xl hover:bg-gray-100">
+                <Button onClick={() => setCommentViewId(null)} className="p-2 rounded-xl hover:bg-gray-100">
                   <X className="w-5 h-5" />
-                </button>
+                </Button>
               </div>
               {(() => {
                 const entry = entries.find((e) => e.id === commentViewId);
@@ -430,12 +433,12 @@ export default function TeacherDiaryPage() {
         icon={FileText}
         back backHref="/teacher"
         action={
-          <button
+          <Button
             onClick={openCreate}
             className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold"
           >
             <Plus className="w-4 h-4" /> {t("teacherPages", "addDiaryBtn", lang)}
-          </button>
+          </Button>
         }
       />
 
@@ -494,17 +497,17 @@ export default function TeacherDiaryPage() {
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-3">
                     {step === 2 && (
-                      <button onClick={() => setStep(1)} className="p-1.5 rounded-lg hover:bg-gray-100 active:scale-95 transition-all">
+                      <Button onClick={() => setStep(1)} className="p-1.5 rounded-lg hover:bg-gray-100 active:scale-95 transition-all">
                         <ChevronLeft className="w-5 h-5 text-gray-600" />
-                      </button>
+                      </Button>
                     )}
                     <h2 className="text-lg font-bold text-gray-900">
                       {editingEntry ? t("teacherPages", "editDiaryTitle", lang) : t("teacherPages", "newEntryTitle", lang)}
                     </h2>
                   </div>
-                  <button onClick={closeDrawer} className="p-2 rounded-xl hover:bg-gray-100 active:scale-95 transition-all">
+                  <Button onClick={closeDrawer} className="p-2 rounded-xl hover:bg-gray-100 active:scale-95 transition-all">
                     <X className="w-5 h-5" />
-                  </button>
+                  </Button>
                 </div>
 
                 {step === 1 ? (
@@ -518,7 +521,7 @@ export default function TeacherDiaryPage() {
                     {/* Target type toggle */}
                     {!editingEntry && (
                       <div className="flex gap-2">
-                        <button
+                        <Button
                           onClick={() => setTargetType("class")}
                           className={cn(
                             "flex-1 py-2 rounded-lg text-xs font-semibold transition-all",
@@ -528,8 +531,8 @@ export default function TeacherDiaryPage() {
                           )}
                         >
                           {t("teacherPages", "toClassBtn", lang)}
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           onClick={() => setTargetType("student")}
                           className={cn(
                             "flex-1 py-2 rounded-lg text-xs font-semibold transition-all",
@@ -539,12 +542,12 @@ export default function TeacherDiaryPage() {
                           )}
                         >
                           {t("teacherPages", "toStudentsBtn", lang)}
-                        </button>
+                        </Button>
                       </div>
                     )}
 
                     {/* Class selector */}
-                    <select
+                    <Select
                       value={selectedClassId}
                       onChange={(e) => setSelectedClassId(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg text-sm bg-gray-50 border-0 focus:ring-2 focus:ring-emerald-500"
@@ -552,13 +555,13 @@ export default function TeacherDiaryPage() {
                       {classes.map((cls) => (
                         <option key={cls.id} value={cls.id}>{cls.name}</option>
                       ))}
-                    </select>
+                    </Select>
 
                     {/* Student multi-select */}
                     {targetType === "student" && (
                       <div>
                         <div className="relative">
-                          <input
+                          <Input
                             value={studentSearch}
                             onChange={(e) => setStudentSearch(e.target.value)}
                             placeholder={t("teacherPages", "searchDiary", lang)}
@@ -571,7 +574,7 @@ export default function TeacherDiaryPage() {
                           ) : (
                             <>
                               <label className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-gray-100 text-xs text-gray-500">
-                                <input
+                                <Input
                                   type="checkbox"
                                   checked={filteredStudents.every((s) => selectedStudentIds.includes(s.id))}
                                   onChange={() => {
@@ -591,7 +594,7 @@ export default function TeacherDiaryPage() {
                                   key={s.id}
                                   className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-gray-100"
                                 >
-                                  <input
+                                  <Input
                                     type="checkbox"
                                     checked={selectedStudentIds.includes(s.id)}
                                     onChange={() => toggleStudent(s.id)}
@@ -607,7 +610,7 @@ export default function TeacherDiaryPage() {
                     )}
 
                     {/* Date */}
-                    <input
+                    <Input
                       type="date"
                       value={date}
                       max={fmt(new Date())}
@@ -615,13 +618,13 @@ export default function TeacherDiaryPage() {
                       className="w-full px-3 py-2 rounded-lg text-sm bg-gray-50 border-0 focus:ring-2 focus:ring-emerald-500"
                     />
 
-                    <button
+                    <Button
                       onClick={() => setStep(2)}
                       disabled={targetType === "class" ? !selectedClassId : selectedStudentIds.length === 0}
                       className="w-full py-2.5 rounded-lg font-semibold text-sm bg-emerald-600 text-white hover:bg-emerald-700 transition-all disabled:opacity-40"
                     >
                       {t("teacherPages", "continueBtn", lang)}
-                    </button>
+                    </Button>
                   </motion.div>
                 ) : (
                   <>
@@ -644,9 +647,9 @@ export default function TeacherDiaryPage() {
                         </p>
                       </div>
                       <div className="shrink-0">
-                        <button type="button" onClick={() => setThemeOpen(true)} className="p-2 rounded-xl hover:bg-gray-100 text-gray-500">
+                        <Button type="button" onClick={() => setThemeOpen(true)} className="p-2 rounded-xl hover:bg-gray-100 text-gray-500">
                           <Palette className="w-5 h-5" />
-                        </button>
+                        </Button>
                       </div>
                     </div>
 
@@ -654,7 +657,7 @@ export default function TeacherDiaryPage() {
                     <div className={cn("rounded-2xl transition-colors duration-200", themes[theme].bg)} style={{ fontFamily: `${themes[theme].font}, ${themes[theme].mlFont}` }}>
                       {/* Title */}
                       <div className="px-4 pt-5">
-                        <input
+                        <Input
                           value={title}
                           onChange={(e) => setTitle(e.target.value)}
                           placeholder={t("teacherPages", "giveTitlePlc", lang)}
@@ -667,27 +670,27 @@ export default function TeacherDiaryPage() {
 
                       {/* Mobile-friendly toolbar */}
                       <div className="flex items-center gap-0.5 px-3 pt-3 pb-1 overflow-x-auto scrollbar-none">
-                        <button type="button" onClick={() => execFormat("bold")} title={t("teacherPages", "boldTooltip", lang)} className="p-2.5 rounded-xl hover:bg-black/5 text-gray-500 shrink-0 active:bg-black/10 transition-colors">
+                        <Button type="button" onClick={() => execFormat("bold")} title={t("teacherPages", "boldTooltip", lang)} className="p-2.5 rounded-xl hover:bg-black/5 text-gray-500 shrink-0 active:bg-black/10 transition-colors">
                           <Bold className="w-5 h-5" />
-                        </button>
-                        <button type="button" onClick={() => execFormat("italic")} title={t("teacherPages", "italicTooltip", lang)} className="p-2.5 rounded-xl hover:bg-black/5 text-gray-500 shrink-0 active:bg-black/10 transition-colors">
+                        </Button>
+                        <Button type="button" onClick={() => execFormat("italic")} title={t("teacherPages", "italicTooltip", lang)} className="p-2.5 rounded-xl hover:bg-black/5 text-gray-500 shrink-0 active:bg-black/10 transition-colors">
                           <Italic className="w-5 h-5" />
-                        </button>
-                        <button type="button" onClick={() => execFormat("underline")} title={t("teacherPages", "underlineTooltip", lang)} className="p-2.5 rounded-xl hover:bg-black/5 text-gray-500 shrink-0 active:bg-black/10 transition-colors">
+                        </Button>
+                        <Button type="button" onClick={() => execFormat("underline")} title={t("teacherPages", "underlineTooltip", lang)} className="p-2.5 rounded-xl hover:bg-black/5 text-gray-500 shrink-0 active:bg-black/10 transition-colors">
                           <Underline className="w-5 h-5" />
-                        </button>
+                        </Button>
                         <span className="w-px h-6 bg-gray-200 mx-1 shrink-0" />
-                        <button type="button" onClick={() => execFormat("insertUnorderedList")} className="p-2.5 rounded-xl hover:bg-black/5 text-gray-500 shrink-0 active:bg-black/10 transition-colors">
+                        <Button type="button" onClick={() => execFormat("insertUnorderedList")} className="p-2.5 rounded-xl hover:bg-black/5 text-gray-500 shrink-0 active:bg-black/10 transition-colors">
                           <List className="w-5 h-5" />
-                        </button>
-                        <button type="button" onClick={() => execFormat("insertOrderedList")} className="p-2.5 rounded-xl hover:bg-black/5 text-gray-500 shrink-0 active:bg-black/10 transition-colors">
+                        </Button>
+                        <Button type="button" onClick={() => execFormat("insertOrderedList")} className="p-2.5 rounded-xl hover:bg-black/5 text-gray-500 shrink-0 active:bg-black/10 transition-colors">
                           <ListOrdered className="w-5 h-5" />
-                        </button>
+                        </Button>
                         <span className="w-px h-6 bg-gray-200 mx-1 shrink-0" />
-                        <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2.5 rounded-xl hover:bg-black/5 text-gray-500 shrink-0 active:bg-black/10 transition-colors">
+                        <Button type="button" onClick={() => fileInputRef.current?.click()} className="p-2.5 rounded-xl hover:bg-black/5 text-gray-500 shrink-0 active:bg-black/10 transition-colors">
                           <Image className="w-5 h-5" />
-                        </button>
-                        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) insertImage(f); e.target.value = ""; }} />
+                        </Button>
+                        <Input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) insertImage(f); e.target.value = ""; }} />
                       </div>
 
                       {/* Editor */}
@@ -718,13 +721,13 @@ export default function TeacherDiaryPage() {
                       <div className="p-5">
                         <div className="flex items-center justify-between mb-4">
                           <h3 className="font-bold text-gray-900">{t("common", "themes", lang)}</h3>
-                          <button onClick={() => setThemeOpen(false)} className="p-2 rounded-xl hover:bg-gray-100">
+                          <Button onClick={() => setThemeOpen(false)} className="p-2 rounded-xl hover:bg-gray-100">
                             <X className="w-5 h-5" />
-                          </button>
+                          </Button>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           {Object.entries(themes).map(([key, t]) => (
-                            <button
+                            <Button
                               key={key}
                               type="button"
                               onClick={() => { setTheme(key); setThemeOpen(false); }}
@@ -741,7 +744,7 @@ export default function TeacherDiaryPage() {
                               {theme === key && (
                                 <CheckCircle2 className="w-4 h-4 text-emerald-600 absolute top-2 right-2" />
                               )}
-                            </button>
+                            </Button>
                           ))}
                         </div>
                       </div>
@@ -752,7 +755,7 @@ export default function TeacherDiaryPage() {
               <div className="border-t border-gray-100 bg-white shrink-0">
                 {step === 2 || editingEntry ? (
                   <div className="p-4">
-                    <button
+                    <Button
                       onClick={handleSave}
                       disabled={saving || !title.trim() || !content.trim()}
                       className={cn(
@@ -763,7 +766,7 @@ export default function TeacherDiaryPage() {
                       {saving ? <Loader2 className="w-5 h-5 animate-spin" /> :
                        saved  ? <><CheckCircle2 className="w-5 h-5" /> {t("teacherPages", "savedExcl", lang)}</> :
                                  <><Save className="w-5 h-5" /> {editingEntry ? t("teacherPages", "updateEntryBtn", lang) : t("teacherPages", "postEntryBtn", lang)}</>}
-                    </button>
+                    </Button>
                   </div>
                 ) : null}
               </div>

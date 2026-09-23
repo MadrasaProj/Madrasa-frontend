@@ -1,3 +1,7 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Textarea } from "@/components/ui/Textarea";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader, SectionHeader } from "@/components/ui/PageHeader";
@@ -463,14 +467,14 @@ export default function AdminTeachersPage() {
  header: "",
  render: (t) => (
  <div className="flex items-center gap-1.5 justify-end">
- <button
+ <Button
  onClick={(e) => { e.stopPropagation(); openEdit(t); }}
  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors text-xs font-semibold"
  >
  <Pencil className="w-3.5 h-3.5" />
  <span className="hidden sm:inline">Edit</span>
- </button>
- <button
+ </Button>
+ <Button
  onClick={(e) => {
  e.stopPropagation();
  setEditTarget(t);
@@ -480,7 +484,7 @@ export default function AdminTeachersPage() {
  title="Delete Teacher"
  >
  <Trash2 className="w-3.5 h-3.5" />
- </button>
+ </Button>
  </div>
  ),
  className: "text-right",
@@ -498,19 +502,19 @@ export default function AdminTeachersPage() {
   icon={Users}
   action={
   <div className="flex items-center gap-2">
-  <button
+  <Button
   onClick={() => setShowImport(true)}
   className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 px-3 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
   title={t("adminPages", "importTeachers", lang)}
   >
   <Upload className="w-4 h-4" />
   <span className="hidden sm:inline">{t("adminPages", "importBtn", lang)}</span>
-  </button>
-  <button onClick={openAdd}
+  </Button>
+  <Button onClick={openAdd}
   className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-colors"
   >
   <Plus className="w-4 h-4" /> {t("adminPages", "addTeacher", lang)}
-  </button>
+  </Button>
   </div>
   }
   />
@@ -519,7 +523,7 @@ export default function AdminTeachersPage() {
 
  <div className="relative mb-5">
  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
- <input
+ <Input
  value={search}
  onChange={(e) => handleSearch(e.target.value)}
  placeholder="Search by name or username…"
@@ -565,14 +569,14 @@ export default function AdminTeachersPage() {
  )}>
  {t.status}
  </span>
- <button onClick={(e) => { e.stopPropagation(); openEdit(t); }}
+ <Button onClick={(e) => { e.stopPropagation(); openEdit(t); }}
  className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors">
  <Pencil className="w-3.5 h-3.5" />
- </button>
- <button onClick={(e) => { e.stopPropagation(); setEditTarget(t); setShowDeleteConfirm(true); }}
+ </Button>
+ <Button onClick={(e) => { e.stopPropagation(); setEditTarget(t); setShowDeleteConfirm(true); }}
  className="p-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 transition-colors">
  <Trash2 className="w-3.5 h-3.5" />
- </button>
+ </Button>
  </div>
  </div>
  {classes.length > 0 && (
@@ -638,12 +642,12 @@ export default function AdminTeachersPage() {
  <p className="text-xs text-gray-400 mt-0.5">@{editTarget.username}</p>
  )}
  </div>
- <button onClick={() => !saving && setShowDrawer(false)}
+ <Button onClick={() => !saving && setShowDrawer(false)}
  className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 disabled:opacity-50"
  disabled={saving}
  >
  <X className="w-4 h-4" />
- </button>
+ </Button>
  </div>
 
  {/* Scrollable body */}
@@ -655,7 +659,7 @@ export default function AdminTeachersPage() {
  {/* ── Basic fields ── */}
  <div>
  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Full Name *</label>
- <input
+ <Input
  type="text" value={fName} placeholder="Abdul Rahman"
  onChange={(e) => setFName(e.target.value)}
  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors"
@@ -666,7 +670,7 @@ export default function AdminTeachersPage() {
  <label className="block text-xs font-semibold text-gray-600 mb-1.5">
  Username *{editTarget && " (cannot change)"}
  </label>
- <input
+ <Input
  type="text" value={fUsername} placeholder="abdulrahman"
  disabled={!!editTarget}
  onChange={(e) => setFUsername(e.target.value)}
@@ -682,16 +686,16 @@ export default function AdminTeachersPage() {
  <div>
  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Password *</label>
  <div className="relative">
- <input
+ <Input
  type={showPw ? "text" : "password"} value={fPassword}
  onChange={(e) => setFPassword(e.target.value)}
  placeholder="Min. 6 characters"
  className="w-full px-4 py-3 pr-12 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors"
  />
- <button type="button" onClick={() => setShowPw(!showPw)}
+ <Button type="button" onClick={() => setShowPw(!showPw)}
  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
  {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
- </button>
+ </Button>
  </div>
  </div>
  )}
@@ -703,16 +707,16 @@ export default function AdminTeachersPage() {
  New Password <span className="font-normal text-gray-400">(leave blank to keep)</span>
  </label>
  <div className="relative">
- <input
+ <Input
  type={showNewPw ? "text" : "password"} value={fNewPassword}
  onChange={(e) => setFNewPassword(e.target.value)}
  placeholder="Enter new password…"
  className="w-full px-4 py-3 pr-12 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors"
  />
- <button type="button" onClick={() => setShowNewPw(!showNewPw)}
+ <Button type="button" onClick={() => setShowNewPw(!showNewPw)}
  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
  {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
- </button>
+ </Button>
  </div>
  </div>
  )}
@@ -723,7 +727,7 @@ export default function AdminTeachersPage() {
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Status</label>
   <div className="flex gap-2">
   {(["ACTIVE", "INACTIVE"] as const).map((s) => (
-  <button key={s} type="button" onClick={() => setFStatus(s)}
+  <Button key={s} type="button" onClick={() => setFStatus(s)}
   className={cn(
   "flex-1 py-2.5 rounded-xl text-xs font-bold border transition-colors",
   fStatus === s
@@ -734,7 +738,7 @@ export default function AdminTeachersPage() {
   )}
   >
   {s}
-  </button>
+  </Button>
   ))}
   </div>
   </div>
@@ -755,13 +759,13 @@ export default function AdminTeachersPage() {
   <div className="flex gap-2">
   <label className="cursor-pointer px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-semibold text-gray-700 transition-colors">
   {photoUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Upload"}
-  <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={photoUploading} />
+  <Input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={photoUploading} />
   </label>
   {fPhotoUrl && (
-  <button onClick={handlePhotoRemove} disabled={photoUploading}
+  <Button onClick={handlePhotoRemove} disabled={photoUploading}
   className="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-xs font-semibold text-red-600 transition-colors">
   Remove
-  </button>
+  </Button>
   )}
   </div>
   </div>
@@ -774,20 +778,20 @@ export default function AdminTeachersPage() {
   <div className="space-y-3">
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Qualification</label>
-  <input type="text" value={fQualification} placeholder="e.g. B.Ed, M.Sc"
+  <Input type="text" value={fQualification} placeholder="e.g. B.Ed, M.Sc"
   onChange={(e) => setFQualification(e.target.value)}
   className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
   </div>
   <div className="grid grid-cols-2 gap-3">
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Phone</label>
-  <input type="text" value={fPhone} placeholder="9876543210"
+  <Input type="text" value={fPhone} placeholder="9876543210"
   onChange={(e) => setFPhone(e.target.value)}
   className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
   </div>
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Email</label>
-  <input type="email" value={fEmail} placeholder="teacher@madrasa.org"
+  <Input type="email" value={fEmail} placeholder="teacher@madrasa.org"
   onChange={(e) => setFEmail(e.target.value)}
   className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
   </div>
@@ -795,29 +799,29 @@ export default function AdminTeachersPage() {
   <div className="grid grid-cols-2 gap-3">
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Date of Birth</label>
-  <input type="date" value={fDateOfBirth}
+  <Input type="date" value={fDateOfBirth}
   onChange={(e) => setFDateOfBirth(e.target.value)}
   className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
   </div>
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Gender</label>
-  <select value={fGender} onChange={(e) => setFGender(e.target.value)}
+  <Select value={fGender} onChange={(e) => setFGender(e.target.value)}
   className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors appearance-none cursor-pointer">
   <option value="">Select</option>
   <option value="MALE">Male</option>
   <option value="FEMALE">Female</option>
-  </select>
+  </Select>
   </div>
   </div>
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Blood Group</label>
-  <select value={fBloodGroup} onChange={(e) => setFBloodGroup(e.target.value)}
+  <Select value={fBloodGroup} onChange={(e) => setFBloodGroup(e.target.value)}
   className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors appearance-none cursor-pointer">
   <option value="">Select</option>
   {["A+","A-","B+","B-","AB+","AB-","O+","O-"].map((bg) => (
   <option key={bg} value={bg}>{bg}</option>
   ))}
-  </select>
+  </Select>
   </div>
   </div>
   </div>
@@ -828,20 +832,20 @@ export default function AdminTeachersPage() {
   <div className="space-y-3">
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Address</label>
-  <textarea value={fAddress} placeholder="Street, building, area…" rows={2}
+  <Textarea value={fAddress} placeholder="Street, building, area…" rows={2}
   onChange={(e) => setFAddress(e.target.value)}
   className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors resize-none" />
   </div>
   <div className="grid grid-cols-2 gap-3">
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">City</label>
-  <input type="text" value={fCity} placeholder="Kozhikode"
+  <Input type="text" value={fCity} placeholder="Kozhikode"
   onChange={(e) => setFCity(e.target.value)}
   className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
   </div>
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">State</label>
-  <input type="text" value={fState} placeholder="Kerala"
+  <Input type="text" value={fState} placeholder="Kerala"
   onChange={(e) => setFState(e.target.value)}
   className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
   </div>
@@ -849,13 +853,13 @@ export default function AdminTeachersPage() {
   <div className="grid grid-cols-2 gap-3">
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Country</label>
-  <input type="text" value={fCountry} placeholder="India"
+  <Input type="text" value={fCountry} placeholder="India"
   onChange={(e) => setFCountry(e.target.value)}
   className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
   </div>
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Pincode</label>
-  <input type="text" value={fPincode} placeholder="673001"
+  <Input type="text" value={fPincode} placeholder="673001"
   onChange={(e) => setFPincode(e.target.value)}
   className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
   </div>
@@ -869,13 +873,13 @@ export default function AdminTeachersPage() {
   <div className="grid grid-cols-2 gap-3">
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Contact Name</label>
-  <input type="text" value={fEmergencyName} placeholder="Spouse / parent"
+  <Input type="text" value={fEmergencyName} placeholder="Spouse / parent"
   onChange={(e) => setFEmergencyName(e.target.value)}
   className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
   </div>
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Contact Phone</label>
-  <input type="text" value={fEmergencyPhone} placeholder="9876543210"
+  <Input type="text" value={fEmergencyPhone} placeholder="9876543210"
   onChange={(e) => setFEmergencyPhone(e.target.value)}
   className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
   </div>
@@ -911,7 +915,7 @@ export default function AdminTeachersPage() {
  const selected = fClassIds.has(cls.id);
  const otherTeacher = cls.classTeacherId && cls.classTeacherId !== editTarget.id;
  return (
- <button
+ <Button
  key={cls.id}
  type="button"
  onClick={() => {
@@ -943,7 +947,7 @@ export default function AdminTeachersPage() {
  : <div className="w-4 h-4 rounded-md border-2 border-gray-300" />
  }
  </div>
- </button>
+ </Button>
  );
  })}
  </div>
@@ -964,7 +968,7 @@ export default function AdminTeachersPage() {
  {/* Search */}
  <div className="relative mb-3">
  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
- <input
+ <Input
  type="text"
  value={subjectSearch}
  onChange={(e) => {
@@ -990,7 +994,7 @@ export default function AdminTeachersPage() {
  return (
  <div key={group.classId} className="rounded-xl border border-gray-200 overflow-hidden">
  {/* Group header */}
- <button
+ <Button
  type="button"
  onClick={() => toggleGroup(group.classId)}
  className="w-full flex items-center justify-between px-3 py-2.5 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
@@ -1008,7 +1012,7 @@ export default function AdminTeachersPage() {
  )}
  <ChevronDown className={cn("w-3.5 h-3.5 text-gray-400 transition-transform", isOpen && "rotate-180")} />
  </div>
- </button>
+ </Button>
 
  {/* Subject list */}
  {isOpen && (
@@ -1017,7 +1021,7 @@ export default function AdminTeachersPage() {
  const selected = fSubjectIds.has(subj.id);
  const hasOther = subj.teacherId && subj.teacherId !== editTarget.id;
  return (
- <button
+ <Button
  key={subj.id}
  type="button"
  onClick={() => toggleSubject(subj.id)}
@@ -1038,7 +1042,7 @@ export default function AdminTeachersPage() {
  : <div className="w-4 h-4 rounded-full border-2 border-gray-300" />
  }
  </div>
- </button>
+ </Button>
  );
  })}
  </div>
@@ -1061,15 +1065,15 @@ export default function AdminTeachersPage() {
  {/* Footer */}
  <div className="px-5 py-4 border-t border-gray-100 flex flex-col gap-3 shrink-0">
  {editTarget && (
- <button
+ <Button
  type="button"
  onClick={() => setShowDeleteConfirm(true)}
  className="w-full border border-red-200 hover:border-red-300 text-red-600 font-semibold py-3 rounded-2xl text-sm transition-all"
  >
  Delete Teacher
- </button>
+ </Button>
  )}
- <button
+ <Button
  onClick={handleSave}
  disabled={saving || !fName.trim() || !fUsername.trim() || (!editTarget && !fPassword) || (editTarget !== null && loadingAssign)}
  className="w-full bg-emerald-600 text-white font-bold py-3.5 rounded-2xl text-sm shadow-lg disabled:opacity-60 active:scale-[0.98] transition-transform"
@@ -1079,7 +1083,7 @@ export default function AdminTeachersPage() {
  <Loader2 className="w-4 h-4 animate-spin" /> Saving…
  </span>
  ) : editTarget ? "Save Changes" : "Add Teacher"}
- </button>
+ </Button>
  </div>
  </motion.div>
  </div>
@@ -1110,14 +1114,14 @@ export default function AdminTeachersPage() {
  </p>
  </div>
  <div className="grid grid-cols-2 gap-3 mt-6">
- <button
+ <Button
  onClick={() => setShowDeleteConfirm(false)}
  disabled={deleting}
  className="py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
  >
  Cancel
- </button>
- <button
+ </Button>
+ <Button
  onClick={handleDelete}
  disabled={deleting}
  className="py-3 rounded-2xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors disabled:opacity-60"
@@ -1127,7 +1131,7 @@ export default function AdminTeachersPage() {
  <Loader2 className="w-4 h-4 animate-spin" /> Deleting…
  </span>
  ) : "Delete"}
- </button>
+ </Button>
  </div>
   </motion.div>
   </>

@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -291,7 +292,7 @@ export default function ParentBestPerformancePage() {
             {/* SECTION 2: Best Performer List                           */}
             {/* ──────────────────────────────────────────────────────── */}
             <div>
-              <button
+              <Button
                 onClick={() => setShowAllPerformers(!showAllPerformers)}
                 className="w-full flex items-center justify-between mb-4"
               >
@@ -303,7 +304,7 @@ export default function ParentBestPerformancePage() {
                 {showAllPerformers
                   ? <ChevronUp className="w-5 h-5 text-gray-400" />
                   : <ChevronDown className="w-5 h-5 text-gray-400" />}
-              </button>
+              </Button>
 
               {data.length === 0 ? (
                 <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center shadow-sm">

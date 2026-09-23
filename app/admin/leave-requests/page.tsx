@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -111,7 +114,7 @@ export default function AdminLeaveRequestsPage() {
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
           <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
             {(["PENDING", "APPROVED", "REJECTED"] as const).map((s) => (
-              <button
+              <Button
                 key={s}
                 onClick={() => {
                   setFilter(s);
@@ -129,12 +132,12 @@ export default function AdminLeaveRequestsPage() {
                   : s === "APPROVED"
                     ? "Approved"
                     : "Rejected"}
-              </button>
+              </Button>
             ))}
           </div>
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
+            <Input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -166,7 +169,7 @@ export default function AdminLeaveRequestsPage() {
                     isOpen ? "shadow-md" : "shadow-sm",
                   )}
                 >
-                  <button
+                  <Button
                     onClick={() => setExpanded(isOpen ? null : r.id)}
                     className="w-full text-left p-4 flex items-start justify-between gap-3"
                   >
@@ -212,7 +215,7 @@ export default function AdminLeaveRequestsPage() {
                         <ChevronDown className="w-5 h-5" />
                       )}
                     </div>
-                  </button>
+                  </Button>
 
                   <AnimatePresence>
                     {isOpen && (
@@ -230,7 +233,7 @@ export default function AdminLeaveRequestsPage() {
                                 Reviewed by {r.reviewedBy.name}
                               </div>
                             )}
-                            <textarea
+                            <Textarea
                               value={reviewNote}
                               onChange={(e) => setReviewNote(e.target.value)}
                               placeholder="Add a note (optional)..."
@@ -238,7 +241,7 @@ export default function AdminLeaveRequestsPage() {
                               className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 resize-none transition-all"
                             />
                             <div className="flex gap-2">
-                              <button
+                              <Button
                                 onClick={() => handleReview(r.id, "REJECTED")}
                                 disabled={reviewingSave}
                                 className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-[0.98] shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-red-500/20"
@@ -249,8 +252,8 @@ export default function AdminLeaveRequestsPage() {
                                   <XCircle className="w-4 h-4" />
                                 )}
                                 Reject
-                              </button>
-                              <button
+                              </Button>
+                              <Button
                                 onClick={() => handleReview(r.id, "APPROVED")}
                                 disabled={reviewingSave}
                                 className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-[0.98] shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
@@ -261,7 +264,7 @@ export default function AdminLeaveRequestsPage() {
                                   <CheckCircle2 className="w-4 h-4" />
                                 )}
                                 Approve
-                              </button>
+                              </Button>
                             </div>
                           </div>
                         </div>

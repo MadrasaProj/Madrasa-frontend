@@ -1,26 +1,111 @@
 @import "tailwindcss";
 
 :root {
-  --background: #faf9f6;
-  --foreground: #1a1a1a;
-  --primary: #059669;
-  --primary-light: #d1fae5;
-  --secondary: #0d9488;
-  --card: #ffffff;
-  --border: #e5e7eb;
+  --background: 60 20% 98%;
+  --foreground: 150 15% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 150 15% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 150 15% 12%;
+  --primary: 145 62% 27%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 45 100% 94%;
+  --secondary-foreground: 35 75% 22%;
+  --muted: 120 12% 94%;
+  --muted-foreground: 145 10% 38%;
+  --accent: 43 68% 48%;
+  --accent-foreground: 35 75% 14%;
+  --destructive: 0 72% 46%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 120 10% 86%;
+  --input: 120 10% 86%;
+  --ring: 145 62% 27%;
+  --radius: 0.625rem;
+  --sidebar-background: 145 40% 17%;
+  --sidebar-foreground: 120 20% 96%;
+  --sidebar-primary: 43 68% 58%;
+  --sidebar-primary-foreground: 35 75% 14%;
+  --sidebar-accent: 145 32% 24%;
+  --sidebar-accent-foreground: 120 20% 96%;
+  --sidebar-border: 145 25% 28%;
+  --sidebar-ring: 43 68% 58%;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-sidebar: hsl(var(--sidebar-background));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
+/* Apply with <html class="dark"> when dark mode is enabled. */
+.dark {
+  --background: 150 18% 8%;
+  --foreground: 120 15% 94%;
+  --card: 150 16% 11%;
+  --card-foreground: 120 15% 94%;
+  --popover: 150 16% 11%;
+  --popover-foreground: 120 15% 94%;
+  --primary: 142 52% 48%;
+  --primary-foreground: 150 30% 8%;
+  --secondary: 40 35% 20%;
+  --secondary-foreground: 45 80% 82%;
+  --muted: 150 12% 16%;
+  --muted-foreground: 120 10% 66%;
+  --accent: 43 58% 52%;
+  --accent-foreground: 150 30% 8%;
+  --destructive: 0 60% 38%;
+  --destructive-foreground: 0 0% 96%;
+  --border: 150 12% 22%;
+  --input: 150 12% 22%;
+  --ring: 142 52% 48%;
+  --sidebar-background: 150 22% 6%;
+  --sidebar-foreground: 120 15% 92%;
+  --sidebar-primary: 43 58% 52%;
+  --sidebar-primary-foreground: 150 30% 8%;
+  --sidebar-accent: 150 16% 14%;
+  --sidebar-accent-foreground: 120 15% 92%;
+  --sidebar-border: 150 12% 19%;
+  --sidebar-ring: 43 58% 52%;
+}
+
+@theme inline {
+  --color-primary-light: hsl(145 62% 92%);
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #faf9f6;
-    --foreground: #1a1a1a;
+  :root:not(.dark) {
+    --background: 60 20% 98%;
+    --foreground: 150 15% 12%;
   }
 }
 
@@ -30,8 +115,8 @@ a {
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;

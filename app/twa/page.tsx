@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -79,37 +81,37 @@ function SessionsList() {
                 <p className="text-xs text-gray-500 truncate capitalize">{meta.label} {slug ? `· ${slug}` : actor === "SUPER_ADMIN" ? "· Platform" : ""}</p>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
-                <button
+                <Button
                   onClick={() => handleGo(role, slug, actor as string)}
                   className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors"
                 >
                   Open
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => handleLogout(role)}
                   title={`Sign out ${role}`}
                   className="p-1.5 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-colors"
                 >
                   <LogOut className="w-3.5 h-3.5" />
-                </button>
+                </Button>
               </div>
             </div>
           );
         })}
       </div>
       <div className="px-4 py-2 bg-gray-50/60 flex items-center justify-between">
-        <button
+        <Button
           onClick={() => {
             for (const { role } of items) {
               localStorage.removeItem(storageKeyForRole(role));
             }
             window.location.reload();
           }}
-          className="text-xs font-medium text-gray-500 hover:text-red-600"
+          className="text-xs font-medium   "
         >
           Sign out all
-        </button>
-        <span className="text-[11px] text-gray-400">Sessions are stored per role</span>
+        </Button>
+        <span className="text-[11px]  ">Sessions are stored per role</span>
       </div>
     </div>
   );
@@ -224,7 +226,7 @@ export default function TwaLandingPage() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="grid grid-cols-2 gap-3">
-            <button
+            <Button
               type="button"
               onClick={() => setRole("parent")}
               className={`flex flex-col items-center gap-2 p-5 rounded-2xl border-2 transition-all ${
@@ -249,9 +251,9 @@ export default function TwaLandingPage() {
               >
                 Parent
               </span>
-            </button>
+            </Button>
 
-            <button
+            <Button
               type="button"
               onClick={() => setRole("teacher")}
               className={`flex flex-col items-center gap-2 p-5 rounded-2xl border-2 transition-all ${
@@ -276,7 +278,7 @@ export default function TwaLandingPage() {
               >
                 Teacher
               </span>
-            </button>
+            </Button>
           </div>
 
           {role && (
@@ -288,7 +290,7 @@ export default function TwaLandingPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Madrasa Slug
               </label>
-              <input
+              <Input
                 type="text"
                 value={slug}
                 onChange={(e) => setSlug(e.target.value)}
@@ -302,13 +304,13 @@ export default function TwaLandingPage() {
                   Enter your madrasa's slug to proceed to login
                 </p>
                 {slug && (
-                  <button
+                  <Button
                     type="button"
                     onClick={handleClearSlug}
                     className="text-xs text-emerald-600 hover:text-emerald-700 font-medium hover:underline"
                   >
                     Change
-                  </button>
+                  </Button>
                 )}
               </div>
             </motion.div>

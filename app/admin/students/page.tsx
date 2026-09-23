@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -66,7 +69,7 @@ function IndeterminateCheckbox({
     if (ref.current) ref.current.indeterminate = indeterminate;
   }, [indeterminate]);
   return (
-    <input
+    <Input
       ref={ref}
       type="checkbox"
       checked={checked}
@@ -430,7 +433,7 @@ console.log(classes);
           />
         ),
         render: (s) => (
-          <input
+          <Input
             type="checkbox"
             checked={selectedIds.has(s.id)}
             onChange={(e) => handleSelectOne(s.id, e.target.checked)}
@@ -530,7 +533,7 @@ console.log(classes);
           <div className="flex items-center gap-1.5 justify-end">
             {canWrite && (
               <>
-                <button
+                <Button
                   onClick={(e) => {
                     e.stopPropagation();
                     openEdit(s);
@@ -538,8 +541,8 @@ console.log(classes);
                   className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors text-xs font-semibold"
                 >
                   <Pencil className="w-3.5 h-3.5" />
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={(e) => {
                     e.stopPropagation();
                     setDeleteTarget(s);
@@ -554,10 +557,10 @@ console.log(classes);
                   ) : (
                     <Trash2 className="w-3.5 h-3.5" />
                   )}
-                </button>
+                </Button>
               </>
             )}
-            <button
+            <Button
               onClick={(e) => {
                 e.stopPropagation();
                 navigate(`${slugPrefix}/admin/students/${s.id}`);
@@ -565,7 +568,7 @@ console.log(classes);
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors text-xs font-semibold"
             >
               <Eye className="w-3.5 h-3.5" />
-            </button>
+            </Button>
           </div>
         ),
         className: "text-right",
@@ -583,7 +586,7 @@ console.log(classes);
         action={
           canWrite ? (
             <div className="flex items-center gap-2">
-              <button
+              <Button
                 onClick={() => setShowImport(true)}
                 className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 px-3 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
               >
@@ -591,14 +594,14 @@ console.log(classes);
                 <span className="hidden sm:inline">
                   {t("adminPages", "importBtn", lang)}
                 </span>
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={openAdd}
                 className="flex items-center gap-1.5 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-colors"
               >
                 <Plus className="w-4 h-4" />{" "}
                 {t("adminPages", "addStudent", lang)}
-              </button>
+              </Button>
             </div>
           ) : undefined
         }
@@ -613,7 +616,7 @@ console.log(classes);
 
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input
+        <Input
           value={searchInput}
           onChange={(e) => handleSearch(e.target.value)}
           placeholder={t("adminPages", "searchNameOrAdm", lang)}
@@ -624,7 +627,7 @@ console.log(classes);
       <div className="flex gap-3 mb-5">
         <div className="flex-1 relative">
           <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-          <select
+          <Select
             value={activeClassId}
             onChange={(e) => {
               setActiveClassId(e.target.value);
@@ -641,10 +644,10 @@ console.log(classes);
                 {cls.studentCount != null ? ` (${cls.studentCount})` : ""}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div className="relative">
-          <select
+          <Select
             value={gender}
             onChange={(e) => {
               setGender(e.target.value as typeof gender);
@@ -657,7 +660,7 @@ console.log(classes);
             <option value="FEMALE">
               {t("adminPages", "girlsFilter", lang)}
             </option>
-          </select>
+          </Select>
         </div>
       </div>
 
@@ -671,21 +674,21 @@ console.log(classes);
             {selectedIds.size} {t("common", "selected", lang)}
           </span>
           <div className="flex items-center gap-2">
-            <button
+            <Button
               onClick={() => setSelectedIds(new Set())}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-gray-600 text-xs font-semibold hover:bg-gray-50 transition-colors"
             >
               <X className="w-3.5 h-3.5" />
               {t("common", "cancel", lang)}
-            </button>
+            </Button>
             {canWrite && (
-              <button
+              <Button
                 onClick={() => setShowBulkDeleteConfirm(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-600 text-white text-xs font-semibold hover:bg-red-700 transition-colors"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 {t("adminPages", "deleteStudentTitle", lang)}
-              </button>
+              </Button>
             )}
           </div>
         </motion.div>
@@ -719,7 +722,7 @@ console.log(classes);
         mobileRender={(s) => (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <input
+              <Input
                 type="checkbox"
                 checked={selectedIds.has(s.id)}
                 onChange={(e) => handleSelectOne(s.id, e.target.checked)}
@@ -758,7 +761,7 @@ console.log(classes);
             <div className="flex items-center gap-1.5 shrink-0">
               {canWrite && (
                 <>
-                  <button
+                  <Button
                     onClick={(e) => {
                       e.stopPropagation();
                       openEdit(s);
@@ -766,8 +769,8 @@ console.log(classes);
                     className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
                   >
                     <Pencil className="w-3.5 h-3.5" />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={(e) => {
                       e.stopPropagation();
                       setDeleteTarget(s);
@@ -781,10 +784,10 @@ console.log(classes);
                     ) : (
                       <Trash2 className="w-3.5 h-3.5" />
                     )}
-                  </button>
+                  </Button>
                 </>
               )}
-              <button
+              <Button
                 onClick={(e) => {
                   e.stopPropagation();
                   navigate(`${slugPrefix}/admin/students/${s.id}`);
@@ -795,7 +798,7 @@ console.log(classes);
                 <span className="hidden sm:inline">
                   {t("adminPages", "viewBtn", lang)}
                 </span>
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -863,14 +866,14 @@ console.log(classes);
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3 mt-6">
-                <button
+                <Button
                   onClick={() => setShowDeleteConfirm(false)}
                   disabled={deleteMutation.isPending}
                   className="py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
                   {t("common", "cancel", lang)}
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={handleDelete}
                   disabled={deleteMutation.isPending}
                   className="py-3 rounded-2xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors disabled:opacity-60"
@@ -883,7 +886,7 @@ console.log(classes);
                   ) : (
                     t("adminPages", "deleteConfirm", lang)
                   )}
-                </button>
+                </Button>
               </div>
             </motion.div>
           </>
@@ -923,14 +926,14 @@ console.log(classes);
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3 mt-6">
-                <button
+                <Button
                   onClick={() => setShowBulkDeleteConfirm(false)}
                   disabled={bulkDeleteMutation.isPending}
                   className="py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
                   {t("common", "cancel", lang)}
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => {
                     bulkDeleteMutation.mutate(Array.from(selectedIds), {
                       onSuccess: () => {
@@ -954,7 +957,7 @@ console.log(classes);
                   ) : (
                     t("adminPages", "deleteConfirm", lang)
                   )}
-                </button>
+                </Button>
               </div>
             </motion.div>
           </>

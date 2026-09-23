@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { Dialog, DialogContent } from "@/components/ui/Dialog";
+import { Input } from "@/components/ui/Input";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -55,7 +58,8 @@ function OtherClassConfirmModal({
 }) {
  const { lang } = useLanguageStore();
  return (
- <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+ <Dialog open onOpenChange={(open) => !open && onCancel()}>
+ <DialogContent className="max-w-sm p-6">
  <motion.div
  initial={{ opacity: 0, scale: 0.95 }}
  animate={{ opacity: 1, scale: 1 }}
@@ -74,21 +78,22 @@ function OtherClassConfirmModal({
  {t("teacherPages", "markingOtherDesc", lang)}
  </p>
  <div className="flex gap-3">
- <button
+ <Button
  onClick={onCancel}
  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50"
  >
  {t("common", "cancel", lang)}
- </button>
- <button
+ </Button>
+ <Button
  onClick={onConfirm}
  className="flex-1 py-2.5 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600"
  >
  {t("teacherPages", "yesSaveBtn", lang)}
- </button>
+ </Button>
  </div>
  </motion.div>
- </div>
+ </DialogContent>
+ </Dialog>
  );
 }
 
@@ -318,7 +323,7 @@ export default function TeacherAttendancePage() {
   action={
   <div className="flex items-center gap-2">
   {hasDirty ? (
-  <button
+  <Button
   onClick={handleSave}
   disabled={saving}
   className="flex items-center gap-1.5 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 disabled:opacity-60 transition-colors"
@@ -326,19 +331,19 @@ export default function TeacherAttendancePage() {
   {saving
   ? <><Loader2 className="w-4 h-4 animate-spin" /> {t("teacherPages", "savingEllipsis", lang)}</>
   : <><Save className="w-4 h-4" /> {t("common", "save", lang)}</>}
-  </button>
+  </Button>
   ) : saveSuccess ? (
   <span className="flex items-center gap-1 text-emerald-600 text-sm font-semibold">
   <CheckCircle2 className="w-4 h-4" /> {t("teacherPages", "saved", lang)}
   </span>
   ) : null}
   {hasExisting && (
-  <button
+  <Button
   onClick={() => setConfirmClear(true)}
   className="flex items-center gap-1.5 bg-red-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-600 transition-colors"
   >
   <Trash2 className="w-4 h-4" /> {t("teacherPages", "clearAllBtn", lang)}
-  </button>
+  </Button>
   )}
   </div>
   }
@@ -348,12 +353,12 @@ export default function TeacherAttendancePage() {
 
  {/* Date nav */}
  <div className="flex items-center justify-between bg-white rounded-2xl border border-gray-100 px-4 py-3 mb-4">
- <button onClick={() => changeDate(-1)}
+ <Button onClick={() => changeDate(-1)}
  className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50">
  <ChevronLeft className="w-4 h-4" />
- </button>
+ </Button>
  <div className="flex items-center gap-3">
- <input
+ <Input
  type="date"
  value={date}
  max={todayISO()}
@@ -364,11 +369,11 @@ export default function TeacherAttendancePage() {
   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{t("teacherPages", "todayBadge", lang)}</span>
 )}
  </div>
- <button onClick={() => changeDate(1)}
+ <Button onClick={() => changeDate(1)}
  disabled={date >= todayISO()}
  className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 disabled:opacity-40">
  <ChevronRight className="w-4 h-4" />
- </button>
+ </Button>
  </div>
 
  {/* Class tabs */}
@@ -385,7 +390,7 @@ export default function TeacherAttendancePage() {
  const isOwn = cls.classTeacherId === user?.id;
  const isActive = cls.id === activeClassId;
  return (
- <button key={cls.id}
+ <Button key={cls.id}
  onClick={() => { setActiveClassId(cls.id); setSaveSuccess(false); }}
  className={cn(
  "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 transition-all",
@@ -409,7 +414,7 @@ export default function TeacherAttendancePage() {
  isActive ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500",
  )}>{cls.studentCount}</span>
  )}
- </button>
+ </Button>
  );
  })}
  </div>
@@ -469,7 +474,8 @@ export default function TeacherAttendancePage() {
  {/* Clear all confirmation modal */}
  <AnimatePresence>
  {confirmClear && (
- <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+ <Dialog open={confirmClear} onOpenChange={(open) => !open && setConfirmClear(false)}>
+ <DialogContent className="max-w-sm p-6">
  <motion.div
  initial={{ opacity: 0, scale: 0.95 }}
  animate={{ opacity: 1, scale: 1 }}
@@ -489,22 +495,23 @@ export default function TeacherAttendancePage() {
  {t("teacherPages", "clearAttendanceDesc", lang)}
  </p>
  <div className="flex gap-3">
- <button
+ <Button
  onClick={() => setConfirmClear(false)}
  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50"
  >
  {t("common", "cancel", lang)}
- </button>
- <button
+ </Button>
+ <Button
  onClick={clearAll}
  disabled={saving}
  className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-60"
  >
  {saving ? t("teacherPages", "clearingLabel", lang) : t("teacherPages", "yesClearAll", lang)}
- </button>
+ </Button>
  </div>
  </motion.div>
- </div>
+ </DialogContent>
+ </Dialog>
  )}
  </AnimatePresence>
 
@@ -513,7 +520,7 @@ export default function TeacherAttendancePage() {
  <div className="flex gap-2 mb-4 flex-wrap">
  <span className="text-xs text-gray-400 self-center mr-1">{t("teacherPages", "markAllLabel", lang)}</span>
  {ACTIVE_STATUSES.map((s) => (
- <button key={s}
+ <Button key={s}
  onClick={() => markAll(s)}
  className={cn(
  "text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors hover:opacity-80",
@@ -521,7 +528,7 @@ export default function TeacherAttendancePage() {
  )}
  >
 {s === "PRESENT" ? t("teacherPages", "present", lang) : s === "ABSENT" ? t("teacherPages", "absent", lang) : s === "LEAVE" ? t("teacherPages", "leaveLabel", lang) : t("teacherPages", "sickLabel", lang)}
-  </button>
+  </Button>
   ))}
   </div>
  )}
@@ -596,7 +603,7 @@ export default function TeacherAttendancePage() {
  {/* P/A/L/S buttons */}
  <div className="flex items-center gap-1 shrink-0">
  {ACTIVE_STATUSES.map((s) => (
- <button
+ <Button
  key={s}
  onClick={() => setStatus(student.id, s)}
  title={s === "PRESENT" ? t("teacherPages", "present", lang) : s === "ABSENT" ? t("teacherPages", "absent", lang) : s === "LEAVE" ? t("teacherPages", "leaveLabel", lang) : t("teacherPages", "sickLabel", lang)}
@@ -608,7 +615,7 @@ export default function TeacherAttendancePage() {
  )}
  >
  {STATUS_CONFIG[s].short}
- </button>
+ </Button>
  ))}
  </div>
  </div>
@@ -616,7 +623,7 @@ export default function TeacherAttendancePage() {
  {/* Notes — only visible when not PRESENT */}
  {status && status !== "PRESENT" && (
  <div className="px-3.5 pb-3">
- <input
+ <Input
  type="text"
  placeholder={t("teacherPages", "addNoteOptional", lang)}
  value={rec?.notes ?? ""}
@@ -637,7 +644,7 @@ export default function TeacherAttendancePage() {
  <div className="fixed bottom-20 lg:bottom-6 left-0 right-0 px-4 lg:pl-72 z-20 pointer-events-none">
  <div className="pointer-events-auto w-full max-w-2xl mx-auto flex gap-2">
  {hasDirty && (
- <button
+ <Button
  onClick={handleSave}
  disabled={saving}
  className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-sm shadow-xl transition-all bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
@@ -646,15 +653,15 @@ export default function TeacherAttendancePage() {
   ? <><Loader2 className="w-5 h-5 animate-spin" /> {t("teacherPages", "savingEllipsis", lang)}</>
   : <><Save className="w-5 h-5" /> {t("teacherPages", "saveAttendanceCount", lang)} · {summary.ABSENT > 0 ? t("teacherPages", "xAbsent", lang).replace("{n}", String(summary.ABSENT)) : t("teacherPages", "allMarked", lang)}</>
   }
- </button>
+ </Button>
  )}
  {hasExisting && (
- <button
+ <Button
  onClick={() => setConfirmClear(true)}
  className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-sm shadow-xl transition-all bg-red-500 text-white hover:bg-red-600"
  >
 <Trash2 className="w-5 h-5" /> {t("teacherPages", "clearAllBtn", lang)}
-  </button>
+  </Button>
   )}
   </div>
   </div>

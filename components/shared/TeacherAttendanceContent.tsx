@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { useState, useEffect, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -149,14 +151,14 @@ export function TeacherAttendanceContent({ backHref }: TeacherAttendanceContentP
           { key: "by-day" as Tab, label: "By Day", icon: CalendarDays },
           { key: "by-teacher" as Tab, label: "By Teacher", icon: User },
         ]).map((t) => (
-          <button key={t.key} onClick={() => setTab(t.key)}
+          <Button key={t.key} onClick={() => setTab(t.key)}
             className={cn(
               "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all",
               tab === t.key ? "bg-white text-emerald-700 shadow-sm" : "text-gray-500 hover:text-gray-700",
             )}>
             <t.icon className="w-4 h-4" />
             {t.label}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -164,22 +166,22 @@ export function TeacherAttendanceContent({ backHref }: TeacherAttendanceContentP
       {tab === "by-day" && (
         <>
           <div className="flex items-center justify-between mb-4">
-            <button onClick={() => setSelectedDate((d) => shiftDays(d, -1))}
+            <Button onClick={() => setSelectedDate((d) => shiftDays(d, -1))}
               className="p-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 transition-colors">
               <ChevronLeft className="w-4 h-4 text-gray-600" />
-            </button>
+            </Button>
             <div className="flex items-center gap-3">
-              <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)}
+              <Input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)}
                 className="px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
               {selectedDate !== todayISO() && (
-                <button onClick={() => setSelectedDate(todayISO())}
-                  className="text-xs font-semibold text-emerald-600 hover:text-emerald-700">Today</button>
+                <Button onClick={() => setSelectedDate(todayISO())}
+                  className="text-xs font-semibold text-emerald-600 hover:text-emerald-700">Today</Button>
               )}
             </div>
-            <button onClick={() => setSelectedDate((d) => shiftDays(d, 1))} disabled={selectedDate >= todayISO()}
+            <Button onClick={() => setSelectedDate((d) => shiftDays(d, 1))} disabled={selectedDate >= todayISO()}
               className="p-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-40">
               <ChevronRight className="w-4 h-4 text-gray-600" />
-            </button>
+            </Button>
           </div>
 
           {dayLoading ? (
@@ -235,13 +237,13 @@ export function TeacherAttendanceContent({ backHref }: TeacherAttendanceContentP
           <div className="mb-5">
             <div className="relative mb-3">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input value={teacherSearch} onChange={(e) => setTeacherSearch(e.target.value)}
+              <Input value={teacherSearch} onChange={(e) => setTeacherSearch(e.target.value)}
                 placeholder="Search teachers…"
                 className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm" />
             </div>
             <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
               {filteredTeachers.map((t) => (
-                <button key={t.id}
+                <Button key={t.id}
                   onClick={() => { setSelectedTeacherId(t.id); setTeacherSearch(""); }}
                   className={cn(
                     "flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold whitespace-nowrap transition-all shrink-0",
@@ -256,7 +258,7 @@ export function TeacherAttendanceContent({ backHref }: TeacherAttendanceContentP
                     {t.name.charAt(0).toUpperCase()}
                   </div>
                   {t.name}
-                </button>
+                </Button>
               ))}
               {filteredTeachers.length === 0 && <p className="text-xs text-gray-400 py-2">No teachers found</p>}
             </div>

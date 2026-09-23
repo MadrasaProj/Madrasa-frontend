@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Download } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -44,12 +45,12 @@ export default function PwaInstallButton() {
   if (!deferredPrompt || installed) return null;
 
   return (
-    <button
+    <Button
       onClick={handleInstall}
-      className="w-full bg-emerald-100 text-emerald-600 font-semibold py-3.5 rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
+      className="h-auto w-full rounded-xl bg-emerald-100 py-3.5 text-sm text-emerald-600 hover:bg-emerald-700"
     >
       <Download className="w-5 h-5" />
       Install App
-    </button>
+    </Button>
   );
 }

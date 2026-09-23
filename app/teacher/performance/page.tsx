@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useState, useEffect, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -180,7 +181,7 @@ export default function TeacherPerformancePage() {
         backHref="/teacher"
         action={
           results.length > 0 ? (
-            <button
+            <Button
               onClick={handleDownloadPDF}
               disabled={downloadingPdf}
               className="flex items-center gap-2 px-3.5 py-2.5 bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 rounded-xl text-sm font-semibold transition-all shadow-sm"
@@ -191,7 +192,7 @@ export default function TeacherPerformancePage() {
                 <Download className="w-4 h-4" />
               )}
               <span>{downloadingPdf ? "Generating PDF..." : "Download PDF"}</span>
-            </button>
+            </Button>
           ) : undefined
         }
       />
@@ -229,7 +230,7 @@ export default function TeacherPerformancePage() {
           {/* Class selector */}
           <div className="flex gap-2 mb-4 flex-wrap">
             {classes.map((cls) => (
-              <button
+              <Button
                 key={cls.id}
                 onClick={() => setActiveClassId(cls.id)}
                 className={cn(
@@ -240,7 +241,7 @@ export default function TeacherPerformancePage() {
                 )}
               >
                 {cls.name}
-              </button>
+              </Button>
             ))}
           </div>
 
@@ -248,7 +249,7 @@ export default function TeacherPerformancePage() {
           {exams.length > 0 && (
             <div className="flex gap-2 mb-5 overflow-x-auto pb-1 scrollbar-none">
               {exams.map((ex) => (
-                <button
+                <Button
                   key={ex.id}
                   onClick={() => setActiveExamId(ex.id)}
                   className={cn(
@@ -259,7 +260,7 @@ export default function TeacherPerformancePage() {
                   )}
                 >
                   {ex.name}
-                </button>
+                </Button>
               ))}
             </div>
           )}

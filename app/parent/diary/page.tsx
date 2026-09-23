@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { useState, useEffect, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
@@ -266,13 +268,13 @@ export default function ParentDiaryPage() {
           <h1 className="text-3xl font-bold text-gray-900 leading-none tracking-tight">
             {t("parentPages", "heyGreeting", lang)} {parentFirstName}!
           </h1>
-          <button
+          <Button
             onClick={() => setSearchOpen((v) => !v)}
             className="p-3 rounded-full bg-white border border-gray-200 hover:bg-gray-50 active:scale-95 transition shrink-0 shadow-sm"
             aria-label="Search"
           >
             <Search className="w-5 h-5 text-gray-600" />
-          </button>
+          </Button>
         </div>
 
         {error && <div className="px-4"><ApiErrorBanner message={error} onRetry={() => {}} /></div>}
@@ -287,7 +289,7 @@ export default function ParentDiaryPage() {
             >
               <div className="relative px-4">
                 <Search className="absolute left-7 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
+                <Input
                   autoFocus
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -295,12 +297,12 @@ export default function ParentDiaryPage() {
                   className="w-full pl-10 pr-10 py-3 rounded-full bg-white border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
                 {search && (
-                  <button
+                  <Button
                     onClick={() => setSearch("")}
                     className="absolute right-7 top-1/2 -translate-y-1/2 p-1.5 rounded-full hover:bg-gray-100"
                   >
                     <X className="w-3.5 h-3.5 text-gray-400" />
-                  </button>
+                  </Button>
                 )}
               </div>
             </motion.div>
@@ -389,7 +391,7 @@ export default function ParentDiaryPage() {
 function FilterPill({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
   void label;
   return (
-    <button
+    <Button
       onClick={onClick}
       className={cn(
         "shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition active:scale-95",
@@ -399,7 +401,7 @@ function FilterPill({ active, onClick, label }: { active: boolean; onClick: () =
       )}
     >
       {label}
-    </button>
+    </Button>
   );
 }
 
@@ -458,7 +460,7 @@ function TimelineRow({ item, index, onClick, lang: rowLang }: { item: TimelineIt
       className="flex gap-4 items-stretch px-4"
     >
       <DateColumn day={dl.day} weekday={dl.weekday} />
-      <button
+      <Button
         onClick={onClick}
         className={cn(
           "flex-1 text-left rounded-l-2xl rounded-r-none border px-5 py-4 transition-all active:scale-[0.99] hover:brightness-95",
@@ -491,7 +493,7 @@ function TimelineRow({ item, index, onClick, lang: rowLang }: { item: TimelineIt
             <span>{commentCount} {commentCount === 1 ? t("parentPages", "responseLabel", rowLang) : t("parentPages", "responsesLabel", rowLang)}</span>
           </div>
         )}
-      </button>
+      </Button>
     </motion.li>
   );
 }
@@ -583,12 +585,12 @@ function EntryDrawer({
                 {entry.teacher ? ` · ${entry.teacher.name}` : ""}
               </p>
             </div>
-            <button
+            <Button
               onClick={onClose}
               className={cn("p-2 rounded-xl shrink-0 transition-colors hover:bg-black/5", themeStyle.text)}
             >
               <X className="w-5 h-5" />
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -629,7 +631,7 @@ function EntryDrawer({
         <div className={cn("shrink-0 p-4 border-t", themeStyle.border)}>
           {canReply ? (
             <div className="flex gap-2.5">
-              <input
+              <Input
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
                 placeholder={t("parentPages", "writeResponse", drawerLang)}
@@ -639,13 +641,13 @@ function EntryDrawer({
                 )}
 style={{ fontFamily: `${themeStyle.font}, ${themeStyle.mlFont}` }}
               />
-              <button
+              <Button
                 onClick={onSend}
                 disabled={sending || !replyText.trim()}
                 className="p-2.5 rounded-xl text-sm font-semibold disabled:opacity-40 shrink-0 transition-opacity bg-emerald-600 text-white"
               >
                 {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              </button>
+              </Button>
             </div>
           ) : (
             <p className={cn("text-sm text-center py-1 opacity-70", themeStyle.text)}>{t("parentPages", "selectStudentRespond", drawerLang)}</p>

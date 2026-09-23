@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -325,12 +327,12 @@ export default function TeacherExamsPage() {
  
  {/* Breadcrumb Header */}
  <div className="flex items-center gap-3">
- <button
+ <Button
  onClick={() => setSearchParams((prev) => { prev.delete("view"); return prev; })}
  className="p-2 border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors text-gray-600"
  >
  <ArrowLeft className="w-4 h-4" />
- </button>
+ </Button>
  <div>
  <div className="flex items-center gap-2 text-xs text-gray-400 font-bold uppercase tracking-wider">
   <span>{t("teacherPages", "examsBreadcrumb", lang)}</span>
@@ -465,7 +467,7 @@ export default function TeacherExamsPage() {
 
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
+          <Input
             type="text"
             placeholder={t("teacherPages", "searchExamByName", lang)}
             value={searchText}
@@ -473,12 +475,12 @@ export default function TeacherExamsPage() {
             className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 focus:border-emerald-500 transition-all"
           />
           {searchText && (
-            <button
+            <Button
               onClick={() => setSearchText("")}
               className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
               <X className="w-4 h-4" />
-            </button>
+            </Button>
           )}
         </div>
 

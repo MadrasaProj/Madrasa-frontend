@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useNavigate } from "react-router";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -67,13 +68,13 @@ export default function ParentNotificationsPage() {
         action={
           <div className="flex gap-2">
             {unread > 0 && (
-              <button onClick={markAllRead} disabled={markAll.isPending} className="p-2 rounded-xl bg-gray-100 text-gray-600" title={t("parentPages", "markAllReadBtn", lang)}>
+              <Button onClick={markAllRead} disabled={markAll.isPending} className="p-2 rounded-xl bg-gray-100 text-gray-600" title={t("parentPages", "markAllReadBtn", lang)}>
                 <CheckCheck className="w-4 h-4" />
-              </button>
+              </Button>
             )}
-            <button onClick={() => refetch()} disabled={isRefetching} className="p-2 rounded-xl bg-gray-100 text-gray-600">
+            <Button onClick={() => refetch()} disabled={isRefetching} className="p-2 rounded-xl bg-gray-100 text-gray-600">
               <RefreshCw className={cn("w-4 h-4", isRefetching && "animate-spin")} />
-            </button>
+            </Button>
           </div>
         }
       />
@@ -128,12 +129,12 @@ export default function ParentNotificationsPage() {
                       <p className="text-[10px] text-gray-400 mt-1">{t("parentPages", "notifFromMsg", lang)} {n.creator.name}</p>
                     )}
                     {!n.isRead && (
-                      <button
+                      <Button
                         onClick={(e) => { e.stopPropagation(); handleRead(n.id); }}
                         className="mt-2 text-[10px] font-semibold text-blue-600 uppercase tracking-wider"
                       >
                         {t("parentPages", "markAllReadBtn", lang)}
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </div>

@@ -1,3 +1,7 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Textarea } from "@/components/ui/Textarea";
 import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -234,7 +238,7 @@ export default function TeacherHomeworkPage() {
         <p className="text-sm text-gray-500">
           {homework.length === 1 ? t("teacherPages", "assignmentsLabel", lang).replace("{n}", String(homework.length)) : t("teacherPages", "assignmentsPlural", lang).replace("{n}", String(homework.length))}
         </p>
-        <button
+        <Button
           onClick={() => {
             setTitle(""); setDesc("");
             setDueDate(fmt(new Date(Date.now() + 86400_000)));
@@ -247,7 +251,7 @@ export default function TeacherHomeworkPage() {
           <Plus className="w-4 h-4" />
           <span className="hidden sm:inline">{t("teacherPages", "newHwBtn", lang)}</span>
           <span className="sm:hidden">{t("teacherPages", "newBtnShort", lang)}</span>
-        </button>
+        </Button>
       </div>
 
       {loading ? (
@@ -273,13 +277,13 @@ export default function TeacherHomeworkPage() {
           <BookOpen className="w-12 h-12 mx-auto mb-4 text-gray-200" />
           <p className="text-sm font-medium">{t("teacherPages", "noAssignmentsYet", lang)}</p>
           <p className="text-xs mt-1">{t("teacherPages", "createFirstHw", lang)}</p>
-          <button
+          <Button
             onClick={() => setShowCreateDrawer(true)}
             className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold text-sm hover:bg-emerald-700 transition-all"
           >
             <Plus className="w-4 h-4" />
             {t("teacherPages", "newHwBtn", lang)}
-          </button>
+          </Button>
         </div>
       ) : (
         <>
@@ -366,13 +370,13 @@ export default function TeacherHomeworkPage() {
                       </td>
                       <td className="px-4 py-4 text-right">
                         <div className="flex items-center justify-end gap-0.5">
-                          <button
+                          <Button
                             onClick={(e) => { e.stopPropagation(); openEdit(hw); }}
                             className="p-1.5 rounded-lg text-gray-300 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
                           >
                             <Pencil className="w-4 h-4" />
-                          </button>
-                          <button
+                          </Button>
+                          <Button
                             onClick={(e) => { e.stopPropagation(); handleDelete(hw.id); }}
                             disabled={deletingId === hw.id}
                             className="p-1.5 rounded-lg text-gray-300 hover:text-red-600 hover:bg-red-50 transition-colors"
@@ -380,7 +384,7 @@ export default function TeacherHomeworkPage() {
                             {deletingId === hw.id
                               ? <Loader2 className="w-4 h-4 animate-spin" />
                               : <Trash2 className="w-4 h-4" />}
-                          </button>
+                          </Button>
                           <div className="w-px h-5 bg-gray-100 mx-1" />
                           <ChevronRight className="w-4 h-4 text-gray-300" />
                         </div>
@@ -426,13 +430,13 @@ export default function TeacherHomeworkPage() {
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <button
+                        <Button
                           onClick={(e) => { e.stopPropagation(); openEdit(hw); }}
                           className="p-2 rounded-xl text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
                         >
                           <Pencil className="w-4.5 h-4.5" />
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           onClick={(e) => { e.stopPropagation(); handleDelete(hw.id); }}
                           disabled={deletingId === hw.id}
                           className="p-2 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
@@ -440,7 +444,7 @@ export default function TeacherHomeworkPage() {
                           {deletingId === hw.id
                             ? <Loader2 className="w-4.5 h-4.5 animate-spin" />
                             : <Trash2 className="w-4.5 h-4.5" />}
-                        </button>
+                        </Button>
                         <ChevronRight className="w-5 h-5 text-gray-300" />
                       </div>
                     </div>
@@ -493,13 +497,13 @@ export default function TeacherHomeworkPage() {
         <div className="space-y-4 p-5 pb-8">
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t("teacherPages", "classRequired", lang)}</label>
-            <select value={classId} onChange={(e) => setClassId(e.target.value)}
+            <Select value={classId} onChange={(e) => setClassId(e.target.value)}
               className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
               {classes.length === 0
                 ? <option value="">{t("teacherPages", "noAccessibleClasses", lang)}</option>
                 : classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)
               }
-            </select>
+            </Select>
           </div>
 
           <div>
@@ -507,7 +511,7 @@ export default function TeacherHomeworkPage() {
               {t("teacherPages", "subjectRequired", lang)}
               {isPeriodBased && <span className="text-gray-400 font-normal ml-1">{t("teacherPages", "yourSubjectsHint", lang)}</span>}
             </label>
-            <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)}
+            <Select value={subjectId} onChange={(e) => setSubjectId(e.target.value)}
               className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
               {classSubjects.length === 0
                 ? <option value="">
@@ -518,38 +522,38 @@ export default function TeacherHomeworkPage() {
                   </option>
                 : classSubjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)
               }
-            </select>
+            </Select>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t("teacherPages", "titleRequired", lang)}</label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)}
+            <Input value={title} onChange={(e) => setTitle(e.target.value)}
               placeholder={t("teacherPages", "titlePlaceholder", lang)}
               className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t("teacherPages", "descOptional", lang)}</label>
-            <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3}
+            <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3}
               placeholder={t("teacherPages", "descPlaceholder", lang)}
               className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none" />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t("teacherPages", "dueDateRequired", lang)}</label>
-            <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
+            <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
               min={today}
               className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
           </div>
 
-          <button
+          <Button
             onClick={handleCreate}
             disabled={!classId || !subjectId || !title || !dueDate || creating}
             className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold text-sm disabled:opacity-60 flex items-center justify-center gap-2 hover:bg-emerald-700 transition-colors active:scale-[0.98]"
           >
             {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
             {t("teacherPages", "createAssignmentBtn", lang)}
-          </button>
+          </Button>
         </div>
       </Drawer>
 
@@ -574,14 +578,14 @@ export default function TeacherHomeworkPage() {
               <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
                 {t("teacherPages", "submissionsCount", lang).replace("{n}", String(submissions[assessHw.id].submissions.length))}
               </p>
-              <button
+              <Button
                 onClick={() => saveSubmissions(assessHw.id)}
                 disabled={savingSubs}
                 className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors"
               >
                 {savingSubs ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                 {t("common", "save", lang)}
-              </button>
+              </Button>
             </div>
             <div className="space-y-2">
               {submissions[assessHw.id].submissions.map((sub) => {
@@ -594,7 +598,7 @@ export default function TeacherHomeworkPage() {
                     </div>
                     <div className="flex gap-1 shrink-0">
                       {(["NOT_SUBMITTED", "SUBMITTED", "CHECKED"] as HomeworkStatus[]).map((s) => (
-                        <button
+                        <Button
                           key={s}
                           onClick={() => setLocalStatus((prev) => ({
                             ...prev,
@@ -608,7 +612,7 @@ export default function TeacherHomeworkPage() {
                           )}
                         >
                           {STATUS_CONFIG[s].label}
-                        </button>
+                        </Button>
                       ))}
                     </div>
                   </div>
@@ -620,88 +624,63 @@ export default function TeacherHomeworkPage() {
       </Drawer>
 
       {/* Edit Homework Drawer */}
-      <AnimatePresence>
-        {showEditDrawer && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => !updating && setShowEditDrawer(false)}
-              className="fixed inset-0 bg-black/30 z-40 backdrop-blur-sm"
-            />
-            <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-none md:p-4">
-              <motion.div
-                key="edit-hw-drawer"
-                initial={isMobile ? { y: "100%", opacity: 1, scale: 1 } : { y: 0, opacity: 0, scale: 0.95 }}
-                animate={{ y: 0, opacity: 1, scale: 1 }}
-                exit={isMobile ? { y: "100%", opacity: 1, scale: 1 } : { y: 0, opacity: 0, scale: 0.95 }}
-                transition={isMobile ? { type: "spring", damping: 30, stiffness: 300 } : { duration: 0.2 }}
-                className={cn(
-                  "w-full bg-white flex flex-col pointer-events-auto shadow-2xl relative",
-                  isMobile
-                    ? "rounded-t-3xl max-h-[92dvh]"
-                    : "rounded-3xl max-w-xl max-h-[85dvh]"
-                )}
-              >
-                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
-                  <p className="font-bold text-gray-900 text-lg">{t("teacherPages", "editAssignmentTitle", lang)}</p>
-                  <button onClick={() => setShowEditDrawer(false)}><X className="w-5 h-5 text-gray-400" /></button>
-                </div>
-
-                <div className="space-y-4 overflow-y-auto flex-1 px-5 py-4 pb-8">
+      <Drawer
+        open={showEditDrawer}
+        onClose={() => !updating && setShowEditDrawer(false)}
+        title={t("teacherPages", "editAssignmentTitle", lang)}
+        contentClassName="px-5 py-4 pb-8"
+      >
+                <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t("teacherPages", "subjectRequired", lang)}</label>
-                    <select value={editSubjectId} onChange={(e) => setEditSubjectId(e.target.value)}
+                    <Select value={editSubjectId} onChange={(e) => setEditSubjectId(e.target.value)}
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
                       {classSubjects.length === 0
                         ? <option value="">{t("teacherPages", "noSubjectsAvail", lang)}</option>
                         : classSubjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)
                       }
-                    </select>
+                    </Select>
                   </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t("teacherPages", "titleRequired", lang)}</label>
-                    <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
+                    <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
                       placeholder={t("teacherPages", "titlePlaceholder", lang)}
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                   </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t("teacherPages", "descOptional", lang)}</label>
-                    <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} rows={3}
+                    <Textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} rows={3}
                       placeholder={t("teacherPages", "descPlaceholder", lang)}
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none" />
                   </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t("teacherPages", "dueDateRequired", lang)}</label>
-                    <input type="date" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)}
+                    <Input type="date" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)}
                       min={today}
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                   </div>
                 </div>
 
-                <div className="px-5 py-4 border-t border-gray-100 shrink-0 flex gap-3">
-                  <button
+                <div className="pt-4 border-t border-gray-100 flex gap-3">
+                  <Button
                     onClick={() => setShowEditDrawer(false)}
                     className="flex-1 py-3.5 text-sm font-semibold text-gray-500 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all"
                   >
                     {t("common", "cancel", lang)}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={handleUpdate}
                     disabled={!editTitle || !editDueDate || !editSubjectId || updating}
                     className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-semibold text-sm disabled:opacity-60 flex items-center justify-center gap-2"
                   >
                     {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                     {t("teacherPages", "saveChangesBtn", lang)}
-                  </button>
+                  </Button>
                 </div>
-              </motion.div>
-            </div>
-          </>
-        )}
-      </AnimatePresence>
+      </Drawer>
     </DashboardLayout>
   );
 }

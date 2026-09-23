@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
 import {
   useEffect,
   useRef,
@@ -208,14 +211,14 @@ export const SocialFrameCreator = forwardRef<SocialFrameCreatorRef, SocialFrameC
   return (
     <div className="flex gap-4">
       <div className="flex-1 min-w-0">
-        <textarea
+        <Textarea
           className="ring-2 ring-green-600 p-2 rounded-2xl w-full"
           value={frameJson}
           onInput={(e) => setFrameJson((e.target as HTMLTextAreaElement).value)}
           style={{ height: "100px" }}
           placeholder="Paste scene JSON here"
         />
-        <button
+        <Button
           onClick={() => {
             try {
               const data = JSON.parse(frameJson);
@@ -232,7 +235,7 @@ export const SocialFrameCreator = forwardRef<SocialFrameCreatorRef, SocialFrameC
           className="mt-2 px-4 py-2 bg-emerald-600 text-white rounded-lg"
         >
           Apply
-        </button>
+        </Button>
         <div
           ref={canvasRef}
           style={{ border: "1px solid #ccc", marginTop: "10px", height: "500px" }}
@@ -250,7 +253,7 @@ export const SocialFrameCreator = forwardRef<SocialFrameCreatorRef, SocialFrameC
                   layer.active ? "border-emerald-500 bg-emerald-50" : "border-gray-200 bg-white"
                 }`}
               >
-                <input
+                <Input
                   type="checkbox"
                   checked={layer.active}
                   onChange={() => toggleLayerActive(layer)}
@@ -263,7 +266,7 @@ export const SocialFrameCreator = forwardRef<SocialFrameCreatorRef, SocialFrameC
                     </span>
                     <span className="truncate text-gray-800">{layer.preview}</span>
                   </div>
-                  <input
+                  <Input
                     type="text"
                     value={layer.label}
                     onChange={(e) => updateLayerLabel(layer, e.target.value)}

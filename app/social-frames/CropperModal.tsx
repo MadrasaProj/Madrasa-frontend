@@ -1,6 +1,7 @@
+import { Button } from "@/components/ui/Button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/Dialog";
 import { useRef, useState } from "react";
 import Cropper from "react-cropper";
-import "react-cropper/node_modules/cropperjs/dist/cropper.css";
 
 interface CropperModalProps {
   file: File;
@@ -21,9 +22,12 @@ export default function CropperModal({ file, aspectRatio, onCrop, onCancel }: Cr
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white rounded-xl shadow-xl w-[90vw] max-w-2xl p-4 space-y-3">
-        <h3 className="text-sm font-semibold text-gray-700">Crop Image</h3>
+    <Dialog open onOpenChange={(open) => !open && onCancel()}>
+      <DialogContent className="w-[90vw] max-w-2xl p-4">
+        <DialogHeader>
+          <DialogTitle className="text-sm text-gray-700">Crop Image</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
         <div className="relative bg-gray-900 rounded overflow-hidden" style={{ maxHeight: "60vh" }}>
           <Cropper
             src={URL.createObjectURL(file)}
@@ -38,21 +42,22 @@ export default function CropperModal({ file, aspectRatio, onCrop, onCancel }: Cr
           />
         </div>
         <div className="flex justify-end gap-2">
-          <button
+          <Button
             onClick={onCancel}
             className="px-4 py-2 text-sm rounded-lg border hover:bg-gray-50"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleCrop}
             disabled={!ready}
             className="px-4 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
           >
             Apply
-          </button>
+          </Button>
         </div>
-      </div>
-    </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -640,12 +643,12 @@ export default function AdminExamsPage() {
           subtitle="Manage term examinations"
           icon={GraduationCap}
           action={
-            <button
+            <Button
               onClick={openCreateDrawer}
               className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-4 py-2.5 rounded-xl transition-all shadow-sm hover:scale-[1.01]"
             >
               <Plus className="w-4 h-4" /> Create Exam
-            </button>
+            </Button>
           }
         />
 
@@ -690,7 +693,7 @@ export default function AdminExamsPage() {
 
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
+          <Input
             type="text"
             placeholder="Search exam by name..."
             value={searchText}
@@ -760,19 +763,19 @@ export default function AdminExamsPage() {
                     {classDrawerExam.name}
                   </p>
                 </div>
-                <button
+                <Button
                   onClick={closeClassDrawer}
                   className="p-1.5 hover:bg-gray-100 rounded-xl transition-colors text-gray-400 shrink-0"
                 >
                   <X className="w-5.5 h-5.5" />
-                </button>
+                </Button>
               </div>
 
               <div className="flex flex-1 overflow-hidden">
                 {/* Side tabs — desktop */}
                 <div className="hidden md:flex w-[200px] flex-col gap-1 pt-5 overflow-y-auto shrink-0 border-r border-b border-gray-100">
                   {classes.map((cls) => (
-                    <button
+                    <Button
                       key={cls.id}
                       onClick={() => {
                         if (classDrawerExamId) {
@@ -787,7 +790,7 @@ export default function AdminExamsPage() {
                       )}
                     >
                       {cls.name}
-                    </button>
+                    </Button>
                   ))}
                 </div>
 
@@ -795,7 +798,7 @@ export default function AdminExamsPage() {
                   {/* Top tabs — mobile */}
                   <div className="flex overflow-x-auto gap-3 px-5 border-b border-gray-100 md:hidden">
                     {classes.map((cls) => (
-                      <button
+                      <Button
                         key={cls.id}
                         onClick={() => {
                           if (classDrawerExamId) {
@@ -810,7 +813,7 @@ export default function AdminExamsPage() {
                         )}
                       >
                         {cls.name}
-                      </button>
+                      </Button>
                     ))}
                   </div>
 
@@ -830,7 +833,7 @@ export default function AdminExamsPage() {
                       {/* Contained tabs */}
                       <div className="px-5 shrink-0">
                         <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
-                          <button
+                          <Button
                             onClick={() => setContentTab("markentry")}
                             className={cn(
                               "px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-1.5",
@@ -841,8 +844,8 @@ export default function AdminExamsPage() {
                           >
                             <PenLine className="w-4 h-4" />
                             Mark Entry
-                          </button>
-                          <button
+                          </Button>
+                          <Button
                             onClick={() => setContentTab("report")}
                             className={cn(
                               "px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-1.5",
@@ -853,7 +856,7 @@ export default function AdminExamsPage() {
                           >
                             <BarChart2 className="w-4 h-4" />
                             Report
-                          </button>
+                          </Button>
                         </div>
                       </div>
 
@@ -916,7 +919,7 @@ export default function AdminExamsPage() {
 
                               {/* Actions */}
                               <div className="flex items-center gap-2 flex-wrap">
-                                <button
+                                <Button
                                   onClick={handleCompute}
                                   disabled={computing}
                                   className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-50 transition-all shadow-sm"
@@ -925,14 +928,14 @@ export default function AdminExamsPage() {
                                     ? <Loader2 className="w-4 h-4 animate-spin" />
                                     : <RefreshCw className="w-4 h-4" />}
                                   Compute Grades
-                                </button>
-                                <button
+                                </Button>
+                                <Button
                                   onClick={() => setImportOpen(true)}
                                   className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 bg-white hover:bg-gray-50 transition-colors shadow-xs"
                                 >
                                   <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
                                   Import Excel
-                                </button>
+                                </Button>
                               </div>
 
                               {/* Report content */}
@@ -971,7 +974,7 @@ export default function AdminExamsPage() {
                                       { key: "status" as ReportTab, label: "Final Status" },
                                       { key: "posters" as ReportTab, label: "Rank Posters" },
                                     ]).map(({ key, label }) => (
-                                      <button key={key} onClick={() => { setReportTab(key); setMarklistStudId(null); setPosterStudentId(null); }}
+                                      <Button key={key} onClick={() => { setReportTab(key); setMarklistStudId(null); setPosterStudentId(null); }}
                                         className={cn(
                                           "px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap",
                                           reportTab === key
@@ -979,7 +982,7 @@ export default function AdminExamsPage() {
                                             : "text-gray-500 border-transparent hover:text-gray-700",
                                         )}>
                                         {label}
-                                      </button>
+                                      </Button>
                                     ))}
                                   </div>
 
@@ -1099,12 +1102,12 @@ export default function AdminExamsPage() {
                     Define dates and configuration for term exams
                   </p>
                 </div>
-                <button
+                <Button
                   onClick={() => setDrawerOpen(false)}
                   className="p-1.5 hover:bg-gray-100 rounded-xl transition-colors text-gray-400"
                 >
                   <X className="w-5.5 h-5.5" />
-                </button>
+                </Button>
               </div>
 
               <form
@@ -1120,7 +1123,7 @@ export default function AdminExamsPage() {
                     <label className="block text-xs font-semibold text-gray-500 mb-1.5">
                       Exam Name *
                     </label>
-                    <input
+                    <Input
                       type="text"
                       required
                       value={form.name}
@@ -1143,7 +1146,7 @@ export default function AdminExamsPage() {
                       <label className="block text-xs font-semibold text-gray-500 mb-1.5">
                         Exam Start Date *
                       </label>
-                      <input
+                      <Input
                         type="date"
                         required
                         value={form.startDate}
@@ -1157,7 +1160,7 @@ export default function AdminExamsPage() {
                       <label className="block text-xs font-semibold text-gray-500 mb-1.5">
                         Exam End Date *
                       </label>
-                      <input
+                      <Input
                         type="date"
                         required
                         value={form.endDate}
@@ -1180,7 +1183,7 @@ export default function AdminExamsPage() {
                       <label className="block text-xs font-semibold text-gray-500 mb-1.5">
                         Mark Entry Opens On *
                       </label>
-                      <input
+                      <Input
                         type="date"
                         required
                         value={
@@ -1200,7 +1203,7 @@ export default function AdminExamsPage() {
                       <label className="block text-xs font-semibold text-gray-500 mb-1.5">
                         Mark Entry Closes On *
                       </label>
-                      <input
+                      <Input
                         type="date"
                         required
                         value={form.markEntryLastDate}
@@ -1225,7 +1228,7 @@ export default function AdminExamsPage() {
                     <label className="block text-xs font-semibold text-gray-500 mb-1.5">
                       Result Publish Date *
                     </label>
-                    <input
+                    <Input
                       type="date"
                       required
                       value={form.publishedDate}
@@ -1242,7 +1245,7 @@ export default function AdminExamsPage() {
                     <label className="block text-xs font-semibold text-gray-500 mb-1.5">
                       Initial Status
                     </label>
-                    <select
+                    <Select
                       value={form.examStatus}
                       onChange={(e) =>
                         setForm((f) => ({
@@ -1256,19 +1259,19 @@ export default function AdminExamsPage() {
                       <option value="MARK_ENTRY">Mark Entry Open</option>
                       <option value="PUBLISHED">Published</option>
                       <option value="CANCELLED">Cancelled</option>
-                    </select>
+                    </Select>
                   </div>
                 </div>
 
                 <div className="flex gap-3 mt-6 pt-5 border-t border-gray-100">
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setDrawerOpen(false)}
                     className="flex-1 py-3 border border-gray-200 hover:bg-gray-50 text-gray-600 rounded-xl text-sm font-bold transition-colors"
                   >
                     Cancel
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="submit"
                     disabled={submitting}
                     className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-2 transition-colors shadow-sm"
@@ -1277,7 +1280,7 @@ export default function AdminExamsPage() {
                       <Loader2 className="w-4 h-4 animate-spin" />
                     )}
                     {drawerMode === "create" ? "Create Exam" : "Save Changes"}
-                  </button>
+                  </Button>
                 </div>
               </form>
             </motion.div>
@@ -1316,14 +1319,14 @@ export default function AdminExamsPage() {
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3 mt-6">
-                <button
+                <Button
                   onClick={() => setShowDeleteExamConfirm(false)}
                   disabled={deletingId !== null}
                   className="py-2.5 rounded-xl border border-gray-200 text-gray-600 font-bold text-xs hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={handleDeleteExam}
                   disabled={deletingId !== null}
                   className="py-2.5 rounded-xl bg-rose-600 text-white font-bold text-xs hover:bg-rose-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-1"
@@ -1332,7 +1335,7 @@ export default function AdminExamsPage() {
                     <Loader2 className="w-3 h-3 animate-spin" />
                   )}
                   {deletingId !== null ? "Deleting…" : "Delete"}
-                </button>
+                </Button>
               </div>
             </motion.div>
           </>
@@ -1359,7 +1362,7 @@ function ReportMarklistTab({ report, marklistStudId, setMarklistStudId, madrasaN
     <div className="space-y-6">
       <div className="flex gap-2 flex-wrap">
         {students.map((r) => (
-          <button key={r.student.id}
+          <Button key={r.student.id}
             onClick={() => setMarklistStudId(r.student.id === marklistStudId ? null : r.student.id)}
             className={cn(
               "px-3 py-1.5 rounded-lg text-sm font-medium border transition-all",
@@ -1370,7 +1373,7 @@ function ReportMarklistTab({ report, marklistStudId, setMarklistStudId, madrasaN
           >
             {r.summary.rank === 1 ? "🥇 " : r.summary.rank === 2 ? "🥈 " : r.summary.rank === 3 ? "🥉 " : ""}
             {r.student.name}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -1418,14 +1421,14 @@ function ReportStatusTab({ report, statusMap, setStatusMap, savingId, savingAll,
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <p className="text-sm text-gray-500">Set final result status for each student. Grade is optional.</p>
-        <button
+        <Button
           onClick={onSaveAll}
           disabled={savingAll || !report.students.some((r) => statusMap[r.student.id]?.finalStatus)}
           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold disabled:opacity-40 transition-colors"
         >
           {savingAll ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
           Save All
-        </button>
+        </Button>
       </div>
       {statusMsg && (
         <div className={cn(
@@ -1465,7 +1468,7 @@ function ReportStatusTab({ report, statusMap, setStatusMap, savingId, savingAll,
                     {row.summary.rank ?? "—"}
                   </td>
                   <td className="px-4 py-3">
-                    <select
+                    <Select
                       value={entry?.finalStatus ?? ""}
                       onChange={(e) => setStatusMap((m) => ({
                         ...m,
@@ -1475,10 +1478,10 @@ function ReportStatusTab({ report, statusMap, setStatusMap, savingId, savingAll,
                     >
                       <option value="">— Select —</option>
                       {statusOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
+                    </Select>
                   </td>
                   <td className="px-4 py-3">
-                    <select
+                    <Select
                       value={entry?.totalGrade ?? ""}
                       onChange={(e) => setStatusMap((m) => ({
                         ...m,
@@ -1488,17 +1491,17 @@ function ReportStatusTab({ report, statusMap, setStatusMap, savingId, savingAll,
                     >
                       <option value="">— Optional —</option>
                       {TOTAL_GRADE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
+                    </Select>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <button
+                    <Button
                       onClick={() => onSave(row)}
                       disabled={!entry?.finalStatus || isSaving}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium disabled:opacity-40 transition-colors"
                     >
                       {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
                       Save
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               );
@@ -1554,7 +1557,7 @@ function ReportPostersTab({ report, posterStudentId, setPosterStudentId, madrasa
           </h3>
           <div className="flex gap-2 flex-wrap mb-4">
             {rankedStudents.map((r) => (
-              <button key={r.student.id}
+              <Button key={r.student.id}
                 onClick={() => setPosterStudentId(r.student.id === posterStudentId ? null : r.student.id)}
                 className={cn(
                   "px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all",
@@ -1564,7 +1567,7 @@ function ReportPostersTab({ report, posterStudentId, setPosterStudentId, madrasa
                 )}
               >
                 {r.summary.rank === 1 ? "🥇" : r.summary.rank === 2 ? "🥈" : "🥉"} {r.student.name}
-              </button>
+              </Button>
             ))}
           </div>
 

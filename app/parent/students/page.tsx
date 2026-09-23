@@ -1,7 +1,12 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Textarea } from "@/components/ui/Textarea";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Drawer } from "@/components/ui/Drawer";
 import {
   useStudentProfileV2,
   useUpdateStudent,
@@ -150,12 +155,12 @@ export default function ParentStudentProfile() {
         <div className="text-center py-20 text-gray-400">
           <User className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="font-semibold text-lg">{t("parentPages", "noStudentSelected", lang)}</p>
-          <button
+          <Button
             onClick={() => navigate(-1)}
             className="mt-4 text-emerald-600 font-semibold text-sm underline"
           >
             {t("parentPages", "goBack", lang)}
-          </button>
+          </Button>
         </div>
       </DashboardLayout>
     );
@@ -185,7 +190,7 @@ export default function ParentStudentProfile() {
             const info = students.find((s) => s.id === id);
             const isActive = id === studentId;
             return (
-              <button
+              <Button
                 key={id}
                 onClick={() => switchStudent(id)}
                 className={cn(
@@ -196,7 +201,7 @@ export default function ParentStudentProfile() {
                 )}
               >
                 {info?.name ?? `Student`}
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -237,12 +242,12 @@ export default function ParentStudentProfile() {
               <h2 className="text-lg font-bold text-gray-900 truncate">
                 {student.name}
               </h2>
-              <button
+              <Button
                 onClick={openEdit}
                 className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-semibold transition-colors"
               >
                 <Pencil className="w-3.5 h-3.5" /> {t("parentPages", "editStudentBtn", lang)}
-              </button>
+              </Button>
             </div>
             <p className="text-sm text-gray-500">{student.adno}</p>
             <div className="flex gap-2 mt-1.5 flex-wrap">
@@ -426,26 +431,13 @@ export default function ParentStudentProfile() {
       </div>
 
       {/* ── Edit Drawer ── */}
-      <AnimatePresence>
-        {showEdit && (
-          <>
-            <motion.div
-              key="edit-backdrop"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowEdit(false)}
-              className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
-            />
-            <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-none md:p-4">
-              <motion.div
-                key="edit-drawer"
-                initial={{ y: "100%", opacity: 1 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: "100%", opacity: 1 }}
-                transition={{ type: "spring", damping: 30, stiffness: 300 }}
-                className="w-full bg-white flex flex-col pointer-events-auto shadow-2xl relative rounded-t-3xl md:rounded-3xl max-h-[92dvh] md:max-h-[85dvh] md:max-w-xl"
-              >
+      <Drawer
+        open={showEdit}
+        onClose={() => setShowEdit(false)}
+        title={t("parentPages", "editStudent", lang)}
+        description={student.name}
+        contentClassName="px-5 py-4 space-y-6 pb-8"
+      >
                 <div className="flex justify-center pt-3 pb-1 shrink-0 md:hidden">
                   <div className="w-10 h-1 bg-gray-300 rounded-full" />
                 </div>
@@ -458,15 +450,15 @@ export default function ParentStudentProfile() {
                       {student.name}
                     </p>
                   </div>
-                  <button
+                  <Button
                     onClick={() => setShowEdit(false)}
                     className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200"
                   >
                     <X className="w-4 h-4" />
-                  </button>
+                  </Button>
                 </div>
 
-                <div className="overflow-y-auto flex-1 px-5 py-4 space-y-6 pb-8">
+                <div className="space-y-6">
                   {editError && (
                     <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl">
                       {editError}
@@ -506,7 +498,7 @@ export default function ParentStudentProfile() {
                             <Upload className="w-4 h-4" />
                           )}
                           {photoMutation.isPending ? t("parentPages", "uploadingLabel", lang) : t("parentPages", "choosePhoto", lang)}
-                          <input
+                          <Input
                             type="file"
                             accept="image/*"
                             disabled={photoMutation.isPending}
@@ -537,7 +529,7 @@ export default function ParentStudentProfile() {
                     <div className="space-y-3">
                       <div>
                         <label className={labelCls}>{t("parentPages", "bloodGroupLabel", lang)}</label>
-                        <select
+                        <Select
                           value={editForm.bloodGroup}
                           onChange={(e) =>
                             setEditForm((f) => ({
@@ -562,13 +554,13 @@ export default function ParentStudentProfile() {
                               {bg}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       </div>
                       <div>
                         <label className={labelCls}>
                           {t("parentPages", "emergencyContactLabel", lang)}
                         </label>
-                        <input
+                        <Input
                           value={editForm.emergencyContactName}
                           onChange={(e) =>
                             setEditForm((f) => ({
@@ -584,7 +576,7 @@ export default function ParentStudentProfile() {
                         <label className={labelCls}>
                           {t("parentPages", "parentPhoneLabel", lang)}
                         </label>
-                        <input
+                        <Input
                           value={editForm.emergencyContactPhone}
                           onChange={(e) =>
                             setEditForm((f) => ({
@@ -599,7 +591,7 @@ export default function ParentStudentProfile() {
                       </div>
                       <div>
                         <label className={labelCls}>{t("parentPages", "medicalNotes", lang)}</label>
-                        <textarea
+                        <Textarea
                           value={editForm.medicalNotes}
                           onChange={(e) =>
                             setEditForm((f) => ({
@@ -616,14 +608,14 @@ export default function ParentStudentProfile() {
                   </section>
                 </div>
 
-                <div className="px-5 py-4 border-t border-gray-100 shrink-0 flex gap-3">
-                  <button
+                <div className="pt-4 border-t border-gray-100 flex gap-3">
+                  <Button
                     onClick={() => setShowEdit(false)}
                     className="flex-1 py-3.5 text-sm font-semibold text-gray-500 bg-gray-100 rounded-2xl hover:bg-gray-200 transition-all"
                   >
                     {t("parentPages", "cancelLabel", lang)}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={handleSave}
                     disabled={updateMutation.isPending}
                     className="flex-1 bg-emerald-600 text-white font-bold py-3.5 rounded-2xl text-sm active:scale-[0.98] transition-transform shadow-lg disabled:opacity-60"
@@ -635,13 +627,9 @@ export default function ParentStudentProfile() {
                     ) : (
                       t("parentPages", "saveChanges", lang)
                     )}
-                  </button>
+                  </Button>
                 </div>
-              </motion.div>
-            </div>
-          </>
-        )}
-      </AnimatePresence>
+      </Drawer>
     </DashboardLayout>
   );
 }

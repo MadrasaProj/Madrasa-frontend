@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Select";
 import { useState, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import type { ExamRecord } from "@/lib/exams-api";
@@ -264,15 +266,15 @@ function ParentResultCard({
           Save & Share
         </p>
         <div className="flex items-stretch gap-1.5">
-          <button
+          <Button
             onClick={() => run("share")}
             disabled={!!exporting}
             className="flex-1 inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-[13px] sm:text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 transition-all duration-200 ease-out shadow-sm hover:shadow active:scale-[0.98]"
           >
             {exporting === "share" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
             Share
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => run("jpg")}
             disabled={!!exporting}
             className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-[13px] sm:text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 hover:text-gray-900 disabled:opacity-50 transition-all duration-200 ease-out active:scale-[0.98]"
@@ -280,8 +282,8 @@ function ParentResultCard({
           >
             {exporting === "jpg" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
             JPG
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => run("png")}
             disabled={!!exporting}
             className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-[13px] sm:text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 hover:text-gray-900 disabled:opacity-50 transition-all duration-200 ease-out active:scale-[0.98]"
@@ -289,8 +291,8 @@ function ParentResultCard({
           >
             {exporting === "png" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
             PNG
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => run("pdf")}
             disabled={!!exporting}
             className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-[13px] sm:text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 hover:text-gray-900 disabled:opacity-50 transition-all duration-200 ease-out active:scale-[0.98]"
@@ -298,7 +300,7 @@ function ParentResultCard({
           >
             {exporting === "pdf" ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
             PDF
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -354,26 +356,26 @@ function ParentRankCard({
     <div className="space-y-4">
       {/* Controls */}
       <div className="flex items-center gap-2 flex-wrap">
-        <button onClick={() => run("jpg")} disabled={!!exporting}
+        <Button onClick={() => run("jpg")} disabled={!!exporting}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
           {exporting === "jpg" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
           JPG
-        </button>
-        <button onClick={() => run("png")} disabled={!!exporting}
+        </Button>
+        <Button onClick={() => run("png")} disabled={!!exporting}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
           {exporting === "png" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
           PNG
-        </button>
-        <button onClick={() => run("pdf")} disabled={!!exporting}
+        </Button>
+        <Button onClick={() => run("pdf")} disabled={!!exporting}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
           {exporting === "pdf" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
           PDF
-        </button>
-        <button onClick={() => run("share")} disabled={!!exporting}
+        </Button>
+        <Button onClick={() => run("share")} disabled={!!exporting}
           className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 transition-colors ml-auto">
           {exporting === "share" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Share2 className="w-3.5 h-3.5" />}
           Share Poster
-        </button>
+        </Button>
       </div>
 
       {/* Poster design */}
@@ -525,12 +527,12 @@ export default function ParentResultsPage() {
       <div className="px-3 sm:px-4 py-3 lg:px-8 lg:py-6 space-y-5 sm:space-y-6">
         {/* Breadcrumb Header */}
         <div className="flex items-center gap-2.5 sm:gap-3 print:hidden">
-          <button
+          <Button
             onClick={() => window.history.back()}
             className="p-2 border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors text-gray-600 active:scale-[0.95]"
           >
             <ArrowLeft className="w-4 h-4" />
-          </button>
+          </Button>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-gray-400 font-bold uppercase tracking-wider">
               <span className="truncate">Exams</span>
@@ -577,7 +579,7 @@ export default function ParentResultsPage() {
             {ids.length > 1 && (
               <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 print:hidden">
                 {students.map((s) => (
-                  <button key={s.id}
+                  <Button key={s.id}
                     onClick={() => { setSelectedChildId(s.id); setActiveExamId(""); }}
                     className={cn(
                       "px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors border active:scale-[0.97]",
@@ -586,7 +588,7 @@ export default function ParentResultsPage() {
                         : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50",
                     )}>
                     {s.name}
-                  </button>
+                  </Button>
                 ))}
               </div>
             )}
@@ -619,18 +621,18 @@ export default function ParentResultsPage() {
 
                 <div className="flex items-center gap-2 self-start md:self-end shrink-0 print:hidden">
                   <div className="relative">
-                    <select
+                    <Select
                       value={activeExamId}
                       onChange={(e) => setActiveExamId(e.target.value)}
                       className="appearance-none pl-3 pr-8 py-2 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:border-gray-400 focus:outline-none focus:border-emerald-500 transition-colors cursor-pointer"
                     >
                       {exams.map((ex) => <option key={ex.id} value={ex.id}>{ex.name}</option>)}
-                    </select>
+                    </Select>
                     <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
                   </div>
-                  <button onClick={() => refetchExams()} className="p-2 text-gray-500 hover:text-gray-900 border border-gray-200 hover:border-gray-400 rounded-xl transition-colors bg-white">
+                  <Button onClick={() => refetchExams()} className="p-2 text-gray-500 hover:text-gray-900 border border-gray-200 hover:border-gray-400 rounded-xl transition-colors bg-white">
                     <RefreshCw className={cn("w-4 h-4", isRefetching && "animate-spin")} />
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -638,32 +640,32 @@ export default function ParentResultsPage() {
             {/* Action bar — opens drawers */}
             {activeExam && activeStudent && results.length > 0 && (
               <div className="flex items-center gap-2 flex-wrap print:hidden">
-                <button
+                <Button
                   onClick={() => setOverviewOpen(true)}
                   className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 transition-colors active:scale-[0.97]"
                 >
                   <Eye className="w-3.5 h-3.5" /> Overview
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => setCardOpen(true)}
                   className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors active:scale-[0.97] shadow-sm"
                 >
                   <FileBadge2 className="w-3.5 h-3.5" /> Result Card
-                </button>
+                </Button>
                 {canRankCard && (
-                  <button
+                  <Button
                     onClick={() => setPosterOpen(true)}
                     className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 transition-colors active:scale-[0.97]"
                   >
                     <Trophy className="w-3.5 h-3.5" /> Rank Poster
-                  </button>
+                  </Button>
                 )}
-                <button
+                <Button
                   onClick={() => window.print()}
                   className="ml-auto inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 transition-colors active:scale-[0.97]"
                 >
                   <Printer className="w-3.5 h-3.5" /> Print
-                </button>
+                </Button>
               </div>
             )}
 

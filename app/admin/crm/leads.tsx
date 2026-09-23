@@ -1,3 +1,7 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Textarea } from "@/components/ui/Textarea";
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -380,7 +384,7 @@ export default function CrmLeadsPage() {
               const isDone = i < currentStepIdx || (isWon && step.key === "won");
               return (
                 <div key={step.key} className="flex items-center gap-1 shrink-0">
-                  <button
+                  <Button
                     type="button"
                     onClick={() => handleUpdateStage(step.statuses[0])}
                     className={cn(
@@ -392,7 +396,7 @@ export default function CrmLeadsPage() {
                   >
                     {isDone && !isActive ? <Check className="w-3 h-3 inline mr-1" /> : null}
                     {step.label}
-                  </button>
+                  </Button>
                   {i < PIPELINE_STEPS.length - 1 && (
                     <ChevronRight className="w-3 h-3 text-gray-300 shrink-0" />
                   )}
@@ -403,19 +407,19 @@ export default function CrmLeadsPage() {
           {/* Quick override select */}
           <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
             <span className="text-[10px] text-gray-400 uppercase font-bold shrink-0">Override Status:</span>
-            <select
+            <Select
               value={lead.status}
               onChange={e => handleUpdateStage(e.target.value)}
               className="bg-white border border-gray-100 text-xs font-semibold py-1 px-2 rounded-lg focus:outline-none focus:border-emerald-600 text-gray-700 flex-1"
             >
               {LEAD_STATUSES.map(s => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
-            </select>
+            </Select>
           </div>
         </div>
 
         {/* ── Quick Actions Bar ── */}
         <div className="grid grid-cols-3 gap-2">
-          <button
+          <Button
             type="button"
             onClick={() => setActiveSection(activeSection === "followup" ? null : "followup")}
             className={cn(
@@ -427,8 +431,8 @@ export default function CrmLeadsPage() {
           >
             <Phone className="w-4 h-4" />
             <span className="text-[10px] font-bold">Log Follow-up</span>
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={() => setActiveSection(activeSection === "demo" ? null : "demo")}
             disabled={isWon}
@@ -441,9 +445,9 @@ export default function CrmLeadsPage() {
           >
             <Calendar className="w-4 h-4" />
             <span className="text-[10px] font-bold">Log Demo</span>
-          </button>
+          </Button>
           {!isWon && (
-            <button
+            <Button
               type="button"
               onClick={handleProvisionTrial}
               disabled={actionLoading || lead.status === "TRIAL_CREATED"}
@@ -453,7 +457,7 @@ export default function CrmLeadsPage() {
               <span className="text-[10px] font-bold">
                 {lead.status === "TRIAL_CREATED" ? "Trial Active" : "Launch Trial"}
               </span>
-            </button>
+            </Button>
           )}
           {isWon && (
             <div className="flex flex-col items-center p-3 rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-center gap-1.5">
@@ -465,7 +469,7 @@ export default function CrmLeadsPage() {
 
         {/* Convert button — full width, prominent */}
         {!isWon && (
-          <button
+          <Button
             type="button"
             onClick={() => setActiveSection(activeSection === "convert" ? null : "convert")}
             className={cn(
@@ -477,7 +481,7 @@ export default function CrmLeadsPage() {
           >
             <DollarSign className="w-4 h-4" />
             Convert to Paying Client
-          </button>
+          </Button>
         )}
 
         {/* ── Inline: Follow-up Form ── */}
@@ -494,17 +498,17 @@ export default function CrmLeadsPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Type</label>
-                    <select
+                    <Select
                       value={activityForm.type}
                       onChange={e => setActivityForm(p => ({ ...p, type: e.target.value }))}
                       className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none focus:border-blue-500"
                     >
                       {ACTIVITY_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                    </select>
+                    </Select>
                   </div>
                   <div>
                     <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Schedule Follow-up</label>
-                    <input
+                    <Input
                       type="date"
                       value={activityForm.followUpDate}
                       onChange={e => setActivityForm(p => ({ ...p, followUpDate: e.target.value }))}
@@ -512,7 +516,7 @@ export default function CrmLeadsPage() {
                     />
                   </div>
                 </div>
-                <textarea
+                <Textarea
                   required
                   rows={2}
                   value={activityForm.notes}
@@ -521,15 +525,15 @@ export default function CrmLeadsPage() {
                   className="w-full bg-white border border-gray-100 text-xs p-3 rounded-xl focus:outline-none focus:border-blue-500 resize-none"
                 />
                 <div className="flex gap-2">
-                  <button type="submit" disabled={actionLoading}
+                  <Button type="submit" disabled={actionLoading}
                     className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5">
                     {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                     Save Follow-up
-                  </button>
-                  <button type="button" onClick={() => setActiveSection(null)}
+                  </Button>
+                  <Button type="button" onClick={() => setActiveSection(null)}
                     className="px-4 bg-white border border-gray-100 text-gray-500 text-xs font-bold rounded-xl hover:bg-gray-50">
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </form>
             </motion.div>
@@ -550,54 +554,54 @@ export default function CrmLeadsPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Demo Date & Time</label>
-                    <input type="datetime-local" required value={demoForm.date}
+                    <Input type="datetime-local" required value={demoForm.date}
                       onChange={e => setDemoForm(p => ({ ...p, date: e.target.value }))}
                       className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none focus:border-violet-500"
                     />
                   </div>
                   <div>
                     <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Mode</label>
-                    <select value={demoForm.type} onChange={e => setDemoForm(p => ({ ...p, type: e.target.value }))}
+                    <Select value={demoForm.type} onChange={e => setDemoForm(p => ({ ...p, type: e.target.value }))}
                       className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none">
                       <option value="Online">Online Call</option>
                       <option value="Site-Visit">Site Visit</option>
-                    </select>
+                    </Select>
                   </div>
                 </div>
                 <div>
                   <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Outcome</label>
-                  <select value={demoForm.outcome} onChange={e => setDemoForm(p => ({ ...p, outcome: e.target.value }))}
+                  <Select value={demoForm.outcome} onChange={e => setDemoForm(p => ({ ...p, outcome: e.target.value }))}
                     className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none focus:border-violet-500 font-semibold">
                     <option value="INTERESTED">✅ Interested — Moving Forward</option>
                     <option value="NEED_FOLLOW_UP">🔁 Needs Another Follow-up</option>
                     <option value="NEED_COMMITTEE_APPROVAL">📋 Needs Committee Approval</option>
                     <option value="TRIAL_REQUESTED">🧪 Requested Trial</option>
                     <option value="NOT_INTERESTED">❌ Not Interested</option>
-                  </select>
+                  </Select>
                 </div>
                 <div>
                   <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Attendees (comma-separated)</label>
-                  <input type="text" value={demoForm.attendees}
+                  <Input type="text" value={demoForm.attendees}
                     onChange={e => setDemoForm(p => ({ ...p, attendees: e.target.value }))}
                     placeholder="Sadr Usthad, Secretary..."
                     className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none"
                   />
                 </div>
-                <textarea rows={2} value={demoForm.notes}
+                <Textarea rows={2} value={demoForm.notes}
                   onChange={e => setDemoForm(p => ({ ...p, notes: e.target.value }))}
                   placeholder="Key features shown, objections raised, client feedback..."
                   className="w-full bg-white border border-gray-100 text-xs p-3 rounded-xl focus:outline-none resize-none"
                 />
                 <div className="flex gap-2">
-                  <button type="submit" disabled={actionLoading}
+                  <Button type="submit" disabled={actionLoading}
                     className="flex-1 bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5">
                     {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                     Save Demo
-                  </button>
-                  <button type="button" onClick={() => setActiveSection(null)}
+                  </Button>
+                  <Button type="button" onClick={() => setActiveSection(null)}
                     className="px-4 bg-white border border-gray-100 text-gray-500 text-xs font-bold rounded-xl hover:bg-gray-50">
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </form>
             </motion.div>
@@ -617,7 +621,7 @@ export default function CrmLeadsPage() {
                 <h4 className="text-xs font-black text-indigo-800">Convert to Paying Client</h4>
                 <div>
                   <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Subdomain Slug</label>
-                  <input required type="text" value={convertForm.subdomain}
+                  <Input required type="text" value={convertForm.subdomain}
                     onChange={e => setConvertForm(p => ({ ...p, subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "") }))}
                     className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none font-mono"
                   />
@@ -628,14 +632,14 @@ export default function CrmLeadsPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Admin Name</label>
-                    <input type="text" value={convertForm.adminName}
+                    <Input type="text" value={convertForm.adminName}
                       onChange={e => setConvertForm(p => ({ ...p, adminName: e.target.value }))}
                       className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none"
                     />
                   </div>
                   <div>
                     <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Login (Phone/Email)</label>
-                    <input required type="text" value={convertForm.adminIdentifier}
+                    <Input required type="text" value={convertForm.adminIdentifier}
                       onChange={e => setConvertForm(p => ({ ...p, adminIdentifier: e.target.value }))}
                       className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none"
                     />
@@ -644,14 +648,14 @@ export default function CrmLeadsPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Password</label>
-                    <input required type="text" value={convertForm.adminPassword}
+                    <Input required type="text" value={convertForm.adminPassword}
                       onChange={e => setConvertForm(p => ({ ...p, adminPassword: e.target.value }))}
                       className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl font-mono focus:outline-none"
                     />
                   </div>
                   <div>
                     <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Amount Paid (₹)</label>
-                    <input required type="number" value={convertForm.amountPaid}
+                    <Input required type="number" value={convertForm.amountPaid}
                       onChange={e => setConvertForm(p => ({ ...p, amountPaid: Number(e.target.value) }))}
                       className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none"
                     />
@@ -666,15 +670,15 @@ export default function CrmLeadsPage() {
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  <button type="submit" disabled={actionLoading}
+                  <Button type="submit" disabled={actionLoading}
                     className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5">
                     {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <TrendingUp className="w-3.5 h-3.5" />}
                     Activate & Split Commission
-                  </button>
-                  <button type="button" onClick={() => setActiveSection(null)}
+                  </Button>
+                  <Button type="button" onClick={() => setActiveSection(null)}
                     className="px-4 bg-white border border-gray-100 text-gray-500 text-xs font-bold rounded-xl hover:bg-gray-50">
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </form>
             </motion.div>
@@ -713,13 +717,13 @@ export default function CrmLeadsPage() {
                 </p>
                 <p className="text-gray-500 mt-0.5">{c.phone}</p>
               </div>
-              <button
+              <Button
                 type="button"
                 onClick={() => copyToClipboard(c.phone, c.phone)}
                 className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
               >
                 {copiedText === c.phone ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-              </button>
+              </Button>
             </div>
           ))}
         </div>
@@ -802,13 +806,13 @@ export default function CrmLeadsPage() {
 
         {/* Delete */}
         {canDelete && (
-          <button
+          <Button
             type="button"
             onClick={() => handleDeleteLead(lead.id)}
             className="w-full py-2.5 text-rose-600 border border-rose-100 rounded-2xl text-xs font-bold hover:bg-rose-50 transition-all flex items-center justify-center gap-1.5"
           >
             <Trash className="w-3.5 h-3.5" /> Delete Lead
-          </button>
+          </Button>
         )}
       </div>
     );
@@ -824,12 +828,12 @@ export default function CrmLeadsPage() {
             <h1 className="text-2xl font-black text-gray-800">Leads Pipeline</h1>
             <p className="text-gray-400 text-xs mt-0.5">Manage client pipeline · {leads.length} total leads</p>
           </div>
-          <button
+          <Button
             onClick={() => setShowAddDrawer(true)}
             className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-4 py-2.5 rounded-xl transition-all shadow-sm active:scale-95"
           >
             <Plus className="w-4 h-4" /> Add Lead
-          </button>
+          </Button>
         </div>
 
         {/* Toast messages */}
@@ -845,9 +849,9 @@ export default function CrmLeadsPage() {
               )}
             >
               <span className="leading-snug">{error || successMsg}</span>
-              <button onClick={() => { setError(null); setSuccessMsg(null); }} className="shrink-0">
+              <Button onClick={() => { setError(null); setSuccessMsg(null); }} className="shrink-0">
                 <X className="w-4 h-4" />
-              </button>
+              </Button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -856,7 +860,7 @@ export default function CrmLeadsPage() {
         <div className="flex flex-col sm:flex-row gap-2.5 mb-5">
           <div className="relative flex-1">
             <Search className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
-            <input
+            <Input
               type="text" value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search by name, place, district..."
               className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-sm placeholder-gray-400 focus:outline-none focus:border-emerald-500"
@@ -866,7 +870,7 @@ export default function CrmLeadsPage() {
             {[{ key: "ALL", label: "All", count: leads.length }, ...LEAD_STATUSES.map(s => ({
               key: s, label: s.replace(/_/g, " "), count: leads.filter(l => l.status === s).length
             }))].map(item => (
-              <button key={item.key} type="button"
+              <Button key={item.key} type="button"
                 onClick={() => setActiveStage(item.key)}
                 className={cn(
                   "shrink-0 px-3 py-2 text-[10px] font-bold rounded-xl border transition-all flex items-center gap-1.5",
@@ -879,7 +883,7 @@ export default function CrmLeadsPage() {
                 <span className={cn("px-1.5 py-0.5 rounded-full text-[9px] font-bold",
                   activeStage === item.key ? "bg-emerald-700 text-white" : "bg-gray-100 text-gray-400"
                 )}>{item.count}</span>
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -912,8 +916,8 @@ export default function CrmLeadsPage() {
                 {filteredLeads.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-16 gap-2 text-center px-4">
                     <p className="text-xs text-gray-400">No leads in this stage.</p>
-                    <button onClick={() => setShowAddDrawer(true)}
-                      className="text-[10px] font-bold text-emerald-600 hover:underline">+ Add a lead</button>
+                    <Button onClick={() => setShowAddDrawer(true)}
+                      className="text-[10px] font-bold text-emerald-600 hover:underline">+ Add a lead</Button>
                   </div>
                 )}
                 {filteredLeads.map(l => {
@@ -975,9 +979,9 @@ export default function CrmLeadsPage() {
                         · {selectedLead.studentCount} students
                       </p>
                     </div>
-                    <button onClick={closeLead} className="p-1.5 text-gray-400 hover:bg-gray-100 rounded-lg transition-all shrink-0">
+                    <Button onClick={closeLead} className="p-1.5 text-gray-400 hover:bg-gray-100 rounded-lg transition-all shrink-0">
                       <X className="w-4 h-4" />
-                    </button>
+                    </Button>
                   </div>
                   <div className="flex-1 overflow-y-auto p-5 scrollbar-thin">
                     {renderDetailContent()}
@@ -1049,9 +1053,9 @@ export default function CrmLeadsPage() {
                           {selectedLead.type} · {selectedLead.place} · {selectedLead.studentCount} students
                         </p>
                       </div>
-                      <button onClick={closeLead} className="p-1.5 text-gray-400 shrink-0">
+                      <Button onClick={closeLead} className="p-1.5 text-gray-400 shrink-0">
                         <X className="w-4 h-4" />
-                      </button>
+                      </Button>
                     </div>
                     <div className="overflow-y-auto flex-1 p-4">
                       {renderDetailContent()}
@@ -1080,14 +1084,14 @@ export default function CrmLeadsPage() {
                 <div className="p-5 space-y-5">
                   <div className="flex items-center justify-between border-b border-gray-100 pb-4">
                     <h3 className="text-lg font-black text-gray-800">Add New Lead</h3>
-                    <button onClick={() => setShowAddDrawer(false)} className="p-2 text-gray-400 hover:bg-gray-100 rounded-xl">
+                    <Button onClick={() => setShowAddDrawer(false)} className="p-2 text-gray-400 hover:bg-gray-100 rounded-xl">
                       <X className="w-5 h-5" />
-                    </button>
+                    </Button>
                   </div>
                   <form onSubmit={handleCreateLead} className="space-y-4">
                     <div>
                       <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Madrasa Name *</label>
-                      <input required type="text" value={newLeadForm.name}
+                      <Input required type="text" value={newLeadForm.name}
                         onChange={e => setNewLeadForm(p => ({ ...p, name: e.target.value }))}
                         placeholder="e.g. Darul Uloom Kozhikode"
                         className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-sm focus:outline-none focus:border-emerald-500"
@@ -1097,24 +1101,24 @@ export default function CrmLeadsPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Syllabus Type</label>
-                        <select value={newLeadForm.type} onChange={e => setNewLeadForm(p => ({ ...p, type: e.target.value }))}
+                        <Select value={newLeadForm.type} onChange={e => setNewLeadForm(p => ({ ...p, type: e.target.value }))}
                           className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-sm focus:outline-none">
                           {["Samastha", "AP", "Fadhila", "Other"].map(t => <option key={t} value={t}>{t}</option>)}
-                        </select>
+                        </Select>
                       </div>
                       <div>
                         <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Lead Source</label>
-                        <select value={newLeadForm.source} onChange={e => setNewLeadForm(p => ({ ...p, source: e.target.value }))}
+                        <Select value={newLeadForm.source} onChange={e => setNewLeadForm(p => ({ ...p, source: e.target.value }))}
                           className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-sm focus:outline-none">
                           {LEAD_SOURCES.map(s => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
-                        </select>
+                        </Select>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">District</label>
-                        <select required value={newLeadForm.districtId}
+                        <Select required value={newLeadForm.districtId}
                           onChange={e => {
                             const d = districts.find(d => d.id === e.target.value);
                             setNewLeadForm(p => ({ ...p, districtId: e.target.value, district: d?.name ?? "" }));
@@ -1122,11 +1126,11 @@ export default function CrmLeadsPage() {
                           className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-sm focus:outline-none">
                           <option value="">Select District</option>
                           {districts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                        </select>
+                        </Select>
                       </div>
                       <div>
                         <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Place *</label>
-                        <input required type="text" value={newLeadForm.place}
+                        <Input required type="text" value={newLeadForm.place}
                           onChange={e => setNewLeadForm(p => ({ ...p, place: e.target.value }))}
                           placeholder="Town / Village"
                           className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-sm focus:outline-none"
@@ -1137,14 +1141,14 @@ export default function CrmLeadsPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Students</label>
-                        <input type="number" value={newLeadForm.studentCount}
+                        <Input type="number" value={newLeadForm.studentCount}
                           onChange={e => setNewLeadForm(p => ({ ...p, studentCount: Number(e.target.value) }))}
                           className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-sm focus:outline-none"
                         />
                       </div>
                       <div>
                         <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Teachers</label>
-                        <input type="number" value={newLeadForm.teacherCount}
+                        <Input type="number" value={newLeadForm.teacherCount}
                           onChange={e => setNewLeadForm(p => ({ ...p, teacherCount: Number(e.target.value) }))}
                           className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-sm focus:outline-none"
                         />
@@ -1157,14 +1161,14 @@ export default function CrmLeadsPage() {
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <label className="block text-[9px] text-gray-400 mb-1">Full Name *</label>
-                          <input required type="text" value={newLeadForm.contactName}
+                          <Input required type="text" value={newLeadForm.contactName}
                             onChange={e => setNewLeadForm(p => ({ ...p, contactName: e.target.value }))}
                             className="w-full bg-white border border-gray-100 rounded-lg p-2 text-xs focus:outline-none"
                           />
                         </div>
                         <div>
                           <label className="block text-[9px] text-gray-400 mb-1">Phone *</label>
-                          <input required type="tel" value={newLeadForm.contactPhone}
+                          <Input required type="tel" value={newLeadForm.contactPhone}
                             onChange={e => setNewLeadForm(p => ({ ...p, contactPhone: e.target.value }))}
                             className="w-full bg-white border border-gray-100 rounded-lg p-2 text-xs focus:outline-none"
                           />
@@ -1172,11 +1176,11 @@ export default function CrmLeadsPage() {
                       </div>
                       <div>
                         <label className="block text-[9px] text-gray-400 mb-1">Role / Designation</label>
-                        <select value={newLeadForm.contactRole}
+                        <Select value={newLeadForm.contactRole}
                           onChange={e => setNewLeadForm(p => ({ ...p, contactRole: e.target.value }))}
                           className="w-full bg-white border border-gray-100 rounded-lg p-2 text-xs focus:outline-none">
                           {CONTACT_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                        </select>
+                        </Select>
                       </div>
                     </div>
 
@@ -1186,7 +1190,7 @@ export default function CrmLeadsPage() {
                         <h4 className="text-xs font-bold text-emerald-800">Attribution & Commission Split</h4>
                         <div>
                           <label className="block text-[9px] text-gray-400 mb-1">Total Commission Rate (%)</label>
-                          <input type="number" value={newLeadForm.commissionPercentage} min={1} max={100}
+                          <Input type="number" value={newLeadForm.commissionPercentage} min={1} max={100}
                             onChange={e => setNewLeadForm(p => ({ ...p, commissionPercentage: Number(e.target.value) }))}
                             className="w-full bg-white border border-gray-100 rounded-lg p-2 text-xs focus:outline-none font-bold"
                           />
@@ -1194,7 +1198,7 @@ export default function CrmLeadsPage() {
                         <div className="space-y-2">
                           {newLeadForm.contributors.map((c, idx) => (
                             <div key={idx} className="flex gap-2 items-center">
-                              <select value={c.userId}
+                              <Select value={c.userId}
                                 onChange={e => {
                                   const copy = [...newLeadForm.contributors];
                                   copy[idx].userId = e.target.value;
@@ -1208,8 +1212,8 @@ export default function CrmLeadsPage() {
                                     {u.name} — {u.role.replace(/_/g, " ")}
                                   </option>
                                 ))}
-                              </select>
-                              <input type="number" value={c.percentage} min={0} max={100}
+                              </Select>
+                              <Input type="number" value={c.percentage} min={0} max={100}
                                 onChange={e => {
                                   const copy = [...newLeadForm.contributors];
                                   copy[idx].percentage = Number(e.target.value);
@@ -1219,11 +1223,11 @@ export default function CrmLeadsPage() {
                                 className="w-16 bg-white border border-gray-100 text-xs p-2 rounded-lg font-bold text-center focus:outline-none"
                               />
                               {newLeadForm.contributors.length > 1 && (
-                                <button type="button" onClick={() => setNewLeadForm(p => ({
+                                <Button type="button" onClick={() => setNewLeadForm(p => ({
                                   ...p, contributors: p.contributors.filter((_, i) => i !== idx)
                                 }))} className="p-1.5 text-rose-400 hover:bg-rose-50 rounded-lg">
                                   <X className="w-3.5 h-3.5" />
-                                </button>
+                                </Button>
                               )}
                             </div>
                           ))}
@@ -1240,21 +1244,21 @@ export default function CrmLeadsPage() {
                           </span>
                         </div>
                         {newLeadForm.contributors.length < 3 && (
-                          <button type="button"
+                          <Button type="button"
                             onClick={() => setNewLeadForm(p => ({ ...p, contributors: [...p.contributors, { userId: "", percentage: 0 }] }))}
                             className="text-[10px] font-bold text-emerald-600 hover:underline"
                           >
                             + Add Contributor
-                          </button>
+                          </Button>
                         )}
                       </div>
                     )}
 
-                    <button type="submit" disabled={actionLoading}
+                    <Button type="submit" disabled={actionLoading}
                       className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm py-3 rounded-xl transition-all flex items-center justify-center gap-2">
                       {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                       Create Lead
-                    </button>
+                    </Button>
                   </form>
                 </div>
               </motion.div>

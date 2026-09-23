@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useRef, useState } from "react";
 import { Download, Share2, Loader2, Megaphone, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -73,21 +74,21 @@ export function ResultAnnouncementPoster({ exam, madrasaName, madrasaLogo, stats
 
       {/* ── Toolbar ── */}
       <div className="flex items-center gap-2 flex-wrap">
-        <button onClick={() => run("jpg")} disabled={!!exporting}
+        <Button onClick={() => run("jpg")} disabled={!!exporting}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
           {exporting === "jpg" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
           JPG
-        </button>
-        <button onClick={() => run("png")} disabled={!!exporting}
+        </Button>
+        <Button onClick={() => run("png")} disabled={!!exporting}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors">
           {exporting === "png" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
           PNG
-        </button>
-        <button onClick={() => run("share")} disabled={!!exporting}
+        </Button>
+        <Button onClick={() => run("share")} disabled={!!exporting}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 transition-colors">
           {exporting === "share" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
           Share
-        </button>
+        </Button>
       </div>
 
       {/* ── Poster ── */}

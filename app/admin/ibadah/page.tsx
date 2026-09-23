@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -255,12 +257,12 @@ export default function AdminIbadahPage() {
         icon={Moon}
         action={
           (isSuperAdmin || user?.actorType === "CLIENT_ADMIN" || user?.role === "admin") ? (
-            <button
+            <Button
               onClick={() => navigate("/admin/ibadah-config")}
               className="flex items-center gap-1.5 px-3 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
             >
               <Settings className="w-4 h-4" /> Config & Scoring
-            </button>
+            </Button>
           ) : undefined
         }
       />
@@ -284,36 +286,36 @@ export default function AdminIbadahPage() {
           <div className="flex items-start gap-3 mb-4 flex-wrap">
             <div className="flex gap-2 flex-wrap flex-1">
               {classes.map((cls) => (
-                <button key={cls.id} onClick={() => setActiveClassId(cls.id)}
+                <Button key={cls.id} onClick={() => setActiveClassId(cls.id)}
                   className={cn("px-4 py-2 rounded-xl text-sm font-semibold transition-all",
                     activeClassId === cls.id ? "bg-emerald-600 text-white" : "bg-white border border-gray-200 text-gray-700")}>
                   {cls.name}
-                </button>
+                </Button>
               ))}
             </div>
             <div className="flex bg-gray-100 p-1 rounded-xl shrink-0">
-              <button onClick={() => setViewMode("daily")}
+              <Button onClick={() => setViewMode("daily")}
                 className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
                   viewMode === "daily" ? "bg-white shadow-sm text-emerald-700" : "text-gray-500")}>
                 <List className="w-3.5 h-3.5" /> Daily
-              </button>
-              <button onClick={() => setViewMode("weekly")}
+              </Button>
+              <Button onClick={() => setViewMode("weekly")}
                 className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
                   viewMode === "weekly" ? "bg-white shadow-sm text-emerald-700" : "text-gray-500")}>
                 <Calendar className="w-3.5 h-3.5" /> Weekly
-              </button>
+              </Button>
             </div>
           </div>
 
           {/* Date nav */}
           <div className="flex items-center gap-3 mb-5">
-            <button onClick={viewMode === "daily" ? prevDay : prevWeek}
+            <Button onClick={viewMode === "daily" ? prevDay : prevWeek}
               className="p-2 rounded-xl bg-white border border-gray-200">
               <ChevronLeft className="w-4 h-4" />
-            </button>
+            </Button>
             <div className="flex-1 text-center">
               {viewMode === "daily" ? (
-                <input type="date" value={date} max={fmt(new Date())}
+                <Input type="date" value={date} max={fmt(new Date())}
                   onChange={(e) => setDate(e.target.value)}
                   className="text-sm font-semibold text-gray-800 focus:outline-none bg-transparent text-center" />
               ) : (
@@ -322,11 +324,11 @@ export default function AdminIbadahPage() {
                 </p>
               )}
             </div>
-            <button onClick={viewMode === "daily" ? nextDay : nextWeek}
+            <Button onClick={viewMode === "daily" ? nextDay : nextWeek}
               disabled={date >= fmt(new Date())}
               className="p-2 rounded-xl bg-white border border-gray-200 disabled:opacity-40">
               <ChevronRight className="w-4 h-4" />
-            </button>
+            </Button>
           </div>
 
           {/* Daily stats */}
@@ -368,11 +370,11 @@ export default function AdminIbadahPage() {
                     {sections.length > 1 && (
                       <div className="flex gap-1.5 mb-4 bg-gray-100 p-1 rounded-xl w-fit">
                         {sections.map((s) => (
-                          <button key={s.key} onClick={() => setActiveSection(s.key)}
+                          <Button key={s.key} onClick={() => setActiveSection(s.key)}
                             className={cn("px-4 py-1.5 rounded-lg text-xs font-semibold transition-all",
                               activeSection === s.key ? "bg-white shadow-sm text-emerald-700" : "text-gray-500")}>
                             {s.label}
-                          </button>
+                          </Button>
                         ))}
                       </div>
                     )}
@@ -545,11 +547,11 @@ export default function AdminIbadahPage() {
                                         <div className="w-10 h-7 mx-auto rounded-lg bg-gray-50 text-[10px] text-gray-300 flex items-center justify-center">—</div>
                                       ) : (
                                         <div className="flex flex-col items-center gap-1">
-                                          <button
+                                          <Button
                                             onClick={() => setExpandedCell(isExpanded ? null : cellKey)}
                                             className={cn("px-2 py-1 rounded-lg text-xs font-bold transition-all", countBadgeColor(count, total))}>
                                             {count}/{total}
-                                          </button>
+                                          </Button>
                                           {isExpanded && (
                                             <div className="flex flex-col gap-1 mt-1.5 bg-white rounded-xl border border-gray-100 shadow-md p-2 min-w-[110px] z-20 relative">
                                               {activePrayers.map((p) => {

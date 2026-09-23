@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 
 interface IbadahCounterProps {
   label: string;
@@ -55,7 +57,7 @@ export function IbadahCounter({ label, icon, value, onChange, min = 0, max = Num
         <div className="flex items-center gap-3">
           <div className="flex items-baseline gap-1">
             {editing ? (
-              <input
+              <Input
                 ref={inputRef}
                 type="number"
                 min={min}
@@ -64,17 +66,18 @@ export function IbadahCounter({ label, icon, value, onChange, min = 0, max = Num
                 onChange={(e) => setDraft(e.target.value)}
                 onBlur={commit}
                 onKeyDown={handleKeyDown}
-                className="w-14 text-right text-lg font-bold text-emerald-700 bg-transparent outline-none border-b-2 border-emerald-300"
+                className="h-9 w-14 border-0 border-b-2 rounded-none bg-transparent px-0 text-right text-lg font-bold text-emerald-700"
               />
             ) : (
-              <button onClick={() => setEditing(true)} className="focus:outline-none">
+              <Button variant="ghost" size="sm" onClick={() => setEditing(true)} className="h-auto p-0">
                 <span className="text-lg font-bold text-emerald-700">{value}</span>
-              </button>
+              </Button>
             )}
             {suffix && <span className="text-xs text-gray-400 font-medium">{suffix}</span>}
           </div>
           <div className="flex items-center gap-1">
-            <button
+            <Button
+              variant="outline" size="icon"
               onClick={() => onChange(Math.max(min, value - 1))}
               disabled={value <= min}
               className={cn(
@@ -83,8 +86,9 @@ export function IbadahCounter({ label, icon, value, onChange, min = 0, max = Num
                   ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
                   : "bg-gray-50 text-gray-300 cursor-not-allowed",
               )}
-            >−</button>
-            <button
+            >−</Button>
+            <Button
+              size="icon"
               onClick={() => onChange(Math.min(max, value + 1))}
               disabled={value >= max}
               className={cn(
@@ -93,7 +97,7 @@ export function IbadahCounter({ label, icon, value, onChange, min = 0, max = Num
                   ? "bg-emerald-500 text-white hover:bg-emerald-600"
                   : "bg-gray-100 text-gray-300 cursor-not-allowed",
               )}
-            >+</button>
+            >+</Button>
           </div>
         </div>
       </div>

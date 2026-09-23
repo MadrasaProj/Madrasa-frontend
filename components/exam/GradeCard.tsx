@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useRef, useState, useCallback, useMemo } from "react";
 import { Trophy, TrendingUp, Users, BarChart2, Download, FileImage, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -130,22 +131,22 @@ export function GradeCard({ students, subjects, subjectId, scores, examMaxMarks,
     <div className={cn("space-y-3", className)}>
       {/* Export buttons */}
       <div className="flex items-center gap-2 justify-end">
-        <button
+        <Button
           onClick={() => doExport("png")}
           disabled={!!exporting}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors"
         >
           {exporting === "png" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileImage className="w-3.5 h-3.5" />}
           PNG
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={() => doExport("pdf")}
           disabled={!!exporting}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-50 transition-colors"
         >
           {exporting === "pdf" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
           PDF
-        </button>
+        </Button>
       </div>
 
       {/* Printable area */}
