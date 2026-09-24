@@ -2,7 +2,7 @@ import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
-import { Drawer } from "@/components/ui/Drawer";
+import { Drawer } from "@/components/ui/drawerView";
 import type { StudentHomeworkItem, HomeworkStatus } from "@/lib/homework-api";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";

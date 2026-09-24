@@ -41,7 +41,7 @@ import {
   Receipt,
   Download,
 } from "lucide-react";
-import { Drawer } from "@/components/ui/Drawer";
+import { Drawer } from "@/components/ui/drawerView";
 import OnboardingDrawer from "@/components/twa/OnboardingDrawer";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import PwaInstallButton from "@/components/PwaInstallButton";
@@ -51,6 +51,9 @@ import { t } from "@/lib/i18n";
 import { useState, useEffect, useRef } from "react";
 import { type ClientConfig } from "@/lib/config-api";
 import { useClientConfig } from "@/lib/queries";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { Button } from "./ui/button";
+import { ButtonGroup } from "./ui/button-group";
 
 type NavKey =
   | "dashboard"
@@ -174,7 +177,11 @@ const teacherLinks = [
     key: "classTests" as NavKey,
   },
   { href: "/teacher/performance", icon: Star, key: "performance" as NavKey },
-  { href: "/teacher/reports/individual", icon: FileText, key: "reports" as NavKey },
+  {
+    href: "/teacher/reports/individual",
+    icon: FileText,
+    key: "reports" as NavKey,
+  },
   {
     href: "/teacher/best-performance",
     icon: Trophy,
@@ -362,7 +369,14 @@ const getAdminCategories = (role: string, actorType?: string) => {
       titleKey: "financeExtras" as NavKey,
       icon: CreditCard,
       links: links.filter((l) =>
-        ["fees", "feeTypes", "idCards", "socialFrames", "posters", "artsfest"].includes(l.key),
+        [
+          "fees",
+          "feeTypes",
+          "idCards",
+          "socialFrames",
+          "posters",
+          "artsfest",
+        ].includes(l.key),
       ),
     },
     {
@@ -746,10 +760,14 @@ export function Sidebar({
           isOpen ? "translate-x-0 z-50" : "-translate-x-full lg:translate-x-0", // Mobile styling
         )}
       >
-        {/* Mobile Header / Close button */}
+        {/* Mobile Header / Close Button */}
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <div className="flex items-center gap-3">
-            <img src="/icons/icon.svg" alt="Smart Madrasa" className="w-10 h-10" />
+            <img
+              src="/icons/icon.svg"
+              alt="Smart Madrasa"
+              className="w-10 h-10"
+            />
             <div>
               <p className="font-bold text-gray-900 text-sm leading-tight">
                 {t("common", "appName", lang)}
@@ -760,13 +778,13 @@ export function Sidebar({
             </div>
           </div>
           {isOpen && (
-            <button
+            <Button
               onClick={onClose}
               className="lg:hidden p-1.5 rounded-xl text-gray-400 hover:bg-gray-100 active:scale-95 transition-transform"
               aria-label="Close menu"
             >
               <X className="w-5 h-5" />
-            </button>
+            </Button>
           )}
         </div>
         <div className="px-4 py-3 border-b border-gray-100 shrink-0">
@@ -824,7 +842,7 @@ export function Sidebar({
 
                 return (
                   <div key={cat.id} className="space-y-1">
-                    <button
+                    <Button
                       onClick={() => toggleCategory(cat.id)}
                       className={cn(
                         "flex items-center justify-between w-full px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors",
@@ -843,7 +861,7 @@ export function Sidebar({
                           isExpanded ? "transform rotate-180" : "",
                         )}
                       />
-                    </button>
+                    </Button>
                     {isExpanded && (
                       <div className="space-y-1 pt-1">
                         {cat.links.map((l) => renderLink(l, true))}
@@ -876,7 +894,7 @@ export function Sidebar({
             <PwaInstallButton />
           </div>
           <div className="p-4 pt-2">
-            <button
+            <Button
               onClick={() => {
                 logout();
               }}
@@ -884,7 +902,7 @@ export function Sidebar({
             >
               <LogOut className="w-5 h-5" />
               {t("common", "signOut", lang)}
-            </button>
+            </Button>
           </div>
         </div>
       </aside>
@@ -895,11 +913,20 @@ export function Sidebar({
 export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { user, activeClientId, accessToken, logout } = useAuthStore();
+  const {
+    user,
+    activeClientId,
+    accessToken,
+    logout,
+    activeStudentId,
+    setActiveStudent,
+  } = useAuthStore();
   const { lang } = useLanguageStore();
   const [moreOpen, setMoreOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
-  const [onboardingRole, setOnboardingRole] = useState<"parent" | "teacher" | "admin" | null>(null);
+  const [onboardingRole, setOnboardingRole] = useState<
+    "parent" | "teacher" | "admin" | null
+  >(null);
   const [onboardingSlug, setOnboardingSlug] = useState("");
   const slugPrefix = useSlugPrefix();
   const { data: clientConfig } = useClientConfig({
@@ -917,6 +944,10 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
 
   const isSuperAdmin = user.actorType === "SUPER_ADMIN";
   const hasActiveClient = !!activeClientId;
+  const isParent = user.actorType === "PARENT";
+  const studentIds = isParent ? (user.accessibleStudentIds ?? []) : [];
+  const students = isParent ? (user.accessibleStudents ?? []) : [];
+  const currentStudentId = activeStudentId ?? studentIds[0] ?? null;
 
   let allLinks = getLinksByRole(user.role, user.actorType, hasActiveClient);
   allLinks = insertArtsfestLink(allLinks, user.role, user.actorType);
@@ -954,140 +985,293 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
   };
 
   const renderMoreLink = (l: (typeof allLinks)[number]) => {
-    const fullHref = l.isExternal ? l.href : slugPrefix ? `${slugPrefix}${l.href}` : l.href;
-    const active = !l.isExternal && isLinkActive(pathname, fullHref, slugPrefix);
+    const fullHref = l.isExternal
+      ? l.href
+      : slugPrefix
+        ? `${slugPrefix}${l.href}`
+        : l.href;
+    const active =
+      !l.isExternal && isLinkActive(pathname, fullHref, slugPrefix);
     const Icon = l.icon;
     const className = cn(
-      "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-colors active:scale-[0.98]",
-      active ? "bg-emerald-50 text-emerald-700" : "text-gray-700 hover:bg-gray-50",
+      "flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl px-3 py-4 text-center text-xs font-semibold transition-colors active:scale-[0.98]",
+      active
+        ? "bg-gray-50 text-emerald-700"
+        : "bg-white text-gray-700 hover:bg-gray-50",
     );
     return l.isExternal ? (
-      <a key={l.href} href={fullHref} target="_blank" rel="noopener noreferrer" className={className} onClick={() => setMoreOpen(false)}>
-        <Icon className="h-5 w-5 text-emerald-600" />{t("nav", l.key, lang)}
+      <a
+        key={l.href}
+        href={fullHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={className}
+        onClick={() => setMoreOpen(false)}
+      >
+        <Icon className="h-6 w-6 shrink-0 text-emerald-600" />
+        <span className="leading-tight">{t("nav", l.key, lang)}</span>
       </a>
     ) : (
-      <Link key={l.href} to={fullHref} className={className} onClick={() => setMoreOpen(false)}>
-        <Icon className={cn("h-5 w-5", active ? "text-emerald-600" : "text-gray-400")} />{t("nav", l.key, lang)}
+      <Link
+        key={l.href}
+        to={fullHref}
+        className={className}
+        onClick={() => setMoreOpen(false)}
+      >
+        <Icon
+          className={cn(
+            "h-6 w-6 shrink-0",
+            active ? "text-emerald-600" : "text-gray-400",
+          )}
+        />
+        <span className="leading-tight">{t("nav", l.key, lang)}</span>
       </Link>
     );
   };
 
   return (
     <>
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 border-t border-white/60 bg-white/70 shadow-[0_-8px_30px_rgba(15,67,45,0.08)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/55 pb-safe">
-      <div className="flex items-stretch justify-around px-1">
-        {links.map((l) => {
-          const fullHref = l.isExternal
-            ? l.href
-            : slugPrefix
-              ? `${slugPrefix}${l.href}`
-              : l.href;
-          const active =
-            !l.isExternal && isLinkActive(pathname, fullHref, slugPrefix);
-          const Icon = l.icon;
+      <nav className="lg:hidden fixed bottom-3 left-1/2  w-max -translate-x-1/2 z-30 rounded-2xl border border-white/60 bg-white/85 shadow-[0_8px_30px_rgba(15,67,45,0.12)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/70 pb-safe">
+        <div className="flex items-stretch justify-center gap-1 px-0">
+          {links.map((l) => {
+            const fullHref = l.isExternal
+              ? l.href
+              : slugPrefix
+                ? `${slugPrefix}${l.href}`
+                : l.href;
+            const active =
+              !l.isExternal && isLinkActive(pathname, fullHref, slugPrefix);
+            const Icon = l.icon;
 
-          if (l.isExternal) {
+            if (l.isExternal) {
+              return (
+                <a
+                  key={l.href}
+                  href={fullHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    "flex flex-col items-center justify-center gap-1 py-2.5 px-1 relative transition-all active:scale-95 text-gray-400",
+                  )}
+                >
+                  <div className="flex items-center justify-center rounded-xl w-10 h-7">
+                    <Icon className="w-5 h-5 shrink-0 text-emerald-600" />
+                  </div>
+                  <span className="text-[10px] font-semibold leading-none">
+                    {t("nav", l.key, lang)}
+                  </span>
+                </a>
+              );
+            }
+
             return (
-              <a
+              <Link
                 key={l.href}
-                href={fullHref}
-                target="_blank"
-                rel="noopener noreferrer"
+                to={fullHref}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-1 py-2.5 px-2 min-w-0 flex-1 relative transition-all active:scale-95 text-gray-400",
-                )}
-              >
-                <div className="flex items-center justify-center rounded-xl w-10 h-7">
-                  <Icon className="w-5 h-5 shrink-0 text-emerald-600" />
-                </div>
-                <span className="text-[10px] font-semibold leading-none">
-                  {t("nav", l.key, lang)}
-                </span>
-              </a>
-            );
-          }
-
-          return (
-            <Link
-              key={l.href}
-              to={fullHref}
-              className={cn(
-                "flex flex-col items-center justify-center gap-1 py-2.5 px-2 min-w-0 flex-1 relative transition-all active:scale-95",
-                active ? "text-emerald-600" : "text-gray-400",
-              )}
-            >
-              {active && (
-                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-emerald-500 rounded-full" />
-              )}
-              <div
-                className={cn(
-                  "flex items-center justify-center rounded-xl transition-all",
-                  active ? "bg-emerald-50 w-10 h-7" : "w-10 h-7",
-                )}
-              >
-                <Icon
-                  className={cn("w-5 h-5 shrink-0", active && "stroke-[2.5]")}
-                />
-              </div>
-              <span
-                className={cn(
-                  "text-[10px] font-semibold leading-none text-center",
+                  "flex flex-col items-center justify-center gap-1 p-1 relative transition-all active:scale-95",
                   active ? "text-emerald-600" : "text-gray-400",
                 )}
               >
-                {t("nav", l.key, lang)}
+                {/* {active && (
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-emerald-500 rounded-full" />
+                )} */}
+                <div
+                  className={cn(
+                    "flex items-center justify-center rounded-xl w-12 transition-all",
+                    active ? " ":"",
+                  )}
+                >
+                  <Icon
+                    className={cn("w-5 h-5 shrink-0", active && "stroke-[2.5]")}
+                  />
+                </div>
+                {/* <span
+                  className={cn(
+                    "text-[10px] font-semibold leading-none text-center",
+                    active ? "text-emerald-600" : "text-gray-400",
+                  )}
+                >
+                  {t("nav", l.key, lang)}
+                </span> */}
+              </Link>
+            );
+          })}
+
+          {showMore && (
+            <button
+              onClick={() => setMoreOpen(true)}
+              className={cn(
+                "flex flex-col items-center justify-center gap-1 py-2.5 px-1 relative transition-all active:scale-95 text-gray-400",
+              )}
+            >
+              <div className="flex items-center justify-center rounded-xl w-10 h-7">
+                <Menu className="w-5 h-5 shrink-0" />
+              </div>
+              {/* <span className="text-[10px] font-semibold leading-none">
+                {lang === "ml" ? "കൂടുതൽ" : "More"}
+              </span> */}
+            </button>
+          )}
+
+          {isSuperAdmin && !hasActiveClient && !showMore && (
+            <Button
+              onClick={() => {
+                logout();
+              }}
+              className="flex flex-col items-center justify-center gap-1 py-2.5 px-1 relative transition-all active:scale-95 text-red-400"
+            >
+              <div className="flex items-center justify-center rounded-xl w-10 h-7">
+                <LogOut className="w-5 h-5 shrink-0" />
+              </div>
+              <span className="text-[10px] font-semibold leading-none">
+                Logout
               </span>
-            </Link>
-          );
-        })}
-
-        {showMore && (
-          <button
-            onClick={() => setMoreOpen(true)}
-            className="flex flex-col items-center justify-center gap-1 py-2.5 px-2 min-w-0 flex-1 relative transition-all active:scale-95 text-gray-400"
-          >
-            <div className="flex items-center justify-center rounded-xl w-10 h-7">
-              <Menu className="w-5 h-5 shrink-0" />
-            </div>
-            <span className="text-[10px] font-semibold leading-none">
-              {lang === "ml" ? "കൂടുതൽ" : "More"}
-            </span>
-          </button>
-        )}
-
-        {isSuperAdmin && !hasActiveClient && !showMore && (
-          <button
-            onClick={() => {
-              logout();
-            }}
-            className="flex flex-col items-center justify-center gap-1 py-2.5 px-2 min-w-0 flex-1 relative transition-all active:scale-95 text-red-400"
-          >
-            <div className="flex items-center justify-center rounded-xl w-10 h-7">
-              <LogOut className="w-5 h-5 shrink-0" />
-            </div>
-            <span className="text-[10px] font-semibold leading-none">
-              Logout
-            </span>
-          </button>
-        )}
-      </div>
-    </nav>
-    <Drawer open={moreOpen} onOpenChange={setMoreOpen} side="bottom" title={lang === "ml" ? "കൂടുതൽ" : "More"} description={lang === "ml" ? "നാവിഗേഷൻ ഓപ്ഷനുകൾ" : "All navigation options"} className="border-t border-white/70 bg-white/90 backdrop-blur-xl" contentClassName="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-      <div className="mb-3 overflow-hidden rounded-2xl border border-emerald-100 bg-emerald-50/70">
-        <Link to={profileHref} onClick={() => setMoreOpen(false)} className="flex items-center gap-3 px-4 py-3.5">
-          {user.photoUrl ? <img src={user.photoUrl} alt="Profile" className="h-11 w-11 rounded-full object-cover" /> : <span className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-600 text-lg font-bold text-white">{user.name.charAt(0)}</span>}
-          <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold text-gray-900">{user.name}</span><span className="block truncate text-xs capitalize text-emerald-700">{user.role}</span></span>
-          <ChevronRight className="h-5 w-5 shrink-0 text-emerald-600" />
-        </Link>
-        <div className="grid grid-cols-3 gap-px border-t border-emerald-100 bg-emerald-100">
-          {sessionCount > 1 && <button type="button" onClick={() => { setMoreOpen(false); navigate("/"); }} className="bg-white/70 px-2 py-3 text-xs font-semibold text-gray-700">{lang === "ml" ? "സെഷൻ മാറ്റുക" : "Switch session"}</button>}
-          <button type="button" onClick={openNewSession} className="bg-white/70 px-2 py-3 text-xs font-semibold text-gray-700"><span className="block text-base leading-none">+</span>{lang === "ml" ? "സെഷൻ ചേർക്കുക" : "Add session"}</button>
-          <button type="button" onClick={() => { setMoreOpen(false); logout(); }} className="bg-white/70 px-2 py-3 text-xs font-semibold text-red-600">{lang === "ml" ? "പുറത്തുകടക്കുക" : "Sign out"}</button>
+            </Button>
+          )}
         </div>
-      </div>
-      <div className="grid grid-cols-2 gap-2 pb-2">{moreLinks.map(renderMoreLink)}</div>
-    </Drawer>
-    <OnboardingDrawer open={onboardingOpen} onOpenChange={setOnboardingOpen} role={onboardingRole} setRole={setOnboardingRole} slug={onboardingSlug} setSlug={setOnboardingSlug} onClearSlug={() => { setOnboardingSlug(""); setOnboardingRole(null); }} onSubmit={(event) => { event.preventDefault(); if (onboardingRole && onboardingSlug.trim()) navigate(`/m/${onboardingSlug.trim().toLowerCase()}/${onboardingRole}`); }} />
+      </nav>
+      <Drawer
+        showCloseButton={false}
+        open={moreOpen}
+        onOpenChange={setMoreOpen}
+        data-swipe-direction="bottom"
+        // title={lang === "ml" ? "കൂടുതൽ" : "More"}
+        // description={
+        //   lang === "ml" ? "നാവിഗേഷൻ ഓപ്ഷനുകൾ" : "All navigation options"
+        // }
+
+        contentClassName="px-4 py-3"
+      >
+       
+        <ButtonGroup
+          orientation="vertical"
+          style={{ gap: 0 }}
+          className="w-full border rounded-lg border-gray-100"
+        >
+          <Link
+            to={profileHref}
+            onClick={() => setMoreOpen(false)}
+            className="flex items-center gap-3 p-2 px-3"
+          >
+            <Avatar size="lg" >
+              <AvatarImage src={user.photoUrl!} />
+              <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+            </Avatar>
+
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-bold text-gray-900">
+                {user.name}
+              </span>
+              <span className="block truncate text-xs capitalize text-gray-700">
+                {user.role}
+              </span>
+            </span>
+            <ChevronRight className="h-5 w-5 shrink-0 text-gray-600" />
+          </Link>
+          <ButtonGroup className="grid grid-cols-3 p-1 border-gray-100 gap-px border-t w-full">
+            {sessionCount > 1 && (
+              <Button
+                variant={"ghost"}
+                size={"lg"}
+                onClick={() => {
+                  setMoreOpen(false);
+                  navigate("/");
+                }}
+              >
+                {lang === "ml" ? "സെഷൻ മാറ്റുക" : "Switch session"}
+              </Button>
+            )}
+            <Button size={"lg"} variant={"ghost"} onClick={openNewSession}>
+              <span className="block text-base leading-none">+</span>
+              {lang === "ml" ? "സെഷൻ ചേർക്കുക" : "Add session"}
+            </Button>
+            <Button
+              size={"lg"}
+              variant={"ghost"}
+              onClick={() => {
+                setMoreOpen(false);
+                logout();
+              }}
+            >
+              {lang === "ml" ? "പുറത്തുകടക്കുക" : "Sign out"}
+            </Button>
+          </ButtonGroup>
+        </ButtonGroup>
+
+
+         {isParent && studentIds.length > 0 && (
+          <div className="border-b border-gray-100  py-3">
+            <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
+              {lang === "ml" ? "വിദ്യാർത്ഥിയെ തിരഞ്ഞെടുക്കുക" : "Switch student"}
+            </p>
+            <ButtonGroup
+              orientation="vertical"
+              style={{ gap: 0 }}
+              className="w-full rounded-lg border overflow-hidden border-gray-100  *:border-b *:border-gray-100"
+            >
+              {studentIds.map((id) => {
+                const student = students.find((item) => item.id === id);
+                const name = student?.name ?? "Student";
+                const isActive = currentStudentId === id;
+
+                return (
+                  <button
+                    key={id}
+                    onClick={() => {
+                      setActiveStudent(id);
+                      setMoreOpen(false);
+                    }}
+                    className={cn(
+                      "flex w-full items-center gap-3  p-3  text-left transition-colors",
+                      isActive
+                        ? "bg-linear-90 from-gray-100 to-transparent text-primary"
+                        : "hover:bg-gray-50 active:bg-gray-100",
+                    )}
+                  >
+                    <Avatar size="sm">
+                      <AvatarImage src={student?.photoUrl ?? undefined} />
+                      <AvatarFallback>
+                        {name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                      <p className="truncate text-sm font-semibold  ">
+                        {name}
+                      </p>
+                      <p className="shrink-0 text-xs text-gray-500">
+                        {student?.className ?? "—"}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </ButtonGroup>
+          </div>
+        )}
+        <div className="grid grid-cols-4 gap-2 py-3">
+            {moreLinks.map(renderMoreLink)}
+        </div>
+      </Drawer>
+      <OnboardingDrawer
+        open={onboardingOpen}
+        onOpenChange={setOnboardingOpen}
+        role={onboardingRole}
+        setRole={setOnboardingRole}
+        slug={onboardingSlug}
+        setSlug={setOnboardingSlug}
+        onClearSlug={() => {
+          setOnboardingSlug("");
+          setOnboardingRole(null);
+        }}
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (onboardingRole && onboardingSlug.trim())
+            navigate(
+              `/m/${onboardingSlug.trim().toLowerCase()}/${onboardingRole}`,
+            );
+        }}
+      />
     </>
   );
 }

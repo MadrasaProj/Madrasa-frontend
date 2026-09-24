@@ -1,7 +1,7 @@
 import type { FormEvent, ReactNode } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, Check } from "lucide-react";
-import { Drawer } from "@/components/ui/Drawer";
+import { Drawer } from "@/components/ui/drawerView";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import PwaInstallButton from "@/components/PwaInstallButton";
@@ -43,7 +43,7 @@ export default function OnboardingDrawer({
         {/* <div className="mb-8 text-center"><p className="mt-1 text-sm text-gray-500">Select your role to continue</p></div> */}
         {sessionsContent}
         <form onSubmit={onSubmit} className="space-y-7">
-          <div className="flex  ">
+          <div className="flex  justify-center">
             {roles.map(([value, label, image]) => {
               const selected = role === value;
               return (

@@ -12,7 +12,7 @@ import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { downloadAsJPG, downloadAsPDF, shareAsJPG, downloadAsPNG } from "@/lib/poster-utils";
-import { Drawer } from "@/components/ui/Drawer";
+import { Drawer } from "@/components/ui/drawerView";
 import {
   Medal, Loader2, AlertCircle, RefreshCw, GraduationCap, Trophy,
   Download, Share2, FileText, ChevronDown, ArrowLeft, Printer, Calendar, Award, Eye, FileBadge2
