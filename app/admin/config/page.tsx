@@ -760,6 +760,12 @@ export default function AdminConfigPage() {
                   {showPasswords ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              {/* Browser autofill decoy trap to prevent Chrome from auto-injecting credentials */}
+              <div style={{ position: "absolute", opacity: 0, height: 0, width: 0, overflow: "hidden", zIndex: -1 }}>
+                <input type="text" name="fake_username_trap" tabIndex={-1} autoComplete="username" />
+                <input type="password" name="fake_password_trap" tabIndex={-1} autoComplete="current-password" />
+              </div>
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1.5">
@@ -767,6 +773,11 @@ export default function AdminConfigPage() {
                   </label>
                   <input
                     type={showPasswords ? "text" : "password"}
+                    name="client_admin_new_pwd_custom"
+                    autoComplete="new-password"
+                    readOnly
+                    onFocus={(e) => e.target.removeAttribute("readOnly")}
+                    onMouseDown={(e) => (e.target as HTMLInputElement).removeAttribute("readOnly")}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="At least 6 characters"
@@ -779,6 +790,11 @@ export default function AdminConfigPage() {
                   </label>
                   <input
                     type={showPasswords ? "text" : "password"}
+                    name="client_admin_confirm_pwd_custom"
+                    autoComplete="new-password"
+                    readOnly
+                    onFocus={(e) => e.target.removeAttribute("readOnly")}
+                    onMouseDown={(e) => (e.target as HTMLInputElement).removeAttribute("readOnly")}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Re-enter new password"

@@ -290,10 +290,21 @@ function EditMadrasaDrawer({
               placeholder="e.g. admin@darulhuda or 9876543210"
             />
           </div>
+          {/* Browser autofill decoy trap to prevent Chrome from auto-injecting credentials */}
+          <div style={{ position: "absolute", opacity: 0, height: 0, width: 0, overflow: "hidden", zIndex: -1 }}>
+            <input type="text" name="fake_username_trap" tabIndex={-1} autoComplete="username" />
+            <input type="password" name="fake_password_trap" tabIndex={-1} autoComplete="current-password" />
+          </div>
+
           <div>
             <label className={labelCls}>Admin Password (leave blank to keep unchanged)</label>
             <input
               type="password"
+              name="madrasa_admin_edit_pwd_custom"
+              autoComplete="new-password"
+              readOnly
+              onFocus={(e) => e.target.removeAttribute("readOnly")}
+              onMouseDown={(e) => (e.target as HTMLInputElement).removeAttribute("readOnly")}
               value={form.password ?? ""}
               onChange={(e) => set("password", e.target.value)}
               className={inputCls}
@@ -316,6 +327,11 @@ function EditMadrasaDrawer({
             <label className={labelCls}>Committee Password (leave blank to keep unchanged)</label>
             <input
               type="password"
+              name="madrasa_committie_edit_pwd_custom"
+              autoComplete="new-password"
+              readOnly
+              onFocus={(e) => e.target.removeAttribute("readOnly")}
+              onMouseDown={(e) => (e.target as HTMLInputElement).removeAttribute("readOnly")}
               value={form.committiePassword ?? ""}
               onChange={(e) => set("committiePassword", e.target.value)}
               className={inputCls}
@@ -1103,10 +1119,21 @@ function NewMadrasaDrawer({
                 placeholder="e.g. admin@smartmadrasa"
               />
             </div>
+            {/* Browser autofill decoy trap to prevent Chrome from auto-injecting credentials */}
+            <div style={{ position: "absolute", opacity: 0, height: 0, width: 0, overflow: "hidden", zIndex: -1 }}>
+              <input type="text" name="fake_username_trap" tabIndex={-1} autoComplete="username" />
+              <input type="password" name="fake_password_trap" tabIndex={-1} autoComplete="current-password" />
+            </div>
+
             <div>
               <label className={labelCls}>Admin Password *</label>
               <input
                 type="password"
+                name="madrasa_admin_create_pwd_custom"
+                autoComplete="new-password"
+                readOnly
+                onFocus={(e) => e.target.removeAttribute("readOnly")}
+                onMouseDown={(e) => (e.target as HTMLInputElement).removeAttribute("readOnly")}
                 value={form.adminPassword}
                 onChange={(e) => set("adminPassword", e.target.value)}
                 className={inputCls}
@@ -1130,6 +1157,11 @@ function NewMadrasaDrawer({
               <label className={labelCls}>Committee Password</label>
               <input
                 type="password"
+                name="madrasa_committie_create_pwd_custom"
+                autoComplete="new-password"
+                readOnly
+                onFocus={(e) => e.target.removeAttribute("readOnly")}
+                onMouseDown={(e) => (e.target as HTMLInputElement).removeAttribute("readOnly")}
                 value={form.committiePassword ?? ""}
                 onChange={(e) => set("committiePassword", e.target.value)}
                 className={inputCls}

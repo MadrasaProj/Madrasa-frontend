@@ -677,45 +677,61 @@ export default function AdminTeachersPage() {
  />
  </div>
 
- {/* Password — create */}
- {!editTarget && (
- <div>
- <label className="block text-xs font-semibold text-gray-600 mb-1.5">Password *</label>
- <div className="relative">
- <input
- type={showPw ? "text" : "password"} value={fPassword}
- onChange={(e) => setFPassword(e.target.value)}
- placeholder="Min. 6 characters"
- className="w-full px-4 py-3 pr-12 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors"
- />
- <button type="button" onClick={() => setShowPw(!showPw)}
- className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
- {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
- </button>
- </div>
- </div>
- )}
+  {/* Browser autofill decoy trap to prevent Chrome from auto-injecting credentials */}
+  <div style={{ position: "absolute", opacity: 0, height: 0, width: 0, overflow: "hidden", zIndex: -1 }}>
+    <input type="text" name="fake_username_trap" tabIndex={-1} autoComplete="username" />
+    <input type="password" name="fake_password_trap" tabIndex={-1} autoComplete="current-password" />
+  </div>
 
- {/* New password — edit */}
- {editTarget && (
- <div>
- <label className="block text-xs font-semibold text-gray-600 mb-1.5">
- New Password <span className="font-normal text-gray-400">(leave blank to keep)</span>
- </label>
- <div className="relative">
- <input
- type={showNewPw ? "text" : "password"} value={fNewPassword}
- onChange={(e) => setFNewPassword(e.target.value)}
- placeholder="Enter new password…"
- className="w-full px-4 py-3 pr-12 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors"
- />
- <button type="button" onClick={() => setShowNewPw(!showNewPw)}
- className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
- {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
- </button>
- </div>
- </div>
- )}
+  {/* Password — create */}
+  {!editTarget && (
+  <div>
+  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Password *</label>
+  <div className="relative">
+  <input
+  type={showPw ? "text" : "password"} value={fPassword}
+  name="teacher_create_pwd_field"
+  autoComplete="new-password"
+  readOnly
+  onFocus={(e) => e.target.removeAttribute("readOnly")}
+  onMouseDown={(e) => (e.target as HTMLInputElement).removeAttribute("readOnly")}
+  onChange={(e) => setFPassword(e.target.value)}
+  placeholder="Min. 6 characters"
+  className="w-full px-4 py-3 pr-12 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors"
+  />
+  <button type="button" onClick={() => setShowPw(!showPw)}
+  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
+  {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+  </button>
+  </div>
+  </div>
+  )}
+
+  {/* New password — edit */}
+  {editTarget && (
+  <div>
+  <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+  New Password <span className="font-normal text-gray-400">(leave blank to keep)</span>
+  </label>
+  <div className="relative">
+  <input
+  type={showNewPw ? "text" : "password"} value={fNewPassword}
+  name="teacher_edit_pwd_field"
+  autoComplete="new-password"
+  readOnly
+  onFocus={(e) => e.target.removeAttribute("readOnly")}
+  onMouseDown={(e) => (e.target as HTMLInputElement).removeAttribute("readOnly")}
+  onChange={(e) => setFNewPassword(e.target.value)}
+  placeholder="Enter new password…"
+  className="w-full px-4 py-3 pr-12 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors"
+  />
+  <button type="button" onClick={() => setShowNewPw(!showNewPw)}
+  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
+  {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+  </button>
+  </div>
+  </div>
+  )}
 
   {/* Status — edit only */}
   {editTarget && (

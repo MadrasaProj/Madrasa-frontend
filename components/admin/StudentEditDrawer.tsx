@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, Plus, Loader2, Upload, Trash2, User, MapPin,
   HeartPulse, Check, X as XIcon, AlertTriangle,
+  ArrowRight, ArrowLeft, Eye, EyeOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -136,6 +137,7 @@ export default function StudentEditDrawer({
   const [siblingInfo, setSiblingInfo] = useState<CheckParentPhoneResponse | null>(null);
   const [checkingSiblings, setCheckingSiblings] = useState(false);
   const [showPasswordConfirmModal, setShowPasswordConfirmModal] = useState(false);
+  const [showParentPassword, setShowParentPassword] = useState(false);
 
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth < 768 : true
@@ -156,6 +158,7 @@ export default function StudentEditDrawer({
     setUploadedPhotoUrl(null);
     setSiblingInfo(null);
     setShowPasswordConfirmModal(false);
+    setShowParentPassword(false);
   }, [open, isEditing, student]);
 
   // Debounced check for sibling accounts sharing the same parent phone
@@ -191,7 +194,52 @@ export default function StudentEditDrawer({
     };
   }, [open, onClose]);
 
+  const validateTab1 = (): boolean => {
+    const errs: Record<string, string> = {};
+    if (!form.name.trim()) errs.name = "Name is required";
+    if (!form.adno.trim()) errs.adno = "Admission number is required";
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      setSubmitError("Please fill all required fields before proceeding.");
+      return false;
+    }
+    setSubmitError(null);
+    return true;
+  };
+
+  const validateTab2 = (): boolean => {
+    const errs: Record<string, string> = {};
+    if (form.parentPhone) {
+      const clean = form.parentPhone.replace(/\D/g, "");
+      if (clean.length < 7 || clean.length > 15) {
+        errs.parentPhone = "Enter a valid mobile number";
+      }
+    }
+    if (form.parentAltPhone && !/^\+?\d{7,15}$/.test(form.parentAltPhone.replace(/[\s\-()]/g, ""))) {
+      errs.parentAltPhone = "Enter a valid phone (7–15 digits)";
+    }
+    if (form.parentPassword) {
+      const strengthError = validatePasswordStrength(form.parentPassword, form.parentPhone, form.dateOfBirth);
+      if (strengthError) {
+        errs.parentPassword = strengthError;
+      }
+    }
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      setSubmitError("Please fix the errors in Parent details before proceeding.");
+      return false;
+    }
+    setSubmitError(null);
+    return true;
+  };
+
   const switchTab = (t: typeof tab) => {
+    if (t === "parent") {
+      if (!validateTab1()) return;
+    } else if (t === "emergency") {
+      if (!validateTab1()) return;
+      if (!validateTab2()) return;
+    }
     setTab(t);
     setSubmitError(null);
     setFieldErrors({});
@@ -208,24 +256,25 @@ export default function StudentEditDrawer({
       setUploadedPhotoUrl(null);
       setSiblingInfo(null);
       setShowPasswordConfirmModal(false);
+      setShowParentPassword(false);
     }, 250);
   };
 
   const validateAll = (): boolean => {
-  const errs: Record<string, string> = {};
-  if (!form.name.trim()) errs.name = "Name is required";
-  if (!form.adno.trim()) errs.adno = "Admission number is required";
-  if (form.parentAltPhone && !/^\+?\d{7,15}$/.test(form.parentAltPhone.replace(/[\s\-()]/g, ""))) {
-  errs.parentAltPhone = "Enter a valid phone (7–15 digits)";
-  }
-  if (form.parentPassword) {
-    const strengthError = validatePasswordStrength(form.parentPassword, form.parentPhone, form.dateOfBirth);
-    if (strengthError) {
-      errs.parentPassword = strengthError;
+    const errs: Record<string, string> = {};
+    if (!form.name.trim()) errs.name = "Name is required";
+    if (!form.adno.trim()) errs.adno = "Admission number is required";
+    if (form.parentAltPhone && !/^\+?\d{7,15}$/.test(form.parentAltPhone.replace(/[\s\-()]/g, ""))) {
+      errs.parentAltPhone = "Enter a valid phone (7–15 digits)";
     }
-  }
-  if (form.emergencyContactPhone && !/^\+?\d{7,15}$/.test(form.emergencyContactPhone.replace(/[\s\-()]/g, ""))) {
-  errs.emergencyContactPhone = "Enter a valid phone (7–15 digits)";
+    if (form.parentPassword) {
+      const strengthError = validatePasswordStrength(form.parentPassword, form.parentPhone, form.dateOfBirth);
+      if (strengthError) {
+        errs.parentPassword = strengthError;
+      }
+    }
+    if (form.emergencyContactPhone && !/^\+?\d{7,15}$/.test(form.emergencyContactPhone.replace(/[\s\-()]/g, ""))) {
+      errs.emergencyContactPhone = "Enter a valid phone (7–15 digits)";
     }
     setFieldErrors(errs);
     return Object.keys(errs).length === 0;
@@ -403,6 +452,12 @@ export default function StudentEditDrawer({
               </div>
 
               <div className="overflow-y-auto flex-1 px-5 py-5">
+                {/* Browser autofill decoy trap to prevent Chrome from auto-injecting credentials */}
+                <div style={{ position: "absolute", opacity: 0, height: 0, width: 0, overflow: "hidden", zIndex: -1 }}>
+                  <input type="text" name="fake_username_trap" tabIndex={-1} autoComplete="username" />
+                  <input type="password" name="fake_password_trap" tabIndex={-1} autoComplete="current-password" />
+                </div>
+
                 {submitError && (
                   <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2 text-xs text-rose-700">
                     <XIcon className="w-4 h-4 shrink-0" /> {submitError}
@@ -485,7 +540,9 @@ export default function StudentEditDrawer({
                             }}
                             className={cn(
                               "w-full px-3.5 py-2.5 text-sm bg-white border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/60 transition-colors",
-                              fieldErrors[key] ? "border-rose-300 focus:border-rose-400" : "border-gray-200 focus:border-emerald-400",
+                              fieldErrors[key]
+                                ? "border-rose-300 focus:border-rose-400"
+                                : "border-gray-200 focus:border-emerald-400",
                             )}
                           />
                           {fieldErrors[key] && (
@@ -574,18 +631,18 @@ export default function StudentEditDrawer({
                       key="tab-parent"
                       initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }}
                       transition={{ duration: 0.2 }}
-                      className="space-y-3"
+                      className="space-y-4"
                     >
-                      <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-100 rounded-xl">
-                        <Users className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <p className="text-[11px] text-emerald-800 font-medium">
-                          Parent / guardian receives login credentials to access the parent app.
-                        </p>
-                      </div>
+                      {/* Sibling detection alert banner */}
+                      {checkingSiblings && (
+                        <div className="p-3 bg-gray-50 border border-gray-200 rounded-2xl flex items-center gap-2.5 text-xs text-gray-600 animate-pulse">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
+                          <span>Checking for linked family accounts…</span>
+                        </div>
+                      )}
 
-                      {/* Sibling accounts info banner */}
-                      {siblingInfo && siblingInfo.students.length > 0 && (
-                        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 space-y-1.5">
+                      {siblingInfo && !checkingSiblings && (
+                        <div className="p-3.5 bg-amber-50/80 border border-amber-200/90 rounded-2xl space-y-2">
                           <div className="flex items-center gap-2">
                             <Users className="w-4 h-4 text-amber-700 shrink-0" />
                             <p className="text-xs font-bold text-amber-900">
@@ -616,7 +673,6 @@ export default function StudentEditDrawer({
                         { key: "guardianName" as const,   label: t("adminPages", "fatherNameForm", lang), placeholder: t("adminPages", "fatherFullName", lang), type: "text" },
                         { key: "parentPhone" as const,    label: t("adminPages", "phoneNumber", lang),    placeholder: t("adminPages", "tenDigitMobile", lang), type: "tel" },
                         { key: "parentAltPhone" as const, label: "Alt. Phone",                              placeholder: "Alternate mobile",                       type: "tel" },
-                        { key: "parentPassword" as const, label: isEditing ? "New Password" : t("adminPages", "parentLoginPwd", lang), placeholder: isEditing ? "Leave blank to keep current" : t("adminPages", "minSixChars", lang), type: "password" },
                       ].map(({ key, label, placeholder, type }) => (
                         <div key={key}>
                           <label className="block text-xs font-semibold text-gray-600 mb-1.5">{label}</label>
@@ -632,6 +688,52 @@ export default function StudentEditDrawer({
                           {fieldErrors[key] && <p className="text-[11px] text-rose-600 font-semibold mt-1 px-1">{fieldErrors[key]}</p>}
                         </div>
                       ))}
+
+                      {/* Parent Password with Anti-Autofill and Eye Toggle */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-xs font-semibold text-gray-600">
+                            {isEditing ? "New Password" : t("adminPages", "parentLoginPwd", lang)}
+                          </label>
+                          {isEditing && (
+                            <span className="text-[11px] text-gray-400 font-normal">
+                              Leave blank to keep unchanged
+                            </span>
+                          )}
+                        </div>
+                        <div className="relative">
+                          <input
+                            type={showParentPassword ? "text" : "password"}
+                            name="student_parent_pwd_custom"
+                            autoComplete="new-password"
+                            readOnly
+                            onFocus={(e) => e.target.removeAttribute("readOnly")}
+                            onMouseDown={(e) => (e.target as HTMLInputElement).removeAttribute("readOnly")}
+                            placeholder={isEditing ? "Leave blank to keep current" : t("adminPages", "minSixChars", lang)}
+                            value={form.parentPassword}
+                            onChange={(e) => {
+                              setForm((f) => ({ ...f, parentPassword: e.target.value }));
+                              setFieldErrors((fe) => ({ ...fe, parentPassword: "" }));
+                            }}
+                            className={cn(
+                              "w-full px-3.5 py-2.5 pr-10 text-sm bg-white border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/60 transition-colors",
+                              fieldErrors.parentPassword ? "border-rose-300 focus:border-rose-400" : "border-gray-200 focus:border-emerald-400",
+                            )}
+                          />
+                          <button
+                            type="button"
+                            tabIndex={-1}
+                            onClick={() => setShowParentPassword((v) => !v)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-1 cursor-pointer"
+                            aria-label={showParentPassword ? "Hide password" : "Show password"}
+                          >
+                            {showParentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                        {fieldErrors.parentPassword && (
+                          <p className="text-[11px] text-rose-600 font-semibold mt-1 px-1">{fieldErrors.parentPassword}</p>
+                        )}
+                      </div>
 
                       <div>
                         <label className="block text-xs font-semibold text-gray-600 mb-1.5">Relation to student</label>
@@ -691,38 +793,89 @@ export default function StudentEditDrawer({
                 </AnimatePresence>
               </div>
 
+              {/* Sequential Multi-Tab Footer */}
               <div className="px-5 py-4 border-t border-gray-100 shrink-0 bg-gray-50/50">
                 <div className="flex items-center gap-2">
-                  {isEditing && canWrite && onDelete && (
+                  {isEditing && canWrite && onDelete && tab === "personal" && (
                     <button
                       onClick={onDelete}
                       type="button"
-                      className="px-3 py-3 bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 font-bold rounded-2xl text-sm active:scale-[0.98] transition-colors"
+                      className="px-3 py-3 bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 font-bold rounded-2xl text-sm active:scale-[0.98] transition-colors cursor-pointer"
                       aria-label="Delete"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   )}
-                  <button
-                    onClick={closeDrawer}
-                    disabled={submitting}
-                    className="px-4 py-3 text-sm font-semibold border border-gray-200 rounded-2xl text-gray-700 bg-white hover:bg-gray-50 transition-colors active:scale-95 disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSubmit}
-                    disabled={submitting || !form.name.trim() || !form.adno.trim()}
-                    className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-bold bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-colors active:scale-[0.98] shadow-lg disabled:opacity-60"
-                  >
-                    {submitting ? (
-                      <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</>
-                    ) : isEditing ? (
-                      <><Check className="w-4 h-4" /> Save Changes</>
-                    ) : (
-                      <>{t("adminPages", "admitStudent", lang)}</>
-                    )}
-                  </button>
+
+                  {tab === "personal" ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={closeDrawer}
+                        disabled={submitting}
+                        className="px-4 py-3 text-sm font-semibold border border-gray-200 rounded-2xl text-gray-700 bg-white hover:bg-gray-50 transition-colors active:scale-95 disabled:opacity-50 cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (validateTab1()) setTab("parent");
+                        }}
+                        disabled={!form.name.trim() || !form.adno.trim()}
+                        className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-bold bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-colors active:scale-[0.98] shadow-lg disabled:opacity-60 cursor-pointer"
+                      >
+                        <span>Next: Parent Details</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </>
+                  ) : tab === "parent" ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setTab("personal")}
+                        className="inline-flex items-center gap-1.5 px-4 py-3 text-sm font-semibold border border-gray-200 rounded-2xl text-gray-700 bg-white hover:bg-gray-50 transition-colors active:scale-95 cursor-pointer"
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                        <span>Back</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (validateTab2()) setTab("emergency");
+                        }}
+                        className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-bold bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-colors active:scale-[0.98] shadow-lg cursor-pointer"
+                      >
+                        <span>Next: Emergency Contact</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setTab("parent")}
+                        className="inline-flex items-center gap-1.5 px-4 py-3 text-sm font-semibold border border-gray-200 rounded-2xl text-gray-700 bg-white hover:bg-gray-50 transition-colors active:scale-95 cursor-pointer"
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                        <span>Back</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSubmit}
+                        disabled={submitting || !form.name.trim() || !form.adno.trim()}
+                        className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-bold bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-colors active:scale-[0.98] shadow-lg disabled:opacity-60 cursor-pointer"
+                      >
+                        {submitting ? (
+                          <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</>
+                        ) : isEditing ? (
+                          <><Check className="w-4 h-4" /> Save Changes</>
+                        ) : (
+                          <>{t("adminPages", "admitStudent", lang)}</>
+                        )}
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </motion.div>

@@ -781,10 +781,22 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                   </p>
                 </div>
 
+                {/* Browser autofill decoy trap to prevent Chrome from auto-injecting credentials */}
+                <div style={{ position: "absolute", opacity: 0, height: 0, width: 0, overflow: "hidden", zIndex: -1 }}>
+                  <input type="text" name="fake_username_trap" tabIndex={-1} autoComplete="username" />
+                  <input type="password" name="fake_password_trap" tabIndex={-1} autoComplete="current-password" />
+                </div>
+
                 <div>
                   <label className={labelCls}>{t("common", "currentPassword", lang)}</label>
                   <div className="relative">
-                    <input type={showCur ? "text" : "password"}
+                    <input
+                      type={showCur ? "text" : "password"}
+                      name="profile_cur_pwd_custom"
+                      autoComplete="new-password"
+                      readOnly
+                      onFocus={(e) => e.target.removeAttribute("readOnly")}
+                      onMouseDown={(e) => (e.target as HTMLInputElement).removeAttribute("readOnly")}
                       value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)}
                       className={cn(inputCls, "pr-10")} placeholder={t("common", "enterCurrentPassword", lang)} />
                     <button type="button" onClick={() => setShowCur((v) => !v)}
@@ -797,7 +809,13 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                 <div>
                   <label className={labelCls}>{t("common", "newPassword", lang)}</label>
                   <div className="relative">
-                    <input type={showNew ? "text" : "password"}
+                    <input
+                      type={showNew ? "text" : "password"}
+                      name="profile_new_pwd_custom"
+                      autoComplete="new-password"
+                      readOnly
+                      onFocus={(e) => e.target.removeAttribute("readOnly")}
+                      onMouseDown={(e) => (e.target as HTMLInputElement).removeAttribute("readOnly")}
                       value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
                       className={cn(inputCls, "pr-10")} placeholder={t("common", "min8Chars", lang)} />
                     <button type="button" onClick={() => setShowNew((v) => !v)}
@@ -825,7 +843,13 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                 <div>
                   <label className={labelCls}>{t("common", "confirmPassword", lang)}</label>
                   <div className="relative">
-                    <input type={showCon ? "text" : "password"}
+                    <input
+                      type={showCon ? "text" : "password"}
+                      name="profile_con_pwd_custom"
+                      autoComplete="new-password"
+                      readOnly
+                      onFocus={(e) => e.target.removeAttribute("readOnly")}
+                      onMouseDown={(e) => (e.target as HTMLInputElement).removeAttribute("readOnly")}
                       value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
                       className={cn(inputCls, "pr-10", pwMismatch && "border-rose-300 focus:ring-rose-300/60 focus:border-rose-400")}
                       placeholder={t("common", "repeatNewPassword", lang)} />

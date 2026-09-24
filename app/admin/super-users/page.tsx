@@ -109,6 +109,12 @@ function UserDrawer({
               <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">{error}</div>
             )}
 
+            {/* Browser autofill decoy trap to prevent Chrome from auto-injecting credentials */}
+            <div style={{ position: "absolute", opacity: 0, height: 0, width: 0, overflow: "hidden", zIndex: -1 }}>
+              <input type="text" name="fake_username_trap" tabIndex={-1} autoComplete="username" />
+              <input type="password" name="fake_password_trap" tabIndex={-1} autoComplete="current-password" />
+            </div>
+
             <div className="space-y-3">
               <div>
                 <label className={labelCls}>Name *</label>
@@ -123,8 +129,18 @@ function UserDrawer({
               )}
               <div>
                 <label className={labelCls}>{mode === "add" ? "Password *" : "New Password (leave blank to keep)"}</label>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-                  className={inputCls} placeholder={mode === "edit" ? "Optional" : "Min 8 characters"} />
+                <input
+                  type="password"
+                  name="super_user_pwd_field"
+                  autoComplete="new-password"
+                  readOnly
+                  onFocus={(e) => e.target.removeAttribute("readOnly")}
+                  onMouseDown={(e) => (e.target as HTMLInputElement).removeAttribute("readOnly")}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={inputCls}
+                  placeholder={mode === "edit" ? "Optional" : "Min 8 characters"}
+                />
               </div>
               <div>
                 <label className={labelCls}>Role *</label>
