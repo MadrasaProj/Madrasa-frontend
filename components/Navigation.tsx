@@ -996,7 +996,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
     const className = cn(
       "flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl px-3 py-4 text-center text-xs font-semibold transition-colors active:scale-[0.98]",
       active
-        ? "bg-gray-50 text-emerald-700"
+        ? "bg-linear-160 from-secondary to-transparent text-emerald-700"
         : "bg-white text-gray-700 hover:bg-gray-50",
     );
     return l.isExternal ? (
@@ -1149,26 +1149,31 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
           style={{ gap: 0 }}
           className="w-full border rounded-lg border-gray-100"
         >
-          <Link
-            to={profileHref}
-            onClick={() => setMoreOpen(false)}
-            className="flex items-center gap-3 p-2 px-3"
-          >
-            <Avatar size="lg" >
-              <AvatarImage src={user.photoUrl!} />
-              <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-            </Avatar>
+          <div className="flex items-center gap-3 p-2 px-3">
+            <Link
+              to={profileHref}
+              onClick={() => setMoreOpen(false)}
+              className="flex min-w-0 flex-1 items-center gap-3"
+            >
+              <Avatar size="lg">
+                <AvatarImage src={user.photoUrl!} />
+                <AvatarFallback className="bg-primary text-primary-foreground">
+                  {user.name.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
 
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-bold text-gray-900">
-                {user.name}
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-bold text-gray-900">
+                  {user.name}
+                </span>
+                <span className="block truncate text-xs capitalize text-gray-700">
+                  {user.role}
+                </span>
               </span>
-              <span className="block truncate text-xs capitalize text-gray-700">
-                {user.role}
-              </span>
-            </span>
+            </Link>
+            <LanguageSwitcher />
             <ChevronRight className="h-5 w-5 shrink-0 text-gray-600" />
-          </Link>
+          </div>
           <ButtonGroup className="grid grid-cols-3 p-1 border-gray-100 gap-px border-t w-full">
             {sessionCount > 1 && (
               <Button
@@ -1225,13 +1230,13 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
                     className={cn(
                       "flex w-full items-center gap-3  p-3  text-left transition-colors",
                       isActive
-                        ? "bg-linear-90 from-gray-100 to-transparent text-primary"
+                        ? "bg-linear-90 from-primary/10 to-transparent text-primary"
                         : "hover:bg-gray-50 active:bg-gray-100",
                     )}
                   >
                     <Avatar size="sm">
                       <AvatarImage src={student?.photoUrl ?? undefined} />
-                      <AvatarFallback>
+                      <AvatarFallback className="bg-primary text-primary-foreground">
                         {name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
@@ -1249,7 +1254,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
             </ButtonGroup>
           </div>
         )}
-        <div className="grid grid-cols-4 gap-2 py-3">
+        <div className="grid grid-cols-3 gap-2 py-3 sm:grid-cols-4">
             {moreLinks.map(renderMoreLink)}
         </div>
       </Drawer>
