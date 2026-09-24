@@ -9,7 +9,7 @@ export default function LanguageSwitcher() {
   return (
     <button
       onClick={toggleLang}
-      className="flex items-center gap-1.5 rounded-full  bg-white/80   px-3 py-1.5 text-xs font-semibold shadow-sm border border-gray-200   hover:shadow-md transition-all"
+      className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-white/80 px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-gray-50"
       title={lang === "en" ? "Switch to Malayalam" : "Switch to English"}
     >
       <Languages className="h-3.5 w-3.5 text-emerald-600" />

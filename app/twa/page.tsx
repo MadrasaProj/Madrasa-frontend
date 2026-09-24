@@ -1,116 +1,71 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { GraduationCap, Users, ArrowRight, LogOut, Shield, Building2 } from "lucide-react";
-import { useAuthStore, getStoredSessionsSync, storageKeyForRole, type UserRole } from "@/store/auth";
+import { Swiper, SwiperSlide } from "swiper/react";
+import type { Swiper as SwiperInstance } from "swiper";
+import "swiper/css";
+import { Building2, ChevronRight, GraduationCap, Plus, Shield, Users } from "lucide-react";
+import OnboardingDrawer from "@/components/twa/OnboardingDrawer";
+import { Button } from "@/components/ui/button";
 import { roleHomePath } from "@/lib/tenant-routing";
-import PwaInstallButton from "@/components/PwaInstallButton";
+import { clearTenantSlug, getTenantSlugAsync, getTenantSlugSync, saveTenantSlug } from "@/lib/slug-storage";
+import { getStoredSessionsSync, useAuthStore, type UserRole } from "@/store/auth";
 
-type LandingRole = "parent" | "teacher";
+type LandingRole = "parent" | "teacher" | "admin";
 
-import {
-  clearTenantSlug,
-  getTenantSlugAsync,
-  getTenantSlugSync,
-  saveTenantSlug,
-} from "@/lib/slug-storage";
+const onboardingSlides = [
+  { title: "One place for your whole madrasa", description: "Connect management, teachers, students, and parents with one simple system built for better learning.", image: "/imgs/onboarding/1.png", alt: "Madrasa community" },
+  { title: "Make every ibada count", description: "Track ibada consistently and help students build meaningful daily habits with support from their madrasa and family.", image: "/imgs/onboarding/2.png", alt: "Quran and prayer beads" },
+  { title: "Exams made simple", description: "Create exams, manage results, and understand progress clearly so teachers can help every student grow.", image: "/imgs/onboarding/3.png", alt: "Exam papers and pencil" },
+] as const;
 
 const roleMeta: Record<UserRole, { label: string; icon: typeof Shield; color: string }> = {
-  admin: { label: "Admin", icon: Shield, color: "bg-slate-600" },
-  teacher: { label: "Teacher", icon: GraduationCap, color: "bg-emerald-600" },
-  parent: { label: "Parent", icon: Users, color: "bg-blue-600" },
-  committee: { label: "Committee", icon: Building2, color: "bg-amber-600" },
+  admin: { label: "Admin", icon: Shield, color: "text-emerald-700 bg-emerald-50" },
+  teacher: { label: "Teacher", icon: GraduationCap, color: "text-teal-700 bg-teal-50" },
+  parent: { label: "Parent", icon: Users, color: "text-blue-700 bg-blue-50" },
+  committee: { label: "Committee", icon: Building2, color: "text-amber-700 bg-amber-50" },
+};
+
+const pagePattern = {
+  backgroundImage: "linear-gradient(rgba(16, 111, 76, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(16, 111, 76, 0.08) 1px, transparent 1px)",
+  backgroundSize: "32px 32px",
 };
 
 function SessionsList() {
   const navigate = useNavigate();
-  const { hasHydrated, logout, sessions } = useAuthStore();
-  const [refreshKey, setRefreshKey] = useState(0);
-
+  const { hasHydrated, sessions } = useAuthStore();
   const stored = hasHydrated ? getStoredSessionsSync() : [];
 
   const items = stored.map(({ role, payload }) => {
-    const fullUser = (sessions as Record<string, unknown>)[role] as { name?: string; tenantSlug?: string; actorType?: string; photoUrl?: string | null } | undefined;
-    const name = fullUser?.name ?? payload?.name ?? role;
-    const slug = fullUser?.tenantSlug ?? (payload?.client as { slug?: string; subdomain?: string } | undefined)?.slug ?? (payload?.client as { subdomain?: string } | undefined)?.subdomain ?? "";
-    const actor = fullUser?.actorType ?? (payload?.actorType as string) ?? (payload?.role as string) ?? "";
-    return { role, name, slug, actor, tokenPayload: payload };
+    const fullUser = (sessions as Record<string, unknown>)[role] as { name?: string; tenantSlug?: string; actorType?: string } | undefined;
+    const client = payload?.client as { slug?: string; subdomain?: string } | undefined;
+    return {
+      role,
+      name: fullUser?.name ?? payload?.name ?? roleMeta[role]?.label ?? role,
+      slug: fullUser?.tenantSlug ?? client?.slug ?? client?.subdomain ?? "",
+      actor: fullUser?.actorType ?? (payload?.actorType as string) ?? (payload?.role as string) ?? "",
+    };
   });
 
-  if (!hasHydrated) {
-    return (
-      <div className="mb-6 bg-white rounded-2xl border border-gray-100 p-4 text-center text-sm text-gray-400">
-        Loading sessions...
-      </div>
-    );
-  }
-
-  if (items.length === 0) return null;
-
-  const handleGo = (role: UserRole, slug: string, actor: string) => {
-    const r = role as UserRole;
-    const isSuperAdmin = actor === "SUPER_ADMIN";
-    const tenantSlug = slug || undefined;
-    navigate(roleHomePath({ role: r, actorType: actor as never, tenantSlug: isSuperAdmin ? undefined : tenantSlug }));
-  };
-
-  const handleLogout = (role: UserRole) => {
-    logout(role);
-    setRefreshKey((k) => k + 1);
+  const openSession = (role: UserRole, slug: string, actor: string) => {
+    navigate(roleHomePath({ role, actorType: actor as never, tenantSlug: actor === "SUPER_ADMIN" ? undefined : slug || undefined }));
   };
 
   return (
-    <div className="mb-6 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-        <h2 className="text-sm font-bold text-gray-900">Signed in</h2>
-        <span className="text-xs text-gray-400">{items.length} session{items.length !== 1 ? "s" : ""}</span>
-      </div>
-      <div className="divide-y divide-gray-50">
-        {items.map(({ role, name, slug, actor }) => {
-          const meta = roleMeta[role] ?? roleMeta.admin;
-          const Icon = meta.icon;
-          return (
-            <div key={role} className="flex items-center gap-3 px-4 py-3">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0 ${meta.color}`}>
-                <Icon className="w-5 h-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-gray-900 truncate">{name}</p>
-                <p className="text-xs text-gray-500 truncate capitalize">{meta.label} {slug ? `· ${slug}` : actor === "SUPER_ADMIN" ? "· Platform" : ""}</p>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <button
-                  onClick={() => handleGo(role, slug, actor as string)}
-                  className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors"
-                >
-                  Open
-                </button>
-                <button
-                  onClick={() => handleLogout(role)}
-                  title={`Sign out ${role}`}
-                  className="p-1.5 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-colors"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <div className="px-4 py-2 bg-gray-50/60 flex items-center justify-between">
-        <button
-          onClick={() => {
-            for (const { role } of items) {
-              localStorage.removeItem(storageKeyForRole(role));
-            }
-            window.location.reload();
-          }}
-          className="text-xs font-medium text-gray-500 hover:text-red-600"
-        >
-          Sign out all
-        </button>
-        <span className="text-[11px] text-gray-400">Sessions are stored per role</span>
-      </div>
+    <div className="w-full">
+      {items.map(({ role, name, slug, actor }) => {
+        const meta = roleMeta[role] ?? roleMeta.admin;
+        const Icon = meta.icon;
+        return (
+          <button key={role} type="button" onClick={() => openSession(role, slug, actor)} className="flex h-14 w-full items-center gap-3 border-b border-emerald-950/5 px-1 text-left transition-colors hover:bg-emerald-50/50">
+            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${meta.color}`}><Icon className="h-4 w-4" /></span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold text-slate-900">{name}</span>
+              <span className="block truncate text-xs capitalize text-slate-500">{meta.label}{slug ? ` · ${slug}` : actor === "SUPER_ADMIN" ? " · Platform" : ""}</span>
+            </span>
+            <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" />
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -118,75 +73,58 @@ function SessionsList() {
 export default function TwaLandingPage() {
   const navigate = useNavigate();
   const { hasHydrated, sessions } = useAuthStore();
-
   const [role, setRole] = useState<LandingRole | null>(null);
   const [slug, setSlug] = useState("");
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState(0);
+  const [onboardingSwiper, setOnboardingSwiper] = useState<SwiperInstance | null>(null);
+
+  const hasSessions = hasHydrated && getStoredSessionsSync().length > 0;
 
   useEffect(() => {
     if (!hasHydrated) return;
 
-    // 1. If exactly one session exists, auto-open it directly!
     const stored = getStoredSessionsSync();
     if (stored.length === 1) {
       const single = stored[0];
       const fullUser = (sessions as Record<string, unknown>)[single.role] as
         | { tenantSlug?: string; actorType?: string }
         | undefined;
-      const targetSlug =
-        fullUser?.tenantSlug ??
-        single.payload?.client?.slug ??
-        single.payload?.client?.subdomain ??
-        "";
-      const targetActor =
+      const client = single.payload?.client as
+        | { slug?: string; subdomain?: string }
+        | undefined;
+      const actor =
         fullUser?.actorType ??
-        single.payload?.actorType ??
-        single.payload?.role ??
+        (single.payload?.actorType as string) ??
+        (single.payload?.role as string) ??
         "";
-      const isSuperAdmin = targetActor === "SUPER_ADMIN";
+      const sessionSlug =
+        fullUser?.tenantSlug ?? client?.slug ?? client?.subdomain ?? "";
+
       navigate(
         roleHomePath({
           role: single.role,
-          actorType: targetActor as never,
-          tenantSlug: isSuperAdmin ? undefined : targetSlug || undefined,
+          actorType: actor as never,
+          tenantSlug:
+            actor === "SUPER_ADMIN" ? undefined : sessionSlug || undefined,
         }),
-        { replace: true }
+        { replace: true },
       );
       return;
     }
 
-    // 2. Synchronous check for remembered slug + role (localStorage + Cookie)
     const syncPrefs = getTenantSlugSync();
-    if (syncPrefs.slug) {
-      setSlug(syncPrefs.slug);
-      if (syncPrefs.role === "parent" || syncPrefs.role === "teacher") {
-        setRole(syncPrefs.role);
-      }
-    }
+    if (syncPrefs.slug) setSlug(syncPrefs.slug);
+    if (syncPrefs.role === "parent" || syncPrefs.role === "teacher" || syncPrefs.role === "admin") setRole(syncPrefs.role);
 
-    // 3. Asynchronous fallback check (IndexedDB) in case localStorage was evicted
-    void getTenantSlugAsync().then((asyncPrefs) => {
-      if (asyncPrefs.slug) {
-        setSlug((prev) => prev || asyncPrefs.slug);
-        if (asyncPrefs.role === "parent" || asyncPrefs.role === "teacher") {
-          const matchedRole: LandingRole = asyncPrefs.role;
-          setRole((prev) => prev ?? matchedRole);
-        }
-      }
+    void getTenantSlugAsync().then((prefs) => {
+      if (prefs.slug) setSlug((current) => current || prefs.slug);
+      if (prefs.role === "parent" || prefs.role === "teacher" || prefs.role === "admin") setRole((current) => current ?? prefs.role as LandingRole);
     });
+  }, [hasHydrated, sessions]);
 
-    // 4. If in standalone PWA mode and slug + role are remembered with no sessions, auto-redirect directly to role page/login!
-    const isStandalone =
-      typeof window !== "undefined" &&
-      (window.matchMedia("(display-mode: standalone)").matches ||
-        (window.navigator as unknown as { standalone?: boolean }).standalone === true);
-
-    if (isStandalone && syncPrefs.slug && (syncPrefs.role === "parent" || syncPrefs.role === "teacher")) {
-      navigate(`/m/${syncPrefs.slug}/${syncPrefs.role}`, { replace: true });
-    }
-  }, [hasHydrated, sessions, navigate]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     if (!role || !slug.trim()) return;
     const normalizedSlug = slug.trim().toLowerCase();
     saveTenantSlug(normalizedSlug, role);
@@ -199,139 +137,79 @@ export default function TwaLandingPage() {
     setRole(null);
   };
 
-  return (
-    <div className="min-h-[100dvh] bg-[#faf9f6] flex flex-col items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35 }}
-        className="w-full max-w-md"
-      >
-        <div className="text-center mb-8">
-          <img
-            src="/icons/icon.svg"
-            alt="Smart Madrasa"
-            className="inline-block w-16 h-16 mb-4 shadow-lg rounded-2xl"
-          />
-          <h1 className="text-2xl font-bold text-gray-900">Madrasa Portal</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Select your role to continue
-          </p>
-        </div>
+  const drawer = <OnboardingDrawer open={drawerOpen} onOpenChange={setDrawerOpen} role={role} setRole={setRole} slug={slug} setSlug={setSlug} onSubmit={handleSubmit} onClearSlug={handleClearSlug} />;
 
-        {/* ── Signed-in sessions (multi-role) ── */}
-        <SessionsList />
+  if (!hasHydrated) {
+    return <main className="flex min-h-[100dvh] items-center justify-center bg-[#f8fbf7]"><span className="h-7 w-7 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-600" /></main>;
+  }
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setRole("parent")}
-              className={`flex flex-col items-center gap-2 p-5 rounded-2xl border-2 transition-all ${
-                role === "parent"
-                  ? "border-emerald-500 bg-emerald-50 shadow-sm"
-                  : "border-gray-200 bg-white hover:border-gray-300"
-              }`}
-            >
-              <div
-                className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                  role === "parent"
-                    ? "bg-emerald-600 text-white"
-                    : "bg-gray-100 text-gray-500"
-                }`}
-              >
-                <Users className="w-6 h-6" />
-              </div>
-              <span
-                className={`text-sm font-semibold ${
-                  role === "parent" ? "text-emerald-800" : "text-gray-700"
-                }`}
-              >
-                Parent
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setRole("teacher")}
-              className={`flex flex-col items-center gap-2 p-5 rounded-2xl border-2 transition-all ${
-                role === "teacher"
-                  ? "border-emerald-500 bg-emerald-50 shadow-sm"
-                  : "border-gray-200 bg-white hover:border-gray-300"
-              }`}
-            >
-              <div
-                className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                  role === "teacher"
-                    ? "bg-emerald-600 text-white"
-                    : "bg-gray-100 text-gray-500"
-                }`}
-              >
-                <GraduationCap className="w-6 h-6" />
-              </div>
-              <span
-                className={`text-sm font-semibold ${
-                  role === "teacher" ? "text-emerald-800" : "text-gray-700"
-                }`}
-              >
-                Teacher
-              </span>
-            </button>
+  if (hasSessions) {
+    return (
+      <main className="relative min-h-[100dvh] overflow-hidden bg-[#f8fbf7] text-slate-900">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-70" style={pagePattern} />
+        <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-md flex-col items-center pt-7">
+          <div className="flex w-full flex-1 flex-col items-center px-6 text-center">
+            <img
+              src="/imgs/onboarding/1.png"
+              alt="Madrasa community"
+              className="mt-auto h-[min(30vh,250px)] w-full object-contain drop-shadow-[0_16px_18px_rgba(15,67,45,0.12)]"
+            />
+            <img
+              src="/imgs/onboarding/logo.svg"
+              alt="Smart Madrasa"
+              className="mt-3 h-10 w-11 object-contain"
+            />
+            <h1 className="mt-4 bg-gradient-to-r from-[#059669] to-[#0d9488] bg-clip-text text-4xl font-semibold tracking-[-0.04em] text-transparent">
+              Welcome back
+            </h1>
+            <p className="mb-auto mt-2 text-sm leading-6 text-slate-500">
+              Choose a session to continue where you left off.
+            </p>
           </div>
 
-          {role && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              transition={{ duration: 0.2 }}
+          <section className="mt-auto flex h-max w-full flex-none flex-col rounded-t-[2rem] bg-white/85 px-6 pb-8 pt-7 shadow-[0_-18px_55px_rgba(5,150,105,0.14)] backdrop-blur-md">
+            <div className="mb-2 text-center">
+              {/* <h2 className="text-base font-semibold text-slate-900">Your sessions</h2> */}
+              {/* <p className="mt-1 text-xs text-slate-500">Select an account to continue</p> */}
+            </div>
+            <SessionsList />
+            <Button
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              className="mt-6 h-auto w-full rounded-2xl py-4 text-sm font-semibold"
             >
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Madrasa Slug
-              </label>
-              <input
-                type="text"
-                value={slug}
-                onChange={(e) => setSlug(e.target.value)}
-                placeholder="e.g. noorul-islam"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-gray-900 text-sm"
-                autoFocus
-                required
-              />
-              <div className="flex items-center justify-between mt-1.5">
-                <p className="text-xs text-gray-400">
-                  Enter your madrasa's slug to proceed to login
-                </p>
-                {slug && (
-                  <button
-                    type="button"
-                    onClick={handleClearSlug}
-                    className="text-xs text-emerald-600 hover:text-emerald-700 font-medium hover:underline"
-                  >
-                    Change
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          {role && (
-            <motion.button
-              type="submit"
-              disabled={!slug.trim()}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="w-full bg-emerald-600 text-white font-semibold py-3.5 rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
-            >
-              Continue to Login
-              <ArrowRight className="w-4 h-4" />
-            </motion.button>
-          )}
-        </form>
-
-        <div className="mt-4">
-          <PwaInstallButton />
+              {/* <Plus className="h-4 w-4" /> */}
+              New session
+            </Button>
+          </section>
         </div>
-      </motion.div>
-    </div>
+        {drawer}
+      </main>
+    );
+  }
+
+  return (
+    <main className="relative min-h-[100dvh] overflow-hidden bg-[#f8fbf7] text-slate-900">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-70" style={pagePattern} />
+      <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-md flex-col pb-7 pt-8 sm:px-8">
+        <Swiper onSwiper={setOnboardingSwiper} onSlideChange={(swiper) => setOnboardingStep(swiper.activeIndex)} spaceBetween={28} slidesPerView={1} className="flex w-full flex-1 !overflow-visible !px-2" allowTouchMove resistanceRatio={1}>
+          {onboardingSlides.map((item) => (
+            <SwiperSlide key={item.title} className="!flex flex-col items-center justify-center px-6 text-center">
+              <div className="mb-3 flex h-[min(48vh,530px)] w-full items-center justify-center"><img src={item.image} alt={item.alt} className="mt-auto max-h-full w-full object-contain drop-shadow-[0_18px_18px_rgba(14,78,54,0.12)]" /></div>
+              <img src="/imgs/onboarding/logo.svg" alt="Smart Madrasa" className="mb-5 h-10 w-10 object-contain" />
+              <h1 className="max-w-sm bg-gradient-to-r from-emerald-800 via-emerald-600 to-emerald-900 bg-clip-text text-[2.5rem] font-semibold leading-[1.06] tracking-[-0.045em] text-transparent">{item.title}</h1>
+              <p className="mt-4 max-w-sm text-sm leading-6 text-slate-600">{item.description}</p>
+            </SwiperSlide>
+          ))}
+        </Swiper>
+        <div className="space-y-5 px-6">
+          <div className="flex justify-center gap-2" aria-label="Onboarding progress">
+            {onboardingSlides.map((item, index) => <button key={item.title} type="button" aria-label={`Go to slide ${index + 1}`} onClick={() => onboardingSwiper?.slideTo(index)} className={`h-1.5 rounded-full transition-all ${index === onboardingStep ? "w-8 bg-emerald-700" : "w-1.5 bg-emerald-700/20"}`} />)}
+          </div>
+          <Button type="button" onClick={() => setDrawerOpen(true)} className="h-auto w-full rounded-2xl px-5 py-4 text-sm font-bold shadow-[0_10px_24px_rgba(16,111,76,0.22)] active:scale-[0.99]">Get started</Button>
+        </div>
+      </div>
+      {drawer}
+    </main>
   );
 }

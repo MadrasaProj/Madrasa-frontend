@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Drawer } from "@/components/ui/Drawer";
+import { Drawer } from "@/components/ui/drawerView";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import {
   listHomework, createHomework, deleteHomework, updateHomework,
