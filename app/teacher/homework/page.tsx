@@ -1,6 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { Calendar as HomeworkCalendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import {
@@ -56,6 +64,7 @@ export default function TeacherHomeworkPage() {
   const [title, setTitle]             = useState("");
   const [desc, setDesc]               = useState("");
   const [dueDate, setDueDate]         = useState(fmt(new Date(Date.now() + 86400_000)));
+  const [dueDatePickerOpen, setDueDatePickerOpen] = useState(false);
   const [subjectId, setSubjectId]     = useState("");
   const [classSubjects, setClassSubjects] = useState<SubjectRecord[]>([]);
   const [creating, setCreating]       = useState(false);
@@ -226,15 +235,16 @@ export default function TeacherHomeworkPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title={t("teacherPages", "homeworkTitle", lang)} icon={BookOpen} back backHref="/teacher" />
+      <PageHeader title={t("teacherPages", "homeworkTitle", lang)} />
 
       {error && <ApiErrorBanner message={error} onRetry={() => { setError(null); }} />}
 
-      <div className="flex items-center justify-between mb-6">
+      {homework.length > 0 && <div className="flex items-center justify-between mb-6">
         <p className="text-sm text-gray-500">
           {homework.length === 1 ? t("teacherPages", "assignmentsLabel", lang).replace("{n}", String(homework.length)) : t("teacherPages", "assignmentsPlural", lang).replace("{n}", String(homework.length))}
         </p>
-        <button
+        <Button
+        size={"lg"}
           onClick={() => {
             setTitle(""); setDesc("");
             setDueDate(fmt(new Date(Date.now() + 86400_000)));
@@ -242,13 +252,13 @@ export default function TeacherHomeworkPage() {
             setSubjectId(classSubjects[0]?.id ?? "");
             setShowCreateDrawer(true);
           }}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold text-sm hover:bg-emerald-700 active:scale-[0.97] transition-all shadow-sm"
+          className="inline-flex items-center gap-2    transition-all "
         >
           <Plus className="w-4 h-4" />
           <span className="hidden sm:inline">{t("teacherPages", "newHwBtn", lang)}</span>
           <span className="sm:hidden">{t("teacherPages", "newBtnShort", lang)}</span>
-        </button>
-      </div>
+        </Button>
+      </div>}
 
       {loading ? (
         <div className="space-y-3">
@@ -269,17 +279,22 @@ export default function TeacherHomeworkPage() {
           ))}
         </div>
       ) : homework.length === 0 ? (
-        <div className="text-center py-20 text-gray-400">
-          <BookOpen className="w-12 h-12 mx-auto mb-4 text-gray-200" />
-          <p className="text-sm font-medium">{t("teacherPages", "noAssignmentsYet", lang)}</p>
-          <p className="text-xs mt-1">{t("teacherPages", "createFirstHw", lang)}</p>
-          <button
-            onClick={() => setShowCreateDrawer(true)}
-            className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold text-sm hover:bg-emerald-700 transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            {t("teacherPages", "newHwBtn", lang)}
-          </button>
+        <div className="-mx-4 flex min-h-[calc(100dvh-11rem)] w-[calc(100%+2rem)] items-center justify-center px-6 py-8 text-center lg:-mx-8 lg:w-[calc(100%+4rem)]">
+          <div className="w-full max-w-sm">
+            <img src="/imgs/homework/1.png" alt="" className="mx-auto mb-4 h-auto w-56 max-w-full object-contain" />
+            <h3 className="mt-3 text-base font-bold text-gray-900">
+              {t("teacherPages", "noAssignmentsYet", lang)}
+            </h3>
+            <p className="mx-auto mt-1 max-w-xs text-sm text-gray-500">
+              {t("teacherPages", "createFirstHw", lang)}
+            </p>
+            <div className="mt-5">
+              <Button onClick={() => setShowCreateDrawer(true)} size="lg">
+                <Plus className="w-4 h-4" />
+                {t("teacherPages", "newHwBtn", lang)}
+              </Button>
+            </div>
+          </div>
         </div>
       ) : (
         <>
@@ -493,13 +508,20 @@ export default function TeacherHomeworkPage() {
         <div className="space-y-4 p-5 pb-8">
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t("teacherPages", "classRequired", lang)}</label>
-            <select value={classId} onChange={(e) => setClassId(e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
-              {classes.length === 0
-                ? <option value="">{t("teacherPages", "noAccessibleClasses", lang)}</option>
-                : classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)
-              }
-            </select>
+            <Select value={classId} onValueChange={setClassId}>
+              <SelectTrigger size="lg" className="w-full">
+                <SelectValue>
+                  {(value: string | null) => classes.find((c) => c.id === value)?.name
+                    ?? (classes.length === 0 ? t("teacherPages", "noAccessibleClasses", lang) : t("teacherPages", "classRequired", lang))}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {classes.length === 0
+                  ? <SelectItem size="lg" value="none" disabled>{t("teacherPages", "noAccessibleClasses", lang)}</SelectItem>
+                  : classes.map((c) => <SelectItem size="lg" key={c.id} value={c.id}>{c.name}</SelectItem>)
+                }
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
@@ -507,49 +529,81 @@ export default function TeacherHomeworkPage() {
               {t("teacherPages", "subjectRequired", lang)}
               {isPeriodBased && <span className="text-gray-400 font-normal ml-1">{t("teacherPages", "yourSubjectsHint", lang)}</span>}
             </label>
-            <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
-              {classSubjects.length === 0
-                ? <option value="">
+            <Select value={subjectId} onValueChange={setSubjectId}>
+              <SelectTrigger size="lg" className="w-full">
+                <SelectValue>
+                  {(value: string | null) => classSubjects.find((s) => s.id === value)?.name
+                    ?? (classSubjects.length === 0
+                      ? classId
+                        ? isPeriodBased ? t("teacherPages", "noSubjectsAssigned", lang) : t("teacherPages", "noSubjectsInClass", lang)
+                        : t("teacherPages", "selectClassFirst", lang)
+                      : t("teacherPages", "subjectRequired", lang))}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {classSubjects.length === 0
+                ? <SelectItem size="lg" value="none" disabled>
                     {classId
                       ? isPeriodBased ? t("teacherPages", "noSubjectsAssigned", lang) : t("teacherPages", "noSubjectsInClass", lang)
                       : t("teacherPages", "selectClassFirst", lang)
                     }
-                  </option>
-                : classSubjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)
-              }
-            </select>
+                  </SelectItem>
+                : classSubjects.map((s) => <SelectItem size="lg" key={s.id} value={s.id}>{s.name}</SelectItem>)
+                }
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t("teacherPages", "titleRequired", lang)}</label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)}
+            <Input size="lg" value={title} onChange={(e) => setTitle(e.target.value)}
               placeholder={t("teacherPages", "titlePlaceholder", lang)}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t("teacherPages", "descOptional", lang)}</label>
-            <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3}
+            <Textarea size="lg" value={desc} onChange={(e) => setDesc(e.target.value)} rows={3}
               placeholder={t("teacherPages", "descPlaceholder", lang)}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none" />
+              />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t("teacherPages", "dueDateRequired", lang)}</label>
-            <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
-              min={today}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            <Popover open={dueDatePickerOpen} onOpenChange={setDueDatePickerOpen}>
+              <PopoverTrigger render={<Button type="button" variant="outline" size="lg" className="h-11 w-full justify-start font-normal" />}>
+                <Calendar className="text-muted-foreground" />
+                {dueDate
+                  ? new Date(`${dueDate}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+                  : t("teacherPages", "dueDateRequired", lang)}
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-auto p-0">
+                <HomeworkCalendar
+                  mode="single"
+                  selected={dueDate ? new Date(`${dueDate}T00:00:00`) : undefined}
+                  onSelect={(date) => {
+                    if (!date) return;
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, "0");
+                    const day = String(date.getDate()).padStart(2, "0");
+                    setDueDate(`${year}-${month}-${day}`);
+                    setDueDatePickerOpen(false);
+                  }}
+                  disabled={{ before: new Date(`${today}T00:00:00`) }}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
-          <button
+          <Button
             onClick={handleCreate}
             disabled={!classId || !subjectId || !title || !dueDate || creating}
-            className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold text-sm disabled:opacity-60 flex items-center justify-center gap-2 hover:bg-emerald-700 transition-colors active:scale-[0.98]"
+            size="lg"
+            className="w-full"
           >
             {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
             {t("teacherPages", "createAssignmentBtn", lang)}
-          </button>
+          </Button>
         </div>
       </ResponsivePopover>
 
