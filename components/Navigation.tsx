@@ -42,6 +42,7 @@ import {
   MapPin,
   Receipt,
   Download,
+  ChevronUp,
 } from "lucide-react";
 import { Drawer } from "@/components/ui/drawerView";
 import OnboardingDrawer from "@/components/twa/OnboardingDrawer";
@@ -767,7 +768,7 @@ export function Sidebar({
       isCheckin && !active
         ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200 shadow-sm"
         : active
-          ? "bg-emerald-600 text-white shadow-sm font-semibold"
+          ? "bg-emerald-600 text-white shadow-sm "
           : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
     );
 
@@ -868,7 +869,7 @@ export function Sidebar({
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate">
+              <p className="text-sm  text-gray-900 truncate">
                 {user.name}
               </p>
               <p className="text-xs text-emerald-700 capitalize">
@@ -949,7 +950,7 @@ export function Sidebar({
         {/* ── Mobile sidebar utilities ── */}
         <div className="lg:hidden px-4 py-3 border-t border-gray-100 bg-gray-50 space-y-1 shrink-0">
           <div className="flex items-center justify-between gap-2 px-3 py-2">
-            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            <span className="text-xs  text-gray-400 uppercase tracking-wider">
               {lang === "ml" ? "ഭാഷ" : "Language"}
             </span>
             <LanguageSwitcher />
@@ -1099,8 +1100,8 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
 
   return (
     <>
-      <nav className="lg:hidden fixed bottom-3 left-1/2  w-max -translate-x-1/2 z-30 rounded-2xl border border-white/60 bg-white/85 shadow-[0_8px_30px_rgba(15,67,45,0.12)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/70 pb-safe">
-        <div className="flex items-stretch justify-center gap-1 px-0">
+      <nav className="lg:hidden fixed bottom-0 left-1/2 py-1  w-full rounded-t-2xl -translate-x-1/2 z-30   border border-white/60 bg-white/85 shadow-[0_8px_30px_rgba(15,67,45,0.12)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/70 pb-safe">
+        <div className="flex items-stretch justify-center gap-2 px-0">
           {links.map((l) => {
             const fullHref = l.isExternal
               ? l.href
@@ -1125,7 +1126,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
                   <div className="flex items-center justify-center rounded-xl w-10 h-7">
                     <Icon className="w-5 h-5 shrink-0 text-emerald-600" />
                   </div>
-                  <span className="text-[10px] font-semibold leading-none">
+                  <span className="text-[12px]  leading-none">
                     {t("nav", l.key, lang)}
                   </span>
                 </a>
@@ -1137,7 +1138,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
                 key={l.href}
                 to={fullHref}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-1 p-1 relative transition-all active:scale-95",
+                  "flex flex-col items-center justify-center gap-1 p-2 relative transition-all active:scale-95",
                   active ? "text-emerald-600" : "text-gray-400",
                 )}
               >
@@ -1151,35 +1152,33 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
                   )}
                 >
                   <Icon
-                    className={cn("w-5 h-5 shrink-0", active && "stroke-[2.5]")}
+                    className={cn("w-4 h-4 shrink-0", active && "stroke-[2.5]")}
                   />
                 </div>
-                {/* <span
+                <span
                   className={cn(
-                    "text-[10px] font-semibold leading-none text-center",
+                    "text-[12px] mt-1  leading-none text-center",
                     active ? "text-emerald-600" : "text-gray-400",
                   )}
                 >
                   {t("nav", l.key, lang)}
-                </span> */}
+                </span>
               </Link>
             );
           })}
 
           {showMore && (
-            <button
+            <div
               onClick={() => setMoreOpen(true)}
-              className={cn(
-                "flex flex-col items-center justify-center gap-1 py-2.5 px-1 relative transition-all active:scale-95 text-gray-400",
-              )}
+               className={cn(
+                    "flex flex-col w-12 items-center justify-center gap-1 p-2 relative transition-all active:scale-95  text-gray-400",
+                   )}
             >
-              <div className="flex items-center justify-center rounded-xl w-10 h-7">
-                <Menu className="w-5 h-5 shrink-0" />
-              </div>
-              {/* <span className="text-[10px] font-semibold leading-none">
+                 <ChevronUp className="w-5 h-5 shrink-0" />
+              <span className="text-[12px]  leading-none">
                 {lang === "ml" ? "കൂടുതൽ" : "More"}
-              </span> */}
-            </button>
+              </span>
+             </div>
           )}
 
           {isSuperAdmin && !hasActiveClient && !showMore && (
@@ -1192,7 +1191,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
               <div className="flex items-center justify-center rounded-xl w-10 h-7">
                 <LogOut className="w-5 h-5 shrink-0" />
               </div>
-              <span className="text-[10px] font-semibold leading-none">
+              <span className="text-[12px]  leading-none">
                 Logout
               </span>
             </Button>
@@ -1258,7 +1257,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
 
          {isParent && studentIds.length > 0 && (
           <div className="border-b border-gray-100  py-3">
-            <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
+            <p className="mb-2 px-2 text-xs  uppercase tracking-wider text-gray-400">
               {lang === "ml" ? "വിദ്യാർത്ഥിയെ തിരഞ്ഞെടുക്കുക" : "Switch student"}
             </p>
             <ButtonGroup
@@ -1292,7 +1291,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
-                      <p className="truncate text-sm font-semibold  ">
+                      <p className="truncate text-sm   ">
                         {name}
                       </p>
                       <p className="shrink-0 text-xs text-gray-500">
