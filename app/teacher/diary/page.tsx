@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Button } from "@/components/ui/button";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
@@ -427,15 +428,13 @@ export default function TeacherDiaryPage() {
       <PageHeader
         title={t("teacherPages", "classDiaryTitle", lang)}
         subtitle={t("teacherPages", "entriesCount", lang).replace("{n}", String(entries.length))}
-        icon={FileText}
-        back backHref="/teacher"
         action={
-          <button
+          <Button
             onClick={openCreate}
-            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold"
+            className="gap-1.5 bg-emerald-600 px-4 text-white hover:bg-emerald-700"
           >
-            <Plus className="w-4 h-4" /> {t("teacherPages", "addDiaryBtn", lang)}
-          </button>
+            <Plus className="size-4" /> {t("teacherPages", "addDiaryBtn", lang)}
+          </Button>
         }
       />
 
