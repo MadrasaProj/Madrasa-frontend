@@ -38,44 +38,12 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
+import {
+  AttendanceEditorContent,
+  type ActiveStatus,
+} from "@/components/teacher/AttendanceEditorContent";
 
 // ── Constants ──────────────────────────────────────────────────────────────
-
-const STATUS_CONFIG: Record<
-  string,
-  { label: string; short: string; bg: string; text: string; rowBg: string }
-> = {
-  PRESENT: {
-    label: "Present",
-    short: "P",
-    bg: "bg-emerald-100",
-    text: "text-emerald-700",
-    rowBg: "border-emerald-200 bg-emerald-50/40",
-  },
-  ABSENT: {
-    label: "Absent",
-    short: "A",
-    bg: "bg-red-100",
-    text: "text-red-600",
-    rowBg: "border-red-200 bg-red-50/40",
-  },
-  LEAVE: {
-    label: "Leave",
-    short: "L",
-    bg: "bg-amber-100",
-    text: "text-amber-700",
-    rowBg: "border-amber-200 bg-amber-50/40",
-  },
-  SICK: {
-    label: "Sick",
-    short: "S",
-    bg: "bg-blue-100",
-    text: "text-blue-700",
-    rowBg: "border-blue-200 bg-blue-50/40",
-  },
-};
-const ACTIVE_STATUSES = ["PRESENT", "ABSENT", "LEAVE", "SICK"] as const;
-type ActiveStatus = (typeof ACTIVE_STATUSES)[number];
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -87,6 +55,20 @@ function localDateISO(date: Date) {
     String(date.getMonth() + 1).padStart(2, "0"),
     String(date.getDate()).padStart(2, "0"),
   ].join("-");
+}
+
+function attendanceColor(percentage: number) {
+  const red = [239, 68, 68];
+  const yellow = [234, 179, 8];
+  const green = [34, 197, 94];
+  const [from, to, ratio] =
+    percentage <= 50
+      ? [red, yellow, percentage / 50]
+      : [yellow, green, (percentage - 50) / 50];
+  const color = from.map((channel, index) =>
+    Math.round(channel + (to[index] - channel) * ratio),
+  );
+  return `rgba(${color.join(",")},0.1)`;
 }
 
 interface LocalRecord {
@@ -115,7 +97,7 @@ function OtherClassConfirmModal({
 }) {
   const { lang } = useLanguageStore();
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/50 z-1050 flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -432,6 +414,17 @@ export default function TeacherAttendancePage() {
         records: entries,
       });
 
+      setAttendanceSummaries((prev) => {
+        const next = new Map(prev);
+        const current = next.get(activeClassId);
+        next.set(activeClassId, {
+          total: current?.total ?? students.length,
+          present: entries.filter((entry) => entry.status === "PRESENT").length,
+          taken: entries.length > 0,
+        });
+        return next;
+      });
+
       setRecords((prev) => {
         const next = new Map(prev);
         for (const [sid, rec] of next) next.set(sid, { ...rec, dirty: false });
@@ -537,72 +530,76 @@ export default function TeacherAttendancePage() {
       )}
 
       {/* Date picker drawer */}
-      <div className="flex items-center  gap-5 mb-4 py-1 w-full justify-between sticky top-0 left-0">
-        <button
-          type="button"
-          onClick={() => changeDate(-1)}
-          aria-label="Previous date"
-          className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-colors"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-        <button
-          type="button"
-          onClick={() => setDateDrawerOpen(true)}
-          className="flex min-w-40  gap-3 items-center text-center hover:text-emerald-700 transition-colors"
-        >
-          <span className="text-sm font-semibold text-gray-800">
-            {new Date(`${date}T00:00:00`).toLocaleDateString("en-GB", {
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
-            })}
-          </span>
-          <span className="text-xs text-gray-500">
-            {new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
-              weekday: "long",
-            })}
-            {date === todayISO() && (
-              <span className="ml-1 font-semibold text-emerald-700">
-                · {t("teacherPages", "todayBadge", lang)}
+
+      <div className="h-[54px]">
+        <div className="fixed inset-x-0 top-[40px] shadow-lg shadow-gray-100 z-30 bg-white/95 px-4 backdrop-blur-sm lg:left-64 lg:top-[130px] lg:px-8">
+          <div className="mx-auto flex w-full items-center justify-between gap-5 py-1 pt-3 ">
+            <button
+              type="button"
+              onClick={() => changeDate(-1)}
+              aria-label="Previous date"
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-colors"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setDateDrawerOpen(true)}
+              className="flex min-w-40  gap-3 items-center text-center hover:text-emerald-700 transition-colors"
+            >
+              <span className="text-sm font-semibold text-gray-800">
+                {new Date(`${date}T00:00:00`).toLocaleDateString("en-GB", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })}
               </span>
-            )}
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => changeDate(1)}
-          disabled={date >= todayISO()}
-          aria-label="Next date"
-          className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 hover:text-gray-800 disabled:opacity-30 transition-colors"
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
+              <span className="text-xs text-gray-500">
+                {new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
+                  weekday: "long",
+                })}
+                {date === todayISO() && (
+                  <span className="ml-1 font-semibold text-emerald-700">
+                    · {t("teacherPages", "todayBadge", lang)}
+                  </span>
+                )}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => changeDate(1)}
+              disabled={date >= todayISO()}
+              aria-label="Next date"
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 hover:text-gray-800 disabled:opacity-30 transition-colors"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
       </div>
 
-      <Drawer open={dateDrawerOpen} onOpenChange={setDateDrawerOpen}>
-        <DrawerContent className="items-center pb-6">
-          <DrawerHeader>
-            <DrawerTitle>Choose attendance date</DrawerTitle>
-            <DrawerDescription>Select a date up to today.</DrawerDescription>
-          </DrawerHeader>
-          <Calendar
-            mode="single"
-            selected={new Date(`${date}T00:00:00`)}
-            onSelect={(selectedDate) => {
-              if (selectedDate) {
-                setDate(localDateISO(selectedDate));
-                setDateDrawerOpen(false);
-              }
-            }}
-            disabled={{ after: new Date() }}
-            className="p-4"
-          />
-        </DrawerContent>
-      </Drawer>
+      <ResponsivePopover
+        open={dateDrawerOpen}
+        onOpenChange={setDateDrawerOpen}
+        side="bottom"
+        title={"Choose attendance date"}
+      >
+        <Calendar
+          mode="single"
+          selected={new Date(`${date}T00:00:00`)}
+          onSelect={(selectedDate) => {
+            if (selectedDate) {
+              setDate(localDateISO(selectedDate));
+              setDateDrawerOpen(false);
+            }
+          }}
+          disabled={{ after: new Date() }}
+          className="p-4 w-full "
+        />
+      </ResponsivePopover>
 
       {/* Class list */}
-      <div className="space-y-2 mb-4">
+      <div className="mb-4 overflow-hidden rounded-2xl border border-gray-100 bg-white">
         {classesLoading ? (
           <div className="space-y-2">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -629,20 +626,30 @@ export default function TeacherAttendancePage() {
                   setSaveSuccess(false);
                   setEditorOpen(true);
                 }}
-                className="w-full rounded-2xl border border-gray-100 bg-white p-4 text-left shadow-sm hover:border-emerald-200 transition-colors"
+                className="relative w-full border-0 border-b border-gray-100 bg-transparent px-4 py-4 text-left transition-colors last:border-b-0 hover:bg-gray-50/70"
               >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                      <Users className="w-5 h-5" />
-                    </div>
+                <div
+                  className="absolute left-0 top-0 h-full w-full"
+                  style={{
+                    width: `${percentage}%`,
+                    background: `linear-gradient(to right, transparent, ${attendanceColor(percentage)})`,
+                  }}
+                />
+                <div className="relative z-10 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-bold text-gray-900">
-                        {cls.name}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-sm font-bold text-gray-900">
+                          {cls.name}
+                        </p>
+                        {isOwn && (
+                          <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                            {t("teacherPages", "mineBadge", lang)}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-gray-400">
                         {cls.studentCount ?? 0} students
-                        {isOwn ? " · My class" : ""}
                       </p>
                     </div>
                   </div>
@@ -655,15 +662,6 @@ export default function TeacherAttendancePage() {
                       {attendance.present}/{attendance.total}
                     </span>
                   )}
-                </div>
-                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-gray-100">
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{
-                      width: `${percentage}%`,
-                      backgroundColor: `rgb(${Math.round(239 - (205 * percentage) / 100)} ${Math.round(68 + (129 * percentage) / 100)} ${Math.round(68 + (26 * percentage) / 100)} / 0.1)`,
-                    }}
-                  />
                 </div>
               </button>
             );
@@ -679,345 +677,30 @@ export default function TeacherAttendancePage() {
         side="bottom"
         contentClassName="p-4"
       >
-        {/* Non-own class warning */}
-        {!isOwnClass && activeClassId && (
-          <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 mb-4 text-amber-700 text-xs font-semibold">
-            <AlertTriangle className="w-4 h-4 shrink-0" />
-            {t("teacherPages", "markingOtherDesc", lang)}
-          </div>
-        )}
-
-        {/* No class selected */}
-        {!activeClassId && !classesLoading && (
-          <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-            <Users className="w-12 h-12 mb-4 opacity-20" />
-            <p className="font-semibold text-gray-500">
-              {t("teacherPages", "selectClassView", lang)}
-            </p>
-          </div>
-        )}
-
-        {/* Summary bar + progress */}
-        {activeClassId && records.size > 0 && (
-          <>
-            <div className="grid grid-cols-5 gap-2 mb-4">
-              {[
-                {
-                  key: "PRESENT",
-                  label: t("teacherPages", "present", lang),
-                  cls: "bg-emerald-50 text-emerald-700",
-                },
-                {
-                  key: "ABSENT",
-                  label: t("teacherPages", "absent", lang),
-                  cls: "bg-red-50 text-red-600",
-                },
-                {
-                  key: "LEAVE",
-                  label: t("teacherPages", "leaveLabel", lang),
-                  cls: "bg-amber-50 text-amber-700",
-                },
-                {
-                  key: "SICK",
-                  label: t("teacherPages", "sickLabel", lang),
-                  cls: "bg-blue-50 text-blue-700",
-                },
-                {
-                  key: "UNMARKED",
-                  label: t("teacherPages", "unmarkedLabel", lang),
-                  cls: "bg-gray-50 text-gray-500",
-                },
-              ].map(({ key, label, cls }) => (
-                <div
-                  key={key}
-                  className={cn("rounded-xl p-2.5 text-center", cls)}
-                >
-                  <p className="text-xl font-bold">{summary[key] ?? 0}</p>
-                  <p className="text-[10px] font-semibold mt-0.5">{label}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Attendance % progress bar */}
-            <div className="bg-white rounded-2xl border border-gray-100 px-4 py-3 mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-semibold text-gray-500">
-                  {t("teacherPages", "attendanceRateLabel", lang)}
-                </p>
-                <p className="text-sm font-bold text-emerald-700">{pct}%</p>
-              </div>
-              <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden flex">
-                <div
-                  className="h-full bg-emerald-500 transition-all duration-500"
-                  style={{
-                    width: `${records.size > 0 ? (summary.PRESENT / records.size) * 100 : 0}%`,
-                  }}
-                />
-                <div
-                  className="h-full bg-amber-400 transition-all duration-500"
-                  style={{
-                    width: `${records.size > 0 ? (summary.LEAVE / records.size) * 100 : 0}%`,
-                  }}
-                />
-                <div
-                  className="h-full bg-blue-400 transition-all duration-500"
-                  style={{
-                    width: `${records.size > 0 ? (summary.SICK / records.size) * 100 : 0}%`,
-                  }}
-                />
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Clear all confirmation modal */}
-        <AnimatePresence>
-          {confirmClear && (
-            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl"
-              >
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
-                    <AlertTriangle className="w-5 h-5 text-red-600" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-gray-900">
-                      {t("teacherPages", "clearAttendanceTitle", lang)}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {activeClass?.name} · {date}
-                    </p>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-600 mb-5">
-                  {t("teacherPages", "clearAttendanceDesc", lang)}
-                </p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setConfirmClear(false)}
-                    className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50"
-                  >
-                    {t("common", "cancel", lang)}
-                  </button>
-                  <button
-                    onClick={clearAll}
-                    disabled={saving}
-                    className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-60"
-                  >
-                    {saving
-                      ? t("teacherPages", "clearingLabel", lang)
-                      : t("teacherPages", "yesClearAll", lang)}
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-
-        {/* Bulk mark actions */}
-        {activeClassId && records.size > 0 && (
-          <div className="flex gap-2 mb-4 flex-wrap">
-            <span className="text-xs text-gray-400 self-center mr-1">
-              {t("teacherPages", "markAllLabel", lang)}
-            </span>
-            {ACTIVE_STATUSES.map((s) => (
-              <button
-                key={s}
-                onClick={() => markAll(s)}
-                className={cn(
-                  "text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors hover:opacity-80",
-                  STATUS_CONFIG[s].bg,
-                  STATUS_CONFIG[s].text,
-                )}
-              >
-                {s === "PRESENT"
-                  ? t("teacherPages", "present", lang)
-                  : s === "ABSENT"
-                    ? t("teacherPages", "absent", lang)
-                    : s === "LEAVE"
-                      ? t("teacherPages", "leaveLabel", lang)
-                      : t("teacherPages", "sickLabel", lang)}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {saveError && (
-          <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl mb-4 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            {saveError}
-          </div>
-        )}
-
-        {/* Student list */}
-        {activeClassId &&
-          (loading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="bg-white rounded-2xl border border-gray-100 p-3.5 flex items-center gap-3"
-                >
-                  <Skeleton className="w-10 h-10 rounded-xl shrink-0" />
-                  <div className="flex-1 space-y-1.5">
-                    <Skeleton className="h-4 w-2/5" />
-                    <Skeleton className="h-3 w-1/4" />
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Skeleton className="w-7 h-7 rounded-lg" />
-                    <Skeleton className="w-7 h-7 rounded-lg" />
-                    <Skeleton className="w-7 h-7 rounded-lg" />
-                    <Skeleton className="w-7 h-7 rounded-lg" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : error ? (
-            <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              {error}
-            </div>
-          ) : students.length === 0 ? (
-            <div className="text-center py-16 text-gray-400">
-              <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
-              <p className="font-semibold">
-                {t("teacherPages", "noActiveStudents", lang)}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2 pb-24">
-              {students.map((student) => {
-                const rec = records.get(student.id);
-                const status = rec?.status ?? null;
-                const cfg = status ? STATUS_CONFIG[status] : null;
-                return (
-                  <div
-                    key={student.id}
-                    className={cn(
-                      "bg-white rounded-2xl border transition-all",
-                      rec?.dirty
-                        ? cfg
-                          ? cn(cfg.rowBg, "border-2")
-                          : "border-amber-200 bg-amber-50/30 border-2"
-                        : "border-gray-100",
-                    )}
-                  >
-                    <div className="p-3.5 flex items-center gap-3">
-                      {/* Avatar */}
-                      <div
-                        className={cn(
-                          "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0",
-                          student.gender === "FEMALE"
-                            ? "bg-pink-100 text-pink-700"
-                            : "bg-emerald-100 text-emerald-700",
-                        )}
-                      >
-                        {student.name.charAt(0)}
-                      </div>
-
-                      {/* Name + adno */}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-900 text-sm truncate">
-                          {student.name}
-                        </p>
-                        <p className="text-xs text-gray-400">{student.adno}</p>
-                      </div>
-
-                      {/* P/A/L/S buttons */}
-                      <div className="flex items-center gap-1 shrink-0">
-                        {ACTIVE_STATUSES.map((s) => (
-                          <button
-                            key={s}
-                            onClick={() => setStatus(student.id, s)}
-                            title={
-                              s === "PRESENT"
-                                ? t("teacherPages", "present", lang)
-                                : s === "ABSENT"
-                                  ? t("teacherPages", "absent", lang)
-                                  : s === "LEAVE"
-                                    ? t("teacherPages", "leaveLabel", lang)
-                                    : t("teacherPages", "sickLabel", lang)
-                            }
-                            className={cn(
-                              "text-[10px] font-bold px-2 py-1 rounded-lg transition-all",
-                              status === s
-                                ? `${STATUS_CONFIG[s].bg} ${STATUS_CONFIG[s].text} ring-2 ring-offset-1 ring-current`
-                                : "bg-gray-100 text-gray-400 hover:bg-gray-200",
-                            )}
-                          >
-                            {STATUS_CONFIG[s].short}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Notes — only visible when not PRESENT */}
-                    {status && status !== "PRESENT" && (
-                      <div className="px-3.5 pb-3">
-                        <input
-                          type="text"
-                          placeholder={t(
-                            "teacherPages",
-                            "addNoteOptional",
-                            lang,
-                          )}
-                          value={rec?.notes ?? ""}
-                          onChange={(e) => setNotes(student.id, e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl bg-white border border-gray-200 text-xs text-gray-700 focus:outline-none focus:border-emerald-400"
-                        />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-
-        {/* Sticky save + clear buttons — always visible when on mobile for quick access */}
-        {activeClassId && (hasDirty || hasExisting) && (
-          <div className="fixed bottom-20 lg:bottom-6 left-0 right-0 px-4 lg:pl-72 z-20 pointer-events-none">
-            <div className="pointer-events-auto w-full max-w-2xl mx-auto flex gap-2">
-              {hasDirty && (
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-sm shadow-xl transition-all bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
-                >
-                  {saving ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />{" "}
-                      {t("teacherPages", "savingEllipsis", lang)}
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-5 h-5" />{" "}
-                      {t("teacherPages", "saveAttendanceCount", lang)} ·{" "}
-                      {summary.ABSENT > 0
-                        ? t("teacherPages", "xAbsent", lang).replace(
-                            "{n}",
-                            String(summary.ABSENT),
-                          )
-                        : t("teacherPages", "allMarked", lang)}
-                    </>
-                  )}
-                </button>
-              )}
-              {hasExisting && (
-                <button
-                  onClick={() => setConfirmClear(true)}
-                  className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-sm shadow-xl transition-all bg-red-500 text-white hover:bg-red-600"
-                >
-                  <Trash2 className="w-5 h-5" />{" "}
-                  {t("teacherPages", "clearAllBtn", lang)}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+        <AttendanceEditorContent
+          isOwnClass={isOwnClass}
+          activeClassId={activeClassId}
+          classesLoading={classesLoading}
+          records={records}
+          summary={summary}
+          pct={pct}
+          confirmClear={confirmClear}
+          setConfirmClear={setConfirmClear}
+          activeClassName={activeClass?.name}
+          date={date}
+          clearAll={clearAll}
+          saving={saving}
+          markAll={markAll}
+          saveError={saveError}
+          loading={loading}
+          error={error}
+          students={students}
+          setStatus={setStatus}
+          setNotes={setNotes}
+          hasDirty={hasDirty}
+          hasExisting={hasExisting}
+          handleSave={handleSave}
+        />
       </ResponsivePopover>
     </DashboardLayout>
   );
