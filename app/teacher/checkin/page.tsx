@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Drawer } from "@/components/ui/drawerView";
+import { Button } from "@/components/ui/button";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
@@ -15,17 +17,15 @@ import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { Icon } from "@iconify/react";
+import type { DateRange } from "react-day-picker";
 import {
-  LogOut,
   Loader2,
-  Clock,
   MapPin,
+  CalendarDays,
   ChevronRight,
   AlertTriangle,
-  ExternalLink,
 } from "lucide-react";
-
-const LOCATION_HOWTO_VIDEO_URL = "https://www.youtube.com/watch?v=88FQrJoL21o";
 
 function fmtTime(d: string) {
   return new Date(d).toLocaleTimeString("en-IN", {
@@ -77,6 +77,9 @@ export default function TeacherCheckinPage() {
   const [locationDrawerOpen, setLocationDrawerOpen] = useState(false);
 
   const [history, setHistory] = useState<TeacherSession[]>([]);
+  const [sessionTab, setSessionTab] = useState<"today" | "history">("today");
+  const [historyRange, setHistoryRange] = useState<DateRange | undefined>();
+  const [historyPickerOpen, setHistoryPickerOpen] = useState(false);
   const wasHiddenRef = useRef(false);
 
   const activeSession =
@@ -327,7 +330,17 @@ export default function TeacherCheckinPage() {
   };
 
   const historyGrouped = groupByDate(history);
-  const todayCount = todaySessions.length;
+  const filteredHistoryGrouped = historyGrouped
+    .map((group) => ({
+      ...group,
+      sessions: group.sessions.filter((session) => {
+        const date = dateKey(session.date);
+        const from = historyRange?.from ? dateKey(historyRange.from.toISOString()) : "";
+        const to = historyRange?.to ? dateKey(historyRange.to.toISOString()) : from;
+        return (!from || date >= from) && (!to || date <= to);
+      }),
+    }))
+    .filter((group) => group.sessions.length > 0);
 
   return (
     <DashboardLayout>
@@ -336,7 +349,14 @@ export default function TeacherCheckinPage() {
       {error && <ApiErrorBanner message={error} onRetry={load} />}
 
       {loading ? (
-        <div className="max-w-md mx-auto space-y-6 ">
+        <div
+          className={cn(
+            "mx-auto space-y-6",
+            sessionTab === "today" && todaySessions.length === 0
+              ? "w-full"
+              : "max-w-md",
+          )}
+        >
           <Skeleton className="h-64 rounded-3xl" />
           <div className="space-y-2">
             <Skeleton className="h-5 w-36" />
@@ -353,83 +373,44 @@ export default function TeacherCheckinPage() {
         <div className="max-w-md mx-auto space-y-6 ">
           {/* Status card */}
           {activeSession ? (
-            <button
+            <Button
               onClick={handleCheckOut}
               disabled={actionLoading}
-              className="group flex w-full items-center gap-4 rounded-3xl border-2 border-amber-500 bg-white p-4 text-left transition-all hover:border-amber-600 hover:shadow-md disabled:opacity-60"
+              size="lg"
+              className="fixed bottom-12 left-4 rounded-full right-4 z-30 mx-auto w-max max-w-md lg:bottom-6 lg:left-auto lg:right-6 lg:mx-0 lg:w-80"
             >
-              <img
-                src="/imgs/checkin/1.png"
-                alt=""
-                className="h-10 w-10 shrink-0 object-contain opacity-75"
-              />
-              <span className="min-w-0 flex-1">
-                <span className="block text-base font-bold text-gray-900">
-                  {t("teacherPages", "checkOutBtn", lang)}
-                </span>
-                <span className="mt-0.5 block text-xs text-gray-500">
-                  {t("teacherPages", "sinceLabel", lang)}{" "}
-                  {fmtTime(activeSession.checkInTime)}
-                </span>
-              </span>
-              {actionLoading ? (
-                <Loader2 className="h-5 w-5 animate-spin text-amber-600" />
-              ) : (
-                <ChevronRight className="h-5 w-5 text-amber-600 transition-transform group-hover:translate-x-0.5" />
-              )}
-            </button>
+              {actionLoading && <Loader2 className="animate-spin" />}
+              {!actionLoading && <Icon icon="solar:logout-2-linear" className="h-4 w-4" />}
+              {t("teacherPages", "checkOutBtn", lang)}
+            </Button>
           ) : (
-            <button
+            <Button
               onClick={() =>
                 location ? handleCheckIn() : setLocationDrawerOpen(true)
               }
               disabled={actionLoading || locLoading}
-              style={
-                {
-                  background:location?'linear-gradient(45deg, #70c78b26, transparent, #70c78b1f, transparent, #70c78b29, transparent)':''
-                }
-              }
+              size={"lg"}
               className={cn(
-                "group flex w-full items-center gap-4 rounded-2xl border-[2.5px] shadow-lg   p-2 text-left transition-all hover:shadow-md disabled:opacity-70",
-                location ? "border-white" : "border-red-400",
+                "group flex items-center gap-2 shadow-lg transition-all fixed bottom-12 left-4 right-4 z-30 mx-auto w-max max-w-full rounded-full   lg:bottom-6 lg:left-auto lg:right-6 lg:mx-0 lg:w-80",
+                location
+                  ? ""
+                  : "   bg-red-600 text-white ",
+                !activeSession && todaySessions.length === 0 && "hidden",
               )}
             >
-              <span
-                className={cn(
-                  "flex  shrink-0 items-center justify-center rounded-2xl",
-                 )}
-              >
-                {locLoading ? (
-                  <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
-                ) : location ? (
-                  <img
-                    src="/imgs/checkin/1.png"
-                    alt=""
-                    className="h-12 w-12 object-contain opacity-75"
-                  />
-                ) : (
-                  <AlertTriangle className="h-6 w-6 text-red-600" />
-                )}
-              </span>
-              <span className="min-w-0 flex-1  ">
-                <span className="block  text-base font-bold text-gray-900">
-                  {location
-                    ? t("teacherPages", "checkInBtn", lang)
-                    : t("teacherPages", "locationRequired", lang)}
-                </span>
-                <span className=" block text-xs  text-gray-500">
-                  {location
-                    ? t("teacherPages", "sessionsDesc", lang)
-                    : (locError ?? t("teacherPages", "locationHelp", lang))}
-                </span>
-              </span>
-              <ChevronRight
-                className={cn(
-                  "h-5 w-5 transition-transform group-hover:translate-x-0.5",
-                  location ? "text-emerald-600" : "text-red-600",
-                )}
-              />
-            </button>
+              {location ? (
+                <>
+                  <Icon icon="solar:login-2-linear" className="h-4 w-4" />
+                  {t("teacherPages", "checkInBtn", lang)}
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="h-6 w-6 " />
+                  <span>{t("teacherPages", "locationRequired", lang)}</span>
+                  <ChevronRight className="h-5 w-5  " />
+                </>
+              )}
+            </Button>
           )}
 
           <Drawer
@@ -437,16 +418,22 @@ export default function TeacherCheckinPage() {
             onOpenChange={setLocationDrawerOpen}
             side="bottom"
             title={t("teacherPages", "locationRequired", lang)}
-            description={t("teacherPages", "locationHelp", lang)}
           >
             <div className="space-y-4 px-5 pb-8">
-              <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm leading-relaxed text-red-700">
-                {locError ?? t("teacherPages", "locationHelp", lang)}
+              <div className="overflow-hidden rounded-2xl border border-gray-200 bg-gray-100">
+                <iframe
+                  className="aspect-video w-full"
+                  src="https://www.youtube-nocookie.com/embed/88FQrJoL21o"
+                  title="How to enable location access"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
               </div>
-              <button
+              <Button
                 onClick={fetchLocation}
                 disabled={locLoading}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-600 px-4 py-3.5 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+                size="lg"
+                className="w-full bg-emerald-600 text-white hover:bg-emerald-700"
               >
                 {locLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -454,127 +441,123 @@ export default function TeacherCheckinPage() {
                   <MapPin className="h-4 w-4" />
                 )}{" "}
                 Retry location
-              </button>
-              <a
-                href={LOCATION_HOWTO_VIDEO_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-1.5 text-sm font-semibold text-red-700 underline underline-offset-2"
-              >
-                <ExternalLink className="h-4 w-4" />{" "}
-                {t("teacherPages", "howToTurnOn", lang)}
-              </a>
+              </Button>
             </div>
           </Drawer>
 
-          {/* Today's sessions */}
-          {todaySessions.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <Clock className="w-4 h-4 text-gray-400" />
-                <h3 className="text-sm font-semibold text-gray-600">
-                  {t("teacherPages", "todaySessions", lang)} ({todayCount})
-                </h3>
+          <div>
+            {(todaySessions.length > 0 || history.length > 0) && (
+              <div className="mb-4 flex items-center gap-2">
+                <div className="flex min-w-0 flex-1 rounded-xl bg-gray-100 p-1">
+                <Button
+                  type="button"
+                  size="lg"
+                  variant="ghost"
+                  className={cn(
+                    "flex-1",
+                    sessionTab === "today" && "bg-white shadow-sm",
+                  )}
+                  onClick={() => setSessionTab("today")}
+                >
+                  {t("teacherPages", "todaySessions", lang)}
+                </Button>
+                <Button
+                  type="button"
+                  size="lg"
+                  variant="ghost"
+                  className={cn(
+                    "flex-1",
+                    sessionTab === "history" && "bg-white shadow-sm",
+                  )}
+                  onClick={() => setSessionTab("history")}
+                >
+                  {t("teacherPages", "historyLabel", lang)}
+                </Button>
+                </div>
+                {sessionTab === "history" && (
+                  <Button
+                    type="button"
+                    size="lg"
+                    variant="outline"
+                    className="shrink-0 px-3"
+                    onClick={() => {
+                      setHistoryPickerOpen(true);
+                    }}
+                  >
+                    <CalendarDays className="h-4 w-4" />
+                    <span className="hidden sm:inline">{historyRange?.from ? "Date range" : "Filter"}</span>
+                  </Button>
+                )}
               </div>
-              <div className="space-y-2">
-                {todaySessions.map((s) => {
-                  const isActive = s.status === "CHECKED_IN";
-                  return (
-                    <div
-                      key={s.id}
+            )}
+
+            <DateRangePicker
+              open={historyPickerOpen}
+              onOpenChange={setHistoryPickerOpen}
+              value={historyRange}
+              onApply={setHistoryRange}
+            />
+
+            {(sessionTab === "today" ? todaySessions : filteredHistoryGrouped).length === 0 ? (
+              sessionTab === "today" ? (
+                <div
+                  className="-mx-4 flex min-h-[calc(100dvh-11rem)] w-[calc(100%+2rem)] items-center justify-center px-6 py-8 text-center lg:-mx-8 lg:w-[calc(100%+4rem)]"
+                >
+                  <div className="w-full max-w-sm">
+                    <img src="/imgs/checkin/1.png" alt="" className="mx-auto h-24 w-24 object-contain opacity-80" />
+                    <h3 className="mt-3 text-base font-bold text-gray-900">
+                      {t("teacherPages", "notCheckedIn", lang)}
+                    </h3>
+                    <p className="mx-auto mt-1 max-w-xs text-sm text-gray-500">
+                      {t("teacherPages", "sessionsDesc", lang)}
+                    </p>
+                    <Button
+                      onClick={() => location ? handleCheckIn() : setLocationDrawerOpen(true)}
+                      disabled={actionLoading || locLoading}
+                      size="lg"
                       className={cn(
-                        "flex items-center justify-between rounded-2xl border px-4 py-3",
-                        isActive
-                          ? "bg-emerald-50 border-emerald-200"
-                          : "bg-white border-gray-100",
+                        "mt-5 w-max rounded-full",
+                        !location && "bg-red-600 text-white hover:bg-red-700",
                       )}
                     >
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">
-                          {fmtTime(s.checkInTime)} –{" "}
-                          {s.checkOutTime
-                            ? fmtTime(s.checkOutTime)
-                            : t("teacherPages", "ongoingLabel", lang)}
-                        </p>
-                      </div>
-                      <span
-                        className={cn(
-                          "text-xs font-bold px-2.5 py-1 rounded-lg",
-                          isActive
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-gray-100 text-gray-500",
-                        )}
-                      >
-                        {isActive
-                          ? t("teacherPages", "activeLabel", lang)
-                          : t("teacherPages", "outLabel", lang)}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* History */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-base font-semibold text-gray-700">
-                {t("teacherPages", "historyLabel", lang)}
-              </h3>
-              {historyGrouped.length > 0 && (
-                <span className="text-xs text-gray-400">
-                  {history.length} sessions
-                </span>
-              )}
-            </div>
-            {historyGrouped.length === 0 ? (
-              <p className="text-xs text-gray-400 text-center py-4">
-                {t("teacherPages", "noSessionHistory", lang)}
-              </p>
+                      {location ? <Icon icon="solar:login-2-linear" className="h-4 w-4" /> : <AlertTriangle className="h-5 w-5" />}
+                      {location ? t("teacherPages", "checkInBtn", lang) : t("teacherPages", "locationRequired", lang)}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <p className="py-4 text-center text-xs text-gray-400">
+                  {t("teacherPages", "noSessionHistory", lang)}
+                </p>
+              )
             ) : (
-              <div className="space-y-3">
-                {historyGrouped.map(({ date, sessions: daySessions }) => (
-                  <div
-                    key={date}
-                    className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
-                  >
-                    <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-50">
-                      <p className="text-sm font-semibold text-gray-900">
-                        {fmtDate(date)}
-                      </p>
-                      <span className="text-xs text-gray-400">
-                        {daySessions.length} session
-                        {daySessions.length > 1 ? "s" : ""}
-                      </span>
-                    </div>
-                    <div className="divide-y divide-gray-50">
+              <div>
+                {(sessionTab === "today"
+                  ? [{ date: "", sessions: todaySessions }]
+                  : filteredHistoryGrouped
+                ).map(
+                  ({ date, sessions: daySessions }) => (
+                    <div key={date}>
+                      {date && <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-gray-400">{fmtDate(date)}</p>}
                       {daySessions.map((s) => (
                         <div
                           key={s.id}
-                          className="flex items-center justify-between px-4 py-2.5"
+                          className="flex items-center justify-between border-b border-gray-100 px-1 py-3"
                         >
-                          <p className="text-xs text-gray-500">
-                            {fmtTime(s.checkInTime)} –{" "}
-                            {s.checkOutTime ? fmtTime(s.checkOutTime) : "—"}
+                          <p className="text-sm text-gray-600">
+                            {fmtTime(s.checkInTime)} – {s.checkOutTime ? fmtTime(s.checkOutTime) : t("teacherPages", "ongoingLabel", lang)}
                           </p>
-                          <span
-                            className={cn(
-                              "text-[10px] font-bold px-2 py-0.5 rounded-lg",
-                              s.status === "CHECKED_IN"
-                                ? "bg-emerald-100 text-emerald-700"
-                                : "bg-gray-100 text-gray-500",
-                            )}
-                          >
-                            {s.status === "CHECKED_IN"
-                              ? t("teacherPages", "activeLabel", lang)
-                              : t("teacherPages", "outLabel", lang)}
+                          <span className={cn(
+                            "text-xs font-semibold",
+                            s.status === "CHECKED_IN" ? "text-emerald-600" : "text-gray-400",
+                          )}>
+                            {s.status === "CHECKED_IN" ? t("teacherPages", "activeLabel", lang) : t("teacherPages", "outLabel", lang)}
                           </span>
                         </div>
                       ))}
                     </div>
-                  </div>
-                ))}
+                  ),
+                )}
               </div>
             )}
           </div>
