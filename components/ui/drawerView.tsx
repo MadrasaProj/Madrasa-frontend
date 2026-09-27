@@ -62,7 +62,7 @@ export function Drawer({
       open={open}
       onOpenChange={onOpenChange}
       swipeDirection={swipeDirection}
-      showSwipeHandle={isBottom}
+      showSwipeHandle={false}
     >
       <DrawerContent
         className={cn(
@@ -92,7 +92,7 @@ export function Drawer({
             {showCloseButton && (
               <DrawerClose
                 aria-label="Close"
-                className="absolute right-2 top-0 rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                className="absolute right-0 -top-2 rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900"
               >
                 <X className="h-4 w-4" />
               </DrawerClose>

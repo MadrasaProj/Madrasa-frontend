@@ -11,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import GridPattern from "@/components/patterns/GridPattern";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -368,15 +369,7 @@ export default function RoleLoginPage({
 
   return (
     <div className="relative flex min-h-[100dvh] flex-col items-center justify-center overflow-x-hidden bg-[#f8fbf7] px-5 py-10">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 opacity-70"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(16, 111, 76, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(16, 111, 76, 0.08) 1px, transparent 1px)",
-          backgroundSize: "32px 32px",
-        }}
-      />
+      <GridPattern className="opacity-70" />
       <div aria-hidden="true" className="pointer-events-none absolute -left-28 -top-28 h-72 w-72 rounded-full bg-emerald-200/30 blur-3xl" />
       {/* <div aria-hidden="true" className="pointer-events-none absolute -bottom-32 -right-24 h-80 w-80 rounded-full bg-teal-200/30 blur-3xl" /> */}
       <div className="fixed top-4 right-4 z-50">
@@ -390,15 +383,10 @@ export default function RoleLoginPage({
         className="relative z-10 w-full max-w-md"
       >
         <div className="mb-7 text-center">
-          <img src={meta.image} alt="" className="mx-auto mt-4 h-66 w-66 object-contain " />
-          {/* <button type="button" className="mx-auto mt-3 flex min-h-14 w-full max-w-xs items-center justify-center gap-3 rounded-2xl border border-white/80 bg-gradient-to-br from-white via-emerald-50/80 to-teal-100/70 px-5 py-3 text-emerald-950 shadow-[8px_8px_18px_rgba(15,67,45,0.13),-7px_-7px_16px_rgba(255,255,255,0.95),inset_1px_1px_2px_rgba(255,255,255,0.9)] transition-transform active:scale-[0.98]">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/80 shadow-[inset_1px_1px_2px_rgba(255,255,255,1),2px_3px_8px_rgba(15,67,45,0.12)]">
-              <img src="/imgs/onboarding/logo.svg" alt="" className="h-5 w-6 object-contain" />
-            </span>
-          
-          </button> */}
+          <img src={meta.image} alt="" className="mx-auto mt-4 h-36 w-36 object-contain " />
+ 
 
-            <h1 className=" text-[1.8rem] font-semibold leading-tight tracking-[-0.04em] ">{meta.title} to <br/>  <span className="bg-gradient-to-r text-transparent text-[2.3rem] from-[#059669] to-[#0d9488] bg-clip-text font-black italic">{madrasaName}</span></h1>
+            <h1 className=" text-[1.8rem] font-semibold leading-tight tracking-[-0.04em] ">{meta.title} to   <span className="bg-gradient-to-r text-transparent  from-[#059669] to-[#0d9488] bg-clip-text font-black  ">{madrasaName}</span></h1>
           <p className="mx-auto mt-0 max-w-xs text-sm leading-6 text-slate-500">{meta.subtitle}</p>
         
         </div>

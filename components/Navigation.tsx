@@ -35,7 +35,9 @@ import {
   Menu,
   X,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
+  Settings2,
   Languages,
   MapPin,
   Receipt,
@@ -54,6 +56,71 @@ import { useClientConfig } from "@/lib/queries";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
 import { ButtonGroup } from "./ui/button-group";
+
+function ProfileOptions({
+  lang,
+  sessionCount,
+  onBack,
+  onSwitchSession,
+  onAddSession,
+  onSignOut,
+}: {
+  lang: string;
+  sessionCount: number;
+  onBack: () => void;
+  onSwitchSession: () => void;
+  onAddSession: () => void;
+  onSignOut: () => void;
+}) {
+  return (
+    <div className="w-full">
+      <div className="flex items-center gap-2 pb-3">
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={lang === "ml" ? "തിരികെ" : "Back"}
+          onClick={onBack}
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </Button>
+        <span className="text-sm font-bold text-gray-900">
+          {lang === "ml" ? "പ്രൊഫൈൽ ഓപ്ഷനുകൾ" : "Profile options"}
+        </span>
+      </div>
+      <div className="flex w-full flex-col">
+        {sessionCount > 1 && (
+          <Button
+            variant="ghost"
+            size="lg"
+            className="justify-start gap-3 rounded-none border-0 border-b border-gray-100 px-3 last:border-b-0"
+            onClick={onSwitchSession}
+          >
+            <Users className="h-5 w-5 text-gray-500" />
+          {lang === "ml" ? "സെഷൻ മാറ്റുക" : "Switch session"}
+          </Button>
+        )}
+        <Button
+          size="lg"
+          variant="ghost"
+          className="justify-start gap-3 rounded-none border-0 border-b border-gray-100 px-3 last:border-b-0"
+          onClick={onAddSession}
+        >
+          <span className="flex h-5 w-5 items-center justify-center text-lg text-gray-500">+</span>
+          {lang === "ml" ? "സെഷൻ ചേർക്കുക" : "Add session"}
+        </Button>
+        <Button
+          size="lg"
+          variant="ghost"
+          className="justify-start gap-3 rounded-none border-0 border-b border-gray-100 px-3 last:border-b-0 text-red-500 hover:text-red-600"
+          onClick={onSignOut}
+        >
+          <LogOut className="h-5 w-5" />
+          {lang === "ml" ? "പുറത്തുകടക്കുക" : "Sign out"}
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 type NavKey =
   | "dashboard"
@@ -923,6 +990,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
   } = useAuthStore();
   const { lang } = useLanguageStore();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [profileOptionsOpen, setProfileOptionsOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [onboardingRole, setOnboardingRole] = useState<
     "parent" | "teacher" | "admin" | null
@@ -973,12 +1041,11 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
 
   const showMore = allLinks.length > 3;
   const links = showMore ? allLinks.slice(0, 3) : allLinks;
-  const moreLinks = showMore ? allLinks.slice(3) : [];
+  const moreLinks = showMore ? allLinks : [];
   const sessionCount = Object.keys(useAuthStore.getState().sessions).length;
   const profileHref = `/${user.role}/profile`;
 
   const openNewSession = () => {
-    setMoreOpen(false);
     setOnboardingRole(null);
     setOnboardingSlug("");
     setOnboardingOpen(true);
@@ -990,14 +1057,15 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
       : slugPrefix
         ? `${slugPrefix}${l.href}`
         : l.href;
+        
     const active =
       !l.isExternal && isLinkActive(pathname, fullHref, slugPrefix);
     const Icon = l.icon;
     const className = cn(
-      "flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl px-3 py-4 text-center text-xs font-semibold transition-colors active:scale-[0.98]",
+      "flex  items-center justify-left gap-3 rounded-lg p-2 px-3 text-gray-500 text-[16px]    transition-colors  ",
       active
         ? "bg-linear-160 from-secondary to-transparent text-emerald-700"
-        : "bg-white text-gray-700 hover:bg-gray-50",
+        : "bg-white   hover:bg-gray-50",
     );
     return l.isExternal ? (
       <a
@@ -1008,7 +1076,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
         className={className}
         onClick={() => setMoreOpen(false)}
       >
-        <Icon className="h-6 w-6 shrink-0 text-emerald-600" />
+        <Icon className="h-5 w-5 shrink-0  " />
         <span className="leading-tight">{t("nav", l.key, lang)}</span>
       </a>
     ) : (
@@ -1020,8 +1088,8 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
       >
         <Icon
           className={cn(
-            "h-6 w-6 shrink-0",
-            active ? "text-emerald-600" : "text-gray-400",
+            "h-5 w-5 shrink-0",
+            active ? "text-emerald-600" : "",
           )}
         />
         <span className="leading-tight">{t("nav", l.key, lang)}</span>
@@ -1134,20 +1202,23 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
       <Drawer
         showCloseButton={false}
         open={moreOpen}
-        onOpenChange={setMoreOpen}
+        onOpenChange={(open) => {
+          setMoreOpen(open);
+        }}
         data-swipe-direction="bottom"
         // title={lang === "ml" ? "കൂടുതൽ" : "More"}
         // description={
         //   lang === "ml" ? "നാവിഗേഷൻ ഓപ്ഷനുകൾ" : "All navigation options"
         // }
 
-        contentClassName="px-4 py-3"
+        contentClassName="p-4"
       >
        
+        <>
         <ButtonGroup
           orientation="vertical"
           style={{ gap: 0 }}
-          className="w-full border rounded-lg border-gray-100"
+          className="w-full rounded-lg border border-gray-100"
         >
           <div className="flex items-center gap-3 p-2 px-3">
             <Link
@@ -1172,38 +1243,18 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
               </span>
             </Link>
             <LanguageSwitcher />
-            <ChevronRight className="h-5 w-5 shrink-0 text-gray-600" />
-          </div>
-          <ButtonGroup className="grid grid-cols-3 p-1 border-gray-100 gap-px border-t w-full">
-            {sessionCount > 1 && (
-              <Button
-                variant={"ghost"}
-                size={"lg"}
-                onClick={() => {
-                  setMoreOpen(false);
-                  navigate("/");
-                }}
-              >
-                {lang === "ml" ? "സെഷൻ മാറ്റുക" : "Switch session"}
-              </Button>
-            )}
-            <Button size={"lg"} variant={"ghost"} onClick={openNewSession}>
-              <span className="block text-base leading-none">+</span>
-              {lang === "ml" ? "സെഷൻ ചേർക്കുക" : "Add session"}
-            </Button>
             <Button
-              size={"lg"}
-              variant={"ghost"}
+              variant="ghost"
+              size="icon"
+              aria-label={lang === "ml" ? "പ്രൊഫൈൽ ഓപ്ഷനുകൾ" : "Profile options"}
               onClick={() => {
-                setMoreOpen(false);
-                logout();
+                setProfileOptionsOpen(true);
               }}
             >
-              {lang === "ml" ? "പുറത്തുകടക്കുക" : "Sign out"}
+              <Settings2 className="h-5 w-5 shrink-0 text-gray-600" />
             </Button>
-          </ButtonGroup>
+          </div>
         </ButtonGroup>
-
 
          {isParent && studentIds.length > 0 && (
           <div className="border-b border-gray-100  py-3">
@@ -1254,9 +1305,35 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
             </ButtonGroup>
           </div>
         )}
-        <div className="grid grid-cols-3 gap-2 py-3 sm:grid-cols-4">
+        <div className="grid grid-cols-1 gap-2 py-3 sm:grid-cols-1 max-h-[80dvh] overflow-auto">
             {moreLinks.map(renderMoreLink)}
         </div>
+        </>
+      </Drawer>
+      <Drawer
+        showCloseButton={false}
+        open={profileOptionsOpen}
+        onOpenChange={setProfileOptionsOpen}
+        data-swipe-direction="bottom"
+        contentClassName="p-3"
+      >
+        <ProfileOptions
+          lang={lang}
+          sessionCount={sessionCount}
+          onBack={() => setProfileOptionsOpen(false)}
+          onSwitchSession={() => {
+            setProfileOptionsOpen(false);
+            navigate("/");
+          }}
+          onAddSession={() => {
+            setProfileOptionsOpen(false);
+            openNewSession();
+          }}
+          onSignOut={() => {
+            setProfileOptionsOpen(false);
+            logout();
+          }}
+        />
       </Drawer>
       <OnboardingDrawer
         open={onboardingOpen}

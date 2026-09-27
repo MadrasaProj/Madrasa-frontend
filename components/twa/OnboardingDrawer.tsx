@@ -49,9 +49,9 @@ export default function OnboardingDrawer({
               return (
                 <div>
 
-                <button key={value} type="button" onClick={() => setRole(value)} className={`relative flex flex-col w-30 items-center gap-2 rounded-2xl p-2 transition-all ${selected ? "scale-[1.03] bg-gradient-to-b from-[#059669]/10  to-[#0d8488]/15" : "opacity-80 hover:opacity-100"}`}>
+                <button key={value} type="button" onClick={() => setRole(value)} className={`relative flex flex-col w-25 items-center gap-2 rounded-2xl p-2 transition-all ${selected ? "scale-[1.03] bg-gradient-to-b from-[#059669]/10  to-[#0d8488]/15" : "opacity-80 hover:opacity-100"}`}>
                   {selected && <span className="absolute right-2.5 top-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white"><Check className="h-3 w-3" /></span>}
-                  <img src={image} alt={label} className="h-30 w-30 object-contain" />
+                  <img src={image} alt={label} className="h-25 w-25 object-contain" />
                 </button>
                   <div className={`text-sm mx-auto text-center mt-2 font-semibold ${selected ? "text-emerald-800" : "text-gray-700"}`}>{label}</div>
                 </div>

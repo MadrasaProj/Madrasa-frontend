@@ -5,6 +5,7 @@ import type { Swiper as SwiperInstance } from "swiper";
 import "swiper/css";
 import { Building2, ChevronRight, GraduationCap, Plus, Shield, Users } from "lucide-react";
 import OnboardingDrawer from "@/components/twa/OnboardingDrawer";
+import GridPattern from "@/components/patterns/GridPattern";
 import { Button } from "@/components/ui/button";
 import { roleHomePath } from "@/lib/tenant-routing";
 import { clearTenantSlug, getTenantSlugAsync, getTenantSlugSync, saveTenantSlug } from "@/lib/slug-storage";
@@ -23,11 +24,6 @@ const roleMeta: Record<UserRole, { label: string; icon: typeof Shield; color: st
   teacher: { label: "Teacher", icon: GraduationCap, color: "text-teal-700 bg-teal-50" },
   parent: { label: "Parent", icon: Users, color: "text-blue-700 bg-blue-50" },
   committee: { label: "Committee", icon: Building2, color: "text-amber-700 bg-amber-50" },
-};
-
-const pagePattern = {
-  backgroundImage: "linear-gradient(rgba(16, 111, 76, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(16, 111, 76, 0.08) 1px, transparent 1px)",
-  backgroundSize: "32px 32px",
 };
 
 function SessionsList() {
@@ -146,7 +142,7 @@ export default function TwaLandingPage() {
   if (hasSessions) {
     return (
       <main className="relative min-h-[100dvh] overflow-hidden bg-[#f8fbf7] text-slate-900">
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-70" style={pagePattern} />
+        <GridPattern className="opacity-70" />
         <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-md flex-col items-center pt-7">
           <div className="flex w-full flex-1 flex-col items-center px-6 text-center">
             <img
@@ -190,12 +186,12 @@ export default function TwaLandingPage() {
 
   return (
     <main className="relative min-h-[100dvh] overflow-hidden bg-[#f8fbf7] text-slate-900">
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-70" style={pagePattern} />
+      <GridPattern className="opacity-70" />
       <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-md flex-col pb-7 pt-8 sm:px-8">
         <Swiper onSwiper={setOnboardingSwiper} onSlideChange={(swiper) => setOnboardingStep(swiper.activeIndex)} spaceBetween={28} slidesPerView={1} className="flex w-full flex-1 !overflow-visible !px-2" allowTouchMove resistanceRatio={1}>
           {onboardingSlides.map((item) => (
             <SwiperSlide key={item.title} className="!flex flex-col items-center justify-center px-6 text-center">
-              <div className="mb-3 flex h-[min(48vh,530px)] w-full items-center justify-center"><img src={item.image} alt={item.alt} className="mt-auto max-h-full w-full object-contain drop-shadow-[0_18px_18px_rgba(14,78,54,0.12)]" /></div>
+              <div className="mb-3 flex h-[min(40vh,430px)] w-full items-center justify-center"><img src={item.image} alt={item.alt} className="mt-auto max-h-full w-full object-contain drop-shadow-[0_18px_18px_rgba(14,78,54,0.12)]" /></div>
               <img src="/imgs/onboarding/logo.svg" alt="Smart Madrasa" className="mb-5 h-10 w-10 object-contain" />
               <h1 className="max-w-sm bg-gradient-to-r from-emerald-800 via-emerald-600 to-emerald-900 bg-clip-text text-[2.5rem] font-semibold leading-[1.06] tracking-[-0.045em] text-transparent">{item.title}</h1>
               <p className="mt-4 max-w-sm text-sm leading-6 text-slate-600">{item.description}</p>
