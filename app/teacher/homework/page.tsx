@@ -18,7 +18,7 @@ import { useLanguageStore } from "@/store/language";
 import { t, type Lang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
-  Plus, Trash2, Loader2, Check, Pencil,
+  Plus, Trash2, Loader2, Check, Pencil, CircleDashed, Send, CircleCheck,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
 
@@ -32,10 +32,26 @@ function useStatusConfig(lang: Lang) {
 
 function fmt(d: Date) { return d.toISOString().split("T")[0]; }
 
+async function fetchHomeworkSubmissions(clientId: string, token: string, assignments: HomeworkAssignment[]) {
+  const results = await Promise.all(assignments.map(async (assignment) => {
+    try {
+      return [assignment.id, await getSubmissions(clientId, token, assignment.id)] as const;
+    } catch {
+      return null;
+    }
+  }));
+  return Object.fromEntries(results.filter((result): result is NonNullable<typeof result> => result !== null));
+}
+
 export default function TeacherHomeworkPage() {
   const { user, accessToken } = useAuthStore();
   const { lang } = useLanguageStore();
   const STATUS_CONFIG = useStatusConfig(lang);
+  const STATUS_ICONS = {
+    NOT_SUBMITTED: CircleDashed,
+    SUBMITTED: Send,
+    CHECKED: CircleCheck,
+  };
   const cid          = user?.clientId ?? "";
   const token        = accessToken ?? "";
   const teacherId    = user?.id ?? "";
@@ -74,12 +90,13 @@ export default function TeacherHomeworkPage() {
     Promise.all([
       getMyClasses(cid, token, ac.signal),
       listHomework(cid, token),
-    ]).then(([cls, hw]) => {
+    ]).then(async ([cls, hw]) => {
       const accessible = isPeriodBased
         ? cls
         : cls.filter((c) => c.classTeacherId === teacherId);
       setClasses(accessible);
       setHomework(hw);
+      setSubmissions(await fetchHomeworkSubmissions(cid, token, hw));
       if (accessible.length > 0) setClassId(accessible[0].id);
     }).catch((e) => { setError((e as Error).message); }).finally(() => setLoading(false));
     return () => ac.abort();
@@ -103,6 +120,7 @@ export default function TeacherHomeworkPage() {
   const reload = useCallback(async () => {
     const hw = await listHomework(cid, token).catch((e) => { setError((e as Error).message); return [] as HomeworkAssignment[]; });
     setHomework(hw);
+    setSubmissions(await fetchHomeworkSubmissions(cid, token, hw));
   }, [cid, token]);
 
   const loadSubmissions = async (hwId: string) => {
@@ -276,18 +294,48 @@ export default function TeacherHomeworkPage() {
       ) : (
         <div className="divide-y divide-gray-100 pb-24">
           {homework.map((hw) => {
-            return (
-              <div key={hw.id} className="py-4">
-                <div className="flex items-start justify-between gap-3">
-                  <button onClick={() => openAssess(hw)} className="min-w-0 flex-1 text-left">
-                    <p className="truncate text-sm font-semibold text-gray-900">{hw.title}</p>
-                    <p className="mt-1 truncate text-sm text-gray-500">
-                      {hw.class?.name ?? "—"} <span className="mx-1 text-gray-300">·</span> {hw.subject?.name ?? "—"}
-                    </p>
-                  </button>
-                </div>
+            const rows = submissions[hw.id]?.submissions ?? [];
+            const countByStatus = {
+              NOT_SUBMITTED: rows.filter((row) => row.status === "NOT_SUBMITTED").length,
+              SUBMITTED: rows.filter((row) => row.status === "SUBMITTED").length,
+              CHECKED: rows.filter((row) => row.status === "CHECKED").length,
+            };
 
-              </div>
+            return (
+              <button key={hw.id} onClick={() => openAssess(hw)} className="flex w-full items-center gap-4 py-4 text-left">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-gray-900">{hw.title}</p>
+                  <p className="mt-1 truncate text-sm text-gray-500">
+                    {hw.class?.name ?? "—"} <span className="mx-1 text-gray-300">·</span> {hw.subject?.name ?? "—"}
+                  </p>
+                </div>
+                <div
+                  className="flex shrink-0 items-center text-xs tabular-nums text-gray-500"
+                >
+                  {(["NOT_SUBMITTED", "SUBMITTED", "CHECKED"] as HomeworkStatus[]).map((status) => {
+                    const StatusIcon = STATUS_ICONS[status];
+                    return (
+                      <span
+                        key={status}
+                        className="flex items-center gap-1 border-r border-gray-200 px-2 text-gray-500 last:border-r-0 last:pr-0 first:pl-0"
+                        aria-label={`${STATUS_CONFIG[status].label}: ${countByStatus[status]}`}
+                        title={STATUS_CONFIG[status].label}
+                      >
+                        <StatusIcon
+                          className={cn(
+                            "h-3.5 w-3.5",
+                            status === "NOT_SUBMITTED" && "text-red-500",
+                            status === "SUBMITTED" && "text-yellow-600",
+                            status === "CHECKED" && "text-emerald-600",
+                          )}
+                          aria-hidden="true"
+                        />
+                        <span className="font-semibold">{countByStatus[status]}</span>
+                      </span>
+                    );
+                  })}
+                </div>
+              </button>
             );
           })}
         </div>
