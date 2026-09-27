@@ -214,6 +214,9 @@ export default function TeacherLeaveRequestsPage() {
                   </p>
                 </div>
 
+
+
+
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
                     {t("teacherPages", "descriptionLabel", lang)}
