@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { updateProfile, uploadProfilePhoto, deleteProfilePhoto, type UpdateProfileDto } from "@/lib/super-admin-api";
 import { useAuthStore, type AuthActorType } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
@@ -587,9 +588,9 @@ export default function ProfilePage({ config }: ProfilePageProps) {
       {/* Edit Drawer */}
       <ResponsivePopover
         open={drawerOpen}
-        onClose={closeDrawer}
+        onOpenChange={(open) => { if (!open) closeDrawer(); }}
         title={t("common", "updateProfile", lang)}
-        subtitle={t("common", "editInfo", lang)}
+        description={t("common", "editInfo", lang)}
       >
         <div className="px-5 pt-4">
           <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-2xl">

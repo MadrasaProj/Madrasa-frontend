@@ -70,7 +70,7 @@ export function HomeworkAssignmentDrawer({
         {isCreate && (
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-gray-500">{t("teacherPages", "classRequired", lang)}</label>
-            <Select value={classId} onValueChange={onClassChange}>
+            <Select value={classId} onValueChange={(value) => { if (value !== null) onClassChange(value); }}>
               <SelectTrigger size="lg" className="w-full">
                 <SelectValue>
                   {(value: string | null) => classes.find((item) => item.id === value)?.name
@@ -91,7 +91,7 @@ export function HomeworkAssignmentDrawer({
             {t("teacherPages", "subjectRequired", lang)}
             {isPeriodBased && isCreate && <span className="ml-1 font-normal text-gray-400">{t("teacherPages", "yourSubjectsHint", lang)}</span>}
           </label>
-          <Select value={subjectId} onValueChange={onSubjectChange}>
+          <Select value={subjectId} onValueChange={(value) => { if (value !== null) onSubjectChange(value); }}>
             <SelectTrigger size="lg" className="w-full">
               <SelectValue>
                 {(value: string | null) => classSubjects.find((item) => item.id === value)?.name
