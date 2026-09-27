@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Drawer } from "@/components/ui/drawerView";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import {
   listHomework, createHomework, deleteHomework, updateHomework,
@@ -484,7 +484,7 @@ export default function TeacherHomeworkPage() {
       )}
 
       {/* Create Homework Drawer */}
-      <Drawer
+      <ResponsivePopover
         open={showCreateDrawer}
         onOpenChange={setShowCreateDrawer}
         title={t("teacherPages", "newHomeworkTitle", lang)}
@@ -551,10 +551,10 @@ export default function TeacherHomeworkPage() {
             {t("teacherPages", "createAssignmentBtn", lang)}
           </button>
         </div>
-      </Drawer>
+      </ResponsivePopover>
 
       {/* Assess Homework Drawer */}
-      <Drawer
+      <ResponsivePopover
         open={showAssessDrawer}
         onOpenChange={(open) => { if (!open) { setShowAssessDrawer(false); setAssessHw(null); } }}
         title={assessHw?.title ?? t("teacherPages", "assessHomeworkTitle", lang)}
@@ -617,7 +617,7 @@ export default function TeacherHomeworkPage() {
             </div>
           </div>
         ) : null}
-      </Drawer>
+      </ResponsivePopover>
 
       {/* Edit Homework Drawer */}
       <AnimatePresence>

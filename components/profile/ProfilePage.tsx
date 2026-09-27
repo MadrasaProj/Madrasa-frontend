@@ -585,7 +585,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
       </motion.button>
 
       {/* Edit Drawer */}
-      <Drawer
+      <ResponsivePopover
         open={drawerOpen}
         onClose={closeDrawer}
         title={t("common", "updateProfile", lang)}
@@ -915,7 +915,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
             {saving ? t("common", "updating", lang) : t("common", "updateProfile", lang)}
           </button>
         </div>
-      </Drawer>
+      </ResponsivePopover>
     </DashboardLayout>
   );
 }

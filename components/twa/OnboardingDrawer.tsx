@@ -1,7 +1,7 @@
 import type { FormEvent, ReactNode } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, Check } from "lucide-react";
-import { Drawer } from "@/components/ui/drawerView";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import PwaInstallButton from "@/components/PwaInstallButton";
@@ -38,7 +38,7 @@ export default function OnboardingDrawer({
   sessionsContent,
 }: OnboardingDrawerProps) {
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} side="bottom" showCloseButton contentClassName="bg-[#f8fbf7]" className="rounded-t-[2rem] bg-[#f8fbf7] px-4 pb-8 pt-3 shadow-[0_-18px_50px_rgba(15,67,45,0.18)]">
+    <ResponsivePopover open={open} onOpenChange={onOpenChange} side="bottom" showCloseButton contentClassName="bg-[#f8fbf7]" className="rounded-t-[2rem] bg-[#f8fbf7] px-4 pb-8 pt-3 shadow-[0_-18px_50px_rgba(15,67,45,0.18)]">
        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="mx-auto w-full max-w-md">
         {/* <div className="mb-8 text-center"><p className="mt-1 text-sm text-gray-500">Select your role to continue</p></div> */}
         {sessionsContent}
@@ -71,6 +71,6 @@ export default function OnboardingDrawer({
         </form>
         <div className="mt-4"><PwaInstallButton /></div>
       </motion.div>
-    </Drawer>
+    </ResponsivePopover>
   );
 }

@@ -12,7 +12,7 @@ import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { downloadAsJPG, downloadAsPDF, shareAsJPG, downloadAsPNG } from "@/lib/poster-utils";
-import { Drawer } from "@/components/ui/drawerView";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import {
   Medal, Loader2, AlertCircle, RefreshCw, GraduationCap, Trophy,
   Download, Share2, FileText, ChevronDown, ArrowLeft, Printer, Calendar, Award, Eye, FileBadge2
@@ -938,7 +938,7 @@ export default function ParentResultsPage() {
         )}
 
         {/* Overview drawer — date details, exam rules, subjects (responsive: right on desktop, bottom on mobile) */}
-        <Drawer
+        <ResponsivePopover
           open={overviewOpen}
           onOpenChange={setOverviewOpen}
           side="responsive"
@@ -1055,10 +1055,10 @@ export default function ParentResultsPage() {
               </div>
             </section>
           </div>
-        </Drawer>
+        </ResponsivePopover>
 
         {/* Result Card drawer — responsive: right on desktop, bottom on mobile */}
-        <Drawer
+        <ResponsivePopover
           open={cardOpen}
           onOpenChange={setCardOpen}
           side="responsive"
@@ -1081,10 +1081,10 @@ export default function ParentResultsPage() {
               />
             )}
           </div>
-        </Drawer>
+        </ResponsivePopover>
 
         {/* Rank Poster drawer — responsive: right on desktop, bottom on mobile */}
-        <Drawer
+        <ResponsivePopover
           open={posterOpen}
           onOpenChange={setPosterOpen}
           side="responsive"
@@ -1102,7 +1102,7 @@ export default function ParentResultsPage() {
               />
             )}
           </div>
-        </Drawer>
+        </ResponsivePopover>
       </div>
     </DashboardLayout>
   );

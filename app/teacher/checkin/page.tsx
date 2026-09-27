@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Drawer } from "@/components/ui/drawerView";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
@@ -413,7 +413,7 @@ export default function TeacherCheckinPage() {
             </Button>
           )}
 
-          <Drawer
+          <ResponsivePopover
             open={locationDrawerOpen}
             onOpenChange={setLocationDrawerOpen}
             side="bottom"
@@ -443,7 +443,7 @@ export default function TeacherCheckinPage() {
                 Retry location
               </Button>
             </div>
-          </Drawer>
+          </ResponsivePopover>
 
           <div>
             {(todaySessions.length > 0 || history.length > 0) && (

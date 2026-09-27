@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { DateRange } from "react-day-picker";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
-import { Drawer } from "@/components/ui/drawerView";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
 
 interface DateRangePickerProps {
   open: boolean;
@@ -26,7 +26,7 @@ export function DateRangePicker({
   }, [open, value]);
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} side="bottom" title={title}>
+    <ResponsivePopover open={open} onOpenChange={onOpenChange} side="bottom" title={title}>
       <div className="w-full px-4 pb-8">
         <Calendar
           mode="range"
@@ -57,6 +57,6 @@ className={"ml-auto"}
           </Button>
         </div>
       </div>
-    </Drawer>
+    </ResponsivePopover>
   );
 }

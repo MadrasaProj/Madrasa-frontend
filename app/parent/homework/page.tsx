@@ -2,7 +2,7 @@ import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
-import { Drawer } from "@/components/ui/drawerView";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import type { StudentHomeworkItem, HomeworkStatus } from "@/lib/homework-api";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
@@ -694,7 +694,7 @@ export default function ParentHomeworkPage() {
       )}
 
       {/* Submit Confirmation Drawer */}
-      <Drawer
+      <ResponsivePopover
         open={!!confirmSubmitHw}
         onOpenChange={(open) => {
           if (!open) setConfirmSubmitHw(null);
@@ -807,10 +807,10 @@ export default function ParentHomeworkPage() {
             </button>
           </div>
         )}
-      </Drawer>
+      </ResponsivePopover>
 
       {/* Homework Detail Drawer */}
-      <Drawer
+      <ResponsivePopover
         open={!!selectedHw}
         onOpenChange={(open) => {
           if (!open) setSelectedHw(null);
@@ -940,7 +940,7 @@ export default function ParentHomeworkPage() {
               )}
           </div>
         )}
-      </Drawer>
+      </ResponsivePopover>
     </DashboardLayout>
   );
 }

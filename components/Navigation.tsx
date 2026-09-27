@@ -44,7 +44,7 @@ import {
   Download,
   ChevronUp,
 } from "lucide-react";
-import { Drawer } from "@/components/ui/drawerView";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import OnboardingDrawer from "@/components/twa/OnboardingDrawer";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import PwaInstallButton from "@/components/PwaInstallButton";
@@ -1198,7 +1198,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
           )}
         </div>
       </nav>
-      <Drawer
+      <ResponsivePopover
         showCloseButton={false}
         open={moreOpen}
         onOpenChange={(open) => {
@@ -1308,8 +1308,8 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
             {moreLinks.map(renderMoreLink)}
         </div>
         </>
-      </Drawer>
-      <Drawer
+      </ResponsivePopover>
+      <ResponsivePopover
         showCloseButton={false}
         open={profileOptionsOpen}
         onOpenChange={setProfileOptionsOpen}
@@ -1333,7 +1333,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
             logout();
           }}
         />
-      </Drawer>
+      </ResponsivePopover>
       <OnboardingDrawer
         open={onboardingOpen}
         onOpenChange={setOnboardingOpen}
