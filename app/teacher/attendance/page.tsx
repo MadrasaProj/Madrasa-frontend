@@ -507,15 +507,7 @@ export default function TeacherAttendancePage() {
                 {t("teacherPages", "saved", lang)}
               </span>
             ) : null}
-            {hasExisting && (
-              <button
-                onClick={() => setConfirmClear(true)}
-                className="flex items-center gap-1.5 bg-red-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-600 transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />{" "}
-                {t("teacherPages", "clearAllBtn", lang)}
-              </button>
-            )}
+            
           </div>
         }
       />

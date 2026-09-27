@@ -1537,6 +1537,8 @@ const translations = {
     createAssignmentBtn: { en: "Create Assignment", ml: "അസൈൻമെന്റ് സൃഷ്ടിക്കുക" },
     assessHomeworkTitle: { en: "Assess Homework", ml: "ഹോംവർക്ക് വിലയിരുത്തുക" },
     editAssignmentTitle: { en: "Edit Assignment", ml: "അസൈൻമെന്റ് എഡിറ്റ് ചെയ്യുക" },
+    deleteHomeworkTitle: { en: "Delete homework?", ml: "ഹോംവർക്ക് ഇല്ലാതാക്കണോ?" },
+    deleteHomeworkConfirm: { en: 'Are you sure you want to delete "{name}"? This action cannot be undone.', ml: '"{name}" ഇല്ലാതാക്കണമെന്ന് ഉറപ്പാണോ? ഈ പ്രവർത്തനം പഴയപടിയാക്കാനാവില്ല.' },
     saveChangesBtn: { en: "Save Changes", ml: "മാറ്റങ്ങൾ സേവ് ചെയ്യുക" },
     noSubjectsAvail: { en: "No subjects available", ml: "വിഷയങ്ങൾ ലഭ്യമല്ല" },
     noAccessibleClasses: { en: "No accessible classes", ml: "പ്രവേശനമുള്ള ക്ലാസുകളില്ല" },

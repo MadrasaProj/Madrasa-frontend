@@ -30,12 +30,12 @@ export function PageHeader({ title, subtitle, icon: Icon, back, backHref, action
             <Icon className="w-5 h-5 lg:w-6 lg:h-6 text-emerald-600" />
           </div>
         )}
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 flex items-center">
           <h1 className="text-lg lg:text-xl font-bold text-gray-900 leading-tight truncate">{title}</h1>
           {subtitle && <p className="text-xs lg:text-sm text-gray-500 truncate mt-0.5">{subtitle}</p>}
+      {action && <div className="shrink-0 ml-auto sm:block">{action}</div>}
         </div>
       </div>
-      {action && <div className="shrink-0 hidden sm:block">{action}</div>}
       </div>
     </div>
   );
