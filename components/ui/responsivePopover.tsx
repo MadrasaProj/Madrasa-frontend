@@ -98,7 +98,7 @@ export function ResponsivePopover({
         {(title || description || showCloseButton) && (
           <DrawerHeader className={cn("relative shrink-0 px-5", isBottom ? "pb-3.5 pt-5" : "pb-4 pt-4")}>
             {(title || description) && (
-              <div className="min-w-0 space-y-0.5 pr-9">
+              <div className="min-w-0 space-y-0.5 pr-9 text-left">
                 {title && <DrawerTitle className="text-base font-extrabold tracking-tight">{title}</DrawerTitle>}
                 {description && <DrawerDescription className="text-xs">{description}</DrawerDescription>}
               </div>

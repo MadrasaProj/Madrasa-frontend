@@ -3,8 +3,9 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { SkeletonList } from "@/components/ui/Skeleton";
-import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
+import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
@@ -16,14 +17,10 @@ import {
 } from "@/lib/leave-requests-api";
 import {
   Loader2,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
+  Check,
+  X,
   Search,
-  ChevronDown,
-  ChevronUp,
   UserCheck,
-  FilePen,
 } from "lucide-react";
 
 const REASON_CONFIG: Record<
@@ -32,12 +29,6 @@ const REASON_CONFIG: Record<
 > = {
   LEAVE: { labelKey: "leaveLabel", color: "text-amber-600", bg: "bg-amber-50" },
   SICK: { labelKey: "sickLabel", color: "text-orange-600", bg: "bg-orange-50" },
-};
-
-const STATUS_STYLES: Record<string, { border: string }> = {
-  PENDING: { border: "border-l-amber-400" },
-  APPROVED: { border: "border-l-emerald-400" },
-  REJECTED: { border: "border-l-red-400" },
 };
 
 export default function TeacherLeaveRequestsPage() {
@@ -52,7 +43,7 @@ export default function TeacherLeaveRequestsPage() {
   const [filter, setFilter] = useState<string>("PENDING");
   const [search, setSearch] = useState("");
 
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<LeaveRequest | null>(null);
   const [reviewNote, setReviewNote] = useState("");
   const [reviewingSave, setReviewingSave] = useState(false);
 
@@ -80,7 +71,7 @@ export default function TeacherLeaveRequestsPage() {
         status,
         reviewNote: reviewNote || undefined,
       });
-      setExpanded(null);
+      setSelectedRequest(null);
       setReviewNote("");
       loadRequests();
     } catch (e) {
@@ -106,35 +97,32 @@ export default function TeacherLeaveRequestsPage() {
 
   return (
     <DashboardLayout>
-      <div className="p-4 sm:p-6 mx-auto">
+      <div className="p-4 sm:p-6 mx-auto px-0">
         <PageHeader
           title={t("teacherPages", "leaveRequests", lang)}
-          subtitle={t("teacherPages", "leaveRequestsSub", lang)}
-          icon={FilePen}
-          back
-          backHref="/teacher"
         />
 
         {error && <ApiErrorBanner message={error} />}
 
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+          <div className="flex gap-1 rounded-xl bg-gray-100 p-1">
             {(["PENDING", "APPROVED", "REJECTED"] as const).map((s) => (
-              <button
+              <Button
                 key={s}
+                type="button"
+                size="lg"
+                variant="ghost"
                 onClick={() => {
                   setFilter(s);
-                  setExpanded(null);
+                  setSelectedRequest(null);
                 }}
                 className={cn(
-                  "flex-1 py-2 px-4 rounded-lg text-xs font-semibold transition-all hover:text-gray-700 active:scale-[0.98]",
-                  filter === s
-                    ? "bg-white text-emerald-700 shadow-sm font-bold"
-                    : "text-gray-500",
+                  "flex-1",
+                  filter === s && "bg-white shadow-sm",
                 )}
               >
                 {statusLabel(s)}
-              </button>
+              </Button>
             ))}
           </div>
           <div className="relative flex-1">
@@ -152,132 +140,137 @@ export default function TeacherLeaveRequestsPage() {
         {loading ? (
           <SkeletonList count={4} />
         ) : filtered.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
-            <AlertCircle className="w-8 h-8 mx-auto mb-2" />
+          <div className="flex flex-col items-center py-12 text-center text-gray-400">
+            <img
+              src="/imgs/leave-request/1.png"
+              alt=""
+              aria-hidden="true"
+              className="mb-4 h-40 w-44 object-contain"
+            />
             <p className="text-sm">{t("teacherPages", "noLeaveRequests", lang)}</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div>
             {filtered.map((r) => {
               const rc = REASON_CONFIG[r.reasonType];
-              const isOpen = expanded === r.id;
-              const styles = STATUS_STYLES[r.status] ?? {};
               return (
-                <div
+                <Button
                   key={r.id}
-                  className={cn(
-                    "bg-white rounded-2xl border border-gray-200 border-l-4 overflow-hidden transition-shadow",
-                    styles.border,
-                    isOpen ? "shadow-md" : "shadow-sm",
-                  )}
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setReviewNote("");
+                    setSelectedRequest(r);
+                  }}
+                  className="h-auto w-full justify-start gap-3 rounded-none border-x-0 border-t-0 border-b border-gray-200 bg-transparent p-4 text-left shadow-none transition-colors hover:bg-gray-50"
                 >
-                  <button
-                    onClick={() => setExpanded(isOpen ? null : r.id)}
-                    className="w-full text-left p-4 flex items-start justify-between gap-3"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold text-gray-900 text-sm">
-                          {r.student.name}
-                        </span>
-                        <span className="text-xs text-gray-400">
-                          #{r.student.adno}
-                        </span>
-                        {r.student.class && (
-                          <span className="text-xs text-gray-400">
-                            ({r.student.class.name})
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span
-                          className={cn(
-                            "px-2 py-0.5 rounded-full text-xs font-semibold",
-                            rc.bg,
-                            rc.color,
-                          )}
-                        >
-                          {t("teacherPages", rc.labelKey as any, lang)}
-                        </span>
-                        <span className="text-xs text-gray-400">
-                          {new Date(r.startDate).toLocaleDateString()}
-                          {r.endDate && (
-                            <> - {new Date(r.endDate).toLocaleDateString()}</>
-                          )}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600 line-clamp-2">
-                        {r.description}
-                      </p>
-                    </div>
-                    <div className="shrink-0 text-gray-400 mt-1">
-                      {isOpen ? (
-                        <ChevronUp className="w-5 h-5" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5" />
-                      )}
-                    </div>
-                  </button>
-
-                  <AnimatePresence>
-                    {isOpen && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="px-4 pb-4 pt-0 border-t border-gray-100 space-y-3">
-                          <div className="pt-3 space-y-2">
-                            {r.reviewedBy && r.status !== "PENDING" && (
-                              <div className="flex items-center gap-2 text-xs text-gray-500">
-                                <UserCheck className="w-3.5 h-3.5" />
-                                {t("teacherPages", "reviewedBy", lang)} {r.reviewedBy.name}
-                              </div>
-                            )}
-                            <textarea
-                              value={reviewNote}
-                              onChange={(e) => setReviewNote(e.target.value)}
-                              placeholder={t("teacherPages", "addRemarkOpt", lang)}
-                              rows={2}
-                              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 resize-none transition-all"
-                            />
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => handleReview(r.id, "REJECTED")}
-                                disabled={reviewingSave}
-                                className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-[0.98] shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-red-500/20"
-                              >
-                                {reviewingSave ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <XCircle className="w-4 h-4" />
-                                )}
-                                {t("teacherPages", "rejectLabel", lang)}
-                              </button>
-                              <button
-                                onClick={() => handleReview(r.id, "APPROVED")}
-                                disabled={reviewingSave}
-                                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-[0.98] shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                              >
-                                {reviewingSave ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <CheckCircle2 className="w-4 h-4" />
-                                )}
-                                {t("teacherPages", "approveLabel", lang)}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                  <span className="min-w-0 flex-1 truncate font-semibold text-sm text-gray-900">
+                    {r.student.name}
+                  </span>
+                  {r.student.class && (
+                    <span className="shrink-0 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
+                      {r.student.class.name}
+                    </span>
+                  )}
+                  <span className={cn("shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold", rc.bg, rc.color)}>
+                    {t("teacherPages", rc.labelKey as any, lang)}
+                  </span>
+                </Button>
               );
             })}
           </div>
         )}
+
+        <ResponsivePopover
+          open={selectedRequest !== null}
+          onOpenChange={(open) => {
+            if (!open) setSelectedRequest(null);
+          }}
+          title={selectedRequest?.student.name}
+          description={selectedRequest?.student.class?.name}
+        >
+          {selectedRequest && (() => {
+            const request = selectedRequest;
+            const reason = REASON_CONFIG[request.reasonType];
+            return (
+              <div className="space-y-5 p-5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
+                    #{request.student.adno}
+                  </span>
+                  <span className={cn("rounded-full px-2.5 py-1 text-xs font-semibold", reason.bg, reason.color)}>
+                    {t("teacherPages", reason.labelKey as any, lang)}
+                  </span>
+                  <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
+                    {statusLabel(request.status)}
+                  </span>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{lang === "ml" ? "കാലയളവ്" : "Leave period"}</p>
+                  <p className="mt-1 text-sm text-gray-700">
+                    {new Date(request.startDate).toLocaleDateString()}
+                    {request.endDate && <> – {new Date(request.endDate).toLocaleDateString()}</>}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                    {t("teacherPages", "descriptionLabel", lang)}
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{request.description}</p>
+                </div>
+
+                {request.reviewedBy && request.status !== "PENDING" && (
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <UserCheck className="h-3.5 w-3.5" />
+                    {t("teacherPages", "reviewedBy", lang)} {request.reviewedBy.name}
+                  </div>
+                )}
+
+                {request.reviewNote && request.status !== "PENDING" && (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{t("parentPages", "reviewNote", lang)}</p>
+                    <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{request.reviewNote}</p>
+                  </div>
+                )}
+
+                {request.status === "PENDING" && (
+                  <div className="space-y-3 border-t border-gray-100 pt-4">
+                    <textarea
+                      value={reviewNote}
+                      onChange={(e) => setReviewNote(e.target.value)}
+                      placeholder={t("teacherPages", "addNoteOptional", lang)}
+                      rows={3}
+                      className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm transition-all focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/30"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="lg"
+                        onClick={() => handleReview(request.id, "REJECTED")}
+                        disabled={reviewingSave}
+                        className="  flex-1   bg-red-500   text-white hover:bg-red-600"
+                      >
+                        {reviewingSave ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : <span className="inline-flex items-center gap-1.5"><X className="h-4 w-4" />{t("teacherPages", "rejectLabel", lang)}</span>}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="lg"
+                        onClick={() => handleReview(request.id, "APPROVED")}
+                        disabled={reviewingSave}
+                        className="  flex-1   bg-emerald-600   text-white hover:bg-emerald-700"
+                      >
+                        {reviewingSave ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : <span className="inline-flex items-center gap-1.5"><Check className="h-4 w-4" />{t("teacherPages", "approveLabel", lang)}</span>}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </ResponsivePopover>
       </div>
     </DashboardLayout>
   );

@@ -124,7 +124,7 @@ export default function ParentLeaveRequestsPage() {
 
   return (
     <DashboardLayout>
-      <div className="p-4 sm:p-6 mx-auto">
+      <div className="p-4 sm:p-6 mx-auto px-0">
         <PageHeader
           title={t("parentPages", "leaveRequestsTitle", lang)}
           subtitle={t("parentPages", "leaveRequestsSub", lang)}

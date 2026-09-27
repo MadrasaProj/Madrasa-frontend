@@ -97,7 +97,7 @@ export default function AdminLeaveRequestsPage() {
 
   return (
     <DashboardLayout>
-      <div className="p-4 sm:p-6 mx-auto">
+      <div className="p-4 sm:p-6 px-0 mx-auto">
         <PageHeader
           title="Leave Requests"
           subtitle="Review and manage leave applications"
