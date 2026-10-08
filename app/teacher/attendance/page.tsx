@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
-import { Calendar } from "@/components/ui/calendar";
 import {
   Drawer,
   DrawerContent,
@@ -23,8 +22,6 @@ import {
 } from "@/lib/attendance-api";
 import { useAuthStore } from "@/store/auth";
 import {
-  ChevronLeft,
-  ChevronRight,
   Save,
   Loader2,
   Users,
@@ -38,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
+import { DateNavigator } from "@/components/DateNavigator";
 import {
   AttendanceEditorContent,
   type ActiveStatus,
@@ -47,14 +45,6 @@ import {
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
-}
-
-function localDateISO(date: Date) {
-  return [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, "0"),
-    String(date.getDate()).padStart(2, "0"),
-  ].join("-");
 }
 
 function attendanceColor(percentage: number) {
@@ -157,7 +147,6 @@ export default function TeacherAttendancePage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [confirmSave, setConfirmSave] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
-  const [dateDrawerOpen, setDateDrawerOpen] = useState(false);
   const [attendanceSummaries, setAttendanceSummaries] = useState<
     Map<string, ClassAttendanceSummary>
   >(new Map());
@@ -458,13 +447,6 @@ export default function TeacherAttendancePage() {
     await doSave();
   }, [activeClassId, isOwnClass, doSave]);
 
-  const changeDate = (delta: number) => {
-    const nextDate = new Date(`${date}T00:00:00`);
-    nextDate.setDate(nextDate.getDate() + delta);
-    const nextDateISO = localDateISO(nextDate);
-    if (nextDateISO <= todayISO()) setDate(nextDateISO);
-  };
-
   return (
     <DashboardLayout>
       <AnimatePresence>
@@ -507,7 +489,6 @@ export default function TeacherAttendancePage() {
                 {t("teacherPages", "saved", lang)}
               </span>
             ) : null}
-            
           </div>
         }
       />
@@ -521,74 +502,7 @@ export default function TeacherAttendancePage() {
         />
       )}
 
-      {/* Date picker drawer */}
-
-      <div className="h-[54px]">
-        <div className="fixed inset-x-0 top-[40px] shadow-lg shadow-gray-100 z-30 bg-white/95 px-4 backdrop-blur-sm lg:left-64 lg:top-[130px] lg:px-8">
-          <div className="mx-auto flex w-full items-center justify-between gap-5 py-1 pt-3 ">
-            <button
-              type="button"
-              onClick={() => changeDate(-1)}
-              aria-label="Previous date"
-              className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-colors"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setDateDrawerOpen(true)}
-              className="flex min-w-40  gap-3 items-center text-center hover:text-emerald-700 transition-colors"
-            >
-              <span className="text-sm font-semibold text-gray-800">
-                {new Date(`${date}T00:00:00`).toLocaleDateString("en-GB", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                })}
-              </span>
-              <span className="text-xs text-gray-500">
-                {new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
-                  weekday: "long",
-                })}
-                {date === todayISO() && (
-                  <span className="ml-1 font-semibold text-emerald-700">
-                    · {t("teacherPages", "todayBadge", lang)}
-                  </span>
-                )}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => changeDate(1)}
-              disabled={date >= todayISO()}
-              aria-label="Next date"
-              className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 hover:text-gray-800 disabled:opacity-30 transition-colors"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <ResponsivePopover
-        open={dateDrawerOpen}
-        onOpenChange={setDateDrawerOpen}
-        side="bottom"
-        title={"Choose attendance date"}
-      >
-        <Calendar
-          mode="single"
-          selected={new Date(`${date}T00:00:00`)}
-          onSelect={(selectedDate) => {
-            if (selectedDate) {
-              setDate(localDateISO(selectedDate));
-              setDateDrawerOpen(false);
-            }
-          }}
-          disabled={{ after: new Date() }}
-          className="p-4 w-full "
-        />
-      </ResponsivePopover>
+      <DateNavigator date={date} onDateChange={setDate} pickerTitle="Choose attendance date" />
 
       {/* Class list */}
       <div className="mb-4 overflow-hidden rounded-2xl border border-gray-100 bg-white">

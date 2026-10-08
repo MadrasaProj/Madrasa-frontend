@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { DateNavigator } from "@/components/DateNavigator";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { getClassIbadah, type PrayerStatus, type IbadahConfig, type IbadahRecord } from "@/lib/ibadah-api";
@@ -235,12 +236,6 @@ export default function TeacherIbadahPage() {
   );
   const customItems = config?.customItems ?? [];
 
-  const prevDay = () => { const d = new Date(date); d.setDate(d.getDate() - 1); setDate(fmt(d)); };
-  const nextDay = () => {
-    const d = new Date(date); d.setDate(d.getDate() + 1);
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    if (d <= today) setDate(fmt(d));
-  };
   const prevWeek = () => { const d = new Date(date); d.setDate(d.getDate() - 7); setDate(fmt(d)); };
   const nextWeek = () => {
     const d = new Date(date); d.setDate(d.getDate() + 7);
@@ -344,18 +339,37 @@ export default function TeacherIbadahPage() {
     <DashboardLayout>
       <PageHeader
         title={t("teacherPages", "ibadahRecordsTitle", lang)}
-        subtitle={activeClass?.name ?? t("teacherPages", "prayerTracking", lang)}
-        icon={Moon}
-        back backHref="/teacher"
       />
 
-      {error && <ApiErrorBanner message={error} onRetry={viewMode === "daily" ? loadDailyIbadah : loadWeeklyIbadah} />}
+      {/* Shared daily date navigation; weekly view keeps its range controls. */}
+      {viewMode === "daily" ? (
+        <DateNavigator date={date} onDateChange={setDate} pickerTitle="Choose ibadah date" />
+      ) : (
+        <div className="mb-5">
+          <div className="flex items-center justify-between gap-5 border-y border-gray-100 py-2">
+            <button type="button" onClick={prevWeek}
+              aria-label="Previous week"
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800">
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <p className="flex-1 text-center text-sm font-semibold text-gray-800">
+              {fmtShort(weekDates[0])} — {fmtShort(weekDates[6])}
+            </p>
+            <button onClick={downloadWeeklyReport} disabled={weeklyStudents.length === 0}
+              className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40">
+              <Download className="h-3.5 w-3.5" /> Download PDF
+            </button>
+            <button type="button" onClick={nextWeek}
+              disabled={date >= fmt(new Date())}
+              aria-label="Next week"
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800 disabled:opacity-30">
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      )}
 
-      {/* Read-only notice */}
-      <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-2.5 mb-4 flex items-center gap-2 text-xs text-blue-700">
-        <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-blue-500" />
-        {t("teacherPages", "parentsSubmitNote", lang)}
-      </div>
+      {error && <ApiErrorBanner message={error} onRetry={viewMode === "daily" ? loadDailyIbadah : loadWeeklyIbadah} />}
 
       {loadingClasses ? (
         <div className="space-y-4">
@@ -403,36 +417,6 @@ export default function TeacherIbadahPage() {
                 <Calendar className="w-3.5 h-3.5" /> {t("teacherPages", "weeklyView", lang)}
               </button>
             </div>
-          </div>
-
-          {/* Date navigation */}
-          <div className="flex items-center gap-3 mb-5">
-            <button onClick={viewMode === "daily" ? prevDay : prevWeek}
-              className="p-2 rounded-xl bg-white border border-gray-200">
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <div className="flex-1 text-center">
-              {viewMode === "daily" ? (
-                <input type="date" value={date} max={fmt(new Date())}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="text-sm font-semibold text-gray-800 focus:outline-none bg-transparent text-center" />
-              ) : (
-                <p className="text-sm font-semibold text-gray-800">
-                  {fmtShort(weekDates[0])} — {fmtShort(weekDates[6])}
-                </p>
-              )}
-            </div>
-            {viewMode === "weekly" && (
-              <button onClick={downloadWeeklyReport} disabled={weeklyStudents.length === 0}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold disabled:opacity-40">
-                <Download className="w-3.5 h-3.5" /> Download PDF
-              </button>
-            )}
-            <button onClick={viewMode === "daily" ? nextDay : nextWeek}
-              disabled={date >= fmt(new Date())}
-              className="p-2 rounded-xl bg-white border border-gray-200 disabled:opacity-40">
-              <ChevronRight className="w-4 h-4" />
-            </button>
           </div>
 
           {loadingIbadah ? (

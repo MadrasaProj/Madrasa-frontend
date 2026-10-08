@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 type Section = "prayers" | "quran" | "custom";
 type ViewMode = "daily" | "weekly";
@@ -255,12 +256,13 @@ export default function AdminIbadahPage() {
         icon={Moon}
         action={
           (isSuperAdmin || user?.actorType === "CLIENT_ADMIN" || user?.role === "admin") ? (
-            <button
+            <Button
+            size="sm" variant="outline"
               onClick={() => navigate("/admin/ibadah-config")}
               className="flex items-center gap-1.5 px-3 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
             >
               <Settings className="w-4 h-4" /> Config & Scoring
-            </button>
+            </Button>
           ) : undefined
         }
       />
