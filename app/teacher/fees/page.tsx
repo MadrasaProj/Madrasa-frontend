@@ -16,7 +16,8 @@ import { useLanguageStore } from "@/store/language";
 import { t, type Lang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
- CreditCard, Loader2, Receipt, CheckCircle, Search, RefreshCw, Printer, XCircle, ChevronDown,
+ Loader2, Receipt, CheckCircle, Search, RefreshCw, Printer, XCircle, ChevronDown,
+ CreditCard,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -245,7 +246,7 @@ export default function TeacherFeesPage() {
 
  return (
  <DashboardLayout>
-  <PageHeader title={t("teacherPages", "feesPaymentsTitle", lang)} subtitle={t("teacherPages", "feesPaymentsSub", lang)} icon={CreditCard} />
+  <PageHeader title={t("teacherPages", "feesPaymentsTitle", lang)} />
 
  {error && <ApiErrorBanner message={error} onRetry={loadPayments} />}
 
