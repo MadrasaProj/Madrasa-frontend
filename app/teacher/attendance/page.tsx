@@ -466,7 +466,7 @@ export default function TeacherAttendancePage() {
         title={t("teacherPages", "attendancePageTitle", lang)}
         action={
           <div className="flex items-center gap-2">
-            {hasDirty ? (
+            {/* {hasDirty ? (
               <button
                 onClick={handleSave}
                 disabled={saving}
@@ -488,7 +488,7 @@ export default function TeacherAttendancePage() {
                 <CheckCircle2 className="w-4 h-4" />{" "}
                 {t("teacherPages", "saved", lang)}
               </span>
-            ) : null}
+            ) : null} */}
           </div>
         }
       />
