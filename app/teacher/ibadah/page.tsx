@@ -5,32 +5,57 @@ import { DateNavigator } from "@/components/DateNavigator";
 import { WeekNavigator } from "@/components/WeekNavigator";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { getClassIbadah, type PrayerStatus, type IbadahConfig, type IbadahRecord } from "@/lib/ibadah-api";
+import {
+  getClassIbadah,
+  type PrayerStatus,
+  type IbadahConfig,
+  type IbadahRecord,
+} from "@/lib/ibadah-api";
 import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
 import { getStudents, type StudentRecord } from "@/lib/students-api";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import {
-  Moon, BookOpen, ChevronLeft, ChevronRight,
-  Loader2, AlertCircle, CheckCircle2, Calendar, List,
-  Users, Check, Sun, Minus, X,
+  Moon,
+  BookOpen,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+  Users,
+  Check,
+  Sun,
+  Minus,
+  X,
+  School,
   Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { jsPDF } from "jspdf";
-import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type Section = "prayers" | "quran" | "custom";
 type ViewMode = "daily" | "weekly";
 
-export const PRAYER_STATUS_META: Record<PrayerStatus, {
-  labelKey: "jama" | "adaLabel" | "qalaLabel" | "excusedLabel";
-  icon: typeof Check;
-  bg: string;
-  text: string;
-  border: string;
-}> = {
+export const PRAYER_STATUS_META: Record<
+  PrayerStatus,
+  {
+    labelKey: "jama" | "adaLabel" | "qalaLabel" | "excusedLabel";
+    icon: typeof Check;
+    bg: string;
+    text: string;
+    border: string;
+  }
+> = {
   JAMA: {
     labelKey: "jama",
     icon: Users,
@@ -61,7 +86,13 @@ export const PRAYER_STATUS_META: Record<PrayerStatus, {
   },
 };
 
-function PrayerStatusIcon({ status, lang }: { status: PrayerStatus | null; lang: "en" | "ml" }) {
+function PrayerStatusIcon({
+  status,
+  lang,
+}: {
+  status: PrayerStatus | null;
+  lang: "en" | "ml";
+}) {
   if (!status) {
     return (
       <div
@@ -84,7 +115,7 @@ function PrayerStatusIcon({ status, lang }: { status: PrayerStatus | null; lang:
         "w-8 h-8 mx-auto rounded-xl text-xs font-bold flex items-center justify-center border transition-all hover:scale-105",
         meta.bg,
         meta.text,
-        meta.border
+        meta.border,
       )}
     >
       <Icon className="w-4 h-4" />
@@ -92,24 +123,34 @@ function PrayerStatusIcon({ status, lang }: { status: PrayerStatus | null; lang:
   );
 }
 
-const ALL_PRAYERS: { key: "fajr" | "dhuhr" | "asr" | "maghrib" | "isha"; label: string; configKey: keyof IbadahConfig }[] = [
-  { key: "fajr",    label: "Fajr",    configKey: "enableFajr"    },
-  { key: "dhuhr",   label: "Dhuhr",   configKey: "enableDhuhr"   },
-  { key: "asr",     label: "Asr",     configKey: "enableAsr"     },
+const ALL_PRAYERS: {
+  key: "fajr" | "dhuhr" | "asr" | "maghrib" | "isha";
+  label: string;
+  configKey: keyof IbadahConfig;
+}[] = [
+  { key: "fajr", label: "Fajr", configKey: "enableFajr" },
+  { key: "dhuhr", label: "Dhuhr", configKey: "enableDhuhr" },
+  { key: "asr", label: "Asr", configKey: "enableAsr" },
   { key: "maghrib", label: "Maghrib", configKey: "enableMaghrib" },
-  { key: "isha",    label: "Isha",    configKey: "enableIsha"    },
+  { key: "isha", label: "Isha", configKey: "enableIsha" },
 ];
 
 interface StudentRow {
   studentId: string;
   name: string;
   adno: string;
-  fajr: PrayerStatus | null; dhuhr: PrayerStatus | null; asr: PrayerStatus | null; maghrib: PrayerStatus | null; isha: PrayerStatus | null;
+  fajr: PrayerStatus | null;
+  dhuhr: PrayerStatus | null;
+  asr: PrayerStatus | null;
+  maghrib: PrayerStatus | null;
+  isha: PrayerStatus | null;
   quranPages: number;
   customData: Record<string, boolean | number>;
 }
 
-function fmt(d: Date) { return d.toISOString().split("T")[0]; }
+function fmt(d: Date) {
+  return d.toISOString().split("T")[0];
+}
 function fmtShort(iso: string) {
   const d = new Date(iso);
   return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
@@ -129,7 +170,10 @@ function getLast7Days(endDate: string): string[] {
   return dates;
 }
 
-function prayerCount(log: IbadahRecord | undefined, prayers: typeof ALL_PRAYERS): number {
+function prayerCount(
+  log: IbadahRecord | undefined,
+  prayers: typeof ALL_PRAYERS,
+): number {
   if (!log) return 0;
   return prayers.filter((p) => log[p.key]).length;
 }
@@ -153,29 +197,29 @@ function reportPrayerType(status: PrayerStatus | null): string {
 export default function TeacherIbadahPage() {
   const { user, accessToken } = useAuthStore();
   const { lang } = useLanguageStore();
-  const cid       = user?.clientId ?? "";
-  const token     = accessToken ?? "";
+  const cid = user?.clientId ?? "";
+  const token = accessToken ?? "";
   const teacherId = user?.id ?? "";
 
-  const [classes, setClasses]               = useState<ClassRecord[]>([]);
-  const [activeClassId, setActiveClassId]   = useState<string | null>(null);
-  const [date, setDate]                     = useState(fmt(new Date()));
-  const [viewMode, setViewMode]             = useState<ViewMode>("daily");
-  const [selectorDrawer, setSelectorDrawer] = useState<"class" | "view" | null>(null);
+  const [classes, setClasses] = useState<ClassRecord[]>([]);
+  const [activeClassId, setActiveClassId] = useState<string | null>(null);
+  const [date, setDate] = useState(fmt(new Date()));
+  const [viewMode, setViewMode] = useState<ViewMode>("daily");
+  const [selectorDrawer, setSelectorDrawer] = useState(false);
 
   // Daily view state
-  const [rows, setRows]         = useState<StudentRow[]>([]);
-  const [config, setConfig]     = useState<IbadahConfig | null>(null);
+  const [rows, setRows] = useState<StudentRow[]>([]);
+  const [config, setConfig] = useState<IbadahConfig | null>(null);
   const [activeSection, setActiveSection] = useState<Section>("prayers");
 
   // Weekly view state
-  const [weeklyLogs, setWeeklyLogs]       = useState<IbadahRecord[]>([]);
+  const [weeklyLogs, setWeeklyLogs] = useState<IbadahRecord[]>([]);
   const [weeklyStudents, setWeeklyStudents] = useState<StudentRecord[]>([]);
-  const [expandedCell, setExpandedCell]   = useState<string | null>(null); // "studentId|date"
+  const [expandedCell, setExpandedCell] = useState<string | null>(null); // "studentId|date"
 
   const [loadingClasses, setLoadingClasses] = useState(true);
-  const [loadingIbadah, setLoadingIbadah]   = useState(false);
-  const [error, setError]                   = useState<string | null>(null);
+  const [loadingIbadah, setLoadingIbadah] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Load own classes only
   useEffect(() => {
@@ -188,7 +232,9 @@ export default function TeacherIbadahPage() {
         setClasses(own);
         if (own.length > 0) setActiveClassId(own[0].id);
       })
-      .catch((e) => { setError((e as Error).message); })
+      .catch((e) => {
+        setError((e as Error).message);
+      })
       .finally(() => setLoadingClasses(false));
     return () => ac.abort();
   }, [cid, token]); // eslint-disable-line
@@ -196,26 +242,43 @@ export default function TeacherIbadahPage() {
   // Daily load
   const loadDailyIbadah = useCallback(async () => {
     if (!cid || !token || !activeClassId) return;
-    setLoadingIbadah(true); setError(null);
+    setLoadingIbadah(true);
+    setError(null);
     try {
-      const data = await getClassIbadah(cid, token, { classId: activeClassId, date });
+      const data = await getClassIbadah(cid, token, {
+        classId: activeClassId,
+        date,
+      });
       setConfig(data.config);
-      setRows(data.logs.map((r) => ({
-        studentId: r.studentId, name: r.student.name, adno: r.student.adno,
-        fajr: r.fajr, dhuhr: r.dhuhr, asr: r.asr, maghrib: r.maghrib, isha: r.isha,
-        quranPages: r.quranPages,
-        customData: (r.customData as Record<string, boolean | number>) ?? {},
-      })));
-    } catch (e) { setError((e as Error).message); }
-    finally { setLoadingIbadah(false); }
+      setRows(
+        data.logs.map((r) => ({
+          studentId: r.studentId,
+          name: r.student.name,
+          adno: r.student.adno,
+          fajr: r.fajr,
+          dhuhr: r.dhuhr,
+          asr: r.asr,
+          maghrib: r.maghrib,
+          isha: r.isha,
+          quranPages: r.quranPages,
+          customData: (r.customData as Record<string, boolean | number>) ?? {},
+        })),
+      );
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoadingIbadah(false);
+    }
   }, [cid, token, activeClassId, date]);
 
   // Weekly load
   const loadWeeklyIbadah = useCallback(async () => {
     if (!cid || !token || !activeClassId) return;
-    setLoadingIbadah(true); setError(null);
+    setLoadingIbadah(true);
+    setError(null);
     const dates = getLast7Days(date);
-    const from = dates[0], to = dates[dates.length - 1];
+    const from = dates[0],
+      to = dates[dates.length - 1];
     try {
       const [ibadahData, studentsData] = await Promise.all([
         getClassIbadah(cid, token, { classId: activeClassId, from, to }),
@@ -224,8 +287,11 @@ export default function TeacherIbadahPage() {
       setConfig(ibadahData.config);
       setWeeklyLogs(ibadahData.logs);
       setWeeklyStudents(studentsData.data ?? []);
-    } catch (e) { setError((e as Error).message); }
-    finally { setLoadingIbadah(false); }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoadingIbadah(false);
+    }
   }, [cid, token, activeClassId, date]);
 
   useEffect(() => {
@@ -234,14 +300,22 @@ export default function TeacherIbadahPage() {
   }, [viewMode, loadDailyIbadah, loadWeeklyIbadah]);
 
   const activePrayers = useMemo(
-    () => config ? ALL_PRAYERS.filter((p) => config[p.configKey] !== false) : ALL_PRAYERS,
+    () =>
+      config
+        ? ALL_PRAYERS.filter((p) => config[p.configKey] !== false)
+        : ALL_PRAYERS,
     [config],
   );
   const customItems = config?.customItems ?? [];
 
-  const prevWeek = () => { const d = new Date(date); d.setDate(d.getDate() - 7); setDate(fmt(d)); };
+  const prevWeek = () => {
+    const d = new Date(date);
+    d.setDate(d.getDate() - 7);
+    setDate(fmt(d));
+  };
   const nextWeek = () => {
-    const d = new Date(date); d.setDate(d.getDate() + 7);
+    const d = new Date(date);
+    d.setDate(d.getDate() + 7);
     if (d <= new Date()) setDate(fmt(d));
   };
 
@@ -258,23 +332,47 @@ export default function TeacherIbadahPage() {
     return map;
   }, [weeklyLogs]);
 
-  const sections = ([
-    { key: "prayers" as Section, label: t("teacherPages", "prayerSection", lang), show: activePrayers.length > 0 },
-    { key: "quran"   as Section, label: t("teacherPages", "quranSection", lang),   show: config?.enableQuranPages !== false },
-    { key: "custom"  as Section, label: t("teacherPages", "customSection", lang),  show: customItems.length > 0 },
-  ] as { key: Section; label: string; show: boolean }[]).filter((s) => s.show);
+  const sections = (
+    [
+      {
+        key: "prayers" as Section,
+        label: t("teacherPages", "prayerSection", lang),
+        show: activePrayers.length > 0,
+      },
+      {
+        key: "quran" as Section,
+        label: t("teacherPages", "quranSection", lang),
+        show: config?.enableQuranPages !== false,
+      },
+      {
+        key: "custom" as Section,
+        label: t("teacherPages", "customSection", lang),
+        show: customItems.length > 0,
+      },
+    ] as { key: Section; label: string; show: boolean }[]
+  ).filter((s) => s.show);
 
   const activeClass = classes.find((c) => c.id === activeClassId);
 
   const downloadWeeklyReport = useCallback(() => {
     if (!activeClass || weeklyStudents.length === 0) return;
 
-    const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const pdf = new jsPDF({
+      orientation: "landscape",
+      unit: "mm",
+      format: "a4",
+    });
     const margin = 10;
     const rowHeight = 7;
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    const columns = ["Student", "Admission No.", "Date", ...activePrayers.map((p) => p.label), "Quran"];
+    const columns = [
+      "Student",
+      "Admission No.",
+      "Date",
+      ...activePrayers.map((p) => p.label),
+      "Quran",
+    ];
     const widths = [42, 25, 22, ...activePrayers.map(() => 22), 18];
     const totalWidth = widths.reduce((sum, width) => sum + width, 0);
     const startX = Math.max(margin, (pageWidth - totalWidth) / 2);
@@ -287,7 +385,11 @@ export default function TeacherIbadahPage() {
       y += 7;
       pdf.setFontSize(9);
       pdf.setFont("helvetica", "normal");
-      pdf.text(`${activeClass.name}  •  ${fmtShort(weekDates[0])} — ${fmtShort(weekDates[6])}`, startX, y);
+      pdf.text(
+        `${activeClass.name}  •  ${fmtShort(weekDates[0])} — ${fmtShort(weekDates[6])}`,
+        startX,
+        y,
+      );
       y += 7;
       let x = startX;
       pdf.setFillColor(16, 185, 129);
@@ -316,7 +418,13 @@ export default function TeacherIbadahPage() {
           pdf.setFont("helvetica", "normal");
         }
         const log = studentLogs?.get(day);
-        const values = [student.name, student.adno, fmtShort(day), ...activePrayers.map((p) => reportPrayerType(log?.[p.key] ?? null)), String(log?.quranPages ?? 0)];
+        const values = [
+          student.name,
+          student.adno,
+          fmtShort(day),
+          ...activePrayers.map((p) => reportPrayerType(log?.[p.key] ?? null)),
+          String(log?.quranPages ?? 0),
+        ];
         let x = startX;
         if (Math.round(y / rowHeight) % 2 === 0) {
           pdf.setFillColor(248, 250, 252);
@@ -334,32 +442,28 @@ export default function TeacherIbadahPage() {
     }
     pdf.setFontSize(8);
     pdf.setTextColor(75, 85, 99);
-    pdf.text("Prayer type: Jamaath = performed in congregation • Qada = made up later • Ada = performed • Excused = not prayable", startX, pageHeight - 8);
-    pdf.save(`ibadah-weekly-${activeClass.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-${weekDates[6]}.pdf`);
+    pdf.text(
+      "Prayer type: Jamaath = performed in congregation • Qada = made up later • Ada = performed • Excused = not prayable",
+      startX,
+      pageHeight - 8,
+    );
+    pdf.save(
+      `ibadah-weekly-${activeClass.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-${weekDates[6]}.pdf`,
+    );
   }, [activeClass, activePrayers, logMap, weekDates, weeklyStudents]);
 
   return (
     <DashboardLayout>
-      <PageHeader
-        title={t("teacherPages", "ibadahRecordsTitle", lang)}
-      />
+      <PageHeader title={t("teacherPages", "ibadahRecordsTitle", lang)} />
 
-      {/* Shared daily date navigation; weekly view keeps its range controls. */}
-      {viewMode === "daily" ? (
-        <DateNavigator date={date} onDateChange={setDate} pickerTitle="Choose ibadah date" />
-      ) : (
-        <WeekNavigator
-          weekDates={weekDates}
-          date={date}
-          onPrevWeek={prevWeek}
-          onNextWeek={nextWeek}
-          onDownloadReport={downloadWeeklyReport}
-          downloadDisabled={weeklyStudents.length === 0}
-          fmtShort={fmtShort}
+      <div className="h-[76px]" />
+
+      {error && (
+        <ApiErrorBanner
+          message={error}
+          onRetry={viewMode === "daily" ? loadDailyIbadah : loadWeeklyIbadah}
         />
       )}
-
-      {error && <ApiErrorBanner message={error} onRetry={viewMode === "daily" ? loadDailyIbadah : loadWeeklyIbadah} />}
 
       {loadingClasses ? (
         <div className="space-y-4">
@@ -380,43 +484,117 @@ export default function TeacherIbadahPage() {
           <Skeleton className="h-64 rounded-2xl" />
         </div>
       ) : classes.length === 0 ? (
-        <div className="text-center py-16 text-gray-400 text-sm">{t("teacherPages", "noClassesAssigned", lang)}</div>
+        <div className="text-center py-16 text-gray-400 text-sm">
+          {t("teacherPages", "noClassesAssigned", lang)}
+        </div>
       ) : (
         <>
-          <div className="fixed bottom-12 left-1/2 z-30 -translate-x-1/2">
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setSelectorDrawer("class")}
-                className="max-w-36 truncate rounded-full bg-emerald-600 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-emerald-900/20 transition-transform active:scale-95">
-                {activeClass?.name ?? t("teacherPages", "noClassesAssigned", lang)}
-              </button>
-              <button type="button" onClick={() => setSelectorDrawer("view")}
-                className="rounded-full border border-gray-200 bg-white/95 px-4 py-2.5 text-xs font-semibold text-gray-600 shadow-lg shadow-gray-900/10 backdrop-blur transition-transform active:scale-95">
-                {viewMode === "daily" ? t("teacherPages", "dailyView", lang) : t("teacherPages", "weeklyView", lang)}
-              </button>
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={() => setSelectorDrawer(true)}
+            aria-label="Choose ibadah date and class"
+            className="fixed inset-x-0 h-10 top-[47px] z-30 mx-auto flex w-full max-w-5xl items-center justify-between gap-3 border-b border-gray-100 bg-white/95 px-4 py-1.5 text-left shadow-lg shadow-gray-100 backdrop-blur-sm lg:left-64 lg:top-[130px] lg:w-[calc(100%-16rem)] lg:px-8"
+          >
+            <span className="flex min-w-0 items-center gap-2">
+              {viewMode === "daily" ? (
+                <>
+                  <span className="flex flex-col items-center leading-none">
+                    <span className="text-sm font-bold text-primary ">
+                      {new Date(`${date}T00:00:00`).toLocaleDateString(
+                        "en-IN",
+                        { day: "numeric" },
+                      )}
+                    </span>
+                  </span>
+                  <span className="h-3 w-px bg-primary/25"></span>
+                  <span className="text-sm font-normal text-gray-900">
+                    {new Date(`${date}T00:00:00`).toLocaleDateString("en-IN", {
+                      month: "short",
+                      year: "2-digit",
+                    })}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="flex flex-col items-start leading-none">
+                    <span className="text-sm font-normal text-gray-500">
+                      {new Date(`${date}T00:00:00`).toLocaleDateString(
+                        "en-IN",
+                        { month: "short", year: "2-digit" },
+                      )}
+                    </span>
+                  </span>
+                  <span className="h-4 w-px bg-gray-200" />
+                  <span className="text-sm font-normal text-gray-900">{`${fmtShort(weekDates[0])}-${fmtShort(weekDates[6])}`}</span>
+                </>
+              )}
+            </span>
+            <span className="flex min-w-0 items-center gap-2 text-gray-700">
+              <School className="h-4 w-4 shrink-0 text-emerald-700" />
+              <span className="max-w-36 truncate text-sm font-semibold">
+                {activeClass?.name ??
+                  t("teacherPages", "noClassesAssigned", lang)}
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" />
+            </span>
+          </button>
 
-          <Drawer open={selectorDrawer !== null} onOpenChange={(open) => { if (!open) setSelectorDrawer(null); }}>
+          <Drawer open={selectorDrawer} onOpenChange={setSelectorDrawer}>
             <DrawerContent>
               <DrawerHeader>
-                <DrawerTitle>Choose class and view</DrawerTitle>
-                <DrawerDescription>Select a class and choose daily or weekly records.</DrawerDescription>
+                <DrawerTitle> </DrawerTitle>
+                <DrawerDescription>
+                 </DrawerDescription>
               </DrawerHeader>
               <div className="max-h-[60vh] overflow-y-auto px-4 pb-6">
-                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400">Class</p>
-                {classes.map((cls) => (
-                  <button key={cls.id} type="button" onClick={() => setActiveClassId(cls.id)}
-                    className={cn("mb-2 flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm font-semibold", activeClassId === cls.id ? "border-emerald-600 bg-emerald-50 text-emerald-700" : "border-gray-200 text-gray-700")}>
-                    {cls.name}{activeClassId === cls.id && <Check className="h-4 w-4" />}
-                  </button>
-                ))}
-                <p className="mb-2 mt-4 text-xs font-bold uppercase tracking-wide text-gray-400">View</p>
-                {[{ mode: "daily" as ViewMode, label: t("teacherPages", "dailyView", lang), icon: List }, { mode: "weekly" as ViewMode, label: t("teacherPages", "weeklyView", lang), icon: Calendar }].map(({ mode, label, icon: Icon }) => (
-                  <button key={mode} type="button" onClick={() => setViewMode(mode)}
-                    className={cn("mb-2 flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm font-semibold", viewMode === mode ? "border-emerald-600 bg-emerald-50 text-emerald-700" : "border-gray-200 text-gray-700")}>
-                    <Icon className="h-4 w-4" />{label}{viewMode === mode && <Check className="ml-auto h-4 w-4" />}
-                  </button>
-                ))}
+                <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as ViewMode)}>
+                  <TabsList className="mb-4">
+                    <TabsTrigger value="daily" className="px-3 py-1 text-sm">{t("teacherPages", "dailyView", lang)}</TabsTrigger>
+                    <TabsTrigger value="weekly" className="px-3 py-1 text-sm">{t("teacherPages", "weeklyView", lang)}</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                {viewMode === "daily" ? (
+                  <DateNavigator
+                    date={date}
+                    onDateChange={setDate}
+                    pickerTitle="Choose ibadah date"
+                    inline
+                  />
+                ) : (
+                  <WeekNavigator
+                    weekDates={weekDates}
+                    date={date}
+                    onPrevWeek={prevWeek}
+                    onNextWeek={nextWeek}
+                    onDownloadReport={downloadWeeklyReport}
+                    downloadDisabled={weeklyStudents.length === 0}
+                    fmtShort={fmtShort}
+                  />
+                )}
+                <p className="mb-2 mt-4 text-xs font-bold uppercase tracking-wide text-gray-400">
+                  Classes
+                </p>
+                <div className="divide-y divide-gray-100 border-gray-100 border-[0.5px] rounded-lg *:px-2">
+                  {classes.map((cls) => (
+                    <button
+                      key={cls.id}
+                      type="button"
+                      onClick={() => {
+                        setActiveClassId(cls.id);
+                        setSelectorDrawer(false);
+                      }}
+                      className={cn(
+                        "flex w-full min-w-0 items-center gap-3 py-3 text-left text-sm",
+                        activeClassId === cls.id ? "font-medium text-emerald-700" : "text-gray-700",
+                      )}
+                    >
+                      <span className="truncate">{cls.name}</span>
+                      {activeClassId === cls.id && (
+                        <Check className="ml-auto h-4 w-4 shrink-0" />
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
             </DrawerContent>
           </Drawer>
@@ -441,9 +619,16 @@ export default function TeacherIbadahPage() {
                       {sections.length > 1 && (
                         <div className="flex gap-1.5 mb-4 bg-gray-100 p-1 rounded-xl w-fit">
                           {sections.map((s) => (
-                            <button key={s.key} onClick={() => setActiveSection(s.key)}
-                              className={cn("px-4 py-1.5 rounded-lg text-xs font-semibold transition-all",
-                                activeSection === s.key ? "bg-white shadow-sm text-emerald-700" : "text-gray-500")}>
+                            <button
+                              key={s.key}
+                              onClick={() => setActiveSection(s.key)}
+                              className={cn(
+                                "px-4 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                                activeSection === s.key
+                                  ? "bg-white shadow-sm text-emerald-700"
+                                  : "text-gray-500",
+                              )}
+                            >
                               {s.label}
                             </button>
                           ))}
@@ -451,119 +636,193 @@ export default function TeacherIbadahPage() {
                       )}
 
                       {/* Prayers table */}
-                      {activeSection === "prayers" && activePrayers.length > 0 && (
-                        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-4 shadow-xs">
-                          {/* Table header */}
-                          <div className="overflow-x-auto">
-                            <table className="w-full">
-                              <thead className="bg-gray-50 sticky top-0 z-10 border-b border-gray-100">
-                                <tr>
-                                  <th className="text-left px-4 py-3 text-[10px] font-bold text-gray-400 uppercase w-48 sticky left-0 bg-gray-50">{t("teacherPages", "studentHeader", lang)}</th>
-                                  {activePrayers.map((p) => (
-                                    <th key={p.key} className="text-center px-2 py-3 text-[10px] font-bold text-gray-400 uppercase">{p.label}</th>
-                                  ))}
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-gray-50">
-                                {rows.map((r) => (
-                                  <tr key={r.studentId} className="hover:bg-gray-50/60 transition-colors">
-                                    <td className="px-4 py-2.5 sticky left-0 bg-white shadow-[1px_0_0_0_rgba(0,0,0,0.03)]">
-                                      <p className="text-sm font-semibold text-gray-900 truncate max-w-[160px]">{r.name}</p>
-                                      <p className="text-[10px] text-gray-400">{r.adno}</p>
-                                    </td>
+                      {activeSection === "prayers" &&
+                        activePrayers.length > 0 && (
+                          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-4 shadow-xs">
+                            {/* Table header */}
+                            <div className="overflow-x-auto">
+                              <table className="w-full">
+                                <thead className="bg-gray-50 sticky top-0 z-10 border-b border-gray-100">
+                                  <tr>
+                                    <th className="text-left px-4 py-3 text-[10px] font-bold text-gray-400 uppercase w-48 sticky left-0 bg-gray-50">
+                                      {t("teacherPages", "studentHeader", lang)}
+                                    </th>
                                     {activePrayers.map((p) => (
-                                      <td key={p.key} className="px-2 py-2.5 text-center">
-                                        <PrayerStatusIcon status={r[p.key]} lang={lang} />
-                                      </td>
+                                      <th
+                                        key={p.key}
+                                        className="text-center px-2 py-3 text-[10px] font-bold text-gray-400 uppercase"
+                                      >
+                                        {p.label}
+                                      </th>
                                     ))}
                                   </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                  {rows.map((r) => (
+                                    <tr
+                                      key={r.studentId}
+                                      className="hover:bg-gray-50/60 transition-colors"
+                                    >
+                                      <td className="px-4 py-2.5 sticky left-0 bg-white shadow-[1px_0_0_0_rgba(0,0,0,0.03)]">
+                                        <p className="text-sm font-semibold text-gray-900 truncate max-w-[160px]">
+                                          {r.name}
+                                        </p>
+                                        <p className="text-[10px] text-gray-400">
+                                          {r.adno}
+                                        </p>
+                                      </td>
+                                      {activePrayers.map((p) => (
+                                        <td
+                                          key={p.key}
+                                          className="px-2 py-2.5 text-center"
+                                        >
+                                          <PrayerStatusIcon
+                                            status={r[p.key]}
+                                            lang={lang}
+                                          />
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
 
-                          {/* Prayer Status Legend */}
-                          <div className="px-4 py-3 bg-gray-50/70 border-t border-gray-100 flex flex-wrap items-center gap-4 text-xs">
-                            <div className="flex items-center gap-1.5">
-                              <span className="w-5 h-5 rounded-lg bg-blue-100 text-blue-700 border border-blue-200 flex items-center justify-center">
-                                <Users className="w-3 h-3" />
-                              </span>
-                              <span className="font-medium text-gray-700">{t("parentPages", "jama", lang)}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="w-5 h-5 rounded-lg bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center justify-center">
-                                <Check className="w-3 h-3" />
-                              </span>
-                              <span className="font-medium text-gray-700">{t("parentPages", "adaLabel", lang)}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="w-5 h-5 rounded-lg bg-amber-100 text-amber-700 border border-amber-200 flex items-center justify-center">
-                                <Sun className="w-3 h-3" />
-                              </span>
-                              <span className="font-medium text-gray-700">{t("parentPages", "qalaLabel", lang)}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="w-5 h-5 rounded-lg bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center justify-center">
-                                <Check className="w-3 h-3" />
-                              </span>
-                              <span className="font-medium text-gray-700">{t("parentPages", "excusedLabel", lang)}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="w-5 h-5 rounded-lg bg-gray-100 text-gray-400 border border-gray-200 flex items-center justify-center">
-                                <Minus className="w-3 h-3" />
-                              </span>
-                              <span className="font-medium text-gray-400">{t("parentPages", "missedLabel", lang)}</span>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Quran table */}
-                      {activeSection === "quran" && config?.enableQuranPages !== false && (
-                        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-4">
-                          <div className="px-4 py-2.5 bg-gray-50 flex items-center gap-2">
-                            <BookOpen className="w-4 h-4 text-blue-500" />
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">{t("teacherPages", "quranPagesHeader", lang)}</p>
-                          </div>
-                          <div className="divide-y divide-gray-50">
-                            {rows.map((r) => (
-                              <div key={r.studentId} className="flex items-center gap-4 px-4 py-3">
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-semibold text-gray-900 truncate">{r.name}</p>
-                                  <p className="text-xs text-gray-400">{r.adno}</p>
-                                </div>
-                                <span className={cn("text-lg font-bold", r.quranPages > 0 ? "text-blue-700" : "text-gray-300")}>
-                                  {r.quranPages}
+                            {/* Prayer Status Legend */}
+                            <div className="px-4 py-3 bg-gray-50/70 border-t border-gray-100 flex flex-wrap items-center gap-4 text-xs">
+                              <div className="flex items-center gap-1.5">
+                                <span className="w-5 h-5 rounded-lg bg-blue-100 text-blue-700 border border-blue-200 flex items-center justify-center">
+                                  <Users className="w-3 h-3" />
+                                </span>
+                                <span className="font-medium text-gray-700">
+                                  {t("parentPages", "jama", lang)}
                                 </span>
                               </div>
-                            ))}
+                              <div className="flex items-center gap-1.5">
+                                <span className="w-5 h-5 rounded-lg bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center justify-center">
+                                  <Check className="w-3 h-3" />
+                                </span>
+                                <span className="font-medium text-gray-700">
+                                  {t("parentPages", "adaLabel", lang)}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="w-5 h-5 rounded-lg bg-amber-100 text-amber-700 border border-amber-200 flex items-center justify-center">
+                                  <Sun className="w-3 h-3" />
+                                </span>
+                                <span className="font-medium text-gray-700">
+                                  {t("parentPages", "qalaLabel", lang)}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="w-5 h-5 rounded-lg bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center justify-center">
+                                  <Check className="w-3 h-3" />
+                                </span>
+                                <span className="font-medium text-gray-700">
+                                  {t("parentPages", "excusedLabel", lang)}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="w-5 h-5 rounded-lg bg-gray-100 text-gray-400 border border-gray-200 flex items-center justify-center">
+                                  <Minus className="w-3 h-3" />
+                                </span>
+                                <span className="font-medium text-gray-400">
+                                  {t("parentPages", "missedLabel", lang)}
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
+
+                      {/* Quran table */}
+                      {activeSection === "quran" &&
+                        config?.enableQuranPages !== false && (
+                          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-4">
+                            <div className="px-4 py-2.5 bg-gray-50 flex items-center gap-2">
+                              <BookOpen className="w-4 h-4 text-blue-500" />
+                              <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                                {t("teacherPages", "quranPagesHeader", lang)}
+                              </p>
+                            </div>
+                            <div className="divide-y divide-gray-50">
+                              {rows.map((r) => (
+                                <div
+                                  key={r.studentId}
+                                  className="flex items-center gap-4 px-4 py-3"
+                                >
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold text-gray-900 truncate">
+                                      {r.name}
+                                    </p>
+                                    <p className="text-xs text-gray-400">
+                                      {r.adno}
+                                    </p>
+                                  </div>
+                                  <span
+                                    className={cn(
+                                      "text-lg font-bold",
+                                      r.quranPages > 0
+                                        ? "text-blue-700"
+                                        : "text-gray-300",
+                                    )}
+                                  >
+                                    {r.quranPages}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
                       {/* Custom items */}
                       {activeSection === "custom" && customItems.length > 0 && (
                         <div className="space-y-4">
                           {customItems.map((item) => (
-                            <div key={item.key} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                            <div
+                              key={item.key}
+                              className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+                            >
                               <div className="px-4 py-2.5 bg-gray-50">
-                                <p className="text-xs font-bold text-gray-500 uppercase">{item.label}</p>
+                                <p className="text-xs font-bold text-gray-500 uppercase">
+                                  {item.label}
+                                </p>
                               </div>
                               <div className="divide-y divide-gray-50">
                                 {rows.map((r) => (
-                                  <div key={r.studentId} className="flex items-center gap-4 px-4 py-3">
+                                  <div
+                                    key={r.studentId}
+                                    className="flex items-center gap-4 px-4 py-3"
+                                  >
                                     <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-semibold text-gray-900 truncate">{r.name}</p>
-                                      <p className="text-xs text-gray-400">{r.adno}</p>
+                                      <p className="text-sm font-semibold text-gray-900 truncate">
+                                        {r.name}
+                                      </p>
+                                      <p className="text-xs text-gray-400">
+                                        {r.adno}
+                                      </p>
                                     </div>
                                     {item.type === "boolean" ? (
-                                      <div className={cn("w-8 h-8 rounded-lg text-sm font-bold flex items-center justify-center",
-                                        r.customData[item.key] ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-400")}>
+                                      <div
+                                        className={cn(
+                                          "w-8 h-8 rounded-lg text-sm font-bold flex items-center justify-center",
+                                          r.customData[item.key]
+                                            ? "bg-emerald-100 text-emerald-700"
+                                            : "bg-gray-100 text-gray-400",
+                                        )}
+                                      >
                                         {r.customData[item.key] ? "✓" : "–"}
                                       </div>
                                     ) : (
-                                      <span className={cn("text-lg font-bold", (r.customData[item.key] as number) > 0 ? "text-blue-700" : "text-gray-300")}>
-                                        {(r.customData[item.key] as number) ?? 0}
+                                      <span
+                                        className={cn(
+                                          "text-lg font-bold",
+                                          (r.customData[item.key] as number) > 0
+                                            ? "text-blue-700"
+                                            : "text-gray-300",
+                                        )}
+                                      >
+                                        {(r.customData[item.key] as number) ??
+                                          0}
                                       </span>
                                     )}
                                   </div>
@@ -579,8 +838,8 @@ export default function TeacherIbadahPage() {
               )}
 
               {/* ── WEEKLY VIEW ── */}
-              {viewMode === "weekly" && (
-                weeklyStudents.length === 0 ? (
+              {viewMode === "weekly" &&
+                (weeklyStudents.length === 0 ? (
                   <div className="text-center py-12 text-gray-400 text-sm">
                     <Moon className="w-10 h-10 mx-auto mb-3 text-gray-200" />
                     {t("teacherPages", "noStudentsInClass", lang)}
@@ -588,7 +847,10 @@ export default function TeacherIbadahPage() {
                 ) : (
                   <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
                     <div className="overflow-x-auto">
-                      <table className="w-full text-sm" style={{ minWidth: "520px" }}>
+                      <table
+                        className="w-full text-sm"
+                        style={{ minWidth: "520px" }}
+                      >
                         <thead className="bg-gray-50 sticky top-0 z-10">
                           <tr>
                             {/* Frozen student column */}
@@ -596,9 +858,16 @@ export default function TeacherIbadahPage() {
                               {t("teacherPages", "studentHeader", lang)}
                             </th>
                             {weekDates.map((d) => (
-                              <th key={d} className="text-center px-2 py-3 min-w-[68px]">
-                                <p className="text-[10px] font-bold text-gray-400 uppercase">{fmtWeekday(d)}</p>
-                                <p className="text-xs font-semibold text-gray-600">{fmtShort(d)}</p>
+                              <th
+                                key={d}
+                                className="text-center px-2 py-3 min-w-[68px]"
+                              >
+                                <p className="text-[10px] font-bold text-gray-400 uppercase">
+                                  {fmtWeekday(d)}
+                                </p>
+                                <p className="text-xs font-semibold text-gray-600">
+                                  {fmtShort(d)}
+                                </p>
                               </th>
                             ))}
                           </tr>
@@ -607,11 +876,18 @@ export default function TeacherIbadahPage() {
                           {weeklyStudents.map((student) => {
                             const studentLogs = logMap.get(student.id);
                             return (
-                              <tr key={student.id} className="hover:bg-gray-50/50 transition-colors">
+                              <tr
+                                key={student.id}
+                                className="hover:bg-gray-50/50 transition-colors"
+                              >
                                 {/* Frozen student cell */}
                                 <td className="px-4 py-3 sticky left-0 bg-white border-r border-gray-100">
-                                  <p className="text-sm font-semibold text-gray-900 truncate max-w-[130px]">{student.name}</p>
-                                  <p className="text-[10px] text-gray-400">{student.adno}</p>
+                                  <p className="text-sm font-semibold text-gray-900 truncate max-w-[130px]">
+                                    {student.name}
+                                  </p>
+                                  <p className="text-[10px] text-gray-400">
+                                    {student.adno}
+                                  </p>
                                 </td>
                                 {weekDates.map((d) => {
                                   const log = studentLogs?.get(d);
@@ -620,7 +896,10 @@ export default function TeacherIbadahPage() {
                                   const cellKey = `${student.id}|${d}`;
                                   const isExpanded = expandedCell === cellKey;
                                   return (
-                                    <td key={d} className="px-2 py-3 text-center align-top">
+                                    <td
+                                      key={d}
+                                      className="px-2 py-3 text-center align-top"
+                                    >
                                       {!log ? (
                                         <div className="w-10 h-7 mx-auto rounded-lg bg-gray-50 text-[10px] text-gray-300 flex items-center justify-center">
                                           —
@@ -628,8 +907,15 @@ export default function TeacherIbadahPage() {
                                       ) : (
                                         <div className="flex flex-col items-center gap-1">
                                           <button
-                                            onClick={() => setExpandedCell(isExpanded ? null : cellKey)}
-                                            className={cn("px-2 py-1 rounded-lg text-xs font-bold transition-all", countBadgeColor(count, total))}
+                                            onClick={() =>
+                                              setExpandedCell(
+                                                isExpanded ? null : cellKey,
+                                              )
+                                            }
+                                            className={cn(
+                                              "px-2 py-1 rounded-lg text-xs font-bold transition-all",
+                                              countBadgeColor(count, total),
+                                            )}
                                           >
                                             {count}/{total}
                                           </button>
@@ -637,23 +923,48 @@ export default function TeacherIbadahPage() {
                                             <div className="flex flex-col gap-1 mt-1.5 bg-white rounded-xl border border-gray-100 shadow-md p-2 min-w-[110px] z-20 relative">
                                               {activePrayers.map((p) => {
                                                 const status = log[p.key];
-                                                const meta = status ? PRAYER_STATUS_META[status] : null;
-                                                const Icon = meta?.icon ?? Minus;
+                                                const meta = status
+                                                  ? PRAYER_STATUS_META[status]
+                                                  : null;
+                                                const Icon =
+                                                  meta?.icon ?? Minus;
                                                 return (
-                                                  <div key={p.key} className="flex items-center justify-between gap-1.5 text-[10px] py-0.5 border-b border-gray-50 last:border-0">
-                                                    <span className="text-gray-500 font-medium">{p.label.slice(0, 3)}</span>
+                                                  <div
+                                                    key={p.key}
+                                                    className="flex items-center justify-between gap-1.5 text-[10px] py-0.5 border-b border-gray-50 last:border-0"
+                                                  >
+                                                    <span className="text-gray-500 font-medium">
+                                                      {p.label.slice(0, 3)}
+                                                    </span>
                                                     <div className="flex items-center gap-1">
-                                                      <span className={cn(
-                                                        "w-4 h-4 rounded flex items-center justify-center shrink-0",
-                                                        meta ? cn(meta.bg, meta.text) : "bg-gray-100 text-gray-400"
-                                                      )}>
+                                                      <span
+                                                        className={cn(
+                                                          "w-4 h-4 rounded flex items-center justify-center shrink-0",
+                                                          meta
+                                                            ? cn(
+                                                                meta.bg,
+                                                                meta.text,
+                                                              )
+                                                            : "bg-gray-100 text-gray-400",
+                                                        )}
+                                                      >
                                                         <Icon className="w-2.5 h-2.5" />
                                                       </span>
-                                                      <span className={cn(
-                                                        "text-[9px] font-semibold",
-                                                        meta ? meta.text : "text-gray-400"
-                                                      )}>
-                                                        {meta ? t("parentPages", meta.labelKey, lang) : "—"}
+                                                      <span
+                                                        className={cn(
+                                                          "text-[9px] font-semibold",
+                                                          meta
+                                                            ? meta.text
+                                                            : "text-gray-400",
+                                                        )}
+                                                      >
+                                                        {meta
+                                                          ? t(
+                                                              "parentPages",
+                                                              meta.labelKey,
+                                                              lang,
+                                                            )
+                                                          : "—"}
                                                       </span>
                                                     </div>
                                                   </div>
@@ -663,25 +974,53 @@ export default function TeacherIbadahPage() {
                                                 <div className="flex items-center justify-between gap-1 text-[10px] border-t border-gray-100 pt-1 mt-0.5">
                                                   <div className="flex items-center gap-1 text-blue-600">
                                                     <BookOpen className="w-2.5 h-2.5 text-blue-500" />
-                                                    <span className="text-gray-500">{t("teacherPages", "quran", lang) || "Quran"}</span>
+                                                    <span className="text-gray-500">
+                                                      {t(
+                                                        "teacherPages",
+                                                        "quran",
+                                                        lang,
+                                                      ) || "Quran"}
+                                                    </span>
                                                   </div>
-                                                  <span className="font-bold text-blue-700">{log.quranPages}p</span>
+                                                  <span className="font-bold text-blue-700">
+                                                    {log.quranPages}p
+                                                  </span>
                                                 </div>
                                               )}
-                                              {customItems.length > 0 && log.customData && (
-                                                <div className="flex flex-col gap-0.5 border-t border-gray-100 pt-1 mt-0.5">
-                                                  {customItems.map((item) => {
-                                                    const val = log.customData?.[item.key];
-                                                    if (val === undefined || val === null) return null;
-                                                    return (
-                                                      <div key={item.key} className="flex items-center justify-between text-[9px]">
-                                                        <span className="text-gray-500 truncate max-w-[50px]">{item.label}</span>
-                                                        <span className="text-blue-600 font-semibold">{item.type === "boolean" ? (val ? "✓" : "—") : String(val)}</span>
-                                                      </div>
-                                                    );
-                                                  })}
-                                                </div>
-                                              )}
+                                              {customItems.length > 0 &&
+                                                log.customData && (
+                                                  <div className="flex flex-col gap-0.5 border-t border-gray-100 pt-1 mt-0.5">
+                                                    {customItems.map((item) => {
+                                                      const val =
+                                                        log.customData?.[
+                                                          item.key
+                                                        ];
+                                                      if (
+                                                        val === undefined ||
+                                                        val === null
+                                                      )
+                                                        return null;
+                                                      return (
+                                                        <div
+                                                          key={item.key}
+                                                          className="flex items-center justify-between text-[9px]"
+                                                        >
+                                                          <span className="text-gray-500 truncate max-w-[50px]">
+                                                            {item.label}
+                                                          </span>
+                                                          <span className="text-blue-600 font-semibold">
+                                                            {item.type ===
+                                                            "boolean"
+                                                              ? val
+                                                                ? "✓"
+                                                                : "—"
+                                                              : String(val)}
+                                                          </span>
+                                                        </div>
+                                                      );
+                                                    })}
+                                                  </div>
+                                                )}
                                             </div>
                                           )}
                                         </div>
@@ -696,14 +1035,25 @@ export default function TeacherIbadahPage() {
                       </table>
                     </div>
                     <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex flex-wrap gap-4 text-xs text-gray-500">
-                      <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-100 inline-block" /> {t("teacherPages", "legendAllPrayers", lang)}</div>
-                      <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-100 inline-block" /> {t("teacherPages", "legendPartial", lang)}</div>
-                      <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-red-100 inline-block" /> {t("teacherPages", "legendFew", lang)}</div>
-                      <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-gray-50 border inline-block" /> {t("teacherPages", "legendNotRecorded", lang)}</div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded bg-emerald-100 inline-block" />{" "}
+                        {t("teacherPages", "legendAllPrayers", lang)}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded bg-amber-100 inline-block" />{" "}
+                        {t("teacherPages", "legendPartial", lang)}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded bg-red-100 inline-block" />{" "}
+                        {t("teacherPages", "legendFew", lang)}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded bg-gray-50 border inline-block" />{" "}
+                        {t("teacherPages", "legendNotRecorded", lang)}
+                      </div>
                     </div>
                   </div>
-                )
-              )}
+                ))}
             </>
           )}
           <div className="h-20" aria-hidden="true" />
