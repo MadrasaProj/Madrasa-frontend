@@ -18,8 +18,11 @@ import {
   Users,
   Award,
   Calendar,
+  School,
+  ChevronRight,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { motion } from "framer-motion";
 import {
   BarChart,
@@ -56,6 +59,7 @@ export default function TeacherPerformancePage() {
   } | null>(null);
   const [activeClassId, setActiveClassId] = useState("");
   const [activeExamId, setActiveExamId] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
@@ -85,24 +89,34 @@ export default function TeacherPerformancePage() {
 
   useEffect(() => {
     if (!cid || !token || !activeClassId) return;
+    let cancelled = false;
     getExams(cid, token, { accademicYearId: ayId || undefined, limit: 20 })
       .then((data) => {
-        setExams(data.data ?? []);
-        const first = data.data?.[0];
-        if (first) setActiveExamId(first.id);
+        if (cancelled) return;
+        const available = (data.data ?? []).filter((exam) => !exam.classId || exam.classId === activeClassId);
+        setExams(available);
+        setActiveExamId((current) => available.some((exam) => exam.id === current) ? current : available[0]?.id ?? "");
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled) {
+          setExams([]);
+          setActiveExamId("");
+        }
+      });
+    return () => { cancelled = true; };
   }, [cid, token, activeClassId, ayId]);
 
   useEffect(() => {
     if (!cid || !token || !activeExamId) return;
+    let cancelled = false;
     getResults(cid, token, {
       examId: activeExamId,
       classId: activeClassId,
       limit: 100,
     })
-      .then((data) => setResults(data.data ?? []))
-      .catch(() => {});
+      .then((data) => { if (!cancelled) setResults(data.data ?? []); })
+      .catch(() => { if (!cancelled) setResults([]); });
+    return () => { cancelled = true; };
   }, [cid, token, activeExamId, activeClassId]);
 
   const gradeData = ["A+", "A", "B", "C", "F"].map((g) => ({
@@ -172,37 +186,96 @@ export default function TeacherPerformancePage() {
 
   return (
     <DashboardLayout>
-      <PageHeader
-        title={t("teacherPages", "classPerformanceTitle", lang)}
-        subtitle={activeClass ? `${activeClass.name} • ${activeExam?.name || "Academic Report"}` : "Performance Analytics"}
-        icon={Star}
-        back
-        backHref="/teacher"
-        action={
-          results.length > 0 ? (
-            <button
-              onClick={handleDownloadPDF}
-              disabled={downloadingPdf}
-              className="flex items-center gap-2 px-3.5 py-2.5 bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 rounded-xl text-sm font-semibold transition-all shadow-sm"
-            >
-              {downloadingPdf ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Download className="w-4 h-4" />
-              )}
-              <span>{downloadingPdf ? "Generating PDF..." : "Download PDF"}</span>
-            </button>
-          ) : undefined
-        }
-      />
+      <PageHeader title={t("teacherPages", "classPerformanceTitle", lang)} />
+
+      <div className="sticky top-12 z-30 -mx-4 mb-4 flex h-10 items-center bg-white px-4 shadow-lg shadow-gray-400/10 lg:top-[125px]">
+        <button
+          type="button"
+          aria-label={`${t("common", "filter", lang)}: ${activeClass?.name ?? t("common", "class", lang)} | ${activeExam?.name ?? t("teacherPages", "exam", lang)}`}
+          aria-haspopup="dialog"
+          aria-expanded={filtersOpen}
+          onClick={() => setFiltersOpen(true)}
+          className="flex min-w-0 w-full items-center gap-2 text-gray-700"
+        >
+          <School className="h-4 w-4 shrink-0 text-emerald-700" />
+          <span className="min-w-0 truncate text-sm font-semibold">{activeClass?.name ?? t("common", "class", lang)}</span>
+          <span className="shrink-0 text-gray-300" aria-hidden="true">|</span>
+          <span className="min-w-0 truncate text-sm font-semibold">{activeExam?.name ?? t("teacherPages", "exam", lang)}</span>
+          <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-gray-400" />
+        </button>
+      </div>
+
+      <ResponsivePopover
+        open={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        side="bottom"
+        drawerOnDesktop
+        title={t("common", "filter", lang)}
+        className="mx-auto w-full max-w-2xl rounded-t-2xl"
+      >
+        <div className="space-y-5 p-5">
+          <div>
+            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400">{t("nav", "classes", lang)}</p>
+            <div className="flex flex-wrap gap-2">
+              {classes.map((cls) => (
+                <button
+                  key={cls.id}
+                  type="button"
+                  aria-pressed={activeClassId === cls.id}
+                  onClick={() => {
+                    if (activeClassId !== cls.id) {
+                      setActiveClassId(cls.id);
+                      setActiveExamId("");
+                      setExams([]);
+                      setResults([]);
+                    }
+                  }}
+                  className={cn(
+                    "inline-flex max-w-full items-center rounded-full border px-3 py-2 text-sm font-medium transition-colors",
+                    activeClassId === cls.id
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50",
+                  )}
+                >
+                  <span className="block truncate">{cls.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400">{t("nav", "exams", lang)}</p>
+            {exams.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {exams.map((exam) => (
+                  <button
+                    key={exam.id}
+                    type="button"
+                    aria-pressed={activeExamId === exam.id}
+                    onClick={() => {
+                      setActiveExamId(exam.id);
+                      setResults([]);
+                      setFiltersOpen(false);
+                    }}
+                    className={cn(
+                      "inline-flex max-w-full items-center rounded-full border px-3 py-2 text-sm font-medium transition-colors",
+                      activeExamId === exam.id
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50",
+                    )}
+                  >
+                    <span className="block truncate">{exam.name}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="py-3 text-sm text-gray-500">{t("teacherPages", "noExamsFound", lang)}</p>
+            )}
+          </div>
+        </div>
+      </ResponsivePopover>
 
       {loading ? (
         <div className="space-y-4">
-          <div className="flex gap-2 flex-wrap">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-8 w-20 rounded-xl" />
-            ))}
-          </div>
           <div className="grid grid-cols-3 gap-3">
             {Array.from({ length: 3 }).map((_, i) => (
               <Skeleton key={i} className="h-20 rounded-2xl" />
@@ -226,41 +299,20 @@ export default function TeacherPerformancePage() {
         </div>
       ) : (
         <>
-          {/* Class selector */}
-          <div className="flex gap-2 mb-4 flex-wrap">
-            {classes.map((cls) => (
+          {results.length > 0 && (
+            <div className="flex justify-end mb-4">
               <button
-                key={cls.id}
-                onClick={() => setActiveClassId(cls.id)}
-                className={cn(
-                  "px-3 py-1.5 rounded-xl text-xs font-semibold transition-all",
-                  activeClassId === cls.id
-                    ? "bg-emerald-600 text-white shadow-xs"
-                    : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50",
-                )}
+                onClick={handleDownloadPDF}
+                disabled={downloadingPdf}
+                className="flex items-center gap-2 px-3.5 py-2.5 bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 rounded-xl text-sm font-semibold transition-all shadow-sm"
               >
-                {cls.name}
+                {downloadingPdf ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4" />
+                )}
+                <span>{downloadingPdf ? "Generating PDF..." : "Download PDF"}</span>
               </button>
-            ))}
-          </div>
-
-          {/* Exam selector */}
-          {exams.length > 0 && (
-            <div className="flex gap-2 mb-5 overflow-x-auto pb-1 scrollbar-none">
-              {exams.map((ex) => (
-                <button
-                  key={ex.id}
-                  onClick={() => setActiveExamId(ex.id)}
-                  className={cn(
-                    "px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all",
-                    activeExamId === ex.id
-                      ? "bg-blue-600 text-white shadow-xs"
-                      : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50",
-                  )}
-                >
-                  {ex.name}
-                </button>
-              ))}
             </div>
           )}
 
