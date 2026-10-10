@@ -1,6 +1,5 @@
 import * as React from "react";
 import { X } from "lucide-react";
-import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
 import {
   Drawer as BaseDrawer,
   DrawerClose,
@@ -42,7 +41,7 @@ function useIsDesktop() {
   return isDesktop;
 }
 
-/** A controlled popover on desktop and drawer on mobile, with an opt-in desktop drawer. */
+/** A controlled drawer: wide from the right on desktop, responsive on mobile. */
 export function ResponsivePopover({
   open,
   onOpenChange,
@@ -58,53 +57,20 @@ export function ResponsivePopover({
   showCloseButton = true,
 }: ResponsivePopoverProps) {
   const isDesktop = useIsDesktop();
-  const swipeDirection = side === "bottom" || (side === "responsive" && !isDesktop) ? "down" : "right";
+  const wideDesktopDrawer = isDesktop && !drawerOnDesktop;
+  const swipeDirection = wideDesktopDrawer ? "right" : side === "bottom" || (side === "responsive" && !isDesktop) ? "down" : "right";
   const isBottom = swipeDirection === "down";
-
-  if (isDesktop && !drawerOnDesktop) {
-    return (
-      <PopoverPrimitive.Root open={open} onOpenChange={onOpenChange}>
-        <PopoverPrimitive.Portal>
-          <PopoverPrimitive.Positioner
-            anchor={null}
-            className="fixed inset-0 z-50 flex items-center justify-center outline-none"
-          >
-            <PopoverPrimitive.Popup
-              className={cn(
-                "w-[min(100vw-2rem,28rem)] overflow-hidden rounded-xl border border-gray-200 bg-white text-gray-900 shadow-2xl outline-none",
-                className,
-              )}
-            >
-              {(title || description || headerAction || showCloseButton) && (
-                <div className="relative border-b border-gray-100 px-5 py-4">
-                  {(title || description || headerAction) && (
-                    <div className={cn("min-w-0 space-y-0.5", showCloseButton && "pr-8")}>
-                      <div className="flex min-w-0 items-center justify-between gap-3">
-                        {title && <PopoverPrimitive.Title className="min-w-0 break-words text-base font-extrabold tracking-tight">{title}</PopoverPrimitive.Title>}
-                        {headerAction && <div className="shrink-0">{headerAction}</div>}
-                      </div>
-                      {description && <PopoverPrimitive.Description className="text-xs text-gray-500">{description}</PopoverPrimitive.Description>}
-                    </div>
-                  )}
-                  {showCloseButton && (
-                    <PopoverPrimitive.Close aria-label="Close" className="absolute right-2 top-2 rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900">
-                      <X className="h-4 w-4" />
-                    </PopoverPrimitive.Close>
-                  )}
-                </div>
-              )}
-              <div className={cn("max-h-[min(80vh,40rem)] overflow-y-auto", contentClassName)}>{children}</div>
-              {footer && <div className="shrink-0">{footer}</div>}
-            </PopoverPrimitive.Popup>
-          </PopoverPrimitive.Positioner>
-        </PopoverPrimitive.Portal>
-      </PopoverPrimitive.Root>
-    );
-  }
 
   return (
     <BaseDrawer open={open} onOpenChange={onOpenChange} swipeDirection={swipeDirection} showSwipeHandle={false}>
-      <DrawerContent className={cn("bg-white text-gray-900 shadow-2xl", isBottom ? "max-h-[92dvh]" : "h-full max-h-dvh w-full sm:max-w-md", className)}>
+      <DrawerContent
+        className={cn(
+          "bg-white text-gray-900 shadow-2xl",
+          isBottom ? "max-h-[92dvh]" : wideDesktopDrawer ? "h-full max-h-dvh max-w-none" : "h-full max-h-dvh w-full sm:max-w-md",
+          className,
+        )}
+        style={wideDesktopDrawer ? { "--drawer-content-width": "90vw" } as React.CSSProperties : undefined}
+      >
         {(title || description || headerAction || showCloseButton) && (
           <DrawerHeader className={cn("relative shrink-0 px-5", isBottom ? "pb-3.5 pt-5" : "pb-4 pt-4")}>
             {(title || description || headerAction) && (

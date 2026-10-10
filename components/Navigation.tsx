@@ -966,7 +966,9 @@ export function Sidebar({
               onClick={() => {
                 logout();
               }}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-all w-full focus-visible:ring-2 focus-visible:ring-red-500 outline-none"
+            
+              size={"lg"}
+              className=" w-full rounded-full"
             >
               <LogOut className="w-5 h-5" />
               {t("common", "signOut", lang)}

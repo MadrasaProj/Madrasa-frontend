@@ -558,7 +558,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <SuperAdminViewingBanner />
 
         {/* ── Desktop top bar ────────────────────────────────── */}
-        <header className="hidden lg:flex sticky top-0 z-30  /90 backdrop-blur-md border-b border-gray-100 px-8 py-4 items-center justify-between">
+        {/* <header className="hidden lg:flex sticky top-0 z-30  /90 backdrop-blur-md border-b border-gray-100 px-8 py-4 items-center justify-between">
           <div className="text-sm text-gray-500">
             {new Date().toLocaleDateString(lang === "ml" ? "ml-IN" : "en-IN", {
               weekday: "long", year: "numeric", month: "long", day: "numeric",
@@ -584,7 +584,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               notifPath={notifPath}
             />
           </div>
-        </header>
+        </header> */}
 
         <main className="p-4 lg:p-8 pb-28 lg:pb-8">{children}</main>
       </div>

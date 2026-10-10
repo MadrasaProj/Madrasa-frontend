@@ -375,7 +375,7 @@ export default function TeacherExamsPage() {
       <div className="">
         <PageHeader title={t("teacherPages", "examsLoadingTitle", lang)} />
 
-        <div className="sticky top-12 z-30 -mx-4 mb-4 flex h-10 gap-2 bg-white  px-4 lg:top-[125px] *:my-auto shadow-lg shadow-gray-400/10">
+        <div className="sticky top-12 z-30 -mx-4 mb-4 flex h-10 gap-2 bg-white  px-4  *:my-auto shadow-lg shadow-gray-400/10">
           <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <Input

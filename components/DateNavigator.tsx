@@ -33,7 +33,7 @@ export function DateNavigator({
   return (
     <>
       <div className={inline ? "" : "h-[54px]"}>
-        <div className={inline ? "bg-white" : "fixed inset-x-0 top-[40px] z-30 bg-white/95 px-4 shadow-lg shadow-gray-100 backdrop-blur-sm lg:left-64 lg:top-[130px] lg:px-8"}>
+        <div className={inline ? "bg-white" : "fixed inset-x-0   top-[40px] z-30 bg-white/95 px-4 shadow-lg shadow-gray-100 backdrop-blur-sm lg:left-64 lg:px-8"}>
           <div className={inline ? "flex w-full items-center justify-between gap-5 border-y border-gray-100 py-2" : "mx-auto flex w-full items-center justify-between gap-5 py-1 pt-3"}>
             <button
               type="button"

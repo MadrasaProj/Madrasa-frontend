@@ -15,7 +15,7 @@ export function PageHeader({ title, subtitle, icon: Icon, back, backHref, action
   const navigate = useNavigate();
   return (
     <div className="mb-[35px]   ">
-      <div className="fixed inset-x-0 top-0 z-40 flex flex-col gap-2 border-b border-gray-100 bg-white/95 px-4 py-3 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3 lg:left-64 lg:top-[73px] lg:px-8">
+      <div className="fixed inset-x-0 top-0 z-40 flex flex-col gap-2 border-b border-gray-100 bg-white/95 px-4 py-3 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3 lg:left-64 lg:top-[0px] lg:px-8">
       <div className="flex min-w-0 flex-1 items-center gap-2.5">
         {back && (
           <button

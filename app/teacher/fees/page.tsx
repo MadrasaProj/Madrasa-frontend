@@ -397,7 +397,7 @@ export default function TeacherFeesPage() {
       <PageHeader title={t("teacherPages", "feesPaymentsTitle", lang)} />
 
       <Drawer open={filtersOpen} onOpenChange={setFiltersOpen} swipeDirection="down">
-      <div className="sticky top-12 z-30 -mx-4 mb-4 flex h-12 gap-2 bg-white  px-4 lg:top-[125px] *:my-auto shadow-lg shadow-gray-400/10">
+      <div className="sticky top-12 z-30 -mx-4 mb-4 flex h-12 gap-2 bg-white  px-4   *:my-auto shadow-lg shadow-gray-400/10">
         <div className="relative flex-1 min-w-0 ">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <Input

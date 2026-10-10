@@ -188,7 +188,7 @@ export default function TeacherPerformancePage() {
     <DashboardLayout>
       <PageHeader title={t("teacherPages", "classPerformanceTitle", lang)} />
 
-      <div className="sticky top-12 z-30 -mx-4 mb-4 flex h-10 items-center bg-white px-4 shadow-lg shadow-gray-400/10 lg:top-[125px]">
+      <div className="sticky top-12 z-30 -mx-4 mb-4 flex h-10 items-center bg-white px-4 shadow-lg shadow-gray-400/10  ">
         <button
           type="button"
           aria-label={`${t("common", "filter", lang)}: ${activeClass?.name ?? t("common", "class", lang)} | ${activeExam?.name ?? t("teacherPages", "exam", lang)}`}
