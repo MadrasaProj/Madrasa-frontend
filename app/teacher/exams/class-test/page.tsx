@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
-import { DataTable, type Column, type SortDir } from "@/components/ui/DataTable";
+import { DataTable, type SortDir } from "@/components/ui/DataTable";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
   getExams,
@@ -13,11 +13,7 @@ import {
   type ExamRecord,
   type ExamStatus,
 } from "@/lib/exams-api";
-import {
-  getResults,
-  bulkUpsertResults,
-  type ResultRecord,
-} from "@/lib/results-api";
+import { getResults, bulkUpsertResults, type ResultRecord } from "@/lib/results-api";
 import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
 import { getSubjects, type SubjectRecord } from "@/lib/subjects-api";
 import { getStudents, type StudentRecord } from "@/lib/students-api";
@@ -26,42 +22,35 @@ import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
-  GraduationCap,
   Plus,
   Loader2,
   Trash2,
-  Pencil,
   X,
   CheckCircle2,
-  PenLine,
-  Calendar,
-  Clock,
-  Trophy,
+  Check,
   Search,
+  School,
+  ChevronRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ExamStatusBadge, STATUS_LABELS } from "@/components/exam/ExamStatusBadge";
+import { ExamStatusBadge, getExamStatusInfo, STATUS_LABELS } from "@/components/exam/ExamStatusBadge";
 import { useExamColumns } from "@/components/exam/ExamColumns";
-import { ExamMobileCard } from "@/components/exam/ExamMobileCard";
-import { GradeCard } from "@/components/exam/GradeCard";
-import { fmt, getExamCategories } from "@/lib/exam-utils";
+import { TeacherMarkEntryView } from "@/components/exam/TeacherMarkEntryView";
+import { fmt } from "@/lib/exam-utils";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
+import { DrawerSelector } from "@/components/DrawerSelector";
+import { DatePickerInput } from "@/components/DatePickerInput";
 
 export default function TeacherClassTestsPage() {
   const { user, accessToken, activeClientId } = useAuthStore();
   const { lang } = useLanguageStore();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const cid = activeClientId ?? "";
   const token = accessToken ?? "";
   const ayId = user?.defaultAcademicYearId ?? "";
-
-  const [isMobile, setIsMobile] = useState(true);
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ExamRecord | null>(null);
@@ -86,8 +75,9 @@ export default function TeacherClassTestsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterClassId, setFilterClassId] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const [results, setResults] = useState<ResultRecord[]>([]);
+  const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
 
   const [showDrawer, setShowDrawer] = useState(false);
   const [editTarget, setEditTarget] = useState<ExamRecord | null>(null);
@@ -107,11 +97,15 @@ export default function TeacherClassTestsPage() {
   const [meSubjects, setMeSubjects] = useState<SubjectRecord[]>([]);
   const [meSubjectId, setMeSubjectId] = useState("");
   const [meScores, setMeScores] = useState<Record<string, string>>({});
+  const [meResults, setMeResults] = useState<ResultRecord[]>([]);
+  const [meError, setMeError] = useState<string | null>(null);
+  const [meLoading, setMeLoading] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [meSaving, setMeSaving] = useState(false);
   const [meSaved, setMeSaved] = useState(false);
-  const [showMarkEntry, setShowMarkEntry] = useState(false);
-  const [markEntryExam, setMarkEntryExam] = useState<ExamRecord | null>(null);
-  const [markEntryTab, setMarkEntryTab] = useState<"marks" | "grades">("marks");
+  const isMarkEntryView = searchParams.get("view") === "mark-entry";
+  const markEntryExam = exams.find((exam) => exam.id === searchParams.get("examId"));
+  const selectedExam = exams.find((exam) => exam.id === selectedExamId);
 
   const [searchText, setSearchText] = useState("");
   const [page, setPage] = useState(1);
@@ -130,8 +124,8 @@ export default function TeacherClassTestsPage() {
         (c) => myClassIds.has(c.id) || c.classTeacherId === teacherId,
       )
     : classes.filter((c) => c.classTeacherId === teacherId);
-
-  const { upcoming: upcomingExams, markEntryOpen: markEntryOpenExams, completed: completedExams, published: publishedExams } = getExamCategories(exams);
+  const selectedClassName = teacherClasses.find((cls) => cls.id === filterClassId)?.name
+    ?? t("adminPages", "allClasses", lang);
 
   const searchFiltered = useMemo(() => {
     const q = searchText.toLowerCase();
@@ -168,43 +162,69 @@ export default function TeacherClassTestsPage() {
     setPage(1);
   }, [searchText, pageSize, filterClassId]);
 
-  const openMarkEntry = async (exam: ExamRecord) => {
-    setMarkEntryExam(exam);
-    setShowMarkEntry(true);
-    setMarkEntryTab("marks");
-    setMeSaving(false);
+  const openMarkEntry = (exam: ExamRecord) => {
+    setSelectedExamId(null);
+    setSearchParams((prev) => {
+      prev.set("view", "mark-entry");
+      prev.set("examId", exam.id);
+      return prev;
+    });
+  };
+
+  const closeMarkEntry = () => {
+    setImportOpen(false);
+    setSearchParams((prev) => {
+      prev.delete("view");
+      return prev;
+    });
+  };
+
+  const loadMarkEntry = useCallback(async (exam: ExamRecord) => {
     setMeSaved(false);
+    setMeLoading(true);
+    setMeError(null);
     try {
       const clsId = exam.classId ?? "";
-      const [stuData, subData] = await Promise.all([
+      const [stuData, subData, resultData] = await Promise.all([
         getStudents(cid, token, { classId: clsId, limit: 500 }),
         getSubjects(cid, token, { classId: clsId, limit: 200 }),
+        getResults(cid, token, { examId: exam.id, classId: clsId, limit: 2000 }),
       ]);
-      const existing = results.filter((r) =>
-        subData.data?.some((s) => s.id === r.subject?.id),
-      );
+      const subjectId = exam.subjectId || subData.data?.[0]?.id || "";
+      const existing = (resultData.data ?? []).filter((r) => r.subject?.id === subjectId);
       const scoreMap: Record<string, string> = {};
       for (const s of stuData.data ?? []) {
         const found = existing.find((r) => r.student?.id === s.id);
-        if (found) scoreMap[s.id] = String(found.score);
+        scoreMap[s.id] = found ? String(found.score) : "";
       }
       setMeStudents(stuData.data ?? []);
-      setMeSubjects(subData.data ?? []);
-      setMeSubjectId(exam.subjectId || subData.data?.[0]?.id || "");
+      setMeSubjects((subData.data ?? []).filter((subject) => subject.id === subjectId));
+      setMeSubjectId(subjectId);
+      setMeResults(existing);
       setMeScores(scoreMap);
-    } catch {
+      setExams((prev) => prev.map((item) => item.id === exam.id
+        ? { ...item, _count: { results: resultData.data?.length ?? 0 } }
+        : item));
+    } catch (e) {
+      setMeError((e as Error).message);
       setMeStudents([]);
       setMeSubjects([]);
       setMeSubjectId("");
+      setMeResults([]);
       setMeScores({});
+    } finally {
+      setMeLoading(false);
     }
-  };
+  }, [cid, token]);
+
+  useEffect(() => {
+    if (isMarkEntryView && markEntryExam) void loadMarkEntry(markEntryExam);
+  }, [isMarkEntryView, markEntryExam?.id, loadMarkEntry]);
 
   const columns = useExamColumns({
-    onEnterMarks: (exam) => openMarkEntry(exam),
-    onViewResults: (exam) => openMarkEntry(exam),
-    onEdit: (exam) => openEdit(exam),
-    onDelete: isAdmin ? (exam) => { setDeleteTarget(exam); setShowDeleteConfirm(true); } : undefined,
+    showActions: false,
+    showAllColumns: true,
+    showExamIcon: false,
   });
 
   const load = useCallback(
@@ -375,32 +395,19 @@ export default function TeacherClassTestsPage() {
     }
   };
 
-  const loadMeStudents = async (examId: string, classId: string) => {
-    setMeSaving(false);
-    setMeSaved(false);
-    try {
-      const subData = await getSubjects(cid, token, { classId, limit: 200 });
-      const stuData = await getStudents(cid, token, { classId, limit: 500 });
-      const existing = results.filter((r) =>
-        subData.data?.some((s) => s.id === r.subject?.id),
-      );
-      const scoreMap: Record<string, string> = {};
-      for (const s of stuData.data ?? []) {
-        const found = existing.find((r) => r.student?.id === s.id);
-        if (found) scoreMap[s.id] = String(found.score);
-      }
-      setMeStudents(stuData.data ?? []);
-      setMeSubjects(subData.data ?? []);
-      setMeSubjectId(subData.data?.[0]?.id ?? "");
-      setMeScores(scoreMap);
-    } catch {
-      /* ignore */
+  const resetScores = () => {
+    if (!window.confirm(t("teacherPages", "confirmResetMarks", lang))) return;
+    const scoreMap: Record<string, string> = {};
+    for (const student of meStudents) {
+      const result = meResults.find((item) => item.student?.id === student.id);
+      scoreMap[student.id] = result ? String(result.score) : "";
     }
+    setMeScores(scoreMap);
   };
 
-  const handleMeSave = async (examId: string) => {
-    if (!meSubjectId) return;
-    const exam = exams.find((e) => e.id === examId);
+  const handleMeSave = async (submit = false) => {
+    if (!markEntryExam || !meSubjectId || markEntryExam.examStatus !== "MARK_ENTRY") return;
+    const exam = markEntryExam;
     const currentSubject = meSubjects.find((s) => s.id === meSubjectId);
     const subjectMaxMarks = currentSubject?.classSubject?.maxMarks ?? exam?.maxMarks ?? 50;
     const items = meStudents
@@ -411,26 +418,38 @@ export default function TeacherClassTestsPage() {
         score: Number(meScores[s.id]),
         totalMarks: subjectMaxMarks,
       }));
-    if (!items.length) return;
+    if (!items.length) {
+      setMeError(t("teacherPages", "noScoresEntered", lang));
+      return;
+    }
     setMeSaving(true);
+    setMeError(null);
     try {
       await bulkUpsertResults(cid, token, {
-        examId,
-        classId:
-          filterClassId || (exams.find((e) => e.id === examId)?.classId ?? ""),
+        examId: exam.id,
+        classId: exam.classId ?? "",
         accademicYearId: ayId,
         results: items,
       });
+      await loadMarkEntry(exam);
       setMeSaved(true);
-      setTimeout(() => setMeSaved(false), 3000);
-      const data = await getResults(cid, token, { examId, limit: 2000 });
-      setResults(data.data ?? []);
-    } catch {
-      /* ignore */
+      setTimeout(() => {
+        setMeSaved(false);
+        if (submit) closeMarkEntry();
+      }, 1500);
+    } catch (e) {
+      setMeError((e as Error).message);
     } finally {
       setMeSaving(false);
     }
   };
+
+  const maxMarks = meSubjects[0]?.classSubject?.maxMarks ?? markEntryExam?.maxMarks ?? 50;
+  const hasInvalidMarks = Object.values(meScores).some((value) =>
+    value !== "" && (!Number.isFinite(Number(value)) || Number(value) < 0 || Number(value) > maxMarks),
+  );
+  const isLocked = !markEntryExam || markEntryExam.examStatus !== "MARK_ENTRY" ||
+    (!!markEntryExam.markEntryLastDate && new Date() > new Date(markEntryExam.markEntryLastDate));
 
   return (
     <DashboardLayout>
@@ -438,584 +457,381 @@ export default function TeacherClassTestsPage() {
 
         <PageHeader
           title={t("nav", "classTests", lang)}
-          subtitle="Manage class tests and enter marks"
-          icon={GraduationCap}
           action={
-            <button
-              onClick={openAdd}
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-colors"
-            >
-              <Plus className="w-4 h-4" /> {t("teacherPages", "newClassTestBtn", lang)}
-            </button>
+            <Button onClick={openAdd} size="sm">
+              <Plus className="h-4 w-4" />
+              {t("teacherPages", "newClassTestBtn", lang)}
+            </Button>
           }
         />
 
-        {loading ? (
-          <>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-24 rounded-3xl" />
-              ))}
-            </div>
-            <div className="flex gap-1">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-9 w-24 rounded-t-xl" />
-              ))}
-            </div>
-            <div className="grid grid-cols-1 gap-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-32 rounded-3xl" />
-              ))}
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="sticky top-12 z-30 -mx-4 mb-4 flex h-10 gap-2 bg-white px-4 shadow-lg shadow-gray-400/10 lg:top-[125px] *:my-auto">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Input
+              type="search"
+              aria-label="Search class tests by name"
+              placeholder="Search class test by name..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              className="h-8 border-0 bg-transparent pl-9 pr-2 shadow-none focus-visible:ring-0"
+            />
+          </div>
+          {searchText && (
+            <Button variant="ghost" size="icon" aria-label={t("common", "clearSearch", lang)} onClick={() => setSearchText("")}>
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+          <button
+            type="button"
+            aria-label={`Choose class: ${selectedClassName}`}
+            onClick={() => setFiltersOpen(true)}
+            className="flex min-w-0 max-w-[55vw] items-center gap-2 text-gray-700"
+          >
+            <School className="h-4 w-4 shrink-0 text-emerald-700" />
+            <span className="max-w-36 truncate text-sm font-semibold">{selectedClassName}</span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" />
+          </button>
+        </div>
+
+        <ResponsivePopover
+          open={filtersOpen}
+          onOpenChange={setFiltersOpen}
+          side="bottom"
+          drawerOnDesktop
+          title="Filter class tests"
+          className="mx-auto w-full max-w-2xl rounded-t-2xl"
+        >
+          <div className="p-5">
+            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400">Classes</p>
+            <div className="divide-y divide-gray-100 rounded-lg border border-gray-100 px-2">
               {[
-                {
-                  label: t("teacherPages", "totalTestsLabel", lang),
-                  value: exams.length,
-                  color: "bg-blue-50 text-blue-600 border border-blue-100",
-                  icon: GraduationCap,
-                },
-                {
-                  label: t("teacherPages", "markEntryOpen", lang),
-                  value: markEntryOpenExams.length,
-                  color: "bg-amber-50 text-amber-600 border border-amber-100",
-                  icon: PenLine,
-                },
-                {
-                  label: t("teacherPages", "completedLabel", lang),
-                  value: completedExams.length,
-                  color: "bg-purple-50 text-purple-700 border border-purple-100",
-                  icon: Clock,
-                },
-                {
-                  label: t("teacherPages", "resultsPublishedLabel", lang),
-                  value: publishedExams.length,
-                  color: "bg-teal-50 text-teal-600 border border-teal-100",
-                  icon: Trophy,
-                },
-              ].map((st, i) => (
-                <div
-                  key={i}
-                  className="bg-white rounded-3xl border border-gray-100 p-5 flex items-center gap-4 shadow-xs"
+                { id: "", name: t("adminPages", "allClasses", lang) },
+                ...teacherClasses,
+              ].map((cls) => (
+                <button
+                  key={cls.id || "all"}
+                  type="button"
+                  aria-pressed={filterClassId === cls.id}
+                  onClick={() => {
+                    setFilterClassId(cls.id);
+                    setFiltersOpen(false);
+                  }}
+                  className={cn(
+                    "flex w-full min-w-0 items-center gap-3 py-3 text-left text-sm",
+                    filterClassId === cls.id ? "font-medium text-emerald-700" : "text-gray-700",
+                  )}
                 >
-                  <div
-                    className={cn(
-                      "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-inner",
-                      st.color,
-                    )}
-                  >
-                    <st.icon className="w-5.5 h-5.5" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-extrabold text-gray-900 leading-none">
-                      {st.value}
-                    </p>
-                    <p className="text-[10px] text-gray-400 mt-1.5 uppercase font-bold tracking-wider">
-                      {st.label}
-                    </p>
-                  </div>
-                </div>
+                  <span className="truncate">{cls.name}</span>
+                  {filterClassId === cls.id && <Check className="ml-auto h-4 w-4 shrink-0" />}
+                </button>
               ))}
             </div>
+          </div>
+        </ResponsivePopover>
 
-            {error && (
-              <ApiErrorBanner
-                message={error}
-                onRetry={() => {
-                  setError(null);
-                  load(filterClassId);
-                }}
-              />
-            )}
+        {error && <ApiErrorBanner message={error} onRetry={() => { setError(null); load(filterClassId); }} />}
 
-            <div className="flex gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search class test by name..."
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 focus:border-emerald-500 transition-all"
-                />
-                {searchText && (
-                  <button
-                    onClick={() => setSearchText("")}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+        {loading || sortedExams.length > 0 ? (
+          <DataTable
+            alwaysTable
+            columns={columns}
+            data={pagedExams}
+            keyExtractor={(exam) => exam.id}
+            onRowClick={(exam) => setSelectedExamId(exam.id)}
+            loading={loading}
+            error={null}
+            onSort={(key, dir) => { setSortBy(key); setSortDir(dir); }}
+            sortKey={sortBy}
+            sortDir={sortDir}
+            pagination={{
+              page,
+              totalPages,
+              total: sortedExams.length,
+              pageSize,
+              pageSizeOptions: [10, 20, 50, 100],
+              onPageChange: setPage,
+              onPageSizeChange: (size) => { setPageSize(size); setPage(1); },
+            }}
+          />
+        ) : (
+          <div className="flex min-h-[calc(100dvh-13rem)] flex-col items-center justify-center py-8 text-center text-gray-400 lg:min-h-[calc(100dvh-20rem)]">
+            <img src="/icons/exams/empty.webp" alt="" className="mx-auto mb-3 h-28 w-28 object-contain" />
+            <p className="font-semibold">
+              {searchText ? t("common", "noResults", lang) : "No class tests found"}
+            </p>
+          </div>
+        )}
+
+        <ResponsivePopover
+          open={!!selectedExam}
+          onOpenChange={(open) => { if (!open) setSelectedExamId(null); }}
+          side="bottom"
+          drawerOnDesktop
+          className="mx-auto w-full max-w-2xl rounded-t-2xl"
+          title={selectedExam?.name}
+          showCloseButton={false}
+          headerAction={selectedExam?.examStatus === "MARK_ENTRY" &&
+            (!selectedExam.markEntryLastDate || new Date(selectedExam.markEntryLastDate) >= new Date()) ? (
+              <Button size="sm" onClick={() => openMarkEntry(selectedExam)}>
+                {t("teacherPages", "markEntryBreadcrumb", lang)}
+              </Button>
+            ) : undefined}
+        >
+          {selectedExam && (
+            <div className="space-y-5 p-5 pt-0">
+              <div className="space-y-2">
+                <ExamStatusBadge exam={selectedExam} />
+                <p className="mt-1 text-sm text-gray-500">{getExamStatusInfo(selectedExam).description}</p>
+              </div>
+              <dl className="divide-y divide-gray-100 rounded-xl border border-gray-200 px-4">
+                {[
+                  [t("teacherPages", "examTypeDetail", lang), selectedExam.type?.replace(/_/g, " ") ?? "—"],
+                  [t("teacherPages", "academicYearDetail", lang), selectedExam.accademicYear?.name ?? "—"],
+                  [t("teacherPages", "classDetail", lang), selectedExam.class?.name ?? "—"],
+                  [t("teacherPages", "subjectDetail", lang), selectedExam.subject?.name ?? "—"],
+                  [t("teacherPages", "examStartDetail", lang), fmt(selectedExam.startDate)],
+                  [t("teacherPages", "examEndDetail", lang), fmt(selectedExam.endDate)],
+                  [t("teacherPages", "markEntryDeadlineDetail", lang), fmt(selectedExam.markEntryLastDate)],
+                  [t("teacherPages", "publishDateDetail", lang), fmt(selectedExam.publishedDate)],
+                  [t("teacherPages", "maxMarksDetail", lang), selectedExam.maxMarks?.toString() ?? "—"],
+                  [t("teacherPages", "passMarksDetail", lang), selectedExam.passMarks?.toString() ?? "—"],
+                  ...(selectedExam._count ? [[t("teacherPages", "resultsCountDetail", lang), String(selectedExam._count.results)]] : []),
+                ].map(([label, value]) => (
+                  <div key={label} className="flex items-start justify-between gap-4 py-3 text-sm">
+                    <dt className="text-gray-500">{label}</dt>
+                    <dd className="text-right font-medium text-gray-900">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+              <div className="flex flex-wrap gap-2">
+                {canEditExam(selectedExam) && (
+                  <Button variant="outline" onClick={() => { setSelectedExamId(null); openEdit(selectedExam); }}>
+                    {t("teacherPages", "editClassTestTitle", lang)}
+                  </Button>
+                )}
+                {isAdmin && (
+                  <Button variant="outline" onClick={() => { setSelectedExamId(null); setDeleteTarget(selectedExam); setShowDeleteConfirm(true); }}>
+                    {t("common", "delete", lang)}
+                  </Button>
+                )}
+                {selectedExam.examStatus === "MARK_ENTRY" && (selectedExam._count?.results ?? 0) > 0 && canEditExam(selectedExam) && (
+                  <Button onClick={() => handlePublish(selectedExam)}>{t("teacherPages", "publishBtn", lang)}</Button>
+                )}
+                {selectedExam.examStatus === "PUBLISHED" && (
+                  <Button onClick={() => openMarkEntry(selectedExam)}>{t("teacherPages", "viewResultsDetail", lang)}</Button>
                 )}
               </div>
-              <select
-                value={filterClassId}
-                onChange={(e) => {
-                  setFilterClassId(e.target.value);
-                }}
-                className="px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="">{t("adminPages", "allClasses", lang)}</option>
-                {teacherClasses.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
             </div>
+          )}
+        </ResponsivePopover>
 
-            <DataTable
-              columns={columns}
-              data={pagedExams}
-              keyExtractor={(e) => e.id}
-              loading={loading}
-              error={null}
-              emptyIcon={GraduationCap}
-              emptyMessage="No class tests found"
-              onSort={(key, dir) => {
-                setSortBy(key);
-                setSortDir(dir);
+        <ResponsivePopover
+          open={isMarkEntryView}
+          onOpenChange={(open) => { if (!open) closeMarkEntry(); }}
+          side="bottom"
+          drawerOnDesktop
+          title={markEntryExam?.name ?? t("teacherPages", "enterMarksBreadcrumb", lang)}
+          description={t("teacherPages", "enterMarksBreadcrumb", lang)}
+          className="mx-auto w-full max-w-6xl rounded-t-2xl"
+          contentClassName="min-w-0"
+          footer={isMarkEntryView && (
+            <div className="border-t border-gray-200 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
+              <ButtonGroup className="w-full justify-end">
+                <Button type="button" variant="outline" size="lg" disabled={isLocked || !meSubjectId} onClick={() => setImportOpen(true)}>Import</Button>
+                <Button type="button" variant="outline" size="lg" disabled={meSaving || meStudents.length === 0} onClick={resetScores}>Reset</Button>
+                <Button type="button" variant="outline" size="lg" disabled={meSaving || isLocked || hasInvalidMarks || meStudents.length === 0} onClick={() => handleMeSave(false)}>Save as Draft</Button>
+                <Button type="button" size="lg" disabled={meSaving || isLocked || hasInvalidMarks || meStudents.length === 0} onClick={() => handleMeSave(true)}>
+                  {meSaving ? "Saving…" : meSaved ? "Saved" : "Save"}
+                </Button>
+              </ButtonGroup>
+            </div>
+          )}
+        >
+          {isMarkEntryView && markEntryExam && (
+            <TeacherMarkEntryView
+              gridProps={{
+                exams: [markEntryExam],
+                classes: classes.filter((cls) => cls.id === markEntryExam.classId),
+                subjects: meSubjects,
+                students: meStudents,
+                examId: markEntryExam.id,
+                classId: markEntryExam.classId ?? "",
+                subjectId: meSubjectId,
+                scores: meScores,
+                isLocked,
+                saving: meSaving,
+                saved: meSaved,
+                loading: meLoading,
+                error: meError,
+                activeExam: markEntryExam,
+                onExamChange: () => {},
+                onClassChange: () => {},
+                onSubjectChange: () => {},
+                onScoreChange: (studentId, value) => setMeScores((prev) => ({ ...prev, [studentId]: value })),
+                onSave: handleMeSave,
+                showRemarks: false,
+                showLockPeriod: true,
               }}
-              sortKey={sortBy}
-              sortDir={sortDir}
-              pagination={{
-                page,
-                totalPages,
-                total: sortedExams.length,
-                pageSize,
-                pageSizeOptions: [10, 20, 50, 100],
-                onPageChange: setPage,
-                onPageSizeChange: (sz) => {
-                  setPageSize(sz);
-                  setPage(1);
-                },
-              }}
-              mobileRender={(exam) => (
-                <ExamMobileCard
-                  exam={exam}
-                  onEdit={canEditExam(exam) ? (e) => openEdit(e) : undefined}
-                  onDelete={isAdmin ? (e) => { setDeleteTarget(e); setShowDeleteConfirm(true); } : undefined}
-                  onEnterMarks={(e) => openMarkEntry(e)}
-                  onViewResults={(e) => openMarkEntry(e)}
-                />
-              )}
+              clientId={cid}
+              token={token}
+              academicYearId={ayId}
+              showSelectors={false}
+              importOpen={importOpen}
+              onImportOpenChange={setImportOpen}
+              onReload={() => loadMarkEntry(markEntryExam)}
             />
-          </>
-        )}
-
+          )}
+        </ResponsivePopover>
       </div>
 
-      {/* Add/Edit Drawer */}
-      <AnimatePresence>
-        {showDrawer && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => !saving && setShowDrawer(false)}
-              className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
-            />
-            <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-none md:p-4">
-              <motion.div
-                initial={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.95 }}
-                animate={isMobile ? { y: 0 } : { opacity: 1, scale: 1 }}
-                exit={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.95 }}
-                transition={
-                  isMobile
-                    ? { type: "spring", damping: 30, stiffness: 300 }
-                    : { duration: 0.2 }
-                }
-                className={cn(
-                  "w-full bg-white flex flex-col pointer-events-auto shadow-2xl relative",
-                  isMobile
-                    ? "rounded-t-3xl max-h-[90dvh]"
-                    : "rounded-3xl max-w-xl max-h-[85dvh]",
-                )}
-              >
-                {/* Handle */}
-                <div className="flex justify-center pt-3 pb-1 shrink-0 md:hidden">
-                  <div className="w-10 h-1 bg-gray-300 rounded-full" />
-                </div>
-                <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
-                  <h2 className="font-bold text-gray-900 text-lg">
-                    {editTarget ? t("teacherPages", "editClassTestTitle", lang) : t("teacherPages", "newClassTestTitle", lang)}
-                  </h2>
-                  <button
-                    onClick={() => !saving && setShowDrawer(false)}
-                    disabled={saving}
-                    className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4 pb-8">
-                  {saveError && (
-                    <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl">
-                      {saveError}
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                      {t("teacherPages", "testNameRequired", lang)} <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={formName}
-                      onChange={(e) => setFormName(e.target.value)}
-                      placeholder={t("teacherPages", "testNamePlaceholder", lang)}
-                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
-                    />
-                  </div>
-
-                  {!editTarget && (
-                    <>
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                          {t("teacherPages", "classRequired", lang)} <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          value={formClassId}
-                          onChange={(e) => {
-                            setFormClassId(e.target.value);
-                            setFormSubjectId("");
-                          }}
-                          className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
-                        >
-                          <option value="">{t("teacherPages", "selectClassOpt", lang)}</option>
-                          {teacherClasses.map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                          {t("teacherPages", "subjectRequired", lang)} <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          value={formSubjectId}
-                          onChange={(e) => handleSubjectChange(e.target.value)}
-                          disabled={!formClassId}
-                          className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors disabled:opacity-50"
-                        >
-                          <option value="">{t("teacherPages", "selectSubjectOpt", lang)}</option>
-                          {subjects
-                            .filter((s) => s.classId === formClassId)
-                            .filter(
-                              (s) =>
-                                !isPeriodBased || s.teacherId === teacherId,
-                            )
-                            .map((s) => (
-                              <option key={s.id} value={s.id}>
-                                {s.name}
-                              </option>
-                            ))}
-                        </select>
-                      </div>
-                    </>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                        {t("teacherPages", "startDateLabel", lang)}
-                      </label>
-                      <input
-                        type="date"
-                        value={formStartDate}
-                        onChange={(e) => setFormStartDate(e.target.value)}
-                        className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                        {t("teacherPages", "endDateLabel", lang)}
-                      </label>
-                      <input
-                        type="date"
-                        value={formEndDate}
-                        onChange={(e) => setFormEndDate(e.target.value)}
-                        className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                        {t("teacherPages", "maxMarksLabel", lang)}
-                      </label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={9999}
-                        value={formMaxMarks}
-                        onChange={(e) => setFormMaxMarks(e.target.value)}
-                        className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                        {t("teacherPages", "passMarksLabel", lang)}
-                      </label>
-                      <input
-                        type="number"
-                        min={0}
-                        max={9999}
-                        value={formPassMarks}
-                        onChange={(e) => setFormPassMarks(e.target.value)}
-                        placeholder="Optional"
-                        className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
-                      />
-                    </div>
-                  </div>
-
-                  {editTarget && (
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                        {t("common", "status", lang)}
-                      </label>
-                      <select
-                        value={formStatus}
-                        onChange={(e) =>
-                          setFormStatus(e.target.value as ExamStatus)
-                        }
-                        className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
-                      >
-                        {(["MARK_ENTRY", "PUBLISHED"] as ExamStatus[]).map(
-                          (s) => (
-                            <option key={s} value={s}>
-                              {STATUS_LABELS[s]}
-                            </option>
-                          ),
-                        )}
-                      </select>
-                    </div>
-                  )}
-                </div>
-                <div className="px-5 py-4 border-t border-gray-100 flex gap-3 shrink-0">
-                  <button
-                    onClick={() => !saving && setShowDrawer(false)}
-                    disabled={saving}
-                    className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 disabled:opacity-50"
-                  >
-                    {t("common", "cancel", lang)}
-                  </button>
-                  <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 disabled:opacity-50"
-                  >
-                    {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-                    {editTarget ? t("teacherPages", "saveChangesBtn", lang) : t("teacherPages", "createTestBtn", lang)}
-                  </button>
-                </div>
-              </motion.div>
+      {/* Add/Edit Class Test */}
+      <ResponsivePopover
+        open={showDrawer}
+        onOpenChange={(open) => { if (!saving) setShowDrawer(open); }}
+        side="bottom"
+        drawerOnDesktop
+        title={editTarget ? t("teacherPages", "editClassTestTitle", lang) : t("teacherPages", "newClassTestTitle", lang)}
+        className="mx-auto w-full max-w-xl rounded-t-2xl"
+        showCloseButton={!saving}
+        footer={
+          <div className="flex gap-3 border-t border-gray-100 bg-white px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] w-max ml-auto">
+            <Button type="button" variant="outline" size={"lg"} className="flex-1" disabled={saving} onClick={() => setShowDrawer(false)}>
+              {t("common", "cancel", lang)}
+            </Button>
+            <Button type="submit" form="class-test-form" size={"lg"} className="flex-1" disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              {editTarget ? t("teacherPages", "saveChangesBtn", lang) : t("teacherPages", "createTestBtn", lang)}
+            </Button>
+          </div>
+        }
+      >
+        <form
+          id="class-test-form"
+          className="space-y-4 p-5"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleSave();
+          }}
+        >
+          {saveError && (
+            <div role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+              {saveError}
             </div>
-          </>
-        )}
-      </AnimatePresence>
+          )}
 
-      {/* Mark Entry Drawer */}
-      <AnimatePresence>
-        {showMarkEntry && markEntryExam && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => !meSaving && setShowMarkEntry(false)}
-              className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+          <div>
+            <label htmlFor="class-test-name" className="mb-1.5 block text-sm font-medium text-gray-700">
+              {t("teacherPages", "testNameRequired", lang)}
+            </label>
+            <Input
+              id="class-test-name"
+              size="lg"
+              type="text"
+              value={formName}
+              onChange={(event) => setFormName(event.target.value)}
+              placeholder={t("teacherPages", "testNamePlaceholder", lang)}
             />
-            <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-none md:p-4">
-              <motion.div
-                initial={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.95 }}
-                animate={isMobile ? { y: 0 } : { opacity: 1, scale: 1 }}
-                exit={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.95 }}
-                transition={
-                  isMobile
-                    ? { type: "spring", damping: 30, stiffness: 300 }
-                    : { duration: 0.2 }
-                }
-                className={cn(
-                  "w-full bg-white flex flex-col pointer-events-auto shadow-2xl relative",
-                  isMobile
-                    ? "rounded-t-3xl max-h-[90dvh]"
-                    : "rounded-3xl max-w-xl max-h-[85dvh]",
-                )}
-              >
-                <div className="flex justify-center pt-3 pb-1 shrink-0 md:hidden">
-                  <div className="w-10 h-1 bg-gray-300 rounded-full" />
-                </div>
-                <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
-                  <div>
-                    <h2 className="font-bold text-gray-900 text-lg">
-                      {t("teacherPages", "enterMarksTab", lang)}
-                    </h2>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {markEntryExam.name} — {markEntryExam.class?.name ?? ""}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => !meSaving && setShowMarkEntry(false)}
-                    disabled={meSaving}
-                    className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
+          </div>
 
-                {/* Tabs */}
-                {meStudents.length > 0 && meSubjectId && (
-                  <div className="flex border-b border-gray-100 shrink-0">
-                    <button
-                      onClick={() => setMarkEntryTab("marks")}
-                      className={cn(
-                        "flex-1 px-4 py-2.5 text-xs font-semibold transition-colors border-b-2",
-                        markEntryTab === "marks"
-                          ? "text-emerald-600 border-emerald-600"
-                          : "text-gray-400 border-transparent hover:text-gray-600"
-                      )}
-                    >
-                      {t("teacherPages", "enterMarksTab", lang)}
-                    </button>
-                    <button
-                      onClick={() => setMarkEntryTab("grades")}
-                      className={cn(
-                        "flex-1 px-4 py-2.5 text-xs font-semibold transition-colors border-b-2",
-                        markEntryTab === "grades"
-                          ? "text-emerald-600 border-emerald-600"
-                          : "text-gray-400 border-transparent hover:text-gray-600"
-                      )}
-                    >
-                      {t("teacherPages", "gradeCardTab", lang)}
-                    </button>
-                  </div>
-                )}
+          {!editTarget && (
+            <>
+              <div>
+                <p className="mb-1.5 text-sm font-medium text-gray-700">
+                  {t("teacherPages", "classRequired", lang)}
+                </p>
+                <DrawerSelector
+                  title={t("teacherPages", "classRequired", lang)}
+                  options={teacherClasses.map((cls) => ({ value: cls.id, label: cls.name }))}
+                  value={formClassId}
+                  onChange={(value) => {
+                    setFormClassId(value);
+                    setFormSubjectId("");
+                  }}
+                  placeholder={t("teacherPages", "selectClassOpt", lang)}
+                />
+              </div>
+              <div>
+                <p className="mb-1.5 text-sm font-medium text-gray-700">
+                  {t("teacherPages", "subjectRequired", lang)}
+                </p>
+                <DrawerSelector
+                  title={t("teacherPages", "subjectRequired", lang)}
+                  options={subjects
+                    .filter((subject) => subject.classId === formClassId)
+                    .filter((subject) => !isPeriodBased || subject.teacherId === teacherId)
+                    .map((subject) => ({ value: subject.id, label: subject.name }))}
+                  value={formSubjectId}
+                  onChange={handleSubjectChange}
+                  disabled={!formClassId}
+                  placeholder={t("teacherPages", "selectSubjectOpt", lang)}
+                />
+              </div>
+            </>
+          )}
 
-                <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4 pb-8">
-                  {/* Marks Tab */}
-                  {markEntryTab === "marks" && (
-                    <>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-700">
-                          {meSubjects.find((s) => s.id === meSubjectId)?.name ?? "—"}
-                        </div>
-                        {canEditExam(markEntryExam) &&
-                          markEntryExam._count?.results &&
-                          markEntryExam._count.results > 0 && (
-                            <button
-                              onClick={() => handlePublish(markEntryExam)}
-                              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shrink-0"
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              {t("teacherPages", "publishBtn", lang)}
-                            </button>
-                          )}
-                      </div>
-
-                      {meStudents.length === 0 ? (
-                        <p className="text-xs text-gray-400 text-center py-8">
-                          {t("teacherPages", "loadingStudentsMsg", lang)}
-                        </p>
-                      ) : (
-                        <div className="rounded-xl border border-gray-100 overflow-hidden bg-white">
-                          <div className="px-3 py-2 bg-gray-50 flex justify-between text-[10px] font-bold text-gray-400 uppercase border-b">
-                            <span>{t("teacherPages", "studentHeader", lang)}</span>
-                            <span>{t("teacherPages", "scoreMaxLabel", lang).replace("{max}", String((() => {
-                              const currentSubject = meSubjects.find((s) => s.id === meSubjectId);
-                              return currentSubject?.classSubject?.maxMarks ?? markEntryExam.maxMarks ?? 50;
-                            })()))}</span>
-                          </div>
-                          <div className="divide-y divide-gray-50 max-h-[50dvh] overflow-y-auto">
-                            {meStudents.map((s) => (
-                              <div
-                                key={s.id}
-                                className="flex items-center gap-3 px-3 py-2"
-                              >
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-semibold text-gray-900 truncate">
-                                    {s.name}
-                                  </p>
-                                  <p className="text-xs text-gray-400">
-                                    {s.adno}
-                                  </p>
-                                </div>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  max={(() => {
-                                    const currentSubject = meSubjects.find((s) => s.id === meSubjectId);
-                                    return currentSubject?.classSubject?.maxMarks ?? markEntryExam.maxMarks ?? 50;
-                                  })()}
-                                  value={meScores[s.id] ?? ""}
-                                  onChange={(e) =>
-                                    setMeScores((m) => ({
-                                      ...m,
-                                      [s.id]: e.target.value,
-                                    }))
-                                  }
-                                  placeholder="—"
-                                  className="w-16 text-center px-2 py-1.5 border border-gray-200 rounded-lg text-sm font-bold focus:outline-none focus:border-emerald-400"
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {/* Grades Tab */}
-                  {markEntryTab === "grades" && meStudents.length > 0 && meSubjectId && (
-                    <GradeCard
-                      students={meStudents}
-                      subjects={meSubjects}
-                      subjectId={meSubjectId}
-                      scores={meScores}
-                      examMaxMarks={markEntryExam.maxMarks ?? undefined}
-                      examName={markEntryExam.name}
-                    />
-                  )}
-                </div>
-                <div className="px-5 py-4 border-t border-gray-100 flex gap-3 shrink-0">
-                  <button
-                    onClick={() => !meSaving && setShowMarkEntry(false)}
-                    disabled={meSaving}
-                    className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 disabled:opacity-50"
-                  >
-                    {t("common", "close", lang)}
-                  </button>
-                  <button
-                    onClick={() => handleMeSave(markEntryExam.id)}
-                    disabled={meSaving || !meSubjectId}
-                    className={cn(
-                      "flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl transition-colors",
-                      meSaved
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50",
-                    )}
-                  >
-                    {meSaving ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : meSaved ? (
-                      <CheckCircle2 className="w-4 h-4" />
-                    ) : (
-                      <PenLine className="w-4 h-4" />
-                    )}
-                    {meSaved ? "Saved" : t("teacherPages", "saveMarksBtn", lang)}
-                  </button>
-                </div>
-              </motion.div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="class-test-start" className="mb-1.5 block text-sm font-medium text-gray-700">
+                {t("teacherPages", "startDateLabel", lang)}
+              </label>
+              <DatePickerInput
+                id="class-test-start"
+                title={t("teacherPages", "startDateLabel", lang)}
+                value={formStartDate}
+                onChange={setFormStartDate}
+                disableFuture={false}
+                allowClear
+              />
             </div>
-          </>
-        )}
-      </AnimatePresence>
+            <div>
+              <label htmlFor="class-test-end" className="mb-1.5 block text-sm font-medium text-gray-700">
+                {t("teacherPages", "endDateLabel", lang)}
+              </label>
+              <DatePickerInput
+                id="class-test-end"
+                title={t("teacherPages", "endDateLabel", lang)}
+                value={formEndDate}
+                onChange={setFormEndDate}
+                disableFuture={false}
+                allowClear
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="class-test-max" className="mb-1.5 block text-sm font-medium text-gray-700">
+                {t("teacherPages", "maxMarksLabel", lang)}
+              </label>
+              <Input id="class-test-max" size="lg" type="number" min={1} max={9999} value={formMaxMarks} onChange={(event) => setFormMaxMarks(event.target.value)} />
+            </div>
+            <div>
+              <label htmlFor="class-test-pass" className="mb-1.5 block text-sm font-medium text-gray-700">
+                {t("teacherPages", "passMarksLabel", lang)}
+              </label>
+              <Input id="class-test-pass" size="lg" type="number" min={0} max={9999} value={formPassMarks} onChange={(event) => setFormPassMarks(event.target.value)} placeholder="Optional" />
+            </div>
+          </div>
+
+          {editTarget && (
+            <div>
+              <p className="mb-1.5 text-sm font-medium text-gray-700">
+                {t("common", "status", lang)}
+              </p>
+              <DrawerSelector
+                title={t("common", "status", lang)}
+                options={(["MARK_ENTRY", "PUBLISHED"] as ExamStatus[]).map((status) => ({
+                  value: status,
+                  label: STATUS_LABELS[status],
+                }))}
+                value={formStatus}
+                onChange={(value) => setFormStatus(value as ExamStatus)}
+              />
+            </div>
+          )}
+        </form>
+      </ResponsivePopover>
 
       {/* Standalone Delete Confirm Dialog */}
       <AnimatePresence>
