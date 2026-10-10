@@ -17,7 +17,10 @@ export interface ResponsivePopoverProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   side?: Side;
+  drawerOnDesktop?: boolean;
   title?: React.ReactNode;
+  headerAction?: React.ReactNode;
+  footer?: React.ReactNode;
   description?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
@@ -39,12 +42,15 @@ function useIsDesktop() {
   return isDesktop;
 }
 
-/** A controlled popover on desktop and the app drawer on mobile. */
+/** A controlled popover on desktop and drawer on mobile, with an opt-in desktop drawer. */
 export function ResponsivePopover({
   open,
   onOpenChange,
   side = "responsive",
+  drawerOnDesktop = false,
   title,
+  headerAction,
+  footer,
   description,
   children,
   className,
@@ -55,7 +61,7 @@ export function ResponsivePopover({
   const swipeDirection = side === "bottom" || (side === "responsive" && !isDesktop) ? "down" : "right";
   const isBottom = swipeDirection === "down";
 
-  if (isDesktop) {
+  if (isDesktop && !drawerOnDesktop) {
     return (
       <PopoverPrimitive.Root open={open} onOpenChange={onOpenChange}>
         <PopoverPrimitive.Portal>
@@ -69,11 +75,14 @@ export function ResponsivePopover({
                 className,
               )}
             >
-              {(title || description || showCloseButton) && (
+              {(title || description || headerAction || showCloseButton) && (
                 <div className="relative border-b border-gray-100 px-5 py-4">
-                  {(title || description) && (
-                    <div className="min-w-0 space-y-0.5 pr-8">
-                      {title && <PopoverPrimitive.Title className="text-base font-extrabold tracking-tight">{title}</PopoverPrimitive.Title>}
+                  {(title || description || headerAction) && (
+                    <div className={cn("min-w-0 space-y-0.5", showCloseButton && "pr-8")}>
+                      <div className="flex min-w-0 items-center justify-between gap-3">
+                        {title && <PopoverPrimitive.Title className="min-w-0 break-words text-base font-extrabold tracking-tight">{title}</PopoverPrimitive.Title>}
+                        {headerAction && <div className="shrink-0">{headerAction}</div>}
+                      </div>
                       {description && <PopoverPrimitive.Description className="text-xs text-gray-500">{description}</PopoverPrimitive.Description>}
                     </div>
                   )}
@@ -85,6 +94,7 @@ export function ResponsivePopover({
                 </div>
               )}
               <div className={cn("max-h-[min(80vh,40rem)] overflow-y-auto", contentClassName)}>{children}</div>
+              {footer && <div className="shrink-0">{footer}</div>}
             </PopoverPrimitive.Popup>
           </PopoverPrimitive.Positioner>
         </PopoverPrimitive.Portal>
@@ -95,11 +105,14 @@ export function ResponsivePopover({
   return (
     <BaseDrawer open={open} onOpenChange={onOpenChange} swipeDirection={swipeDirection} showSwipeHandle={false}>
       <DrawerContent className={cn("bg-white text-gray-900 shadow-2xl", isBottom ? "max-h-[92dvh]" : "h-full max-h-dvh w-full sm:max-w-md", className)}>
-        {(title || description || showCloseButton) && (
+        {(title || description || headerAction || showCloseButton) && (
           <DrawerHeader className={cn("relative shrink-0 px-5", isBottom ? "pb-3.5 pt-5" : "pb-4 pt-4")}>
-            {(title || description) && (
-              <div className="min-w-0 space-y-0.5 pr-9 text-left">
-                {title && <DrawerTitle className="text-base font-extrabold tracking-tight">{title}</DrawerTitle>}
+            {(title || description || headerAction) && (
+              <div className={cn("min-w-0 space-y-0.5 text-left", showCloseButton && "pr-9")}>
+                <div className="flex min-w-0 items-center justify-between gap-3">
+                  {title && <DrawerTitle className="min-w-0 break-words text-base font-extrabold tracking-tight">{title}</DrawerTitle>}
+                  {headerAction && <div className="shrink-0">{headerAction}</div>}
+                </div>
                 {description && <DrawerDescription className="text-xs">{description}</DrawerDescription>}
               </div>
             )}
@@ -107,6 +120,7 @@ export function ResponsivePopover({
           </DrawerHeader>
         )}
         <div className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain", contentClassName)}>{children}</div>
+        {footer && <div className="shrink-0">{footer}</div>}
       </DrawerContent>
     </BaseDrawer>
   );

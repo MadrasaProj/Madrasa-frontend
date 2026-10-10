@@ -1,7 +1,9 @@
+import { useState } from "react";
 import type { ExamRecord } from "@/lib/exams-api";
 import type { ClassRecord } from "@/lib/classes-api";
 import type { SubjectRecord } from "@/lib/subjects-api";
 import { cn } from "@/lib/utils";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import {
   GraduationCap,
   Save,
@@ -11,6 +13,7 @@ import {
   AlertCircle,
   RotateCcw,
   FileSpreadsheet,
+  MoreHorizontal,
 } from "lucide-react";
 
 function fmt(d?: string | null) {
@@ -57,11 +60,13 @@ export interface MarkEntryGridProps {
 
   showExamSelector?: boolean;
   showClassSelector?: boolean;
+  showSubjectSelector?: boolean;
   showRemarks?: boolean;
   showExcelImport?: boolean;
   showDraftButton?: boolean;
   showResetButton?: boolean;
   showLockPeriod?: boolean;
+  showActionButtons?: boolean;
 }
 
 export function MarkEntryGrid({
@@ -90,12 +95,17 @@ export function MarkEntryGrid({
   onImportOpen,
   showExamSelector = true,
   showClassSelector = true,
+  showSubjectSelector = true,
   showRemarks = true,
   showExcelImport = false,
   showDraftButton = false,
   showResetButton = true,
   showLockPeriod = true,
+  showActionButtons = true,
 }: MarkEntryGridProps) {
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const selectedStudent = students.find((student) => student.id === selectedStudentId);
+  const selectedStudentIndex = students.findIndex((student) => student.id === selectedStudentId);
   const filled = Object.values(scores).filter((v) => v !== "").length;
   const currentSubject = subjects.find((s) => s.id === subjectId);
   const effectiveMaxMarks = currentSubject?.classSubject?.maxMarks ?? 50;
@@ -106,7 +116,7 @@ export function MarkEntryGrid({
   return (
     <div className="space-y-6">
        {/* Selectors grid */}
-      {(showExamSelector || showClassSelector || subjects.length > 0) && (
+      {(showExamSelector || showClassSelector || (showSubjectSelector && subjects.length > 0)) && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
           {showExamSelector && (
             <div>
@@ -144,7 +154,7 @@ export function MarkEntryGrid({
               </select>
             </div>
           )}
-          {subjects.length > 0 && (
+          {showSubjectSelector && subjects.length > 0 && (
             <div>
               <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1.5">
                 Select Subject
@@ -166,52 +176,7 @@ export function MarkEntryGrid({
         </div>
       )}
 
-      {/* Mark entry period box & import button */}
-      {showLockPeriod && activeExam && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-emerald-50/40 border border-emerald-100 rounded-3xl">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-100/50 flex items-center justify-center shrink-0 text-emerald-700">
-              <Calendar className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-emerald-800 flex items-center gap-2">
-                Mark Entry Period
-                <span
-                  className={cn(
-                    "px-2 py-0.5 rounded-full text-[9px] border font-extrabold uppercase",
-                    isLocked
-                      ? "bg-rose-50 text-rose-700 border-rose-100"
-                      : "bg-emerald-50 text-emerald-700 border-emerald-100",
-                  )}
-                >
-                  {isLocked ? "Closed" : "Open"}
-                </span>
-              </p>
-              <p className="text-xs text-gray-500 mt-0.5">
-                {activeExam.endDate
-                  ? fmt(
-                      new Date(
-                        new Date(activeExam.endDate).getTime() + 86400000,
-                      ).toISOString(),
-                    )
-                  : "—"}{" "}
-                – {fmt(activeExam.markEntryLastDate)}
-              </p>
-            </div>
-          </div>
-          {showExcelImport && onImportOpen && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={onImportOpen}
-                className="inline-flex items-center gap-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm hover:scale-[1.01]"
-              >
-                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />{" "}
-                Import / Export Excel
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+    
 
       {/* Error */}
       {error && (
@@ -236,7 +201,7 @@ export function MarkEntryGrid({
           </p>
         </div>
       ) : (
-        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+        <div className="bg-white border-y border-gray-100 sm:border sm:rounded-2xl sm:shadow-sm flex flex-col">
           {/* Desktop Table View */}
           <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-left border-collapse text-sm">
@@ -323,38 +288,20 @@ export function MarkEntryGrid({
             </table>
           </div>
 
-          {/* Mobile Card-Based List View */}
-          <div className="block sm:hidden divide-y divide-gray-100 max-h-[60vh] overflow-y-auto">
-            {students.map((s, idx) => {
+          {/* Mobile student list */}
+          <div className="block sm:hidden divide-y divide-gray-100">
+            {students.map((s) => {
               const score = scores[s.id] ?? "";
-              const remark = remarks[s.id] ?? "";
               const invalid =
                 score !== "" &&
                 (Number(score) > effectiveMaxMarks || Number(score) < 0);
               return (
-                <div key={s.id} className="p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs text-gray-400 font-bold">
-                          #{idx + 1}
-                        </span>
-                        <p className="font-bold text-gray-900 text-sm leading-snug truncate">
-                          {s.name}
-                        </p>
-                      </div>
-                      <p className="text-[11px] text-gray-400 mt-0.5">
-                        AdNo:{" "}
-                        <span className="font-semibold font-mono text-gray-600">
-                          {s.adno}
-                        </span>{" "}
-                        · {s.gender ?? "Male"}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-xs text-gray-400 font-medium mr-1">
-                        /{effectiveMaxMarks}
-                      </span>
+                <div key={s.id} className="flex items-center gap-3 px-4 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-gray-900">{s.name}</p>
+                    <p className="mt-0.5 truncate text-xs text-gray-500">AdNo: {s.adno}</p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
                       <input
                         type="number"
                         min={0}
@@ -363,35 +310,85 @@ export function MarkEntryGrid({
                         value={score}
                         onChange={(e) => onScoreChange(s.id, e.target.value)}
                         placeholder="—"
+                        aria-label={`Mark for ${s.name}`}
                         className={cn(
-                          "w-16 text-center py-1.5 px-2 border rounded-xl text-sm font-bold focus:outline-none transition-all",
+                          "w-16 border-b px-1 py-1.5 text-right text-sm font-bold focus:outline-none transition-colors",
                           isLocked
-                            ? "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed"
+                            ? "border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed"
                             : invalid
-                              ? "border-red-400 bg-red-50 text-red-700 focus:border-red-500 focus:ring-2 focus:ring-red-400/20"
-                              : "border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/20",
+                              ? "border-red-400 bg-red-50 text-red-700 focus:border-red-500"
+                              : "border-gray-200 focus:border-emerald-500",
                         )}
                       />
-                    </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedStudentId(s.id)}
+                        aria-label={`Details and remark for ${s.name}`}
+                        className="flex h-9 w-9 items-center justify-center text-gray-500 hover:text-gray-900 focus-visible:outline-2 focus-visible:outline-emerald-500"
+                      >
+                        <MoreHorizontal className="h-5 w-5" />
+                      </button>
                   </div>
-                  {showRemarks && (
-                    <div>
-                      <input
-                        type="text"
-                        disabled={isLocked || saving}
-                        value={remark}
-                        onChange={(e) =>
-                          onRemarkChange?.(s.id, e.target.value)
-                        }
-                        placeholder="Add remark..."
-                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-emerald-500 transition-all bg-white"
-                      />
-                    </div>
-                  )}
                 </div>
               );
             })}
           </div>
+
+          <ResponsivePopover
+            open={!!selectedStudent}
+            onOpenChange={(open) => { if (!open) setSelectedStudentId(null); }}
+            side="bottom"
+            drawerOnDesktop
+            title={selectedStudent?.name}
+            description={selectedStudent ? `Admission No: ${selectedStudent.adno}` : undefined}
+            contentClassName="px-5 pb-6"
+          >
+            {selectedStudent && (
+              <div className="space-y-5">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3 border-b border-gray-100 pb-5 text-sm">
+                  <div><p className="text-xs text-gray-500">Student No.</p><p className="font-semibold text-gray-900">{selectedStudentIndex + 1}</p></div>
+                  <div><p className="text-xs text-gray-500">Gender</p><p className="font-semibold text-gray-900">{selectedStudent.gender ?? "—"}</p></div>
+                  <div><p className="text-xs text-gray-500">Class</p><p className="font-semibold text-gray-900">{classes.find((item) => item.id === classId)?.name ?? "—"}</p></div>
+                  <div><p className="text-xs text-gray-500">Subject</p><p className="font-semibold text-gray-900">{currentSubject?.name ?? "—"}</p></div>
+                  <div><p className="text-xs text-gray-500">Exam</p><p className="font-semibold text-gray-900">{activeExam?.name ?? exams.find((item) => item.id === examId)?.name ?? "—"}</p></div>
+                  <div><p className="text-xs text-gray-500">Full Mark</p><p className="font-semibold text-gray-900">{effectiveMaxMarks}</p></div>
+                </div>
+                <div>
+                  <label htmlFor="student-drawer-mark" className="mb-1.5 block text-sm font-semibold text-gray-900">Obtained mark</label>
+                  <input
+                    id="student-drawer-mark"
+                    type="number"
+                    min={0}
+                    max={effectiveMaxMarks}
+                    disabled={isLocked || saving}
+                    value={scores[selectedStudent.id] ?? ""}
+                    onChange={(e) => onScoreChange(selectedStudent.id, e.target.value)}
+                    placeholder={`Out of ${effectiveMaxMarks}`}
+                    className={cn(
+                      "w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2",
+                      (scores[selectedStudent.id] ?? "") !== "" && (Number(scores[selectedStudent.id]) > effectiveMaxMarks || Number(scores[selectedStudent.id]) < 0)
+                        ? "border-red-400 bg-red-50 text-red-700 focus:ring-red-400/20"
+                        : "border-gray-200 focus:border-emerald-500 focus:ring-emerald-400/20",
+                    )}
+                  />
+                </div>
+                {showRemarks && (
+                  <div>
+                    <label htmlFor="student-drawer-remark" className="mb-1.5 block text-sm font-semibold text-gray-900">Remark</label>
+                    <textarea
+                      id="student-drawer-remark"
+                      rows={4}
+                      disabled={isLocked || saving}
+                      value={remarks[selectedStudent.id] ?? ""}
+                      onChange={(e) => onRemarkChange?.(selectedStudent.id, e.target.value)}
+                      placeholder="Add a remark..."
+                      className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-400/20"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </ResponsivePopover>
 
           {/* Bottom statistics bar */}
           <div className="bg-gray-50 px-6 py-4 flex flex-wrap items-center justify-between border-t border-gray-100 gap-4">
@@ -417,7 +414,7 @@ export function MarkEntryGrid({
                 </strong>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            {showActionButtons && <div className="flex items-center gap-2">
               {showResetButton && onReset && (
                 <button
                   onClick={onReset}
@@ -454,7 +451,7 @@ export function MarkEntryGrid({
                 )}
                 {saved ? "Saved" : "Save Marks"}
               </button>
-            </div>
+            </div>}
           </div>
         </div>
       )}

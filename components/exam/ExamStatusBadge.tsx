@@ -75,7 +75,7 @@ interface ExamStatusBadgeProps {
 export function ExamStatusBadge({ exam, className }: ExamStatusBadgeProps) {
   const { statusLabel, statusStyle } = getExamStatusInfo(exam);
   return (
-    <span className={cn("text-[10px] font-bold px-2.5 py-0.5 rounded-full border shrink-0 uppercase tracking-wider", statusStyle, className)}>
+    <span className={cn("text-[10px] font-bold  py-0.5  shrink-0 uppercase tracking-wider", statusStyle, className)}>
       {statusLabel}
     </span>
   );

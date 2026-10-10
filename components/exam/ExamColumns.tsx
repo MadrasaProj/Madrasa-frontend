@@ -8,6 +8,8 @@ import { fmt, shortDate } from "@/lib/exam-utils";
 
 interface UseExamColumnsOptions {
   showActions?: boolean;
+  showAllColumns?: boolean;
+  showExamIcon?: boolean;
   onEnterMarks?: (exam: ExamRecord) => void;
   onViewResults?: (exam: ExamRecord) => void;
   onEdit?: (exam: ExamRecord) => void;
@@ -16,7 +18,7 @@ interface UseExamColumnsOptions {
 }
 
 export function useExamColumns(options: UseExamColumnsOptions = {}) {
-  const { showActions = true, onEnterMarks, onViewResults, onEdit, onClasses, onDelete } = options;
+  const { showActions = true, showAllColumns = false, showExamIcon = true, onEnterMarks, onViewResults, onEdit, onClasses, onDelete } = options;
 
   const columns = useMemo<Column<ExamRecord>[]>(
     () => [
@@ -26,9 +28,11 @@ export function useExamColumns(options: UseExamColumnsOptions = {}) {
         sortable: true,
         render: (exam) => (
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
-              <GraduationCap className="w-5 h-5" />
-            </div>
+            {showExamIcon && (
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
+                <GraduationCap className="w-5 h-5" />
+              </div>
+            )}
             <div className="min-w-0">
               <p className="font-semibold text-gray-900 text-sm truncate">
                 {exam.name}
@@ -45,8 +49,8 @@ export function useExamColumns(options: UseExamColumnsOptions = {}) {
         header: "Status",
         sortable: true,
         render: (exam) => <ExamStatusBadge exam={exam} />,
-        className: "hidden sm:table-cell",
-        headerClass: "hidden sm:table-cell",
+        className: showAllColumns ? undefined : "hidden sm:table-cell",
+        headerClass: showAllColumns ? undefined : "hidden sm:table-cell",
       },
       {
         key: "startDate",
@@ -62,8 +66,8 @@ export function useExamColumns(options: UseExamColumnsOptions = {}) {
             </p>
           </div>
         ),
-        className: "hidden md:table-cell",
-        headerClass: "hidden md:table-cell",
+        className: showAllColumns ? undefined : "hidden md:table-cell",
+        headerClass: showAllColumns ? undefined : "hidden md:table-cell",
       },
       {
         key: "markEntryLastDate",
@@ -74,8 +78,8 @@ export function useExamColumns(options: UseExamColumnsOptions = {}) {
             {fmt(exam.markEntryLastDate)}
           </span>
         ),
-        className: "hidden lg:table-cell",
-        headerClass: "hidden lg:table-cell",
+        className: showAllColumns ? undefined : "hidden lg:table-cell",
+        headerClass: showAllColumns ? undefined : "hidden lg:table-cell",
       },
       {
         key: "publishedDate",
@@ -86,8 +90,8 @@ export function useExamColumns(options: UseExamColumnsOptions = {}) {
             {fmt(exam.publishedDate)}
           </span>
         ),
-        className: "hidden lg:table-cell",
-        headerClass: "hidden lg:table-cell",
+        className: showAllColumns ? undefined : "hidden lg:table-cell",
+        headerClass: showAllColumns ? undefined : "hidden lg:table-cell",
       },
       ...(showActions
         ? [
@@ -177,7 +181,7 @@ export function useExamColumns(options: UseExamColumnsOptions = {}) {
           ]
         : []),
     ],
-    [showActions, onEnterMarks, onViewResults, onEdit, onClasses, onDelete],
+    [showActions, showAllColumns, showExamIcon, onEnterMarks, onViewResults, onEdit, onClasses, onDelete],
   );
 
   return columns;

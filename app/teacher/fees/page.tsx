@@ -4,15 +4,10 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { PaymentMethodPicker } from "@/components/teacher/PaymentMethodPicker";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Drawer,
@@ -84,13 +79,13 @@ function getStatusMeta(
   };
 }
 
-const PAYMENT_METHODS = [
-  "CASH",
-  "BANK_TRANSFER",
-  "UPI",
-  "CHEQUE",
-  "OTHER",
-] as const;
+function toLocalDateOnly(value: string): string {
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 function ReceiptModal({
   receipt,
@@ -296,7 +291,7 @@ export default function TeacherFeesPage() {
           studentId: p.student.id,
           feeTypeId: p.feeType.id,
           dueAmount: p.feeType.isDonation ? amount : Number(p.dueAmount),
-          dueDate: p.dueDate,
+          dueDate: toLocalDateOnly(p.dueDate),
           academicYearId: p.academicYearId ?? user?.defaultAcademicYearId ?? undefined,
         });
       } else {
@@ -330,11 +325,49 @@ export default function TeacherFeesPage() {
   const cancelPayment = async (p: FeePayment) => {
     setCancellingSave(true);
     try {
-      await cancelPaymentApi(cid, token, p.id, cancellingNote || undefined);
+      let cancelledPayment: FeePayment;
+      if (p.virtual) {
+        const persistedPayment = await recordPayment(cid, token, {
+          studentId: p.student.id,
+          feeTypeId: p.feeType.id,
+          paidAmount: 0,
+          dueAmount: Number(p.dueAmount),
+          dueDate: toLocalDateOnly(p.dueDate),
+          status: "PENDING",
+          academicYearId: p.academicYearId ?? user?.defaultAcademicYearId ?? undefined,
+        });
+        cancelledPayment = await cancelPaymentApi(
+          cid,
+          token,
+          persistedPayment.id,
+          cancellingNote || undefined,
+        );
+      } else {
+        cancelledPayment = await cancelPaymentApi(
+          cid,
+          token,
+          p.id,
+          cancellingNote || undefined,
+        );
+      }
       setCancelling(null);
       setCancellingNote("");
       setSelectedPaymentId(null);
-      loadPayments();
+      await loadPayments();
+      const dateKey = toLocalDateOnly;
+      setPayments((current) =>
+        current.map((payment) => {
+          const isSamePayment =
+            payment.id === p.id ||
+            payment.id === cancelledPayment.id ||
+            (payment.student.id === p.student.id &&
+              payment.feeType.id === p.feeType.id &&
+              dateKey(payment.dueDate) === dateKey(p.dueDate));
+          return isSamePayment
+            ? { ...payment, ...cancelledPayment, virtual: false }
+            : payment;
+        }),
+      );
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -364,14 +397,14 @@ export default function TeacherFeesPage() {
       <PageHeader title={t("teacherPages", "feesPaymentsTitle", lang)} />
 
       <Drawer open={filtersOpen} onOpenChange={setFiltersOpen} swipeDirection="down">
-      <div className="sticky top-12 z-30 -mx-4 mb-4 flex h-15 gap-2 bg-white  px-4 lg:top-[125px] *:my-auto shadow-lg shadow-gray-400/10">
+      <div className="sticky top-12 z-30 -mx-4 mb-4 flex h-12 gap-2 bg-white  px-4 lg:top-[125px] *:my-auto shadow-lg shadow-gray-400/10">
         <div className="relative flex-1 min-w-0 ">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t("teacherPages", "searchStudentName", lang)}
-            className="h-10 w-full rounded-xl bg-white pl-9 pr-4 text-sm"
+            className="border-0 bg-transparent pl-9 pr-4 text-sm"
           />
         </div>
         <Button
@@ -703,27 +736,43 @@ export default function TeacherFeesPage() {
                   )}
                 </dl>
 
-                {cancelling === selectedPayment.id && (
-                  <div className="space-y-2 border-t pt-4">
-                    <p className="text-sm font-medium">{t("teacherPages", "cancelFeeDesc", lang)}</p>
-                    <Input
-                      value={cancellingNote}
-                      onChange={(event) => setCancellingNote(event.target.value)}
-                      placeholder={t("teacherPages", "reasonForCancel", lang)}
-                    />
-                  </div>
-                )}
               </div>
 
               <DrawerFooter className="shrink-0 bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                {selectedPayment.status === "WAIVED" ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    className="w-full"
+                    disabled={cancellingSave}
+                    onClick={() => undoCancel(selectedPayment)}
+                  >
+                    Undo cancel
+                  </Button>
+                ) : (
                 <div className="space-y-3 rounded-xl border p-3">
-                  <h3 className="text-sm font-semibold">Payment details</h3>
+                  <h3 className="text-sm font-semibold">
+                    {cancelling === selectedPayment.id
+                      ? t("teacherPages", "cancelFeeTitle", lang)
+                      : "Payment details"}
+                  </h3>
+                  {cancelling === selectedPayment.id ? (
+                    <Textarea
+                      size="lg"
+                      value={cancellingNote}
+                      onChange={(event) => setCancellingNote(event.target.value)}
+                      placeholder={t("teacherPages", "reasonForCancel", lang)}
+                      rows={3}
+                    />
+                  ) : (
+                    <>
                     {selectedPayment.status !== "PAID" &&
-                      selectedPayment.status !== "WAIVED" &&
                       selectedPayment.feeType.isDonation &&
                       !cancelling && (
                         <Input
                           type="number"
+                          size="lg"
                           min="0.01"
                           step="0.01"
                           value={donationAmount}
@@ -732,37 +781,24 @@ export default function TeacherFeesPage() {
                         />
                       )}
                     <div className="space-y-3">
-                      <Select
+                      <PaymentMethodPicker
                         value={
                           selectedPayment.status === "PAID" ||
-                          selectedPayment.status === "WAIVED" ||
                           cancelling
                             ? selectedPayment.method ?? ""
                             : payMethod
                         }
-                        onValueChange={(value) => value && setPayMethod(value)}
+                        onChange={setPayMethod}
                         disabled={
                           selectedPayment.status === "PAID" ||
-                          selectedPayment.status === "WAIVED" ||
                           !!cancelling
                         }
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder={t("parentPages", "methodLabel", lang)} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {PAYMENT_METHODS.map((method) => (
-                            <SelectItem key={method} value={method}>
-                              {method.replace(/_/g, " ")}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      />
                       <Input
+                        size="lg"
                         className="w-full"
                         value={
                           selectedPayment.status === "PAID" ||
-                          selectedPayment.status === "WAIVED" ||
                           cancelling
                             ? selectedPayment.reference ?? ""
                             : payRef
@@ -771,11 +807,12 @@ export default function TeacherFeesPage() {
                         placeholder={t("teacherPages", "receiptRefPlc", lang)}
                         readOnly={
                           selectedPayment.status === "PAID" ||
-                          selectedPayment.status === "WAIVED" ||
                           !!cancelling
                         }
                       />
                     </div>
+                    </>
+                  )}
                     <ButtonGroup className="w-full [&>button]:flex-1">
                       {cancelling === selectedPayment.id ? (
                         <>
@@ -823,17 +860,6 @@ export default function TeacherFeesPage() {
                             {t("teacherPages", "cancelFeeTitle", lang)}
                           </Button>
                         </>
-                      ) : selectedPayment.status === "WAIVED" ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="lg"
-                          className="col-span-2"
-                          disabled={cancellingSave}
-                          onClick={() => undoCancel(selectedPayment)}
-                        >
-                          Undo cancel
-                        </Button>
                       ) : (
                         <>
                           <Button
@@ -859,6 +885,7 @@ export default function TeacherFeesPage() {
                       )}
                     </ButtonGroup>
                 </div>
+                )}
               </DrawerFooter>
             </>
           )}

@@ -36,10 +36,12 @@ interface DataTableProps<T> {
   sortKey?: string
   sortDir?: SortDir
   emptyIcon?: React.ElementType
+  emptyImage?: string
   emptyMessage?: string
   emptySubtext?: string
   className?: string
   mobileRender?: (row: T, index: number) => React.ReactNode
+  alwaysTable?: boolean
 }
 
 const DEFAULT_PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
@@ -56,10 +58,12 @@ export function DataTable<T>({
   sortKey,
   sortDir,
   emptyIcon: EmptyIcon,
+  emptyImage,
   emptyMessage = "No records found",
   emptySubtext,
   className,
   mobileRender,
+  alwaysTable = false,
 }: DataTableProps<T>) {
   const handleHeaderClick = (col: Column<T>) => {
     if (!col.sortable || !onSort) return
@@ -72,7 +76,7 @@ export function DataTable<T>({
 
   const emptyState = (
     <div className="text-center py-16 text-gray-400">
-      {EmptyIcon && <EmptyIcon className="w-10 h-10 mx-auto mb-3 opacity-30" />}
+      {emptyImage ? <img src={emptyImage} alt="" className="mx-auto mb-3 h-28 w-28 object-contain" /> : EmptyIcon && <EmptyIcon className="w-10 h-10 mx-auto mb-3 opacity-30" />}
       <p className="font-semibold">{emptyMessage}</p>
       {emptySubtext && <p className="text-sm mt-1">{emptySubtext}</p>}
     </div>
@@ -134,8 +138,8 @@ export function DataTable<T>({
   return (
     <div className={cn("w-full", className)}>
       {/* ── Desktop table ── */}
-      <div className="hidden md:block overflow-x-auto rounded-2xl border border-gray-100 bg-white">
-        <table className="w-full text-sm">
+      <div className={cn("overflow-x-auto rounded-2xl border border-gray-100 bg-white", !alwaysTable && "hidden md:block")}>
+        <table className={cn("w-full text-sm", alwaysTable && "min-w-[850px]")}>
           <thead>
             <tr className="border-b border-gray-100">
               {columns.map((col) => (
@@ -182,9 +186,17 @@ export function DataTable<T>({
                 <tr
                   key={keyExtractor(row)}
                   onClick={() => onRowClick?.(row)}
+                  tabIndex={onRowClick ? 0 : undefined}
+                  onKeyDown={(event) => {
+                    if (!onRowClick || event.target !== event.currentTarget) return
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault()
+                      onRowClick(row)
+                    }
+                  }}
                   className={cn(
                     "border-b border-gray-50 last:border-0 transition-colors",
-                    onRowClick && "cursor-pointer hover:bg-emerald-50/40",
+                    onRowClick && "cursor-pointer hover:bg-emerald-50/40 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600",
                   )}
                 >
                   {columns.map((col) => (
@@ -200,7 +212,7 @@ export function DataTable<T>({
       </div>
 
       {/* ── Mobile card list ── */}
-      <div className="md:hidden space-y-3">
+      <div className={cn("space-y-3", alwaysTable ? "hidden" : "md:hidden")}>
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="bg-white rounded-2xl p-4 border border-gray-100">
