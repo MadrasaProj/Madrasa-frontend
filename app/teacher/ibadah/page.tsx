@@ -493,7 +493,7 @@ export default function TeacherIbadahPage() {
             type="button"
             onClick={() => setSelectorDrawer(true)}
             aria-label="Choose ibadah date and class"
-            className="fixed inset-x-0 top-[47px] z-40 flex flex-col gap-2 border-b border-gray-100 bg-white/95 px-4 py-3 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3 lg:left-64   lg:px-8 shadow-lg shadow-gray-100 "
+            className="fixed inset-x-0 top-[47px] z-40 flex justify-between  gap-2 border-b border-gray-100 bg-white/95 px-4 py-3 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3 lg:left-64   lg:px-8 shadow-lg shadow-gray-100 "
           >
             <span className="flex min-w-0 items-center gap-2">
               {viewMode === "daily" ? (
