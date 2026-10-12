@@ -23,6 +23,7 @@ import StudentEditDrawer from "@/components/admin/StudentEditDrawer";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
+import { toast } from "sonner";
 import { parse, isValid, format } from "date-fns";
 import {
   Plus,
@@ -344,11 +345,13 @@ console.log(classes);
     if (!deleteTarget) return;
     deleteMutation.mutate(deleteTarget.id, {
       onSuccess: () => {
+        toast.success("Student deleted successfully");
         setDrawer(null);
         setShowDeleteConfirm(false);
         setPage(1);
       },
-      onError: (err) => {
+      onError: (err: any) => {
+        toast.error(err?.message || "Failed to delete student");
         setShowDeleteConfirm(false);
       },
     });
@@ -859,6 +862,7 @@ console.log(classes);
         show={showImport}
         config={importConfig}
         onComplete={() => {
+          toast.success("Import completed successfully");
           setPage(1);
           invalidateList();
         }}

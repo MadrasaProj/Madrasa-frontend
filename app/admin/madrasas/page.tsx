@@ -44,7 +44,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { ClassDivisionsPicker } from "@/components/ui/ClassDivisionsPicker";
-import { Toaster, toast } from "sonner";
+import { toast } from "sonner";
 import { ShareMadrasaLinksModal } from "@/components/admin/ShareMadrasaLinksModal";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -175,6 +175,7 @@ function EditMadrasaDrawer({
       const updated = await updateClient(client.id, dto, token);
       const merged: ClientListItem = { ...client, ...updated };
       setSuccess(true);
+      toast.success("Madrasa updated successfully");
       onSaved(merged);
       setTimeout(onClose, 800);
     } catch (e: unknown) {
@@ -882,6 +883,7 @@ function NewMadrasaDrawer({
         divisions: Object.keys(divisions).length > 0 ? divisions : undefined,
       };
       const created = await createClient(payload, token);
+      toast.success("Madrasa created successfully");
       onCreated(created);
       onClose();
     } catch (e: unknown) {
@@ -1499,8 +1501,6 @@ export default function AdminMadrasasPage() {
         onClose={() => setSharingClient(null)}
         client={sharingClient}
       />
-
-      <Toaster position="top-right" richColors closeButton />
     </DashboardLayout>
   );
 }

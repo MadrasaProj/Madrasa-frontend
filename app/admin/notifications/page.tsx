@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SkeletonList } from "@/components/ui/Skeleton";
+import { toast } from "sonner";
 
 const TYPE_CONFIG: Record<NotificationType, { label: string; icon: React.ElementType; color: string; bg: string }> = {
   ANNOUNCEMENT:       { label: "Announcement",    icon: Bell,          color: "text-indigo-700", bg: "bg-indigo-100" },
@@ -105,6 +106,7 @@ export default function AdminNotificationsPage() {
           targetClassIds: cClassIds.length ? cClassIds : undefined,
           eventDate: cEventDate || undefined,
         });
+        toast.success("Notification updated successfully");
       } else {
         await createNotification(cid, token, {
           title: cTitle, body: cBody, type: cType,
@@ -112,19 +114,29 @@ export default function AdminNotificationsPage() {
           targetClassIds: cClassIds.length ? cClassIds : undefined,
           eventDate: cEventDate || undefined,
         });
+        toast.success("Notification sent successfully");
       }
       setShowCompose(false);
       setEditTarget(null);
       setCTitle(""); setCBody(""); setCRoles(["PARENT"]); setCClassIds([]); setCEventDate("");
       loadSent();
-    } catch (e) { setSendError((e as Error).message); }
+    } catch (e) {
+      setSendError((e as Error).message);
+      toast.error((e as Error).message || "Failed to send notification");
+    }
     finally { setSending(false); }
   };
 
   const handleDelete = async (id: string) => {
     setDeletingId(id);
-    try { await deleteNotification(cid, token, id); loadSent(); }
-    catch (e) { alert((e as Error).message); }
+    try {
+      await deleteNotification(cid, token, id);
+      toast.success("Notification deleted successfully");
+      loadSent();
+    }
+    catch (e) {
+      toast.error((e as Error).message || "Failed to delete notification");
+    }
     finally { setDeletingId(null); }
   };
 

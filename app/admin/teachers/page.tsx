@@ -28,6 +28,7 @@ import {
  GraduationCap, BookOpen, CheckCircle2, ChevronDown, Trash2, Upload,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 
 const DEFAULT_PAGE_SIZE = 20;
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
@@ -149,24 +150,25 @@ export default function AdminTeachersPage() {
   setSubjectSearch(""); setExpandedGroups(new Set());
   setShowDeleteConfirm(false); setDeleting(false);
   };
-
- const handleDelete = async () => {
- if (!editTarget || !cid || !token) return;
- setDeleting(true);
- setSaveError("");
- try {
- await deleteTeacher(cid, token, editTarget.id);
- setShowDeleteConfirm(false);
- setShowDrawer(false);
- setPage(1);
- load(search, 1, pageSize, sortBy, sortDir);
- } catch (e) {
- setSaveError((e as Error).message);
- setShowDeleteConfirm(false);
- } finally {
- setDeleting(false);
- }
- };
+  const handleDelete = async () => {
+    if (!editTarget || !cid || !token) return;
+    setDeleting(true);
+    setSaveError("");
+    try {
+      await deleteTeacher(cid, token, editTarget.id);
+      toast.success("Teacher deleted successfully");
+      setShowDeleteConfirm(false);
+      setShowDrawer(false);
+      setPage(1);
+      load(search, 1, pageSize, sortBy, sortDir);
+    } catch (e) {
+      setSaveError((e as Error).message);
+      toast.error((e as Error).message || "Failed to delete teacher");
+      setShowDeleteConfirm(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
  const openAdd = () => {
  setEditTarget(null);
@@ -251,6 +253,7 @@ export default function AdminTeachersPage() {
   if (fNewPassword.trim()) payload.password = fNewPassword.trim();
   if (isPeriodBased) payload.subjectIds = [...fSubjectIds];
   await updateTeacher(cid, token, editTarget.id, payload);
+  toast.success("Teacher updated successfully");
   } else {
   const payload: CreateTeacherPayload = {
   name: fName.trim(), username: fUsername.trim(), password: fPassword,
@@ -269,12 +272,14 @@ export default function AdminTeachersPage() {
   if (fEmergencyName.trim()) payload.emergencyContactName = fEmergencyName.trim();
   if (fEmergencyPhone.trim()) payload.emergencyContactPhone = fEmergencyPhone.trim();
   await createTeacher(cid, token, payload);
+  toast.success("Teacher created successfully");
   }
   setShowDrawer(false);
   setPage(1);
   load(search, 1, pageSize, sortBy, sortDir);
   } catch (e) {
   setSaveError((e as Error).message);
+  toast.error((e as Error).message || "Failed to save teacher");
   } finally {
   setSaving(false);
   }
@@ -287,8 +292,10 @@ export default function AdminTeachersPage() {
    try {
     const res = await uploadTeacherPhoto(cid, token, editTarget.id, file);
     setFPhotoUrl(res.photoUrl);
+    toast.success("Photo uploaded successfully");
    } catch (err) {
     setSaveError((err as Error).message);
+    toast.error((err as Error).message || "Failed to upload photo");
    } finally {
     setPhotoUploading(false);
    }
@@ -300,8 +307,10 @@ export default function AdminTeachersPage() {
    try {
     await deleteTeacherPhoto(cid, token, editTarget.id);
     setFPhotoUrl(null);
+    toast.success("Photo removed successfully");
    } catch (err) {
     setSaveError((err as Error).message);
+    toast.error((err as Error).message || "Failed to remove photo");
    } finally {
     setPhotoUploading(false);
    }
@@ -1155,6 +1164,7 @@ export default function AdminTeachersPage() {
   show={showImport}
   config={importConfig}
   onComplete={() => {
+   toast.success("Import completed successfully");
    setPage(1);
    load(search, 1, pageSize, sortBy, sortDir);
   }}

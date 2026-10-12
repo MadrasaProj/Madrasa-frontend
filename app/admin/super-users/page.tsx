@@ -13,6 +13,7 @@ import { Shield, ShieldCheck, UserPlus, Trash2, Pencil, Loader2, X } from "lucid
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { SkeletonList } from "@/components/ui/Skeleton";
+import { toast } from "sonner";
 
 // ── Add / Edit Drawer ──────────────────────────────────────────────────────────
 
@@ -52,15 +53,18 @@ function UserDrawer({
       let saved: SuperAdminUser;
       if (mode === "add") {
         saved = await createSuperAdminUser({ name, identifier, password, role }, token);
+        toast.success("User created successfully");
       } else {
         const dto: { name?: string; password?: string; role?: string } = { name, role };
         if (password) dto.password = password;
         saved = await updateSuperAdminUser(user!.id, dto, token);
+        toast.success("User updated successfully");
       }
       onSaved(saved);
       onClose();
     } catch (e: any) {
       setError(e?.message ?? "Operation failed.");
+      toast.error(e?.message ?? "Operation failed.");
     } finally {
       setSaving(false);
     }
@@ -214,8 +218,10 @@ export default function AdminSuperUsersPage() {
     try {
       await deleteSuperAdminUser(userId, accessToken);
       setUsers((prev) => prev.filter((u) => u.id !== userId));
+      toast.success("User deleted successfully");
     } catch (e: any) {
       setError(e?.message ?? "Delete failed.");
+      toast.error(e?.message ?? "Delete failed.");
     } finally {
       setDeleting(null);
       setConfirmDelete(null);

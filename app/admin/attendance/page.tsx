@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SkeletonList } from "@/components/ui/Skeleton";
+import { toast } from "sonner";
 
 const STATUS_CONFIG: Record<string, { label: string; short: string; bg: string; text: string }> = {
  PRESENT: { label: "Present", short: "P", bg: "bg-emerald-100", text: "text-emerald-700" },
@@ -121,19 +122,21 @@ export default function AdminAttendancePage() {
  setSaveSuccess(false);
  };
 
- const clearAll = async () => {
- if (!activeClassId) return;
- setSaving(true);
- try {
- await bulkDeleteAttendance(cid, token, { date, classId: activeClassId });
- await loadAttendance(activeClassId, date);
- } catch (e) {
- setSaveError((e as Error).message);
- } finally {
- setSaving(false);
- setConfirmClear(false);
- }
- };
+  const clearAll = async () => {
+  if (!activeClassId) return;
+  setSaving(true);
+  try {
+  await bulkDeleteAttendance(cid, token, { date, classId: activeClassId });
+  toast.success("Attendance cleared successfully");
+  await loadAttendance(activeClassId, date);
+  } catch (e) {
+  setSaveError((e as Error).message);
+  toast.error((e as Error).message || "Failed to clear attendance");
+  } finally {
+  setSaving(false);
+  setConfirmClear(false);
+  }
+  };
 
  const hasDirty = useMemo(() => {
  for (const r of records.values()) if (r.dirty) return true;
@@ -145,37 +148,39 @@ export default function AdminAttendancePage() {
  return false;
  }, [records]);
 
- const saveAll = async () => {
- if (!activeClassId || !cid || !token) return;
- setSaving(true); setSaveError(null);
- try {
- const entries: { studentId: string; status: AttendanceStatus }[] = [];
- for (const [sid, rec] of records) {
- if (rec.status !== null) entries.push({ studentId: sid, status: rec.status });
- }
- if (entries.length === 0) { setSaving(false); return; }
+  const saveAll = async () => {
+  if (!activeClassId || !cid || !token) return;
+  setSaving(true); setSaveError(null);
+  try {
+  const entries: { studentId: string; status: AttendanceStatus }[] = [];
+  for (const [sid, rec] of records) {
+  if (rec.status !== null) entries.push({ studentId: sid, status: rec.status });
+  }
+  if (entries.length === 0) { setSaving(false); return; }
 
- await bulkUpsertAttendance(cid, token, {
- classId: activeClassId,
- date,
- ...(user?.defaultAcademicYearId ? { academicYearId: user.defaultAcademicYearId } : {}),
- records: entries,
- });
+  await bulkUpsertAttendance(cid, token, {
+  classId: activeClassId,
+  date,
+  ...(user?.defaultAcademicYearId ? { academicYearId: user.defaultAcademicYearId } : {}),
+  records: entries,
+  });
 
- setRecords((prev) => {
- const next = new Map(prev);
- for (const [sid, rec] of next) next.set(sid, { ...rec, dirty: false });
- return next;
- });
- setSaveSuccess(true);
- setTimeout(() => setSaveSuccess(false), 3000);
- await loadAttendance(activeClassId, date);
- } catch (e) {
- setSaveError((e as Error).message);
- } finally {
- setSaving(false);
- }
- };
+  setRecords((prev) => {
+  const next = new Map(prev);
+  for (const [sid, rec] of next) next.set(sid, { ...rec, dirty: false });
+  return next;
+  });
+  setSaveSuccess(true);
+  toast.success("Attendance saved successfully");
+  setTimeout(() => setSaveSuccess(false), 3000);
+  await loadAttendance(activeClassId, date);
+  } catch (e) {
+  setSaveError((e as Error).message);
+  toast.error((e as Error).message || "Failed to save attendance");
+  } finally {
+  setSaving(false);
+  }
+  };
 
  const summary = useMemo(() => {
  const counts: Record<string, number> = { PRESENT: 0, ABSENT: 0, LEAVE: 0, SICK: 0, UNMARKED: 0 };

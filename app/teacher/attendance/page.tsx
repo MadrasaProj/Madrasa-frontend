@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
+import { toast } from "sonner";
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -199,12 +200,14 @@ export default function TeacherAttendancePage() {
  const clearAll = useCallback(async () => {
  if (!activeClassId) return;
  setSaving(true);
- try {
- await bulkDeleteAttendance(cid, token, { date, classId: activeClassId });
- await loadAttendance(activeClassId, date);
- } catch (e) {
- setSaveError((e as Error).message);
- } finally {
+  try {
+  await bulkDeleteAttendance(cid, token, { date, classId: activeClassId });
+  toast.success("Attendance cleared successfully");
+  await loadAttendance(activeClassId, date);
+  } catch (e) {
+  setSaveError((e as Error).message);
+  toast.error((e as Error).message || "Failed to clear attendance");
+  } finally {
  setSaving(false);
  setConfirmClear(false);
  }
@@ -274,11 +277,13 @@ export default function TeacherAttendancePage() {
  return next;
  });
  setSaveSuccess(true);
+ toast.success("Attendance saved successfully");
  if (saveSuccessTimer.current) clearTimeout(saveSuccessTimer.current);
  saveSuccessTimer.current = setTimeout(() => setSaveSuccess(false), 3000);
  await loadAttendance(activeClassId, date);
  } catch (e) {
  setSaveError((e as Error).message);
+ toast.error((e as Error).message || "Failed to save attendance");
  } finally {
  setSaving(false);
  }

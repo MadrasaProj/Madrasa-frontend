@@ -20,6 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { PageSkeleton } from "@/components/ui/Skeleton";
 import StudentEditDrawer from "@/components/admin/StudentEditDrawer";
+import { toast } from "sonner";
 
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: "bg-emerald-100 text-emerald-700",
@@ -286,7 +287,13 @@ export default function StudentDetailPage() {
                 <button
                   onClick={() => {
                     deleteMutation.mutate(student.id, {
-                      onSuccess: () => navigate(`${slugPrefix}/admin/students`),
+                      onSuccess: () => {
+                        toast.success("Student deleted successfully");
+                        navigate(`${slugPrefix}/admin/students`);
+                      },
+                      onError: (err: any) => {
+                        toast.error(err?.message || "Failed to delete student");
+                      },
                     });
                   }}
                   disabled={deleteMutation.isPending}

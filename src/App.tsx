@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import PwaRegister from "../components/PwaRegister";
 import { initPersistentStorage, saveTenantSlug } from "@/lib/slug-storage";
+import { Toaster } from "sonner";
 import { getTenantSlugFromPath, getRoleFromPath } from "@/lib/tenant-routing";
 
 // ── TWA Landing ───────────────────────────────────────────────────────────────
@@ -124,6 +125,7 @@ export default function App() {
 
   return (
     <>
+      <Toaster position="top-right" richColors closeButton />
       <PwaRegister />
       <Routes>
         {/* TWA Landing */}

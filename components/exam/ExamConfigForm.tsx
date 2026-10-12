@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   getExamConfig, updateExamConfig,
   type ExamConfig, type GradeConfig,
@@ -138,9 +139,11 @@ export function ExamConfigForm({
         gradeConfig: rowsToGradeConfig(gradeRows),
       });
       setMsg("Configuration saved successfully");
+      toast.success("Exam configuration saved successfully");
       onSaved?.();
     } catch (e: any) {
       setMsg(`Error: ${e.message}`);
+      toast.error(e.message || "Failed to save configuration");
     } finally {
       setSaving(false);
     }

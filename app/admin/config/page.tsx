@@ -28,6 +28,7 @@ import {
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { PageSkeleton } from "@/components/ui/Skeleton";
+import { toast } from "sonner";
 
 type Field = {
   key: keyof ClientConfig;
@@ -218,9 +219,11 @@ export default function AdminConfigPage() {
       });
       setConfig(updated);
       setSaved(true);
+      toast.success("Settings saved successfully");
       setTimeout(() => setSaved(false), 3000);
     } catch (e) {
       setError((e as Error).message);
+      toast.error((e as Error).message || "Failed to save settings");
     } finally {
       setSaving(false);
     }
@@ -234,9 +237,11 @@ export default function AdminConfigPage() {
       await updateClientConfig(cid, token, { attendanceMode: attMode });
       setAttendanceMode(attMode);
       setSavedAtt(true);
+      toast.success("Attendance mode updated successfully");
       setTimeout(() => setSavedAtt(false), 3000);
     } catch (e) {
       setAttError((e as Error).message);
+      toast.error((e as Error).message || "Failed to update attendance mode");
     } finally {
       setSavingAtt(false);
     }
@@ -301,9 +306,11 @@ export default function AdminConfigPage() {
         return { ...prev, loginEmail: isEmail ? newUsername : null, loginPhone: isEmail ? null : newUsername };
       });
       setSavedUsername(true);
+      toast.success("Admin username updated successfully");
       setTimeout(() => setSavedUsername(false), 3000);
     } catch (e) {
       setUsernameError((e as Error).message);
+      toast.error((e as Error).message || "Failed to update admin username");
     } finally {
       setSavingUsername(false);
     }
@@ -315,22 +322,26 @@ export default function AdminConfigPage() {
     setPasswordError("");
     if (newPassword !== confirmPassword) {
       setPasswordError("Passwords do not match");
+      toast.error("Passwords do not match");
       setSavingPassword(false);
       return;
     }
     if (newPassword.length < 6) {
       setPasswordError("Password must be at least 6 characters");
+      toast.error("Password must be at least 6 characters");
       setSavingPassword(false);
       return;
     }
     try {
       await updateClientConfig(cid, token, { password: newPassword });
       setSavedPassword(true);
+      toast.success("Admin password changed successfully");
       setNewPassword("");
       setConfirmPassword("");
       setTimeout(() => setSavedPassword(false), 3000);
     } catch (e) {
       setPasswordError((e as Error).message);
+      toast.error((e as Error).message || "Failed to update password");
     } finally {
       setSavingPassword(false);
     }

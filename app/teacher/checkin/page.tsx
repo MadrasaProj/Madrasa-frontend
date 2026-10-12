@@ -15,6 +15,7 @@ import {
  LogIn, LogOut, Loader2, Clock, MapPin, CheckCircle2, History, Plus,
  MapPinOff, ExternalLink,
 } from "lucide-react";
+import { toast } from "sonner";
 
 const LOCATION_HOWTO_VIDEO_URL = "https://www.youtube.com/watch?v=88FQrJoL21o";
 
@@ -215,18 +216,20 @@ export default function TeacherCheckinPage() {
    }
    setError(null);
    try {
-   const s = await checkIn(cid, token, coords!);
-   setTodaySessions((prev) => [s, ...prev]);
-   } catch (e) { setError((e as Error).message); }
+    const s = await checkIn(cid, token, coords!);
+    setTodaySessions((prev) => [s, ...prev]);
+    toast.success("Checked in successfully");
+   } catch (e) { setError((e as Error).message); toast.error((e as Error).message || "Check-in failed"); }
    finally { setActionLoading(false); }
   };
 
  const handleCheckOut = async () => {
  setActionLoading(true); setError(null);
  try {
- const s = await checkOut(cid, token);
- setTodaySessions((prev) => prev.map((sess) => sess.id === s.id ? s : sess));
- } catch (e) { setError((e as Error).message); }
+  const s = await checkOut(cid, token);
+  setTodaySessions((prev) => prev.map((sess) => sess.id === s.id ? s : sess));
+  toast.success("Checked out successfully");
+ } catch (e) { setError((e as Error).message); toast.error((e as Error).message || "Check-out failed"); }
  finally { setActionLoading(false); }
  };
 

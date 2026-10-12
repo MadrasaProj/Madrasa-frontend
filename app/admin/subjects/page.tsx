@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface FormState {
   name: string;
@@ -136,6 +137,7 @@ export default function AdminSubjectsPage() {
           status: form.status,
         });
         setSubjects((prev) => prev.map((s) => (s.id === updated.id ? { ...s, ...updated } : s)));
+        toast.success("Subject updated successfully");
       } else {
         const created = await createSubject(cid, token, {
           name: form.name.trim(),
@@ -143,10 +145,12 @@ export default function AdminSubjectsPage() {
           teacherId: isPeriodBased && form.teacherId ? form.teacherId : undefined,
         });
         setSubjects((prev) => [...prev, created]);
+        toast.success("Subject created successfully");
       }
       setShowDrawer(false);
     } catch (e) {
       setSaveError((e as Error).message);
+      toast.error((e as Error).message || "Failed to save subject");
     } finally {
       setSaving(false);
     }
@@ -160,9 +164,10 @@ export default function AdminSubjectsPage() {
       setShowBulkModal(false);
       setBulkClassId(""); setBulkTeacherId("");
       load(filterClassId, search);
-      alert(`Assigned teacher to ${result.updated} subjects`);
+      toast.success(`Assigned teacher to ${result.updated} subjects`);
     } catch (e) {
       setBulkError((e as Error).message);
+      toast.error((e as Error).message || "Failed to assign teacher");
     } finally {
       setBulkSaving(false);
     }

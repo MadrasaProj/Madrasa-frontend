@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { AlertCircle, Loader2, CheckCircle, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SkeletonList } from "@/components/ui/Skeleton";
+import { toast } from "sonner";
 
 const PAYMENT_METHODS = ["CASH", "BANK_TRANSFER", "UPI", "CHEQUE", "OTHER"] as const;
 
@@ -65,10 +66,11 @@ export default function AdminFeesUnpaidPage() {
         status: "PAID",
         paidAt: new Date().toISOString(),
       });
+      toast.success("Payment recorded successfully");
       setRecording(null);
       setReference("");
       load();
-    } catch (err) { alert((err as Error).message); }
+    } catch (err) { toast.error((err as Error).message || "Failed to record payment"); }
     finally { setSaving(false); }
   };
 

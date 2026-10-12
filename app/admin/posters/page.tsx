@@ -10,6 +10,7 @@ import {
 } from "@/lib/posters-api";
 import { SkeletonGrid } from "@/components/ui/Skeleton";
 import { Plus, Trash2, Download, Loader2, Upload } from "lucide-react";
+import { toast } from "sonner";
 
 export default function AdminPostersPage() {
   const { user, accessToken } = useAuthStore();
@@ -46,12 +47,13 @@ export default function AdminPostersPage() {
     setUploading(true);
     try {
       await uploadPoster(clientId, token, title, file);
+      toast.success("Poster uploaded successfully");
       setTitle("");
       setFile(null);
       setShowUpload(false);
       loadPosters();
     } catch {
-      alert("Failed to upload poster");
+      toast.error("Failed to upload poster");
     } finally {
       setUploading(false);
     }
@@ -62,8 +64,9 @@ export default function AdminPostersPage() {
     try {
       await deletePoster(clientId, token, poster.id);
       setPosters((prev) => prev.filter((p) => p.id !== poster.id));
+      toast.success("Poster deleted successfully");
     } catch {
-      alert("Failed to delete poster");
+      toast.error("Failed to delete poster");
     }
   };
 
