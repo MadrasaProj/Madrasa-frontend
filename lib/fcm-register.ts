@@ -18,8 +18,8 @@ export async function registerPushToken(
     return;
   }
 
-  const isParent = user.actorType === "PARENT";
-  const isTeacher = user.role === "teacher" || user.actorType === "TEACHER";
+  const isParent = user.actorType === "PARENT" || user.role === "parent";
+  const isTeacher = user.actorType === "TEACHER" || user.role === "teacher";
   if (!isParent && !isTeacher) {
     console.log("[FCM] Skipping: not a parent or teacher");
     return;
