@@ -30,6 +30,8 @@ import {
   Sun,
   Sparkles,
   Calculator,
+  Bell,
+  ArrowRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -315,6 +317,30 @@ export default function IbadahConfigPage() {
               <AlertCircle className="w-4 h-4 shrink-0" /> {error}
             </div>
           )}
+
+          {/* Ibadah Night Notification Settings Banner */}
+          <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-100/80 rounded-3xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <Bell className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-gray-900">
+                  Night Alert Notification for Ibadah Tracking
+                </h3>
+                <p className="text-xs text-gray-600 mt-0.5 max-w-xl">
+                  Configure automated nightly push notifications sent to parents to remind them to log their child&apos;s daily prayers and good deeds.
+                </p>
+              </div>
+            </div>
+            <a
+              href="/admin/config?tab=ibadah"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors shrink-0 shadow-xs self-start sm:self-auto"
+            >
+              <span>Configure Alert</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </a>
+          </div>
 
           {/* ──────────────────────────────────────────────────────── */}
           {/* SECTION 1: Performance Scoring Configuration            */}

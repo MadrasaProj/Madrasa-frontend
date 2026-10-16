@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
+import { toast } from "sonner";
+import { useClasses } from "@/lib/queries";
 import {
   getPendingLeaveRequests,
   reviewLeaveRequest,
@@ -24,6 +26,7 @@ import {
   ChevronUp,
   UserCheck,
   FilePen,
+  School,
 } from "lucide-react";
 
 const REASON_CONFIG: Record<
@@ -40,28 +43,43 @@ const STATUS_STYLES: Record<string, { border: string }> = {
   REJECTED: { border: "border-l-red-400" },
 };
 
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
+
 export default function TeacherLeaveRequestsPage() {
+  const queryClient = useQueryClient();
   const { user, accessToken, activeClientId } = useAuthStore();
   const { lang } = useLanguageStore();
-  const cid = activeClientId ?? "";
+  const cid = user?.clientId || activeClientId || "";
   const token = accessToken ?? "";
 
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("PENDING");
+  const [selectedClassId, setSelectedClassId] = useState<string>("ALL");
   const [search, setSearch] = useState("");
 
   const [expanded, setExpanded] = useState<string | null>(null);
   const [reviewNote, setReviewNote] = useState("");
   const [reviewingSave, setReviewingSave] = useState(false);
 
+  // Load teacher's classes for class dropdown filter
+  const { data: classesData } = useClasses({ clientId: cid, token });
+  const allClasses = classesData ?? [];
+  const teacherClasses = user?.id ? allClasses.filter((c) => c.classTeacherId === user.id) : [];
+  const classes = teacherClasses.length > 0 ? teacherClasses : allClasses;
+
   const loadRequests = async () => {
     if (!cid || !token) return;
     setLoading(true);
     try {
-      const res = await getPendingLeaveRequests(cid, token, { status: filter });
+      const res = await getPendingLeaveRequests(cid, token, {
+        status: filter,
+        ...(selectedClassId !== "ALL" ? { classId: selectedClassId } : {}),
+      });
       setRequests(res.requests);
+      setError(null);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -71,7 +89,7 @@ export default function TeacherLeaveRequestsPage() {
 
   useEffect(() => {
     loadRequests();
-  }, [cid, token, filter]);
+  }, [cid, token, filter, selectedClassId]);
 
   const handleReview = async (id: string, status: "APPROVED" | "REJECTED") => {
     setReviewingSave(true);
@@ -80,11 +98,18 @@ export default function TeacherLeaveRequestsPage() {
         status,
         reviewNote: reviewNote || undefined,
       });
+      toast.success(
+        status === "APPROVED"
+          ? (lang === "ml" ? "ലീവ് അപേക്ഷ അംഗീകരിച്ചു" : "Leave request approved")
+          : (lang === "ml" ? "ലീവ് അപേക്ഷ നിരസിച്ചു" : "Leave request rejected")
+      );
       setExpanded(null);
       setReviewNote("");
+      queryClient.invalidateQueries({ queryKey: queryKeys.leaveRequests.all });
       loadRequests();
     } catch (e) {
       setError((e as Error).message);
+      toast.error((e as Error).message || "Failed to update leave request");
     } finally {
       setReviewingSave(false);
     }
@@ -101,7 +126,8 @@ export default function TeacherLeaveRequestsPage() {
   const statusLabel = (s: string) => {
     if (s === "PENDING") return t("teacherPages", "pendingLabel", lang);
     if (s === "APPROVED") return t("teacherPages", "approvedLabel", lang);
-    return t("teacherPages", "rejectedLabel", lang);
+    if (s === "REJECTED") return t("teacherPages", "rejectedLabel", lang);
+    return lang === "ml" ? "എല്ലാം" : "All";
   };
 
   return (
@@ -118,8 +144,9 @@ export default function TeacherLeaveRequestsPage() {
         {error && <ApiErrorBanner message={error} />}
 
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
-            {(["PENDING", "APPROVED", "REJECTED"] as const).map((s) => (
+          {/* Status Tabs */}
+          <div className="flex gap-1 bg-gray-100 rounded-xl p-1 shrink-0 overflow-x-auto">
+            {(["PENDING", "APPROVED", "REJECTED", "ALL"] as const).map((s) => (
               <button
                 key={s}
                 onClick={() => {
@@ -127,7 +154,7 @@ export default function TeacherLeaveRequestsPage() {
                   setExpanded(null);
                 }}
                 className={cn(
-                  "flex-1 py-2 px-4 rounded-lg text-xs font-semibold transition-all hover:text-gray-700 active:scale-[0.98]",
+                  "py-2 px-3.5 rounded-lg text-xs font-semibold transition-all hover:text-gray-700 active:scale-[0.98] cursor-pointer whitespace-nowrap",
                   filter === s
                     ? "bg-white text-emerald-700 shadow-sm font-bold"
                     : "text-gray-500",
@@ -137,6 +164,26 @@ export default function TeacherLeaveRequestsPage() {
               </button>
             ))}
           </div>
+
+          {/* Class Filter (if teacher has multiple classes) */}
+          {classes.length > 1 && (
+            <div className="relative shrink-0 sm:w-48">
+              <School className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <select
+                value={selectedClassId}
+                onChange={(e) => setSelectedClassId(e.target.value)}
+                className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold focus:outline-none focus:border-emerald-500 bg-white cursor-pointer appearance-none"
+              >
+                <option value="ALL">{lang === "ml" ? "എല്ലാ ക്ലാസുകളും" : "All Classes"}</option>
+                {classes.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            </div>
+          )}
+
+          {/* Search box */}
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input

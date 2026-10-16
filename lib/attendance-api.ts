@@ -69,10 +69,13 @@ export class AttendanceApiError extends Error {
 export function getClassAttendance(
   clientId: string,
   token: string,
-  params: { date: string; classId?: string; academicYearId?: string; skip?: number; take?: number },
+  params: { date?: string; from?: string; to?: string; classId?: string; academicYearId?: string; skip?: number; take?: number },
   signal?: AbortSignal,
 ): Promise<ClassAttendanceResponse> {
-  const q = new URLSearchParams({ date: params.date });
+  const q = new URLSearchParams();
+  if (params.date) q.set("date", params.date);
+  if (params.from) q.set("from", params.from);
+  if (params.to) q.set("to", params.to);
   if (params.classId) q.set("classId", params.classId);
   if (params.academicYearId) q.set("academicYearId", params.academicYearId);
   if (params.skip !== undefined) q.set("skip", String(params.skip));

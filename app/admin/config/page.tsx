@@ -8,6 +8,7 @@ import {
   updateAdminUsername,
   type ClientConfig,
 } from "@/lib/config-api";
+import { triggerIbadahReminder } from "@/lib/ibadah-api";
 import { useAuthStore } from "@/store/auth";
 import {
   Settings,
@@ -24,6 +25,12 @@ import {
   Radio,
   ShieldCheck,
   KeyRound,
+  Moon,
+  Bell,
+  Clock,
+  Send,
+  Sparkles,
+  ExternalLink,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -116,6 +123,7 @@ const TABS = [
   { value: "general", label: "General", icon: Building2 },
   { value: "management", label: "Management", icon: UserCog },
   { value: "attendance", label: "Attendance", icon: Radio },
+  { value: "ibadah", label: "Ibadah Alert", icon: Moon },
   { value: "parent-modules", label: "Parent Modules", icon: ShieldCheck },
   { value: "admin-account", label: "Admin Account", icon: KeyRound },
 ];
@@ -172,6 +180,24 @@ export default function AdminConfigPage() {
   const [savedPassword, setSavedPassword] = useState(false);
   const [passwordError, setPasswordError] = useState("");
 
+  const [ibadahEnabled, setIbadahEnabled] = useState(true);
+  const [ibadahTitle, setIbadahTitle] = useState("");
+  const [ibadahBody, setIbadahBody] = useState("");
+  const [ibadahTime, setIbadahTime] = useState("19:00");
+  const [savingIbadah, setSavingIbadah] = useState(false);
+  const [savedIbadah, setSavedIbadah] = useState(false);
+  const [triggeringReminder, setTriggeringReminder] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>("general");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const paramTab = new URLSearchParams(window.location.search).get("tab");
+      if (paramTab && TABS.some((t) => t.value === paramTab)) {
+        setActiveTab(paramTab);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     if (!cid || !token) return;
     getClientConfig(cid, token)
@@ -181,6 +207,10 @@ export default function AdminConfigPage() {
         if (data.showCommitteeAttendance !== undefined) setShowCommAtt(data.showCommitteeAttendance);
         if (data.showCommitteeTeacherCheckin !== undefined) setShowCommTC(data.showCommitteeTeacherCheckin);
         setDisabledModules(data.disabledParentModules ?? []);
+        if (data.ibadahReminderEnabled !== undefined) setIbadahEnabled(data.ibadahReminderEnabled);
+        if (data.ibadahReminderTitle) setIbadahTitle(data.ibadahReminderTitle);
+        if (data.ibadahReminderBody) setIbadahBody(data.ibadahReminderBody);
+        if (data.ibadahReminderTime) setIbadahTime(data.ibadahReminderTime);
       })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
@@ -347,6 +377,55 @@ export default function AdminConfigPage() {
     }
   };
 
+  const handleSaveIbadahReminder = async () => {
+    if (!cid || !token) return;
+    setSavingIbadah(true);
+    try {
+      const updated = await updateClientConfig(cid, token, {
+        ibadahReminderEnabled: ibadahEnabled,
+        ibadahReminderTitle: ibadahTitle || null,
+        ibadahReminderBody: ibadahBody || null,
+        ibadahReminderTime: ibadahTime || "19:00",
+      });
+      setConfig((prev) => ({
+        ...prev,
+        ibadahReminderEnabled: updated.ibadahReminderEnabled,
+        ibadahReminderTitle: updated.ibadahReminderTitle,
+        ibadahReminderBody: updated.ibadahReminderBody,
+        ibadahReminderTime: updated.ibadahReminderTime,
+      }));
+      setSavedIbadah(true);
+      toast.success("Ibadah alert settings saved successfully");
+      setTimeout(() => setSavedIbadah(false), 3000);
+    } catch (e) {
+      toast.error((e as Error).message || "Failed to save ibadah settings");
+    } finally {
+      setSavingIbadah(false);
+    }
+  };
+
+  const handleTestTriggerReminder = async (dryRun = false) => {
+    if (!cid || !token) return;
+    setTriggeringReminder(true);
+    try {
+      const res = await triggerIbadahReminder(cid, token, { dryRun, notifyAll: true });
+      if (dryRun) {
+        toast.info(
+          `Dry Run: ${res.totalParentsNotified} parents eligible for notification today.`,
+          { duration: 5000 }
+        );
+      } else {
+        toast.success(
+          `Alert triggered! ${res.totalParentsNotified} parent reminders processed.`
+        );
+      }
+    } catch (e) {
+      toast.error((e as Error).message || "Failed to trigger reminder");
+    } finally {
+      setTriggeringReminder(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <PageHeader
@@ -358,7 +437,7 @@ export default function AdminConfigPage() {
       {loading ? (
         <PageSkeleton />
       ) : (
-        <Tabs.Root defaultValue="general" className="lg:flex lg:gap-6 lg:items-start pb-28">
+        <Tabs.Root value={activeTab} onValueChange={setActiveTab} className="lg:flex lg:gap-6 lg:items-start pb-28">
           {error && (
             <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" /> {error}
@@ -688,6 +767,230 @@ export default function AdminConfigPage() {
                 )}
               </button>
             </motion.div>
+          </Tabs.Content>
+
+          {/* ── Ibadah Alert Tab ── */}
+          <Tabs.Content value="ibadah" className="space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Daily Night Ibadah Alert</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  Configure automated nightly push notifications sent to parents to remind them to record daily prayers and deeds.
+                </p>
+              </div>
+              <a
+                href="/admin/ibadah-config"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-3 py-2 rounded-xl shrink-0 border border-emerald-100"
+              >
+                <span>Edit Scoring Rules</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+
+            {/* Toggle & Schedule Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-2xl border border-gray-100 p-5"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <Moon className="w-4 h-4 text-emerald-600" />
+                <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide">
+                  Notification Status &amp; Schedule
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">
+                    Enable Nightly Ibadah Reminder
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Automatically send a push notification to all parents every evening
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIbadahEnabled((v) => !v)}
+                  className={`relative w-12 h-6 rounded-full transition-colors duration-200 shrink-0 ${
+                    ibadahEnabled ? "bg-emerald-500" : "bg-gray-300"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
+                      ibadahEnabled ? "translate-x-6" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Schedule time selector */}
+              <div className="pt-4">
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                  Scheduled Alert Time (IST)
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                  <select
+                    value={ibadahTime}
+                    onChange={(e) => setIbadahTime(e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                  >
+                    <option value="18:00">06:00 PM (18:00)</option>
+                    <option value="18:30">06:30 PM (18:30)</option>
+                    <option value="19:00">07:00 PM (19:00) — Recommended</option>
+                    <option value="19:30">07:30 PM (19:30)</option>
+                    <option value="20:00">08:00 PM (20:00)</option>
+                    <option value="20:30">08:30 PM (20:30)</option>
+                    <option value="21:00">09:00 PM (21:00)</option>
+                    <option value="21:30">09:30 PM (21:30)</option>
+                    <option value="22:00">10:00 PM (22:00)</option>
+                  </select>
+                  <p className="text-xs text-gray-500 leading-relaxed">
+                    Evaluated every 15 minutes between 18:00 and 23:00 IST. Sent once daily per madrasa.
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Notification content card */}
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4"
+            >
+              <div className="flex items-center gap-2">
+                <Bell className="w-4 h-4 text-emerald-600" />
+                <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide">
+                  Notification Content
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  Notification Title
+                </label>
+                <input
+                  type="text"
+                  value={ibadahTitle}
+                  onChange={(e) => setIbadahTitle(e.target.value)}
+                  placeholder="Daily Ibadah Reminder (Default)"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  Default: <span className="text-gray-600 font-medium">Daily Ibadah Reminder</span>
+                </p>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-gray-700">
+                    Notification Message Body
+                  </label>
+                  <span className="text-[11px] bg-emerald-50 text-emerald-700 font-mono px-2 py-0.5 rounded-md border border-emerald-100">
+                    {"{madrasaName}"} supported
+                  </span>
+                </div>
+                <textarea
+                  rows={3}
+                  value={ibadahBody}
+                  onChange={(e) => setIbadahBody(e.target.value)}
+                  placeholder="Assalamu Alaikum. Please remember to record today's prayers and good deeds for your children in {madrasaName}."
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  Tip: Use <code className="bg-gray-100 px-1 py-0.5 rounded text-gray-700">{"{madrasaName}"}</code> to dynamically insert this madrasa&apos;s name.
+                </p>
+              </div>
+            </motion.div>
+
+            {/* Live Mobile Notification Preview */}
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-2xl border border-gray-100 p-5"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles className="w-4 h-4 text-emerald-600" />
+                <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide">
+                  Live Parent Phone Preview
+                </p>
+              </div>
+              <div className="bg-gray-50 border border-gray-200/80 rounded-2xl p-4 max-w-md shadow-xs">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-md bg-emerald-600 flex items-center justify-center text-white text-[10px] font-bold">
+                      M
+                    </div>
+                    <span className="text-xs font-semibold text-gray-700 truncate">
+                      {config.name || "Madrasa App"}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-gray-400 shrink-0">Just now</span>
+                </div>
+                <h4 className="text-xs font-bold text-gray-900 leading-snug">
+                  {ibadahTitle.trim() || "Daily Ibadah Reminder"}
+                </h4>
+                <p className="text-xs text-gray-600 mt-1 line-clamp-3 leading-relaxed">
+                  {(ibadahBody.trim() || "Assalamu Alaikum. Please remember to record today's prayers and good deeds for your children in {madrasaName}.").replace(
+                    /\{madrasaName\}/g,
+                    config.name || "our Madrasa"
+                  )}
+                </p>
+              </div>
+            </motion.div>
+
+            {/* Buttons: Save & Test */}
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={handleSaveIbadahReminder}
+                disabled={savingIbadah}
+                className={cn(
+                  "flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold transition-colors",
+                  savedIbadah
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60",
+                )}
+              >
+                {savingIbadah ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : savedIbadah ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" /> Settings Saved!
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" /> Save Ibadah Alert Settings
+                  </>
+                )}
+              </button>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleTestTriggerReminder(true)}
+                  disabled={triggeringReminder}
+                  className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-semibold border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition-colors disabled:opacity-60"
+                >
+                  <Eye className="w-3.5 h-3.5 text-gray-500" />
+                  Preview Audience (Dry Run)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleTestTriggerReminder(false)}
+                  disabled={triggeringReminder}
+                  className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-semibold border border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors disabled:opacity-60"
+                >
+                  {triggeringReminder ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Send className="w-3.5 h-3.5 text-emerald-600" />
+                  )}
+                  Send Test Alert Now
+                </button>
+              </div>
+            </div>
           </Tabs.Content>
 
           {/* ── Admin Account Tab ── */}

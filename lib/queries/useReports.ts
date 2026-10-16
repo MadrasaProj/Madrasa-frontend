@@ -28,11 +28,12 @@ export function useStudentStats(
 export function useFeeSummary(
   ctx: AuthCtx,
   ay?: string,
+  params?: { from?: string; to?: string },
   options?: Omit<UseQueryOptions<FeeSummary, Error>, "queryKey" | "queryFn">,
 ) {
   return useQuery<FeeSummary, Error>({
-    queryKey: queryKeys.reports.feeSummary(ctx.clientId, ay),
-    queryFn: () => getFeeSummary(ctx.clientId, ctx.token, ay),
+    queryKey: queryKeys.reports.feeSummary(ctx.clientId, ay, params?.from, params?.to),
+    queryFn: () => getFeeSummary(ctx.clientId, ctx.token, ay, params?.from, params?.to),
     enabled: !!ctx.clientId && !!ctx.token,
     staleTime: 5 * 60_000,
     ...options,
@@ -55,11 +56,12 @@ export function useAttendanceSummary(
 
 export function useHomeworkSummary(
   ctx: AuthCtx,
+  params?: { from?: string; to?: string },
   options?: Omit<UseQueryOptions<HomeworkSummary, Error>, "queryKey" | "queryFn">,
 ) {
   return useQuery<HomeworkSummary, Error>({
-    queryKey: queryKeys.reports.homeworkSummary(ctx.clientId),
-    queryFn: () => getHomeworkSummary(ctx.clientId, ctx.token),
+    queryKey: queryKeys.reports.homeworkSummary(ctx.clientId, params?.from, params?.to),
+    queryFn: () => getHomeworkSummary(ctx.clientId, ctx.token, params?.from, params?.to),
     enabled: !!ctx.clientId && !!ctx.token,
     staleTime: 5 * 60_000,
     ...options,

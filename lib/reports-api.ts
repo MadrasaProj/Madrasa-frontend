@@ -33,8 +33,14 @@ export interface HomeworkSummary {
 export const getStudentStats      = (cid: string, token: string) =>
   apiFetch<StudentStats>(`${API_BASE}/${cid}/reports/student-stats`, token);
 
-export const getFeeSummary        = (cid: string, token: string, ay?: string) =>
-  apiFetch<FeeSummary>(`${API_BASE}/${cid}/reports/fee-summary${ay ? `?academicYearId=${ay}` : ""}`, token);
+export const getFeeSummary        = (cid: string, token: string, ay?: string, from?: string, to?: string) => {
+  const q = new URLSearchParams();
+  if (ay)   q.set("academicYearId", ay);
+  if (from) q.set("from", from);
+  if (to)   q.set("to",   to);
+  const qs = q.toString();
+  return apiFetch<FeeSummary>(`${API_BASE}/${cid}/reports/fee-summary${qs ? `?${qs}` : ""}`, token);
+};
 
 export const getAttendanceSummary = (cid: string, token: string, from?: string, to?: string) => {
   const q = new URLSearchParams();
@@ -44,5 +50,10 @@ export const getAttendanceSummary = (cid: string, token: string, from?: string, 
   return apiFetch<AttendanceSummary>(`${API_BASE}/${cid}/reports/attendance-summary${qs ? `?${qs}` : ""}`, token);
 };
 
-export const getHomeworkSummary   = (cid: string, token: string) =>
-  apiFetch<HomeworkSummary>(`${API_BASE}/${cid}/reports/homework-summary`, token);
+export const getHomeworkSummary   = (cid: string, token: string, from?: string, to?: string) => {
+  const q = new URLSearchParams();
+  if (from) q.set("from", from);
+  if (to)   q.set("to",   to);
+  const qs = q.toString();
+  return apiFetch<HomeworkSummary>(`${API_BASE}/${cid}/reports/homework-summary${qs ? `?${qs}` : ""}`, token);
+};

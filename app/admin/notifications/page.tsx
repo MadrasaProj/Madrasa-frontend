@@ -149,9 +149,10 @@ export default function AdminNotificationsPage() {
         title="Notifications"
         subtitle={`${total} sent`}
         icon={Bell}
+        showActionOnMobile
         action={
           <button onClick={handleComposeClick}
-            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold">
+            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-sm font-semibold transition-all shadow-sm">
             <Plus className="w-4 h-4" /> Compose
           </button>
         }
@@ -162,7 +163,15 @@ export default function AdminNotificationsPage() {
       {loading ? (
         <SkeletonList count={4} />
       ) : sent.length === 0 ? (
-        <div className="text-center py-16 text-gray-400 text-sm">No notifications sent yet</div>
+        <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 p-8 shadow-sm max-w-md mx-auto">
+          <Bell className="w-12 h-12 mx-auto mb-3 text-emerald-200" />
+          <p className="text-base font-bold text-gray-800">No notifications sent yet</p>
+          <p className="text-xs text-gray-500 mt-1 mb-5">Broadcast announcements, fee reminders, and alerts to parents and teachers.</p>
+          <button onClick={handleComposeClick}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-sm font-semibold shadow-md shadow-emerald-600/20 transition-all">
+            <Plus className="w-4 h-4" /> Create Notification
+          </button>
+        </div>
       ) : (
         <div className="max-w-4xl mx-auto w-full space-y-3 pb-20">
           {sent.map((n, i) => {
@@ -218,6 +227,18 @@ export default function AdminNotificationsPage() {
           })}
         </div>
       )}
+
+      {/* Mobile Floating Action Button (FAB) */}
+      <div className="fixed bottom-20 right-4 z-30 md:hidden">
+        <button
+          onClick={handleComposeClick}
+          className="flex items-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-full shadow-lg shadow-emerald-600/40 font-semibold text-sm transition-all"
+          aria-label="Create Notification"
+        >
+          <Plus className="w-5 h-5" />
+          <span>Compose</span>
+        </button>
+      </div>
 
       {/* Compose modal */}
       <AnimatePresence>

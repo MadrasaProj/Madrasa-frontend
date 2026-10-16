@@ -9,12 +9,18 @@ interface PageHeaderProps {
   back?: boolean;
   backHref?: string;
   action?: React.ReactNode;
+  showActionOnMobile?: boolean;
 }
 
-export function PageHeader({ title, subtitle, icon: Icon, back, backHref, action }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, icon: Icon, back, backHref, action, showActionOnMobile }: PageHeaderProps) {
   const navigate = useNavigate();
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 mb-5 lg:mb-6">
+    <div className={cn(
+      "mb-5 lg:mb-6",
+      showActionOnMobile
+        ? "flex items-center justify-between gap-2 sm:gap-3"
+        : "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3"
+    )}>
       <div className="flex items-center gap-2.5 min-w-0 flex-1">
         {back && (
           <button
@@ -34,7 +40,11 @@ export function PageHeader({ title, subtitle, icon: Icon, back, backHref, action
           {subtitle && <p className="text-xs lg:text-sm text-gray-500 truncate mt-0.5">{subtitle}</p>}
         </div>
       </div>
-      {action && <div className="shrink-0 hidden sm:block">{action}</div>}
+      {action && (
+        <div className={cn("shrink-0", !showActionOnMobile && "hidden sm:block")}>
+          {action}
+        </div>
+      )}
     </div>
   );
 }

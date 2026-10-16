@@ -10,7 +10,7 @@ import {
   Moon, Loader2, AlertCircle,
   Flame, BookOpen, ChevronDown, ChevronUp,
   CheckCircle2, Save, ChevronLeft, ChevronRight, Hash, ToggleLeft,
-  Check, Sun, X, Users,
+  Check, Sun, X, Users, Lock, Calendar,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,8 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { IbadahCounter } from "@/components/ui/IbadahCounter";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
+import { toast } from "sonner";
+import { isPrayerBlocked } from "@/lib/prayer-times";
 
 const PRAYERS = ["fajr", "dhuhr", "asr", "maghrib", "isha"] as const;
 type Prayer = typeof PRAYERS[number];
@@ -86,10 +88,43 @@ export default function ParentIbadahPage() {
     isha: { label: t("parentPages", "ishaName", lang), time: t("parentPages", "night", lang), configKey: "enableIsha" },
   };
 
+  const [historyPreset, setHistoryPreset] = useState<"LAST_7" | "THIS_MONTH" | "LAST_MONTH" | "LAST_90" | "CUSTOM">("THIS_MONTH");
+  const [historyFrom, setHistoryFrom] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+  });
+  const [historyTo, setHistoryTo] = useState(() => new Date().toISOString().slice(0, 10));
+
+  const applyHistoryPreset = (p: typeof historyPreset) => {
+    setHistoryPreset(p);
+    const now = new Date();
+    const todayStr = fmt(now);
+    if (p === "LAST_7") {
+      const d = new Date(now);
+      d.setDate(d.getDate() - 6);
+      setHistoryFrom(fmt(d));
+      setHistoryTo(todayStr);
+    } else if (p === "THIS_MONTH") {
+      const d = new Date(now.getFullYear(), now.getMonth(), 1);
+      setHistoryFrom(fmt(d));
+      setHistoryTo(todayStr);
+    } else if (p === "LAST_MONTH") {
+      const first = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const last = new Date(now.getFullYear(), now.getMonth(), 0);
+      setHistoryFrom(fmt(first));
+      setHistoryTo(fmt(last));
+    } else if (p === "LAST_90") {
+      const d = new Date(now);
+      d.setDate(d.getDate() - 90);
+      setHistoryFrom(fmt(d));
+      setHistoryTo(todayStr);
+    }
+  };
+
   const { data: ibadah, isLoading, error } = useStudentIbadah(
     { clientId: cid, token },
     activeId,
-    { limit: 90 },
+    { limit: 365 },
   );
   const saveMutation = useUpsertStudentIbadah({ clientId: cid, token }, activeId);
 
@@ -113,6 +148,33 @@ export default function ParentIbadahPage() {
     [config],
   );
 
+  const filteredHistoryLogs = useMemo(() => {
+    if (!ibadah?.logs) return [];
+    return ibadah.logs.filter((l) => {
+      const d = l.date.slice(0, 10);
+      return (!historyFrom || d >= historyFrom) && (!historyTo || d <= historyTo);
+    });
+  }, [ibadah?.logs, historyFrom, historyTo]);
+
+  const historyStats = useMemo(() => {
+    let jama = 0;
+    let ada = 0;
+    let qala = 0;
+    let excused = 0;
+    let quran = 0;
+    for (const log of filteredHistoryLogs) {
+      quran += log.quranPages || 0;
+      for (const p of activePrayers) {
+        const val = log[p];
+        if (val === "JAMA") jama++;
+        else if (val === "ADA") ada++;
+        else if (val === "QALA") qala++;
+        else if (val === "NOT_PRAYABLE") excused++;
+      }
+    }
+    return { jama, ada, qala, excused, quran, totalRecorded: filteredHistoryLogs.length };
+  }, [filteredHistoryLogs, activePrayers]);
+
   const customItems = config?.customItems ?? [];
 
   const prevDay = () => {
@@ -129,18 +191,37 @@ export default function ParentIbadahPage() {
   };
 
   const setPrayer = (p: Prayer, value: PrayerStatus | null) => {
+    if (value) {
+      const check = isPrayerBlocked(p, date);
+      if (check.blocked) {
+        toast.error(`${prayerMeta[p].label} cannot be marked yet (${check.message})`);
+        return;
+      }
+    }
     setForm((prev) => ({ ...prev, [p]: value }));
     setDirtyPrayers((prev) => new Set(prev).add(p));
     setSaved(false);
   };
 
   const markAll = () => {
+    const available = activePrayers.filter((p) => !isPrayerBlocked(p, date).blocked);
+    if (available.length === 0) {
+      toast.error("No prayers have started yet for today.");
+      return;
+    }
     setForm((prev) => {
-      const updates = Object.fromEntries(activePrayers.map((p) => [p, 'ADA' as PrayerStatus]));
+      const updates = Object.fromEntries(available.map((p) => [p, 'ADA' as PrayerStatus]));
       return { ...prev, ...updates };
     });
-    setDirtyPrayers((prev) => new Set([...prev, ...activePrayers]));
+    setDirtyPrayers((prev) => new Set([...prev, ...available]));
     setSaved(false);
+    if (available.length < activePrayers.length) {
+      toast.info(
+        `Marked ${available.length} elapsed prayer(s) as Ada'. Future prayers remain locked until their prayer time.`
+      );
+    } else {
+      toast.success("All prayers marked as Ada'.");
+    }
   };
 
   const toggleCustomBoolean = (key: string) => {
@@ -174,13 +255,20 @@ export default function ParentIbadahPage() {
   const handleSave = async () => {
     if (!activeId) return;
     try {
+      const sanitizePrayer = (p: Prayer) => {
+        if (!dirtyPrayers.has(p)) return undefined;
+        const val = form[p];
+        if (val && isPrayerBlocked(p, date).blocked) return undefined;
+        return val ?? undefined;
+      };
+
       await saveMutation.mutateAsync({
         date,
-        fajr: dirtyPrayers.has("fajr") ? (form.fajr ?? undefined) : undefined,
-        dhuhr: dirtyPrayers.has("dhuhr") ? (form.dhuhr ?? undefined) : undefined,
-        asr: dirtyPrayers.has("asr") ? (form.asr ?? undefined) : undefined,
-        maghrib: dirtyPrayers.has("maghrib") ? (form.maghrib ?? undefined) : undefined,
-        isha: dirtyPrayers.has("isha") ? (form.isha ?? undefined) : undefined,
+        fajr: sanitizePrayer("fajr"),
+        dhuhr: sanitizePrayer("dhuhr"),
+        asr: sanitizePrayer("asr"),
+        maghrib: sanitizePrayer("maghrib"),
+        isha: sanitizePrayer("isha"),
         quranPages: form.quranPages,
         customData: Object.keys(form.customData).length > 0 ? form.customData : undefined,
         notes: form.notes || undefined,
@@ -366,44 +454,76 @@ export default function ParentIbadahPage() {
               const status = form[p];
               const opt = prayerOptions.find((o) => o.value === status);
               const Icon = opt?.icon ?? Moon;
+              const blockedCheck = isPrayerBlocked(p, date);
+              const isBlocked = blockedCheck.blocked;
+
               return (
                 <div
                   key={p}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-3 cursor-pointer active:opacity-80 transition-all first:rounded-t-none last:rounded-b-none",
-                    status === "ADA" && "bg-gradient-to-r from-emerald-50/60 to-transparent",
-                    status === "NOT_PRAYABLE" && "bg-gradient-to-r from-emerald-50/60 to-transparent",
-                    status === "QALA" && "bg-gradient-to-r from-amber-50/60 to-transparent",
-                    status === "JAMA" && "bg-gradient-to-r from-blue-50/60 to-transparent",
-                    !status && "hover:bg-gray-50",
+                    "flex items-center gap-3 px-4 py-3 transition-all first:rounded-t-none last:rounded-b-none",
+                    isBlocked
+                      ? "opacity-65 bg-gray-50/60 cursor-not-allowed select-none"
+                      : "cursor-pointer active:opacity-80",
+                    !isBlocked && status === "ADA" && "bg-gradient-to-r from-emerald-50/60 to-transparent",
+                    !isBlocked && status === "NOT_PRAYABLE" && "bg-gradient-to-r from-emerald-50/60 to-transparent",
+                    !isBlocked && status === "QALA" && "bg-gradient-to-r from-amber-50/60 to-transparent",
+                    !isBlocked && status === "JAMA" && "bg-gradient-to-r from-blue-50/60 to-transparent",
+                    !isBlocked && !status && "hover:bg-gray-50",
                   )}
-                  onClick={() => setDrawerPrayer(p)}
+                  onClick={() => {
+                    if (isBlocked) {
+                      toast.error(`${prayerMeta[p].label} cannot be recorded yet. ${blockedCheck.message}`);
+                      return;
+                    }
+                    setDrawerPrayer(p);
+                  }}
                 >
                   <div className={cn(
                     "w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 transition-all",
-                    (status === "ADA" || status === "NOT_PRAYABLE") && "text-emerald-500",
-                    status === "QALA" && "text-amber-500",
-                    status === "JAMA" && "text-blue-500",
-                    !status && "text-gray-300",
+                    isBlocked && "text-gray-400 bg-gray-100",
+                    !isBlocked && (status === "ADA" || status === "NOT_PRAYABLE") && "text-emerald-500",
+                    !isBlocked && status === "QALA" && "text-amber-500",
+                    !isBlocked && status === "JAMA" && "text-blue-500",
+                    !isBlocked && !status && "text-gray-300",
                   )}>
-                    <Icon className="w-4 h-4" />
+                    {isBlocked ? <Lock className="w-4 h-4 text-gray-400" /> : <Icon className="w-4 h-4" />}
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-800">
-                      {prayerMeta[p].label}
-                    </p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className={cn(
+                        "text-sm font-medium",
+                        isBlocked ? "text-gray-500" : "text-gray-800",
+                      )}>
+                        {prayerMeta[p].label}
+                      </p>
+                      {isBlocked && (
+                        <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200/60 px-1.5 py-0.5 rounded font-medium">
+                          {blockedCheck.message}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-400">{prayerMeta[p].time}</p>
                   </div>
-                  <span className={cn(
-                    "text-[11px] font-medium transition-all",
-                    (status === "ADA" || status === "NOT_PRAYABLE") && "text-emerald-500",
-                    status === "QALA" && "text-amber-500",
-                    status === "JAMA" && "text-blue-500",
-                    !status && "text-gray-300",
-                  )}>
-                    {opt?.label ?? "—"}
-                  </span>
-                  <ChevronDown className="w-3.5 h-3.5 text-gray-300 shrink-0" />
+                  {isBlocked ? (
+                    <div className="flex items-center gap-1 text-[11px] font-medium text-gray-400">
+                      <Lock className="w-3 h-3 text-gray-400" />
+                      <span>Locked</span>
+                    </div>
+                  ) : (
+                    <>
+                      <span className={cn(
+                        "text-[11px] font-medium transition-all",
+                        (status === "ADA" || status === "NOT_PRAYABLE") && "text-emerald-500",
+                        status === "QALA" && "text-amber-500",
+                        status === "JAMA" && "text-blue-500",
+                        !status && "text-gray-300",
+                      )}>
+                        {opt?.label ?? "—"}
+                      </span>
+                      <ChevronDown className="w-3.5 h-3.5 text-gray-300 shrink-0" />
+                    </>
+                  )}
                 </div>
               );
             })}
@@ -519,14 +639,100 @@ export default function ParentIbadahPage() {
 
         {/* HISTORY VIEW */}
         {view === "history" && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2 pb-20">
-          {ibadah.logs.length === 0 ? (
-            <div className="text-center py-16">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3 pb-20">
+          {/* History Date Filter Bar */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                <Calendar className="w-4 h-4 text-emerald-600" />
+                <span>Date Range</span>
+                <span className="text-[11px] font-normal normal-case text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">
+                  {historyFrom} to {historyTo}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {(
+                  [
+                    { id: "LAST_7", label: "Last 7 Days" },
+                    { id: "THIS_MONTH", label: "This Month" },
+                    { id: "LAST_MONTH", label: "Last Month" },
+                    { id: "LAST_90", label: "Last 90 Days" },
+                    { id: "CUSTOM", label: "Custom" },
+                  ] as { id: typeof historyPreset; label: string }[]
+                ).map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => applyHistoryPreset(p.id)}
+                    className={cn(
+                      "px-2.5 py-1 rounded-xl text-xs font-medium transition-all",
+                      historyPreset === p.id
+                        ? "bg-emerald-600 text-white font-semibold shadow-sm"
+                        : "bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100",
+                    )}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {historyPreset === "CUSTOM" && (
+              <div className="pt-2 border-t border-gray-100 flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 font-medium">From:</span>
+                  <input
+                    type="date"
+                    value={historyFrom}
+                    onChange={(e) => setHistoryFrom(e.target.value)}
+                    className="text-xs px-3 py-1.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <ChevronRight className="w-3.5 h-3.5 text-gray-400 hidden sm:block" />
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 font-medium">To:</span>
+                  <input
+                    type="date"
+                    value={historyTo}
+                    max={fmt(new Date())}
+                    onChange={(e) => setHistoryTo(e.target.value)}
+                    className="text-xs px-3 py-1.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Period Summary Stats Card */}
+          {filteredHistoryLogs.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="bg-emerald-50/70 border border-emerald-100 rounded-xl p-3">
+                <p className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wide">Days Logged</p>
+                <p className="text-xl font-bold text-emerald-700 mt-0.5">{historyStats.totalRecorded}</p>
+              </div>
+              <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-3">
+                <p className="text-[11px] font-semibold text-blue-800 uppercase tracking-wide">Jama'a Prayers</p>
+                <p className="text-xl font-bold text-blue-700 mt-0.5">{historyStats.jama}</p>
+              </div>
+              <div className="bg-emerald-50/70 border border-emerald-100 rounded-xl p-3">
+                <p className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wide">Ada' Prayers</p>
+                <p className="text-xl font-bold text-emerald-700 mt-0.5">{historyStats.ada}</p>
+              </div>
+              <div className="bg-amber-50/70 border border-amber-100 rounded-xl p-3">
+                <p className="text-[11px] font-semibold text-amber-800 uppercase tracking-wide">Quran Pages</p>
+                <p className="text-xl font-bold text-amber-700 mt-0.5">{historyStats.quran}</p>
+              </div>
+            </div>
+          )}
+
+          {filteredHistoryLogs.length === 0 ? (
+            <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
               <Moon className="w-10 h-10 mx-auto mb-3 text-emerald-200" />
-              <p className="text-sm text-gray-400">{t("parentPages", "noHistory", lang)}</p>
+              <p className="text-sm text-gray-500 font-medium">No records found for selected period</p>
+              <p className="text-xs text-gray-400 mt-1">{historyFrom} to {historyTo}</p>
             </div>
           ) : (
-            ibadah.logs.map((log, i) => {
+            filteredHistoryLogs.map((log, i) => {
               const prayersDone = activePrayers.filter((p) => log[p] != null).length;
               const isExpanded = expandedLog === log.id;
               const logDate = new Date(log.date).toLocaleDateString(lang === "ml" ? "ml-IN" : "en-GB", {
@@ -681,19 +887,34 @@ export default function ParentIbadahPage() {
                   </button>
                 </div>
 
+                {isPrayerBlocked(drawerPrayer, date).blocked && (
+                  <div className="mb-4 bg-amber-50 border border-amber-200/80 rounded-xl p-3 flex items-center gap-2 text-xs text-amber-800">
+                    <Lock className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>
+                      {prayerMeta[drawerPrayer].label} prayer time has not started yet ({isPrayerBlocked(drawerPrayer, date).message}).
+                    </span>
+                  </div>
+                )}
+
                 <div className="space-y-1">
                   {prayerOptions.map((opt) => {
+                    const isBlocked = isPrayerBlocked(drawerPrayer, date).blocked && opt.value !== null;
                     const selected = form[drawerPrayer] === opt.value;
                     return (
                       <button
                         key={opt.label}
+                        disabled={isBlocked}
                         onClick={() => {
+                          if (isBlocked) {
+                            toast.error(`Cannot record prayer yet: ${isPrayerBlocked(drawerPrayer, date).message}`);
+                            return;
+                          }
                           setPrayer(drawerPrayer, opt.value);
                           setDrawerPrayer(null);
                         }}
                         className={cn(
                           "w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-left",
-                          selected ? "bg-gradient-to-r " + opt.color : "hover:bg-gray-50",
+                          isBlocked ? "opacity-40 cursor-not-allowed bg-gray-50" : selected ? "bg-gradient-to-r " + opt.color : "hover:bg-gray-50",
                         )}
                       >
                         <div className={cn(

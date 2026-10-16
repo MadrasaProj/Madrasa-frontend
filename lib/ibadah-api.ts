@@ -211,3 +211,22 @@ export const getSuperAdminIbadahConfig = (token: string) =>
 export const updateSuperAdminIbadahConfig = (token: string, dto: UpdateIbadahConfigPayload) =>
   updateIbadahConfig(token, dto);
 
+export const triggerIbadahReminder = (
+  clientId: string,
+  token: string,
+  options?: { notifyAll?: boolean; dryRun?: boolean },
+) => {
+  const q = new URLSearchParams();
+  if (options?.notifyAll) q.set("notifyAll", "true");
+  if (options?.dryRun) q.set("dryRun", "true");
+  const qs = q.toString();
+  return apiFetch<{
+    clientsProcessed: number;
+    totalParentsNotified: number;
+    clientsSkipped: number;
+    today: string;
+  }>(`${API_BASE}/${clientId}/ibadah/reminder/trigger${qs ? `?${qs}` : ""}`, token, {
+    method: "POST",
+  });
+};
+

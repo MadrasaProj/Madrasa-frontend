@@ -1,7 +1,8 @@
-import { useCallback } from "react";
+import { useState, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
+import { DateRangeFilter, type DatePreset } from "@/components/ui/DateRangeFilter";
 import {
   type StudentStats, type FeeSummary, type AttendanceSummary, type HomeworkSummary,
 } from "@/lib/reports-api";
@@ -40,12 +41,20 @@ export default function AdminReportsPage() {
   const token = accessToken ?? "";
   const ayId  = user?.defaultAcademicYearId ?? "";
 
+  const [dateRange, setDateRange] = useState<{ from: string; to: string; preset: DatePreset }>({
+    from: "",
+    to: "",
+    preset: "ALL",
+  });
+
   const qc = useQueryClient();
 
+  const dateParams = dateRange.from || dateRange.to ? { from: dateRange.from || undefined, to: dateRange.to || undefined } : undefined;
+
   const { data: studentStats, isLoading: loadingStudentStats, error: studentError } = useStudentStats({ clientId: cid, token });
-  const { data: feeSummary, isLoading: loadingFeeSummary, error: feeError } = useFeeSummary({ clientId: cid, token }, ayId || undefined);
-  const { data: attendanceSummary, isLoading: loadingAttendanceSummary, error: attendanceError } = useAttendanceSummary({ clientId: cid, token });
-  const { data: homeworkSummary, isLoading: loadingHomeworkSummary, error: homeworkError } = useHomeworkSummary({ clientId: cid, token });
+  const { data: feeSummary, isLoading: loadingFeeSummary, error: feeError } = useFeeSummary({ clientId: cid, token }, ayId || undefined, dateParams);
+  const { data: attendanceSummary, isLoading: loadingAttendanceSummary, error: attendanceError } = useAttendanceSummary({ clientId: cid, token }, dateParams);
+  const { data: homeworkSummary, isLoading: loadingHomeworkSummary, error: homeworkError } = useHomeworkSummary({ clientId: cid, token }, dateParams);
 
   const students = studentStats ?? null;
   const fees = feeSummary ?? null;
@@ -96,6 +105,15 @@ export default function AdminReportsPage() {
       />
 
       {error && <ApiErrorBanner message={error} onRetry={load} />}
+
+      <DateRangeFilter
+        from={dateRange.from}
+        to={dateRange.to}
+        onChange={setDateRange}
+        initialPreset="ALL"
+        allowAllTime={true}
+        className="mb-5"
+      />
 
       {loading ? (
         <PageSkeleton />

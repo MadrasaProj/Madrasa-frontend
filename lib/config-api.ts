@@ -26,6 +26,10 @@ export interface ClientConfig {
   showCommitteeAttendance?: boolean;
   showCommitteeTeacherCheckin?: boolean;
   disabledParentModules?: string[];
+  ibadahReminderEnabled?: boolean;
+  ibadahReminderTitle?: string | null;
+  ibadahReminderBody?: string | null;
+  ibadahReminderTime?: string | null;
   principalName?: string | null;
   principalPhone?: string | null;
   principalEmail?: string | null;
