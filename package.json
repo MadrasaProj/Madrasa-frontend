@@ -59,12 +59,16 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@tanstack/devtools-vite": "^0.8.5",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
+    "install": "^0.13.0",
+    "npm": "^12.2.0",
     "react-grab": "^0.1.44",
     "tailwindcss": "^4.3.3",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite-plugin-source-identifier": "^1.1.2"
   }
 }

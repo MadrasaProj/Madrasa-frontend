@@ -172,7 +172,8 @@ export default function TwaLandingPage() {
             <Button
               type="button"
               onClick={() => setDrawerOpen(true)}
-              className="mt-6 h-auto w-full rounded-2xl py-4 text-sm font-semibold"
+              size={"lg"}
+              className="mt-6    text-sm font-semibold"
             >
               {/* <Plus className="h-4 w-4" /> */}
               New session

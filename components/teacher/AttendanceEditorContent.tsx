@@ -383,7 +383,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
         ))}
 
       {activeClassId && (hasDirty || hasExisting) && (
-        <div className="  bottom-20 lg:bottom-6 left-0 right-0 px-4 lg:pl-72 z-20 pointer-events-none">
+        <div className="  bottom-0 w-full  left-0 sticky right-0 px-4 lg:pl-72 z-20 pointer-events-none">
           <div className="pointer-events-auto w-full max-w-2xl mx-auto flex gap-2">
             {hasExisting && (
               <Button
@@ -413,7 +413,6 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
                   </>
                 ) : (
                   <>
-                    <Save className="w-5 h-5" />{" "}
                     {t("teacherPages", "saveAttendanceCount", lang)}  
                   </>
                 )}
