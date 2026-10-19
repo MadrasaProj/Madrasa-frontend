@@ -8,6 +8,7 @@ import "swiper/css/effect-coverflow";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
+import { Icon } from "@iconify/react";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useLanguageStore } from "@/store/language";
 import { useAuthStore } from "@/store/auth";
@@ -28,8 +29,6 @@ import {
   Download,
   Loader2,
   Calendar,
-  Award,
-  CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -177,9 +176,9 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
   if (variant === "teacher") {
     const streak = data.length ? Math.max(...data.map((item) => item.streak)) : 0;
     const summary = [
-      { label: lang === "ml" ? "മികച്ച സ്കോർ" : "Best score", value: data[0]?.score ?? "—", icon: Star },
-      { label: lang === "ml" ? "ഖുർആൻ പേജുകൾ" : "Quran pages", value: data.length ? Math.max(...data.map((item) => item.totalQuranPages)) : 0, icon: BookOpen },
-      { label: lang === "ml" ? "നമസ്കാരങ്ങൾ" : "Prayers", value: data.length ? Math.max(...data.map((item) => item.totalPrayers)) : 0, icon: CheckCircle2 },
+      { label: lang === "ml" ? "മികച്ച സ്കോർ" : "Best score", value: data[0]?.score ?? "—" },
+      { label: lang === "ml" ? "ഖുർആൻ പേജുകൾ" : "Quran pages", value: data.length ? Math.max(...data.map((item) => item.totalQuranPages)) : 0 },
+      { label: lang === "ml" ? "നമസ്കാരങ്ങൾ" : "Prayers", value: data.length ? Math.max(...data.map((item) => item.totalPrayers)) : 0 },
     ];
     const selectPeriod = (type: "week" | "month") => {
       setCustomRange(null);
@@ -208,7 +207,7 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
         aria-label={lang === "ml" ? "മികച്ച വിദ്യാർത്ഥികൾ" : "Best students"}
       >
         {performers.map((performer, index) => (
-          <SwiperSlide key={performer.studentId} className="!h-auto !w-[min(76vw,310px)]">
+          <SwiperSlide key={performer.studentId} className="!h-auto !w-[min(85vw,410px)]">
             <article className="h-full rounded-[28px] border border-gray-100 bg-white px-5 pb-5 pt-6 text-center">
               <div className="relative mx-auto size-24">
                 {studentPhotos[performer.studentId] ? (
@@ -218,26 +217,36 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
                     {performer.name.trim().charAt(0).toUpperCase()}
                   </div>
                 )}
-                <span className="absolute -bottom-2 -right-2 flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary ring-4 ring-white" aria-label={`Rank ${index + 1}`}>
-                  <Award className="size-5" />
-                </span>
+                {index < 3 && (
+                  <span className={cn(
+                    "absolute -bottom-1 -right-1 flex size-8 items-center justify-center rounded-full text-white shadow-sm shadow-gray-900/10 ring-4 ring-white",
+                    index === 0 ? "bg-primary" : index === 1 ? "bg-gray-700" : "bg-gray-500",
+                  )} aria-label={`Rank ${index + 1}`}>
+                    <Icon icon="lucide:badge" className="absolute size-7" aria-hidden="true" />
+                    <span className="relative text-[11px] font-black">{index + 1}</span>
+                  </span>
+                )}
               </div>
               <p className="mt-5 truncate text-lg font-bold text-gray-950">{performer.name}</p>
               <p className="text-xs font-medium text-gray-500">{performer.adno}</p>
-              <div className="mt-4 border-y border-gray-100 py-3">
+              <div className="mt-5">
                 <p className="text-3xl font-extrabold text-primary">{performer.score}</p>
                 <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">{lang === "ml" ? "സ്കോർ" : "Score"}</p>
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-left">
-                <span className="flex items-center gap-2"><Star className="size-4 shrink-0 text-primary" /><span><strong className="block text-base text-gray-900">{performer.totalPrayers}</strong><small className="text-gray-500">{lang === "ml" ? "നമസ്കാരം" : "Prayers"}</small></span></span>
-                <span className="flex items-center gap-2"><BookOpen className="size-4 shrink-0 text-primary" /><span><strong className="block text-base text-gray-900">{performer.totalQuranPages}</strong><small className="text-gray-500">{lang === "ml" ? "പേജുകൾ" : "Pages"}</small></span></span>
-                <span className="flex items-center gap-2"><Flame className="size-4 shrink-0 text-primary" /><span><strong className="block text-base text-gray-900">{performer.streak}d</strong><small className="text-gray-500">{lang === "ml" ? "സ്ട്രീക്ക്" : "Streak"}</small></span></span>
-                <span className="flex items-center gap-2"><Target className="size-4 shrink-0 text-primary" /><span><strong className="block text-base text-gray-900">{performer.consistency}%</strong><small className="text-gray-500">{lang === "ml" ? "സ്ഥിരത" : "Consistency"}</small></span></span>
+              <div className="mt-5">
+                <div className="grid grid-cols-2 divide-x divide-gray-200">
+                  <div className="flex flex-col items-center gap-1 px-2"><strong className="text-xl font-bold leading-none tabular-nums text-gray-950">{performer.totalPrayers}</strong><small className="text-[11px] font-medium text-gray-600">{lang === "ml" ? "നമസ്കാരം" : "Prayers"}</small></div>
+                  <div className="flex flex-col items-center gap-1 px-2"><strong className="text-xl font-bold leading-none tabular-nums text-gray-950">{performer.totalQuranPages}</strong><small className="text-[11px] font-medium text-gray-600">{lang === "ml" ? "പേജുകൾ" : "Pages"}</small></div>
+                </div>
+                <div className="mt-3 grid grid-cols-2 divide-x divide-gray-200 border-t border-gray-100 pt-3">
+                  <div className="flex flex-col items-center gap-1 px-2"><strong className="text-xl font-bold leading-none tabular-nums text-gray-950">{performer.streak}d</strong><small className="text-[11px] font-medium text-gray-600">{lang === "ml" ? "സ്ട്രീക്ക്" : "Streak"}</small></div>
+                  <div className="flex flex-col items-center gap-1 px-2"><strong className="text-xl font-bold leading-none tabular-nums text-gray-950">{performer.consistency}%</strong><small className="text-[11px] font-medium text-gray-600">{lang === "ml" ? "സ്ഥിരത" : "Consistency"}</small></div>
+                </div>
               </div>
               {Object.entries(performer.customCounts ?? {}).some(([, value]) => value > 0) && (
                 <div className="mt-4 flex flex-wrap justify-center gap-x-3 gap-y-1 border-t border-gray-100 pt-3 text-xs font-medium text-gray-700">
                   {Object.entries(performer.customCounts ?? {}).filter(([, value]) => value > 0).map(([itemKey, value]) => (
-                    <span key={itemKey} className="inline-flex items-center gap-1"><Sparkles className="size-3.5 text-primary" />{value} {customItems.find((item) => item.key === itemKey)?.label ?? itemKey}</span>
+                    <span key={itemKey}>{value} {customItems.find((item) => item.key === itemKey)?.label ?? itemKey}</span>
                   ))}
                 </div>
               )}
@@ -279,11 +288,10 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
 
             </p>
             {period && <p className="mt-3 text-xs text-gray-500">{formatDateRange()}</p>}
-            <div className="mx-auto mt-7 grid max-w-2xl grid-cols-3 divide-x divide-gray-100 border-y border-gray-100 py-4">
-              {summary.map(({ label, value, icon: Icon }) => <div key={label} className="flex flex-col items-center gap-1 px-2">
-                <Icon className="size-5 text-primary" />
-                <strong className="text-xl font-extrabold text-gray-950 sm:text-2xl">{value}</strong>
-                <span className="text-[11px] font-medium text-gray-600 sm:text-xs">{label}</span>
+            <div className="mx-auto mt-7 grid max-w-md grid-cols-3 divide-x divide-gray-200 py-2">
+              {summary.map(({ label, value }) => <div key={label} className="flex flex-col items-center justify-center gap-1 px-2 text-center">
+                <strong className="text-2xl font-bold leading-none tabular-nums text-gray-950">{value}</strong>
+                <span className="text-[11px] font-medium leading-tight text-gray-600 sm:text-xs">{label}</span>
               </div>)}
             </div>
           </section>
@@ -291,8 +299,8 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
           {error && <div role="alert" className="mx-auto mt-8 max-w-xl rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm font-medium text-gray-700">{error}</div>}
           {!loading && !error && data.length === 0 && <p className="py-16 text-center text-sm font-medium text-gray-500">{lang === "ml" ? "ഇബാദത്ത് ഡാറ്റ ലഭ്യമല്ല" : "No ibadah data available yet"}</p>}
           {!loading && !error && data.length > 0 && <section className="mt-9">
-            <h2 className="text-center text-lg font-bold text-gray-900">{lang === "ml" ? "മികച്ച വിദ്യാർത്ഥികൾ" : "Best students"}</h2>
-            <p className="mt-1 text-center text-xs text-gray-500">{lang === "ml" ? "കാണാൻ സ്വൈപ്പ് ചെയ്യുക" : "Swipe to explore"}</p>
+            <h2 className="text-center text-lg mb-4 font-bold text-gray-900">{lang === "ml" ? "മികച്ച വിദ്യാർത്ഥികൾ" : "Best students"}</h2>
+
             {carousel(data, `overall-${period?.from}-${period?.to}`)}
           </section>}
           {!loading && !error && classRankings.length > 0 && <section className="mt-10 space-y-9">
