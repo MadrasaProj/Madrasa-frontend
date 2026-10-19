@@ -39,7 +39,7 @@ function MethodItem({ method, selected }: { method: PaymentMethod; selected: boo
         src={METHOD_ICONS[method]}
         alt=""
         aria-hidden="true"
-        className="h-10 w-10 shrink-0 object-contain"
+        className="h-6 w-6 shrink-0 object-contain"
       />
       <span className="min-w-0 flex-1 truncate font-medium">{getMethodName(method)}</span>
       
@@ -65,7 +65,7 @@ export function PaymentMethodPicker({
         type="button"
         variant="outline"
         size="lg"
-        className="h-auto min-h-16 w-full justify-between px-3 py-2"
+        className="h-11 w-full justify-between px-3 py-2"
         disabled={disabled}
         onClick={() => setOpen(true)}
         aria-label={method ? `Payment method: ${getMethodName(method)}` : "Choose payment method"}

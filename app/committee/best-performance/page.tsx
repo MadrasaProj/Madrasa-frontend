@@ -1,4 +1,12 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { DatePickerDrawer } from "@/components/DatePickerDrawer";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { EffectCoverflow } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/effect-coverflow";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useLanguageStore } from "@/store/language";
@@ -9,6 +17,7 @@ import {
   type BestPerformer,
 } from "@/lib/best-performance-api";
 import { getMyClasses } from "@/lib/classes-api";
+import { getStudents } from "@/lib/students-api";
 import {
   Trophy,
   Star,
@@ -19,12 +28,12 @@ import {
   Download,
   Loader2,
   Calendar,
+  Award,
+  CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const medalEmoji = ["🥇", "🥈", "🥉", "🏅", "🌟", "⭐", "✨", "💫", "🔥", "🌙"];
-
-export default function BestPerformancePage() {
+export default function BestPerformancePage({ variant }: { variant?: "teacher" }) {
   const { lang } = useLanguageStore();
   const { user, accessToken } = useAuthStore();
   const [data, setData] = useState<BestPerformer[]>([]);
@@ -34,9 +43,14 @@ export default function BestPerformancePage() {
   const [period, setPeriod] = useState<{ from: string; to: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [periodType, setPeriodType] = useState<"week" | "month">("month");
+  const [customRange, setCustomRange] = useState<{ from: string; to: string } | null>(null);
+  const [rangeStep, setRangeStep] = useState<"from" | "to" | null>(null);
+  const [rangeStart, setRangeStart] = useState("");
+  const [studentPhotos, setStudentPhotos] = useState<Record<string, string>>({});
   const [classRankings, setClassRankings] = useState<{ className: string; performers: BestPerformer[] }[]>([]);
 
   const printRef = useRef<HTMLDivElement>(null);
+  const advancingRangeRef = useRef(false);
 
   const cid = user?.clientId ?? "";
   const token = accessToken ?? "";
@@ -63,7 +77,7 @@ export default function BestPerformancePage() {
     setLoading(true);
     setError(null);
 
-    const dates = getPeriodDates(periodType);
+    const dates = customRange ?? getPeriodDates(periodType);
     getBestPerformers(cid, token, { ...dates, limit: isParent ? 100 : 20 })
       .then((res) => {
         if (cancelled) return;
@@ -80,17 +94,26 @@ export default function BestPerformancePage() {
       });
 
       if (user?.role === "teacher") {
+        setClassRankings([]);
         getMyClasses(cid, token).then(async (teacherClasses) => {
           if (cancelled) return;
-          const rankings = await Promise.all(teacherClasses.map(async (cls) => ({
-            className: cls.name,
-            performers: (await getBestPerformers(cid, token, { ...dates, classId: cls.id, limit: 100 })).performers,
-          })));
-          if (!cancelled) setClassRankings(rankings);
+          const rankings = await Promise.all(teacherClasses.map(async (cls) => {
+            const [ranking, students] = await Promise.all([
+              getBestPerformers(cid, token, { ...dates, classId: cls.id, limit: 100 }),
+              getStudents(cid, token, { classId: cls.id, limit: 500 }).catch(() => null),
+            ]);
+            return { className: cls.name, performers: ranking.performers, students: students?.data ?? [] };
+          }));
+          if (!cancelled) {
+            setClassRankings(rankings.map(({ className, performers }) => ({ className, performers })));
+            setStudentPhotos(Object.fromEntries(rankings.flatMap(({ students }) => students
+              .filter((student) => student.photoUrl || student.photo)
+              .map((student) => [student.id, (student.photoUrl || student.photo)!]))));
+          }
         }).catch(() => { if (!cancelled) setClassRankings([]); });
       }
     return () => { cancelled = true; };
-  }, [cid, token, periodType, user?.role]);
+  }, [cid, token, periodType, customRange, user?.role]);
 
   const formatDateRange = () => {
     if (!period) return "";
@@ -151,6 +174,147 @@ export default function BestPerformancePage() {
     }
   };
 
+  if (variant === "teacher") {
+    const streak = data.length ? Math.max(...data.map((item) => item.streak)) : 0;
+    const summary = [
+      { label: lang === "ml" ? "മികച്ച സ്കോർ" : "Best score", value: data[0]?.score ?? "—", icon: Star },
+      { label: lang === "ml" ? "ഖുർആൻ പേജുകൾ" : "Quran pages", value: data.length ? Math.max(...data.map((item) => item.totalQuranPages)) : 0, icon: BookOpen },
+      { label: lang === "ml" ? "നമസ്കാരങ്ങൾ" : "Prayers", value: data.length ? Math.max(...data.map((item) => item.totalPrayers)) : 0, icon: CheckCircle2 },
+    ];
+    const selectPeriod = (type: "week" | "month") => {
+      setCustomRange(null);
+      setPeriodType(type);
+    };
+    const selectRangeDate = (date: string) => {
+      if (rangeStep === "from") {
+        setRangeStart(date);
+        advancingRangeRef.current = true;
+        setRangeStep("to");
+      } else if (rangeStep === "to") {
+        setCustomRange({ from: date < rangeStart ? date : rangeStart, to: date < rangeStart ? rangeStart : date });
+        setRangeStep(null);
+      }
+    };
+    const carousel = (performers: BestPerformer[], key: string) => (
+      <Swiper
+        key={key}
+        modules={[EffectCoverflow]}
+        effect="coverflow"
+        centeredSlides
+        grabCursor
+        slidesPerView="auto"
+        coverflowEffect={{ rotate: 0, stretch: 18, depth: 120, scale: 0.86, modifier: 1, slideShadows: false }}
+        className="!overflow-visible py-5"
+        aria-label={lang === "ml" ? "മികച്ച വിദ്യാർത്ഥികൾ" : "Best students"}
+      >
+        {performers.map((performer, index) => (
+          <SwiperSlide key={performer.studentId} className="!h-auto !w-[min(76vw,310px)]">
+            <article className="h-full rounded-[28px] border border-gray-100 bg-white px-5 pb-5 pt-6 text-center">
+              <div className="relative mx-auto size-24">
+                {studentPhotos[performer.studentId] ? (
+                  <img src={studentPhotos[performer.studentId]} alt={performer.name} className="size-full rounded-full object-cover ring-4 ring-primary/10" />
+                ) : (
+                  <div className="flex size-full items-center justify-center rounded-full bg-primary/10 text-3xl font-bold text-primary ring-4 ring-primary/10" aria-label={performer.name}>
+                    {performer.name.trim().charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <span className="absolute -bottom-2 -right-2 flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary ring-4 ring-white" aria-label={`Rank ${index + 1}`}>
+                  <Award className="size-5" />
+                </span>
+              </div>
+              <p className="mt-5 truncate text-lg font-bold text-gray-950">{performer.name}</p>
+              <p className="text-xs font-medium text-gray-500">{performer.adno}</p>
+              <div className="mt-4 border-y border-gray-100 py-3">
+                <p className="text-3xl font-extrabold text-primary">{performer.score}</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">{lang === "ml" ? "സ്കോർ" : "Score"}</p>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-left">
+                <span className="flex items-center gap-2"><Star className="size-4 shrink-0 text-primary" /><span><strong className="block text-base text-gray-900">{performer.totalPrayers}</strong><small className="text-gray-500">{lang === "ml" ? "നമസ്കാരം" : "Prayers"}</small></span></span>
+                <span className="flex items-center gap-2"><BookOpen className="size-4 shrink-0 text-primary" /><span><strong className="block text-base text-gray-900">{performer.totalQuranPages}</strong><small className="text-gray-500">{lang === "ml" ? "പേജുകൾ" : "Pages"}</small></span></span>
+                <span className="flex items-center gap-2"><Flame className="size-4 shrink-0 text-primary" /><span><strong className="block text-base text-gray-900">{performer.streak}d</strong><small className="text-gray-500">{lang === "ml" ? "സ്ട്രീക്ക്" : "Streak"}</small></span></span>
+                <span className="flex items-center gap-2"><Target className="size-4 shrink-0 text-primary" /><span><strong className="block text-base text-gray-900">{performer.consistency}%</strong><small className="text-gray-500">{lang === "ml" ? "സ്ഥിരത" : "Consistency"}</small></span></span>
+              </div>
+              {Object.entries(performer.customCounts ?? {}).some(([, value]) => value > 0) && (
+                <div className="mt-4 flex flex-wrap justify-center gap-x-3 gap-y-1 border-t border-gray-100 pt-3 text-xs font-medium text-gray-700">
+                  {Object.entries(performer.customCounts ?? {}).filter(([, value]) => value > 0).map(([itemKey, value]) => (
+                    <span key={itemKey} className="inline-flex items-center gap-1"><Sparkles className="size-3.5 text-primary" />{value} {customItems.find((item) => item.key === itemKey)?.label ?? itemKey}</span>
+                  ))}
+                </div>
+              )}
+            </article>
+          </SwiperSlide>
+        ))}
+      </Swiper>
+    );
+
+    return (
+      <DashboardLayout>
+        <PageHeader
+          title={lang === "ml" ? "മികച്ച ഇബാദത്ത്" : "Best Ibadah Performance"}
+          action={data.length > 0 && <Button size="sm" variant="outline" onClick={handleDownloadPDF} disabled={downloadingPdf}>
+            {downloadingPdf ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+            <span className="hidden sm:inline">{downloadingPdf ? "Exporting..." : "Download PDF"}</span><span className="sm:hidden">PDF</span>
+          </Button>}
+        />
+        <div ref={printRef} className="min-w-0 overflow-hidden pb-28 lg:pb-20">
+          <section className="pt-13 text-center" aria-label={lang === "ml" ? "പ്രകടന സ്ഥിതിവിവരക്കണക്കുകൾ" : "Performance statistics"}>
+            <div className="relative mx-auto w-fit">
+              <img
+                src="/icons/best-performance/streak-v2-animated.webp"
+                alt=""
+                className="h-auto w-[80vw] max-w-[380px] object-contain motion-reduce:hidden sm:w-64"
+              />
+              <img
+                src="/icons/best-performance/streak-v2.webp"
+                alt=""
+                className="hidden h-auto w-[80vw] max-w-[380px] object-contain motion-reduce:block sm:w-64"
+              />
+              <div className="absolute bottom-2 left-1/2 z-10   w-max max-w-[92vw] -translate-x-1/2 translate-y-1/2 items-baseline justify-center gap-2 rounded-3xl border border-white/70 bg-white/0 px-5 py-2 shadow-xl shadow-gray-900/10 backdrop-blur-sm">
+                <div className="bg-linear-to-b from-primary to-primary/60 bg-clip-text text-[clamp(6rem,28vw,8rem)] font-black leading-none tabular-nums text-transparent">{streak}</div>
+                <div className="text-xs relative -top-2 font-semibold text-gray-600">{lang === "ml" ? "ദിവസങ്ങൾ" : "days"}</div>
+              </div>
+            </div>
+            <p className="mt-20 text-sm font-medium text-gray-500">
+              {/* {lang === "ml" ? "മികച്ച സ്ട്രീക്ക്" : "Best streak"} */}
+
+            </p>
+            {period && <p className="mt-3 text-xs text-gray-500">{formatDateRange()}</p>}
+            <div className="mx-auto mt-7 grid max-w-2xl grid-cols-3 divide-x divide-gray-100 border-y border-gray-100 py-4">
+              {summary.map(({ label, value, icon: Icon }) => <div key={label} className="flex flex-col items-center gap-1 px-2">
+                <Icon className="size-5 text-primary" />
+                <strong className="text-xl font-extrabold text-gray-950 sm:text-2xl">{value}</strong>
+                <span className="text-[11px] font-medium text-gray-600 sm:text-xs">{label}</span>
+              </div>)}
+            </div>
+          </section>
+          {loading && <div className="mx-auto mt-8 max-w-xl space-y-3">{Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} className="h-64 rounded-3xl" />)}</div>}
+          {error && <div role="alert" className="mx-auto mt-8 max-w-xl rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm font-medium text-gray-700">{error}</div>}
+          {!loading && !error && data.length === 0 && <p className="py-16 text-center text-sm font-medium text-gray-500">{lang === "ml" ? "ഇബാദത്ത് ഡാറ്റ ലഭ്യമല്ല" : "No ibadah data available yet"}</p>}
+          {!loading && !error && data.length > 0 && <section className="mt-9">
+            <h2 className="text-center text-lg font-bold text-gray-900">{lang === "ml" ? "മികച്ച വിദ്യാർത്ഥികൾ" : "Best students"}</h2>
+            <p className="mt-1 text-center text-xs text-gray-500">{lang === "ml" ? "കാണാൻ സ്വൈപ്പ് ചെയ്യുക" : "Swipe to explore"}</p>
+            {carousel(data, `overall-${period?.from}-${period?.to}`)}
+          </section>}
+          {!loading && !error && classRankings.length > 0 && <section className="mt-10 space-y-9">
+            <h2 className="text-center text-lg font-bold text-gray-900">{lang === "ml" ? "ക്ലാസ് അടിസ്ഥാനത്തിൽ" : "Class performance"}</h2>
+            {classRankings.map(({ className, performers }) => <div key={className}>
+              <h3 className="border-b border-gray-100 pb-2 text-base font-bold text-primary">{className}</h3>
+              {performers.length ? carousel(performers, `${className}-${period?.from}-${period?.to}`) : <p className="py-6 text-center text-sm text-gray-500">{lang === "ml" ? "ഇബാദത്ത് ഡാറ്റ ലഭ്യമല്ല" : "No ibadah data"}</p>}
+            </div>)}
+          </section>}
+        </div>
+        <div className="fixed inset-x-0 bottom-20 z-40 flex justify-center px-4 lg:bottom-6 lg:left-64">
+          <div className="flex items-center gap-1 rounded-full border border-gray-200 bg-white/95 p-1.5 shadow-lg shadow-gray-900/10 backdrop-blur">
+            <button type="button" onClick={() => selectPeriod("month")} aria-pressed={!customRange && periodType === "month"} className={cn("rounded-full px-5 py-2.5 text-sm font-semibold transition-colors", !customRange && periodType === "month" ? "bg-primary text-primary-foreground" : "text-primary hover:bg-primary/5")}>{lang === "ml" ? "മാസം" : "Month"}</button>
+            <button type="button" onClick={() => selectPeriod("week")} aria-pressed={!customRange && periodType === "week"} className={cn("rounded-full px-5 py-2.5 text-sm font-semibold transition-colors", !customRange && periodType === "week" ? "bg-primary text-primary-foreground" : "text-primary hover:bg-primary/5")}>{lang === "ml" ? "ആഴ്ച" : "Weekly"}</button>
+            <button type="button" onClick={() => setRangeStep("from")} aria-label={lang === "ml" ? "തീയതി പരിധി തിരഞ്ഞെടുക്കുക" : "Choose date range"} aria-pressed={!!customRange} className={cn("flex size-10 items-center justify-center rounded-full transition-colors", customRange ? "bg-primary text-primary-foreground" : "text-primary hover:bg-primary/5")}><Calendar className="size-5" /></button>
+          </div>
+        </div>
+        <DatePickerDrawer open={rangeStep !== null} onOpenChange={(open) => { if (!open) { if (advancingRangeRef.current) advancingRangeRef.current = false; else setRangeStep(null); } }} date={rangeStep === "to" ? rangeStart : (customRange?.from ?? "")} onDateChange={selectRangeDate} title={rangeStep === "to" ? (lang === "ml" ? "അവസാന തീയതി" : "Choose end date") : (lang === "ml" ? "ആരംഭ തീയതി" : "Choose start date")} />
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -160,15 +324,15 @@ export default function BestPerformancePage() {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-linear-to-r from-emerald-600 to-teal-500 rounded-3xl p-5 lg:p-6 text-white"
+            className="bg-primary rounded-3xl p-5 lg:p-6 text-primary-foreground"
           >
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
-                  <Trophy className="w-5 h-5 text-white" />
+                  <Trophy className="w-5 h-5 text-primary-foreground" />
                 </div>
                 <div>
-                  <p className="text-emerald-200 text-xs font-semibold uppercase tracking-widest">{roleLabel}</p>
+                  <p className="text-primary-foreground/80 text-xs font-semibold uppercase tracking-widest">{roleLabel}</p>
                   <h1 className="text-xl font-bold">
                     {lang === "ml" ? "മികച്ച ഇബാദത്ത്" : "Best Ibadah Performance"}
                   </h1>
@@ -179,7 +343,7 @@ export default function BestPerformancePage() {
                 <button
                   onClick={handleDownloadPDF}
                   disabled={downloadingPdf}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl text-xs font-semibold backdrop-blur-xs transition-all disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-3 py-2 bg-white/20 hover:bg-white/30 text-primary-foreground rounded-xl text-xs font-semibold backdrop-blur-xs transition-all disabled:opacity-50"
                 >
                   {downloadingPdf ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -217,40 +381,40 @@ export default function BestPerformancePage() {
                   key={s.label}
                   className="bg-white/15 rounded-xl p-3 text-center"
                 >
-                  <s.icon className="w-4 h-4 mx-auto mb-1 text-emerald-200" />
+                  <s.icon className="w-4 h-4 mx-auto mb-1 text-primary-foreground/80" />
                   <p className="text-lg font-black">{s.value}</p>
-                  <p className="text-[10px] text-emerald-200">{s.label}</p>
+                  <p className="text-[10px] text-primary-foreground/80">{s.label}</p>
                 </div>
               ))}
             </div>
           </motion.div>
 
           {/* Period info */}
-          <div className="flex items-center gap-2 bg-white border border-gray-100 rounded-2xl p-2 shadow-xs w-fit">
-            {(["week", "month"] as const).map((value) => (
-              <button key={value} onClick={() => setPeriodType(value)} className={cn(
-                "px-4 py-2 rounded-xl text-sm font-semibold transition-colors",
-                periodType === value ? "bg-emerald-600 text-white" : "text-gray-500 hover:bg-emerald-50",
-              )}>
-                {value === "week" ? (lang === "ml" ? "ആഴ്ചയിലെ മികച്ച പ്രകടനം" : "Weekly Best Performance") : (lang === "ml" ? "മാസത്തിലെ മികച്ച പ്രകടനം" : "Monthly Best Performance")}
-              </button>
-            ))}
-          </div>
+          <Tabs value={periodType} onValueChange={(value) => setPeriodType(value as "week" | "month")} className="max-w-full overflow-x-auto">
+            <TabsList aria-label={lang === "ml" ? "കാലയളവ്" : "Period"}>
+              <TabsTrigger value="week">
+                {lang === "ml" ? "ആഴ്ചയിലെ മികച്ച പ്രകടനം" : "Weekly Best Performance"}
+              </TabsTrigger>
+              <TabsTrigger value="month">
+                {lang === "ml" ? "മാസത്തിലെ മികച്ച പ്രകടനം" : "Monthly Best Performance"}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
 
           {period && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.1 }}
-              className="flex items-center justify-between px-4 py-3 bg-emerald-50 border border-emerald-100 rounded-2xl"
+              className="flex items-center justify-between px-4 py-3 bg-primary/5 border border-gray-100 rounded-2xl"
             >
               <div className="flex items-center gap-2">
-                <Target className="w-4 h-4 text-emerald-600" />
-                <span className="text-sm font-semibold text-emerald-800">
+                <Target className="w-4 h-4 text-primary" />
+                <span className="text-sm font-semibold text-primary">
                   {lang === "ml" ? "കാലയളവ്" : "Period"}: {formatDateRange()}
                 </span>
               </div>
-              <div className="text-xs text-emerald-700/80 font-medium flex items-center gap-1">
+              <div className="text-xs text-gray-600 font-medium flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5" />
                 <span>Generated: {new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
               </div>
@@ -270,13 +434,13 @@ export default function BestPerformancePage() {
                 className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs space-y-4"
               >
                 <div className="flex items-center gap-2 pb-2 border-b border-gray-50">
-                  <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-xs font-bold text-emerald-700 shrink-0">
+                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
                     {child.name.charAt(0)}
                   </div>
                   <p className="text-sm font-semibold text-gray-900 truncate">{child.name}</p>
                   <span className={cn(
                     "ml-auto text-[11px] font-semibold px-2 py-0.5 rounded-full",
-                    child.score >= 80 ? "bg-emerald-100 text-emerald-700" : child.score >= 50 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700",
+                    child.score >= 80 ? "bg-primary/10 text-primary" : child.score >= 50 ? "bg-gray-100 text-gray-700" : "bg-gray-200 text-gray-700",
                   )}>
                     {child.score >= 80
                       ? (lang === "ml" ? "മികവുറ്റത്" : "Excellent")
@@ -289,7 +453,7 @@ export default function BestPerformancePage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Rank</p>
-                    <p className="text-3xl font-black text-emerald-600">
+                    <p className="text-3xl font-black text-primary">
                       #{rank ?? "—"}
                       <span className="text-sm font-semibold text-gray-400 ml-1">/ {data.length}</span>
                     </p>
@@ -302,28 +466,24 @@ export default function BestPerformancePage() {
 
                 <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                   <div
-                    className="h-full rounded-full transition-all duration-700"
-                    style={{
-                      width: `${child.score}%`,
-                      background: child.score >= 80
-                        ? "linear-gradient(to right, #10b981, #059669)"
-                        : child.score >= 50
-                          ? "linear-gradient(to right, #f59e0b, #d97706)"
-                          : "linear-gradient(to right, #ef4444, #dc2626)",
-                    }}
+                    className={cn(
+                      "h-full rounded-full transition-all duration-700",
+                      child.score >= 80 ? "bg-primary" : child.score >= 50 ? "bg-gray-500" : "bg-gray-300",
+                    )}
+                    style={{ width: `${child.score}%` }}
                   />
                 </div>
 
                 <div className="flex items-center gap-3 text-sm">
                   {topPerformer && (
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-semibold">
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/5 text-primary text-xs font-semibold">
                       <Trophy className="w-3 h-3" />
                       {lang === "ml" ? "മികവ്" : "Top"}: {topPerformer.score}%
                     </div>
                   )}
                   <div className={cn(
                     "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold",
-                    vsAvg >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700",
+                    vsAvg >= 0 ? "bg-primary/5 text-primary" : "bg-gray-100 text-gray-700",
                   )}>
                     {vsAvg >= 0 ? "▲" : "▼"} {lang === "ml" ? "ശരാശരി" : "Avg"}: {avgScore}%
                   </div>
@@ -357,8 +517,8 @@ export default function BestPerformancePage() {
 
           {/* Error state */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-2xl p-5 text-center">
-              <p className="text-red-600 font-semibold">{error}</p>
+            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5 text-center">
+              <p className="text-gray-700 font-semibold">{error}</p>
             </div>
           )}
 
@@ -388,19 +548,17 @@ export default function BestPerformancePage() {
                     className={cn(
                       "bg-white rounded-2xl border p-4 shadow-xs transition-all",
                       isMyChild
-                        ? "ring-2 ring-emerald-400 bg-emerald-50/50 border-emerald-200"
+                        ? "ring-2 ring-primary/40 bg-primary/5 border-primary/20"
                         : "border-gray-100",
                     )}
                   >
                     <div className="flex items-center gap-4">
                       <div className="text-3xl shrink-0 w-10 text-center">
                         {isParent ? (
-                          <span className="text-sm font-black text-emerald-600">
+                          <span className="text-sm font-black text-primary">
                             #{rank}
                           </span>
-                        ) : (
-                          medalEmoji[i] ?? "🏅"
-                        )}
+                        ) : <span className="text-sm font-black text-primary">#{rank}</span>}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
@@ -408,19 +566,19 @@ export default function BestPerformancePage() {
                             {performer.name}
                           </p>
                           {isMyChild && (
-                            <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-800">
+                            <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/15 text-primary">
                               {lang === "ml" ? "എന്റെ കുട്ടി" : "Your Child"}
                             </span>
                           )}
                         </div>
                         <p className="text-xs text-gray-500">{performer.adno}</p>
                         <div className="flex flex-wrap gap-2 mt-2">
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 bg-primary/5 text-primary rounded-full">
                             <Star className="w-3 h-3" />
                             {performer.totalPrayers}{" "}
                             {lang === "ml" ? "നമസ്കാരം" : "prayers"}
                           </span>
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full">
                             <BookOpen className="w-3 h-3" />
                             {performer.totalQuranPages}{" "}
                             {lang === "ml" ? "പേജ്" : "pages"}
@@ -432,26 +590,26 @@ export default function BestPerformancePage() {
                             return (
                               <span
                                 key={key}
-                                className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 bg-purple-50 text-purple-700 rounded-full"
+                                className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full"
                               >
                                 <Sparkles className="w-3 h-3" />
                                 {val} {label}
                               </span>
                             );
                           })}
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 bg-orange-50 text-orange-700 rounded-full">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full">
                             <Flame className="w-3 h-3" />
                             {performer.streak}d{" "}
                             {lang === "ml" ? "സ്ട്രീക്ക്" : "streak"}
                           </span>
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full">
                             {performer.consistency}%{" "}
                             {lang === "ml" ? "സ്ഥിരത" : "consistency"}
                           </span>
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-2xl font-black text-emerald-600">
+                        <p className="text-2xl font-black text-primary">
                           {performer.score}
                         </p>
                         <p className="text-[11px] font-semibold text-gray-400">
@@ -461,7 +619,7 @@ export default function BestPerformancePage() {
                     </div>
                     <div className="mt-3 w-full bg-gray-100 rounded-full h-2 overflow-hidden">
                       <div
-                        className="h-2 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full transition-all duration-700"
+                        className="h-2 bg-gradient-to-r from-primary to-primary/70 rounded-full transition-all duration-700"
                         style={{ width: `${performer.scorePercentage}%` }}
                       />
                     </div>
@@ -479,12 +637,12 @@ export default function BestPerformancePage() {
               <div className="grid gap-4 md:grid-cols-2">
                 {classRankings.map(({ className, performers }) => (
                   <div key={className} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-xs">
-                    <h3 className="font-bold text-emerald-700 mb-3">{className}</h3>
+                    <h3 className="font-bold text-primary mb-3">{className}</h3>
                     {performers.length === 0 ? <p className="text-sm text-gray-400">No ibadah data</p> : performers.slice(0, 5).map((performer, index) => (
                       <div key={performer.studentId} className="flex items-center gap-3 py-2 border-t border-gray-50">
                         <span className="w-6 text-center font-bold text-gray-500">#{index + 1}</span>
                         <span className="flex-1 text-sm font-semibold text-gray-800">{performer.name}</span>
-                        <span className="font-black text-emerald-600">{performer.score}</span>
+                        <span className="font-black text-primary">{performer.score}</span>
                       </div>
                     ))}
                   </div>

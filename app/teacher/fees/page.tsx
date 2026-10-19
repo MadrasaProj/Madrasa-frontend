@@ -495,24 +495,24 @@ export default function TeacherFeesPage() {
             </div>
           ) : (
             <>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="text-base font-semibold text-foreground">
+                  {activeType
+                    ? activeType.name
+                    : t("teacherPages", "allFeeTypes", lang)}{" "}
+                  <span className="text-sm font-normal text-muted-foreground">· {payTotal} total</span>
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={loadPayments}
+                  className="text-muted-foreground"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  {t("teacherPages", "refreshBtn", lang)}
+                </Button>
+              </div>
               <div className="overflow-hidden rounded-xl border bg-background">
-                <div className="flex items-center justify-between border-b bg-muted/30 px-4 py-3">
-                  <p className="text-sm font-medium text-muted-foreground">
-                    {activeType
-                      ? activeType.name
-                      : t("teacherPages", "allFeeTypes", lang)}{" "}
-                    · {payTotal} total
-                  </p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={loadPayments}
-                    className="text-muted-foreground"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" />
-                    {t("teacherPages", "refreshBtn", lang)}
-                  </Button>
-                </div>
                 <Table className="min-w-[760px]">
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
