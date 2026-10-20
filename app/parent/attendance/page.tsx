@@ -1,14 +1,16 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useId } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
+import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { Skeleton, SkeletonList } from "@/components/ui/Skeleton";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth";
-import { AlertCircle, CalendarDays, CheckCircle2, XCircle, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { AlertCircle, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { Cell, Pie, PieChart } from "recharts";
 
 const DAY_HEADER_KEYS = ["daySun", "dayMon", "dayTue", "dayWed", "dayThu", "dayFri", "daySat"];
 import type { AttendanceStatus } from "@/lib/attendance-api";
@@ -51,14 +53,14 @@ const DAY_HEADERS = DAY_HEADER_KEYS;
 export default function ParentAttendancePage() {
   const { lang } = useLanguageStore();
   const { user, accessToken, activeStudentId } = useAuthStore();
+  const chartId = useId().replace(/:/g, "");
 
   const locale = lang === "ml" ? "ml-IN" : "en-US";
   const effectiveId = activeStudentId ?? (user?.accessibleStudentIds?.[0] ?? "");
-  const activeStudent = user?.accessibleStudents?.find((s) => s.id === effectiveId);
 
   const [monthIndex, setMonthIndex] = useState(0);
 
-  const { data, isLoading, error, refetch, isRefetching } = useStudentAttendance(
+  const { data, isLoading, error, refetch } = useStudentAttendance(
     { clientId: user?.clientId ?? "", token: accessToken ?? "" },
     effectiveId,
     user?.defaultAcademicYearId ? { academicYearId: user.defaultAcademicYearId } : undefined,
@@ -69,10 +71,16 @@ export default function ParentAttendancePage() {
   const otherCount    = (data?.summary?.LATE     ?? 0) + (data?.summary?.LEAVE  ?? 0) + (data?.summary?.SICK ?? 0);
   const total         = data?.total ?? 0;
   const percentage    = total > 0 ? Math.round((presentCount / total) * 100) : 0;
-  const pctColor      = percentage >= 80 ? "text-emerald-400" : percentage >= 60 ? "text-amber-400" : "text-red-400";
-  const ringColor     = percentage >= 80 ? "#10b981" : percentage >= 60 ? "#f59e0b" : "#ef4444";
-  const circumference = 2 * Math.PI * 52;
-  const dashOffset    = circumference * (1 - percentage / 100);
+  const chartConfig = {
+    present: { label: t("parentPages", "presentLower", lang), color: "#059669" },
+    absent: { label: t("parentPages", "absentLower", lang), color: "#ef4444" },
+    other: { label: t("parentPages", "otherLower", lang), color: "#e5e7eb" },
+  } satisfies ChartConfig;
+  const chartData = [
+    { key: "present", value: presentCount },
+    { key: "absent", value: absentCount },
+    { key: "other", value: total > 0 ? Math.max(otherCount, total - presentCount - absentCount) : 1 },
+  ];
 
   const availableMonths = useMemo(() => {
     if (!data?.records.length) return [];
@@ -99,7 +107,7 @@ export default function ParentAttendancePage() {
   if (!user?.clientId) {
     return (
       <DashboardLayout>
-        <PageHeader title={t("parentPages", "attendanceTitle", lang)} back />
+        <PageHeader title={t("parentPages", "attendanceTitle", lang)} />
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <AlertCircle className="w-10 h-10 text-gray-300 mb-3" />
           <p className="text-gray-400 text-sm">Session expired. Please log in again.</p>
@@ -111,7 +119,7 @@ export default function ParentAttendancePage() {
   if (!effectiveId) {
     return (
       <DashboardLayout>
-        <PageHeader title={t("parentPages", "attendanceTitle", lang)} back />
+        <PageHeader title={t("parentPages", "attendanceTitle", lang)} />
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <CalendarDays className="w-10 h-10 text-gray-300 mb-3" />
           <p className="text-gray-400 text-sm">No students linked to your account.</p>
@@ -122,101 +130,99 @@ export default function ParentAttendancePage() {
 
   return (
     <DashboardLayout>
-      <PageHeader
-        title={t("parentPages", "attendanceTitle", lang)}
-        subtitle={activeStudent?.name}
-        back
-      />
+      <PageHeader title={t("parentPages", "attendanceTitle", lang)} />
 
       {isLoading && (
-        <div className="space-y-4">
-          <Skeleton className="h-36 rounded-3xl" />
-          <div className="grid grid-cols-3 gap-3">
-            <Skeleton className="h-20" />
-            <Skeleton className="h-20" />
-            <Skeleton className="h-20" />
-          </div>
-          <Skeleton className="h-5 w-24 mt-2" />
-          <Skeleton className="h-64 rounded-2xl" />
+        <div className="mx-auto max-w-lg space-y-5">
+          <Skeleton className="h-72 rounded-3xl" />
+          <Skeleton className="h-80 rounded-2xl" />
         </div>
       )}
 
       {errorMessage && <ApiErrorBanner message={errorMessage} onRetry={() => refetch()} />}
 
       {!isLoading && !errorMessage && data && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mx-auto max-w-lg space-y-5">
+          <section className="rounded-3xl border border-gray-100 bg-white px-5 py-7 text-center sm:px-8">
+            <ChartContainer
+              config={chartConfig}
+              className="mx-auto h-[150px] w-[260px] max-w-full"
+              role="img"
+              aria-label={`${t("parentPages", "attendanceRate", lang)}: ${percentage}%`}
+            >
+              <PieChart accessibilityLayer>
+                <defs>
+                  <linearGradient id={`${chartId}-present`} x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#047857" />
+                    <stop offset="100%" stopColor="#6ee7b7" />
+                  </linearGradient>
+                  <linearGradient id={`${chartId}-absent`} x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#dc2626" />
+                    <stop offset="100%" stopColor="#fca5a5" />
+                  </linearGradient>
+                </defs>
+                <Pie
+                  data={chartData}
+                  dataKey="value"
+                  nameKey="key"
+                  startAngle={180}
+                  endAngle={0}
+                  cx="50%"
+                  cy="95%"
+                  innerRadius={70}
+                  outerRadius={110}
+                  cornerRadius={8}
+                  strokeWidth={0}
+                  isAnimationActive={false}
+                >
+                  {chartData.map((entry) => (
+                    <Cell
+                      key={entry.key}
+                      fill={entry.key === "other" ? "var(--color-other)" : `url(#${chartId}-${entry.key})`}
+                    />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ChartContainer>
+            <div  style={{
+              transform: "translate(-50%, -170px)",
+            }} className="  absolute left-1/2 top-1/2  text-center">
 
-          {/* ── Hero card ──────────────────────────────────────────────────── */}
-          <div className="bg-gradient-to-br from-emerald-700 to-emerald-600 rounded-3xl p-5 text-white">
-            <div className="flex items-end gap-6">
-              <div className="flex-1 space-y-2">
-                <p className="text-emerald-200 text-xs font-semibold uppercase tracking-widest">
-                  {t("parentPages", "attendanceRate", lang)}
-                </p>
-                <p className="text-white/80 text-sm">
-                  {activeStudent?.name}
-                  {activeStudent?.className ? ` · ${activeStudent.className}` : ""}
-                </p>
-                <div className="space-y-2 pt-2">
-
-                <div className="flex w-full gap-6">
-                    <div className="flex flex-1 items-center justify-between border-b border-white/20 pb-1.5">
-                    <span className="text-[11px] text-emerald-200 lowercase">{t("parentPages", "presentLower", lang)}</span>
-                    <span className="text-lg font-black">{presentCount}</span>
-                  </div>
-                  <div className="flex flex-1  items-center justify-between border-b border-white/20 pb-1.5">
-                    <span className="text-[11px] text-emerald-200 lowercase">{t("parentPages", "absentLower", lang)}</span>
-                    <span className="text-lg font-black">{absentCount}</span>
-                  </div>
-                </div>
-                  {otherCount > 0 && (
-                    <div className="flex items-center justify-between border-b border-white/20 pb-1.5">
-                      <span className="text-[11px] text-emerald-200 lowercase">{t("parentPages", "otherLower", lang)}</span>
-                      <span className="text-lg font-black">{otherCount}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between pb-1.5  border-b border-white/20">
-                    <span className="text-[11px] text-emerald-200 lowercase">{t("parentPages", "totalLower", lang)}</span>
-                    <span className="text-lg font-black">{total}</span>
-                  </div>
-                </div>
+            <p className="-mt-2 text-4xl font-bold tracking-tight text-gray-900">{percentage}%</p>
+            <p className="mt-1 text-xs font-medium text-gray-500">{t("parentPages", "attendanceRate", lang)}</p>
+            </div>
+            <div className={cn("mt-7 grid divide-x divide-gray-200 border-t border-gray-100 pt-5", otherCount > 0 ? "grid-cols-4" : "grid-cols-3")}>
+              <div className="min-w-0 px-1">
+                <p className="text-xl font-semibold text-gray-900 sm:text-2xl">{presentCount}</p>
+                <p className="mt-0.5 text-xs text-gray-500">{t("parentPages", "presentLower", lang)}</p>
               </div>
-              <div className="relative shrink-0">
-                <svg width="140" height="140" className="-rotate-90 drop-shadow-md">
-                  <defs>
-                    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor={percentage >= 80 ? "#ffffff" : percentage >= 60 ? "#ffffff" : "#ffffff"} />
-                      <stop offset="100%" stopColor={percentage >= 80 ? "#22c55e" : percentage >= 60 ? "#eab308" : "#ef4444"} />
-                    </linearGradient>
-                  </defs>
-                  <circle cx="70" cy="70" r="52" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="18" />
-                  <circle
-                    cx="70" cy="70" r="52" fill="none"
-                    stroke="url(#ringGrad)" strokeWidth="18"
-                    strokeLinecap="round"
-                    strokeDasharray={circumference}
-                    strokeDashoffset={dashOffset}
-                    style={{ transition: "stroke-dashoffset 0.8s ease" }}
-                  />
-                </svg>
-                <span className="absolute inset-0 flex items-center justify-center text-xl font-black">
-                  {percentage}%
-                </span>
+              <div className="min-w-0 px-1">
+                <p className="text-xl font-semibold text-red-600 sm:text-2xl">{absentCount}</p>
+                <p className="mt-0.5 text-xs text-gray-500">{t("parentPages", "absentLower", lang)}</p>
+              </div>
+              {otherCount > 0 && (
+                <div className="min-w-0 px-1">
+                  <p className="text-xl font-semibold text-gray-900 sm:text-2xl">{otherCount}</p>
+                  <p className="mt-0.5 text-xs text-gray-500">{t("parentPages", "otherLower", lang)}</p>
+                </div>
+              )}
+              <div className="min-w-0 px-1">
+                <p className="text-xl font-semibold text-gray-900 sm:text-2xl">{total}</p>
+                <p className="mt-0.5 text-xs text-gray-500">{t("parentPages", "totalLower", lang)}</p>
               </div>
             </div>
-          </div>
+          </section>
 
-          <div className="space-y-4 lg:flex lg:gap-4 lg:items-start lg:space-y-0">
           {/* ── Calendar ────────────────────────────────────────────────────── */}
           {availableMonths.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center lg:flex-1">
+            <div className="flex flex-col items-center justify-center py-16 text-center">
               <CalendarDays className="w-10 h-10 text-gray-300 mb-3" />
               <p className="text-gray-400 text-sm">
                 {t("parentPages", "noAttendanceRecords", lang)}
               </p>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-gray-100 p-5 lg:max-w-sm lg:flex-1">
+            <div className="bg-white rounded-2xl border border-gray-100 p-5">
               {/* Month nav */}
               <div className="flex items-center justify-between mb-5">
                 <button
@@ -271,13 +277,7 @@ export default function ParentAttendancePage() {
                         key={dateStr}
                         className={cn(
                           "aspect-square rounded-xl flex flex-col items-center justify-center transition-all",
-                          status && "bg-gradient-to-tr",
-                          status === "PRESENT" && "from-emerald-200 to-transparent border border-emerald-200/50",
-                          status === "ABSENT" && "from-red-200 to-transparent border border-red-200/50",
-                          status === "LATE" && "from-amber-200 to-transparent border border-amber-200/50",
-                          status === "EXCUSED" && "from-blue-200 to-transparent border border-blue-200/50",
-                          status === "LEAVE" && "from-amber-200 to-transparent border border-amber-200/50",
-                          status === "SICK" && "from-orange-200 to-transparent border border-orange-200/50",
+                          cfg?.bg,
                           !status && "bg-gray-50/50",
                           isToday && "ring-2 ring-emerald-400 ring-offset-1",
                         )}>
@@ -314,43 +314,6 @@ export default function ParentAttendancePage() {
               </div>
             </div>
           )}
-
-          {/* ── Daily Log ──────────────────────────────────────────────────── */}
-          {currentMonth && (() => {
-            const monthRecs = data?.records.filter((r) => r.date.startsWith(currentMonth)) ?? [];
-            return monthRecs.length > 0 ? (
-              <div className="bg-white rounded-2xl border border-gray-100 p-4 lg:flex-1 lg:max-w-sm">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-                  {monthLabel(currentMonth, locale)}
-                </p>
-                <div className="space-y-2">
-                  {monthRecs.map((rec) => {
-                    const cfg = STATUS_CONFIG[rec.status];
-                    const d = new Date(rec.date);
-                    const day = d.getDate();
-                    const dayName = d.toLocaleDateString(locale, { weekday: "short" });
-                    return (
-                      <div key={rec.id} className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-50 transition-colors">
-                        <div className={cn("w-0.5 h-8 rounded-full shrink-0", cfg.dot)} />
-                        <div className="text-center shrink-0">
-                          <p className="text-[10px] text-gray-400 leading-none">{dayName}</p>
-                          <p className="text-base font-bold text-gray-800 leading-tight">{day}</p>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-800">
-                            {cfg[lang === "ml" ? "labelMl" : "label"]}
-                          </p>
-                          {rec.notes && <p className="text-xs text-gray-400 truncate">{rec.notes}</p>}
-                        </div>
-                        <div className={cn("w-2 h-2 rounded-full shrink-0", cfg.dot)} />
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : null;
-          })()}
-          </div>
 
           <div className="pb-8" />
         </motion.div>
