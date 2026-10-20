@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { PageHeader } from "@/components/ui/PageHeader";
 import type { ExamRecord } from "@/lib/exams-api";
 import type { ResultRecord, ExamSummary, ClassReport } from "@/lib/results-api";
 import { GRADE_COLORS, TOTAL_GRADE_LABELS } from "@/lib/results-api";
@@ -15,7 +16,7 @@ import { downloadAsJPG, downloadAsPDF, shareAsJPG, downloadAsPNG } from "@/lib/p
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import {
   Medal, Loader2, AlertCircle, RefreshCw, GraduationCap, Trophy,
-  Download, Share2, FileText, ChevronDown, ArrowLeft, Printer, Calendar, Award, Eye, FileBadge2
+  Download, Share2, FileText, ChevronDown, Printer, Calendar, Award, Eye, FileBadge2
 } from "lucide-react";
 import { useExams, useResults, useResultSummaries, useClassReport } from "@/lib/queries";
 
@@ -522,34 +523,10 @@ export default function ParentResultsPage() {
 
   return (
     <DashboardLayout>
+      <PageHeader title={t("parentPages", "resultsPageTitle", lang)} />
       <div className="px-3 sm:px-4 py-3 lg:px-8 lg:py-6 space-y-5 sm:space-y-6">
-        {/* Breadcrumb Header */}
-        <div className="flex items-center gap-2.5 sm:gap-3 print:hidden">
-          <button
-            onClick={() => window.history.back()}
-            className="p-2 border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors text-gray-600 active:scale-[0.95]"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-gray-400 font-bold uppercase tracking-wider">
-              <span className="truncate">Exams</span>
-              <span>/</span>
-              <span className="truncate">{activeExam?.name ?? t("common", "details", lang)}</span>
-            </div>
-            <h1 className="text-lg sm:text-xl font-extrabold text-gray-900 tracking-tight mt-0.5">{t("parentPages", "resultsPageTitle", lang)}</h1>
-          </div>
-        </div>
-
         {loading ? (
             <div className="space-y-5">
-            <div className="flex items-center gap-3">
-              <Skeleton className="h-9 w-9 rounded-xl shrink-0" />
-              <div className="space-y-1.5">
-                <Skeleton className="h-3 w-24 rounded-full" />
-                <Skeleton className="h-5 w-40 rounded-lg" />
-              </div>
-            </div>
             <Skeleton className="h-20 rounded-2xl" />
             <div className="flex gap-1">
               {[1, 2, 3, 4].map((i) => (

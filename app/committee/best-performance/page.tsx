@@ -2,9 +2,9 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { DatePickerDrawer } from "@/components/DatePickerDrawer";
 import { Swiper, SwiperSlide } from "swiper/react";
-import { EffectCoverflow } from "swiper/modules";
+import { EffectCards } from "swiper/modules";
 import "swiper/css";
-import "swiper/css/effect-coverflow";
+import "swiper/css/effect-cards";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
@@ -197,60 +197,58 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
     const carousel = (performers: BestPerformer[], key: string) => (
       <Swiper
         key={key}
-        modules={[EffectCoverflow]}
-        effect="coverflow"
-        centeredSlides
+        modules={[EffectCards]}
+        effect="cards"
         grabCursor
-        slidesPerView="auto"
-        coverflowEffect={{ rotate: 0, stretch: 18, depth: 120, scale: 0.86, modifier: 1, slideShadows: false }}
-        className="!overflow-visible py-5"
+        cardsEffect={{ perSlideOffset: 8, perSlideRotate: 2, slideShadows: false }}
+        className="!overflow-visible mt-6 mx-auto w-[min(85vw,410px)] py-15"
         aria-label={lang === "ml" ? "മികച്ച വിദ്യാർത്ഥികൾ" : "Best students"}
       >
         {performers.map((performer, index) => (
-          <SwiperSlide key={performer.studentId} className="!h-auto !w-[min(85vw,410px)]">
-            <article className="h-full rounded-[28px] border border-gray-100 bg-white px-5 pb-5 pt-6 text-center">
+          <SwiperSlide key={performer.studentId} className="!h-auto">
+            <div className="bg-white overflow-hidden rounded-[28px] border-[3px] border-primary/15    ">
+
+            <article className="relative isolate h-full  bg-linear-to-br from-white via-primary/5 to-primary/15 px-5 pb-5 pt-6 text-center text-gray-950 shadow-xl shadow-primary/10 before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:rounded-[inherit] before:bg-white/40">
               <div className="relative mx-auto size-24">
                 {studentPhotos[performer.studentId] ? (
-                  <img src={studentPhotos[performer.studentId]} alt={performer.name} className="size-full rounded-full object-cover ring-4 ring-primary/10" />
+                  <img src={studentPhotos[performer.studentId]} alt={performer.name} className="size-full rounded-full object-cover ring-4 ring-primary/15" />
                 ) : (
-                  <div className="flex size-full items-center justify-center rounded-full bg-primary/10 text-3xl font-bold text-primary ring-4 ring-primary/10" aria-label={performer.name}>
+                  <div className="flex size-full items-center justify-center rounded-full bg-primary/10 text-3xl font-bold text-primary ring-4 ring-primary/15" aria-label={performer.name}>
                     {performer.name.trim().charAt(0).toUpperCase()}
                   </div>
                 )}
                 {index < 3 && (
-                  <span className={cn(
-                    "absolute -bottom-1 -right-1 flex size-8 items-center justify-center rounded-full text-white shadow-sm shadow-gray-900/10 ring-4 ring-white",
-                    index === 0 ? "bg-primary" : index === 1 ? "bg-gray-700" : "bg-gray-500",
-                  )} aria-label={`Rank ${index + 1}`}>
+                  <span className="absolute -bottom-1 -right-1 flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm shadow-gray-900/10 ring-4 ring-white" aria-label={`Rank ${index + 1}`}>
                     <Icon icon="lucide:badge" className="absolute size-7" aria-hidden="true" />
                     <span className="relative text-[11px] font-black">{index + 1}</span>
                   </span>
                 )}
               </div>
-              <p className="mt-5 truncate text-lg font-bold text-gray-950">{performer.name}</p>
+              <p className="mt-5 truncate text-lg font-bold">{performer.name}</p>
               <p className="text-xs font-medium text-gray-500">{performer.adno}</p>
               <div className="mt-5">
                 <p className="text-3xl font-extrabold text-primary">{performer.score}</p>
                 <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">{lang === "ml" ? "സ്കോർ" : "Score"}</p>
               </div>
               <div className="mt-5">
-                <div className="grid grid-cols-2 divide-x divide-gray-200">
-                  <div className="flex flex-col items-center gap-1 px-2"><strong className="text-xl font-bold leading-none tabular-nums text-gray-950">{performer.totalPrayers}</strong><small className="text-[11px] font-medium text-gray-600">{lang === "ml" ? "നമസ്കാരം" : "Prayers"}</small></div>
-                  <div className="flex flex-col items-center gap-1 px-2"><strong className="text-xl font-bold leading-none tabular-nums text-gray-950">{performer.totalQuranPages}</strong><small className="text-[11px] font-medium text-gray-600">{lang === "ml" ? "പേജുകൾ" : "Pages"}</small></div>
+                <div className="grid grid-cols-2 divide-x divide-primary/15">
+                  <div className="flex flex-col items-center gap-1 px-2"><strong className="text-xl font-bold leading-none tabular-nums">{performer.totalPrayers}</strong><small className="text-[11px] font-medium text-gray-600">{lang === "ml" ? "നമസ്കാരം" : "Prayers"}</small></div>
+                  <div className="flex flex-col items-center gap-1 px-2"><strong className="text-xl font-bold leading-none tabular-nums">{performer.totalQuranPages}</strong><small className="text-[11px] font-medium text-gray-600">{lang === "ml" ? "പേജുകൾ" : "Pages"}</small></div>
                 </div>
-                <div className="mt-3 grid grid-cols-2 divide-x divide-gray-200 border-t border-gray-100 pt-3">
-                  <div className="flex flex-col items-center gap-1 px-2"><strong className="text-xl font-bold leading-none tabular-nums text-gray-950">{performer.streak}d</strong><small className="text-[11px] font-medium text-gray-600">{lang === "ml" ? "സ്ട്രീക്ക്" : "Streak"}</small></div>
-                  <div className="flex flex-col items-center gap-1 px-2"><strong className="text-xl font-bold leading-none tabular-nums text-gray-950">{performer.consistency}%</strong><small className="text-[11px] font-medium text-gray-600">{lang === "ml" ? "സ്ഥിരത" : "Consistency"}</small></div>
+                <div className="mt-3 grid grid-cols-2 divide-x divide-primary/15 border-t border-primary/15 pt-3">
+                  <div className="flex flex-col items-center gap-1 px-2"><strong className="text-xl font-bold leading-none tabular-nums">{performer.streak}d</strong><small className="text-[11px] font-medium text-gray-600">{lang === "ml" ? "സ്ട്രീക്ക്" : "Streak"}</small></div>
+                  <div className="flex flex-col items-center gap-1 px-2"><strong className="text-xl font-bold leading-none tabular-nums">{performer.consistency}%</strong><small className="text-[11px] font-medium text-gray-600">{lang === "ml" ? "സ്ഥിരത" : "Consistency"}</small></div>
                 </div>
               </div>
               {Object.entries(performer.customCounts ?? {}).some(([, value]) => value > 0) && (
-                <div className="mt-4 flex flex-wrap justify-center gap-x-3 gap-y-1 border-t border-gray-100 pt-3 text-xs font-medium text-gray-700">
+                <div className="mt-4 flex flex-wrap justify-center gap-x-3 gap-y-1 border-t border-primary/15 pt-3 text-xs font-medium text-gray-700">
                   {Object.entries(performer.customCounts ?? {}).filter(([, value]) => value > 0).map(([itemKey, value]) => (
                     <span key={itemKey}>{value} {customItems.find((item) => item.key === itemKey)?.label ?? itemKey}</span>
                   ))}
                 </div>
               )}
             </article>
+            </div>
           </SwiperSlide>
         ))}
       </Swiper>
@@ -306,7 +304,7 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
           {!loading && !error && classRankings.length > 0 && <section className="mt-10 space-y-9">
             <h2 className="text-center text-lg font-bold text-gray-900">{lang === "ml" ? "ക്ലാസ് അടിസ്ഥാനത്തിൽ" : "Class performance"}</h2>
             {classRankings.map(({ className, performers }) => <div key={className}>
-              <h3 className="border-b border-gray-100 pb-2 text-base font-bold text-primary">{className}</h3>
+              <h3 className=" text-center w-full  pb-2 text-base font-bold text-primary">{className}</h3>
               {performers.length ? carousel(performers, `${className}-${period?.from}-${period?.to}`) : <p className="py-6 text-center text-sm text-gray-500">{lang === "ml" ? "ഇബാദത്ത് ഡാറ്റ ലഭ്യമല്ല" : "No ibadah data"}</p>}
             </div>)}
           </section>}
