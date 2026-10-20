@@ -3,24 +3,26 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { motion, AnimatePresence } from "framer-motion";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DatePickerInput } from "@/components/DatePickerInput";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth";
-import type { LeaveReasonType, LeaveRequestStatus } from "@/lib/leave-requests-api";
+import type { LeaveReasonType, LeaveRequest, LeaveRequestStatus } from "@/lib/leave-requests-api";
 import { useMyLeaveRequests, useCreateLeaveRequest } from "@/lib/queries";
 import {
-  Loader2,
-  Send,
   Clock,
   CheckCircle2,
   XCircle,
   AlertCircle,
-  Plus,
-  X,
-  FilePen,
+  CalendarDays,
+  HeartPulse,
 } from "lucide-react";
 
 const STATUS_CONFIG: Record<
@@ -54,17 +56,19 @@ const STATUS_CONFIG: Record<
 
 const REASON_CONFIG: Record<
   LeaveReasonType,
-  { labelKey: string; color: string; bg: string }
+  { labelKey: string; color: string; bg: string; icon: typeof CalendarDays }
 > = {
   LEAVE: {
     labelKey: "leaveLabel",
     color: "text-amber-600",
     bg: "bg-amber-50",
+    icon: CalendarDays,
   },
   SICK: {
     labelKey: "sickLabel",
     color: "text-orange-600",
     bg: "bg-orange-50",
+    icon: HeartPulse,
   },
 };
 
@@ -76,6 +80,7 @@ export default function ParentLeaveRequestsPage() {
   const studentId = activeStudentId ?? user?.accessibleStudentIds?.[0] ?? "";
 
   const [showForm, setShowForm] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<LeaveRequest | null>(null);
   const [reasonType, setReasonType] = useState<LeaveReasonType>("LEAVE");
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -90,12 +95,12 @@ export default function ParentLeaveRequestsPage() {
   const createMutation = useCreateLeaveRequest({ clientId: cid, token });
 
   const handleSubmit = async () => {
-    if (!cid || !token || !studentId || !description || !startDate) return;
+    if (!cid || !token || !studentId || !description.trim() || !startDate || startDate < today || (endDate && endDate < startDate)) return;
     try {
       await createMutation.mutateAsync({
         studentId,
         reasonType,
-        description,
+        description: description.trim(),
         startDate,
         endDate: endDate || undefined,
       });
@@ -110,7 +115,8 @@ export default function ParentLeaveRequestsPage() {
     }
   };
 
-  const today = new Date().toISOString().split("T")[0];
+  const now = new Date();
+  const today = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
   const errorMessage = error instanceof Error ? error.message : null;
   const createError = createMutation.error instanceof Error ? createMutation.error.message : null;
 
@@ -127,13 +133,14 @@ export default function ParentLeaveRequestsPage() {
       <div className="p-4 sm:p-6 mx-auto px-0">
         <PageHeader
           title={t("parentPages", "leaveRequestsTitle", lang)}
-          subtitle={t("parentPages", "leaveRequestsSub", lang)}
-          icon={FilePen}
-          back
-          backHref="/parent"
+          action={
+            <Button type="button" onClick={() => setShowForm(true)}>
+              {t("parentPages", "newRequest", lang)}
+            </Button>
+          }
         />
 
-        {(errorMessage || createError) && <ApiErrorBanner message={errorMessage ?? createError ?? ""} />}
+        {errorMessage && <ApiErrorBanner message={errorMessage} />}
 
         <div className="space-y-3">
           {isLoading ? (
@@ -147,209 +154,207 @@ export default function ParentLeaveRequestsPage() {
               icon={AlertCircle}
               title={t("parentPages", "noLeaveRequests", lang)}
               description={t("parentPages", "leaveRequestsSub", lang)}
-              action={
-                <button
-                  onClick={() => setShowForm(true)}
-                  className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-all duration-200 active:scale-[0.98] shadow-sm"
-                >
-                  <Plus className="w-4 h-4" />
-                  {t("parentPages", "newRequest", lang)}
-                </button>
-              }
             />
           ) : (
-            requests.map((r) => {
-              const sc = STATUS_CONFIG[r.status];
-              const rc = REASON_CONFIG[r.reasonType];
-              const Icon = sc.icon;
-              return (
-                <div
-                  key={r.id}
-                  className="bg-white rounded-2xl border border-gray-200 p-4 space-y-2"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "px-2.5 py-0.5 rounded-full text-xs font-semibold",
-                          rc.bg,
-                          rc.color,
-                        )}
+            <div className="rounded-xl border border-gray-200 bg-white">
+              <Table className="min-w-[640px]">
+                <TableHeader className="bg-gray-50">
+                  <TableRow>
+                    <TableHead scope="col" className="px-4">{t("parentPages", "reasonType", lang)}</TableHead>
+                    <TableHead scope="col" className="px-4">{t("parentPages", "startDateLabel", lang)}</TableHead>
+                    <TableHead scope="col" className="px-4">{t("parentPages", "endDateLabel", lang)}</TableHead>
+                    <TableHead scope="col" className="px-4">{t("parentPages", "statusLabel", lang)}</TableHead>
+                    <TableHead scope="col" className="px-4">{t("parentPages", "submittedLabel", lang)}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {requests.map((request) => {
+                    const status = STATUS_CONFIG[request.status];
+                    const reason = REASON_CONFIG[request.reasonType];
+                    const StatusIcon = status.icon;
+                    return (
+                      <TableRow
+                        key={request.id}
+                        tabIndex={0}
+                        onClick={() => setSelectedRequest(request)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            setSelectedRequest(request);
+                          }
+                        }}
+                        aria-label={`${t("parentPages", reason.labelKey as any, lang)} — ${new Date(request.startDate).toLocaleDateString()}`}
+                        className="cursor-pointer transition-colors hover:bg-gray-50 focus-visible:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-emerald-500"
                       >
-                        {t("parentPages", rc.labelKey as any, lang)}
-                      </span>
-                      <span
-                        className={cn(
-                          "px-2.5 py-0.5 rounded-full text-xs font-semibold flex items-center gap-1",
-                          sc.bg,
-                          sc.color,
-                        )}
-                      >
-                        <Icon className="w-3 h-3" />
-                        {t("parentPages", sc.labelKey as any, lang)}
-                      </span>
-                    </div>
-                    <span className="text-xs text-gray-400">
-                      {new Date(r.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-700">{r.description}</p>
-                  <div className="flex gap-4 text-xs text-gray-500">
-                    <span>
-                      From: {new Date(r.startDate).toLocaleDateString()}
-                    </span>
-                    {r.endDate && (
-                      <span>
-                        To: {new Date(r.endDate).toLocaleDateString()}
-                      </span>
-                    )}
-                  </div>
-                  {r.reviewNote && (
-                    <div className="bg-gray-50 rounded-xl p-3 text-xs text-gray-600">
-                      <span className="font-semibold">Review note:</span>{" "}
-                      {r.reviewNote}
-                    </div>
-                  )}
-                </div>
-              );
-            })
+                        <TableCell className="px-4 font-medium text-gray-900">{t("parentPages", reason.labelKey as any, lang)}</TableCell>
+                        <TableCell className="px-4 text-gray-600">{new Date(request.startDate).toLocaleDateString()}</TableCell>
+                        <TableCell className="px-4 text-gray-600">{request.endDate ? new Date(request.endDate).toLocaleDateString() : "—"}</TableCell>
+                        <TableCell className="px-4">
+                          <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold", status.bg, status.color)}>
+                            <StatusIcon className="h-3.5 w-3.5" />
+                            {t("parentPages", status.labelKey as any, lang)}
+                          </span>
+                        </TableCell>
+                        <TableCell className="px-4 text-gray-600">{new Date(request.createdAt).toLocaleDateString()}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </div>
       </div>
 
-      {/* FAB — New Request */}
-      <AnimatePresence>
-        {!showForm && (
-          <motion.button
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            onClick={() => setShowForm(true)}
-            className="fixed z-30 bottom-24 right-4 md:bottom-8 p-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-            aria-label={t("parentPages", "newRequest", lang)}
-          >
-            <Plus className="w-6 h-6" />
-          </motion.button>
-        )}
-      </AnimatePresence>
-
-      {/* New request modal */}
-      <AnimatePresence>
-        {showForm && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
-              onClick={() => setShowForm(false)}
-            />
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            >
-              <div className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-sm shadow-xl overflow-hidden">
-                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                  <p className="font-bold text-gray-900">{t("parentPages", "applyForLeave", lang)}</p>
-                  <button
-                    onClick={() => setShowForm(false)}
-                    className="p-1 text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-                <div className="px-5 py-4 space-y-4">
-                  <div>
-                    <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
-                      {t("parentPages", "reasonType", lang)}
-                    </label>
-                    <div className="flex gap-2">
-                      {(["LEAVE", "SICK"] as const).map((r) => (
-                        <button
-                          key={r}
-                          onClick={() => setReasonType(r)}
-                          className={cn(
-                            "flex-1 py-3 rounded-xl text-sm font-semibold transition-all border-2 active:scale-[0.98]",
-                            reasonType === r
-                              ? r === "LEAVE"
-                                ? "border-amber-500 bg-amber-50 text-amber-700"
-                                : "border-orange-500 bg-orange-50 text-orange-700"
-                              : "border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700",
-                          )}
-                        >
-                          {t("parentPages", REASON_CONFIG[r].labelKey as any, lang)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
-                      {t("parentPages", "descriptionLabel", lang)}
-                    </label>
-                    <textarea
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      placeholder={t("parentPages", "reasonPlaceholder", lang)}
-                      rows={3}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 resize-none transition-all"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
-                        {t("parentPages", "startDateLabel", lang)}
-                      </label>
-                      <input
-                        type="date"
-                        value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
-                        min={today}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 transition-all"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
-                        {t("parentPages", "endDateLabel", lang)}
-                      </label>
-                      <input
-                        type="date"
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                        min={startDate || today}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 transition-all"
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div className="px-5 pb-5 flex gap-2">
-                  <button
-                    onClick={() => setShowForm(false)}
-                    className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 active:scale-[0.98] transition-all duration-200"
-                  >
-                    {t("parentPages", "cancelLabel", lang)}
-                  </button>
-                  <button
-                    onClick={handleSubmit}
-                    disabled={createMutation.isPending || !description || !startDate}
-                    className="flex-[2] py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                  >
-                    {createMutation.isPending ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Send className="w-4 h-4" />
-                    )}
-                    {t("parentPages", "submitLabel", lang)}
-                  </button>
-                </div>
+      <ResponsivePopover
+        open={selectedRequest !== null}
+        onOpenChange={(open) => { if (!open) setSelectedRequest(null); }}
+        title={t("parentPages", "leaveRequestsTitle", lang)}
+        description={selectedRequest && [selectedRequest.student.name, selectedRequest.student.class?.name, selectedRequest.student.adno].filter(Boolean).join(" · ")}
+      >
+        {selectedRequest && (() => {
+          const request = selectedRequest;
+          const status = STATUS_CONFIG[request.status];
+          const reason = REASON_CONFIG[request.reasonType];
+          const StatusIcon = status.icon;
+          return (
+            <div className="space-y-5 p-5 text-sm">
+              <div className="flex flex-wrap gap-2">
+                <span className={cn("rounded-full px-2.5 py-1 text-xs font-semibold", reason.bg, reason.color)}>
+                  {t("parentPages", reason.labelKey as any, lang)}
+                </span>
+                <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold", status.bg, status.color)}>
+                  <StatusIcon className="h-3.5 w-3.5" />
+                  {t("parentPages", status.labelKey as any, lang)}
+                </span>
               </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs font-semibold text-gray-500">{t("parentPages", "startDateLabel", lang)}</p>
+                  <p className="mt-1 text-gray-900">{new Date(request.startDate).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-500">{t("parentPages", "endDateLabel", lang)}</p>
+                  <p className="mt-1 text-gray-900">{request.endDate ? new Date(request.endDate).toLocaleDateString() : "—"}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-500">{t("parentPages", "submittedLabel", lang)}</p>
+                  <p className="mt-1 text-gray-900">{new Date(request.createdAt).toLocaleDateString()}</p>
+                </div>
+                {request.reviewedAt && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500">{t("parentPages", "reviewedLabel", lang)}</p>
+                    <p className="mt-1 text-gray-900">{new Date(request.reviewedAt).toLocaleDateString()}</p>
+                  </div>
+                )}
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-500">{t("parentPages", "descriptionLabel", lang)}</p>
+                <p className="mt-1 whitespace-pre-wrap text-gray-900">{request.description}</p>
+              </div>
+              {request.reviewedBy && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500">{t("parentPages", "reviewedByLabel", lang)}</p>
+                  <p className="mt-1 text-gray-900">{request.reviewedBy.name}</p>
+                </div>
+              )}
+              {request.reviewNote && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500">{t("parentPages", "reviewNote", lang)}</p>
+                  <p className="mt-1 whitespace-pre-wrap text-gray-900">{request.reviewNote}</p>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+      </ResponsivePopover>
+
+      <ResponsivePopover
+        open={showForm}
+        onOpenChange={setShowForm}
+        drawerOnDesktop
+        title={t("parentPages", "applyForLeave", lang)}
+        footer={
+          <div className="flex justify-end gap-2 border-t p-4">
+            <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
+              {t("parentPages", "cancelLabel", lang)}
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSubmit}
+              disabled={createMutation.isPending || !description.trim() || !startDate || startDate < today || Boolean(endDate && endDate < startDate)}
+            >
+              {t("parentPages", "submitLabel", lang)}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-5 p-5">
+          {createError && <ApiErrorBanner message={createError} />}
+          <div className="space-y-2">
+            <p className="text-sm font-medium">{t("parentPages", "reasonType", lang)}</p>
+            <Tabs value={reasonType} onValueChange={(value) => setReasonType(value as LeaveReasonType)}>
+              <TabsList className={reasonType === "LEAVE" ? "bg-amber-50" : "bg-orange-50"}>
+                {(["LEAVE", "SICK"] as const).map((type) => {
+                  const reason = REASON_CONFIG[type];
+                  const ReasonIcon = reason.icon;
+                  return (
+                    <TabsTrigger
+                      key={type}
+                      value={type}
+                      className={type === "LEAVE" ? "gap-1.5 data-[state=active]:bg-amber-100 data-[state=active]:text-amber-800" : "gap-1.5 data-[state=active]:bg-orange-100 data-[state=active]:text-orange-800"}
+                    >
+                      <ReasonIcon className="size-4" />
+                      {t("parentPages", reason.labelKey as any, lang)}
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+            </Tabs>
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="leave-description" className="text-sm font-medium">{t("parentPages", "descriptionLabel", lang)}</label>
+            <Textarea
+              id="leave-description"
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder={t("parentPages", "reasonPlaceholder", lang)}
+              rows={3}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label htmlFor="leave-start-date" className="text-sm font-medium">{t("parentPages", "startDateLabel", lang)}</label>
+              <DatePickerInput
+                id="leave-start-date"
+                title={t("parentPages", "startDateLabel", lang)}
+                value={startDate}
+                onChange={(date) => {
+                  setStartDate(date);
+                  if (endDate && endDate < date) setEndDate("");
+                }}
+                disableFuture={false}
+                minDate={today}
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="leave-end-date" className="text-sm font-medium">{t("parentPages", "endDateLabel", lang)}</label>
+              <DatePickerInput
+                id="leave-end-date"
+                title={t("parentPages", "endDateLabel", lang)}
+                value={endDate}
+                onChange={setEndDate}
+                disableFuture={false}
+                minDate={startDate || today}
+                allowClear
+                clearLabel={t("parentPages", "clearDateLabel", lang)}
+              />
+            </div>
+          </div>
+        </div>
+      </ResponsivePopover>
     </DashboardLayout>
   );
 }

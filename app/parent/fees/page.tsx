@@ -2,18 +2,22 @@ import { useState, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
-import { DataTable, type Column } from "@/components/ui/DataTable";
-import type { ReceiptData, FeePayment, FeePaymentStatus, StudentFeeSummary } from "@/lib/fees-api";
+import type { ReceiptData, FeePaymentStatus, StudentFeeSummary } from "@/lib/fees-api";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Drawer, DrawerClose, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useStudentFeesBatch, usePaymentReceipt } from "@/lib/queries";
 import {
   IndianRupee, Loader2, Receipt, Printer,
-  AlertCircle, RefreshCw, CheckCircle2, CalendarClock,
-  CircleDollarSign, Wallet, XCircle, Sparkles,
+  AlertCircle,
+  Search, SlidersHorizontal, RefreshCw,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -28,13 +32,13 @@ const FILTER_TABS: { id: FilterTab; labelKey: string }[] = [
 
 const STATUS_META: Record<
   FeePaymentStatus,
-  { bg: string; text: string; ring: string; icon: typeof CheckCircle2; labelKey: string }
+  { bg: string; text: string; labelKey: string }
 > = {
-  PAID:    { bg: "bg-emerald-50", text: "text-emerald-700", ring: "ring-emerald-200/70", icon: CheckCircle2,    labelKey: "paidStatusLabel" },
-  PENDING: { bg: "bg-amber-50",   text: "text-amber-700",   ring: "ring-amber-200/70",   icon: CalendarClock,   labelKey: "pendingStatusLabel" },
-  PARTIAL: { bg: "bg-blue-50",    text: "text-blue-700",    ring: "ring-blue-200/70",    icon: CircleDollarSign,labelKey: "partialStatusLabel" },
-  OVERDUE: { bg: "bg-red-50",     text: "text-red-700",     ring: "ring-red-200/70",     icon: AlertCircle,     labelKey: "overdueStatusLabel" },
-  WAIVED:  { bg: "bg-gray-100",   text: "text-gray-600",    ring: "ring-gray-200/70",   icon: Sparkles,        labelKey: "waivedStatusLabel" },
+  PAID:    { bg: "bg-emerald-50", text: "text-emerald-700", labelKey: "paidStatusLabel" },
+  PENDING: { bg: "bg-amber-50",   text: "text-amber-700",   labelKey: "pendingStatusLabel" },
+  PARTIAL: { bg: "bg-blue-50",    text: "text-blue-700",    labelKey: "partialStatusLabel" },
+  OVERDUE: { bg: "bg-red-50",     text: "text-red-700",     labelKey: "overdueStatusLabel" },
+  WAIVED:  { bg: "bg-gray-100",   text: "text-gray-600",    labelKey: "waivedStatusLabel" },
 };
 
 const METHOD_LABEL_KEYS: Record<string, string> = {
@@ -47,15 +51,13 @@ const METHOD_LABEL_KEYS: Record<string, string> = {
 
 function StatusBadge({ status, lang }: { status: FeePaymentStatus; lang: "en" | "ml" }) {
   const m = STATUS_META[status];
-  const Icon = m.icon;
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold ring-1",
-        m.bg, m.text, m.ring,
+        "inline-flex rounded-full px-2.5 py-1 text-xs font-medium",
+        m.bg, m.text,
       )}
     >
-      <Icon className="w-3 h-3" />
       {t("parentPages", m.labelKey as any, lang)}
     </span>
   );
@@ -65,22 +67,25 @@ function ReceiptModal({
   receipt, onClose, lang,
 }: { receipt: ReceiptData; onClose: () => void; lang: "en" | "ml" }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <motion.div
-        initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-        className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-6 shadow-2xl"
+        initial={{ scale: 0.94, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+        className="relative w-full max-w-sm overflow-hidden rounded-3xl bg-white shadow-2xl"
       >
-        <div className="text-center mb-4 border-b border-dashed pb-4">
-          <p className="font-bold text-lg">{receipt.client.name}</p>
+        <div className="bg-emerald-600 px-6 py-5 text-center text-white">
+          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20">
+            <Receipt className="h-6 w-6" />
+          </div>
+          <p className="text-lg font-bold">{receipt.client.name}</p>
           {receipt.client.address && (
-            <p className="text-xs text-gray-500">{receipt.client.address}</p>
+            <p className="text-xs text-emerald-100">{receipt.client.address}</p>
           )}
-          <p className="text-xs font-bold text-emerald-700 mt-1 uppercase tracking-widest">
+          <p className="mt-1 text-xs uppercase tracking-widest text-emerald-100">
             {t("parentPages", "feeReceipt", lang)}
           </p>
         </div>
-        <div className="space-y-2 text-sm mb-4">
+        <div className="space-y-2.5 px-6 py-5">
           {[
             [t("parentPages", "receiptNo", lang), receipt.reference ?? receipt.id.slice(0, 8).toUpperCase()],
             [t("parentPages", "dateLabel", lang), receipt.paidAt ? new Date(receipt.paidAt).toLocaleDateString("en-GB") : "—"],
@@ -88,33 +93,38 @@ function ReceiptModal({
             [t("parentPages", "admNoLabel", lang), receipt.student.adno],
             [t("parentPages", "classInfoLabel", lang), receipt.student.class?.name ?? "—"],
             [t("parentPages", "feeTypeLabel", lang), receipt.feeType.name],
-            [t("parentPages", "amountPaidLabel", lang), `₹${Number(receipt.paidAmount ?? 0).toLocaleString()}`],
             [t("parentPages", "methodLabel", lang), receipt.method ?? "—"],
           ].map(([label, value]) => (
-            <div key={label} className="flex items-center justify-between">
-              <span className="text-gray-500">{label}</span>
-              <span className="font-semibold">{value}</span>
+            <div key={label} className="flex items-start justify-between gap-4">
+              <span className="shrink-0 text-xs text-gray-400">{label}</span>
+              <span className="text-right text-xs font-semibold text-gray-900">{value}</span>
             </div>
           ))}
+          <div className="flex items-center justify-between border-t border-dashed border-gray-200 pt-3">
+            <span className="font-bold text-gray-900">{t("parentPages", "amountPaidLabel", lang)}</span>
+            <span className="text-xl font-bold text-emerald-600">₹{Number(receipt.paidAmount ?? 0).toLocaleString()}</span>
+          </div>
+          {receipt.notes && (
+            <p className="text-xs italic text-gray-400">
+              {t("parentPages", "noteLabel", lang)}: {receipt.notes}
+            </p>
+          )}
         </div>
-        {receipt.notes && (
-          <p className="text-xs text-gray-400 italic mb-4">
-            {t("parentPages", "noteLabel", lang)}: {receipt.notes}
-          </p>
-        )}
-        <div className="flex gap-2">
-          <button
+        <div className="flex gap-2 px-6 pb-5">
+          <Button
+            variant="ghost"
             onClick={onClose}
             className="flex-1 py-2.5 rounded-xl border text-sm font-semibold text-gray-600"
           >
             {t("parentPages", "closeBtn", lang)}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             onClick={() => window.print()}
             className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold flex items-center justify-center gap-1.5"
           >
             <Printer className="w-4 h-4" /> {t("parentPages", "printBtn", lang)}
-          </button>
+          </Button>
         </div>
       </motion.div>
     </div>
@@ -145,23 +155,23 @@ function getFrequencyLabel(frequency: string | null | undefined, kind: string, l
   return null;
 }
 
-type PaymentRow = Omit<FeePayment, "student">;
-
 export default function ParentFeesPage() {
-  const { user, accessToken } = useAuthStore();
+  const { user, accessToken, activeStudentId } = useAuthStore();
   const { lang } = useLanguageStore();
-  const [activeIdx, setActiveIdx] = useState(0);
   const [filter, setFilter] = useState<FilterTab>("ALL");
+  const [search, setSearch] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
 
   const cid   = user?.clientId ?? "";
   const token = accessToken ?? "";
   const ids   = user?.accessibleStudentIds ?? [];
   const accessibleStudents = user?.accessibleStudents ?? [];
+  const activeId = activeStudentId ?? ids[0] ?? "";
 
-  const { data, isLoading, error, refetch, isRefetching } = useStudentFeesBatch(
+  const { data, isLoading, error, refetch } = useStudentFeesBatch(
     { clientId: cid, token },
-    ids,
+    activeId ? [activeId] : [],
   );
 
   const getSummary = (sid: string): StudentFeeSummary | null => {
@@ -181,214 +191,81 @@ export default function ParentFeesPage() {
     }
   };
 
-  const activeId = ids[activeIdx];
   const activeSummary = activeId ? getSummary(activeId) : null;
   const activeInfo = accessibleStudents.find((s) => s.id === activeId);
   const errorMessage = error instanceof Error ? error.message : null;
 
-  const counts = useMemo(() => {
-    const empty = { ALL: 0, PENDING: 0, PAID: 0, OVERDUE: 0 };
-    if (!activeSummary) return empty;
-    const all = activeSummary.payments;
-    return {
-      ALL: all.length,
-      PENDING: all.filter((p) => p.status === "PENDING" || p.status === "PARTIAL").length,
-      PAID: all.filter((p) => p.status === "PAID" || p.status === "WAIVED").length,
-      OVERDUE: all.filter((p) => p.status === "OVERDUE").length,
-    };
-  }, [activeSummary]);
-
   const filteredPayments = useMemo(() => {
     if (!activeSummary) return [];
-    if (filter === "ALL") return activeSummary.payments;
+    const payments = activeSummary.payments.filter((p) =>
+      p.feeType.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()),
+    );
+    if (filter === "ALL") return payments;
     if (filter === "PENDING") {
-      return activeSummary.payments.filter((p) => p.status === "PENDING" || p.status === "PARTIAL");
+      return payments.filter((p) => p.status === "PENDING" || p.status === "PARTIAL");
     }
     if (filter === "PAID") {
-      return activeSummary.payments.filter((p) => p.status === "PAID" || p.status === "WAIVED");
+      return payments.filter((p) => p.status === "PAID" || p.status === "WAIVED");
     }
     if (filter === "OVERDUE") {
-      return activeSummary.payments.filter((p) => p.status === "OVERDUE");
+      return payments.filter((p) => p.status === "OVERDUE");
     }
-    return activeSummary.payments;
-  }, [activeSummary, filter]);
+    return payments;
+  }, [activeSummary, filter, search]);
 
   const overdueCount = activeSummary?.payments.filter((p) => p.status === "OVERDUE").length ?? 0;
   const totalDue = activeSummary ? Math.max(0, activeSummary.totalDue - activeSummary.totalPaid) : 0;
 
-  // Look up frequency from the parent feeTypes list (the payments' feeType
-  // type doesn't carry it, but the summary's feeTypes does)
-  const frequencyById = useMemo(() => {
-    const map = new Map<string, { frequency: string | null; kind: string }>();
-    activeSummary?.feeTypes.forEach((ft) => map.set(ft.id, { frequency: ft.frequency, kind: ft.kind }));
-    return map;
-  }, [activeSummary]);
-
-  const columns: Column<PaymentRow>[] = useMemo(() => [
-    {
-      key: "feeType",
-      header: t("parentPages", "feeTypeLabel", lang),
-      render: (p) => {
-        const meta = frequencyById.get(p.feeType.id);
-        const freq = meta ? getFrequencyLabel(meta.frequency, meta.kind, lang) : null;
-        return (
-          <div className="min-w-0">
-            <p className="font-semibold text-gray-900 text-sm truncate">{p.feeType.name}</p>
-            {freq && <p className="text-xs text-gray-400 mt-0.5">{freq}</p>}
-          </div>
-        );
-      },
-    },
-    {
-      key: "amount",
-      header: t("parentPages", "amountCol", lang),
-      className: "text-right",
-      headerClass: "text-right",
-      render: (p) => (
-        <span className="font-bold text-gray-900 tabular-nums whitespace-nowrap">
-          {p.feeType.isDonation ? "Variable" : `₹${Number(p.dueAmount).toLocaleString()}`}
-        </span>
-      ),
-    },
-    {
-      key: "dueDate",
-      header: t("parentPages", "dueDateCol", lang),
-      render: (p) => (
-        <span className="text-sm text-gray-700 tabular-nums whitespace-nowrap">
-          {p.dueDate ? new Date(p.dueDate).toLocaleDateString("en-GB") : "—"}
-        </span>
-      ),
-    },
-    {
-      key: "paidAt",
-      header: t("parentPages", "paidOnCol", lang),
-      render: (p) => (
-        <span
-          className={cn(
-            "text-sm tabular-nums whitespace-nowrap",
-            p.paidAt ? "text-emerald-700 font-semibold" : "text-gray-400",
-          )}
-        >
-          {p.paidAt ? new Date(p.paidAt).toLocaleDateString("en-GB") : "—"}
-        </span>
-      ),
-    },
-    {
-      key: "method",
-      header: t("parentPages", "methodCol", lang),
-      render: (p) => (
-        <span className="text-sm text-gray-700">
-          {p.method ? t("parentPages", METHOD_LABEL_KEYS[p.method] as any, lang) : <span className="text-gray-400">—</span>}
-        </span>
-      ),
-    },
-    {
-      key: "status",
-      header: t("parentPages", "statusCol", lang),
-      render: (p) => <StatusBadge status={p.status} lang={lang} />,
-    },
-    {
-      key: "actions",
-      header: "",
-      className: "text-right",
-      headerClass: "text-right",
-      render: (p) => {
-        if (p.status !== "PAID") return null;
-        const isLoading = receiptMutation.isPending && receiptMutation.variables === p.id;
-        return (
-          <button
-            onClick={(e) => { e.stopPropagation(); showReceipt(p.id); }}
-            disabled={isLoading}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-emerald-700 hover:bg-emerald-50 border border-emerald-100 transition-colors disabled:opacity-50"
-          >
-            {isLoading ? (
-              <Loader2 className="w-3 h-3 animate-spin" />
-            ) : (
-              <Receipt className="w-3 h-3" />
-            )}
-            {t("parentPages", "viewReceiptBtn", lang)}
-          </button>
-        );
-      },
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [lang, receiptMutation.isPending, receiptMutation.variables]);
-
-  const mobileRender = (p: PaymentRow) => {
-    const isLoading = receiptMutation.isPending && receiptMutation.variables === p.id;
-    return (
-      <div className="space-y-2.5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="font-semibold text-gray-900 text-sm truncate">{p.feeType.name}</p>
-            <p className="text-xs text-gray-400 mt-0.5 tabular-nums">
-              {p.dueDate
-                ? `${t("parentPages", "duePrefix", lang)} ${new Date(p.dueDate).toLocaleDateString("en-GB")}`
-                : "—"}
-            </p>
-          </div>
-          <div className="text-right shrink-0">
-            <p className="font-bold text-gray-900 text-lg tabular-nums">
-              {p.feeType.isDonation ? "Variable" : `₹${Number(p.dueAmount).toLocaleString()}`}
-            </p>
-            <div className="mt-1.5">
-              <StatusBadge status={p.status} lang={lang} />
-            </div>
-          </div>
-        </div>
-
-        {p.paidAt && (
-          <div className="flex items-center gap-1.5 text-xs text-emerald-700 font-semibold">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            {t("parentPages", "paidPrefix", lang)} {new Date(p.paidAt).toLocaleDateString("en-GB")}
-            {p.method && (
-              <span className="text-gray-400 font-normal ml-1">
-                · {t("parentPages", METHOD_LABEL_KEYS[p.method] as any, lang)}
-              </span>
-            )}
-          </div>
-        )}
-
-        {p.status === "PAID" ? (
-          <button
-            onClick={() => showReceipt(p.id)}
-            disabled={isLoading}
-            className="w-full py-2 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-semibold flex items-center justify-center gap-1.5 disabled:opacity-50"
-          >
-            {isLoading ? (
-              <Loader2 className="w-3 h-3 animate-spin" />
-            ) : (
-              <Receipt className="w-3 h-3" />
-            )}
-            {t("parentPages", "viewReceiptBtn", lang)}
-          </button>
-        ) : (
-          <div className="bg-amber-50 rounded-lg px-3 py-2 text-xs text-amber-700 font-semibold flex items-center gap-1.5">
-            <AlertCircle className="w-3 h-3 shrink-0" />
-            {t("parentPages", "paymentPendingMsg", lang)}
-          </div>
-        )}
-      </div>
-    );
-  };
 
   return (
     <DashboardLayout>
-      <PageHeader
-        title={t("parentPages", "myFeesTitle", lang)}
-        subtitle={t("parentPages", "feesSub", lang)}
-        icon={IndianRupee}
-        action={
-          <button
-            onClick={() => refetch()}
-            disabled={isRefetching}
-            aria-label="Refresh"
-            className="p-2 rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={cn("w-4 h-4", isRefetching && "animate-spin")} />
-          </button>
-        }
-      />
+      <PageHeader title={t("parentPages", "myFeesTitle", lang)} />
+
+      <div className="sticky top-12 z-30 -mx-4 mb-4 flex h-12 gap-2 bg-white px-4 shadow-lg shadow-gray-400/10 *:my-auto">
+        <div className="relative min-w-0 flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={`${t("parentPages", "feeTypeLabel", lang)}...`}
+            aria-label={t("parentPages", "feeTypeLabel", lang)}
+            className="border-0 bg-transparent pl-9 pr-4 text-sm"
+          />
+        </div>
+        <Button
+          variant="ghost"
+          type="button"
+          size="icon-lg"
+          onClick={() => setFiltersOpen(true)}
+          className="h-10 w-10 shrink-0 rounded-xl text-gray-600 hover:bg-gray-100"
+          aria-label={t("common", "status", lang)}
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <Drawer open={filtersOpen} onOpenChange={setFiltersOpen} swipeDirection="down">
+        <DrawerContent className="max-h-[85dvh] bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+          <DrawerTitle className="mb-6 text-lg font-bold text-gray-900">Filters</DrawerTitle>
+          <section>
+            <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-400">
+              {t("common", "status", lang)}
+            </h3>
+            <Tabs value={filter} onValueChange={(value) => setFilter(value as FilterTab)} className="w-full">
+              <TabsList className="grid h-auto w-full grid-cols-4">
+                {FILTER_TABS.map((tab) => (
+                  <TabsTrigger key={tab.id} value={tab.id} className="px-2 py-2 text-xs">
+                    {t("parentPages", tab.labelKey as any, lang)}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          </section>
+          <DrawerClose className="mt-8 h-10 w-full rounded-xl bg-emerald-600 text-sm font-semibold text-white">
+            Done
+          </DrawerClose>
+        </DrawerContent>
+      </Drawer>
 
       {errorMessage && <ApiErrorBanner message={errorMessage} onRetry={() => refetch()} />}
       {receiptMutation.error && (
@@ -414,35 +291,8 @@ export default function ParentFeesPage() {
         </div>
       ) : (
         <>
-          {/* Child tabs */}
-          {ids.length > 1 && (
-            <div className="flex gap-2 mb-5">
-              {ids.map((sid, i) => {
-                const info = accessibleStudents.find((s) => s.id === sid);
-                const s = getSummary(sid);
-                const childError = s ? null : data?.[sid] instanceof Error ? (data[sid] as Error).message : null;
-                return (
-                  <button
-                    key={sid}
-                    onClick={() => setActiveIdx(i)}
-                    className={cn(
-                      "flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all truncate",
-                      i === activeIdx
-                        ? "bg-emerald-600 text-white shadow-sm"
-                        : "bg-white border border-gray-200 text-gray-600 hover:border-gray-300",
-                    )}
-                  >
-                    {info?.name ?? `Child ${i + 1}`}
-                    {childError && <XCircle className="w-3 h-3 inline ml-1 opacity-60" />}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Single child name + class */}
-          {ids.length === 1 && activeInfo && (
-            <p className="text-sm text-gray-500 mb-4">
+          {activeInfo && (
+            <p className="mb-4 text-sm text-gray-500">
               {activeInfo.name}
               {activeInfo.className ? ` · ${activeInfo.className}` : ""}
             </p>
@@ -475,50 +325,78 @@ export default function ParentFeesPage() {
                 </div>
               )}
 
-              {/* Filter tabs */}
-              <div className="flex items-center justify-between gap-3 mb-3">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="text-base font-semibold text-foreground">
                   {t("parentPages", "paymentHistory", lang)}
-                </p>
-                <div className="flex gap-1 bg-gray-100 rounded-xl p-0.5">
-                  {FILTER_TABS.map((f) => {
-                    const isActive = filter === f.id;
-                    const count = counts[f.id];
-                    return (
-                      <button
-                        key={f.id}
-                        onClick={() => setFilter(f.id)}
-                        className={cn(
-                          "flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
-                          isActive
-                            ? "bg-white text-emerald-700 shadow-sm"
-                            : "text-gray-500 hover:text-gray-700",
-                        )}
-                      >
-                        <span>{t("parentPages", f.labelKey as any, lang)}</span>
-                        <span
-                          className={cn(
-                            "min-w-[1.25rem] text-center rounded-md text-[10px] font-bold px-1",
-                            isActive ? "bg-emerald-50 text-emerald-600" : "bg-white/60 text-gray-400",
-                          )}
-                        >
-                          {count}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+                  <span className="text-sm font-normal text-muted-foreground"> · {filteredPayments.length} total</span>
+                </h2>
+                <Button variant="ghost" size="sm" onClick={() => refetch()} className="text-muted-foreground">
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  {t("teacherPages", "refreshBtn", lang)}
+                </Button>
               </div>
 
-              {/* Payment table */}
-              <DataTable
-                columns={columns}
-                data={filteredPayments}
-                keyExtractor={(p) => p.id}
-                emptyIcon={Wallet}
-                emptyMessage={t("parentPages", "noPaymentRecords", lang)}
-                mobileRender={mobileRender}
-              />
+              <div className="overflow-hidden rounded-xl border bg-background">
+                <Table className="min-w-[760px]">
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead>{t("parentPages", "feeTypeLabel", lang)}</TableHead>
+                      <TableHead>{t("parentPages", "amountCol", lang)}</TableHead>
+                      <TableHead>{t("parentPages", "statusCol", lang)}</TableHead>
+                      <TableHead>{t("parentPages", "dueDateCol", lang)}</TableHead>
+                      <TableHead>{t("parentPages", "paidOnCol", lang)}</TableHead>
+                      <TableHead><span className="sr-only">{t("parentPages", "viewReceiptBtn", lang)}</span></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredPayments.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="h-28 text-center text-muted-foreground">
+                          {t("parentPages", "noPaymentRecords", lang)}
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredPayments.map((payment) => {
+                      const isReceiptLoading = receiptMutation.isPending && receiptMutation.variables === payment.id;
+                      return (
+                        <TableRow key={payment.id}>
+                          <TableCell className="font-medium text-foreground">{payment.feeType.name}</TableCell>
+                          <TableCell className="font-medium whitespace-nowrap">
+                            {payment.feeType.isDonation ? "Variable" : `₹${Number(payment.dueAmount).toLocaleString()}`}
+                          </TableCell>
+                          <TableCell><StatusBadge status={payment.status} lang={lang} /></TableCell>
+                          <TableCell className="whitespace-nowrap text-muted-foreground">
+                            {payment.dueDate ? new Date(payment.dueDate).toLocaleDateString("en-GB") : "—"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            <span className={payment.paidAt ? "text-emerald-700" : "text-muted-foreground"}>
+                              {payment.paidAt ? new Date(payment.paidAt).toLocaleDateString("en-GB") : "—"}
+                            </span>
+                            {payment.method && (
+                              <p className="text-xs text-muted-foreground">
+                                {t("parentPages", METHOD_LABEL_KEYS[payment.method] as any, lang)}
+                              </p>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {payment.status === "PAID" && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => showReceipt(payment.id)}
+                                disabled={isReceiptLoading}
+                                className="text-emerald-700"
+                              >
+                                {isReceiptLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Receipt className="h-3.5 w-3.5" />}
+                                {t("parentPages", "viewReceiptBtn", lang)}
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
 
               {/* Applicable fees */}
               {activeSummary.feeTypes.length > 0 && (

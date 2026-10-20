@@ -11,7 +11,9 @@ interface DatePickerDrawerProps {
   onDateChange: (date: string) => void;
   title: string;
   disableFuture?: boolean;
+  minDate?: string;
   allowClear?: boolean;
+  clearLabel?: string;
 }
 
 function toLocalISO(date: Date) {
@@ -29,7 +31,9 @@ export function DatePickerDrawer({
   onDateChange,
   title,
   disableFuture = true,
+  minDate,
   allowClear = false,
+  clearLabel = "Clear date",
 }: DatePickerDrawerProps) {
   return (
     <ResponsivePopover
@@ -43,7 +47,7 @@ export function DatePickerDrawer({
             onDateChange("");
             onOpenChange(false);
           }}>
-            Clear date
+            {clearLabel}
           </Button>
         </div>
       ) : undefined}
@@ -56,7 +60,10 @@ export function DatePickerDrawer({
           onDateChange(toLocalISO(selectedDate));
           onOpenChange(false);
         }}
-        disabled={disableFuture ? { after: new Date() } : undefined}
+        disabled={[
+          ...(minDate ? [{ before: new Date(`${minDate}T00:00:00`) }] : []),
+          ...(disableFuture ? [{ after: new Date() }] : []),
+        ]}
         className="p-4 w-full"
       />
     </ResponsivePopover>

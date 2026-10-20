@@ -11,7 +11,9 @@ interface DatePickerInputProps {
   onChange: (date: string) => void;
   disabled?: boolean;
   disableFuture?: boolean;
+  minDate?: string;
   allowClear?: boolean;
+  clearLabel?: string;
   className?: string;
 }
 
@@ -22,7 +24,9 @@ export function DatePickerInput({
   onChange,
   disabled = false,
   disableFuture = true,
+  minDate,
   allowClear = false,
+  clearLabel,
   className,
 }: DatePickerInputProps) {
   const [open, setOpen] = useState(false);
@@ -60,7 +64,9 @@ export function DatePickerInput({
         onDateChange={onChange}
         title={title}
         disableFuture={disableFuture}
+        minDate={minDate}
         allowClear={allowClear}
+        clearLabel={clearLabel}
       />
     </>
   );
