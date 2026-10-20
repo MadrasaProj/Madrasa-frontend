@@ -1,405 +1,193 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { motion } from "framer-motion";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { DatePickerDrawer } from "@/components/DatePickerDrawer";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { EffectCards } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/effect-cards";
+import { Icon } from "@iconify/react";
+import { Calendar, Download, Loader2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { useBestPerformers } from "@/lib/queries";
+import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
-import { useAuthStore } from "@/store/auth";
-import { useState } from "react";
-import { useBestPerformers } from "@/lib/queries";
-import { Trophy, Star, BookOpen, Flame, Target, Medal, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const medalEmoji = ["🥇", "🥈", "🥉", "🏅", "🌟", "⭐", "✨", "💫", "🔥", "🌙"];
+function periodDates(type: "week" | "month") {
+  const end = new Date();
+  const start = new Date(end);
+  if (type === "week") start.setDate(end.getDate() - 6);
+  else start.setDate(1);
+  const iso = (date: Date) => [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-");
+  return { from: iso(start), to: iso(end) };
+}
 
 export default function ParentBestPerformancePage() {
   const { lang } = useLanguageStore();
   const { user, accessToken, activeStudentId } = useAuthStore();
-  const [showAllPerformers, setShowAllPerformers] = useState(true);
+  const [periodType, setPeriodType] = useState<"week" | "month">("month");
+  const [customRange, setCustomRange] = useState<{ from: string; to: string } | null>(null);
+  const [rangeStep, setRangeStep] = useState<"from" | "to" | null>(null);
+  const [rangeStart, setRangeStart] = useState("");
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
+  const advancingRangeRef = useRef(false);
 
-  const cid = user?.clientId ?? "";
-  const token = accessToken ?? "";
   const ids = user?.accessibleStudentIds ?? [];
-  const students = user?.accessibleStudents ?? [];
   const activeId = activeStudentId ?? ids[0] ?? "";
-  const activeStudent = students.find((s) => s.id === activeId);
-  const classId = activeStudent?.classId ?? undefined;
-  const gender = activeStudent?.gender ?? undefined;
-
-  const isParent = user?.role === "parent";
-
+  const activeStudent = user?.accessibleStudents?.find((student) => student.id === activeId);
+  const dates = customRange ?? periodDates(periodType);
   const { data: response, isLoading, error } = useBestPerformers(
-    { clientId: cid, token },
-    { limit: 100, ...(classId && { classId }), ...(gender && { gender }) },
+    { clientId: user?.clientId ?? "", token: accessToken ?? "" },
+    { ...dates, limit: 100, ...(activeStudent?.classId && { classId: activeStudent.classId }), ...(activeStudent?.gender && { gender: activeStudent.gender }) },
   );
-
-  const data = response?.performers ?? [];
-  const period = response?.period ?? null;
+  const performers = response?.performers ?? [];
   const customItems = response?.customItems ?? [];
+  const child = performers.find((performer) => performer.studentId === activeId);
+  const childRank = child ? performers.findIndex((performer) => performer.studentId === child.studentId) + 1 : null;
+  const topScore = performers[0]?.score ?? 0;
+  const averageScore = performers.length ? Math.round(performers.reduce((sum, performer) => sum + performer.score, 0) / performers.length) : 0;
+  const streak = performers.length ? Math.max(...performers.map((performer) => performer.streak)) : 0;
+  const summary = [
+    { label: lang === "ml" ? "മികച്ച സ്കോർ" : "Best score", value: performers[0]?.score ?? "—" },
+    { label: lang === "ml" ? "ഖുർആൻ പേജുകൾ" : "Quran pages", value: performers.length ? Math.max(...performers.map((performer) => performer.totalQuranPages)) : 0 },
+    { label: lang === "ml" ? "നമസ്കാരങ്ങൾ" : "Prayers", value: performers.length ? Math.max(...performers.map((performer) => performer.totalPrayers)) : 0 },
+  ];
+  const dateRange = response?.period
+    ? `${new Date(response.period.from).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} — ${new Date(response.period.to).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`
+    : "";
 
-  const formatDateRange = () => {
-    if (!period) return "";
-    const from = new Date(period.from).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-    const to = new Date(period.to).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-    return `${from} — ${to}`;
+  const selectPeriod = (type: "week" | "month") => {
+    setCustomRange(null);
+    setPeriodType(type);
   };
-
-  const rankOf = (sid: string) => {
-    const idx = data.findIndex((p) => p.studentId === sid);
-    return idx === -1 ? null : idx + 1;
+  const selectRangeDate = (date: string) => {
+    if (rangeStep === "from") {
+      setRangeStart(date);
+      advancingRangeRef.current = true;
+      setRangeStep("to");
+    } else if (rangeStep === "to") {
+      setCustomRange({ from: date < rangeStart ? date : rangeStart, to: date < rangeStart ? rangeStart : date });
+      setRangeStep(null);
+    }
   };
-
-  const topPerformer = data[0] ?? null;
-  const avgScore = data.length > 0 ? Math.round(data.reduce((s, p) => s + p.score, 0) / data.length) : 0;
-
-  const activeChildInList = data.find((p) => p.studentId === activeId);
-
-  const SectionHeader = ({
-    icon: Icon,
-    title,
-    count,
-  }: {
-    icon: typeof Trophy;
-    title: string;
-    count?: number;
-  }) => (
-    <div className="flex items-center gap-3 mb-4">
-      <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
-        <Icon className="w-4 h-4 text-emerald-700" />
-      </div>
-      <h2 className="text-base font-extrabold text-gray-900">{title}</h2>
-      {count !== undefined && (
-        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
-          {count}
-        </span>
-      )}
-    </div>
-  );
+  const handleDownloadPDF = async () => {
+    if (!printRef.current) return;
+    setDownloadingPdf(true);
+    try {
+      const [html2canvas, { jsPDF }] = await Promise.all([
+        import("html2canvas-pro").then((module) => module.default),
+        import("jspdf"),
+      ]);
+      const canvas = await html2canvas(printRef.current, { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false });
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const width = pdf.internal.pageSize.getWidth() - 20;
+      const pageHeight = pdf.internal.pageSize.getHeight() - 20;
+      const imageHeight = canvas.height * width / canvas.width;
+      const image = canvas.toDataURL("image/png");
+      for (let offset = 0; offset < imageHeight; offset += pageHeight) {
+        if (offset) pdf.addPage();
+        pdf.addImage(image, "PNG", 10, 10 - offset, width, imageHeight);
+      }
+      pdf.save("Best_Ibadah_Performance_Report.pdf");
+    } catch (downloadError) {
+      console.error("Failed to generate PDF", downloadError);
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
 
   return (
     <DashboardLayout>
-      <div className="">
-
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-linear-to-r from-emerald-600 to-teal-500 rounded-3xl p-5 lg:p-6 text-white"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
-              <Trophy className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <p className="text-emerald-200 text-xs font-semibold uppercase tracking-widest">
-                {t("parentPages", "parentPortal", lang)}
-              </p>
-              <h1 className="text-xl font-bold">
-                {t("parentPages", "bestIbadahPerf", lang)}
-              </h1>
+      <PageHeader
+        title={t("parentPages", "bestIbadahPerf", lang)}
+        action={performers.length > 0 && <Button size="sm" variant="outline" onClick={handleDownloadPDF} disabled={downloadingPdf}>
+          {downloadingPdf ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+          <span className="hidden sm:inline">{downloadingPdf ? "Exporting..." : "Download PDF"}</span><span className="sm:hidden">PDF</span>
+        </Button>}
+      />
+      <div ref={printRef} className="min-w-0 overflow-hidden pb-28 lg:pb-20">
+        <section className="pt-13 text-center" aria-label={lang === "ml" ? "പ്രകടന സ്ഥിതിവിവരക്കണക്കുകൾ" : "Performance statistics"}>
+          <div className="relative mx-auto w-fit">
+            <img src="/icons/best-performance/streak-v2-animated.webp" alt="" className="h-auto w-[80vw] max-w-[380px] object-contain motion-reduce:hidden sm:w-64" />
+            <img src="/icons/best-performance/streak-v2.webp" alt="" className="hidden h-auto w-[80vw] max-w-[380px] object-contain motion-reduce:block sm:w-64" />
+            <div className="absolute bottom-2 left-1/2 z-10 w-max max-w-[92vw] -translate-x-1/2 translate-y-1/2 rounded-3xl border border-white/70 bg-white/0 px-5 py-2 shadow-xl shadow-gray-900/10 backdrop-blur-sm">
+              <div className="bg-linear-to-b from-primary to-primary/60 bg-clip-text text-[clamp(6rem,28vw,8rem)] font-black leading-none tabular-nums text-transparent">{streak}</div>
+              <div className="relative -top-2 text-xs font-semibold text-gray-600">{lang === "ml" ? "ദിവസങ്ങൾ" : "days"}</div>
             </div>
           </div>
-        </motion.div>
-
-        {/* Period info */}
-        {period && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.1 }}
-            className="flex items-center gap-2 px-4 py-3 bg-emerald-50 border border-emerald-100 rounded-2xl"
-          >
-            <Target className="w-4 h-4 text-emerald-600" />
-            <span className="text-sm font-semibold text-emerald-800">
-              {t("parentPages", "periodLabel", lang)}: {formatDateRange()}
-            </span>
-          </motion.div>
-        )}
-
-        {/* Loading */}
-        {isLoading && (
-          <div className="space-y-4">
-            <Skeleton className="h-48 rounded-2xl" />
-            <Skeleton className="h-5 w-32" />
-            <div className="space-y-3">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-24 rounded-2xl" />
-              ))}
-            </div>
+          <div className="mt-20">{dateRange && <p className="text-xs text-gray-500">{dateRange}</p>}</div>
+          <div className="mx-auto mt-7 grid max-w-md grid-cols-3 divide-x divide-gray-200 py-2">
+            {summary.map(({ label, value }) => <div key={label} className="flex flex-col items-center justify-center gap-1 px-2 text-center">
+              <strong className="text-2xl font-bold leading-none tabular-nums text-gray-950">{value}</strong>
+              <span className="text-[11px] font-medium leading-tight text-gray-600 sm:text-xs">{label}</span>
+            </div>)}
           </div>
-        )}
+        </section>
 
-        {/* Error */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-5 text-center">
-            <p className="text-red-600 font-semibold">{error.message}</p>
-          </div>
-        )}
+        {isLoading && <div className="mx-auto mt-8 max-w-xl space-y-3">{Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} className="h-64 rounded-3xl" />)}</div>}
+        {error && <div role="alert" className="mx-auto mt-8 max-w-xl rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm font-medium text-gray-700">{error.message}</div>}
+        {!isLoading && !error && <>
+          <section className="mx-auto mt-10 max-w-xl px-4">
+            <h2 className="mb-4 text-center text-lg font-bold text-gray-900">{activeStudent?.name ?? t("parentPages", "myChildPerformance", lang)}</h2>
+            {child ? <div className="rounded-[28px] border-[3px] border-primary/15 bg-linear-to-br from-white via-primary/5 to-primary/15 p-5 shadow-xl shadow-primary/10">
+              <div className="flex items-center gap-3">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-lg font-bold text-primary">{child.name.trim().charAt(0).toUpperCase()}</div>
+                <div className="min-w-0 flex-1"><p className="truncate font-bold text-gray-950">{child.name}</p><p className="text-xs text-gray-500">{child.adno}</p></div>
+                <div className="text-right"><strong className="text-2xl font-extrabold text-primary">#{childRank}</strong><p className="text-xs text-gray-500">/ {performers.length}</p></div>
+              </div>
+              <div className="mt-5 grid grid-cols-2 divide-x divide-primary/15 border-t border-primary/15 pt-4 text-center">
+                <div><strong className="text-2xl font-bold text-gray-950">{child.score}</strong><p className="text-xs text-gray-600">{t("parentPages", "scoreLabel", lang)}</p></div>
+                <div><strong className="text-2xl font-bold text-gray-950">{averageScore}</strong><p className="text-xs text-gray-600">{t("parentPages", "avgLabel", lang)}</p></div>
+              </div>
+              <div className="mt-4 grid grid-cols-2 divide-x divide-primary/15 border-t border-primary/15 pt-4 text-center">
+                <div><strong className="text-lg font-bold text-gray-950">{topScore}%</strong><p className="text-xs text-gray-600">{t("parentPages", "topLabel", lang)}</p></div>
+                <div><strong className="text-lg font-bold text-gray-950">{topScore - child.score}%</strong><p className="text-xs text-gray-600">{t("parentPages", "gapLabel", lang)}</p></div>
+              </div>
+            </div> : <p className="rounded-3xl border border-gray-100 bg-white p-8 text-center text-sm font-medium text-gray-500">{t("parentPages", "noIbadahForStudent", lang)}</p>}
+          </section>
 
-        {!isLoading && !error && (
-          <>
-            {/* ──────────────────────────────────────────────────────── */}
-            {/* SECTION 1: Current Student Performance & Rank            */}
-            {/* ──────────────────────────────────────────────────────── */}
-            <div>
-              <SectionHeader
-                icon={Medal}
-                title={activeStudent?.name ?? t("parentPages", "myChildPerformance", lang)}
-              />
-
-              {!activeChildInList ? (
-                <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center shadow-sm">
-                  <Medal className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                  <p className="text-gray-500 font-semibold text-sm">
-                    {t("parentPages", "noIbadahForStudent", lang)}
-                  </p>
-                </div>
-              ) : (
-                (() => {
-                  const child = activeChildInList;
-                  const rank = rankOf(child.studentId);
-                  const gap = topPerformer ? topPerformer.score - child.score : 0;
-                  const vsAvg = child.score - avgScore;
-                  return (
-                    <motion.div
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="bg-white rounded-2xl border border-emerald-200 p-5 shadow-sm ring-1 ring-emerald-400/30 space-y-4"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-11 h-11 rounded-full bg-emerald-100 flex items-center justify-center text-sm font-bold text-emerald-700 shrink-0">
-                          {child.name.charAt(0)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-gray-900 truncate">{child.name}</p>
-                          <p className="text-xs text-gray-400">{child.adno}</p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">
-                            {t("parentPages", "rankLabel", lang)}
-                          </p>
-                          <p className="text-2xl font-black text-emerald-600">
-                            #{rank ?? "—"}
-                            <span className="text-sm font-semibold text-gray-400 ml-1">/ {data.length}</span>
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-end justify-between">
-                        <div>
-                          <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">
-                            {t("parentPages", "scoreLabel", lang)}
-                          </p>
-                          <p className="text-4xl font-black text-gray-900">
-                            {child.score}<span className="text-lg font-semibold text-gray-400">%</span>
-                          </p>
-                        </div>
-                        <span className={cn(
-                          "text-[11px] font-bold px-3 py-1 rounded-full",
-                          child.score >= 80 ? "bg-emerald-100 text-emerald-700" : child.score >= 50 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700",
-                        )}>
-                          {child.score >= 80
-                            ? t("parentPages", "excellentLabel", lang)
-                            : child.score >= 50
-                              ? t("parentPages", "goodLabel", lang)
-                              : t("parentPages", "needsImprovement", lang)}
-                        </span>
-                      </div>
-
-                      <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-700"
-                          style={{
-                            width: `${child.score}%`,
-                            background: child.score >= 80
-                              ? "linear-gradient(to right, #10b981, #059669)"
-                              : child.score >= 50
-                                ? "linear-gradient(to right, #f59e0b, #d97706)"
-                                : "linear-gradient(to right, #ef4444, #dc2626)",
-                          }}
-                        />
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 bg-emerald-50 text-emerald-700 rounded-xl">
-                          <Star className="w-3 h-3" />
-                          {child.totalPrayers} {t("parentPages", "prayersLabel", lang)}
-                        </span>
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 bg-amber-50 text-amber-700 rounded-xl">
-                          <BookOpen className="w-3 h-3" />
-                          {child.totalQuranPages} {t("parentPages", "pagesLabel", lang)}
-                        </span>
-                        {Object.entries(child.customCounts ?? {}).map(([key, val]) => {
-                          if (!val) return null;
-                          const itemDef = customItems.find((i) => i.key === key);
-                          const label = itemDef?.label ?? key;
-                          return (
-                            <span
-                              key={key}
-                              className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 bg-purple-50 text-purple-700 rounded-xl"
-                            >
-                              <Sparkles className="w-3 h-3" />
-                              {val} {label}
-                            </span>
-                          );
-                        })}
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 bg-orange-50 text-orange-700 rounded-xl">
-                          <Flame className="w-3 h-3" />
-                          {child.streak}d {t("parentPages", "streakLabel", lang)}
-                        </span>
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 bg-blue-50 text-blue-700 rounded-xl">
-                          {child.consistency}% {t("parentPages", "consistencyLabel", lang)}
-                        </span>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2 text-xs">
-                        {topPerformer && (
-                          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 font-semibold">
-                            <Trophy className="w-3 h-3" />
-                            {t("parentPages", "topLabel", lang)}: {topPerformer.score}%
-                          </div>
-                        )}
-                        <div className={cn(
-                          "flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold",
-                          vsAvg >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700",
-                        )}>
-                          {vsAvg >= 0 ? "▲" : "▼"} {t("parentPages", "avgLabel", lang)}: {avgScore}%
-                        </div>
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 text-gray-600 font-semibold">
-                          {t("parentPages", "gapLabel", lang)}: {gap}%
-                        </div>
-                      </div>
-
-                      {rank && rank <= 3 && (
-                        <div className="flex items-center justify-center gap-2 py-2 bg-gradient-to-r from-yellow-50 to-amber-50 rounded-xl border border-yellow-200">
-                          <span className="text-2xl">{medalEmoji[rank - 1]}</span>
-                          <span className="text-sm font-bold text-amber-800">
-                            {rank === 1
-                              ? t("parentPages", "firstRank", lang)
-                              : rank === 2
-                                ? t("parentPages", "secondRank", lang)
-                                : t("parentPages", "thirdRank", lang)}
-                          </span>
-                        </div>
-                      )}
-                    </motion.div>
-                  );
-                })()
-              )}
-            </div>
-
-            {/* ──────────────────────────────────────────────────────── */}
-            {/* SECTION 2: Best Performer List                           */}
-            {/* ──────────────────────────────────────────────────────── */}
-            <div>
-              <button
-                onClick={() => setShowAllPerformers(!showAllPerformers)}
-                className="w-full flex items-center justify-between mb-4"
-              >
-                <SectionHeader
-                  icon={Trophy}
-                  title={t("parentPages", "bestPerformers", lang)}
-                  count={data.length}
-                />
-                {showAllPerformers
-                  ? <ChevronUp className="w-5 h-5 text-gray-400" />
-                  : <ChevronDown className="w-5 h-5 text-gray-400" />}
-              </button>
-
-              {data.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center shadow-sm">
-                  <BookOpen className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                  <p className="text-gray-500 font-semibold">
-                    {t("parentPages", "noIbadahData", lang)}
-                  </p>
-                </div>
-              ) : showAllPerformers && (
-                <div className="space-y-3">
-                  {data.map((performer, i) => {
-                    const rank = rankOf(performer.studentId) ?? i + 1;
-                    const isMyChild = ids.includes(performer.studentId);
-                    return (
-                      <motion.div
-                        key={performer.studentId}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.03 }}
-                        className={cn(
-                          "bg-white rounded-2xl border p-4 shadow-sm transition-all",
-                          isMyChild ? "ring-2 ring-emerald-400 bg-emerald-50/50 border-emerald-200" : "border-gray-100",
-                        )}
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="text-3xl shrink-0 w-10 text-center">
-                            {medalEmoji[i] ?? "🏅"}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="font-bold text-gray-900 text-sm truncate">
-                                {performer.name}
-                              </p>
-                              {isMyChild && (
-                                <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-800">
-                                  {t("parentPages", "myChildBestPerf", lang)}
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs text-gray-500">{performer.adno}</p>
-                            <div className="flex flex-wrap gap-2 mt-2">
-                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full">
-                                <Star className="w-3 h-3" />
-                                {performer.totalPrayers} {t("parentPages", "prayersLabel", lang)}
-                              </span>
-                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full">
-                                <BookOpen className="w-3 h-3" />
-                                {performer.totalQuranPages} {t("parentPages", "pagesLabel", lang)}
-                              </span>
-                              {Object.entries(performer.customCounts ?? {}).map(([key, val]) => {
-                                if (!val) return null;
-                                const itemDef = customItems.find((i) => i.key === key);
-                                const label = itemDef?.label ?? key;
-                                return (
-                                  <span
-                                    key={key}
-                                    className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 bg-purple-50 text-purple-700 rounded-full"
-                                  >
-                                    <Sparkles className="w-3 h-3" />
-                                    {val} {label}
-                                  </span>
-                                );
-                              })}
-                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 bg-orange-50 text-orange-700 rounded-full">
-                                <Flame className="w-3 h-3" />
-                                {performer.streak}d {t("parentPages", "streakLabel", lang)}
-                              </span>
-                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">
-                                {performer.consistency}% {t("parentPages", "consistencyLabel", lang)}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className="text-2xl font-black text-emerald-600">
-                              {performer.score}
-                            </p>
-                            <p className="text-[11px] font-semibold text-gray-400">
-                              {t("parentPages", "scoreUppercase", lang)}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="mt-3 w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                          <div
-                            className="h-2 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full transition-all duration-700"
-                            style={{ width: `${performer.score}%` }}
-                          />
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </>
-        )}
+          {performers.length === 0 ? <p className="py-16 text-center text-sm font-medium text-gray-500">{t("parentPages", "noIbadahData", lang)}</p> : <section className="mt-10">
+            <h2 className="mb-4 text-center text-lg font-bold text-gray-900">{t("parentPages", "bestPerformers", lang)}</h2>
+            <Swiper key={`${response?.period.from}-${response?.period.to}-${activeId}`} modules={[EffectCards]} effect="cards" grabCursor cardsEffect={{ perSlideOffset: 8, perSlideRotate: 2, slideShadows: false }} className="!overflow-visible mx-auto mt-6 w-[min(85vw,410px)] py-15" aria-label={t("parentPages", "bestPerformers", lang)}>
+              {performers.map((performer, index) => <SwiperSlide key={performer.studentId} className="!h-auto">
+                <article className={cn("overflow-hidden rounded-[28px] border-[3px] bg-linear-to-br from-white via-primary/5 to-primary/15 px-5 pb-5 pt-6 text-center text-gray-950 shadow-xl shadow-primary/10", ids.includes(performer.studentId) ? "border-primary/40" : "border-primary/15")}>
+                  <div className="relative mx-auto size-24">
+                    <div className="flex size-full items-center justify-center rounded-full bg-primary/10 text-3xl font-bold text-primary ring-4 ring-primary/15" aria-label={performer.name}>{performer.name.trim().charAt(0).toUpperCase()}</div>
+                    {index < 3 && <span className="absolute -bottom-1 -right-1 flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm ring-4 ring-white" aria-label={`Rank ${index + 1}`}><Icon icon="lucide:badge" className="absolute size-7" aria-hidden="true" /><span className="relative text-[11px] font-black">{index + 1}</span></span>}
+                  </div>
+                  <p className="mt-5 truncate text-lg font-bold">{performer.name}</p>
+                  <p className="text-xs font-medium text-gray-500">{performer.adno}</p>
+                  {ids.includes(performer.studentId) && <p className="mt-2 text-xs font-bold text-primary">{t("parentPages", "myChildBestPerf", lang)}</p>}
+                  <div className="mt-5"><p className="text-3xl font-extrabold text-primary">{performer.score}</p><p className="text-xs font-semibold uppercase tracking-wider text-gray-500">{t("parentPages", "scoreLabel", lang)}</p></div>
+                  <div className="mt-5 grid grid-cols-2 divide-x divide-primary/15">
+                    <div className="flex flex-col items-center gap-1 px-2"><strong className="text-xl font-bold leading-none tabular-nums">{performer.totalPrayers}</strong><small className="text-[11px] font-medium text-gray-600">{t("parentPages", "prayersLabel", lang)}</small></div>
+                    <div className="flex flex-col items-center gap-1 px-2"><strong className="text-xl font-bold leading-none tabular-nums">{performer.totalQuranPages}</strong><small className="text-[11px] font-medium text-gray-600">{t("parentPages", "pagesLabel", lang)}</small></div>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 divide-x divide-primary/15 border-t border-primary/15 pt-3">
+                    <div className="flex flex-col items-center gap-1 px-2"><strong className="text-xl font-bold leading-none tabular-nums">{performer.streak}d</strong><small className="text-[11px] font-medium text-gray-600">{t("parentPages", "streakLabel", lang)}</small></div>
+                    <div className="flex flex-col items-center gap-1 px-2"><strong className="text-xl font-bold leading-none tabular-nums">{performer.consistency}%</strong><small className="text-[11px] font-medium text-gray-600">{t("parentPages", "consistencyLabel", lang)}</small></div>
+                  </div>
+                  {Object.entries(performer.customCounts ?? {}).some(([, value]) => value > 0) && <div className="mt-4 flex flex-wrap justify-center gap-x-3 gap-y-1 border-t border-primary/15 pt-3 text-xs font-medium text-gray-700">
+                    {Object.entries(performer.customCounts ?? {}).filter(([, value]) => value > 0).map(([key, value]) => <span key={key}>{value} {customItems.find((item) => item.key === key)?.label ?? key}</span>)}
+                  </div>}
+                </article>
+              </SwiperSlide>)}
+            </Swiper>
+          </section>}
+        </>}
       </div>
+      <div className="fixed inset-x-0 bottom-20 z-40 flex justify-center px-4 lg:bottom-6 lg:left-64">
+        <div className="flex items-center gap-1 rounded-full border border-gray-200 bg-white/95 p-1.5 shadow-lg shadow-gray-900/10 backdrop-blur">
+          <button type="button" onClick={() => selectPeriod("month")} aria-pressed={!customRange && periodType === "month"} className={cn("rounded-full px-5 py-2.5 text-sm font-semibold transition-colors", !customRange && periodType === "month" ? "bg-primary text-primary-foreground" : "text-primary hover:bg-primary/5")}>{lang === "ml" ? "മാസം" : "Month"}</button>
+          <button type="button" onClick={() => selectPeriod("week")} aria-pressed={!customRange && periodType === "week"} className={cn("rounded-full px-5 py-2.5 text-sm font-semibold transition-colors", !customRange && periodType === "week" ? "bg-primary text-primary-foreground" : "text-primary hover:bg-primary/5")}>{lang === "ml" ? "ആഴ്ച" : "Weekly"}</button>
+          <button type="button" onClick={() => setRangeStep("from")} aria-label={lang === "ml" ? "തീയതി പരിധി തിരഞ്ഞെടുക്കുക" : "Choose date range"} aria-pressed={!!customRange} className={cn("flex size-10 items-center justify-center rounded-full transition-colors", customRange ? "bg-primary text-primary-foreground" : "text-primary hover:bg-primary/5")}><Calendar className="size-5" /></button>
+        </div>
+      </div>
+      <DatePickerDrawer open={rangeStep !== null} onOpenChange={(open) => { if (!open) { if (advancingRangeRef.current) advancingRangeRef.current = false; else setRangeStep(null); } }} date={rangeStep === "to" ? rangeStart : customRange?.from ?? ""} onDateChange={selectRangeDate} title={rangeStep === "to" ? (lang === "ml" ? "അവസാന തീയതി" : "Choose end date") : (lang === "ml" ? "ആരംഭ തീയതി" : "Choose start date")} />
     </DashboardLayout>
   );
 }
