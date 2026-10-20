@@ -200,12 +200,7 @@ export default function ParentIbadahPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader
-        title={t("parentPages", "ibadahTitle", lang)}
-        subtitle={t("parentPages", "ibadahSub", lang)}
-        icon={Moon}
-        back backHref="/parent"
-      />
+      <PageHeader title={t("parentPages", "ibadahTitle", lang)} />
 
       {isLoading ? (
         <div className="space-y-4">
