@@ -1,7 +1,13 @@
-import { useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
+import { Input } from "@/components/ui/input";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
+import { Textarea } from "@/components/ui/textarea";
+import { DrawerSelector } from "@/components/DrawerSelector";
 import {
   useStudentProfileV2,
   useUpdateStudent,
@@ -11,37 +17,37 @@ import { useStudentAttendance } from "@/lib/queries";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
+import { Icon } from "@iconify/react";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { FreeMode } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/free-mode";
 import {
   User,
-  Phone,
-  Calendar,
   Loader2,
-  GraduationCap,
-  Hash,
-  Heart,
-  MapPin,
-  AlertCircle,
-  Pencil,
   Upload,
-  X,
   CheckCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageSkeleton } from "@/components/ui/Skeleton";
 
-const GENDER_COLORS: Record<string, string> = {
-  FEMALE: "bg-pink-100 text-pink-700",
-  MALE: "bg-emerald-100 text-emerald-700",
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: "bg-emerald-100 text-emerald-700",
-  INACTIVE: "bg-gray-100 text-gray-600",
-  GRADUATED: "bg-blue-100 text-blue-700",
-  TRANSFERRED: "bg-amber-100 text-amber-700",
-  DROPPED_OUT: "bg-red-100 text-red-600",
-};
+function StudentsPageSurface({ children }: { children: ReactNode }) {
+  return (
+    <div
+      className="-mx-4 -mt-4 min-h-screen px-4 pb-28 pt-4 lg:-mx-8 lg:-mt-8 lg:px-8 lg:pb-8 lg:pt-8"
+      style={{
+        backgroundColor: "#f6faf8",
+        // backgroundImage:
+        //   "linear-gradient(rgba(246, 250, 248, 0.9), rgba(246, 250, 248, 0.9)), url('/imgs/students/student-lines.webp')",
+        // backgroundSize: "auto, 440px 440px",
+        backgroundRepeat: "repeat",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
 
 export default function ParentStudentProfile() {
   const navigate = useNavigate();
@@ -64,6 +70,7 @@ export default function ParentStudentProfile() {
   const [editError, setEditError] = useState("");
   const [success, setSuccess] = useState("");
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const students = user?.accessibleStudents ?? [];
   const ids = user?.accessibleStudentIds ?? [];
@@ -137,8 +144,10 @@ export default function ParentStudentProfile() {
   if (loading) {
     return (
       <DashboardLayout>
-        <PageHeader title={t("parentPages", "studentProfileTitle", lang)} back />
-        <PageSkeleton />
+        <StudentsPageSurface>
+          <PageHeader title={t("parentPages", "studentProfileTitle", lang)} />
+          <PageSkeleton />
+        </StudentsPageSurface>
       </DashboardLayout>
     );
   }
@@ -146,17 +155,19 @@ export default function ParentStudentProfile() {
   if (!student) {
     return (
       <DashboardLayout>
-        <PageHeader title={t("parentPages", "studentProfileTitle", lang)} back />
-        <div className="text-center py-20 text-gray-400">
-          <User className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p className="font-semibold text-lg">{t("parentPages", "noStudentSelected", lang)}</p>
-          <button
-            onClick={() => navigate(-1)}
-            className="mt-4 text-emerald-600 font-semibold text-sm underline"
-          >
-            {t("parentPages", "goBack", lang)}
-          </button>
-        </div>
+        <StudentsPageSurface>
+          <PageHeader title={t("parentPages", "studentProfileTitle", lang)} />
+          <div className="text-center py-20 text-gray-400">
+            <User className="w-12 h-12 mx-auto mb-3 opacity-30" />
+            <p className="font-semibold text-lg">{t("parentPages", "noStudentSelected", lang)}</p>
+            <button
+              onClick={() => navigate(-1)}
+              className="mt-4 text-emerald-600 font-semibold text-sm underline"
+            >
+              {t("parentPages", "goBack", lang)}
+            </button>
+          </div>
+        </StudentsPageSurface>
       </DashboardLayout>
     );
   }
@@ -170,37 +181,12 @@ export default function ParentStudentProfile() {
   const attLate = attendance?.summary?.LATE ?? 0;
   const attPct = attTotal > 0 ? Math.round((attPresent / attTotal) * 100) : 0;
 
-  const inputCls =
-    "w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm";
   const labelCls = "block text-xs font-semibold text-gray-600 mb-1.5";
 
   return (
     <DashboardLayout>
-      <PageHeader title="Student Profile" back />
-
-      {/* Student tabs */}
-      {ids.length > 1 && (
-        <div className="flex gap-2 mb-4 overflow-x-auto -mx-5 px-5 pb-1 scrollbar-hide">
-          {ids.map((id) => {
-            const info = students.find((s) => s.id === id);
-            const isActive = id === studentId;
-            return (
-              <button
-                key={id}
-                onClick={() => switchStudent(id)}
-                className={cn(
-                  "shrink-0 px-4 py-2 rounded-xl text-sm font-semibold transition-all border",
-                  isActive
-                    ? "bg-emerald-600 text-white border-emerald-600 shadow-md"
-                    : "bg-white text-gray-600 border-gray-200 hover:border-emerald-300 hover:text-emerald-700",
-                )}
-              >
-                {info?.name ?? `Student`}
-              </button>
-            );
-          })}
-        </div>
-      )}
+      <StudentsPageSurface>
+      <PageHeader title={t("parentPages", "studentProfileTitle", lang)} />
 
       {success && (
         <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs text-emerald-700">
@@ -208,84 +194,107 @@ export default function ParentStudentProfile() {
         </div>
       )}
 
-      {/* Profile card */}
+      {/* Active student */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-3xl p-5 border border-gray-100 mb-5"
+        className="flex flex-col items-center rounded-b-[2rem] px-4 pb-9 pt-9 text-center md:pt-12"
       >
-        <div className="flex items-center gap-4 mb-4">
+        <div className="aspect-square w-[60vw] max-w-[200px] overflow-hidden rounded-full bg-emerald-200">
           {student.photoUrl ? (
-            <img
-              src={student.photoUrl}
-              alt={student.name}
-              className="w-16 h-16 rounded-2xl object-cover shrink-0 border border-gray-200"
-            />
+            <img src={student.photoUrl} alt={student.name} className="h-full w-full object-cover" />
           ) : (
-            <div
-              className={cn(
-                "w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-bold shrink-0",
-                GENDER_COLORS[student.gender ?? ""] ??
-                  "bg-gray-100 text-gray-600",
-              )}
-            >
+            <div className="flex h-full w-full items-center justify-center text-[clamp(4rem,18vw,7rem)] font-semibold text-emerald-800">
               {student.name.charAt(0)}
             </div>
           )}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-lg font-bold text-gray-900 truncate">
-                {student.name}
-              </h2>
-              <button
-                onClick={openEdit}
-                className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-semibold transition-colors"
-              >
-                <Pencil className="w-3.5 h-3.5" /> {t("parentPages", "editStudentBtn", lang)}
-              </button>
-            </div>
-            <p className="text-sm text-gray-500">{student.adno}</p>
-            <div className="flex gap-2 mt-1.5 flex-wrap">
-              {student.class && (
-                <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-700">
-                  {student.class.name}
-                </span>
-              )}
-              <span
-                className={cn(
-                  "text-xs font-semibold px-2.5 py-1 rounded-lg",
-                  student.gender === "FEMALE"
-                    ? "bg-pink-100 text-pink-700"
-                    : "bg-blue-100 text-blue-700",
-                )}
-              >
-                {student.gender === "FEMALE" ? t("parentPages", "girlLabel", lang) : t("parentPages", "boyLabel", lang)}
-              </span>
-              <span
-                className={cn(
-                  "text-xs font-semibold px-2.5 py-1 rounded-lg",
-                  STATUS_COLORS[student.status] ?? STATUS_COLORS.ACTIVE,
-                )}
-              >
-                {student.status}
-              </span>
-            </div>
-          </div>
         </div>
+        <h2 className="mt-6 max-w-full   text-3xl font-bold leading-tight  md:text-4xl">
+          {studentName}
+        </h2>
+        <p className="mt-2 text-sm font-medium text-gray-600">
+          {student.class?.name ?? t("parentPages", "classInfoLabel", lang)}
+          <span className="mx-2 text-gray-400">·</span>
+          {t("parentPages", "admissionNoLabel", lang)} {student.adno}
+        </p>
+        <Button
+          type="button"
+          onClick={openEdit}
+          size={"lg"}
+          variant="default"
+          className="mt-6  rounded-full "
+        >
+          {t("parentPages", "editStudentBtn", lang)}
+        </Button>
+      </motion.div>
 
-        <div className="grid grid-cols-2 gap-3">
+      {/* Student switcher */}
+      <section className="mb-8 border-b border-gray-100 px-1 pb-6 pt-2 text-gray-900">
+        <Swiper
+          modules={[FreeMode]}
+          freeMode={{ enabled: true, momentum: true }}
+          slidesPerView="auto"
+          spaceBetween={8}
+          grabCursor
+          className="!overflow-hidden"
+          aria-label={t("parentPages", "yourStudentsLabel", lang)}
+        >
+          {ids.map((id) => {
+            const info = students.find((s) => s.id === id);
+            const isActive = id === studentId;
+            const photo = id === studentId ? student.photoUrl : info?.photoUrl;
+            const name = info?.name ?? (id === studentId ? student.name : t("parentPages", "studentProfileTitle", lang));
+            return (
+              <SwiperSlide key={id} className="!h-auto !w-auto">
+                <button
+                  type="button"
+                  onClick={() => switchStudent(id)}
+                  aria-pressed={isActive}
+                  className={cn(
+                    "inline-flex h-11 max-w-44 items-center gap-2 rounded-full border px-2 pr-3.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2",
+                    isActive
+                      ? "border-emerald-600 bg-emerald-50 text-emerald-900"
+                      : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900",
+                  )}
+                >
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-emerald-100 text-xs font-semibold text-emerald-900">
+                    {photo ? <img src={photo} alt="" className="h-full w-full object-cover" /> : name.charAt(0)}
+                  </span>
+                  <span className="truncate">{name}</span>
+                </button>
+              </SwiperSlide>
+            );
+          })}
+        </Swiper>
+      </section>
+
+      {/* Student details */}
+      <section className="mb-8 px-1">
+        <h3 className="mb-3 text-lg font-semibold text-gray-900">{t("parentPages", "studentDetailsLabel", lang)}</h3>
+        <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2">
           {[
-            { icon: Hash, label: t("parentPages", "admissionNoLabel", lang), value: student.adno },
-            { icon: Hash, label: t("parentPages", "studentUidLabel", lang), value: student.uid ?? "—" },
+            { icon: "tabler:hash", label: t("parentPages", "admissionNoLabel", lang), value: student.adno },
             {
-              icon: GraduationCap,
+              icon: "tabler:school",
               label: t("parentPages", "classInfoLabel", lang),
               value: student.class?.name ?? "—",
+            },
+            {
+              icon: "tabler:user",
+              label: t("parentPages", "genderLabel", lang),
+              value: student.gender === "FEMALE"
+                ? t("parentPages", "girlLabel", lang)
+                : t("parentPages", "boyLabel", lang),
+            },
+            {
+              icon: "tabler:circle-check",
+              label: t("parentPages", "statusLabel", lang),
+              value: student.status,
             },
             ...(student.dateOfBirth
               ? [
                   {
-                    icon: Calendar,
+                    icon: "tabler:calendar-event",
                     label: t("parentPages", "dateOfBirthLabel", lang),
                     value: new Date(student.dateOfBirth).toLocaleDateString(
                       "en-GB",
@@ -296,7 +305,7 @@ export default function ParentStudentProfile() {
             ...(student.guardianName
               ? [
                   {
-                    icon: User,
+                    icon: "tabler:user-heart",
                     label: t("parentPages", "guardianLabel", lang),
                     value: `${student.guardianName} (${student.relationToStudent ?? "guardian"})`,
                   },
@@ -305,7 +314,7 @@ export default function ParentStudentProfile() {
             ...(student.parentPhone
               ? [
                   {
-                    icon: Phone,
+                    icon: "tabler:phone",
                     label: t("parentPages", "parentPhoneLabel", lang),
                     value: student.parentPhone,
                   },
@@ -314,7 +323,7 @@ export default function ParentStudentProfile() {
             ...(student.bloodGroup
               ? [
                   {
-                    icon: Heart,
+                    icon: "tabler:droplet",
                     label: t("parentPages", "bloodGroupLabel", lang),
                     value: student.bloodGroup,
                   },
@@ -323,7 +332,7 @@ export default function ParentStudentProfile() {
             ...(student.address || student.city
               ? [
                   {
-                    icon: MapPin,
+                    icon: "tabler:map-pin",
                     label: t("parentPages", "addressLabel", lang),
                     value: [student.address, student.city, student.state]
                       .filter(Boolean)
@@ -334,7 +343,7 @@ export default function ParentStudentProfile() {
             ...(student.emergencyContactName
               ? [
                   {
-                    icon: AlertCircle,
+                    icon: "tabler:alert-circle",
                     label: t("parentPages", "emergencyContactLabel", lang),
                     value: `${student.emergencyContactName}${student.emergencyContactPhone ? ` (${student.emergencyContactPhone})` : ""}`,
                   },
@@ -343,38 +352,58 @@ export default function ParentStudentProfile() {
             ...(student.accademicYear
               ? [
                   {
-                    icon: Calendar,
+                    icon: "tabler:calendar-stats",
                     label: t("parentPages", "academicYearLabel", lang),
                     value: student.accademicYear.name,
                   },
                 ]
               : []),
-          ].map(({ icon: Icon, label, value }) => (
+          ].map(({ icon, label, value }) => (
             <div
               key={label}
-              className="bg-gray-50 rounded-xl p-3 flex gap-2.5 items-start"
+              className="flex min-w-0 items-start gap-4 border-b border-gray-100 py-4 last:border-b-0"
             >
-              <Icon className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              <Icon icon={icon} className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" aria-hidden="true" />
               <div className="min-w-0">
-                <p className="text-xs text-gray-400">{label}</p>
-                <p className="text-sm font-semibold text-gray-800 leading-tight truncate">
+                <p className="text-xs font-medium text-gray-500">{label}</p>
+                <p className="mt-0.5 break-words text-sm font-semibold text-gray-900">
                   {String(value)}
                 </p>
               </div>
             </div>
           ))}
         </div>
-      </motion.div>
+      </section>
 
       {/* Attendance */}
       <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.08 }}
-        className="bg-white rounded-2xl p-4 border border-gray-100 mb-4"
+        className="mb-8 border-t border-gray-100 px-1 pt-7"
       >
-        <p className="text-sm font-bold text-gray-700 mb-3">{t("parentPages", "attendanceSection", lang)}</p>
-        <div className="grid grid-cols-4 gap-2 mb-3">
+        <p className="mb-4 text-lg font-semibold text-gray-900">{t("parentPages", "attendanceSection", lang)}</p>
+        <div className="mb-5 flex items-end justify-between gap-3">
+          <div>
+            <span className="text-4xl font-bold tracking-tight text-emerald-900">{attPct}%</span>
+            <p className="mt-1 text-xs text-gray-500">{t("parentPages", "attendanceRateLabel", lang)}</p>
+          </div>
+          <span className="text-sm font-medium text-gray-500">{attPresent} / {attTotal}</span>
+        </div>
+        <div
+          className="mb-5 h-3 overflow-hidden rounded-full bg-gray-100"
+          role="progressbar"
+          aria-valuenow={attPct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={t("parentPages", "attendanceRateLabel", lang)}
+        >
+          <div
+            className={cn("h-full rounded-full transition-all", attPct >= 75 ? "bg-emerald-600" : "bg-amber-500")}
+            style={{ width: `${attPct}%` }}
+          />
+        </div>
+        <div className="grid grid-cols-4 gap-2">
           {[
             { label: t("parentPages", "presentStat", lang), val: attPresent, color: "text-emerald-700" },
             { label: t("parentPages", "absentStat", lang), val: attAbsent, color: "text-red-600" },
@@ -383,33 +412,14 @@ export default function ParentStudentProfile() {
           ].map(({ label, val, color }) => (
             <div
               key={label}
-              className="bg-gray-50 rounded-xl p-2.5 text-center"
+              className="border-l border-gray-100 px-2 py-1 text-center first:border-l-0"
             >
               <p className={cn("text-xl font-bold", color)}>{val}</p>
               <p className="text-xs text-gray-400 mt-0.5">{label}</p>
             </div>
           ))}
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className={cn(
-                "h-full rounded-full transition-all",
-                attPct >= 75 ? "bg-emerald-500" : "bg-red-400",
-              )}
-              style={{ width: `${attPct}%` }}
-            />
-          </div>
-          <span
-            className={cn(
-              "text-sm font-bold",
-              attPct >= 75 ? "text-emerald-700" : "text-red-600",
-            )}
-          >
-            {attPct}%
-          </span>
-        </div>
-        {attPct < 75 && (
+        {attTotal > 0 && attPct < 75 && (
           <p className="text-xs text-red-500 mt-2">
             {t("parentPages", "belowThreshold", lang)}
           </p>
@@ -425,223 +435,140 @@ export default function ParentStudentProfile() {
         .
       </div>
 
-      {/* ── Edit Drawer ── */}
-      <AnimatePresence>
-        {showEdit && (
-          <>
-            <motion.div
-              key="edit-backdrop"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowEdit(false)}
-              className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
-            />
-            <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-none md:p-4">
-              <motion.div
-                key="edit-drawer"
-                initial={{ y: "100%", opacity: 1 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: "100%", opacity: 1 }}
-                transition={{ type: "spring", damping: 30, stiffness: 300 }}
-                className="w-full bg-white flex flex-col pointer-events-auto shadow-2xl relative rounded-t-3xl md:rounded-3xl max-h-[92dvh] md:max-h-[85dvh] md:max-w-xl"
-              >
-                <div className="flex justify-center pt-3 pb-1 shrink-0 md:hidden">
-                  <div className="w-10 h-1 bg-gray-300 rounded-full" />
-                </div>
-                <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
-                  <div>
-                    <h2 className="font-bold text-gray-900 text-lg">
-                      {t("parentPages", "editStudent", lang)}
-                    </h2>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {student.name}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setShowEdit(false)}
-                    className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="overflow-y-auto flex-1 px-5 py-4 space-y-6 pb-8">
-                  {editError && (
-                    <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl">
-                      {editError}
-                    </div>
-                  )}
-
-                  {/* Photo Upload */}
-                  <section>
-                    <p className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3">
-                      {t("parentPages", "photoSection", lang)}
-                    </p>
-                    <div className="flex items-center gap-4">
-                      {avatarPreview ? (
-                        <div className="relative w-20 h-20 rounded-2xl overflow-hidden">
-                          <img
-                            src={avatarPreview}
-                            alt="Preview"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      ) : student.photoUrl ? (
-                        <img
-                          src={student.photoUrl}
-                          alt={student.name}
-                          className="w-20 h-20 rounded-2xl object-cover border border-gray-200"
-                        />
-                      ) : (
-                        <div className="w-20 h-20 rounded-2xl bg-gray-100 flex items-center justify-center text-3xl font-bold text-gray-400">
-                          <User className="w-8 h-8" />
-                        </div>
-                      )}
-                      <div className="flex-1">
-                        <label className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-gray-700 cursor-pointer transition-colors w-fit">
-                          {photoMutation.isPending ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Upload className="w-4 h-4" />
-                          )}
-                          {photoMutation.isPending ? t("parentPages", "uploadingLabel", lang) : t("parentPages", "choosePhoto", lang)}
-                          <input
-                            type="file"
-                            accept="image/*"
-                            disabled={photoMutation.isPending}
-                            onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-                              const reader = new FileReader();
-                              reader.onload = () =>
-                                setAvatarPreview(reader.result as string);
-                              reader.readAsDataURL(file);
-                              await handleAvatarUpload(file);
-                              e.target.value = "";
-                            }}
-                            className="hidden"
-                          />
-                        </label>
-                      </div>
-                    </div>
-                  </section>
-
-                  <div className="border-t border-dashed border-gray-200" />
-
-                  {/* Health & Emergency */}
-                  <section>
-                    <p className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-3">
-                      {t("parentPages", "healthEmergency", lang)}
-                    </p>
-                    <div className="space-y-3">
-                      <div>
-                        <label className={labelCls}>{t("parentPages", "bloodGroupLabel", lang)}</label>
-                        <select
-                          value={editForm.bloodGroup}
-                          onChange={(e) =>
-                            setEditForm((f) => ({
-                              ...f,
-                              bloodGroup: e.target.value,
-                            }))
-                          }
-                          className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-amber-400 text-sm"
-                        >
-                          <option value="">— Select —</option>
-                          {[
-                            "A+",
-                            "A-",
-                            "B+",
-                            "B-",
-                            "AB+",
-                            "AB-",
-                            "O+",
-                            "O-",
-                          ].map((bg) => (
-                            <option key={bg} value={bg}>
-                              {bg}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className={labelCls}>
-                          {t("parentPages", "emergencyContactLabel", lang)}
-                        </label>
-                        <input
-                          value={editForm.emergencyContactName}
-                          onChange={(e) =>
-                            setEditForm((f) => ({
-                              ...f,
-                              emergencyContactName: e.target.value,
-                            }))
-                          }
-                          className={inputCls}
-                          placeholder="Emergency contact person"
-                        />
-                      </div>
-                      <div>
-                        <label className={labelCls}>
-                          {t("parentPages", "parentPhoneLabel", lang)}
-                        </label>
-                        <input
-                          value={editForm.emergencyContactPhone}
-                          onChange={(e) =>
-                            setEditForm((f) => ({
-                              ...f,
-                              emergencyContactPhone: e.target.value,
-                            }))
-                          }
-                          className={inputCls}
-                          placeholder="10-digit mobile"
-                          type="tel"
-                        />
-                      </div>
-                      <div>
-                        <label className={labelCls}>{t("parentPages", "medicalNotes", lang)}</label>
-                        <textarea
-                          value={editForm.medicalNotes}
-                          onChange={(e) =>
-                            setEditForm((f) => ({
-                              ...f,
-                              medicalNotes: e.target.value,
-                            }))
-                          }
-                          rows={2}
-                          className={inputCls + " resize-none"}
-                          placeholder="Allergies, conditions, notes"
-                        />
-                      </div>
-                    </div>
-                  </section>
-                </div>
-
-                <div className="px-5 py-4 border-t border-gray-100 shrink-0 flex gap-3">
-                  <button
-                    onClick={() => setShowEdit(false)}
-                    className="flex-1 py-3.5 text-sm font-semibold text-gray-500 bg-gray-100 rounded-2xl hover:bg-gray-200 transition-all"
-                  >
-                    {t("parentPages", "cancelLabel", lang)}
-                  </button>
-                  <button
-                    onClick={handleSave}
-                    disabled={updateMutation.isPending}
-                    className="flex-1 bg-emerald-600 text-white font-bold py-3.5 rounded-2xl text-sm active:scale-[0.98] transition-transform shadow-lg disabled:opacity-60"
-                  >
-                    {updateMutation.isPending ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin" /> {t("parentPages", "savingLabel", lang)}
-                      </span>
-                    ) : (
-                      t("parentPages", "saveChanges", lang)
-                    )}
-                  </button>
-                </div>
-              </motion.div>
+      {/* Edit profile */}
+      <ResponsivePopover
+        open={showEdit}
+        onOpenChange={setShowEdit}
+        drawerOnDesktop
+        title={t("parentPages", "editStudent", lang)}
+        description={student.name}
+        contentClassName="px-5 py-5"
+        footer={
+          <div className="border-t border-gray-100 bg-white p-4">
+            <ButtonGroup className="w-full [&>button]:flex-1">
+              <Button type="button" variant="outline" size="lg" onClick={() => setShowEdit(false)}>
+                {t("parentPages", "cancelLabel", lang)}
+              </Button>
+              <Button type="button" size="lg" onClick={handleSave} disabled={updateMutation.isPending}>
+                {updateMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                {t("parentPages", updateMutation.isPending ? "savingLabel" : "saveChanges", lang)}
+              </Button>
+            </ButtonGroup>
+          </div>
+        }
+      >
+        <div className="space-y-6 pb-4">
+          {editError && (
+            <div role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+              {editError}
             </div>
-          </>
-        )}
-      </AnimatePresence>
+          )}
+
+          <section>
+            <p className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-700">
+              {t("parentPages", "photoSection", lang)}
+            </p>
+            <div className="flex items-center gap-4">
+              {avatarPreview ? (
+                <img src={avatarPreview} alt="Preview" className="h-20 w-20 rounded-xl object-cover" />
+              ) : student.photoUrl ? (
+                <img src={student.photoUrl} alt={student.name} className="h-20 w-20 rounded-xl object-cover" />
+              ) : (
+                <div className="flex h-20 w-20 items-center justify-center rounded-xl bg-gray-100 text-gray-400">
+                  <User className="h-8 w-8" />
+                </div>
+              )}
+              <Input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                disabled={photoMutation.isPending}
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = () => setAvatarPreview(reader.result as string);
+                  reader.readAsDataURL(file);
+                  await handleAvatarUpload(file);
+                  e.target.value = "";
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                disabled={photoMutation.isPending}
+                onClick={() => photoInputRef.current?.click()}
+              >
+                {photoMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                {t("parentPages", photoMutation.isPending ? "uploadingLabel" : "choosePhoto", lang)}
+              </Button>
+            </div>
+          </section>
+
+          <section className="border-t border-gray-100 pt-5">
+            <p className="mb-3 text-xs font-bold uppercase tracking-wide text-amber-700">
+              {t("parentPages", "healthEmergency", lang)}
+            </p>
+            <div className="space-y-4">
+              <div>
+                <p className={labelCls}>{t("parentPages", "bloodGroupLabel", lang)}</p>
+                <DrawerSelector
+                  title={t("parentPages", "bloodGroupLabel", lang)}
+                  value={editForm.bloodGroup}
+                  onChange={(bloodGroup) => setEditForm((form) => ({ ...form, bloodGroup }))}
+                  placeholder="— Select —"
+                  options={[
+                    { value: "", label: "— Select —" },
+                    ...["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((group) => ({ value: group, label: group })),
+                  ]}
+                  className="min-h-11"
+                />
+              </div>
+              <div>
+                <label htmlFor="student-emergency-name" className={labelCls}>
+                  {t("parentPages", "emergencyContactLabel", lang)}
+                </label>
+                <Input
+                  id="student-emergency-name"
+                  size="lg"
+                  value={editForm.emergencyContactName}
+                  onChange={(e) => setEditForm((form) => ({ ...form, emergencyContactName: e.target.value }))}
+                  placeholder="Emergency contact person"
+                />
+              </div>
+              <div>
+                <label htmlFor="student-emergency-phone" className={labelCls}>
+                  {t("parentPages", "parentPhoneLabel", lang)}
+                </label>
+                <Input
+                  id="student-emergency-phone"
+                  type="tel"
+                  size="lg"
+                  value={editForm.emergencyContactPhone}
+                  onChange={(e) => setEditForm((form) => ({ ...form, emergencyContactPhone: e.target.value }))}
+                  placeholder="10-digit mobile"
+                />
+              </div>
+              <div>
+                <label htmlFor="student-medical-notes" className={labelCls}>
+                  {t("parentPages", "medicalNotes", lang)}
+                </label>
+                <Textarea
+                  id="student-medical-notes"
+                  rows={2}
+                  value={editForm.medicalNotes}
+                  onChange={(e) => setEditForm((form) => ({ ...form, medicalNotes: e.target.value }))}
+                  placeholder="Allergies, conditions, notes"
+                  className="resize-none"
+                />
+              </div>
+            </div>
+          </section>
+        </div>
+      </ResponsivePopover>
+      </StudentsPageSurface>
     </DashboardLayout>
   );
 }

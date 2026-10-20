@@ -1941,8 +1941,12 @@ const translations = {
     myChildBestPerf: { en: "Your Child", ml: "എന്റെ കുട്ടി" },
     // Students page
     studentProfileTitle: { en: "Student Profile", ml: "വിദ്യാർത്ഥി പ്രൊഫൈൽ" },
+    yourStudentsLabel: { en: "Your students", ml: "നിങ്ങളുടെ വിദ്യാർത്ഥികൾ" },
+    studentDetailsLabel: { en: "Student details", ml: "വിദ്യാർത്ഥിയുടെ വിവരങ്ങൾ" },
+    genderLabel: { en: "Gender", ml: "ലിംഗം" },
+    attendanceRateLabel: { en: "Attendance rate", ml: "ഹാജർ നിരക്ക്" },
     goBack: { en: "Go back", ml: "മടങ്ങുക" },
-    editStudentBtn: { en: "Edit", ml: "തിരുത്തുക" },
+    editStudentBtn: { en: "Edit Profile", ml: "പ്രൊഫൈൽ തിരുത്തുക" },
     girlLabel: { en: "Girl", ml: "പെൺകുട്ടി" },
     boyLabel: { en: "Boy", ml: "ആൺകുട്ടി" },
     admissionNoLabel: { en: "Admission No", ml: "അഡ്‌മിഷൻ നമ്പർ" },

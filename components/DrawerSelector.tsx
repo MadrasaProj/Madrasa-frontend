@@ -48,7 +48,7 @@ export function DrawerSelector({
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen(true)}
-        className={cn("h-auto w-full justify-between gap-3 px-3 py-3.5 text-left", className)}
+        className={cn("h-11 w-full justify-between gap-3 px-3 py-3.5 text-left", className)}
       >
         <span className="flex min-w-0 items-center gap-3">
           {triggerImage && <img src={triggerImage} alt="" className="h-10 w-10 shrink-0 object-contain" />}
