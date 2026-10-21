@@ -72,7 +72,7 @@ export default function ParentDashboard() {
         </dl>
       </section>
 
-      <section aria-labelledby="parent-actions" className="pb-20">
+      <section aria-labelledby="parent-actions" className="pb-0">
         <h2 id="parent-actions" className="mb-3 text-base font-semibold text-gray-900">{t("parentPages", "quickAccess", lang)}</h2>
         <ul className="overflow-hidden rounded-2xl border border-gray-200 bg-white px-4 sm:px-5">
           {actions.map((action) => (

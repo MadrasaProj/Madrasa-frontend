@@ -35,7 +35,7 @@ import { PageSkeleton } from "@/components/ui/Skeleton";
 function StudentsPageSurface({ children }: { children: ReactNode }) {
   return (
     <div
-      className="-mx-4 -mt-4 min-h-screen px-4 pb-28 pt-4 lg:-mx-8 lg:-mt-8 lg:px-8 lg:pb-8 lg:pt-8"
+      className="-mx-4 -mt-4 min-h-screen px-4 pb-0 pt-4 lg:-mx-8 lg:-mt-8 lg:px-8 lg:pb-8 lg:pt-8"
       style={{
         backgroundColor: "#f6faf8",
         // backgroundImage:

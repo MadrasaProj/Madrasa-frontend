@@ -265,7 +265,7 @@ const teacherLinks = [
 
 const parentLinks = [
   { href: "/parent", icon: Home, key: "home" as NavKey },
-  { href: "/parent/students", icon: User, key: "students" as NavKey },
+  // { href: "/parent/students", icon: User, key: "students" as NavKey },
   {
     href: "/parent/attendance",
     icon: ClipboardList,
@@ -790,7 +790,7 @@ export function Sidebar({
 
     return (
       <Link
-        key={l.href}
+        key={l.href}  
         to={fullHref}
         onClick={handleLinkClick}
         ref={active ? activeRef : undefined}
@@ -993,6 +993,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
   } = useAuthStore();
   const { lang } = useLanguageStore();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [studentSwitcherOpen, setStudentSwitcherOpen] = useState(false);
   const [profileOptionsOpen, setProfileOptionsOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [onboardingRole, setOnboardingRole] = useState<
@@ -1019,6 +1020,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
   const studentIds = isParent ? (user.accessibleStudentIds ?? []) : [];
   const students = isParent ? (user.accessibleStudents ?? []) : [];
   const currentStudentId = activeStudentId ?? studentIds[0] ?? null;
+  const currentStudent = students.find((student) => student.id === currentStudentId);
 
   let allLinks = getLinksByRole(user.role, user.actorType, hasActiveClient);
   allLinks = insertArtsfestLink(allLinks, user.role, user.actorType);
@@ -1154,12 +1156,12 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
                   )}
                 >
                   <Icon
-                    className={cn("w-4 h-4 shrink-0", active && "stroke-[2.5]")}
+                    className={cn("size-5 shrink-0", active && "stroke-[2.5]")}
                   />
                 </div>
                 <span
                   className={cn(
-                    "text-[12px] mt-1  leading-none text-center",
+                    "text-[11px] mt-1  leading-none text-center",
                     active ? "text-emerald-600" : "text-gray-400",
                   )}
                 >
@@ -1168,6 +1170,26 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
               </Link>
             );
           })}
+
+          {isParent && studentIds.length > 0 && (
+            <button
+              type="button"
+              aria-label={lang === "ml" ? "വിദ്യാർത്ഥിയെ തിരഞ്ഞെടുക്കുക" : "Switch student"}
+              aria-haspopup="dialog"
+              onClick={() => setStudentSwitcherOpen(true)}
+              className="flex w-16 shrink-0 flex-col items-center justify-center gap-1 p-2 text-gray-400 transition-all active:scale-95"
+            >
+              <Avatar size="sm">
+                <AvatarImage src={currentStudent?.photoUrl ?? undefined} />
+                <AvatarFallback className="bg-primary text-primary-foreground">
+                  {(currentStudent?.name ?? "Student").charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-center text-[12px] leading-none">
+                {lang === "ml" ? "വിദ്യാർത്ഥി" : "Student"}
+              </span>
+            </button>
+          )}
 
           {showMore && (
             <div
@@ -1257,60 +1279,63 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
           </div>
         </ButtonGroup>
 
-         {isParent && studentIds.length > 0 && (
-          <div className="border-b border-gray-100  py-3">
-            <p className="mb-2 px-2 text-xs  uppercase tracking-wider text-gray-400">
-              {lang === "ml" ? "വിദ്യാർത്ഥിയെ തിരഞ്ഞെടുക്കുക" : "Switch student"}
-            </p>
-            <ButtonGroup
-              orientation="vertical"
-              style={{ gap: 0 }}
-              className="w-full rounded-lg border overflow-hidden border-gray-100  *:border-b *:border-gray-100"
-            >
-              {studentIds.map((id) => {
-                const student = students.find((item) => item.id === id);
-                const name = student?.name ?? "Student";
-                const isActive = currentStudentId === id;
-
-                return (
-                  <button
-                    key={id}
-                    onClick={() => {
-                      setActiveStudent(id);
-                      setMoreOpen(false);
-                    }}
-                    className={cn(
-                      "flex w-full items-center gap-3  p-3  text-left transition-colors",
-                      isActive
-                        ? "bg-linear-90 from-primary/10 to-transparent text-primary"
-                        : "hover:bg-gray-50 active:bg-gray-100",
-                    )}
-                  >
-                    <Avatar size="sm">
-                      <AvatarImage src={student?.photoUrl ?? undefined} />
-                      <AvatarFallback className="bg-primary text-primary-foreground">
-                        {name.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
-                      <p className="truncate text-sm   ">
-                        {name}
-                      </p>
-                      <p className="shrink-0 text-xs text-gray-500">
-                        {student?.className ?? "—"}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
-            </ButtonGroup>
-          </div>
-        )}
         <div className="grid grid-cols-1 gap-2 py-3 sm:grid-cols-1 max-h-[80dvh] overflow-auto">
             {moreLinks.map(renderMoreLink)}
         </div>
         </>
       </ResponsivePopover>
+      {isParent && studentIds.length > 0 && (
+        <ResponsivePopover
+          open={studentSwitcherOpen}
+          onOpenChange={setStudentSwitcherOpen}
+          side="bottom"
+          title={lang === "ml" ? "വിദ്യാർത്ഥിയെ തിരഞ്ഞെടുക്കുക" : "Switch student"}
+          contentClassName="p-4"
+        >
+          <ButtonGroup
+            orientation="vertical"
+            style={{ gap: 0 }}
+            className="w-full overflow-hidden rounded-lg border border-gray-100 *:border-b *:border-gray-100"
+          >
+            {studentIds.map((id) => {
+              const student = students.find((item) => item.id === id);
+              const name = student?.name ?? "Student";
+              const isActive = currentStudentId === id;
+
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  aria-current={isActive ? "true" : undefined}
+                  onClick={() => {
+                    setActiveStudent(id);
+                    setStudentSwitcherOpen(false);
+                  }}
+                  className={cn(
+                    "flex w-full items-center gap-3 p-3 text-left transition-colors",
+                    isActive
+                      ? "bg-linear-90 from-primary/10 to-transparent text-primary"
+                      : "hover:bg-gray-50 active:bg-gray-100",
+                  )}
+                >
+                  <Avatar size="sm">
+                    <AvatarImage src={student?.photoUrl ?? undefined} />
+                    <AvatarFallback className="bg-primary text-primary-foreground">
+                      {name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                    <span className="truncate text-sm">{name}</span>
+                    <span className="shrink-0 text-xs text-gray-500">
+                      {student?.className ?? "—"}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </ButtonGroup>
+        </ResponsivePopover>
+      )}
       <ResponsivePopover
         showCloseButton={false}
         open={profileOptionsOpen}
