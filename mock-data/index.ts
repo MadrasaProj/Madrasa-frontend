@@ -881,7 +881,7 @@ export const seatArrangements = [
 
 // Analytics data
 export const parentCooperationData = [
-  { name: "Active", value: 18, color: "#10b981" },
+  { name: "Active", value: 18, color: "var(--primary)" },
   { name: "Moderate", value: 8, color: "#f59e0b" },
   { name: "Inactive", value: 4, color: "#ef4444" },
 ];
@@ -1114,7 +1114,7 @@ export type ElectionCategory =
   | "custom";
 
 export const CATEGORY_META: Record<ElectionCategory, { label: string; label_ml: string; color: string; bg: string; emoji: string; group: string }> = {
-  madrasa_leader:   { label: "Madrasa Leader",   label_ml: "മദ്‌റസ ലീഡർ",          color: "text-emerald-700", bg: "bg-emerald-100", emoji: "🏫", group: "Madrasa"  },
+  madrasa_leader:   { label: "Madrasa Leader",   label_ml: "മദ്‌റസ ലീഡർ",          color: "text-primary-700", bg: "bg-primary-100", emoji: "🏫", group: "Madrasa"  },
   sksbv_chairman:   { label: "SKSBV Chairman",    label_ml: "SKSBV ചെയർമാൻ",        color: "text-teal-700",    bg: "bg-teal-100",    emoji: "👑", group: "SKSBV"    },
   sksbv_convener:   { label: "SKSBV Convener",    label_ml: "SKSBV കൺവീനർ",         color: "text-teal-700",    bg: "bg-teal-100",    emoji: "📋", group: "SKSBV"    },
   sksbv_secretary:  { label: "SKSBV Secretary",   label_ml: "SKSBV സെക്രട്ടറി",     color: "text-teal-700",    bg: "bg-teal-100",    emoji: "✍️", group: "SKSBV"    },

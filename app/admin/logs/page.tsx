@@ -16,7 +16,7 @@ import { SkeletonList } from "@/components/ui/Skeleton";
 const ACTOR_COLORS: Record<string, string> = {
   SUPER_ADMIN: "bg-blue-100 text-blue-700",
   CLIENT_ADMIN: "bg-blue-100 text-blue-700",
-  TEACHER: "bg-emerald-100 text-emerald-700",
+  TEACHER: "bg-primary-100 text-primary-700",
   PARENT: "bg-amber-100 text-amber-700",
   COMMITTEE: "bg-pink-100 text-pink-700",
 };
@@ -103,7 +103,7 @@ export default function ActivityLogsPage() {
             setActorType(e.target.value);
             setPage(0);
           }}
-          className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400"
+          className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary-400"
         >
           <option value="">All roles</option>
           {ALL_ACTORS.slice(1).map((a) => (
@@ -120,7 +120,7 @@ export default function ActivityLogsPage() {
             setPage(0);
           }}
           placeholder="Filter by action…"
-          className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 min-w-[180px]"
+          className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary-400 min-w-[180px]"
         />
         <button
           onClick={() => {
@@ -134,7 +134,7 @@ export default function ActivityLogsPage() {
         </button>
         <button
           onClick={load}
-          className="ml-auto flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition-all"
+          className="ml-auto flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-primary-700 bg-primary-50 border border-primary-200 rounded-xl hover:bg-primary-100 transition-all"
         >
           <RefreshCw className="w-3.5 h-3.5" /> Refresh
         </button>

@@ -85,7 +85,7 @@ export default function RenewalsDashboard() {
     switch (status) {
       case "URGENT": return "bg-rose-50 text-rose-700 border-rose-100";
       case "ATTENTION": return "bg-amber-50 text-amber-700 border-amber-100";
-      default: return "bg-emerald-50 text-emerald-700 border-emerald-100";
+      default: return "bg-primary-50 text-primary-700 border-primary-100";
     }
   };
 
@@ -127,7 +127,7 @@ export default function RenewalsDashboard() {
         </div>
 
         {successMsg && (
-          <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl p-4 text-sm flex justify-between items-center shadow-sm">
+          <div className="bg-primary-50 border border-primary-200 text-primary-800 rounded-2xl p-4 text-sm flex justify-between items-center shadow-sm">
             <span>{successMsg}</span>
             <button onClick={() => setSuccessMsg(null)} className="font-bold underline text-xs">Dismiss</button>
           </div>
@@ -146,7 +146,7 @@ export default function RenewalsDashboard() {
               <span className="text-[10px] uppercase font-bold text-gray-400">Projected Pipeline</span>
               <p className="text-2xl font-black text-gray-800 mt-1">{fmtCurrency(totalUpcomingAmount)}</p>
             </div>
-            <DollarSign className="w-8 h-8 text-emerald-550 bg-emerald-50 p-1.5 rounded-full" />
+            <DollarSign className="w-8 h-8 text-primary-550 bg-primary-50 p-1.5 rounded-full" />
           </div>
           <div className="bg-rose-50 border border-rose-100 p-5 rounded-3xl flex items-center justify-between">
             <div>
@@ -167,13 +167,13 @@ export default function RenewalsDashboard() {
         {/* Renewals Table Registry */}
         <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
           <div className="p-5 border-b border-gray-50 flex items-center gap-1.5">
-            <Calendar className="w-4.5 h-4.5 text-emerald-600" />
+            <Calendar className="w-4.5 h-4.5 text-primary-600" />
             <h2 className="text-sm font-black text-gray-800">Upcoming Expirations Register</h2>
           </div>
 
           {loading ? (
             <div className="flex justify-center py-10">
-              <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
+              <Loader2 className="w-6 h-6 animate-spin text-primary-600" />
             </div>
           ) : renewals.length === 0 ? (
             <div className="text-center py-12 text-gray-400 text-sm font-medium">
@@ -210,7 +210,7 @@ export default function RenewalsDashboard() {
                         </td>
                         <td className="py-4 px-6 font-bold font-mono">{fmtCurrency(r.amount)}</td>
                         <td className="py-4 px-6">
-                          <span className="font-bold text-emerald-700">{r.probability * 100}%</span>
+                          <span className="font-bold text-primary-700">{r.probability * 100}%</span>
                         </td>
                         <td className="py-4 px-6">
                           <span className={cn("text-[9px] font-bold px-2.5 py-1 border rounded-full uppercase", getStatusStyle(r.status))}>
@@ -221,7 +221,7 @@ export default function RenewalsDashboard() {
                           <button
                             onClick={() => handleSendReminder(r.id, r.daysRemaining)}
                             disabled={triggerLoading === r.id || r.status === "SAFE"}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:bg-gray-100 disabled:text-gray-400 font-bold text-[10px] py-1.5 px-3 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-1.5 ml-auto"
+                            className="bg-primary-600 hover:bg-primary-700 text-white disabled:bg-gray-100 disabled:text-gray-400 font-bold text-[10px] py-1.5 px-3 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-1.5 ml-auto"
                           >
                             {triggerLoading === r.id ? (
                               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -272,7 +272,7 @@ export default function RenewalsDashboard() {
                       </div>
                       <div className="flex justify-between">
                         <span>Renewal probability:</span>
-                        <span className="text-emerald-700 font-bold">{r.probability * 100}%</span>
+                        <span className="text-primary-700 font-bold">{r.probability * 100}%</span>
                       </div>
                     </div>
 
@@ -280,7 +280,7 @@ export default function RenewalsDashboard() {
                       <button
                         onClick={() => handleSendReminder(r.id, r.daysRemaining)}
                         disabled={triggerLoading === r.id || r.status === "SAFE"}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:bg-gray-100 disabled:text-gray-400 font-bold text-[10px] py-2 px-4.5 rounded-xl transition-all active:scale-95 flex items-center gap-1"
+                        className="bg-primary-600 hover:bg-primary-700 text-white disabled:bg-gray-100 disabled:text-gray-400 font-bold text-[10px] py-2 px-4.5 rounded-xl transition-all active:scale-95 flex items-center gap-1"
                       >
                         {triggerLoading === r.id ? (
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />

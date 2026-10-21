@@ -84,7 +84,7 @@ export default function AdminPresentPage() {
       {!loading && !error && (
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <span className="text-2xl font-bold text-emerald-700">
+            <span className="text-2xl font-bold text-primary-700">
               {present.length}
             </span>
             <span className="text-sm text-gray-500">
@@ -121,7 +121,7 @@ export default function AdminPresentPage() {
               >
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
                   <p className="font-bold text-gray-800 text-sm">{className}</p>
-                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg">
+                  <span className="text-xs font-bold text-primary-700 bg-primary-50 px-2 py-1 rounded-lg">
                     {students.length} {t("common", "present", lang)}
                   </span>
                 </div>
@@ -131,7 +131,7 @@ export default function AdminPresentPage() {
                       key={r.id}
                       className="flex items-center gap-3 px-4 py-2.5"
                     >
-                      <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold shrink-0">
+                      <div className="w-7 h-7 rounded-lg bg-primary-100 text-primary-700 flex items-center justify-center text-xs font-bold shrink-0">
                         {r.student.name.charAt(0)}
                       </div>
                       <div className="flex-1 min-w-0">

@@ -265,14 +265,14 @@ function UploadScreen({
  return (
  <div className="space-y-4">
  {/* Template download */}
- <div className="bg-emerald-50 rounded-2xl p-4 flex items-center justify-between">
+ <div className="bg-primary-50 rounded-2xl p-4 flex items-center justify-between">
  <div>
- <p className="text-sm font-semibold text-emerald-800">Step 1: Download template</p>
- <p className="text-xs text-emerald-600 mt-0.5">Fill it in, then upload below</p>
+ <p className="text-sm font-semibold text-primary-800">Step 1: Download template</p>
+ <p className="text-xs text-primary-600 mt-0.5">Fill it in, then upload below</p>
  </div>
  <button
  onClick={() => downloadTemplate(config.columns, config.templateFilename, config.templateSamples)}
- className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-colors shrink-0"
+ className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-700 transition-colors shrink-0"
  >
  <Download className="w-4 h-4" /> Template
  </button>
@@ -286,12 +286,12 @@ function UploadScreen({
  onClick={() => fileInputRef.current?.click()}
  className={cn(
  "border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all",
- dragging ? "border-emerald-400 bg-emerald-50" : "border-gray-200 hover:border-emerald-300 hover:bg-gray-50",
+ dragging ? "border-primary-400 bg-primary-50" : "border-gray-200 hover:border-primary-300 hover:bg-gray-50",
  )}
  >
  {parsing ? (
  <div className="flex flex-col items-center gap-2 text-gray-400">
- <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+ <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
  <p className="text-sm font-medium">Parsing file…</p>
  </div>
  ) : (
@@ -326,7 +326,7 @@ function UploadScreen({
  className={cn(
  "text-xs px-2.5 py-1 rounded-lg font-medium",
  col.required
- ? "bg-emerald-100 text-emerald-700"
+ ? "bg-primary-100 text-primary-700"
  : "bg-gray-100 text-gray-600",
  )}
  >
@@ -360,9 +360,9 @@ function PreviewScreen({
  <div className="space-y-4">
  {/* Summary bar */}
  <div className="flex gap-3">
- <div className="flex-1 bg-emerald-50 rounded-xl p-3 text-center">
- <p className="text-2xl font-bold text-emerald-700">{validCount}</p>
- <p className="text-xs text-emerald-600 mt-0.5">Valid</p>
+ <div className="flex-1 bg-primary-50 rounded-xl p-3 text-center">
+ <p className="text-2xl font-bold text-primary-700">{validCount}</p>
+ <p className="text-xs text-primary-600 mt-0.5">Valid</p>
  </div>
  <div className={cn("flex-1 rounded-xl p-3 text-center", invalidCount > 0 ? "bg-red-50" : "bg-gray-50")}>
  <p className={cn("text-2xl font-bold", invalidCount > 0 ? "text-red-600" : "text-gray-400")}>{invalidCount}</p>
@@ -404,7 +404,7 @@ function PreviewScreen({
  <td className="px-3 py-2 text-gray-600">{row.raw[adnoField] || "—"}</td>
  <td className="px-3 py-2">
  {row.status === "valid" ? (
- <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+ <CheckCircle2 className="w-4 h-4 text-primary-500" />
  ) : (
  <div className="flex items-start gap-1.5">
  <XCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
@@ -421,7 +421,7 @@ function PreviewScreen({
  <button
  disabled={validCount === 0}
  onClick={onImport}
- className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl text-base shadow-lg disabled:opacity-40 active:scale-[0.98] transition-transform"
+ className="w-full bg-primary-600 text-white font-bold py-4 rounded-2xl text-base shadow-lg disabled:opacity-40 active:scale-[0.98] transition-transform"
  >
  Import {validCount} {validCount === 1 ? "row" : "rows"}
  </button>
@@ -434,20 +434,20 @@ function ImportingScreen({ progress }: { progress: { done: number; total: number
  return (
  <div className="py-8 space-y-6">
  <div className="flex flex-col items-center gap-3 text-gray-500">
- <Loader2 className="w-10 h-10 animate-spin text-emerald-500" />
+ <Loader2 className="w-10 h-10 animate-spin text-primary-500" />
  <p className="text-sm font-semibold">Importing… do not close</p>
  <p className="text-xs text-gray-400">{progress.done} / {progress.total}</p>
  </div>
  <div className="space-y-2">
  <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
  <motion.div
- className="h-full bg-emerald-500 rounded-full"
+ className="h-full bg-primary-500 rounded-full"
  initial={{ width: 0 }}
  animate={{ width: `${pct}%` }}
  transition={{ ease: "easeOut" }}
  />
  </div>
- <p className="text-right text-xs font-bold text-emerald-700">{pct}%</p>
+ <p className="text-right text-xs font-bold text-primary-700">{pct}%</p>
  </div>
  </div>
  )
@@ -474,9 +474,9 @@ function ResultsScreen({
  return (
  <div className="space-y-4">
  <div className="flex gap-3">
- <div className="flex-1 bg-emerald-50 rounded-xl p-3 text-center">
- <p className="text-2xl font-bold text-emerald-700">{imported}</p>
- <p className="text-xs text-emerald-600 mt-0.5">Imported</p>
+ <div className="flex-1 bg-primary-50 rounded-xl p-3 text-center">
+ <p className="text-2xl font-bold text-primary-700">{imported}</p>
+ <p className="text-xs text-primary-600 mt-0.5">Imported</p>
  </div>
  {failed > 0 && (
  <div className="flex-1 bg-red-50 rounded-xl p-3 text-center">
@@ -520,14 +520,14 @@ function ResultsScreen({
 
  {imported > 0 && failed === 0 && (
  <div className="flex flex-col items-center gap-2 py-4 text-center">
- <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+ <CheckCircle2 className="w-10 h-10 text-primary-500" />
  <p className="font-semibold text-gray-800">All {entityName} imported successfully!</p>
  </div>
  )}
 
  <button
  onClick={onDone}
- className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl text-base shadow-lg active:scale-[0.98] transition-transform"
+ className="w-full bg-primary-600 text-white font-bold py-4 rounded-2xl text-base shadow-lg active:scale-[0.98] transition-transform"
  >
  Done
  </button>
@@ -724,7 +724,7 @@ export function ImportModal<TPayload>({ show, config, onComplete, onClose }: Imp
  )}
  <div>
  <h2 className="font-bold text-gray-900 text-lg">
- <FileSpreadsheet className="w-4 h-4 inline mr-1.5 text-emerald-600" />
+ <FileSpreadsheet className="w-4 h-4 inline mr-1.5 text-primary-600" />
  Import {config.entityName}
  </h2>
  <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>

@@ -70,7 +70,7 @@ function JournalList({ entries, openEdit, handleDelete, deletingId, lang }: {
                 default: "bg-white border-gray-200",
                 classic: "bg-amber-50 border-amber-300/60",
                 vintage: "bg-orange-50 border-orange-300/60",
-                nature: "bg-emerald-50 border-emerald-300/60",
+                nature: "bg-primary-50 border-primary-300/60",
                 ocean: "bg-blue-50 border-blue-300/60",
                 dreamy: "bg-purple-50 border-purple-300/60",
                 cozy: "bg-pink-50 border-pink-300/60",
@@ -80,7 +80,7 @@ function JournalList({ entries, openEdit, handleDelete, deletingId, lang }: {
                 default: "bg-gray-100 text-gray-500",
                 classic: "bg-amber-200/50 text-amber-800",
                 vintage: "bg-orange-200/50 text-orange-800",
-                nature: "bg-emerald-200/50 text-emerald-800",
+                nature: "bg-primary-200/50 text-primary-800",
                 ocean: "bg-blue-200/50 text-blue-800",
                 dreamy: "bg-purple-200/50 text-purple-800",
                 cozy: "bg-pink-200/50 text-pink-800",
@@ -235,7 +235,7 @@ export default function TeacherDiaryPage() {
     default: { bg: "bg-white",      text: "text-gray-800",  label: "Clean",   font: "system-ui, sans-serif", mlFont: "'Noto Sans Malayalam', sans-serif" },
     classic: { bg: "bg-amber-50",   text: "text-amber-900", label: "Classic", font: "'Merriweather', serif",   mlFont: "'Noto Serif Malayalam', serif" },
     vintage: { bg: "bg-orange-50",  text: "text-orange-900", label: "Vintage", font: "'Playfair Display', serif", mlFont: "'Noto Serif Malayalam', serif" },
-    nature:  { bg: "bg-emerald-50", text: "text-emerald-900", label: "Nature", font: "'EB Garamond', serif",     mlFont: "'Noto Serif Malayalam', serif" },
+    nature:  { bg: "bg-primary-50", text: "text-primary-900", label: "Nature", font: "'EB Garamond', serif",     mlFont: "'Noto Serif Malayalam', serif" },
     ocean:   { bg: "bg-blue-50",    text: "text-blue-900",  label: "Ocean",   font: "'DM Sans', sans-serif",   mlFont: "'Manjari', sans-serif" },
     dreamy:  { bg: "bg-purple-50",  text: "text-purple-900", label: "Dreamy", font: "'Nunito', sans-serif",     mlFont: "'Baloo Chettan 2', sans-serif" },
     cozy:    { bg: "bg-pink-50",    text: "text-pink-900",  label: "Cozy",    font: "'Cormorant Garamond', serif", mlFont: "'Noto Serif Malayalam', serif" },
@@ -431,7 +431,7 @@ export default function TeacherDiaryPage() {
         action={
           <Button
             onClick={openCreate}
-            className="gap-1.5 bg-emerald-600 px-4 text-white hover:bg-emerald-700"
+            className="gap-1.5 bg-primary-600 px-4 text-white hover:bg-primary-700"
           >
             <Plus className="size-4" /> {t("teacherPages", "addDiaryBtn", lang)}
           </Button>
@@ -522,7 +522,7 @@ export default function TeacherDiaryPage() {
                           className={cn(
                             "flex-1 py-2 rounded-lg text-xs font-semibold transition-all",
                             targetType === "class"
-                              ? "bg-emerald-600 text-white"
+                              ? "bg-primary-600 text-white"
                               : "bg-gray-100 text-gray-500",
                           )}
                         >
@@ -533,7 +533,7 @@ export default function TeacherDiaryPage() {
                           className={cn(
                             "flex-1 py-2 rounded-lg text-xs font-semibold transition-all",
                             targetType === "student"
-                              ? "bg-emerald-600 text-white"
+                              ? "bg-primary-600 text-white"
                               : "bg-gray-100 text-gray-500",
                           )}
                         >
@@ -546,7 +546,7 @@ export default function TeacherDiaryPage() {
                     <select
                       value={selectedClassId}
                       onChange={(e) => setSelectedClassId(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg text-sm bg-gray-50 border-0 focus:ring-2 focus:ring-emerald-500"
+                      className="w-full px-3 py-2 rounded-lg text-sm bg-gray-50 border-0 focus:ring-2 focus:ring-primary-500"
                     >
                       {classes.map((cls) => (
                         <option key={cls.id} value={cls.id}>{cls.name}</option>
@@ -561,7 +561,7 @@ export default function TeacherDiaryPage() {
                             value={studentSearch}
                             onChange={(e) => setStudentSearch(e.target.value)}
                             placeholder={t("teacherPages", "searchDiary", lang)}
-                            className="w-full px-3 py-2 rounded-lg text-sm bg-gray-50 border-0 focus:ring-2 focus:ring-emerald-500"
+                            className="w-full px-3 py-2 rounded-lg text-sm bg-gray-50 border-0 focus:ring-2 focus:ring-primary-500"
                           />
                         </div>
                         <div className="mt-1 max-h-32 overflow-y-auto rounded-lg bg-gray-50 divide-y divide-gray-100 text-sm">
@@ -581,7 +581,7 @@ export default function TeacherDiaryPage() {
                                       setSelectedStudentIds((prev) => [...new Set([...prev, ...filteredStudents.map((s) => s.id)])]);
                                     }
                                   }}
-                                  className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                                  className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                                 />
                                 {t("teacherPages", "selectAllCount", lang).replace("{n}", String(filteredStudents.length))}
                               </label>
@@ -594,7 +594,7 @@ export default function TeacherDiaryPage() {
                                     type="checkbox"
                                     checked={selectedStudentIds.includes(s.id)}
                                     onChange={() => toggleStudent(s.id)}
-                                    className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                                   />
                                   {s.name}
                                 </label>
@@ -611,13 +611,13 @@ export default function TeacherDiaryPage() {
                       value={date}
                       max={fmt(new Date())}
                       onChange={(e) => setDate(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg text-sm bg-gray-50 border-0 focus:ring-2 focus:ring-emerald-500"
+                      className="w-full px-3 py-2 rounded-lg text-sm bg-gray-50 border-0 focus:ring-2 focus:ring-primary-500"
                     />
 
                     <button
                       onClick={() => setStep(2)}
                       disabled={targetType === "class" ? !selectedClassId : selectedStudentIds.length === 0}
-                      className="w-full py-2.5 rounded-lg font-semibold text-sm bg-emerald-600 text-white hover:bg-emerald-700 transition-all disabled:opacity-40"
+                      className="w-full py-2.5 rounded-lg font-semibold text-sm bg-primary-600 text-white hover:bg-primary-700 transition-all disabled:opacity-40"
                     >
                       {t("teacherPages", "continueBtn", lang)}
                     </button>
@@ -632,9 +632,9 @@ export default function TeacherDiaryPage() {
                   >
                     {/* Theme picker row + Summary */}
                     <div className="flex items-center justify-between mb-5">
-                      <div className="bg-emerald-50 rounded-xl px-3 py-2 flex items-center gap-2 flex-1 min-w-0 mr-3">
-                        <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <p className="text-xs text-emerald-700 font-medium truncate">
+                      <div className="bg-primary-50 rounded-xl px-3 py-2 flex items-center gap-2 flex-1 min-w-0 mr-3">
+                        <FileText className="w-4 h-4 text-primary-600 shrink-0" />
+                        <p className="text-xs text-primary-700 font-medium truncate">
                           {targetType === "class"
                             ? `To ${classes.find((c) => c.id === selectedClassId)?.name ?? "class"}`
                             : `To ${selectedStudentIds.length} student${selectedStudentIds.length > 1 ? "s" : ""}`}
@@ -729,7 +729,7 @@ export default function TeacherDiaryPage() {
                               onClick={() => { setTheme(key); setThemeOpen(false); }}
                               className={cn(
                                 "flex flex-col items-center gap-2 px-3 py-4 rounded-xl text-sm font-medium transition-all",
-                                theme === key ? "ring-2 ring-emerald-400 shadow-sm" : "hover:bg-gray-50",
+                                theme === key ? "ring-2 ring-primary-400 shadow-sm" : "hover:bg-gray-50",
                                 t.bg, t.text,
                               )}
                             >
@@ -738,7 +738,7 @@ export default function TeacherDiaryPage() {
                               </div>
                               <p className="font-semibold text-xs">{t.label}</p>
                               {theme === key && (
-                                <CheckCircle2 className="w-4 h-4 text-emerald-600 absolute top-2 right-2" />
+                                <CheckCircle2 className="w-4 h-4 text-primary-600 absolute top-2 right-2" />
                               )}
                             </button>
                           ))}
@@ -756,7 +756,7 @@ export default function TeacherDiaryPage() {
                       disabled={saving || !title.trim() || !content.trim()}
                       className={cn(
                         "w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition-all",
-                        saved ? "bg-emerald-100 text-emerald-700" : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50",
+                        saved ? "bg-primary-100 text-primary-700" : "bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50",
                       )}
                     >
                       {saving ? <Loader2 className="w-5 h-5 animate-spin" /> :

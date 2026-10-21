@@ -43,7 +43,7 @@ export default function CommitteeTeacherAttendancePage() {
           <p className="text-sm font-semibold text-gray-500">This section is not available</p>
           <p className="text-xs text-gray-400 mt-1">Contact admin to enable access</p>
           <button onClick={() => navigate("/committee")}
-            className="mt-6 px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors">
+            className="mt-6 px-6 py-2.5 rounded-xl bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 transition-colors">
             Go Back
           </button>
         </div>

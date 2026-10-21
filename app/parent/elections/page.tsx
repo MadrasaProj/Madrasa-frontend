@@ -74,8 +74,8 @@ export default function ParentElectionsPage() {
       {/* ── Header ── */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-4 lg:mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-emerald-100 rounded-2xl flex items-center justify-center">
-            <Vote className="w-5 h-5 text-emerald-700" />
+          <div className="w-10 h-10 bg-primary-100 rounded-2xl flex items-center justify-center">
+            <Vote className="w-5 h-5 text-primary-700" />
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">
@@ -93,7 +93,7 @@ export default function ParentElectionsPage() {
         {successEl && (
           <motion.div
             initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-            className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white px-6 py-3 rounded-2xl shadow-lg flex items-center gap-2 text-sm font-semibold"
+            className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-primary-600 text-white px-6 py-3 rounded-2xl shadow-lg flex items-center gap-2 text-sm font-semibold"
           >
             <CheckCircle2 className="w-4 h-4" />
             {t("elections", "voteSubmitted", lang)}
@@ -104,14 +104,14 @@ export default function ParentElectionsPage() {
       {/* ── My Children Info ── */}
       <motion.div
         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-        className="bg-emerald-50 border border-emerald-100 rounded-2xl p-3 lg:p-4 mb-4 flex items-center gap-3"
+        className="bg-primary-50 border border-primary-100 rounded-2xl p-3 lg:p-4 mb-4 flex items-center gap-3"
       >
-        <Users className="w-5 h-5 text-emerald-700 shrink-0" />
+        <Users className="w-5 h-5 text-primary-700 shrink-0" />
         <div>
-          <p className="text-sm font-bold text-emerald-800">
+          <p className="text-sm font-bold text-primary-800">
             {t("elections", "onBehalfOf", lang)}
           </p>
-          <p className="text-xs text-emerald-600">
+          <p className="text-xs text-primary-600">
             {MY_CHILDREN.map((c) => `${c.name} (${c.class})`).join(" · ")}
           </p>
         </div>
@@ -135,12 +135,12 @@ export default function ParentElectionsPage() {
                   initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
                   className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden"
                 >
-                  <div className="h-1 bg-linear-to-r from-emerald-500 to-teal-500" />
+                  <div className="h-1 bg-linear-to-r from-primary-500 to-teal-500" />
                   <div className="p-4 lg:p-5">
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="flex-1">
-                        <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full mb-1">
-                          <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                        <span className="inline-flex items-center gap-1 text-[10px] bg-primary-100 text-primary-700 font-bold px-2 py-0.5 rounded-full mb-1">
+                          <span className="w-1.5 h-1.5 bg-primary-500 rounded-full animate-pulse" />
                           {t("elections", "live", lang)}
                         </span>
                         <h3 className="font-bold text-gray-900 text-sm leading-snug">
@@ -157,16 +157,16 @@ export default function ParentElectionsPage() {
                     </p>
 
                     {voted ? (
-                      <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 flex items-center gap-3">
-                        <div className="w-8 h-8 bg-emerald-100 rounded-xl flex items-center justify-center shrink-0">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <div className="bg-primary-50 border border-primary-200 rounded-2xl p-3 flex items-center gap-3">
+                        <div className="w-8 h-8 bg-primary-100 rounded-xl flex items-center justify-center shrink-0">
+                          <CheckCircle2 className="w-4 h-4 text-primary-600" />
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-emerald-700">
+                          <p className="text-xs font-bold text-primary-700">
                             {t("elections", "alreadyVoted", lang)}
                           </p>
                           {myVoteCandidate && (
-                            <p className="text-xs text-emerald-600">
+                            <p className="text-xs text-primary-600">
                               {t("elections", "votedFor", lang)}: {myVoteCandidate.symbol} {myVoteCandidate.name}
                             </p>
                           )}
@@ -175,7 +175,7 @@ export default function ParentElectionsPage() {
                     ) : (
                       <button
                         onClick={() => openVote(el)}
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm py-3 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-sm"
+                        className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold text-sm py-3 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-sm"
                       >
                         <Vote className="w-4 h-4" />
                         {t("elections", "castVoteNow", lang)}
@@ -221,7 +221,7 @@ export default function ParentElectionsPage() {
                         </p>
                       )}
                       {myVoteCandidate && (
-                        <p className="text-xs text-emerald-600 mt-0.5">
+                        <p className="text-xs text-primary-600 mt-0.5">
                           ✅ {t("elections", "votedFor", lang)}: {myVoteCandidate.symbol} {myVoteCandidate.name}
                         </p>
                       )}
@@ -241,7 +241,7 @@ export default function ParentElectionsPage() {
                           <span className="text-xs text-gray-600 flex-1 truncate">{c.name}</span>
                           <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-emerald-500 rounded-full"
+                              className="h-full bg-primary-500 rounded-full"
                               style={{ width: `${el.totalVotesCast === 0 ? 0 : (c.voteCount / el.totalVotesCast) * 100}%` }}
                             />
                           </div>
@@ -280,16 +280,16 @@ export default function ParentElectionsPage() {
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="bg-linear-to-br from-emerald-600 to-teal-600 rounded-t-3xl p-5 text-white">
+              <div className="bg-linear-to-br from-primary-600 to-teal-600 rounded-t-3xl p-5 text-white">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-emerald-200 text-[11px] font-bold uppercase tracking-widest mb-1">
+                    <p className="text-primary-200 text-[11px] font-bold uppercase tracking-widest mb-1">
                       {t("elections", "votingBooth", lang)}
                     </p>
                     <h2 className="text-lg font-bold leading-snug">
                       {lang === "ml" ? activeElection.title_ml : activeElection.title}
                     </h2>
-                    <p className="text-emerald-200 text-xs mt-1">
+                    <p className="text-primary-200 text-xs mt-1">
                       {t("elections", "chooseCandidate", lang)}
                     </p>
                   </div>
@@ -323,7 +323,7 @@ export default function ParentElectionsPage() {
                         onClick={() => setSelectedCandidate(c.id)}
                         className={`w-full text-left rounded-2xl border-2 transition-all p-4 ${
                           selectedCandidate === c.id
-                          ? "border-emerald-500 bg-emerald-50 shadow-sm"
+                          ? "border-primary-500 bg-primary-50 shadow-sm"
                           : "border-gray-200 bg-white hover:border-gray-300"
                         }`}
                       >
@@ -335,13 +335,13 @@ export default function ParentElectionsPage() {
                             <div className="flex items-center gap-2">
                               <p className="font-bold text-gray-900">{c.name}</p>
                               {selectedCandidate === c.id && (
-                                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                <CheckCircle2 className="w-4 h-4 text-primary-600" />
                               )}
                             </div>
                             <p className="text-xs text-gray-500 mb-1">{c.class} · {lang === "ml" ? c.bio_ml : c.bio}</p>
                           </div>
                           <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 shrink-0 ${
-                            selectedCandidate === c.id ? "border-emerald-500 bg-emerald-500" : "border-gray-300"
+                            selectedCandidate === c.id ? "border-primary-500 bg-primary-500" : "border-gray-300"
                           }`}>
                             {selectedCandidate === c.id && <div className="w-2 h-2 bg-white rounded-full" />}
                           </div>
@@ -355,7 +355,7 @@ export default function ParentElectionsPage() {
                     onClick={() => setConfirmStep(true)}
                     className={`w-full py-3.5 rounded-2xl font-bold text-sm transition-all ${
                       selectedCandidate
-                      ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                      ? "bg-primary-600 hover:bg-primary-700 text-white shadow-sm"
                       : "bg-gray-100 text-gray-400 cursor-not-allowed"
                     }`}
                   >
@@ -366,8 +366,8 @@ export default function ParentElectionsPage() {
                 /* Confirm Step */
                 <div className="p-5">
                   <div className="text-center mb-6">
-                    <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Vote className="w-8 h-8 text-emerald-600" />
+                    <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Vote className="w-8 h-8 text-primary-600" />
                     </div>
                     <h3 className="text-lg font-bold text-gray-900">
                       {t("elections", "confirmVote", lang)}
@@ -381,11 +381,11 @@ export default function ParentElectionsPage() {
                   {(() => {
                     const c = activeElection.candidates.find((x) => x.id === selectedCandidate);
                     return c ? (
-                      <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-5 text-center">
+                      <div className="bg-primary-50 border border-primary-200 rounded-2xl p-4 mb-5 text-center">
                         <p className="text-3xl mb-2">{c.symbol}</p>
                         <p className="font-bold text-gray-900">{c.name}</p>
                         <p className="text-xs text-gray-500">{c.class}</p>
-                        <p className="text-xs text-emerald-700 font-semibold mt-1">
+                        <p className="text-xs text-primary-700 font-semibold mt-1">
                           {t("elections", "votingFor", lang)}
                         </p>
                       </div>
@@ -401,7 +401,7 @@ export default function ParentElectionsPage() {
                     </button>
                     <button
                       onClick={submitVote}
-                      className="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-sm transition-all"
+                      className="flex-1 py-3 rounded-2xl bg-primary-600 hover:bg-primary-700 text-white font-bold text-sm shadow-sm transition-all"
                     >
                       {t("elections", "submitConfirm", lang)}
                     </button>

@@ -75,7 +75,7 @@ export default function AdminPostersPage() {
           {isSuperAdmin && (
             <button
               onClick={() => setShowUpload(!showUpload)}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium"
+              className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium"
             >
               <Plus className="w-4 h-4" />
               Upload Poster
@@ -107,7 +107,7 @@ export default function AdminPostersPage() {
               <button
                 onClick={handleUpload}
                 disabled={uploading || !title.trim() || !file}
-                className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 flex items-center gap-2"
+                className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 flex items-center gap-2"
               >
                 {uploading && <Loader2 className="w-4 h-4 animate-spin" />}
                 Upload

@@ -338,14 +338,14 @@ export default function IbadahConfigPage() {
                   </p>
                 </div>
               </div>
-              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700">
+              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-primary-50 text-primary-700">
                 Max {totalDailyMax} pts/day
               </span>
             </div>
 
             {/* Prayer Scoring Inputs */}
             <div>
-              <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <p className="text-xs font-bold text-primary-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                 <Award className="w-3.5 h-3.5" /> Prayer Status Points
               </p>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -376,9 +376,9 @@ export default function IbadahConfigPage() {
                 </div>
 
                 {/* Ada' */}
-                <div className="p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-100/80">
+                <div className="p-3.5 rounded-2xl bg-primary-50/60 border border-primary-100/80">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="flex items-center gap-1 text-xs font-bold text-emerald-700">
+                    <span className="flex items-center gap-1 text-xs font-bold text-primary-700">
                       <Check className="w-3.5 h-3.5" /> Ada' (On Time)
                     </span>
                   </div>
@@ -394,18 +394,18 @@ export default function IbadahConfigPage() {
                           adaPoints: Math.max(0, Number(e.target.value)),
                         }))
                       }
-                      className="w-full px-3 py-2 bg-white border border-emerald-200 rounded-xl text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full px-3 py-2 bg-white border border-primary-200 rounded-xl text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
-                    <span className="text-xs font-semibold text-emerald-600 shrink-0">pts</span>
+                    <span className="text-xs font-semibold text-primary-600 shrink-0">pts</span>
                   </div>
                   <p className="text-[10px] text-gray-400 mt-1.5">Individual on-time prayer</p>
                 </div>
 
                 {/* Excused / Ruqsa */}
-                <div className="p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-100/80">
+                <div className="p-3.5 rounded-2xl bg-primary-50/60 border border-primary-100/80">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="flex items-center gap-1 text-xs font-bold text-emerald-700">
-                      <Check className="w-3.5 h-3.5 text-emerald-600" /> Excused (Done)
+                    <span className="flex items-center gap-1 text-xs font-bold text-primary-700">
+                      <Check className="w-3.5 h-3.5 text-primary-600" /> Excused (Done)
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -420,9 +420,9 @@ export default function IbadahConfigPage() {
                           excusedPoints: Math.max(0, Number(e.target.value)),
                         }))
                       }
-                      className="w-full px-3 py-2 bg-white border border-emerald-200 rounded-xl text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full px-3 py-2 bg-white border border-primary-200 rounded-xl text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
-                    <span className="text-xs font-semibold text-emerald-600 shrink-0">pts</span>
+                    <span className="text-xs font-semibold text-primary-600 shrink-0">pts</span>
                   </div>
                   <p className="text-[10px] text-gray-400 mt-1.5">Ruqsa / Valid reason (done)</p>
                 </div>
@@ -477,7 +477,7 @@ export default function IbadahConfigPage() {
                           quranPointsPerPage: Math.max(0, Number(e.target.value)),
                         }))
                       }
-                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                     <span className="text-xs font-semibold text-gray-500 shrink-0">pts / page</span>
                   </div>
@@ -499,7 +499,7 @@ export default function IbadahConfigPage() {
                           maxQuranPagesPerDay: Math.max(1, Number(e.target.value)),
                         }))
                       }
-                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                     <span className="text-xs font-semibold text-gray-500 shrink-0">pages max/day</span>
                   </div>
@@ -508,11 +508,11 @@ export default function IbadahConfigPage() {
             </div>
 
             {/* Live scoring explanation */}
-            <div className="p-3.5 rounded-2xl bg-emerald-50/50 border border-emerald-100/60 text-xs text-emerald-800 flex items-start gap-2.5">
-              <Calculator className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <div className="p-3.5 rounded-2xl bg-primary-50/50 border border-primary-100/60 text-xs text-primary-800 flex items-start gap-2.5">
+              <Calculator className="w-4 h-4 text-primary-600 shrink-0 mt-0.5" />
               <div>
                 <p className="font-bold">How Performance Score is Computed:</p>
-                <p className="text-emerald-700/90 mt-0.5 leading-relaxed">
+                <p className="text-primary-700/90 mt-0.5 leading-relaxed">
                   Total student earned points divided by the maximum possible points across the selected period, multiplied by 100 to yield a percentage score. Excused prayers are scored as completed.
                 </p>
               </div>
@@ -527,7 +527,7 @@ export default function IbadahConfigPage() {
             animate={{ opacity: 1, y: 0 }}
             className="bg-white rounded-3xl border border-gray-100 p-5 lg:p-6 shadow-xs"
           >
-            <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-4">
+            <p className="text-xs font-bold text-primary-700 uppercase tracking-wider mb-4">
               Standard Ibadah Tracking Toggles
             </p>
             <div className="space-y-3">
@@ -548,7 +548,7 @@ export default function IbadahConfigPage() {
                     }
                     className={cn(
                       "relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none",
-                      toggles[key] ? "bg-emerald-500" : "bg-gray-200",
+                      toggles[key] ? "bg-primary-500" : "bg-gray-200",
                     )}
                     aria-pressed={!!toggles[key]}
                   >
@@ -574,7 +574,7 @@ export default function IbadahConfigPage() {
           >
             <div className="flex items-center justify-between mb-4">
               <div>
-                <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">
+                <p className="text-xs font-bold text-primary-700 uppercase tracking-wider">
                   Custom Ibadah Activities
                 </p>
                 <p className="text-xs text-gray-400 mt-0.5">
@@ -588,7 +588,7 @@ export default function IbadahConfigPage() {
                     setNewItem({ ...EMPTY_ITEM });
                     setNewItemError(null);
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-semibold hover:bg-emerald-100 transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 text-primary-700 rounded-xl text-xs font-semibold hover:bg-primary-100 transition-colors"
                 >
                   <Plus className="w-3.5 h-3.5" /> Add Item
                 </button>
@@ -629,7 +629,7 @@ export default function IbadahConfigPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             {item.type === "boolean" ? (
-                              <ToggleLeft className="w-4 h-4 text-emerald-500 shrink-0" />
+                              <ToggleLeft className="w-4 h-4 text-primary-500 shrink-0" />
                             ) : item.type === "enum" ? (
                               <List className="w-4 h-4 text-purple-500 shrink-0" />
                             ) : (
@@ -721,8 +721,8 @@ export default function IbadahConfigPage() {
               className={cn(
                 "w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl font-bold text-sm transition-all shadow-lg",
                 saved
-                  ? "bg-emerald-100 text-emerald-700"
-                  : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60",
+                  ? "bg-primary-100 text-primary-700"
+                  : "bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60",
               )}
             >
               {saving ? (
@@ -807,7 +807,7 @@ function EnumOptionsEditor({
   };
 
   const colorMap: Record<string, string> = {
-    emerald: "bg-emerald-500",
+    emerald: "bg-primary-500",
     amber: "bg-amber-500",
     blue: "bg-blue-500",
     purple: "bg-purple-500",
@@ -848,7 +848,7 @@ function EnumOptionsEditor({
       </div>
 
       {adding ? (
-        <div className="border border-emerald-200 bg-emerald-50/50 rounded-xl p-3 space-y-2.5">
+        <div className="border border-primary-200 bg-primary-50/50 rounded-xl p-3 space-y-2.5">
           <div className="flex gap-2 items-start">
             <div className="flex flex-col items-center gap-1 shrink-0">
               <div
@@ -864,7 +864,7 @@ function EnumOptionsEditor({
                   searchIconify(e.target.value);
                 }}
                 placeholder="Search icons..."
-                className="w-24 px-2 py-1 text-[10px] border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white text-center"
+                className="w-24 px-2 py-1 text-[10px] border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 bg-white text-center"
               />
               {results.length > 0 && (
                 <div className="absolute mt-16 z-10 bg-white border border-gray-200 rounded-xl shadow-lg p-2 grid grid-cols-4 gap-1 w-48">
@@ -893,7 +893,7 @@ function EnumOptionsEditor({
                   setNewOpt({ ...newOpt, label: e.target.value })
                 }
                 placeholder="Option label"
-                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
               />
               <div className="flex gap-1.5 flex-wrap">
                 {ICON_COLORS.map((c) => (
@@ -917,7 +917,7 @@ function EnumOptionsEditor({
           <div className="flex gap-2">
             <button
               onClick={addOption}
-              className="flex-1 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors"
+              className="flex-1 py-2 bg-primary-600 text-white rounded-xl text-sm font-bold hover:bg-primary-700 transition-colors"
             >
               Add Option
             </button>
@@ -936,7 +936,7 @@ function EnumOptionsEditor({
       ) : (
         <button
           onClick={() => setAdding(true)}
-          className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-800 transition-colors"
+          className="flex items-center gap-1.5 text-xs font-semibold text-primary-600 hover:text-primary-800 transition-colors"
         >
           <Plus className="w-3.5 h-3.5" /> Add Option
         </button>
@@ -965,8 +965,8 @@ function CustomItemForm({
   mode,
 }: CustomItemFormProps) {
   return (
-    <div className="border border-emerald-200 bg-emerald-50/50 rounded-2xl p-4 space-y-3">
-      <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide">
+    <div className="border border-primary-200 bg-primary-50/50 rounded-2xl p-4 space-y-3">
+      <p className="text-xs font-bold text-primary-700 uppercase tracking-wide">
         {mode === "add" ? "New Custom Item" : "Edit Item"}
       </p>
 
@@ -980,7 +980,7 @@ function CustomItemForm({
             value={item.label}
             onChange={(e) => onChange({ ...item, label: e.target.value })}
             placeholder="e.g. Tahajjud"
-            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
           />
         </div>
         <div>
@@ -997,7 +997,7 @@ function CustomItemForm({
               })
             }
             placeholder="e.g. tahajjud"
-            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
           />
         </div>
       </div>
@@ -1014,7 +1014,7 @@ function CustomItemForm({
                 className={cn(
                   "flex-1 flex items-center justify-center gap-1.5 py-2 px-1 rounded-xl border-2 cursor-pointer text-xs font-semibold transition-all",
                   item.type === t
-                    ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                    ? "border-primary-500 bg-primary-50 text-primary-700"
                     : "border-gray-200 text-gray-600 bg-white",
                 )}
               >
@@ -1052,7 +1052,7 @@ function CustomItemForm({
               onChange({ ...item, points: Math.max(0, Number(e.target.value)) })
             }
             placeholder="e.g. 5"
-            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
           />
         </div>
       </div>
@@ -1070,7 +1070,7 @@ function CustomItemForm({
               onChange={(e) =>
                 onChange({ ...item, min: Math.max(0, Number(e.target.value)) })
               }
-              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
             />
           </div>
           <div>
@@ -1087,7 +1087,7 @@ function CustomItemForm({
                   max: Number(e.target.value),
                 })
               }
-              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
             />
           </div>
         </div>
@@ -1106,7 +1106,7 @@ function CustomItemForm({
       <div className="flex gap-2 pt-1">
         <button
           onClick={onSave}
-          className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors"
+          className="flex-1 py-2.5 bg-primary-600 text-white rounded-xl text-sm font-bold hover:bg-primary-700 transition-colors"
         >
           {mode === "add" ? "Add Item" : "Save Changes"}
         </button>

@@ -128,11 +128,11 @@ const categoryColorMap: Record<
     ring: "ring-teal-400",
   },
   stationery: {
-    bar: "bg-emerald-500",
-    bg: "bg-emerald-50",
-    text: "text-emerald-700",
-    border: "border-emerald-200",
-    ring: "ring-emerald-400",
+    bar: "bg-primary-500",
+    bg: "bg-primary-50",
+    text: "text-primary-700",
+    border: "border-primary-200",
+    ring: "ring-primary-400",
   },
 };
 
@@ -473,7 +473,7 @@ export default function CommitteeExpensesPage() {
                           className={`flex-1 flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-xs font-bold transition-all ${
                             form.status === st
                               ? st === "paid"
-                                ? "bg-emerald-50 border-emerald-300 text-emerald-700 ring-2 ring-emerald-200"
+                                ? "bg-primary-50 border-primary-300 text-primary-700 ring-2 ring-primary-200"
                                 : "bg-orange-50 border-orange-300 text-orange-700 ring-2 ring-orange-200"
                               : "bg-gray-50 border-gray-200 text-gray-500"
                           }`}
@@ -525,7 +525,7 @@ export default function CommitteeExpensesPage() {
                     disabled={!isFormValid}
                     className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-black transition-all ${
                       saved
-                        ? "bg-emerald-500 text-white"
+                        ? "bg-primary-500 text-white"
                         : isFormValid
                           ? "bg-orange-500 text-white hover:bg-orange-600 active:scale-95"
                           : "bg-gray-200 text-gray-400 cursor-not-allowed"
@@ -636,9 +636,9 @@ export default function CommitteeExpensesPage() {
             value: fmt(balance),
             sub: `${100 - spentPct}% ${lang === "ml" ? "ബാക്കി" : "left"}`,
             icon: PiggyBank,
-            color: "text-emerald-700",
-            bg: "bg-emerald-50",
-            border: "border-emerald-200",
+            color: "text-primary-700",
+            bg: "bg-primary-50",
+            border: "border-primary-200",
           },
           {
             label: lang === "ml" ? "പെൻഡിങ്" : "Pending",
@@ -909,7 +909,7 @@ export default function CommitteeExpensesPage() {
                     {fmt(item.amount)}
                   </span>
                   {item.status === "approved" ? (
-                    <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full">
+                    <span className="flex items-center gap-1 text-[10px] font-bold text-primary-700 bg-primary-100 px-1.5 py-0.5 rounded-full">
                       <CheckCircle2 className="w-2.5 h-2.5" />
                       {lang === "ml" ? "അനുമോദിതം" : "Approved"}
                     </span>
@@ -986,7 +986,7 @@ export default function CommitteeExpensesPage() {
               value: fmt(
                 exp.categories.find((c) => c.id === "salaries")?.spent ?? 0,
               ),
-              color: "text-emerald-700",
+              color: "text-primary-700",
             },
             {
               label: lang === "ml" ? "ബാക്കി (ഇനിയും)" : "Remaining",

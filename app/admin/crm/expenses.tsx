@@ -148,7 +148,7 @@ export default function ExpensesPage() {
     switch (status) {
       case "APPROVED":
         return (
-          <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+          <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-primary-50 text-primary-700 border border-primary-100">
             <CheckCircle className="w-3.5 h-3.5" /> Approved
           </span>
         );
@@ -174,7 +174,7 @@ export default function ExpensesPage() {
       case "TRAVEL":
         return <Sparkles className="w-4 h-4 text-indigo-600" />;
       case "SALARY":
-        return <CreditCard className="w-4 h-4 text-emerald-600" />;
+        return <CreditCard className="w-4 h-4 text-primary-600" />;
       case "INFRASTRUCTURE":
         return <Briefcase className="w-4 h-4 text-amber-600" />;
       default:
@@ -200,7 +200,7 @@ export default function ExpensesPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
-              <Receipt className="w-6 h-6 text-emerald-600 shrink-0" />
+              <Receipt className="w-6 h-6 text-primary-600 shrink-0" />
               Expense Tracker
             </h1>
             <p className="text-sm text-gray-500 mt-1">
@@ -209,7 +209,7 @@ export default function ExpensesPage() {
           </div>
           <button
             onClick={() => setShowModal(true)}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-2xl shadow-sm transition-all text-sm shrink-0"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-2xl shadow-sm transition-all text-sm shrink-0"
           >
             <Plus className="w-4 h-4" /> New Expense Request
           </button>
@@ -224,8 +224,8 @@ export default function ExpensesPage() {
         )}
 
         {success && (
-          <div className="flex items-center gap-2 p-4 bg-emerald-50 border border-emerald-100 rounded-2xl text-sm text-emerald-800">
-            <Check className="w-5 h-5 shrink-0 text-emerald-600" />
+          <div className="flex items-center gap-2 p-4 bg-primary-50 border border-primary-100 rounded-2xl text-sm text-primary-800">
+            <Check className="w-5 h-5 shrink-0 text-primary-600" />
             <p className="font-medium">{success}</p>
           </div>
         )}
@@ -243,8 +243,8 @@ export default function ExpensesPage() {
           </div>
 
           <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center shrink-0">
-              <CheckCircle className="w-6 h-6 text-emerald-600" />
+            <div className="w-12 h-12 bg-primary-50 rounded-2xl flex items-center justify-center shrink-0">
+              <CheckCircle className="w-6 h-6 text-primary-600" />
             </div>
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Approved</p>
@@ -266,7 +266,7 @@ export default function ExpensesPage() {
         {/* Content list */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+            <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
           </div>
         ) : expenses.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center shadow-sm">
@@ -325,7 +325,7 @@ export default function ExpensesPage() {
                               <button
                                 onClick={() => handleApprove(exp.id)}
                                 disabled={actionLoadingId === exp.id}
-                                className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
+                                className="flex items-center gap-1 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
                               >
                                 {actionLoadingId === exp.id ? (
                                   <Loader2 className="w-3 animate-spin" />
@@ -400,7 +400,7 @@ export default function ExpensesPage() {
                         <button
                           onClick={() => handleApprove(exp.id)}
                           disabled={actionLoadingId === exp.id}
-                          className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition-all shadow-sm"
+                          className="flex items-center gap-1 px-2.5 py-1.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-semibold transition-all shadow-sm"
                         >
                           {actionLoadingId === exp.id ? (
                             <Loader2 className="w-3 animate-spin" />
@@ -450,7 +450,7 @@ export default function ExpensesPage() {
               >
                 <div className="px-6 py-5 border-b border-gray-50 flex justify-between items-center shrink-0">
                   <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
-                    <Receipt className="w-5 h-5 text-emerald-650" />
+                    <Receipt className="w-5 h-5 text-primary-650" />
                     Submit Expense Request
                   </h3>
                   <button
@@ -472,7 +472,7 @@ export default function ExpensesPage() {
                       placeholder="e.g. Travel tickets to Malappuram, Hosting fees"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium text-gray-800"
+                      className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-medium text-gray-800"
                     />
                   </div>
 
@@ -488,7 +488,7 @@ export default function ExpensesPage() {
                         placeholder="5000"
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
-                        className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-semibold text-gray-800"
+                        className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-semibold text-gray-800"
                       />
                     </div>
 
@@ -499,7 +499,7 @@ export default function ExpensesPage() {
                       <select
                         value={category}
                         onChange={(e) => setCategory(e.target.value)}
-                        className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-semibold text-gray-850"
+                        className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-semibold text-gray-850"
                       >
                         <option value="MARKETING">MARKETING</option>
                         <option value="TRAVEL">TRAVEL</option>
@@ -519,7 +519,7 @@ export default function ExpensesPage() {
                       placeholder="Provide additional details or receipt references..."
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium text-gray-800 resize-none"
+                      className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-medium text-gray-800 resize-none"
                     />
                   </div>
 
@@ -534,7 +534,7 @@ export default function ExpensesPage() {
                     <button
                       type="submit"
                       disabled={submitting || !title.trim() || !amount}
-                      className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition-all disabled:opacity-60"
+                      className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-primary-600 hover:bg-primary-700 text-white rounded-2xl transition-all disabled:opacity-60"
                     >
                       {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                       Submit Claim

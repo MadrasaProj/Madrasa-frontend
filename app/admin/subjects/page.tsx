@@ -175,7 +175,7 @@ export default function AdminSubjectsPage() {
       sortable: true,
       render: (s) => (
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center font-bold text-sm shrink-0 text-emerald-700">
+          <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center font-bold text-sm shrink-0 text-primary-700">
             {s.name.charAt(0)}
           </div>
           <div>
@@ -216,7 +216,7 @@ export default function AdminSubjectsPage() {
       render: (s) => (
         <span className={cn(
           "text-xs font-bold px-2.5 py-1 rounded-lg",
-          s.status === "ACTIVE" ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500",
+          s.status === "ACTIVE" ? "bg-primary-100 text-primary-700" : "bg-gray-100 text-gray-500",
         )}>
           {s.status}
         </span>
@@ -277,7 +277,7 @@ export default function AdminSubjectsPage() {
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
             placeholder="Search subjects…"
-            className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+            className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
           />
         </div>
         <div className="relative">
@@ -285,7 +285,7 @@ export default function AdminSubjectsPage() {
           <select
             value={filterClassId}
             onChange={(e) => handleFilterClass(e.target.value)}
-            className="pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 appearance-none cursor-pointer"
+            className="pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none cursor-pointer"
           >
             <option value="">All Classes</option>
             {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -303,7 +303,7 @@ export default function AdminSubjectsPage() {
         mobileRender={(s) => (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center font-bold text-lg shrink-0 text-emerald-700">
+              <div className="w-12 h-12 rounded-2xl bg-primary-100 flex items-center justify-center font-bold text-lg shrink-0 text-primary-700">
                 {s.name.charAt(0)}
               </div>
               <div>
@@ -382,7 +382,7 @@ export default function AdminSubjectsPage() {
                     value={form.name}
                     onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                     placeholder="e.g. Mathematics"
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-primary-400 focus:bg-white transition-colors"
                   />
                 </div>
 
@@ -406,7 +406,7 @@ export default function AdminSubjectsPage() {
                     <select
                       value={form.teacherId}
                       onChange={(e) => setForm((f) => ({ ...f, teacherId: e.target.value }))}
-                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
+                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-primary-400 focus:bg-white transition-colors"
                     >
                       <option value="">(Unassigned)</option>
                       {teachers.map((t) => <option key={t.id} value={t.id}>{t.name} · @{t.username}</option>)}
@@ -440,7 +440,7 @@ export default function AdminSubjectsPage() {
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 disabled:opacity-50"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-primary-600 rounded-xl hover:bg-primary-700 disabled:opacity-50"
                 >
                   {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                   {editTarget ? "Save Changes" : "Create Subject"}
@@ -482,7 +482,7 @@ export default function AdminSubjectsPage() {
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Class</label>
                   <select value={bulkClassId} onChange={(e) => setBulkClassId(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors">
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-primary-400 focus:bg-white transition-colors">
                     <option value="">Select class</option>
                     {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
@@ -491,7 +491,7 @@ export default function AdminSubjectsPage() {
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Teacher</label>
                   <select value={bulkTeacherId} onChange={(e) => setBulkTeacherId(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors">
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-primary-400 focus:bg-white transition-colors">
                     <option value="">Select teacher</option>
                     {teachers.map((t) => <option key={t.id} value={t.id}>{t.name} · @{t.username}</option>)}
                   </select>
@@ -503,7 +503,7 @@ export default function AdminSubjectsPage() {
                     Cancel
                   </button>
                   <button onClick={handleBulkAssign} disabled={bulkSaving}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 disabled:opacity-50">
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-primary-600 rounded-xl hover:bg-primary-700 disabled:opacity-50">
                     {bulkSaving && <Loader2 className="w-4 h-4 animate-spin" />}
                     Assign
                   </button>

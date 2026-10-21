@@ -27,10 +27,10 @@ function getStatus(v: number, lang: string) {
   if (v >= 85)
     return {
       label: lang === "ml" ? "ഉത്തമം" : "Excellent",
-      color: "text-emerald-600",
-      bg: "bg-emerald-50",
-      bar: "bg-emerald-500",
-      border: "border-emerald-200",
+      color: "text-primary-600",
+      bg: "bg-primary-50",
+      bar: "bg-primary-500",
+      border: "border-primary-200",
     };
   if (v >= 70)
     return {
@@ -59,7 +59,7 @@ function getStatus(v: number, lang: string) {
 
 function Bar({
   value,
-  color = "bg-emerald-500",
+  color = "bg-primary-500",
 }: {
   value: number;
   color?: string;
@@ -302,20 +302,20 @@ export default function CommitteeReportsPage() {
         transition={{ delay: 0.5 }}
         className={`rounded-2xl p-4 flex items-start gap-3 border ${
           health >= 80
-            ? "bg-emerald-50 border-emerald-200"
+            ? "bg-primary-50 border-primary-200"
             : health >= 65
               ? "bg-amber-50 border-amber-200"
               : "bg-red-50 border-red-200"
         }`}
       >
         {health >= 80 ? (
-          <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+          <CheckCircle2 className="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
         ) : (
           <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
         )}
         <div>
           <p
-            className={`text-sm font-bold ${health >= 80 ? "text-emerald-800" : "text-amber-800"}`}
+            className={`text-sm font-bold ${health >= 80 ? "text-primary-800" : "text-amber-800"}`}
           >
             {health >= 80
               ? lang === "ml"
@@ -326,7 +326,7 @@ export default function CommitteeReportsPage() {
                 : "Some areas need attention"}
           </p>
           <p
-            className={`text-xs mt-0.5 ${health >= 80 ? "text-emerald-600" : "text-amber-600"}`}
+            className={`text-xs mt-0.5 ${health >= 80 ? "text-primary-600" : "text-amber-600"}`}
           >
             {lang === "ml"
               ? `ആരോഗ്യ സ്കോർ: ${health}/100 — ${d.madrasa?.session || "—"} അദ്ധ്യ. വർഷം`

@@ -35,8 +35,8 @@ const STATUS_CONFIG: Record<
   PRESENT: {
     label: "Present",
     short: "P",
-    bg: "bg-emerald-100",
-    text: "text-emerald-700",
+    bg: "bg-primary-100",
+    text: "text-primary-700",
   },
   ABSENT: {
     label: "Absent",
@@ -284,7 +284,7 @@ export default function AdminAttendancePage() {
         //       <button
         //         onClick={saveAll}
         //         disabled={saving}
-        //         className="flex items-center gap-1.5 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 disabled:opacity-60 transition-colors"
+        //         className="flex items-center gap-1.5 bg-primary-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-700 disabled:opacity-60 transition-colors"
         //       >
         //         {saving ? (
         //           <>
@@ -297,7 +297,7 @@ export default function AdminAttendancePage() {
         //         )}
         //       </button>
         //     ) : saveSuccess ? (
-        //       <span className="flex items-center gap-1 text-emerald-600 text-sm font-semibold">
+        //       <span className="flex items-center gap-1 text-primary-600 text-sm font-semibold">
         //         <CheckCircle2 className="w-4 h-4" /> Saved
         //       </span>
         //     ) : null}
@@ -341,7 +341,7 @@ export default function AdminAttendancePage() {
             className="text-sm font-semibold text-gray-800 bg-transparent border-none focus:outline-none cursor-pointer"
           />
           {date === todayISO() && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary-100 text-primary-700">
               TODAY
             </span>
           )}
@@ -371,8 +371,8 @@ export default function AdminAttendancePage() {
               className={cn(
                 "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 transition-all",
                 activeClassId === cls.id
-                  ? "bg-emerald-600 text-white shadow-sm"
-                  : "bg-white border border-gray-200 text-gray-600 hover:border-emerald-200",
+                  ? "bg-primary-600 text-white shadow-sm"
+                  : "bg-white border border-gray-200 text-gray-600 hover:border-primary-200",
               )}
             >
               <GraduationCap className="w-3.5 h-3.5" /> {cls.name}
@@ -411,7 +411,7 @@ export default function AdminAttendancePage() {
             {
               key: "PRESENT",
               label: "Present",
-              cls: "bg-emerald-50 text-emerald-700",
+              cls: "bg-primary-50 text-primary-700",
             },
             { key: "ABSENT", label: "Absent", cls: "bg-red-50 text-red-600" },
             { key: "LEAVE", label: "Leave", cls: "bg-amber-50 text-amber-700" },
@@ -533,7 +533,7 @@ export default function AdminAttendancePage() {
                       "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0",
                       student.gender === "FEMALE"
                         ? "bg-pink-100 text-pink-700"
-                        : "bg-emerald-100 text-emerald-700",
+                        : "bg-primary-100 text-primary-700",
                     )}
                   >
                     {student.name.charAt(0)}

@@ -32,7 +32,7 @@ export function getExamStatusInfo(exam: ExamRecord): ExamStatusInfo {
   let description = "";
 
   if (exam.examStatus === "PUBLISHED") {
-    statusStyle = "bg-emerald-50 text-emerald-700 border-emerald-200";
+    statusStyle = "bg-primary-50 text-primary-700 border-primary-200";
     description = exam.publishedDate 
       ? `Results Published On ${fmt(exam.publishedDate)}` 
       : `Results Published`;
@@ -43,7 +43,7 @@ export function getExamStatusInfo(exam: ExamRecord): ExamStatusInfo {
   } else if (exam.examStatus === "MARK_ENTRY") {
     const days = getDaysRemaining(exam.markEntryLastDate);
     if (days !== null && days >= 0) {
-      statusStyle = "bg-emerald-50 text-emerald-700 border-emerald-100";
+      statusStyle = "bg-primary-50 text-primary-700 border-primary-100";
       description = `Mark Entry Closes In ${days} Days (${fmt(exam.markEntryLastDate)})`;
     } else {
       statusStyle = "bg-purple-50 text-purple-700 border-purple-200";

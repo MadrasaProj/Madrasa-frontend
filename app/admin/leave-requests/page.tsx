@@ -34,7 +34,7 @@ const REASON_CONFIG: Record<
 
 const STATUS_STYLES: Record<string, { border: string }> = {
   PENDING: { border: "border-l-amber-400" },
-  APPROVED: { border: "border-l-emerald-400" },
+  APPROVED: { border: "border-l-primary-400" },
   REJECTED: { border: "border-l-red-400" },
 };
 
@@ -120,7 +120,7 @@ export default function AdminLeaveRequestsPage() {
                 className={cn(
                   "flex-1 py-2 px-4 rounded-lg text-xs font-semibold transition-all hover:text-gray-700 active:scale-[0.98]",
                   filter === s
-                    ? "bg-white text-emerald-700 shadow-sm font-bold"
+                    ? "bg-white text-primary-700 shadow-sm font-bold"
                     : "text-gray-500",
                 )}
               >
@@ -139,7 +139,7 @@ export default function AdminLeaveRequestsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name or admission no..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 transition-all"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/30 transition-all"
             />
           </div>
         </div>
@@ -235,7 +235,7 @@ export default function AdminLeaveRequestsPage() {
                               onChange={(e) => setReviewNote(e.target.value)}
                               placeholder="Add a note (optional)..."
                               rows={2}
-                              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 resize-none transition-all"
+                              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/30 resize-none transition-all"
                             />
                             <div className="flex gap-2">
                               <button
@@ -253,7 +253,7 @@ export default function AdminLeaveRequestsPage() {
                               <button
                                 onClick={() => handleReview(r.id, "APPROVED")}
                                 disabled={reviewingSave}
-                                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-[0.98] shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                                className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-[0.98] shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary-500/20"
                               >
                                 {reviewingSave ? (
                                   <Loader2 className="w-4 h-4 animate-spin" />

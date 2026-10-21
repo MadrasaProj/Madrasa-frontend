@@ -106,7 +106,7 @@ export default function TeacherHomeworkListPage() {
                 onClick={() => setActiveClassId(cls.id)}
                 className={cn(
                   "px-3 py-1.5 rounded-xl text-xs font-semibold transition-all",
-                  activeClassId === cls.id ? "bg-emerald-600 text-white" : "bg-white border border-gray-200 text-gray-600",
+                  activeClassId === cls.id ? "bg-primary-600 text-white" : "bg-white border border-gray-200 text-gray-600",
                 )}
               >
                 {cls.name}
@@ -119,7 +119,7 @@ export default function TeacherHomeworkListPage() {
             {[
               { label: t("common", "total", lang),    value: filtered.length, icon: BookOpen,     color: "text-blue-600",   bg: "bg-blue-50" },
               { label: t("teacherPages", "overdueTab", lang),  value: overdue.length,  icon: AlertTriangle, color: "text-red-600",    bg: "bg-red-50" },
-              { label: t("common", "upcoming", lang), value: upcoming.length, icon: Clock,         color: "text-emerald-600", bg: "bg-emerald-50" },
+              { label: t("common", "upcoming", lang), value: upcoming.length, icon: Clock,         color: "text-primary-600", bg: "bg-primary-50" },
             ].map(({ label, value, icon: Icon, color, bg }) => (
               <div key={label} className="bg-white rounded-2xl border border-gray-100 p-3 text-center">
                 <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center mx-auto mb-1", bg)}>
@@ -221,7 +221,7 @@ function HWRow({
                     <p className="text-[10px] text-gray-400">{sub.student?.adno}</p>
                   </div>
                   <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-lg",
-                    sub.status === "CHECKED"       ? "bg-emerald-100 text-emerald-700" :
+                    sub.status === "CHECKED"       ? "bg-primary-100 text-primary-700" :
                     sub.status === "SUBMITTED"     ? "bg-amber-100 text-amber-700" :
                                                      "bg-red-100 text-red-700")}>
                     {sub.status.replace("_", " ")}

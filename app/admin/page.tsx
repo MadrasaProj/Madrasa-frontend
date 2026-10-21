@@ -54,7 +54,7 @@ function PlatformOverview() {
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-emerald-800 to-teal-600 rounded-3xl p-5 text-white"
+          className="bg-gradient-to-r from-primary-800 to-teal-600 rounded-3xl p-5 text-white"
         >
           <p className="text-indigo-200 text-xs font-semibold uppercase tracking-widest mb-1">
             Super Admin Platform
@@ -121,9 +121,9 @@ function MadrasaAdminDashboard() {
 
   const statCards = [
     { label: "Total Students",  value: stats.totalStudents,       color: "text-blue-600" },
-    { label: "Active Students", value: stats.activeStudents,      color: "text-emerald-600" },
+    { label: "Active Students", value: stats.activeStudents,      color: "text-primary-600" },
     { label: "Fee Collection",  value: `${stats.collectionPct}%`, color: "text-amber-600" },
-    { label: "Attendance Rate", value: `${stats.attRate}%`,       color: "text-emerald-600" },
+    { label: "Attendance Rate", value: `${stats.attRate}%`,       color: "text-primary-600" },
   ];
 
   const quickActions = [
@@ -144,7 +144,7 @@ function MadrasaAdminDashboard() {
         {user?.photoUrl ? (
           <img src={user.photoUrl} alt="" className="h-12 w-12 rounded-full object-cover ring-2 ring-white shadow-sm" />
         ) : (
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-lg font-bold text-emerald-700">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 text-lg font-bold text-primary-700">
             {(user?.name ?? "A").charAt(0).toUpperCase()}
           </div>
         )}
@@ -157,7 +157,7 @@ function MadrasaAdminDashboard() {
       <section className="mb-8">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-900">Overview</h2>
-          {loading && <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />}
+          {loading && <Loader2 className="h-4 w-4 animate-spin text-primary-600" />}
         </div>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {statCards.map((s) => (

@@ -202,7 +202,7 @@ export function calcGradeFromConfig(score: number, maxMarks: number, gradeConfig
 export const calcGrade = (score: number, totalMarks = 100) => calcGradeFromConfig(score, totalMarks, null);
 
 export const GRADE_COLORS: Record<string, string> = {
-  "A+": "text-emerald-700 bg-emerald-50 border-emerald-200",
+  "A+": "text-primary-700 bg-primary-50 border-primary-200",
   "A":  "text-teal-700 bg-teal-50 border-teal-200",
   "B+": "text-blue-700 bg-blue-50 border-blue-200",
   "B":  "text-indigo-700 bg-indigo-50 border-indigo-200",
@@ -213,7 +213,7 @@ export const GRADE_COLORS: Record<string, string> = {
 };
 
 export const FINAL_STATUS_COLORS: Record<string, string> = {
-  PASSED:   "text-emerald-700 bg-emerald-50",
+  PASSED:   "text-primary-700 bg-primary-50",
   FAILED:   "text-red-700 bg-red-50",
   PROMOTED: "text-blue-700 bg-blue-50",
   WITHHELD: "text-amber-700 bg-amber-50",

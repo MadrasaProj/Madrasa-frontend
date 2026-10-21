@@ -164,7 +164,7 @@ export default function SupportDashboard() {
         </div>
         <button
           onClick={() => setShowAddTicket(true)}
-          className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-4 py-2.5 rounded-xl transition-all shadow-sm active:scale-95 w-full sm:w-auto justify-center"
+          className="flex items-center gap-1.5 bg-primary-600 hover:bg-primary-700 text-white font-bold text-sm px-4 py-2.5 rounded-xl transition-all shadow-sm active:scale-95 w-full sm:w-auto justify-center"
         >
           <Plus className="w-4 h-4" />
           Open Support Ticket
@@ -172,7 +172,7 @@ export default function SupportDashboard() {
       </div>
 
       {successMsg && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl p-4 text-sm flex justify-between items-center shadow-sm">
+        <div className="bg-primary-50 border border-primary-200 text-primary-800 rounded-2xl p-4 text-sm flex justify-between items-center shadow-sm">
           <span>{successMsg}</span>
           <button onClick={() => setSuccessMsg(null)} className="font-bold underline text-xs">Dismiss</button>
         </div>
@@ -191,7 +191,7 @@ export default function SupportDashboard() {
           <div className="bg-white rounded-3xl border border-gray-100 p-5 shadow-sm space-y-4">
             <div className="flex flex-wrap gap-2 items-center justify-between">
               <h2 className="text-sm font-black text-gray-800 flex items-center gap-2">
-                <MessageSquare className="w-4.5 h-4.5 text-emerald-600" />
+                <MessageSquare className="w-4.5 h-4.5 text-primary-600" />
                 Active tickets ({filteredTickets.length})
               </h2>
 
@@ -217,7 +217,7 @@ export default function SupportDashboard() {
 
             {loading ? (
               <div className="flex justify-center py-10">
-                <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
+                <Loader2 className="w-6 h-6 animate-spin text-primary-600" />
               </div>
             ) : filteredTickets.length === 0 ? (
               <div className="text-center py-12 text-gray-400 text-sm">
@@ -266,7 +266,7 @@ export default function SupportDashboard() {
         <div className="space-y-4">
           <div className="bg-white rounded-3xl border border-gray-100 p-5 shadow-sm space-y-4">
             <h2 className="text-sm font-black text-gray-800 flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-emerald-600" />
+              <Sparkles className="w-4 h-4 text-primary-600" />
               KB Article search
             </h2>
             <div className="relative">
@@ -276,7 +276,7 @@ export default function SupportDashboard() {
                 value={kbQuery}
                 onChange={(e) => setKbQuery(e.target.value)}
                 placeholder="Type keywords (e.g. login, fee...)"
-                className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-2xl text-xs placeholder-gray-400 focus:outline-none focus:border-emerald-600"
+                className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-2xl text-xs placeholder-gray-400 focus:outline-none focus:border-primary-600"
               />
             </div>
 
@@ -284,7 +284,7 @@ export default function SupportDashboard() {
               {kbArticles.map((art) => (
                 <div key={art.id} className="p-3 bg-gray-50/50 border border-gray-100 rounded-2xl space-y-1">
                   <h4 className="text-xs font-bold text-gray-800 flex items-center gap-1">
-                    <HelpCircle className="w-3.5 h-3.5 text-emerald-600" />
+                    <HelpCircle className="w-3.5 h-3.5 text-primary-600" />
                     {art.title}
                   </h4>
                   <p className="text-[10px] text-gray-500 leading-normal line-clamp-3 whitespace-pre-line">{art.content}</p>
@@ -324,7 +324,7 @@ export default function SupportDashboard() {
             >
               <div className="flex items-center justify-between border-b border-gray-100 pb-4">
                 <div>
-                  <span className="bg-emerald-50 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+                  <span className="bg-primary-50 text-primary-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
                     {selectedTicket.status.replace(/_/g, " ")}
                   </span>
                   <h2 className="text-base font-black text-gray-800 mt-1">{selectedTicket.title}</h2>
@@ -345,7 +345,7 @@ export default function SupportDashboard() {
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => handleResolveTicket(selectedTicket.id, "RESOLVED")}
-                  className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold py-2 px-4 rounded-xl transition-all"
+                  className="bg-primary-50 hover:bg-primary-100 text-primary-800 border border-primary-200 text-xs font-bold py-2 px-4 rounded-xl transition-all"
                 >
                   Mark Resolved
                 </button>
@@ -366,12 +366,12 @@ export default function SupportDashboard() {
                   value={replyContent}
                   onChange={(e) => setReplyContent(e.target.value)}
                   placeholder="Type advice or resolution details here..."
-                  className="w-full bg-gray-50 border border-gray-100 text-xs p-3 rounded-2xl focus:outline-none focus:border-emerald-600 focus:bg-white"
+                  className="w-full bg-gray-50 border border-gray-100 text-xs p-3 rounded-2xl focus:outline-none focus:border-primary-600 focus:bg-white"
                 />
                 <button
                   type="submit"
                   disabled={actionLoading}
-                  className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-5 rounded-xl transition-all active:scale-95 disabled:opacity-50"
+                  className="flex items-center gap-1 bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs py-2 px-5 rounded-xl transition-all active:scale-95 disabled:opacity-50"
                 >
                   <CornerDownLeft className="w-3.5 h-3.5" />
                   Post Reply
@@ -467,7 +467,7 @@ export default function SupportDashboard() {
                   </button>
                   <button
                     type="submit"
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-4 rounded-xl"
+                    className="bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs py-2 px-4 rounded-xl"
                   >
                     Create Ticket
                   </button>

@@ -20,7 +20,7 @@ const STATUS_CONFIG: Record<
   AttendanceStatus,
   { label: string; labelMl: string; dot: string; bg: string }
 > = {
-  PRESENT:  { label: "Present",  labelMl: "ഹാജർ",     dot: "bg-emerald-500", bg: "bg-emerald-50"  },
+  PRESENT:  { label: "Present",  labelMl: "ഹാജർ",     dot: "bg-primary-500", bg: "bg-primary-50"  },
   ABSENT:   { label: "Absent",   labelMl: "ഗൈർഹാജർ", dot: "bg-red-500",     bg: "bg-red-50"      },
   LATE:     { label: "Late",     labelMl: "വൈകി",      dot: "bg-amber-500",   bg: "bg-amber-50"    },
   EXCUSED:  { label: "Excused",  labelMl: "അനുവദിച്ച", dot: "bg-blue-400",   bg: "bg-blue-50"     },
@@ -72,7 +72,7 @@ export default function ParentAttendancePage() {
   const total         = data?.total ?? 0;
   const percentage    = total > 0 ? Math.round((presentCount / total) * 100) : 0;
   const chartConfig = {
-    present: { label: t("parentPages", "presentLower", lang), color: "#059669" },
+    present: { label: t("parentPages", "presentLower", lang), color: "var(--primary)" },
     absent: { label: t("parentPages", "absentLower", lang), color: "#ef4444" },
     other: { label: t("parentPages", "otherLower", lang), color: "#e5e7eb" },
   } satisfies ChartConfig;
@@ -279,18 +279,18 @@ export default function ParentAttendancePage() {
                           "aspect-square rounded-xl flex flex-col items-center justify-center transition-all",
                           cfg?.bg,
                           !status && "bg-gray-50/50",
-                          isToday && "ring-2 ring-emerald-400 ring-offset-1",
+                          isToday && "ring-2 ring-primary-400 ring-offset-1",
                         )}>
                         <span className={cn(
                           "text-sm font-semibold",
-                          status === "PRESENT" && "text-emerald-700",
+                          status === "PRESENT" && "text-primary-700",
                           status === "ABSENT" && "text-red-700",
                           status === "LATE" && "text-amber-700",
                           status === "EXCUSED" && "text-blue-700",
                           status === "LEAVE" && "text-amber-700",
                           status === "SICK" && "text-orange-700",
                           !status && "text-gray-300",
-                          isToday && !status && "text-emerald-600",
+                          isToday && !status && "text-primary-600",
                         )}>
                           {day}
                         </span>

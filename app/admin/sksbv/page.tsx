@@ -24,14 +24,14 @@ const categoryStyle: Record<string, { icon: React.ElementType; color: string; bg
   Academic:  { icon: BookOpen, color: "text-blue-700",    bg: "bg-blue-50",    ring: "border-blue-200"    },
   Charity:   { icon: Heart,    color: "text-rose-700",    bg: "bg-rose-50",    ring: "border-rose-200"    },
   Cultural:  { icon: Star,     color: "text-amber-700",   bg: "bg-amber-50",   ring: "border-amber-200"   },
-  Sports:    { icon: Dumbbell, color: "text-emerald-700", bg: "bg-emerald-50", ring: "border-emerald-200" },
+  Sports:    { icon: Dumbbell, color: "text-primary-700", bg: "bg-primary-50", ring: "border-primary-200" },
   Outing:    { icon: Bus,      color: "text-indigo-700",  bg: "bg-indigo-50",  ring: "border-indigo-200"  },
   Community: { icon: Shield,   color: "text-teal-700",    bg: "bg-teal-50",    ring: "border-teal-200"    },
 };
 
 const statusStyle: Record<ProgramStatus, { label: string; icon: React.ElementType; badge: string }> = {
   upcoming:  { label: "Upcoming",  icon: Clock,       badge: "bg-blue-100 text-blue-700"      },
-  completed: { label: "Completed", icon: CheckCircle, badge: "bg-emerald-100 text-emerald-700" },
+  completed: { label: "Completed", icon: CheckCircle, badge: "bg-primary-100 text-primary-700" },
   ongoing:   { label: "Ongoing",   icon: PlayCircle,  badge: "bg-amber-100 text-amber-700"    },
 };
 
@@ -151,7 +151,7 @@ export default function SKSBVPage() {
                 <YAxis tick={{ fontSize: 9 }} tickFormatter={(v) => `₹${v}`} />
                 <Tooltip formatter={(v) => `₹${Number(v).toLocaleString()}`} />
                 <Bar dataKey="budget" name="Budget" fill="#f59e0b" radius={[4,4,0,0]} />
-                <Bar dataKey="spent"  name="Spent"  fill="#059669" radius={[4,4,0,0]} />
+                <Bar dataKey="spent"  name="Spent"  fill="var(--primary)" radius={[4,4,0,0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -187,7 +187,7 @@ export default function SKSBVPage() {
           {/* Status Breakdown */}
           <div className="grid grid-cols-3 gap-3">
             {([
-              { label: tr("sksbv", "completed", lang), count:completed, icon:CheckCircle, color:"bg-emerald-500", light:"bg-emerald-50", text:"text-emerald-700" },
+              { label: tr("sksbv", "completed", lang), count:completed, icon:CheckCircle, color:"bg-primary-500", light:"bg-primary-50", text:"text-primary-700" },
               { label: tr("sksbv", "ongoing", lang),   count:ongoing,   icon:PlayCircle,  color:"bg-amber-500",   light:"bg-amber-50",   text:"text-amber-700"   },
               { label: tr("sksbv", "upcoming", lang),   count:upcoming,  icon:Clock,       color:"bg-blue-500",    light:"bg-blue-50",    text:"text-blue-700"    },
             ] as const).map(({ label, count, icon: Ic, color, light, text }) => (
@@ -273,7 +273,7 @@ export default function SKSBVPage() {
                         <span>{tr("sksbv", "spent", lang)}: ₹{Math.round(prog.budget * (prog.status === "completed" ? 0.95 : 0.1)).toLocaleString()} ({spentPct}%)</span>
                       </div>
                       <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div className={cn("h-full rounded-full", spentPct > 90 ? "bg-rose-500" : "bg-emerald-500")}
+                        <div className={cn("h-full rounded-full", spentPct > 90 ? "bg-rose-500" : "bg-primary-500")}
                           style={{ width: `${Math.min(spentPct, 100)}%` }} />
                       </div>
                     </div>
@@ -370,7 +370,7 @@ export default function SKSBVPage() {
                         <div className="space-y-1.5">
                           {m.decisions.map((d, di) => (
                             <div key={di} className="flex items-start gap-2">
-                              <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                              <CheckCircle className="w-3.5 h-3.5 text-primary-500 shrink-0 mt-0.5" />
                               <p className="text-xs text-gray-700">{d}</p>
                             </div>
                           ))}
@@ -449,7 +449,7 @@ export default function SKSBVPage() {
                               </div>
                               <div>
                                 <p className="text-[10px] text-gray-400">{tr("sksbv", "spent", lang)}</p>
-                                <p className="text-base font-extrabold text-emerald-600">₹{spentAmt.toLocaleString()}</p>
+                                <p className="text-base font-extrabold text-primary-600">₹{spentAmt.toLocaleString()}</p>
                               </div>
                               <div>
                                 <p className="text-[10px] text-gray-400">{tr("sksbv", "balance", lang)}</p>
@@ -463,7 +463,7 @@ export default function SKSBVPage() {
                             <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                               <motion.div initial={{ width:0 }} animate={{ width:`${Math.min(spentPct,100)}%` }}
                                 transition={{ duration:0.6 }}
-                                className={cn("h-full rounded-full", spentPct > 90 ? "bg-rose-500" : "bg-emerald-500")} />
+                                className={cn("h-full rounded-full", spentPct > 90 ? "bg-rose-500" : "bg-primary-500")} />
                             </div>
                           </div>
                         </div>
@@ -480,7 +480,7 @@ export default function SKSBVPage() {
                       {/* Actions */}
                       <div className="flex gap-3">
                         {selectedProg.status === "upcoming" && (
-                          <button className="flex-1 py-3 bg-emerald-600 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2">
+                          <button className="flex-1 py-3 bg-primary-600 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2">
                             <PlayCircle className="w-4 h-4" /> {tr("sksbv", "markOngoing", lang)}
                           </button>
                         )}
@@ -563,7 +563,7 @@ function StatCard({ icon:Icon, label, value, color }:
   const colors: Record<string, { bg:string; light:string; text:string }> = {
     amber:   { bg:"bg-amber-500",   light:"bg-amber-50",   text:"text-amber-700"   },
     blue:    { bg:"bg-blue-500",    light:"bg-blue-50",    text:"text-blue-700"    },
-    emerald: { bg:"bg-emerald-500", light:"bg-emerald-50", text:"text-emerald-700" },
+    emerald: { bg:"bg-primary-500", light:"bg-primary-50", text:"text-primary-700" },
     rose:    { bg:"bg-rose-500",    light:"bg-rose-50",    text:"text-rose-700"    },
   };
   const c = colors[color] ?? colors.amber;

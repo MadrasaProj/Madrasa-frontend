@@ -100,7 +100,7 @@ export function DataTable<T>({
               pagination.onPageSizeChange(Number(e.target.value))
               pagination.onPageChange(1)
             }}
-            className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+            className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer"
           >
             {pageSizeOptions.map(n => (
               <option key={n} value={n}>{n}</option>
@@ -157,8 +157,8 @@ export function DataTable<T>({
                     {col.sortable && onSort && (
                       sortKey === col.key
                         ? sortDir === "asc"
-                          ? <ChevronUp className="w-3 h-3 text-emerald-600" />
-                          : <ChevronDown className="w-3 h-3 text-emerald-600" />
+                          ? <ChevronUp className="w-3 h-3 text-primary-600" />
+                          : <ChevronDown className="w-3 h-3 text-primary-600" />
                         : <ChevronsUpDown className="w-3 h-3 opacity-30" />
                     )}
                   </span>
@@ -196,7 +196,7 @@ export function DataTable<T>({
                   }}
                   className={cn(
                     "border-b border-gray-50 last:border-0 transition-colors",
-                    onRowClick && "cursor-pointer hover:bg-emerald-50/40 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600",
+                    onRowClick && "cursor-pointer hover:bg-primary-50/40 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-600",
                   )}
                 >
                   {columns.map((col) => (
@@ -240,7 +240,7 @@ export function DataTable<T>({
                 onClick={() => onRowClick?.(row)}
                 className={cn(
                   "bg-white rounded-2xl p-4 border border-gray-100 transition-all",
-                  onRowClick && "cursor-pointer hover:border-emerald-200 hover:shadow-sm",
+                  onRowClick && "cursor-pointer hover:border-primary-200 hover:shadow-sm",
                 )}
               >
                 {mobileRender ? (

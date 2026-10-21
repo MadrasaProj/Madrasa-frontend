@@ -144,7 +144,7 @@ export default function DistrictsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
-              <MapPin className="w-6 h-6 text-emerald-600 shrink-0" />
+              <MapPin className="w-6 h-6 text-primary-600 shrink-0" />
               Districts Catalog
             </h1>
             <p className="text-sm text-gray-500 mt-1">
@@ -154,7 +154,7 @@ export default function DistrictsPage() {
           {canManage && (
             <button
               onClick={handleOpenAdd}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-2xl shadow-sm transition-all text-sm shrink-0"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-2xl shadow-sm transition-all text-sm shrink-0"
             >
               <Plus className="w-4 h-4" /> Add District
             </button>
@@ -170,8 +170,8 @@ export default function DistrictsPage() {
         )}
 
         {success && (
-          <div className="flex items-center gap-2 p-4 bg-emerald-50 border border-emerald-100 rounded-2xl text-sm text-emerald-800">
-            <Check className="w-5 h-5 shrink-0 text-emerald-600" />
+          <div className="flex items-center gap-2 p-4 bg-primary-50 border border-primary-100 rounded-2xl text-sm text-primary-800">
+            <Check className="w-5 h-5 shrink-0 text-primary-600" />
             <p className="font-medium">{success}</p>
           </div>
         )}
@@ -184,14 +184,14 @@ export default function DistrictsPage() {
             placeholder="Search districts or district heads..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 bg-white border border-gray-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all shadow-sm"
+            className="w-full pl-11 pr-4 py-3 bg-white border border-gray-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all shadow-sm"
           />
         </div>
 
         {/* Districts Content */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+            <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
           </div>
         ) : filteredDistricts.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center shadow-sm">
@@ -216,7 +216,7 @@ export default function DistrictsPage() {
                         <>
                           <button
                             onClick={() => handleOpenEdit(dist)}
-                            className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+                            className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-xl transition-all"
                             title="Edit District"
                           >
                             <Edit2 className="w-4 h-4" />
@@ -242,7 +242,7 @@ export default function DistrictsPage() {
 
                   <div className="mt-4 space-y-2 border-t border-gray-50 pt-3">
                     <div className="flex items-center gap-2">
-                      <Shield className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <Shield className="w-4 h-4 text-primary-600 shrink-0" />
                       <div className="min-w-0">
                         <p className="text-xs text-gray-400 font-medium">District Head</p>
                         <p className="text-sm font-semibold text-gray-800 truncate">
@@ -304,7 +304,7 @@ export default function DistrictsPage() {
                       placeholder="e.g. Kozhikode, Malappuram"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium text-gray-800"
+                      className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-medium text-gray-800"
                     />
                   </div>
 
@@ -315,7 +315,7 @@ export default function DistrictsPage() {
                     <select
                       value={headUserId}
                       onChange={(e) => setHeadUserId(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium text-gray-800"
+                      className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-medium text-gray-800"
                     >
                       <option value="">-- No District Head (Unassigned) --</option>
                       {staffList.map((staff) => (
@@ -338,7 +338,7 @@ export default function DistrictsPage() {
                     <button
                       type="submit"
                       disabled={submitting || !name.trim()}
-                      className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition-all disabled:opacity-60"
+                      className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-primary-600 hover:bg-primary-700 text-white rounded-2xl transition-all disabled:opacity-60"
                     >
                       {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                       {modalMode === "add" ? "Create District" : "Save Changes"}

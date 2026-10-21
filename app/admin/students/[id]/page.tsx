@@ -22,7 +22,7 @@ import { PageSkeleton } from "@/components/ui/Skeleton";
 import StudentEditDrawer from "@/components/admin/StudentEditDrawer";
 
 const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: "bg-emerald-100 text-emerald-700",
+  ACTIVE: "bg-primary-100 text-primary-700",
   INACTIVE: "bg-gray-100 text-gray-600",
   GRADUATED: "bg-blue-100 text-blue-700",
   TRANSFERRED: "bg-amber-100 text-amber-700",
@@ -84,7 +84,7 @@ export default function StudentDetailPage() {
         <div className="text-center py-20 text-gray-400">
           <User className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="font-semibold text-lg">{error ? (error as Error).message : "Student not found"}</p>
-          <button onClick={() => navigate(-1)} className="mt-4 text-emerald-600 font-semibold text-sm underline">
+          <button onClick={() => navigate(-1)} className="mt-4 text-primary-600 font-semibold text-sm underline">
             Go back
           </button>
         </div>
@@ -135,7 +135,7 @@ export default function StudentDetailPage() {
           ) : (
             <div className={cn(
               "w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-bold shrink-0",
-              student.gender === "FEMALE" ? "bg-pink-100 text-pink-700" : "bg-emerald-100 text-emerald-700",
+              student.gender === "FEMALE" ? "bg-pink-100 text-pink-700" : "bg-primary-100 text-primary-700",
             )}>
               {student.name.charAt(0)}
             </div>
@@ -145,7 +145,7 @@ export default function StudentDetailPage() {
             <p className="text-sm text-gray-500">{student.adno}</p>
             <div className="flex gap-2 mt-1.5 flex-wrap">
               {student.class && (
-                <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-700">
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-primary-100 text-primary-700">
                   {student.class.name}
                 </span>
               )}
@@ -175,7 +175,7 @@ export default function StudentDetailPage() {
             ...(student.accademicYear ? [{ icon: Calendar, label: "Academic Year", value: student.accademicYear.name }] : []),
           ].map(({ icon: Icon, label, value }) => (
             <div key={label} className="bg-gray-50 rounded-xl p-3 flex gap-2.5 items-start">
-              <Icon className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              <Icon className="w-4 h-4 text-primary-600 shrink-0 mt-0.5" />
               <div className="min-w-0">
                 <p className="text-xs text-gray-400">{label}</p>
                 <p className="text-sm font-semibold text-gray-800 leading-tight truncate">{String(value)}</p>
@@ -197,7 +197,7 @@ export default function StudentDetailPage() {
           <>
             <div className="grid grid-cols-4 gap-2 mb-3">
               {[
-                { label: "Present", val: attPresent, color: "text-emerald-700" },
+                { label: "Present", val: attPresent, color: "text-primary-700" },
                 { label: "Absent", val: attAbsent, color: "text-red-600" },
                 { label: "Late", val: attLate, color: "text-amber-700" },
                 { label: "Total", val: attTotal, color: "text-gray-800" },
@@ -210,10 +210,10 @@ export default function StudentDetailPage() {
             </div>
             <div className="flex items-center gap-2">
               <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                <div className={cn("h-full rounded-full transition-all", attPct >= 75 ? "bg-emerald-500" : "bg-red-400")}
+                <div className={cn("h-full rounded-full transition-all", attPct >= 75 ? "bg-primary-500" : "bg-red-400")}
                   style={{ width: `${attPct}%` }} />
               </div>
-              <span className={cn("text-sm font-bold", attPct >= 75 ? "text-emerald-700" : "text-red-600")}>
+              <span className={cn("text-sm font-bold", attPct >= 75 ? "text-primary-700" : "text-red-600")}>
                 {attPct}%
               </span>
             </div>

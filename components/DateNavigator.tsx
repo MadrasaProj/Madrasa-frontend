@@ -46,7 +46,7 @@ export function DateNavigator({
             <button
               type="button"
               onClick={() => setDateDrawerOpen(true)}
-              className="flex min-w-40 items-center gap-3 text-center transition-colors hover:text-emerald-700"
+              className="flex min-w-40 items-center gap-3 text-center transition-colors hover:text-primary-700"
             >
               <span className="text-sm font-semibold text-gray-800">
                 {new Date(`${date}T00:00:00`).toLocaleDateString("en-GB", {
@@ -60,7 +60,7 @@ export function DateNavigator({
                   weekday: "long",
                 })}
                 {date === todayISO() && (
-                  <span className="ml-1 font-semibold text-emerald-700">
+                  <span className="ml-1 font-semibold text-primary-700">
                     · {t("teacherPages", "todayBadge", lang)}
                   </span>
                 )}

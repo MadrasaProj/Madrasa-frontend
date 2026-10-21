@@ -66,9 +66,9 @@ export const PRAYER_STATUS_META: Record<
   ADA: {
     labelKey: "adaLabel",
     icon: Check,
-    bg: "bg-emerald-100",
-    text: "text-emerald-700",
-    border: "border-emerald-200",
+    bg: "bg-primary-100",
+    text: "text-primary-700",
+    border: "border-primary-200",
   },
   QALA: {
     labelKey: "qalaLabel",
@@ -80,9 +80,9 @@ export const PRAYER_STATUS_META: Record<
   NOT_PRAYABLE: {
     labelKey: "excusedLabel",
     icon: Check,
-    bg: "bg-emerald-100",
-    text: "text-emerald-700",
-    border: "border-emerald-200",
+    bg: "bg-primary-100",
+    text: "text-primary-700",
+    border: "border-primary-200",
   },
 };
 
@@ -180,7 +180,7 @@ function prayerCount(
 
 function countBadgeColor(count: number, total: number) {
   if (total === 0) return "bg-gray-100 text-gray-400";
-  if (count === total) return "bg-emerald-100 text-emerald-700";
+  if (count === total) return "bg-primary-100 text-primary-700";
   if (count >= total * 0.6) return "bg-amber-100 text-amber-700";
   if (count > 0) return "bg-red-100 text-red-600";
   return "bg-gray-100 text-gray-400";
@@ -530,7 +530,7 @@ export default function TeacherIbadahPage() {
               )}
             </span>
             <span className="flex min-w-0 items-center gap-2 text-gray-700">
-              <School className="h-4 w-4 shrink-0 text-emerald-700" />
+              <School className="h-4 w-4 shrink-0 text-primary-700" />
               <span className="max-w-36 truncate text-sm font-semibold">
                 {activeClass?.name ??
                   t("teacherPages", "noClassesAssigned", lang)}
@@ -585,7 +585,7 @@ export default function TeacherIbadahPage() {
                       }}
                       className={cn(
                         "flex w-full min-w-0 items-center gap-3 py-3 text-left text-sm",
-                        activeClassId === cls.id ? "font-medium text-emerald-700" : "text-gray-700",
+                        activeClassId === cls.id ? "font-medium text-primary-700" : "text-gray-700",
                       )}
                     >
                       <span className="truncate">{cls.name}</span>
@@ -625,7 +625,7 @@ export default function TeacherIbadahPage() {
                               className={cn(
                                 "px-4 py-1.5 rounded-lg text-xs font-semibold transition-all",
                                 activeSection === s.key
-                                  ? "bg-white shadow-sm text-emerald-700"
+                                  ? "bg-white shadow-sm text-primary-700"
                                   : "text-gray-500",
                               )}
                             >
@@ -699,7 +699,7 @@ export default function TeacherIbadahPage() {
                                 </span>
                               </div>
                               <div className="flex items-center gap-1.5">
-                                <span className="w-5 h-5 rounded-lg bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center justify-center">
+                                <span className="w-5 h-5 rounded-lg bg-primary-100 text-primary-700 border border-primary-200 flex items-center justify-center">
                                   <Check className="w-3 h-3" />
                                 </span>
                                 <span className="font-medium text-gray-700">
@@ -715,7 +715,7 @@ export default function TeacherIbadahPage() {
                                 </span>
                               </div>
                               <div className="flex items-center gap-1.5">
-                                <span className="w-5 h-5 rounded-lg bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center justify-center">
+                                <span className="w-5 h-5 rounded-lg bg-primary-100 text-primary-700 border border-primary-200 flex items-center justify-center">
                                   <Check className="w-3 h-3" />
                                 </span>
                                 <span className="font-medium text-gray-700">
@@ -806,7 +806,7 @@ export default function TeacherIbadahPage() {
                                         className={cn(
                                           "w-8 h-8 rounded-lg text-sm font-bold flex items-center justify-center",
                                           r.customData[item.key]
-                                            ? "bg-emerald-100 text-emerald-700"
+                                            ? "bg-primary-100 text-primary-700"
                                             : "bg-gray-100 text-gray-400",
                                         )}
                                       >
@@ -1036,7 +1036,7 @@ export default function TeacherIbadahPage() {
                     </div>
                     <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex flex-wrap gap-4 text-xs text-gray-500">
                       <div className="flex items-center gap-1.5">
-                        <span className="w-3 h-3 rounded bg-emerald-100 inline-block" />{" "}
+                        <span className="w-3 h-3 rounded bg-primary-100 inline-block" />{" "}
                         {t("teacherPages", "legendAllPrayers", lang)}
                       </div>
                       <div className="flex items-center gap-1.5">

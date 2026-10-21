@@ -12,7 +12,7 @@ import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
 
-function ProgressBar({ value, color = "bg-emerald-500" }: { value: number; color?: string }) {
+function ProgressBar({ value, color = "bg-primary-500" }: { value: number; color?: string }) {
   const safe = Math.min(100, Math.max(0, value || 0));
   return (
     <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -38,16 +38,16 @@ export default function CommitteeDashboard() {
       value: `${d.attendance.overallPct}%`,
       sub:   `${d.attendance.presentCount} ${ml ? "ഇന്ന്" : "today"}`,
       icon: ClipboardList,
-      color: d.attendance.overallPct >= 75 ? "text-emerald-600" : "text-amber-600",
-      bg:    d.attendance.overallPct >= 75 ? "bg-emerald-100"   : "bg-amber-100",
+      color: d.attendance.overallPct >= 75 ? "text-primary-600" : "text-amber-600",
+      bg:    d.attendance.overallPct >= 75 ? "bg-primary-100"   : "bg-amber-100",
     },
     {
       label: ml ? "ഫീസ് ശേഖരണം" : "Fee Collection",
       value: `${d.fees.collectionPct}%`,
       sub:   `₹${(d.fees.totalCollected / 1000).toFixed(0)}K ${ml ? "ശേഖരിച്ചു" : "collected"}`,
       icon: IndianRupee,
-      color: d.fees.collectionPct >= 70 ? "text-emerald-600" : "text-amber-600",
-      bg:    d.fees.collectionPct >= 70 ? "bg-emerald-100"   : "bg-amber-100",
+      color: d.fees.collectionPct >= 70 ? "text-primary-600" : "text-amber-600",
+      bg:    d.fees.collectionPct >= 70 ? "bg-primary-100"   : "bg-amber-100",
     },
     {
       label: ml ? "അറിയിപ്പുകൾ" : "Notifications",
@@ -59,7 +59,7 @@ export default function CommitteeDashboard() {
 
   const navLinks = [
     { href: "/committee/attendance", label: ml ? "ഹാജർ"        : "Attendance",     icon: ClipboardList, color: "from-teal-600 to-cyan-600" },
-    { href: "/committee/finance",    label: ml ? "ഫിനാൻസ്"      : "Finance",        icon: IndianRupee,   color: "from-emerald-600 to-teal-600" },
+    { href: "/committee/finance",    label: ml ? "ഫിനാൻസ്"      : "Finance",        icon: IndianRupee,   color: "from-primary-600 to-teal-600" },
     { href: "/committee/students",   label: ml ? "വിദ്യാർത്ഥി"   : "Students",       icon: Users,         color: "from-blue-600 to-indigo-600" },
     { href: "/committee/reports",    label: ml ? "റിപ്പോർട്ട്"   : "Reports",        icon: BarChart3,     color: "from-blue-600 to-indigo-600" },
     { href: "/committee/announcements", label: ml ? "അറിയിപ്പ്" : "Announcements",  icon: Bell,          color: "from-rose-600 to-pink-600" },
@@ -69,8 +69,8 @@ export default function CommitteeDashboard() {
     <DashboardLayout>
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-5">
-        <div className="bg-gradient-to-r from-emerald-700 to-teal-600 rounded-3xl p-5 text-white">
-          <p className="text-emerald-200 text-xs font-semibold uppercase tracking-widest mb-1">
+        <div className="bg-gradient-to-r from-primary-700 to-teal-600 rounded-3xl p-5 text-white">
+          <p className="text-primary-200 text-xs font-semibold uppercase tracking-widest mb-1">
             {ml ? "മാനേജ്‌മെന്റ് കമ്മിറ്റി" : "Management Committee"}
           </p>
           <h1 className="text-xl font-bold">{ml ? "ഡാഷ്ബോർഡ്" : "Dashboard"}</h1>
@@ -80,7 +80,7 @@ export default function CommitteeDashboard() {
               return (
                 <div key={s.label} className="bg-white/15 rounded-2xl p-2.5 text-center">
                   <p className="text-lg font-black">{s.value}</p>
-                  <p className="text-[10px] text-emerald-200 leading-tight">{s.label}</p>
+                  <p className="text-[10px] text-primary-200 leading-tight">{s.label}</p>
                 </div>
               );
             })}
@@ -116,13 +116,13 @@ export default function CommitteeDashboard() {
         <div className="bg-white rounded-2xl border border-gray-100 p-4">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm font-bold text-gray-800">{ml ? "ഹാജർ നിലവാരം" : "Attendance Rate"}</p>
-            <span className={cn("text-lg font-black", d.attendance.overallPct >= 75 ? "text-emerald-700" : "text-amber-600")}>
+            <span className={cn("text-lg font-black", d.attendance.overallPct >= 75 ? "text-primary-700" : "text-amber-600")}>
               {d.attendance.overallPct}%
             </span>
           </div>
           <ProgressBar
             value={d.attendance.overallPct}
-            color={d.attendance.overallPct >= 75 ? "bg-emerald-500" : "bg-amber-400"}
+            color={d.attendance.overallPct >= 75 ? "bg-primary-500" : "bg-amber-400"}
           />
           <div className="flex justify-between mt-2 text-xs text-gray-500">
             <span>{d.attendance.presentCount} {ml ? "ഹാജർ" : "present"}</span>

@@ -430,7 +430,7 @@ export default function AdminTeachersPage() {
  return (
  <div className="flex flex-wrap gap-1">
  {subjects.map((s) => (
- <span key={s.id} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+ <span key={s.id} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary-100 text-primary-700">
  {s.name}{s.class ? ` · ${s.class.name}` : ""}
  </span>
  ))}
@@ -450,7 +450,7 @@ export default function AdminTeachersPage() {
  render: (t) => (
  <span className={cn(
  "text-xs font-bold px-2.5 py-1 rounded-lg",
- t.status === "ACTIVE" ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500",
+ t.status === "ACTIVE" ? "bg-primary-100 text-primary-700" : "bg-gray-100 text-gray-500",
  )}>
  {t.status}
  </span>
@@ -507,7 +507,7 @@ export default function AdminTeachersPage() {
   <span className="hidden sm:inline">{t("adminPages", "importBtn", lang)}</span>
   </button>
   <button onClick={openAdd}
-  className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-colors"
+  className="flex items-center gap-1.5 px-4 py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700 transition-colors"
   >
   <Plus className="w-4 h-4" /> {t("adminPages", "addTeacher", lang)}
   </button>
@@ -523,7 +523,7 @@ export default function AdminTeachersPage() {
  value={search}
  onChange={(e) => handleSearch(e.target.value)}
  placeholder="Search by name or username…"
- className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+ className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
  />
  </div>
 
@@ -561,7 +561,7 @@ export default function AdminTeachersPage() {
  <div className="flex items-center gap-1.5 shrink-0">
  <span className={cn(
  "text-[10px] font-bold px-2 py-0.5 rounded-lg",
- t.status === "ACTIVE" ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500",
+ t.status === "ACTIVE" ? "bg-primary-100 text-primary-700" : "bg-gray-100 text-gray-500",
  )}>
  {t.status}
  </span>
@@ -587,9 +587,9 @@ export default function AdminTeachersPage() {
  )}
  {isPeriodBased && subjects.length > 0 && (
  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
- <BookOpen className="w-3 h-3 text-emerald-500 shrink-0" />
+ <BookOpen className="w-3 h-3 text-primary-500 shrink-0" />
  {subjects.map((s) => (
- <span key={s.id} className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+ <span key={s.id} className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary-100 text-primary-700">
  {s.name}{s.class ? ` · ${s.class.name}` : ""}
  </span>
  ))}
@@ -658,7 +658,7 @@ export default function AdminTeachersPage() {
  <input
  type="text" value={fName} placeholder="Abdul Rahman"
  onChange={(e) => setFName(e.target.value)}
- className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors"
+ className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors"
  />
  </div>
 
@@ -671,7 +671,7 @@ export default function AdminTeachersPage() {
  disabled={!!editTarget}
  onChange={(e) => setFUsername(e.target.value)}
  className={cn(
- "w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors",
+ "w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors",
  editTarget && "opacity-50 cursor-not-allowed bg-gray-100",
  )}
  />
@@ -697,7 +697,7 @@ export default function AdminTeachersPage() {
   onMouseDown={(e) => (e.target as HTMLInputElement).removeAttribute("readOnly")}
   onChange={(e) => setFPassword(e.target.value)}
   placeholder="Min. 6 characters"
-  className="w-full px-4 py-3 pr-12 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors"
+  className="w-full px-4 py-3 pr-12 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors"
   />
   <button type="button" onClick={() => setShowPw(!showPw)}
   className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
@@ -723,7 +723,7 @@ export default function AdminTeachersPage() {
   onMouseDown={(e) => (e.target as HTMLInputElement).removeAttribute("readOnly")}
   onChange={(e) => setFNewPassword(e.target.value)}
   placeholder="Enter new password…"
-  className="w-full px-4 py-3 pr-12 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors"
+  className="w-full px-4 py-3 pr-12 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors"
   />
   <button type="button" onClick={() => setShowNewPw(!showNewPw)}
   className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
@@ -744,7 +744,7 @@ export default function AdminTeachersPage() {
   "flex-1 py-2.5 rounded-xl text-xs font-bold border transition-colors",
   fStatus === s
   ? s === "ACTIVE"
-  ? "bg-emerald-100 border-emerald-300 text-emerald-700"
+  ? "bg-primary-100 border-primary-300 text-primary-700"
   : "bg-red-100 border-red-300 text-red-600"
   : "bg-gray-50 border-gray-200 text-gray-400 hover:border-gray-300",
   )}
@@ -792,20 +792,20 @@ export default function AdminTeachersPage() {
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Qualification</label>
   <input type="text" value={fQualification} placeholder="e.g. B.Ed, M.Sc"
   onChange={(e) => setFQualification(e.target.value)}
-  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
+  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors" />
   </div>
   <div className="grid grid-cols-2 gap-3">
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Phone</label>
   <input type="text" value={fPhone} placeholder="9876543210"
   onChange={(e) => setFPhone(e.target.value)}
-  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
+  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors" />
   </div>
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Email</label>
   <input type="email" value={fEmail} placeholder="teacher@madrasa.org"
   onChange={(e) => setFEmail(e.target.value)}
-  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
+  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors" />
   </div>
   </div>
   <div className="grid grid-cols-2 gap-3">
@@ -813,12 +813,12 @@ export default function AdminTeachersPage() {
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Date of Birth</label>
   <input type="date" value={fDateOfBirth}
   onChange={(e) => setFDateOfBirth(e.target.value)}
-  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
+  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors" />
   </div>
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Gender</label>
   <select value={fGender} onChange={(e) => setFGender(e.target.value)}
-  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors appearance-none cursor-pointer">
+  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors appearance-none cursor-pointer">
   <option value="">Select</option>
   <option value="MALE">Male</option>
   <option value="FEMALE">Female</option>
@@ -828,7 +828,7 @@ export default function AdminTeachersPage() {
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Blood Group</label>
   <select value={fBloodGroup} onChange={(e) => setFBloodGroup(e.target.value)}
-  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors appearance-none cursor-pointer">
+  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors appearance-none cursor-pointer">
   <option value="">Select</option>
   {["A+","A-","B+","B-","AB+","AB-","O+","O-"].map((bg) => (
   <option key={bg} value={bg}>{bg}</option>
@@ -846,20 +846,20 @@ export default function AdminTeachersPage() {
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Address</label>
   <textarea value={fAddress} placeholder="Street, building, area…" rows={2}
   onChange={(e) => setFAddress(e.target.value)}
-  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors resize-none" />
+  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors resize-none" />
   </div>
   <div className="grid grid-cols-2 gap-3">
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">City</label>
   <input type="text" value={fCity} placeholder="Kozhikode"
   onChange={(e) => setFCity(e.target.value)}
-  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
+  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors" />
   </div>
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">State</label>
   <input type="text" value={fState} placeholder="Kerala"
   onChange={(e) => setFState(e.target.value)}
-  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
+  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors" />
   </div>
   </div>
   <div className="grid grid-cols-2 gap-3">
@@ -867,13 +867,13 @@ export default function AdminTeachersPage() {
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Country</label>
   <input type="text" value={fCountry} placeholder="India"
   onChange={(e) => setFCountry(e.target.value)}
-  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
+  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors" />
   </div>
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Pincode</label>
   <input type="text" value={fPincode} placeholder="673001"
   onChange={(e) => setFPincode(e.target.value)}
-  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
+  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors" />
   </div>
   </div>
   </div>
@@ -887,13 +887,13 @@ export default function AdminTeachersPage() {
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Contact Name</label>
   <input type="text" value={fEmergencyName} placeholder="Spouse / parent"
   onChange={(e) => setFEmergencyName(e.target.value)}
-  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
+  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors" />
   </div>
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Contact Phone</label>
   <input type="text" value={fEmergencyPhone} placeholder="9876543210"
   onChange={(e) => setFEmergencyPhone(e.target.value)}
-  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white text-sm transition-colors" />
+  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors" />
   </div>
   </div>
   </div>
@@ -992,7 +992,7 @@ export default function AdminTeachersPage() {
  }
  }}
  placeholder="Search subjects or class…"
- className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
+ className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white transition-colors"
  />
  </div>
 
@@ -1018,7 +1018,7 @@ export default function AdminTeachersPage() {
  </div>
  <div className="flex items-center gap-2">
  {selectedInGroup > 0 && (
- <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+ <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary-100 text-primary-700">
  {selectedInGroup} selected
  </span>
  )}
@@ -1039,7 +1039,7 @@ export default function AdminTeachersPage() {
  onClick={() => toggleSubject(subj.id)}
  className={cn(
  "w-full flex items-center justify-between px-3 py-2.5 transition-colors text-left",
- selected ? "bg-emerald-50" : "bg-white hover:bg-gray-50",
+ selected ? "bg-primary-50" : "bg-white hover:bg-gray-50",
  )}
  >
  <div>
@@ -1050,7 +1050,7 @@ export default function AdminTeachersPage() {
  </div>
  <div className="shrink-0 ml-3">
  {selected
- ? <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+ ? <CheckCircle2 className="w-4 h-4 text-primary-600" />
  : <div className="w-4 h-4 rounded-full border-2 border-gray-300" />
  }
  </div>
@@ -1088,7 +1088,7 @@ export default function AdminTeachersPage() {
  <button
  onClick={handleSave}
  disabled={saving || !fName.trim() || !fUsername.trim() || (!editTarget && !fPassword) || (editTarget !== null && loadingAssign)}
- className="w-full bg-emerald-600 text-white font-bold py-3.5 rounded-2xl text-sm shadow-lg disabled:opacity-60 active:scale-[0.98] transition-transform"
+ className="w-full bg-primary-600 text-white font-bold py-3.5 rounded-2xl text-sm shadow-lg disabled:opacity-60 active:scale-[0.98] transition-transform"
  >
  {saving ? (
  <span className="flex items-center justify-center gap-2">

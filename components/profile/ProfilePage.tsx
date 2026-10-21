@@ -19,7 +19,7 @@ import {
 
 const inputCls =
   "w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl " +
-  "focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-emerald-400 " +
+  "focus:outline-none focus:ring-2 focus:ring-primary-400/60 focus:border-primary-400 " +
   "transition-all placeholder:text-gray-300";
 
 const labelCls = "text-[11px] uppercase tracking-wider text-gray-500 mb-1.5 block font-semibold";
@@ -90,7 +90,7 @@ const strengthMeta: Record<Strength, { label: string; color: string; width: stri
   1: { label: "Weak", color: "bg-rose-500", width: "w-1/4" },
   2: { label: "Fair", color: "bg-amber-500", width: "w-2/4" },
   3: { label: "Good", color: "bg-sky-500", width: "w-3/4" },
-  4: { label: "Strong", color: "bg-emerald-500", width: "w-full" },
+  4: { label: "Strong", color: "bg-primary-500", width: "w-full" },
 };
 
 interface DrawerProps {
@@ -365,7 +365,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
         {success && (
           <motion.div
             initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-            className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-2 text-sm text-emerald-700"
+            className="mb-4 p-3 bg-primary-50 border border-primary-200 rounded-2xl flex items-center gap-2 text-sm text-primary-700"
           >
             <CheckCircle className="w-4 h-4 shrink-0" /> {success}
           </motion.div>
@@ -378,9 +378,9 @@ export default function ProfilePage({ config }: ProfilePageProps) {
           initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
           className="lg:col-span-3 relative overflow-hidden rounded-3xl border border-gray-100"
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-700 to-teal-600" />
+          <div className="absolute inset-0 bg-gradient-to-r from-primary-700 to-teal-600" />
           <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full bg-white/10 blur-3xl" />
-          <div className="absolute -bottom-20 -left-20 w-64 h-64 rounded-full bg-emerald-400/20 blur-3xl" />
+          <div className="absolute -bottom-20 -left-20 w-64 h-64 rounded-full bg-primary-400/20 blur-3xl" />
           <div className="absolute inset-0 opacity-20"
             style={{
               backgroundImage:
@@ -396,7 +396,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                   <img src={user.photoUrl} alt={user.name}
                     className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl object-cover border-2 border-white/30 shadow-xl bg-white/15" />
                 ) : (
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-emerald-600 text-white flex items-center justify-center text-3xl sm:text-4xl font-black shadow-xl border-2 border-white/30">
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-primary-600 text-white flex items-center justify-center text-3xl sm:text-4xl font-black shadow-xl border-2 border-white/30">
                     {user?.name?.charAt(0)?.toUpperCase() ?? "?"}
                   </div>
                 )}
@@ -407,14 +407,14 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-white/20 backdrop-blur-sm">
                     <Sparkles className="w-3 h-3" /> {config.roleLabel}
                   </span>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-100/80">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-primary-100/80">
                     {today}
                   </span>
                 </div>
                 <h1 className="text-2xl sm:text-3xl font-black tracking-tight truncate">
                   {user?.name ?? config.roleLabel}
                 </h1>
-                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-emerald-50/90">
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-primary-50/90">
                   {user?.id && (
                     <span className="inline-flex items-center gap-1.5">
                       <Hash className="w-3 h-3" />
@@ -450,7 +450,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                 {t("common", "helloYourAccount", lang).replace("{name}", user?.name ?? config.roleLabel)}
               </p>
             </div>
-            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full">
+            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-semibold text-primary-700 bg-primary-50 px-2 py-1 rounded-full">
               <CheckCircle className="w-3 h-3" /> {t("common", "verified", lang)}
             </span>
           </div>
@@ -544,9 +544,9 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                 const Icon = q.icon;
                 return (
                   <a key={q.label} href={q.href}
-                    className="group relative flex items-center gap-2 p-2.5 rounded-xl bg-gray-50 hover:bg-emerald-50 transition-colors">
-                    <Icon className="w-4 h-4 text-gray-500 group-hover:text-emerald-600 shrink-0" />
-                    <span className="text-xs font-semibold text-gray-700 group-hover:text-emerald-700 truncate">
+                    className="group relative flex items-center gap-2 p-2.5 rounded-xl bg-gray-50 hover:bg-primary-50 transition-colors">
+                    <Icon className="w-4 h-4 text-gray-500 group-hover:text-primary-600 shrink-0" />
+                    <span className="text-xs font-semibold text-gray-700 group-hover:text-primary-700 truncate">
                       {q.label}
                     </span>
                   </a>
@@ -564,7 +564,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
           whileTap={{ scale: 0.97 }}
           onClick={openDrawer}
           className="inline-flex items-center gap-2 px-5 py-3 text-sm font-bold
-                     bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700
+                     bg-primary-600 text-white rounded-2xl hover:bg-primary-700
                      shadow-lg transition-colors"
         >
           <Pencil className="w-4 h-4" />
@@ -578,8 +578,8 @@ export default function ProfilePage({ config }: ProfilePageProps) {
         onClick={openDrawer}
         className="sm:hidden fixed bottom-20 right-4 z-30 inline-flex items-center gap-2
                    px-4 py-3 text-sm font-bold text-white
-                   bg-emerald-600 rounded-full
-                   shadow-lg hover:bg-emerald-700 transition-colors"
+                   bg-primary-600 rounded-full
+                   shadow-lg hover:bg-primary-700 transition-colors"
       >
         <Pencil className="w-4 h-4" />
         {t("common", "updateProfile", lang)}
@@ -609,7 +609,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                   {active && (
                     <motion.div
                       layoutId="drawerActiveTab"
-                      className="absolute inset-0 bg-emerald-600 rounded-xl shadow"
+                      className="absolute inset-0 bg-primary-600 rounded-xl shadow"
                       transition={{ type: "spring", stiffness: 350, damping: 30 }}
                     />
                   )}
@@ -634,14 +634,14 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                 <div className="flex items-center gap-4 p-3.5 bg-gray-50 rounded-2xl border border-gray-100">
                   <div className="relative shrink-0">
                     {uploadingPhoto ? (
-                      <div className="w-16 h-16 rounded-2xl bg-emerald-100 flex items-center justify-center">
-                        <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
+                      <div className="w-16 h-16 rounded-2xl bg-primary-100 flex items-center justify-center">
+                        <Loader2 className="w-6 h-6 animate-spin text-primary-600" />
                       </div>
                     ) : picPreview ? (
                       <img src={picPreview} alt={user?.name}
                         className="w-16 h-16 rounded-2xl object-cover border-2 border-white shadow" />
                     ) : (
-                      <div className="w-16 h-16 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-xl font-black border-2 border-white shadow">
+                      <div className="w-16 h-16 rounded-2xl bg-primary-600 text-white flex items-center justify-center text-xl font-black border-2 border-white shadow">
                         {user?.name?.charAt(0)?.toUpperCase() ?? "?"}
                       </div>
                     )}
@@ -651,8 +651,8 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                     <p className="text-[11px] text-gray-500 mt-0.5">{t("common", "photoHint", lang)}</p>
                     <div className="mt-2 flex items-center gap-2">
                       <label className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold
-                                        bg-emerald-600 text-white rounded-lg cursor-pointer
-                                        hover:bg-emerald-700 transition-colors active:scale-95 disabled:opacity-50">
+                                        bg-primary-600 text-white rounded-lg cursor-pointer
+                                        hover:bg-primary-700 transition-colors active:scale-95 disabled:opacity-50">
                         <Camera className="w-3.5 h-3.5" />
                         {picPreview ? t("common", "changePhoto", lang) : t("common", "uploadPhoto", lang)}
                         <input type="file" accept="image/*" className="hidden" onChange={handlePicFile} disabled={uploadingPhoto} />
@@ -757,7 +757,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                       <div className="sm:col-span-2">
                         <label className={labelCls}>{t("common", "bloodGroup", lang)}</label>
                         <select value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)}
-                          className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/60">
+                          className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/60">
                           <option value="">— Select —</option>
                           {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bg) => (
                             <option key={bg} value={bg}>{bg}</option>
@@ -865,7 +865,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                     </p>
                   )}
                   {confirmPassword && !pwMismatch && (
-                    <p className="text-[10px] text-emerald-600 font-semibold mt-1.5 flex items-center gap-1">
+                    <p className="text-[10px] text-primary-600 font-semibold mt-1.5 flex items-center gap-1">
                       <CheckCircle className="w-3 h-3" /> {t("common", "passwordsMatch", lang)}
                     </p>
                   )}
@@ -881,7 +881,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
                       { label: t("common", "hasSymbol", lang),    done: /[^A-Za-z0-9]/.test(newPassword) },
                     ].map((c) => (
                       <li key={c.label} className="flex items-center gap-1.5 text-[11px]">
-                        {c.done ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                        {c.done ? <CheckCircle2 className="w-3.5 h-3.5 text-primary-500 shrink-0" />
                                 : <Circle className="w-3.5 h-3.5 text-gray-300 shrink-0" />}
                         <span className={cn("font-medium", c.done ? "text-gray-700" : "text-gray-400")}>
                           {c.label}
@@ -910,7 +910,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
           </button>
           <button onClick={handleSave} disabled={saving}
             className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-bold
-                       bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700
+                       bg-primary-600 text-white rounded-2xl hover:bg-primary-700
                        shadow-lg transition-colors active:scale-[0.98] disabled:opacity-60">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
             {saving ? t("common", "updating", lang) : t("common", "updateProfile", lang)}

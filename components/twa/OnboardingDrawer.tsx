@@ -49,11 +49,11 @@ export default function OnboardingDrawer({
               return (
                 <div>
 
-                <button key={value} type="button" onClick={() => setRole(value)} className={`relative flex flex-col w-25 items-center gap-2 rounded-2xl p-2 transition-all ${selected ? "scale-[1.03] bg-gradient-to-b from-[#059669]/10  to-[#0d8488]/15" : "opacity-80 hover:opacity-100"}`}>
-                  {selected && <span className="absolute right-2.5 top-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white"><Check className="h-3 w-3" /></span>}
+                <button key={value} type="button" onClick={() => setRole(value)} className={`relative flex flex-col w-25 items-center gap-2 rounded-2xl p-2 transition-all ${selected ? "scale-[1.03] bg-gradient-to-b from-primary/10 to-primary/15" : "opacity-80 hover:opacity-100"}`}>
+                  {selected && <span className="absolute right-2.5 top-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary-600 text-white"><Check className="h-3 w-3" /></span>}
                   <img src={image} alt={label} className="h-25 w-25 object-contain" />
                 </button>
-                  <div className={`text-sm mx-auto text-center mt-2 font-semibold ${selected ? "text-emerald-800" : "text-gray-700"}`}>{label}</div>
+                  <div className={`text-sm mx-auto text-center mt-2 font-semibold ${selected ? "text-primary-800" : "text-gray-700"}`}>{label}</div>
                 </div>
               );
             })}
@@ -61,10 +61,10 @@ export default function OnboardingDrawer({
           {role && <motion.div initial={{ opacity: 0, height: 0 }} className="px-1" animate={{ opacity: 1, height: "auto" }} transition={{ duration: 0.2 }}>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">Madrasa Slug</label>
             <Input type="text" value={slug} onChange={(event) => setSlug(event.target.value)} placeholder="e.g. noorul-islam" className="h-auto rounded-xl px-4 py-3" autoFocus required />
-            {/* <div className="mt-1.5 flex items-center justify-between"><p className="text-xs text-gray-400">Enter your madrasa's slug to proceed to login</p>{slug && <button type="button" onClick={onClearSlug} className="text-xs font-medium text-emerald-600 hover:underline">Change</button>}</div> */}
+            {/* <div className="mt-1.5 flex items-center justify-between"><p className="text-xs text-gray-400">Enter your madrasa's slug to proceed to login</p>{slug && <button type="button" onClick={onClearSlug} className="text-xs font-medium text-primary-600 hover:underline">Change</button>}</div> */}
           </motion.div>}
           {role && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <Button type="submit" disabled={!slug.trim()} className="h-auto w-full rounded-xl bg-emerald-600 py-3.5 text-sm font-semibold text-white hover:bg-emerald-700">
+            <Button type="submit" disabled={!slug.trim()} className="h-auto w-full rounded-xl bg-primary-600 py-3.5 text-sm font-semibold text-white hover:bg-primary-700">
               Continue to Login
              </Button>
           </motion.div>}

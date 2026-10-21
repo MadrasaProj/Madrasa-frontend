@@ -26,8 +26,8 @@ export function PageHeader({ title, subtitle, icon: Icon, back, backHref, action
           </button>
         )}
         {Icon && (
-          <div className="p-2 lg:p-2.5 bg-emerald-50 rounded-xl shrink-0">
-            <Icon className="w-5 h-5 lg:w-6 lg:h-6 text-emerald-600" />
+          <div className="p-2 lg:p-2.5 bg-primary-50 rounded-xl shrink-0">
+            <Icon className="w-5 h-5 lg:w-6 lg:h-6 text-primary-600" />
           </div>
         )}
         <div className="min-w-0 flex-1 flex items-center">

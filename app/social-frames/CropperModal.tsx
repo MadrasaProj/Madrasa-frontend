@@ -47,7 +47,7 @@ export default function CropperModal({ file, aspectRatio, onCrop, onCancel }: Cr
           <button
             onClick={handleCrop}
             disabled={!ready}
-            className="px-4 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+            className="px-4 py-2 text-sm rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50"
           >
             Apply
           </button>

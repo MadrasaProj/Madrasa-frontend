@@ -438,7 +438,7 @@ export default function StudentEditDrawer({
                         {active && (
                           <motion.div
                             layoutId="studentDrawerActiveTab"
-                            className="absolute inset-0 bg-emerald-600 rounded-xl shadow"
+                            className="absolute inset-0 bg-primary-600 rounded-xl shadow"
                             transition={{ type: "spring", stiffness: 350, damping: 30 }}
                           />
                         )}
@@ -481,7 +481,7 @@ export default function StudentEditDrawer({
                               <img src={uploadedPhotoUrl ?? (student as StudentRecord).photoUrl!} alt={(student as StudentRecord).name}
                                 className="w-16 h-16 rounded-2xl object-cover border-2 border-white shadow" />
                             ) : (
-                               <div className="w-16 h-16 rounded-2xl bg-emerald-600 text-white text-xl font-black flex items-center justify-center border-2 border-white shadow">
+                               <div className="w-16 h-16 rounded-2xl bg-primary-600 text-white text-xl font-black flex items-center justify-center border-2 border-white shadow">
                                  {(student as StudentRecord).name.charAt(0)}
                                </div>
                             )}
@@ -490,7 +490,7 @@ export default function StudentEditDrawer({
                             <p className="text-sm font-semibold text-gray-900">Profile Picture</p>
                             <p className="text-[11px] text-gray-500 mt-0.5">PNG, JPG up to 2MB.</p>
                             <label className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold
-                              bg-emerald-600 text-white rounded-lg cursor-pointer hover:bg-emerald-700 transition-colors active:scale-95">
+                              bg-primary-600 text-white rounded-lg cursor-pointer hover:bg-primary-700 transition-colors active:scale-95">
                               {uploadingPhoto ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                               {avatarPreview ? "Change Photo" : "Upload Photo"}
                               <input type="file" accept="image/*" disabled={uploadingPhoto} className="hidden"
@@ -509,8 +509,8 @@ export default function StudentEditDrawer({
                       )}
 
                       {!isEditing && (
-                        <div className="flex items-center gap-4 p-3.5 bg-emerald-50 rounded-2xl border border-emerald-100">
-                          <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                        <div className="flex items-center gap-4 p-3.5 bg-primary-50 rounded-2xl border border-primary-100">
+                          <div className="w-12 h-12 rounded-2xl bg-primary-600 text-white flex items-center justify-center shrink-0">
                             <Plus className="w-6 h-6" />
                           </div>
                           <div className="flex-1 min-w-0">
@@ -539,10 +539,10 @@ export default function StudentEditDrawer({
                               setFieldErrors((fe) => ({ ...fe, [key]: "" }));
                             }}
                             className={cn(
-                              "w-full px-3.5 py-2.5 text-sm bg-white border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/60 transition-colors",
+                              "w-full px-3.5 py-2.5 text-sm bg-white border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/60 transition-colors",
                               fieldErrors[key]
                                 ? "border-rose-300 focus:border-rose-400"
-                                : "border-gray-200 focus:border-emerald-400",
+                                : "border-gray-200 focus:border-primary-400",
                             )}
                           />
                           {fieldErrors[key] && (
@@ -561,7 +561,7 @@ export default function StudentEditDrawer({
                               className={cn(
                                 "flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-semibold cursor-pointer transition-colors",
                                 form.gender === g
-                                  ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                                  ? "border-primary-500 bg-primary-50 text-primary-700"
                                   : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50",
                               )}>
                               <input type="radio" name="gender" value={g} checked={form.gender === g}
@@ -579,7 +579,7 @@ export default function StudentEditDrawer({
                           </label>
                           <select value={form.classId}
                             onChange={(e) => setForm((f) => ({ ...f, classId: e.target.value }))}
-                            className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-emerald-400">
+                            className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/60 focus:border-primary-400">
                             <option value="">— No class —</option>
                             {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                           </select>
@@ -588,7 +588,7 @@ export default function StudentEditDrawer({
                           <label className="block text-xs font-semibold text-gray-600 mb-1.5">Blood Group</label>
                           <select value={form.bloodGroup}
                             onChange={(e) => setForm((f) => ({ ...f, bloodGroup: e.target.value }))}
-                            className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-emerald-400">
+                            className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/60 focus:border-primary-400">
                             <option value="">— Select —</option>
                             {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bg) => <option key={bg} value={bg}>{bg}</option>)}
                           </select>
@@ -604,22 +604,22 @@ export default function StudentEditDrawer({
                           <textarea value={form.address}
                             onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
                             rows={2} placeholder="House, street, area"
-                            className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-emerald-400 resize-none" />
+                            className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/60 focus:border-primary-400 resize-none" />
                           <div className="grid grid-cols-2 gap-2">
                             <input type="text" placeholder="City" value={form.city}
                               onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
-                              className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-emerald-400" />
+                              className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/60 focus:border-primary-400" />
                             <input type="text" placeholder="State" value={form.state}
                               onChange={(e) => setForm((f) => ({ ...f, state: e.target.value }))}
-                              className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-emerald-400" />
+                              className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/60 focus:border-primary-400" />
                           </div>
                           <div className="grid grid-cols-2 gap-2">
                             <input type="text" placeholder="Country" value={form.country}
                               onChange={(e) => setForm((f) => ({ ...f, country: e.target.value }))}
-                              className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-emerald-400" />
+                              className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/60 focus:border-primary-400" />
                             <input type="text" placeholder="Pincode" value={form.pincode}
                               onChange={(e) => setForm((f) => ({ ...f, pincode: e.target.value }))}
-                              className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-emerald-400" />
+                              className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/60 focus:border-primary-400" />
                           </div>
                         </div>
                       </div>
@@ -636,7 +636,7 @@ export default function StudentEditDrawer({
                       {/* Sibling detection alert banner */}
                       {checkingSiblings && (
                         <div className="p-3 bg-gray-50 border border-gray-200 rounded-2xl flex items-center gap-2.5 text-xs text-gray-600 animate-pulse">
-                          <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-primary-600" />
                           <span>Checking for linked family accounts…</span>
                         </div>
                       )}
@@ -682,8 +682,8 @@ export default function StudentEditDrawer({
                               setFieldErrors((fe) => ({ ...fe, [key]: "" }));
                             }}
                             className={cn(
-                              "w-full px-3.5 py-2.5 text-sm bg-white border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/60 transition-colors",
-                              fieldErrors[key] ? "border-rose-300 focus:border-rose-400" : "border-gray-200 focus:border-emerald-400",
+                              "w-full px-3.5 py-2.5 text-sm bg-white border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/60 transition-colors",
+                              fieldErrors[key] ? "border-rose-300 focus:border-rose-400" : "border-gray-200 focus:border-primary-400",
                             )} />
                           {fieldErrors[key] && <p className="text-[11px] text-rose-600 font-semibold mt-1 px-1">{fieldErrors[key]}</p>}
                         </div>
@@ -716,8 +716,8 @@ export default function StudentEditDrawer({
                               setFieldErrors((fe) => ({ ...fe, parentPassword: "" }));
                             }}
                             className={cn(
-                              "w-full px-3.5 py-2.5 pr-10 text-sm bg-white border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/60 transition-colors",
-                              fieldErrors.parentPassword ? "border-rose-300 focus:border-rose-400" : "border-gray-200 focus:border-emerald-400",
+                              "w-full px-3.5 py-2.5 pr-10 text-sm bg-white border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/60 transition-colors",
+                              fieldErrors.parentPassword ? "border-rose-300 focus:border-rose-400" : "border-gray-200 focus:border-primary-400",
                             )}
                           />
                           <button
@@ -739,7 +739,7 @@ export default function StudentEditDrawer({
                         <label className="block text-xs font-semibold text-gray-600 mb-1.5">Relation to student</label>
                         <select value={form.relationToStudent}
                           onChange={(e) => setForm((f) => ({ ...f, relationToStudent: e.target.value }))}
-                          className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-emerald-400">
+                          className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/60 focus:border-primary-400">
                           {["father", "mother", "guardian", "uncle", "aunt", "grandparent"].map((r) => (
                             <option key={r} value={r} className="capitalize">{r.charAt(0).toUpperCase() + r.slice(1)}</option>
                           ))}
@@ -774,8 +774,8 @@ export default function StudentEditDrawer({
                               setFieldErrors((fe) => ({ ...fe, [key]: "" }));
                             }}
                             className={cn(
-                              "w-full px-3.5 py-2.5 text-sm bg-white border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/60 transition-colors",
-                              fieldErrors[key] ? "border-rose-300 focus:border-rose-400" : "border-gray-200 focus:border-emerald-400",
+                              "w-full px-3.5 py-2.5 text-sm bg-white border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/60 transition-colors",
+                              fieldErrors[key] ? "border-rose-300 focus:border-rose-400" : "border-gray-200 focus:border-primary-400",
                             )} />
                           {fieldErrors[key] && <p className="text-[11px] text-rose-600 font-semibold mt-1 px-1">{fieldErrors[key]}</p>}
                         </div>
@@ -786,7 +786,7 @@ export default function StudentEditDrawer({
                         <textarea value={form.medicalNotes}
                           onChange={(e) => setForm((f) => ({ ...f, medicalNotes: e.target.value }))}
                           rows={3} placeholder="Allergies, conditions, medications…"
-                          className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-emerald-400 resize-none" />
+                          className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/60 focus:border-primary-400 resize-none" />
                       </div>
                     </motion.div>
                   )}
@@ -823,7 +823,7 @@ export default function StudentEditDrawer({
                           if (validateTab1()) setTab("parent");
                         }}
                         disabled={!form.name.trim() || !form.adno.trim()}
-                        className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-bold bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-colors active:scale-[0.98] shadow-lg disabled:opacity-60 cursor-pointer"
+                        className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-bold bg-primary-600 text-white rounded-2xl hover:bg-primary-700 transition-colors active:scale-[0.98] shadow-lg disabled:opacity-60 cursor-pointer"
                       >
                         <span>Next: Parent Details</span>
                         <ArrowRight className="w-4 h-4" />
@@ -844,7 +844,7 @@ export default function StudentEditDrawer({
                         onClick={() => {
                           if (validateTab2()) setTab("emergency");
                         }}
-                        className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-bold bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-colors active:scale-[0.98] shadow-lg cursor-pointer"
+                        className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-bold bg-primary-600 text-white rounded-2xl hover:bg-primary-700 transition-colors active:scale-[0.98] shadow-lg cursor-pointer"
                       >
                         <span>Next: Emergency Contact</span>
                         <ArrowRight className="w-4 h-4" />
@@ -864,7 +864,7 @@ export default function StudentEditDrawer({
                         type="button"
                         onClick={handleSubmit}
                         disabled={submitting || !form.name.trim() || !form.adno.trim()}
-                        className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-bold bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-colors active:scale-[0.98] shadow-lg disabled:opacity-60 cursor-pointer"
+                        className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-bold bg-primary-600 text-white rounded-2xl hover:bg-primary-700 transition-colors active:scale-[0.98] shadow-lg disabled:opacity-60 cursor-pointer"
                       >
                         {submitting ? (
                           <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</>
@@ -941,7 +941,7 @@ export default function StudentEditDrawer({
                   setShowPasswordConfirmModal(false);
                   await executeSave(true);
                 }}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-colors shadow-xs cursor-pointer disabled:opacity-60"
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold bg-primary-600 hover:bg-primary-700 text-white rounded-xl transition-colors shadow-xs cursor-pointer disabled:opacity-60"
               >
                 {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                 Yes, Update for All

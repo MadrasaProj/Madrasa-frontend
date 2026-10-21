@@ -61,7 +61,7 @@ const STATUS_META: Record<
   { label: string; color: string; bg: string }
 > = {
   PENDING: { label: "Pending", color: "text-amber-700", bg: "bg-amber-50" },
-  PAID: { label: "Paid", color: "text-emerald-700", bg: "bg-emerald-50" },
+  PAID: { label: "Paid", color: "text-primary-700", bg: "bg-primary-50" },
   PARTIAL: { label: "Partial", color: "text-blue-700", bg: "bg-blue-50" },
   OVERDUE: { label: "Overdue", color: "text-red-700", bg: "bg-red-50" },
   WAIVED: { label: "Waived", color: "text-gray-500", bg: "bg-gray-100" },
@@ -94,12 +94,12 @@ function ReceiptModal({
         animate={{ scale: 1, opacity: 1 }}
         className="relative bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden"
       >
-        <div className="bg-emerald-600 px-6 py-5 text-white text-center">
+        <div className="bg-primary-600 px-6 py-5 text-white text-center">
           <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-2">
             <Receipt className="w-6 h-6 text-white" />
           </div>
           <p className="font-bold text-lg">{receipt.client.name}</p>
-          <p className="text-emerald-100 text-xs uppercase tracking-widest mt-0.5">
+          <p className="text-primary-100 text-xs uppercase tracking-widest mt-0.5">
             Fee Receipt
           </p>
         </div>
@@ -132,7 +132,7 @@ function ReceiptModal({
           ))}
           <div className="border-t border-dashed border-gray-200 pt-3 flex justify-between items-center">
             <p className="font-bold text-gray-900">Amount Paid</p>
-            <p className="text-xl font-bold text-emerald-600">
+            <p className="text-xl font-bold text-primary-600">
               ₹{Number(receipt.paidAmount ?? 0).toLocaleString()}
             </p>
           </div>
@@ -146,7 +146,7 @@ function ReceiptModal({
           </button>
           <button
             onClick={() => window.print()}
-            className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5"
+            className="flex-1 py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5"
           >
             <Printer className="w-4 h-4" /> Print
           </button>
@@ -192,7 +192,7 @@ function RecordPaymentModal({
         exit={{ scale: 0.94, opacity: 0 }}
         className="relative bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden"
       >
-        <div className="bg-emerald-600 px-6 py-5 text-white">
+        <div className="bg-primary-600 px-6 py-5 text-white">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center shrink-0">
               <CheckCircle className="w-5 h-5 text-white" />
@@ -201,18 +201,18 @@ function RecordPaymentModal({
               <p className="font-bold text-base leading-tight">
                 Mark Payment
               </p>
-              <p className="text-emerald-100 text-xs mt-0.5">
+              <p className="text-primary-100 text-xs mt-0.5">
                 {payment.student.name}
               </p>
             </div>
           </div>
         </div>
         <div className="px-6 py-5 space-y-4">
-          <div className="flex items-center justify-between bg-emerald-50 rounded-xl px-4 py-3">
-            <p className="text-xs text-emerald-700 font-medium">
+          <div className="flex items-center justify-between bg-primary-50 rounded-xl px-4 py-3">
+            <p className="text-xs text-primary-700 font-medium">
               {payment.feeType.name}
             </p>
-            <p className="text-lg font-bold text-emerald-700">
+            <p className="text-lg font-bold text-primary-700">
               {payment.feeType.isDonation ? "Variable" : `₹${Number(payment.dueAmount).toLocaleString()}`}
             </p>
           </div>
@@ -229,7 +229,7 @@ function RecordPaymentModal({
             <select
               value={method}
               onChange={(e) => onMethodChange(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-emerald-400"
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-primary-400"
             >
               {PAYMENT_METHODS.map((m) => (
                 <option key={m} value={m}>
@@ -247,7 +247,7 @@ function RecordPaymentModal({
               value={reference}
               onChange={(e) => onReferenceChange(e.target.value)}
               placeholder="Optional"
-              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-400"
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary-400"
             />
           </div>
         </div>
@@ -261,7 +261,7 @@ function RecordPaymentModal({
           <button
             onClick={onConfirm}
             disabled={saving}
-            className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5"
+            className="flex-1 py-2.5 bg-primary-600 text-white rounded-xl text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5"
           >
             {saving ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -788,7 +788,7 @@ export default function AdminFeesPage() {
           <CreditCard className="w-10 h-10 mx-auto mb-3 opacity-30" />
           <p className="text-sm">
             No fee types yet.{" "}
-            <a href="/admin/fees/types" className="text-emerald-600 underline">
+            <a href="/admin/fees/types" className="text-primary-600 underline">
               Create one
             </a>{" "}
             to start collecting.
@@ -803,7 +803,7 @@ export default function AdminFeesPage() {
               className={cn(
                 "h-10 px-4 rounded-md text-xs font-semibold whitespace-nowrap transition-all shrink-0 inline-flex items-center gap-1.5",
                 activeTypeId === null
-                  ? "bg-emerald-600 text-white shadow-sm"
+                  ? "bg-primary-600 text-white shadow-sm"
                   : " text-gray-600 hover:bg-gray-200",
               )}
             >
@@ -820,7 +820,7 @@ export default function AdminFeesPage() {
                   className={cn(
                     "h-10 px-4 rounded-md text-xs font-semibold whitespace-nowrap transition-all shrink-0 inline-flex items-center gap-1.5",
                     isActive
-                      ? "bg-emerald-600 text-white shadow-sm"
+                      ? "bg-primary-600 text-white shadow-sm"
                       : "bg-gray-50 text-gray-600 hover:bg-gray-100",
                   )}
                 >
@@ -879,14 +879,14 @@ export default function AdminFeesPage() {
                       className={cn(
                         "w-full flex items-center gap-2.5 px-3 py-2.5 text-xs hover:bg-gray-50 text-left",
                         activeTypeId === null &&
-                          "bg-emerald-50 text-emerald-700 font-semibold",
+                          "bg-primary-50 text-primary-700 font-semibold",
                       )}
                     >
                       <Users
                         className={cn(
                           "w-4 h-4 shrink-0",
                           activeTypeId === null
-                            ? "text-emerald-600"
+                            ? "text-primary-600"
                             : "text-gray-400",
                         )}
                       />
@@ -904,13 +904,13 @@ export default function AdminFeesPage() {
                           className={cn(
                             "w-full flex items-center gap-2.5 px-3 py-2.5 text-xs hover:bg-gray-50 text-left",
                             isActive &&
-                              "bg-emerald-50 text-emerald-700 font-semibold",
+                              "bg-primary-50 text-primary-700 font-semibold",
                           )}
                         >
                           <CreditCard
                             className={cn(
                               "w-4 h-4 shrink-0",
-                              isActive ? "text-emerald-600" : "text-gray-400",
+                              isActive ? "text-primary-600" : "text-gray-400",
                             )}
                           />
                           <span className="flex-1 truncate">{ft.name}</span>
@@ -928,10 +928,10 @@ export default function AdminFeesPage() {
 
           {/* Selected type stats strip */}
           {activeType && (
-            <div className="rounded-2xl p-4 mb-5 border-2 bg-emerald-50 border-emerald-200">
+            <div className="rounded-2xl p-4 mb-5 border-2 bg-primary-50 border-primary-200">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <p className="font-bold text-emerald-700">
+                  <p className="font-bold text-primary-700">
                     {activeType.name}
                   </p>
                   {activeType.description && (
@@ -948,7 +948,7 @@ export default function AdminFeesPage() {
                     label: "Paid",
                     value: String(paidPayments.length),
                     sub: `₹${totalCollected.toLocaleString()}`,
-                    color: "text-emerald-600",
+                    color: "text-primary-600",
                   },
                   {
                     label: "Pending",
@@ -962,7 +962,7 @@ export default function AdminFeesPage() {
                     sub: "rate",
                     color:
                       pctCollected >= 80
-                        ? "text-emerald-600"
+                        ? "text-primary-600"
                         : "text-amber-600",
                   },
                 ].map((s) => (
@@ -990,7 +990,7 @@ export default function AdminFeesPage() {
                       initial={{ width: 0 }}
                       animate={{ width: `${pctCollected}%` }}
                       transition={{ duration: 0.5, ease: "easeOut" }}
-                      className="h-full rounded-full bg-emerald-600"
+                      className="h-full rounded-full bg-primary-600"
                     />
                   </div>
                 </div>
@@ -1007,7 +1007,7 @@ export default function AdminFeesPage() {
                 className={cn(
                   "px-4 py-2 rounded-lg text-sm font-semibold capitalize transition-all inline-flex items-center gap-1.5",
                   tab === t
-                    ? "bg-white shadow-sm text-emerald-700"
+                    ? "bg-white shadow-sm text-primary-700"
                     : "text-gray-500",
                 )}
               >
@@ -1030,7 +1030,7 @@ export default function AdminFeesPage() {
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search student name or adm no…"
-                    className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:border-emerald-400"
+                    className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:border-primary-400"
                   />
                 </div>
                 <select
@@ -1039,7 +1039,7 @@ export default function AdminFeesPage() {
                     setFilterClass(e.target.value);
                     setPaySkip(0);
                   }}
-                  className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-emerald-400"
+                  className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-primary-400"
                 >
                   <option value="">All Classes</option>
                   {classes.map((c) => (
@@ -1082,7 +1082,7 @@ export default function AdminFeesPage() {
                           className={cn(
                             "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0",
                             p.status === "PAID"
-                              ? "bg-emerald-100 text-emerald-700"
+                              ? "bg-primary-100 text-primary-700"
                               : "bg-amber-100 text-amber-700",
                           )}
                         >
@@ -1124,7 +1124,7 @@ export default function AdminFeesPage() {
                         <span
                           className={cn(
                             "text-sm",
-                            isPaid ? "text-emerald-600" : "text-amber-600",
+                            isPaid ? "text-primary-600" : "text-amber-600",
                           )}
                         >
                           {isPaid && p.paidAt
@@ -1249,7 +1249,7 @@ export default function AdminFeesPage() {
                               className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
                               title="Mark paid"
                             >
-                              <CheckCircle className="w-3.5 h-3.5 text-gray-400 hover:text-emerald-500" />
+                              <CheckCircle className="w-3.5 h-3.5 text-gray-400 hover:text-primary-500" />
                             </button>
                             <button
                               onClick={() => {
@@ -1294,7 +1294,7 @@ export default function AdminFeesPage() {
                           className={cn(
                             "w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0",
                             p.status === "PAID"
-                              ? "bg-emerald-100 text-emerald-700"
+                              ? "bg-primary-100 text-primary-700"
                               : "bg-amber-100 text-amber-700",
                           )}
                         >
@@ -1330,7 +1330,7 @@ export default function AdminFeesPage() {
                       </div>
                       <div className="flex justify-between text-[10px]">
                         {p.status === "PAID" && p.paidAt ? (
-                          <span className="text-emerald-600">
+                          <span className="text-primary-600">
                             Paid:{" "}
                             {new Date(p.paidAt).toLocaleDateString("en-GB")}
                           </span>
@@ -1479,18 +1479,18 @@ export default function AdminFeesPage() {
             <div className="space-y-4">
               {/* Totals: students vs teachers */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="rounded-2xl p-4 border-2 bg-emerald-50 border-emerald-200">
+                <div className="rounded-2xl p-4 border-2 bg-primary-50 border-primary-200">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-primary-600">
                       From Students
                     </p>
-                    <Users className="w-4 h-4 text-emerald-500" />
+                    <Users className="w-4 h-4 text-primary-500" />
                   </div>
-                  <p className="text-2xl font-bold text-emerald-700">
+                  <p className="text-2xl font-bold text-primary-700">
                     ₹
                     {(txStudentTotals?.totalCollected ?? 0).toLocaleString()}
                   </p>
-                  <p className="text-[10px] text-emerald-600 mt-1">
+                  <p className="text-[10px] text-primary-600 mt-1">
                     Total collected
                   </p>
                   <div className="grid grid-cols-2 gap-2 mt-3">
@@ -1510,17 +1510,17 @@ export default function AdminFeesPage() {
                     </div>
                   </div>
                 </div>
-                <div className="rounded-2xl p-4 border-2 bg-emerald-50 border-emerald-200">
+                <div className="rounded-2xl p-4 border-2 bg-primary-50 border-primary-200">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-primary-600">
                       From Teachers
                     </p>
-                    <ArrowRightLeft className="w-4 h-4 text-emerald-500" />
+                    <ArrowRightLeft className="w-4 h-4 text-primary-500" />
                   </div>
-                  <p className="text-2xl font-bold text-emerald-700">
+                  <p className="text-2xl font-bold text-primary-700">
                     ₹{(txSummary?.totalAmount ?? 0).toLocaleString()}
                   </p>
-                  <p className="text-[10px] text-emerald-600 mt-1">
+                  <p className="text-[10px] text-primary-600 mt-1">
                     {txSummary?.transactionCount ?? 0} transactions across{" "}
                     {txSummary?.byTeacher.length ?? 0} teachers
                   </p>
@@ -1551,7 +1551,7 @@ export default function AdminFeesPage() {
                           className="bg-white p-4 flex flex-col gap-2"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm shrink-0">
+                            <div className="w-10 h-10 rounded-xl bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-sm shrink-0">
                               {(b.teacherName ?? "?")
                                 .trim()
                                 .charAt(0)
@@ -1566,13 +1566,13 @@ export default function AdminFeesPage() {
                                 {b.count === 1 ? "" : "s"}
                               </p>
                             </div>
-                            <p className="text-sm font-bold text-emerald-700 shrink-0">
+                            <p className="text-sm font-bold text-primary-700 shrink-0">
                               ₹{b.totalAmount.toLocaleString()}
                             </p>
                           </div>
                           <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-emerald-500 rounded-full transition-all"
+                              className="h-full bg-primary-500 rounded-full transition-all"
                               style={{ width: `${pct}%` }}
                             />
                           </div>
@@ -1591,7 +1591,7 @@ export default function AdminFeesPage() {
                     setTxTeacherId(e.target.value);
                     setTxSkip(0);
                   }}
-                  className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-emerald-400"
+                  className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-primary-400"
                 >
                   <option value="">All Teachers</option>
                   {Object.entries(teachersOnly).map(([id, name]) => (
@@ -1607,7 +1607,7 @@ export default function AdminFeesPage() {
                     setTxFromDate(e.target.value);
                     setTxSkip(0);
                   }}
-                  className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-emerald-400"
+                  className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-primary-400"
                 />
                 <input
                   type="date"
@@ -1616,7 +1616,7 @@ export default function AdminFeesPage() {
                     setTxToDate(e.target.value);
                     setTxSkip(0);
                   }}
-                  className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-emerald-400"
+                  className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-primary-400"
                 />
                 <button
                   onClick={() => {
@@ -1629,7 +1629,7 @@ export default function AdminFeesPage() {
                     setTxFormError(null);
                     setTxCreating(true);
                   }}
-                  className="ml-auto px-3 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold inline-flex items-center gap-1.5"
+                  className="ml-auto px-3 py-2.5 rounded-xl bg-primary-600 text-white text-sm font-semibold inline-flex items-center gap-1.5"
                 >
                   <Plus className="w-4 h-4" /> New Transaction
                 </button>
@@ -1681,7 +1681,7 @@ export default function AdminFeesPage() {
                     header: "Amount",
                     className: "text-right",
                     render: (t: FeeTransaction) => (
-                      <span className="text-sm font-bold text-emerald-700">
+                      <span className="text-sm font-bold text-primary-700">
                         ₹{Number(t.amount).toLocaleString()}
                       </span>
                     ),
@@ -1735,7 +1735,7 @@ export default function AdminFeesPage() {
                         </p>
                       </div>
                       <div className="text-right shrink-0 flex items-center gap-1.5">
-                        <span className="text-sm font-bold text-emerald-700">
+                        <span className="text-sm font-bold text-primary-700">
                           ₹{Number(t.amount).toLocaleString()}
                         </span>
                         <button
@@ -1810,14 +1810,14 @@ export default function AdminFeesPage() {
                     ).length;
                     return (
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-100">
-                          <p className="text-xs text-emerald-600 font-semibold">
+                        <div className="bg-primary-50 rounded-2xl p-4 border border-primary-100">
+                          <p className="text-xs text-primary-600 font-semibold">
                             Collected
                           </p>
-                          <p className="text-lg font-bold text-emerald-800 mt-1">
+                          <p className="text-lg font-bold text-primary-800 mt-1">
                             ₹{totalPaid.toLocaleString()}
                           </p>
-                          <p className="text-[10px] text-emerald-500 mt-0.5">
+                          <p className="text-[10px] text-primary-500 mt-0.5">
                             {paidCount} students
                           </p>
                         </div>
@@ -1936,7 +1936,7 @@ export default function AdminFeesPage() {
                           <Bar
                             dataKey="paid"
                             name="Collected"
-                            fill="#059669"
+                            fill="var(--primary)"
                             radius={[4, 4, 0, 0]}
                           />
                           <Bar
@@ -1983,7 +1983,7 @@ export default function AdminFeesPage() {
                                     className={cn(
                                       "h-full rounded-full",
                                       s.status === "PAID"
-                                        ? "bg-emerald-500"
+                                        ? "bg-primary-500"
                                         : s.status === "OVERDUE"
                                           ? "bg-red-400"
                                           : "bg-amber-400",
@@ -2148,10 +2148,10 @@ export default function AdminFeesPage() {
                 className="bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md shadow-xl overflow-hidden max-h-[90vh] flex flex-col"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="sm:hidden flex justify-center pt-2 pb-1 bg-emerald-600">
+                <div className="sm:hidden flex justify-center pt-2 pb-1 bg-primary-600">
                   <div className="w-10 h-1.5 rounded-full bg-gray-200" />
                 </div>
-                <div className="bg-emerald-600 px-5 py-4 text-white">
+                <div className="bg-primary-600 px-5 py-4 text-white">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
                       <ArrowRightLeft className="w-5 h-5 text-white" />
@@ -2160,7 +2160,7 @@ export default function AdminFeesPage() {
                       <p className="font-bold">
                         New Teacher → Admin Transaction
                       </p>
-                      <p className="text-xs text-emerald-50/90">
+                      <p className="text-xs text-primary-50/90">
                         Record an amount handed over by a teacher
                       </p>
                     </div>
@@ -2179,7 +2179,7 @@ export default function AdminFeesPage() {
                           setTxForm((f) => ({ ...f, amount: e.target.value }))
                         }
                         placeholder="0"
-                        className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500"
+                        className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary-500"
                       />
                     </div>
                     <div>
@@ -2192,7 +2192,7 @@ export default function AdminFeesPage() {
                         onChange={(e) =>
                           setTxForm((f) => ({ ...f, date: e.target.value }))
                         }
-                        className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500"
+                        className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary-500"
                       />
                     </div>
                   </div>
@@ -2205,7 +2205,7 @@ export default function AdminFeesPage() {
                       onChange={(e) =>
                         setTxForm((f) => ({ ...f, feeTypeId: e.target.value }))
                       }
-                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-emerald-500"
+                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-primary-500"
                     >
                       <option value="">Select fee type…</option>
                       {feeTypes.map((ft) => (
@@ -2224,7 +2224,7 @@ export default function AdminFeesPage() {
                       onChange={(e) =>
                         setTxForm((f) => ({ ...f, teacherId: e.target.value }))
                       }
-                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-emerald-500"
+                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-primary-500"
                     >
                       <option value="">Select teacher…</option>
                       {Object.entries(teachersOnly).map(([id, name]) => (
@@ -2234,10 +2234,10 @@ export default function AdminFeesPage() {
                       ))}
                     </select>
                   </div>
-                  <div className="rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2.5 text-xs text-emerald-800">
+                  <div className="rounded-xl bg-primary-50 border border-primary-100 px-3 py-2.5 text-xs text-primary-800">
                     <span className="font-semibold">Receiving Admin:</span>{" "}
                     {user?.name ?? "You"}{" "}
-                    <span className="text-emerald-600/80">
+                    <span className="text-primary-600/80">
                       (this device's logged-in admin)
                     </span>
                   </div>
@@ -2294,7 +2294,7 @@ export default function AdminFeesPage() {
                         setTxFormError((e as Error).message);
                       }
                     }}
-                    className="flex-1 py-3 rounded-xl bg-emerald-600 text-white text-sm font-bold flex items-center justify-center gap-1.5"
+                    className="flex-1 py-3 rounded-xl bg-primary-600 text-white text-sm font-bold flex items-center justify-center gap-1.5"
                   >
                     <CheckCircle className="w-4 h-4" /> Save Transaction
                   </button>

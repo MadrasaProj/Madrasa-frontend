@@ -58,7 +58,7 @@ const STATUS_COLORS: Record<string, string> = {
   TRIAL_CREATED:   "bg-amber-50 text-amber-700",
   NEGOTIATION:     "bg-orange-50 text-orange-700",
   PAYMENT_PENDING: "bg-rose-50 text-rose-700",
-  WON:             "bg-emerald-100 text-emerald-800",
+  WON:             "bg-primary-100 text-primary-800",
   LOST:            "bg-red-100 text-red-700",
   ON_HOLD:         "bg-gray-200 text-gray-600",
 };
@@ -67,7 +67,7 @@ const SCORE_COLORS: Record<string, string> = {
   COLD:           "bg-blue-50 text-blue-700 border-blue-100",
   WARM:           "bg-amber-50 text-amber-700 border-amber-100",
   HOT:            "bg-orange-50 text-orange-700 border-orange-100",
-  READY_TO_CLOSE: "bg-emerald-50 text-emerald-800 border-emerald-100",
+  READY_TO_CLOSE: "bg-primary-50 text-primary-800 border-primary-100",
 };
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -385,8 +385,8 @@ export default function CrmLeadsPage() {
                     onClick={() => handleUpdateStage(step.statuses[0])}
                     className={cn(
                       "px-3 py-1.5 text-[10px] font-bold rounded-xl transition-all border",
-                      isActive ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" :
-                      isDone ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                      isActive ? "bg-primary-600 text-white border-primary-600 shadow-sm" :
+                      isDone ? "bg-primary-50 text-primary-700 border-primary-200" :
                       "bg-white text-gray-400 border-gray-100 hover:border-gray-300"
                     )}
                   >
@@ -406,7 +406,7 @@ export default function CrmLeadsPage() {
             <select
               value={lead.status}
               onChange={e => handleUpdateStage(e.target.value)}
-              className="bg-white border border-gray-100 text-xs font-semibold py-1 px-2 rounded-lg focus:outline-none focus:border-emerald-600 text-gray-700 flex-1"
+              className="bg-white border border-gray-100 text-xs font-semibold py-1 px-2 rounded-lg focus:outline-none focus:border-primary-600 text-gray-700 flex-1"
             >
               {LEAD_STATUSES.map(s => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
             </select>
@@ -456,7 +456,7 @@ export default function CrmLeadsPage() {
             </button>
           )}
           {isWon && (
-            <div className="flex flex-col items-center p-3 rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-center gap-1.5">
+            <div className="flex flex-col items-center p-3 rounded-2xl border border-primary-200 bg-primary-50 text-primary-700 text-center gap-1.5">
               <CheckCircle className="w-4 h-4" />
               <span className="text-[10px] font-bold">Won ✓</span>
             </div>
@@ -657,7 +657,7 @@ export default function CrmLeadsPage() {
                     />
                   </div>
                 </div>
-                <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 text-xs text-emerald-800">
+                <div className="bg-primary-50 border border-primary-100 rounded-xl p-3 text-xs text-primary-800">
                   <p className="font-bold mb-0.5">Commission Summary</p>
                   <p className="text-[10px]">
                     {convertForm.commissionPercentage}% of ₹{convertForm.amountPaid.toLocaleString()} = 
@@ -718,7 +718,7 @@ export default function CrmLeadsPage() {
                 onClick={() => copyToClipboard(c.phone, c.phone)}
                 className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
               >
-                {copiedText === c.phone ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                {copiedText === c.phone ? <Check className="w-3.5 h-3.5 text-primary-600" /> : <Copy className="w-3.5 h-3.5" />}
               </button>
             </div>
           ))}
@@ -726,18 +726,18 @@ export default function CrmLeadsPage() {
 
         {/* ── Attribution Split ── */}
         {lead.contributors.length > 0 && (
-          <div className="bg-emerald-50/40 border border-emerald-100 rounded-2xl p-4 space-y-2">
-            <h3 className="text-[10px] font-black text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+          <div className="bg-primary-50/40 border border-primary-100 rounded-2xl p-4 space-y-2">
+            <h3 className="text-[10px] font-black text-primary-800 uppercase tracking-wider flex items-center gap-1.5">
               <Award className="w-3.5 h-3.5" /> Commission Attribution
             </h3>
             <div className="space-y-1">
               {lead.contributors.map(c => (
-                <div key={c.id} className="flex justify-between items-center text-xs py-1 border-b border-emerald-100/50 last:border-0">
+                <div key={c.id} className="flex justify-between items-center text-xs py-1 border-b border-primary-100/50 last:border-0">
                   <div>
                     <span className="font-bold text-gray-800">{c.user?.name ?? "—"}</span>
                     <span className="ml-1.5 text-[9px] text-gray-400">{c.role.replace(/_/g, " ")}</span>
                   </div>
-                  <span className="font-black text-emerald-800">{c.percentage}%</span>
+                  <span className="font-black text-primary-800">{c.percentage}%</span>
                 </div>
               ))}
               <p className="text-[9px] text-gray-400 pt-1">Total commission rate: {lead.commissionPercentage ?? 20}%</p>
@@ -752,13 +752,13 @@ export default function CrmLeadsPage() {
               Onboarding — {Math.round(lead.onboardingProject.progress)}%
             </h3>
             <div className="w-full bg-gray-100 rounded-full h-1.5">
-              <div className="bg-emerald-500 h-1.5 rounded-full transition-all" style={{ width: `${lead.onboardingProject.progress}%` }} />
+              <div className="bg-primary-500 h-1.5 rounded-full transition-all" style={{ width: `${lead.onboardingProject.progress}%` }} />
             </div>
             <div className="space-y-1 pt-1">
               {lead.onboardingProject.checklist.map(item => (
                 <div key={item.id} className="flex items-center gap-2 text-xs py-1">
                   <div className={cn("w-4 h-4 rounded-full flex items-center justify-center shrink-0",
-                    item.status === "COMPLETED" ? "bg-emerald-500" : "border-2 border-gray-200"
+                    item.status === "COMPLETED" ? "bg-primary-500" : "border-2 border-gray-200"
                   )}>
                     {item.status === "COMPLETED" && <Check className="w-2.5 h-2.5 text-white" />}
                   </div>
@@ -780,7 +780,7 @@ export default function CrmLeadsPage() {
           {lead.timeline.map(item => (
             <div key={item.id} className="flex gap-3 text-xs">
               <div className="flex flex-col items-center">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1 shrink-0" />
+                <div className="w-2 h-2 rounded-full bg-primary-500 mt-1 shrink-0" />
                 <div className="w-px flex-1 bg-gray-100 mt-1" />
               </div>
               <div className="pb-3 flex-1">
@@ -826,7 +826,7 @@ export default function CrmLeadsPage() {
           </div>
           <button
             onClick={() => setShowAddDrawer(true)}
-            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-4 py-2.5 rounded-xl transition-all shadow-sm active:scale-95"
+            className="flex items-center gap-1.5 bg-primary-600 hover:bg-primary-700 text-white font-bold text-sm px-4 py-2.5 rounded-xl transition-all shadow-sm active:scale-95"
           >
             <Plus className="w-4 h-4" /> Add Lead
           </button>
@@ -841,7 +841,7 @@ export default function CrmLeadsPage() {
               exit={{ opacity: 0, y: -8 }}
               className={cn(
                 "rounded-2xl p-3.5 mb-4 text-sm flex items-start justify-between gap-3",
-                error ? "bg-rose-50 border border-rose-200 text-rose-800" : "bg-emerald-50 border border-emerald-200 text-emerald-800"
+                error ? "bg-rose-50 border border-rose-200 text-rose-800" : "bg-primary-50 border border-primary-200 text-primary-800"
               )}
             >
               <span className="leading-snug">{error || successMsg}</span>
@@ -859,7 +859,7 @@ export default function CrmLeadsPage() {
             <input
               type="text" value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search by name, place, district..."
-              className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-sm placeholder-gray-400 focus:outline-none focus:border-emerald-500"
+              className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-sm placeholder-gray-400 focus:outline-none focus:border-primary-500"
             />
           </div>
           <div className="flex gap-2 overflow-x-auto scrollbar-none pb-0.5">
@@ -871,13 +871,13 @@ export default function CrmLeadsPage() {
                 className={cn(
                   "shrink-0 px-3 py-2 text-[10px] font-bold rounded-xl border transition-all flex items-center gap-1.5",
                   activeStage === item.key
-                    ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                    ? "bg-primary-600 text-white border-primary-600 shadow-sm"
                     : "bg-white text-gray-500 border-gray-100 hover:bg-gray-50"
                 )}
               >
                 {item.label}
                 <span className={cn("px-1.5 py-0.5 rounded-full text-[9px] font-bold",
-                  activeStage === item.key ? "bg-emerald-700 text-white" : "bg-gray-100 text-gray-400"
+                  activeStage === item.key ? "bg-primary-700 text-white" : "bg-gray-100 text-gray-400"
                 )}>{item.count}</span>
               </button>
             ))}
@@ -887,7 +887,7 @@ export default function CrmLeadsPage() {
         {/* Loading */}
         {loading && (
           <div className="flex flex-col items-center justify-center py-20 gap-2">
-            <Loader2 className="w-7 h-7 animate-spin text-emerald-600" />
+            <Loader2 className="w-7 h-7 animate-spin text-primary-600" />
             <p className="text-gray-400 text-xs">Loading leads...</p>
           </div>
         )}
@@ -904,7 +904,7 @@ export default function CrmLeadsPage() {
                 <span className="text-xs font-black text-gray-500 uppercase tracking-wider">
                   {activeStage === "ALL" ? "All Leads" : activeStage.replace(/_/g, " ")}
                 </span>
-                <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-100">
+                <span className="text-[10px] font-bold bg-primary-50 text-primary-700 px-2 py-0.5 rounded-full border border-primary-100">
                   {filteredLeads.length}
                 </span>
               </div>
@@ -913,7 +913,7 @@ export default function CrmLeadsPage() {
                   <div className="flex flex-col items-center justify-center py-16 gap-2 text-center px-4">
                     <p className="text-xs text-gray-400">No leads in this stage.</p>
                     <button onClick={() => setShowAddDrawer(true)}
-                      className="text-[10px] font-bold text-emerald-600 hover:underline">+ Add a lead</button>
+                      className="text-[10px] font-bold text-primary-600 hover:underline">+ Add a lead</button>
                   </div>
                 )}
                 {filteredLeads.map(l => {
@@ -926,8 +926,8 @@ export default function CrmLeadsPage() {
                       className={cn(
                         "p-3.5 rounded-xl border cursor-pointer transition-all space-y-2",
                         isSelected
-                          ? "bg-emerald-50/40 border-emerald-400 shadow-sm"
-                          : "bg-white border-gray-100 hover:border-emerald-300 hover:shadow-sm"
+                          ? "bg-primary-50/40 border-primary-400 shadow-sm"
+                          : "bg-white border-gray-100 hover:border-primary-300 hover:shadow-sm"
                       )}
                     >
                       <div className="flex justify-between items-start gap-1.5">
@@ -956,7 +956,7 @@ export default function CrmLeadsPage() {
             <div className="hidden md:flex md:col-span-8 lg:col-span-8 bg-white border border-gray-100 rounded-2xl shadow-sm h-[75vh] flex-col overflow-hidden">
               {selectedLeadId && detailLoading && (
                 <div className="flex-1 flex items-center justify-center gap-2 flex-col">
-                  <Loader2 className="w-7 h-7 animate-spin text-emerald-600" />
+                  <Loader2 className="w-7 h-7 animate-spin text-primary-600" />
                   <p className="text-xs text-gray-400">Loading lead details...</p>
                 </div>
               )}
@@ -986,7 +986,7 @@ export default function CrmLeadsPage() {
               )}
               {!selectedLeadId && (
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center gap-4">
-                  <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500">
+                  <div className="w-14 h-14 rounded-full bg-primary-50 flex items-center justify-center text-primary-500">
                     <Users className="w-7 h-7" />
                   </div>
                   <div className="space-y-1">
@@ -1000,9 +1000,9 @@ export default function CrmLeadsPage() {
                       <p className="text-[9px] text-gray-400 uppercase font-bold">Active</p>
                       <p className="text-xl font-black text-gray-700">{leads.filter(l => !["WON","LOST"].includes(l.status)).length}</p>
                     </div>
-                    <div className="p-3 bg-emerald-50 rounded-xl text-center">
-                      <p className="text-[9px] text-emerald-700 uppercase font-bold">Won</p>
-                      <p className="text-xl font-black text-emerald-800">{leads.filter(l => l.status === "WON").length}</p>
+                    <div className="p-3 bg-primary-50 rounded-xl text-center">
+                      <p className="text-[9px] text-primary-700 uppercase font-bold">Won</p>
+                      <p className="text-xl font-black text-primary-800">{leads.filter(l => l.status === "WON").length}</p>
                     </div>
                     <div className="p-3 bg-rose-50 rounded-xl text-center">
                       <p className="text-[9px] text-rose-700 uppercase font-bold">Lost</p>
@@ -1033,7 +1033,7 @@ export default function CrmLeadsPage() {
                 <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mt-3 mb-0.5" />
                 {detailLoading && (
                   <div className="flex items-center justify-center py-16">
-                    <Loader2 className="w-7 h-7 animate-spin text-emerald-600" />
+                    <Loader2 className="w-7 h-7 animate-spin text-primary-600" />
                   </div>
                 )}
                 {!detailLoading && selectedLead && (
@@ -1090,7 +1090,7 @@ export default function CrmLeadsPage() {
                       <input required type="text" value={newLeadForm.name}
                         onChange={e => setNewLeadForm(p => ({ ...p, name: e.target.value }))}
                         placeholder="e.g. Darul Uloom Kozhikode"
-                        className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-sm focus:outline-none focus:border-emerald-500"
+                        className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-sm focus:outline-none focus:border-primary-500"
                       />
                     </div>
 
@@ -1182,8 +1182,8 @@ export default function CrmLeadsPage() {
 
                     {/* Attribution Split (managers only) */}
                     {isSuperOrManager && (
-                      <div className="bg-emerald-50/50 p-4 rounded-2xl space-y-3 border border-emerald-100">
-                        <h4 className="text-xs font-bold text-emerald-800">Attribution & Commission Split</h4>
+                      <div className="bg-primary-50/50 p-4 rounded-2xl space-y-3 border border-primary-100">
+                        <h4 className="text-xs font-bold text-primary-800">Attribution & Commission Split</h4>
                         <div>
                           <label className="block text-[9px] text-gray-400 mb-1">Total Commission Rate (%)</label>
                           <input type="number" value={newLeadForm.commissionPercentage} min={1} max={100}
@@ -1234,7 +1234,7 @@ export default function CrmLeadsPage() {
                           <span className={cn(
                             "font-bold",
                             Math.abs(newLeadForm.contributors.reduce((s, c) => s + Number(c.percentage), 0) - newLeadForm.commissionPercentage) < 0.01
-                              ? "text-emerald-700" : "text-rose-600"
+                              ? "text-primary-700" : "text-rose-600"
                           )}>
                             {newLeadForm.contributors.reduce((s, c) => s + Number(c.percentage), 0)}% / {newLeadForm.commissionPercentage}%
                           </span>
@@ -1242,7 +1242,7 @@ export default function CrmLeadsPage() {
                         {newLeadForm.contributors.length < 3 && (
                           <button type="button"
                             onClick={() => setNewLeadForm(p => ({ ...p, contributors: [...p.contributors, { userId: "", percentage: 0 }] }))}
-                            className="text-[10px] font-bold text-emerald-600 hover:underline"
+                            className="text-[10px] font-bold text-primary-600 hover:underline"
                           >
                             + Add Contributor
                           </button>
@@ -1251,7 +1251,7 @@ export default function CrmLeadsPage() {
                     )}
 
                     <button type="submit" disabled={actionLoading}
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm py-3 rounded-xl transition-all flex items-center justify-center gap-2">
+                      className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold text-sm py-3 rounded-xl transition-all flex items-center justify-center gap-2">
                       {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                       Create Lead
                     </button>

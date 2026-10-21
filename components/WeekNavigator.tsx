@@ -47,7 +47,7 @@ export function WeekNavigator({
             type="button"
             onClick={onDownloadReport}
             disabled={downloadDisabled}
-            className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
+            className="flex items-center gap-1.5 rounded-xl bg-primary-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
           >
             <Download className="h-3.5 w-3.5" /> Download PDF
           </button>

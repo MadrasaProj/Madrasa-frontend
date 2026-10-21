@@ -24,9 +24,9 @@ const STATUS_CONFIG: Record<
 > = {
   PRESENT: {
     short: "P",
-    bg: "bg-emerald-100",
-    text: "text-emerald-700",
-    rowBg: "border-emerald-200 bg-emerald-50/40",
+    bg: "bg-primary-100",
+    text: "text-primary-700",
+    rowBg: "border-primary-200 bg-primary-50/40",
   },
   ABSENT: {
     short: "A",
@@ -132,7 +132,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
               {
                 key: "PRESENT",
                 label: t("teacherPages", "present", lang),
-                cls: "text-emerald-600",
+                cls: "text-primary-600",
               },
               {
                 key: "ABSENT",
@@ -170,7 +170,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
               <p className="text-[10px] font-semibold text-gray-500 truncate">
                 {t("teacherPages", "attendanceRateLabel", lang)}
               </p>
-              <p className="mt-1 text-2xl font-bold tracking-tight text-emerald-600">
+              <p className="mt-1 text-2xl font-bold tracking-tight text-primary-600">
                 {pct}%
               </p>
             </div>
@@ -241,7 +241,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
                 className={cn(
                   "flex-1 border-0 bg-gray-50",
                   status === "PRESENT" &&
-                    "text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700",
+                    "text-primary-600 hover:bg-primary-50 hover:text-primary-700",
                   status === "ABSENT" &&
                     "text-red-600 hover:bg-red-50 hover:text-red-700",
                   status === "LEAVE" &&
@@ -323,7 +323,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
                         "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0",
                         student.gender === "FEMALE"
                           ? "bg-pink-100 text-pink-700"
-                          : "bg-emerald-100 text-emerald-700",
+                          : "bg-primary-100 text-primary-700",
                       )}
                     >
                       {student.name.charAt(0)}
@@ -347,7 +347,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
                               ? [
                                   "border-transparent text-white hover:text-white",
                                   nextStatus === "PRESENT" &&
-                                    "bg-emerald-600 hover:bg-emerald-700",
+                                    "bg-primary-600 hover:bg-primary-700",
                                   nextStatus === "ABSENT" &&
                                     "bg-red-600 hover:bg-red-700",
                                   nextStatus === "LEAVE" &&
@@ -372,7 +372,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
                         onChange={(event) =>
                           setNotes(student.id, event.target.value)
                         }
-                        className="w-full px-3 py-2 rounded-xl bg-white border border-gray-200 text-xs text-gray-700 focus:outline-none focus:border-emerald-400"
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-gray-200 text-xs text-gray-700 focus:outline-none focus:border-primary-400"
                       />
                     </div>
                   )}
@@ -404,7 +404,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
                 onClick={handleSave}
                 disabled={saving}
                 size="lg"
-                className="  bg-emerald-600 text-white hover:bg-emerald-700"
+                className="  bg-primary-600 text-white hover:bg-primary-700"
               >
                 {saving ? (
                   <>

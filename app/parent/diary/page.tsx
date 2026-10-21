@@ -47,7 +47,7 @@ const themes: Record<string, { bg: string; text: string; border: string; chip: s
   default: { bg: "bg-white",          text: "text-gray-800",   border: "border-gray-200",       chip: "bg-gray-100 text-gray-500",    label: "Clean",   font: "system-ui, sans-serif",          mlFont: "'Noto Sans Malayalam', sans-serif" },
   classic: { bg: "bg-amber-50",       text: "text-amber-900",  border: "border-amber-300/60",    chip: "bg-amber-200/50 text-amber-800", label: "Classic", font: "'Merriweather', serif",            mlFont: "'Noto Serif Malayalam', serif" },
   vintage: { bg: "bg-orange-50",      text: "text-orange-900", border: "border-orange-300/60",   chip: "bg-orange-200/50 text-orange-800", label: "Vintage", font: "'Playfair Display', serif",        mlFont: "'Noto Serif Malayalam', serif" },
-  nature:  { bg: "bg-emerald-50",     text: "text-emerald-900", border: "border-emerald-300/60", chip: "bg-emerald-200/50 text-emerald-800", label: "Nature", font: "'EB Garamond', serif",             mlFont: "'Noto Serif Malayalam', serif" },
+  nature:  { bg: "bg-primary-50",     text: "text-primary-900", border: "border-primary-300/60", chip: "bg-primary-200/50 text-primary-800", label: "Nature", font: "'EB Garamond', serif",             mlFont: "'Noto Serif Malayalam', serif" },
   ocean:   { bg: "bg-blue-50",        text: "text-blue-900",   border: "border-blue-300/60",     chip: "bg-blue-200/50 text-blue-800",  label: "Ocean",   font: "'DM Sans', sans-serif",            mlFont: "'Manjari', sans-serif" },
   dreamy:  { bg: "bg-purple-50",      text: "text-purple-900", border: "border-purple-300/60",   chip: "bg-purple-200/50 text-purple-800", label: "Dreamy", font: "'Nunito', sans-serif",             mlFont: "'Baloo Chettan 2', sans-serif" },
   cozy:    { bg: "bg-pink-50",        text: "text-pink-900",   border: "border-pink-300/60",     chip: "bg-pink-200/50 text-pink-800",  label: "Cozy",    font: "'Cormorant Garamond', serif",      mlFont: "'Noto Serif Malayalam', serif" },
@@ -56,7 +56,7 @@ const themes: Record<string, { bg: string; text: string; border: string; chip: s
 
 const eventThemes: Record<string, { bg: string; text: string; border: string; chip: string }> = {
   indigo:  { bg: "bg-indigo-50",  text: "text-indigo-900",  border: "border-indigo-300/60",  chip: "bg-indigo-200/50 text-indigo-800"  },
-  emerald: { bg: "bg-emerald-50", text: "text-emerald-900", border: "border-emerald-300/60", chip: "bg-emerald-200/50 text-emerald-800" },
+  emerald: { bg: "bg-primary-50", text: "text-primary-900", border: "border-primary-300/60", chip: "bg-primary-200/50 text-primary-800" },
   amber:   { bg: "bg-amber-50",   text: "text-amber-900",   border: "border-amber-300/60",   chip: "bg-amber-200/50 text-amber-800"   },
   blue:    { bg: "bg-blue-50",    text: "text-blue-900",    border: "border-blue-300/60",    chip: "bg-blue-200/50 text-blue-800"    },
   violet:  { bg: "bg-violet-50",  text: "text-violet-900",  border: "border-violet-300/60",  chip: "bg-violet-200/50 text-violet-800"  },
@@ -292,7 +292,7 @@ export default function ParentDiaryPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder={t("parentPages", "searchDiary", lang)}
-                  className="w-full pl-10 pr-10 py-3 rounded-full bg-white border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full pl-10 pr-10 py-3 rounded-full bg-white border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
                 {search && (
                   <button
@@ -642,7 +642,7 @@ style={{ fontFamily: `${themeStyle.font}, ${themeStyle.mlFont}` }}
               <button
                 onClick={onSend}
                 disabled={sending || !replyText.trim()}
-                className="p-2.5 rounded-xl text-sm font-semibold disabled:opacity-40 shrink-0 transition-opacity bg-emerald-600 text-white"
+                className="p-2.5 rounded-xl text-sm font-semibold disabled:opacity-40 shrink-0 transition-opacity bg-primary-600 text-white"
               >
                 {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </button>

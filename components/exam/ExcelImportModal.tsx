@@ -141,7 +141,7 @@ export function ExcelImportModal({
           <div>
             <p className="text-sm font-medium text-gray-700 mb-2">Step 1 — Download template</p>
             <button onClick={downloadTemplate}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-sm font-medium transition-colors">
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-primary-200 bg-primary-50 hover:bg-primary-100 text-primary-700 text-sm font-medium transition-colors">
               <FileDown className="w-4 h-4" />
               Download Template (.xlsx)
             </button>
@@ -155,13 +155,13 @@ export function ExcelImportModal({
             <p className="text-sm font-medium text-gray-700 mb-2">Step 2 — Fill & upload</p>
             <label className={cn(
               "flex flex-col items-center justify-center gap-2 w-full h-28 rounded-xl border-2 border-dashed cursor-pointer transition-colors",
-              rows ? "border-emerald-300 bg-emerald-50" : "border-gray-200 hover:border-emerald-300 hover:bg-emerald-50",
+              rows ? "border-primary-300 bg-primary-50" : "border-gray-200 hover:border-primary-300 hover:bg-primary-50",
             )}>
               {rows ? (
                 <>
-                  <CheckCircle2 className="w-8 h-8 text-emerald-500" />
-                  <span className="text-sm font-medium text-emerald-700">{rows.length} mark entries ready</span>
-                  <span className="text-xs text-emerald-500">Click to change file</span>
+                  <CheckCircle2 className="w-8 h-8 text-primary-500" />
+                  <span className="text-sm font-medium text-primary-700">{rows.length} mark entries ready</span>
+                  <span className="text-xs text-primary-500">Click to change file</span>
                 </>
               ) : (
                 <>
@@ -183,7 +183,7 @@ export function ExcelImportModal({
 
           {/* Success */}
           {saved !== null && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-50 border border-emerald-100 text-sm text-emerald-700">
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-primary-50 border border-primary-100 text-sm text-primary-700">
               <CheckCircle2 className="w-4 h-4" />
               {saved} records saved successfully.
             </div>
@@ -198,7 +198,7 @@ export function ExcelImportModal({
           <button
             onClick={handleSubmit}
             disabled={!rows || saving}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium disabled:opacity-50 transition-colors">
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium disabled:opacity-50 transition-colors">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
             {saving ? "Uploading…" : "Upload Marks"}
           </button>

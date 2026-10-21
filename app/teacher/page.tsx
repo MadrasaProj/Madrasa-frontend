@@ -82,12 +82,12 @@ export default function TeacherDashboard() {
   return (
     <DashboardLayout>
       <header className="mb-8 flex items-center gap-4 border-b border-gray-200 pb-7">
-        <Avatar className="size-14 shrink-0 ring-2 ring-emerald-100 sm:size-16">
+        <Avatar className="size-14 shrink-0 ring-2 ring-primary-100 sm:size-16">
           <AvatarImage src={user?.photoUrl ?? undefined} alt="" />
-          <AvatarFallback className="bg-emerald-100 text-xl font-semibold text-emerald-800">{initials}</AvatarFallback>
+          <AvatarFallback className="bg-primary-100 text-xl font-semibold text-primary-800">{initials}</AvatarFallback>
         </Avatar>
         <div className="min-w-0">
-          <p className="mb-1 text-sm text-emerald-700">{t("login", "welcomeBack", lang)}</p>
+          <p className="mb-1 text-sm text-primary-700">{t("login", "welcomeBack", lang)}</p>
           <h1 className="break-words text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">{user?.name ?? "Teacher"}</h1>
           <p className="mt-1 text-xs text-gray-500">{today}</p>
         </div>
@@ -186,15 +186,15 @@ export default function TeacherDashboard() {
         <ul className="overflow-hidden rounded-2xl border border-gray-200 bg-white px-4 sm:px-5">
           {actions.map((a) => (
             <li key={a.href} className="border-b border-gray-100 last:border-b-0">
-              <button type="button" onClick={() => navigate(a.href)} className="group flex w-full items-center gap-3 rounded-lg py-3.5 text-left transition-colors hover:bg-emerald-50/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 sm:gap-4">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+              <button type="button" onClick={() => navigate(a.href)} className="group flex w-full items-center gap-3 rounded-lg py-3.5 text-left transition-colors hover:bg-primary-50/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 sm:gap-4">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-700">
                   <a.icon aria-hidden="true" className="h-4 w-4" />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-semibold leading-relaxed text-gray-800">{a.title}</span>
                   <span className="mt-0.5 block text-xs leading-relaxed text-gray-500">{a.desc}</span>
                 </span>
-                <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-gray-400 transition-colors group-hover:text-emerald-700" />
+                <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-gray-400 transition-colors group-hover:text-primary-700" />
               </button>
             </li>
           ))}

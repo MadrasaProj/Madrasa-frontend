@@ -164,7 +164,7 @@ function UserMenu({
       <div
         className={cn(
           sizes[size],
-          "bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 flex items-center justify-center text-white font-bold shadow-sm shadow-emerald-600/20",
+          "bg-gradient-to-br from-primary-500 via-primary-600 to-teal-600 flex items-center justify-center text-white font-bold shadow-sm shadow-primary-600/20",
           text,
         )}
       >
@@ -177,13 +177,13 @@ function UserMenu({
   const menuBody = (
     <>
       {/* Profile header */}
-      <div className="px-4 py-4 border-b border-gray-100 bg-gradient-to-br from-emerald-50/70 via-white to-teal-50/40">
+      <div className="px-4 py-4 border-b border-gray-100 bg-gradient-to-br from-primary-50/70 via-white to-teal-50/40">
         <div className="flex items-center gap-3">
           <Avatar size={isDrawer ? "lg" : "md"} />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-bold text-gray-900 truncate">{user.name}</p>
             <p className="text-xs text-gray-500 truncate mt-0.5">{subtitle}</p>
-            <span className="inline-flex items-center gap-1 mt-2 text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-2 py-0.5">
+            <span className="inline-flex items-center gap-1 mt-2 text-[10px] font-bold uppercase tracking-wider text-primary-700 bg-primary-50 border border-primary-100 rounded-full px-2 py-0.5">
               <Check className="w-2.5 h-2.5" />
               {roleLabel}
             </span>
@@ -210,7 +210,7 @@ function UserMenu({
                   className={cn(
                     "w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors",
                     isActive
-                      ? "bg-emerald-50"
+                      ? "bg-primary-50"
                       : "hover:bg-gray-50 active:bg-gray-100",
                   )}
                   role="menuitem"
@@ -222,7 +222,7 @@ function UserMenu({
                       className="w-8 h-8 rounded-lg object-cover ring-1 ring-white shrink-0"
                     />
                   ) : (
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 text-emerald-700 flex items-center justify-center font-bold text-xs shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-100 to-teal-100 text-primary-700 flex items-center justify-center font-bold text-xs shrink-0">
                       {name.charAt(0).toUpperCase()}
                     </div>
                   )}
@@ -230,7 +230,7 @@ function UserMenu({
                     <p
                       className={cn(
                         "text-sm font-semibold leading-tight truncate",
-                        isActive ? "text-emerald-700" : "text-gray-900",
+                        isActive ? "text-primary-700" : "text-gray-900",
                       )}
                     >
                       {name}
@@ -242,7 +242,7 @@ function UserMenu({
                     )}
                   </div>
                   {isActive && (
-                    <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <Check className="w-4 h-4 text-primary-600 shrink-0" />
                   )}
                 </button>
               );

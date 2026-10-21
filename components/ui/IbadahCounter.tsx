@@ -49,7 +49,7 @@ export function IbadahCounter({ label, icon, value, onChange, min = 0, max = Num
     <div className="bg-white rounded-2xl border border-gray-100 p-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          {icon && <span className="text-emerald-500">{icon}</span>}
+          {icon && <span className="text-primary-500">{icon}</span>}
           <p className="text-sm font-semibold text-gray-700">{label}</p>
         </div>
         <div className="flex items-center gap-3">
@@ -64,11 +64,11 @@ export function IbadahCounter({ label, icon, value, onChange, min = 0, max = Num
                 onChange={(e) => setDraft(e.target.value)}
                 onBlur={commit}
                 onKeyDown={handleKeyDown}
-                className="w-14 text-right text-lg font-bold text-emerald-700 bg-transparent outline-none border-b-2 border-emerald-300"
+                className="w-14 text-right text-lg font-bold text-primary-700 bg-transparent outline-none border-b-2 border-primary-300"
               />
             ) : (
               <button onClick={() => setEditing(true)} className="focus:outline-none">
-                <span className="text-lg font-bold text-emerald-700">{value}</span>
+                <span className="text-lg font-bold text-primary-700">{value}</span>
               </button>
             )}
             {suffix && <span className="text-xs text-gray-400 font-medium">{suffix}</span>}
@@ -80,7 +80,7 @@ export function IbadahCounter({ label, icon, value, onChange, min = 0, max = Num
               className={cn(
                 "w-9 h-9 rounded-xl text-lg font-bold flex items-center justify-center transition-all active:scale-90",
                 value > min
-                  ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                  ? "bg-primary-50 text-primary-600 hover:bg-primary-100"
                   : "bg-gray-50 text-gray-300 cursor-not-allowed",
               )}
             >−</button>
@@ -90,7 +90,7 @@ export function IbadahCounter({ label, icon, value, onChange, min = 0, max = Num
               className={cn(
                 "w-9 h-9 rounded-xl text-lg font-bold flex items-center justify-center transition-all active:scale-90",
                 value < max
-                  ? "bg-emerald-500 text-white hover:bg-emerald-600"
+                  ? "bg-primary-500 text-white hover:bg-primary-600"
                   : "bg-gray-100 text-gray-300 cursor-not-allowed",
               )}
             >+</button>

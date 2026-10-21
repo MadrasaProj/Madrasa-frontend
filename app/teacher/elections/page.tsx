@@ -112,7 +112,7 @@ export default function TeacherElectionsPage() {
     return runtime + seeded;
   };
 
-  const barColors = ["bg-emerald-500", "bg-teal-500", "bg-amber-500", "bg-blue-500", "bg-purple-500"];
+  const barColors = ["bg-primary-500", "bg-teal-500", "bg-amber-500", "bg-blue-500", "bg-purple-500"];
 
   return (
     <DashboardLayout>
@@ -151,16 +151,16 @@ export default function TeacherElectionsPage() {
               <motion.div
                 key={el.id}
                 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-3xl border border-emerald-200 shadow-sm overflow-hidden mb-3"
+                className="bg-white rounded-3xl border border-primary-200 shadow-sm overflow-hidden mb-3"
               >
-                <div className="h-1.5 bg-linear-to-r from-emerald-500 to-teal-500" />
+                <div className="h-1.5 bg-linear-to-r from-primary-500 to-teal-500" />
                 <div className="p-4 lg:p-5">
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full">
+                        <span className="inline-flex items-center gap-1 text-[10px] bg-primary-100 text-primary-700 font-bold px-2 py-0.5 rounded-full">
                           {isLive ? (
-                            <><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> {t("elections", "live", lang)}</>
+                            <><span className="w-1.5 h-1.5 bg-primary-500 rounded-full animate-pulse" /> {t("elections", "live", lang)}</>
                           ) : (
                             <><Clock className="w-3 h-3" /> {t("elections", "ready", lang)}</>
                           )}
@@ -171,7 +171,7 @@ export default function TeacherElectionsPage() {
                       <p className="text-xs text-gray-400">{lang === "ml" ? el.position_ml : el.position}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-lg font-bold text-emerald-700">{totalVotes}/{totalEligible}</p>
+                      <p className="text-lg font-bold text-primary-700">{totalVotes}/{totalEligible}</p>
                       <p className="text-[10px] text-gray-400">{t("elections", "votes", lang)}</p>
                     </div>
                   </div>
@@ -183,7 +183,7 @@ export default function TeacherElectionsPage() {
                       <span className="font-bold text-gray-700">{turnout}%</span>
                     </div>
                     <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-emerald-500 rounded-full transition-all duration-700" style={{ width: `${turnout}%` }} />
+                      <div className="h-full bg-primary-500 rounded-full transition-all duration-700" style={{ width: `${turnout}%` }} />
                     </div>
                   </div>
 
@@ -192,7 +192,7 @@ export default function TeacherElectionsPage() {
                     {!isLive ? (
                       <button
                         onClick={() => openSession(el)}
-                        className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-xl transition-all"
+                        className="flex-1 flex items-center justify-center gap-1.5 bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs py-2.5 rounded-xl transition-all"
                       >
                         <Play className="w-3.5 h-3.5" />
                         {t("elections", "openSession", lang)}
@@ -201,7 +201,7 @@ export default function TeacherElectionsPage() {
                       <>
                         <button
                           onClick={() => setManagingEl(el)}
-                          className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-xl transition-all"
+                          className="flex-1 flex items-center justify-center gap-1.5 bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs py-2.5 rounded-xl transition-all"
                         >
                           <UserCheck className="w-3.5 h-3.5" />
                           {t("elections", "recordVotes", lang)}
@@ -328,7 +328,7 @@ export default function TeacherElectionsPage() {
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="bg-linear-to-br from-teal-600 to-emerald-600 p-5 text-white rounded-t-3xl">
+              <div className="bg-linear-to-br from-teal-600 to-primary-600 p-5 text-white rounded-t-3xl">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-teal-200 text-[11px] font-bold uppercase tracking-widest mb-1">
@@ -361,12 +361,12 @@ export default function TeacherElectionsPage() {
                           onClick={() => { setVotingStudent({ id: s.id, name: s.name }); setStudentPick(null); }}
                           className={`w-full flex items-center gap-3 p-3 rounded-2xl border transition-all text-left ${
                             voted
-                              ? "bg-emerald-50 border-emerald-200 cursor-default"
+                              ? "bg-primary-50 border-primary-200 cursor-default"
                               : "bg-white border-gray-200 hover:border-teal-300 hover:bg-teal-50"
                           }`}
                         >
                           <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
-                            voted ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-700"
+                            voted ? "bg-primary-100 text-primary-700" : "bg-gray-100 text-gray-700"
                           }`}>
                             {s.name.charAt(0)}
                           </div>
@@ -375,7 +375,7 @@ export default function TeacherElectionsPage() {
                             <p className="text-xs text-gray-400">{s.admissionNumber}</p>
                           </div>
                           {voted ? (
-                            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                            <CheckCircle2 className="w-4 h-4 text-primary-500 shrink-0" />
                           ) : (
                             <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
                           )}
@@ -480,10 +480,10 @@ export default function TeacherElectionsPage() {
               className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="bg-linear-to-r from-emerald-600 to-teal-600 p-5 text-white">
+              <div className="bg-linear-to-r from-primary-600 to-teal-600 p-5 text-white">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-emerald-200 text-xs font-bold uppercase tracking-widest mb-1">
+                    <p className="text-primary-200 text-xs font-bold uppercase tracking-widest mb-1">
                       {t("elections", "results", lang)}
                     </p>
                     <h2 className="text-lg font-bold">{lang === "ml" ? resultsEl.title_ml : resultsEl.title}</h2>

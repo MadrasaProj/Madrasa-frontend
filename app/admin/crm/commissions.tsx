@@ -109,7 +109,7 @@ export default function CommissionsDashboard() {
         </div>
 
         {successMsg && (
-          <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl p-4 text-sm flex justify-between items-center">
+          <div className="bg-primary-50 border border-primary-200 text-primary-800 rounded-2xl p-4 text-sm flex justify-between items-center">
             <span>{successMsg}</span>
             <button onClick={() => setSuccessMsg(null)} className="font-bold underline text-xs">Dismiss</button>
           </div>
@@ -123,9 +123,9 @@ export default function CommissionsDashboard() {
 
         {/* Summary Metrics */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-gradient-to-r from-emerald-700 to-teal-650 rounded-3xl p-5 text-white shadow-sm flex flex-col justify-between">
+          <div className="bg-gradient-to-r from-primary-700 to-teal-650 rounded-3xl p-5 text-white shadow-sm flex flex-col justify-between">
             <div>
-              <span className="text-[10px] uppercase font-bold text-emerald-250 tracking-wider">Total Commission Paid</span>
+              <span className="text-[10px] uppercase font-bold text-primary-250 tracking-wider">Total Commission Paid</span>
               <p className="text-2xl font-black mt-1">{fmtCurrency(totalCommissionPaid)}</p>
             </div>
             <TrendingUp className="w-8 h-8 opacity-20 self-end mt-4" />
@@ -142,7 +142,7 @@ export default function CommissionsDashboard() {
               <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">District Allowance Pool</span>
               <p className="text-2xl font-black text-gray-800 mt-1">{fmtCurrency(totalDistrictAllowances)}</p>
             </div>
-            <MapPin className="w-8 h-8 text-emerald-100 self-end mt-4" />
+            <MapPin className="w-8 h-8 text-primary-100 self-end mt-4" />
           </div>
         </div>
 
@@ -150,7 +150,7 @@ export default function CommissionsDashboard() {
         {isFinanceOrAdmin && userEarningsList.length > 0 && (
           <div className="bg-white rounded-3xl border border-gray-100 p-5 shadow-sm space-y-4">
             <h2 className="text-sm font-black text-gray-800 flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-emerald-650" />
+              <Sparkles className="w-4 h-4 text-primary-650" />
               Contributor Earnings Ledger
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -163,7 +163,7 @@ export default function CommissionsDashboard() {
                   <div className="mt-4 flex justify-between items-end border-t border-gray-105 pt-3">
                     <div>
                       <span className="block text-[8px] text-gray-400 font-bold uppercase">Paid</span>
-                      <span className="text-xs font-bold text-emerald-700">{fmtCurrency(e.paid)}</span>
+                      <span className="text-xs font-bold text-primary-700">{fmtCurrency(e.paid)}</span>
                     </div>
                     <div>
                       <span className="block text-[8px] text-gray-400 font-bold uppercase">Unpaid</span>
@@ -184,7 +184,7 @@ export default function CommissionsDashboard() {
         {allowances.length > 0 && (
           <div className="bg-white rounded-3xl border border-gray-100 p-5 shadow-sm space-y-4">
             <h2 className="text-sm font-black text-gray-800 flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-emerald-600" />
+              <MapPin className="w-4 h-4 text-primary-600" />
               District Head Allowances Ledger
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -194,7 +194,7 @@ export default function CommissionsDashboard() {
                     <div className="flex justify-between items-start gap-2">
                       <h4 className="font-bold text-sm text-gray-900">{al.districtName}</h4>
                       {al.payout > 0 ? (
-                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-primary-100 text-primary-800">
                           Active Allowance
                         </span>
                       ) : (
@@ -210,7 +210,7 @@ export default function CommissionsDashboard() {
                   </div>
                   <div className="mt-4 pt-3 border-t border-gray-100 flex justify-between items-center">
                     <span className="text-[9px] text-gray-400 font-medium">Rate: {fmtCurrency(al.rate)} / {al.threshold} active</span>
-                    <span className="font-bold text-sm text-emerald-700">{fmtCurrency(al.payout)}</span>
+                    <span className="font-bold text-sm text-primary-700">{fmtCurrency(al.payout)}</span>
                   </div>
                 </div>
               ))}
@@ -222,14 +222,14 @@ export default function CommissionsDashboard() {
         <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
           <div className="p-5 border-b border-gray-50 flex items-center justify-between">
             <h2 className="text-sm font-black text-gray-800 flex items-center gap-2">
-              <CreditCard className="w-4.5 h-4.5 text-emerald-600" />
+              <CreditCard className="w-4.5 h-4.5 text-primary-600" />
               Payout Transactions Register
             </h2>
           </div>
 
           {loading ? (
             <div className="flex justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
+              <Loader2 className="w-6 h-6 animate-spin text-primary-600" />
             </div>
           ) : records.length === 0 ? (
             <div className="text-center py-12 text-gray-400 text-sm font-medium">
@@ -272,11 +272,11 @@ export default function CommissionsDashboard() {
                             "-"
                           )}
                         </td>
-                        <td className="py-4 px-6 font-black text-emerald-800 font-mono">{fmtCurrency(r.amount)}</td>
+                        <td className="py-4 px-6 font-black text-primary-800 font-mono">{fmtCurrency(r.amount)}</td>
                         <td className="py-4 px-6">
                           <span className={cn("text-[9px] font-bold px-2.5 py-1 rounded-full uppercase border",
                             r.paymentStatus === "PAID"
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                              ? "bg-primary-50 text-primary-700 border-primary-100"
                               : "bg-amber-50 text-amber-700 border-amber-100"
                           )}>
                             {r.paymentStatus}
@@ -288,13 +288,13 @@ export default function CommissionsDashboard() {
                               <button
                                 onClick={() => handlePayCommission(r.id)}
                                 disabled={actionLoading}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] py-1.5 px-3 rounded-xl transition-all active:scale-95 disabled:opacity-50"
+                                className="bg-primary-600 hover:bg-primary-700 text-white font-bold text-[10px] py-1.5 px-3 rounded-xl transition-all active:scale-95 disabled:opacity-50"
                               >
                                 Approve Payout
                               </button>
                             ) : (
                               <span className="text-[10px] text-gray-400 font-semibold flex items-center justify-end gap-1">
-                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-650" /> Paid
+                                <CheckCircle2 className="w-3.5 h-3.5 text-primary-650" /> Paid
                               </span>
                             )}
                           </td>
@@ -319,7 +319,7 @@ export default function CommissionsDashboard() {
                         <h4 className="font-bold text-gray-800 text-sm">{r.client.name}</h4>
                         {r.lead && <p className="text-[10px] text-gray-400 mt-0.5">Pipeline: {r.lead.name}</p>}
                       </div>
-                      <span className="font-black font-mono text-base text-emerald-850">
+                      <span className="font-black font-mono text-base text-primary-850">
                         {fmtCurrency(r.amount)}
                       </span>
                     </div>
@@ -351,7 +351,7 @@ export default function CommissionsDashboard() {
                     <div className="border-t border-gray-50 pt-3 flex justify-between items-center">
                       <span className={cn("text-[9px] font-bold px-2 py-0.5 rounded-full uppercase border",
                         r.paymentStatus === "PAID"
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                          ? "bg-primary-50 text-primary-700 border-primary-100"
                           : "bg-amber-50 text-amber-700 border-amber-100"
                       )}>
                         {r.paymentStatus}
@@ -361,7 +361,7 @@ export default function CommissionsDashboard() {
                         <button
                           onClick={() => handlePayCommission(r.id)}
                           disabled={actionLoading}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] py-1.5 px-3 rounded-xl transition-all active:scale-95"
+                          className="bg-primary-600 hover:bg-primary-700 text-white font-bold text-[10px] py-1.5 px-3 rounded-xl transition-all active:scale-95"
                         >
                           Approve Payout
                         </button>

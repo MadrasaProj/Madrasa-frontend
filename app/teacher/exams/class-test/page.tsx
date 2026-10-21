@@ -488,7 +488,7 @@ export default function TeacherClassTestsPage() {
             onClick={() => setFiltersOpen(true)}
             className="flex min-w-0 max-w-[55vw] items-center gap-2 text-gray-700"
           >
-            <School className="h-4 w-4 shrink-0 text-emerald-700" />
+            <School className="h-4 w-4 shrink-0 text-primary-700" />
             <span className="max-w-36 truncate text-sm font-semibold">{selectedClassName}</span>
             <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" />
           </button>
@@ -519,7 +519,7 @@ export default function TeacherClassTestsPage() {
                   }}
                   className={cn(
                     "flex w-full min-w-0 items-center gap-3 py-3 text-left text-sm",
-                    filterClassId === cls.id ? "font-medium text-emerald-700" : "text-gray-700",
+                    filterClassId === cls.id ? "font-medium text-primary-700" : "text-gray-700",
                   )}
                 >
                   <span className="truncate">{cls.name}</span>

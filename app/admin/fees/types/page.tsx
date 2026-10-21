@@ -165,7 +165,7 @@ export default function AdminFeeTypesPage() {
             </a>
             <button
               onClick={() => { setShowCreate(true); setCreateError(null); }}
-              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold"
+              className="flex items-center gap-1.5 px-3 py-2 bg-primary-600 text-white rounded-xl text-sm font-semibold"
             >
               <Plus className="w-4 h-4" /> New Fee Type
             </button>
@@ -176,7 +176,7 @@ export default function AdminFeeTypesPage() {
       <button
         type="button"
         onClick={() => { setShowCreate(true); setCreateError(null); }}
-        className="sm:hidden w-full mb-5 flex items-center justify-center gap-1.5 px-4 py-3 bg-emerald-600 text-white rounded-xl text-sm font-semibold"
+        className="sm:hidden w-full mb-5 flex items-center justify-center gap-1.5 px-4 py-3 bg-primary-600 text-white rounded-xl text-sm font-semibold"
       >
         <Plus className="w-4 h-4" /> New Fee Type
       </button>
@@ -195,7 +195,7 @@ export default function AdminFeeTypesPage() {
           <p className="text-sm">No fee types yet. Create one to start collecting.</p>
           <button
             onClick={() => { setShowCreate(true); setCreateError(null); }}
-            className="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold inline-flex items-center gap-1.5"
+            className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-semibold inline-flex items-center gap-1.5"
           >
             <Plus className="w-4 h-4" /> Create Fee Type
           </button>
@@ -249,7 +249,7 @@ export default function AdminFeeTypesPage() {
                     <td className="px-4 py-3">
                       <span className={cn(
                         "inline-block px-2 py-0.5 rounded-lg text-[10px] font-semibold",
-                        ft.status === "ACTIVE" ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500",
+                        ft.status === "ACTIVE" ? "bg-primary-100 text-primary-700" : "bg-gray-100 text-gray-500",
                       )}>
                         {ft.status}
                       </span>
@@ -329,7 +329,7 @@ export default function AdminFeeTypesPage() {
                       type="text" value={newFee.name ?? ""}
                       placeholder="e.g. Monthly Fee, SKSBV Fund"
                       onChange={(e) => setNewFee((n) => ({ ...n, name: e.target.value }))}
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
+                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 text-sm"
                     />
                   </div>
                   <div>
@@ -338,7 +338,7 @@ export default function AdminFeeTypesPage() {
                       type="number" value={newFee.isDonation ? "" : (newFee.amount ?? "")} placeholder={newFee.isDonation ? "Entered during collection" : "500"}
                       disabled={newFee.isDonation}
                       onChange={(e) => setNewFee((n) => ({ ...n, amount: Number(e.target.value) }))}
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
+                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 text-sm"
                     />
                   </div>
                   <label className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 cursor-pointer">
@@ -350,7 +350,7 @@ export default function AdminFeeTypesPage() {
                     <input
                       type="text" value={newFee.description ?? ""} placeholder="Details…"
                       onChange={(e) => setNewFee((n) => ({ ...n, description: e.target.value }))}
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
+                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 text-sm"
                     />
                   </div>
                   <div>
@@ -362,7 +362,7 @@ export default function AdminFeeTypesPage() {
                           className={cn(
                             "flex items-center justify-center gap-2 py-3 rounded-2xl border text-sm font-semibold cursor-pointer transition-all",
                             newFee.kind === k
-                              ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                              ? "border-primary-500 bg-primary-50 text-primary-700"
                               : "border-gray-200 bg-gray-50 text-gray-700",
                           )}
                         >
@@ -420,7 +420,7 @@ export default function AdminFeeTypesPage() {
                               }
                               className={cn(
                                 "px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all",
-                                selected ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-gray-200 text-gray-600",
+                                selected ? "border-primary-500 bg-primary-50 text-primary-700" : "border-gray-200 text-gray-600",
                               )}
                             >
                               {c.name}
@@ -435,7 +435,7 @@ export default function AdminFeeTypesPage() {
                   <button
                     onClick={handleCreate}
                     disabled={creating || !newFee.name || (!newFee.isDonation && !newFee.amount)}
-                    className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl disabled:opacity-60 flex items-center justify-center gap-2"
+                    className="w-full bg-primary-600 text-white font-bold py-4 rounded-2xl disabled:opacity-60 flex items-center justify-center gap-2"
                   >
                     {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                     Create Fee Type
@@ -546,7 +546,7 @@ export default function AdminFeeTypesPage() {
                       type="text" value={editFee.name ?? ""}
                       placeholder="e.g. Monthly Fee, SKSBV Fund"
                       onChange={(e) => setEditFee((n) => ({ ...n, name: e.target.value }))}
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
+                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 text-sm"
                     />
                   </div>
                   <div>
@@ -554,7 +554,7 @@ export default function AdminFeeTypesPage() {
                     <input
                       type="number" value={editFee.isDonation ? "" : (editFee.amount ?? "")} placeholder={editFee.isDonation ? "Entered during collection" : "500"} disabled={editFee.isDonation}
                       onChange={(e) => setEditFee((n) => ({ ...n, amount: Number(e.target.value) }))}
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
+                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 text-sm"
                     />
                   </div>
                   <label className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 cursor-pointer">
@@ -566,7 +566,7 @@ export default function AdminFeeTypesPage() {
                     <input
                       type="text" value={editFee.description ?? ""} placeholder="Details…"
                       onChange={(e) => setEditFee((n) => ({ ...n, description: e.target.value }))}
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-emerald-400 text-sm"
+                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 text-sm"
                     />
                   </div>
                   <div>
@@ -578,7 +578,7 @@ export default function AdminFeeTypesPage() {
                           className={cn(
                             "flex items-center justify-center gap-2 py-3 rounded-2xl border text-sm font-semibold cursor-pointer transition-all",
                             editFee.kind === k
-                              ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                              ? "border-primary-500 bg-primary-50 text-primary-700"
                               : "border-gray-200 bg-gray-50 text-gray-700",
                           )}
                         >
@@ -626,7 +626,7 @@ export default function AdminFeeTypesPage() {
                           className={cn(
                             "flex items-center justify-center gap-2 py-3 rounded-2xl border text-sm font-semibold cursor-pointer transition-all",
                             editFee.status === s
-                              ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                              ? "border-primary-500 bg-primary-50 text-primary-700"
                               : "border-gray-200 bg-gray-50 text-gray-700",
                           )}
                         >
@@ -659,7 +659,7 @@ export default function AdminFeeTypesPage() {
                               }
                               className={cn(
                                 "px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all",
-                                selected ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-gray-200 text-gray-600",
+                                selected ? "border-primary-500 bg-primary-50 text-primary-700" : "border-gray-200 text-gray-600",
                               )}
                             >
                               {c.name}
@@ -674,7 +674,7 @@ export default function AdminFeeTypesPage() {
                   <button
                     onClick={handleUpdate}
                     disabled={updating || !editFee.name || (!editFee.isDonation && !editFee.amount)}
-                    className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl disabled:opacity-60 flex items-center justify-center gap-2"
+                    className="w-full bg-primary-600 text-white font-bold py-4 rounded-2xl disabled:opacity-60 flex items-center justify-center gap-2"
                   >
                     {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
                     Update Fee Type

@@ -229,7 +229,7 @@ export const SocialFrameCreator = forwardRef<SocialFrameCreatorRef, SocialFrameC
               alert("Invalid JSON");
             }
           }}
-          className="mt-2 px-4 py-2 bg-emerald-600 text-white rounded-lg"
+          className="mt-2 px-4 py-2 bg-primary-600 text-white rounded-lg"
         >
           Apply
         </button>
@@ -247,7 +247,7 @@ export const SocialFrameCreator = forwardRef<SocialFrameCreatorRef, SocialFrameC
               <div
                 key={layer.path.join(",")}
                 className={`flex items-start gap-2 p-2 rounded-lg border text-xs ${
-                  layer.active ? "border-emerald-500 bg-emerald-50" : "border-gray-200 bg-white"
+                  layer.active ? "border-primary-500 bg-primary-50" : "border-gray-200 bg-white"
                 }`}
               >
                 <input

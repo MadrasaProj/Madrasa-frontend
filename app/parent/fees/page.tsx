@@ -34,7 +34,7 @@ const STATUS_META: Record<
   FeePaymentStatus,
   { bg: string; text: string; labelKey: string }
 > = {
-  PAID:    { bg: "bg-emerald-50", text: "text-emerald-700", labelKey: "paidStatusLabel" },
+  PAID:    { bg: "bg-primary-50", text: "text-primary-700", labelKey: "paidStatusLabel" },
   PENDING: { bg: "bg-amber-50",   text: "text-amber-700",   labelKey: "pendingStatusLabel" },
   PARTIAL: { bg: "bg-blue-50",    text: "text-blue-700",    labelKey: "partialStatusLabel" },
   OVERDUE: { bg: "bg-red-50",     text: "text-red-700",     labelKey: "overdueStatusLabel" },
@@ -73,15 +73,15 @@ function ReceiptModal({
         initial={{ scale: 0.94, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
         className="relative w-full max-w-sm overflow-hidden rounded-3xl bg-white shadow-2xl"
       >
-        <div className="bg-emerald-600 px-6 py-5 text-center text-white">
+        <div className="bg-primary-600 px-6 py-5 text-center text-white">
           <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20">
             <Receipt className="h-6 w-6" />
           </div>
           <p className="text-lg font-bold">{receipt.client.name}</p>
           {receipt.client.address && (
-            <p className="text-xs text-emerald-100">{receipt.client.address}</p>
+            <p className="text-xs text-primary-100">{receipt.client.address}</p>
           )}
-          <p className="mt-1 text-xs uppercase tracking-widest text-emerald-100">
+          <p className="mt-1 text-xs uppercase tracking-widest text-primary-100">
             {t("parentPages", "feeReceipt", lang)}
           </p>
         </div>
@@ -102,7 +102,7 @@ function ReceiptModal({
           ))}
           <div className="flex items-center justify-between border-t border-dashed border-gray-200 pt-3">
             <span className="font-bold text-gray-900">{t("parentPages", "amountPaidLabel", lang)}</span>
-            <span className="text-xl font-bold text-emerald-600">₹{Number(receipt.paidAmount ?? 0).toLocaleString()}</span>
+            <span className="text-xl font-bold text-primary-600">₹{Number(receipt.paidAmount ?? 0).toLocaleString()}</span>
           </div>
           {receipt.notes && (
             <p className="text-xs italic text-gray-400">
@@ -121,7 +121,7 @@ function ReceiptModal({
           <Button
             variant="ghost"
             onClick={() => window.print()}
-            className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold flex items-center justify-center gap-1.5"
+            className="flex-1 py-2.5 rounded-xl bg-primary-600 text-white text-sm font-semibold flex items-center justify-center gap-1.5"
           >
             <Printer className="w-4 h-4" /> {t("parentPages", "printBtn", lang)}
           </Button>
@@ -135,7 +135,7 @@ function SummaryCard({
   label, value, accent,
 }: { label: string; value: string; accent: "emerald" | "red" | "amber" }) {
   const tones = {
-    emerald: { card: "bg-emerald-50 border-emerald-100", label: "text-emerald-600", value: "text-emerald-700" },
+    emerald: { card: "bg-primary-50 border-primary-100", label: "text-primary-600", value: "text-primary-700" },
     red:     { card: "bg-red-50 border-red-100",         label: "text-red-500",     value: "text-red-600" },
     amber:   { card: "bg-amber-50 border-amber-100",     label: "text-amber-600",   value: "text-amber-700" },
   } as const;
@@ -261,7 +261,7 @@ export default function ParentFeesPage() {
               </TabsList>
             </Tabs>
           </section>
-          <DrawerClose className="mt-8 h-10 w-full rounded-xl bg-emerald-600 text-sm font-semibold text-white">
+          <DrawerClose className="mt-8 h-10 w-full rounded-xl bg-primary-600 text-sm font-semibold text-white">
             Done
           </DrawerClose>
         </DrawerContent>
@@ -368,7 +368,7 @@ export default function ParentFeesPage() {
                             {payment.dueDate ? new Date(payment.dueDate).toLocaleDateString("en-GB") : "—"}
                           </TableCell>
                           <TableCell className="whitespace-nowrap">
-                            <span className={payment.paidAt ? "text-emerald-700" : "text-muted-foreground"}>
+                            <span className={payment.paidAt ? "text-primary-700" : "text-muted-foreground"}>
                               {payment.paidAt ? new Date(payment.paidAt).toLocaleDateString("en-GB") : "—"}
                             </span>
                             {payment.method && (
@@ -384,7 +384,7 @@ export default function ParentFeesPage() {
                                 size="sm"
                                 onClick={() => showReceipt(payment.id)}
                                 disabled={isReceiptLoading}
-                                className="text-emerald-700"
+                                className="text-primary-700"
                               >
                                 {isReceiptLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Receipt className="h-3.5 w-3.5" />}
                                 {t("parentPages", "viewReceiptBtn", lang)}
@@ -412,7 +412,7 @@ export default function ParentFeesPage() {
                           key={ft.id}
                           className="h-10 px-4 rounded-md inline-flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 text-xs font-semibold"
                         >
-                          <IndianRupee className="w-3.5 h-3.5 text-emerald-600" />
+                          <IndianRupee className="w-3.5 h-3.5 text-primary-600" />
                           <span>{ft.name}</span>
                           {freq && <span className="text-gray-400">· {freq}</span>}
                           <span className="text-gray-400 ml-1">{ft.isDonation ? "Variable" : `₹${Number(ft.amount).toLocaleString()}`}</span>

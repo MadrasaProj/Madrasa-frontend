@@ -84,7 +84,7 @@ export function ResultAnnouncementPoster({ exam, madrasaName, madrasaLogo, stats
           PNG
         </button>
         <button onClick={() => run("share")} disabled={!!exporting}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 transition-colors">
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-primary-600 hover:bg-primary-700 text-white disabled:opacity-50 transition-colors">
           {exporting === "share" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
           Share
         </button>
@@ -97,7 +97,7 @@ export function ResultAnnouncementPoster({ exam, madrasaName, madrasaLogo, stats
         style={{ fontFamily: "Arial, Helvetica, sans-serif", background: "#0f172a" }}
       >
         {/* Top gradient band */}
-        <div className="relative bg-gradient-to-br from-emerald-600 via-teal-500 to-cyan-600 px-7 pt-8 pb-10 overflow-hidden text-center">
+        <div className="relative bg-gradient-to-br from-primary-600 via-teal-500 to-cyan-600 px-7 pt-8 pb-10 overflow-hidden text-center">
           {/* Decorative circles */}
           <div className="absolute -top-12 -right-12 w-44 h-44 rounded-full bg-white/10 pointer-events-none" />
           <div className="absolute -bottom-10 -left-10 w-36 h-36 rounded-full bg-white/10 pointer-events-none" />
@@ -137,7 +137,7 @@ export function ResultAnnouncementPoster({ exam, madrasaName, madrasaLogo, stats
           {/* Date pill */}
           <div className="flex justify-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/15">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <div className="w-1.5 h-1.5 rounded-full bg-primary-400" />
               <span className="text-white/80 text-xs font-semibold">{publishDate}</span>
             </div>
           </div>
@@ -153,7 +153,7 @@ export function ResultAnnouncementPoster({ exam, madrasaName, madrasaLogo, stats
               )}
               {passRate != null && (
                 <div className="bg-white/8 rounded-2xl px-4 py-4 text-center border border-white/10">
-                  <p className={cn("text-2xl font-black", passRate >= 80 ? "text-emerald-400" : passRate >= 60 ? "text-amber-400" : "text-red-400")}>
+                  <p className={cn("text-2xl font-black", passRate >= 80 ? "text-primary-400" : passRate >= 60 ? "text-amber-400" : "text-red-400")}>
                     {passRate}%
                   </p>
                   <p className="text-[10px] text-white/50 uppercase tracking-wide mt-1 font-semibold">Pass Rate</p>
@@ -163,10 +163,10 @@ export function ResultAnnouncementPoster({ exam, madrasaName, madrasaLogo, stats
           )}
 
           {/* CTA message */}
-          <div className="bg-gradient-to-r from-emerald-900/50 to-teal-900/50 rounded-2xl px-5 py-4 text-center border border-emerald-700/30">
+          <div className="bg-gradient-to-r from-primary-900/50 to-teal-900/50 rounded-2xl px-5 py-4 text-center border border-primary-700/30">
             <div className="flex justify-center gap-1 mb-2">
               {[...Array(3)].map((_, i) => (
-                <Star key={i} className="w-4 h-4 text-emerald-400 fill-emerald-400" />
+                <Star key={i} className="w-4 h-4 text-primary-400 fill-primary-400" />
               ))}
             </div>
             <p className="text-white text-sm font-semibold leading-snug">

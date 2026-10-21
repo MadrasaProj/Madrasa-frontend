@@ -72,9 +72,9 @@ export default function ParentIbadahPage() {
 
   const prayerOptions = [
     { value: null as PrayerStatus | null, label: t("parentPages", "missedLabel", lang), sub: t("parentPages", "missedSub", lang), icon: X, color: "bg-gray-50 text-gray-500" },
-    { value: "NOT_PRAYABLE" as PrayerStatus, label: t("parentPages", "excusedLabel", lang), sub: t("parentPages", "excusedSub", lang), icon: Check, color: "bg-emerald-50 text-emerald-600" },
+    { value: "NOT_PRAYABLE" as PrayerStatus, label: t("parentPages", "excusedLabel", lang), sub: t("parentPages", "excusedSub", lang), icon: Check, color: "bg-primary-50 text-primary-600" },
     { value: "QALA" as PrayerStatus, label: t("parentPages", "qalaLabel", lang), sub: t("parentPages", "qalaSub", lang), icon: Sun, color: "bg-amber-50 text-amber-600" },
-    { value: "ADA" as PrayerStatus, label: t("parentPages", "adaLabel", lang), sub: t("parentPages", "adaSub", lang), icon: Check, color: "bg-emerald-50 text-emerald-600" },
+    { value: "ADA" as PrayerStatus, label: t("parentPages", "adaLabel", lang), sub: t("parentPages", "adaSub", lang), icon: Check, color: "bg-primary-50 text-primary-600" },
     { value: "JAMA" as PrayerStatus, label: t("parentPages", "jama", lang), sub: t("parentPages", "jamaSub", lang), icon: Users, color: "bg-blue-50 text-blue-600" },
   ];
 
@@ -222,7 +222,7 @@ export default function ParentIbadahPage() {
       ) : ibadah ? (
         <>
         {/* Student card */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-700 p-5 mb-5">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-600 to-primary-700 p-5 mb-5">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
           <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-1/3 -translate-x-1/4" />
           <div className="relative flex items-center gap-3">
@@ -231,7 +231,7 @@ export default function ParentIbadahPage() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-white truncate drop-shadow-sm">{ibadah.student.name}</p>
-              <p className="text-xs text-emerald-100/80">
+              <p className="text-xs text-primary-100/80">
                 {ibadah.student.class?.name ?? ""}{ibadah.student.class ? " · " : ""}{ibadah.student.adno}
               </p>
             </div>
@@ -240,7 +240,7 @@ export default function ParentIbadahPage() {
         </div>
 
         {/* Weekly summary */}
-        <div className="bg-white rounded-2xl border border-emerald-100/50 p-5 mb-5 space-y-6">
+        <div className="bg-white rounded-2xl border border-primary-100/50 p-5 mb-5 space-y-6">
           <div className="inline-flex items-center gap-2 mx-auto bg-orange-50 rounded-full px-4 py-2">
             <Flame className="w-5 h-5 text-orange-500" />
             <span className="text-sm font-bold text-orange-700">{ibadah.streak} {t("parentPages", "dayStreak", lang)}</span>
@@ -257,10 +257,10 @@ export default function ParentIbadahPage() {
                     <div
                       className={cn(
                         "absolute bottom-0 left-0 right-0 rounded-b-lg flex items-center justify-center text-sm font-bold text-white transition-all",
-                        count >= 7 && "bg-gradient-to-t from-emerald-700 to-emerald-500",
-                        count === 6 && "bg-gradient-to-t from-emerald-600 to-emerald-400",
-                        count >= 4 && count <= 5 && "bg-gradient-to-t from-emerald-500 to-emerald-300",
-                        count <= 3 && "bg-gradient-to-t from-emerald-400 to-emerald-200",
+                        count >= 7 && "bg-gradient-to-t from-primary-700 to-primary-500",
+                        count === 6 && "bg-gradient-to-t from-primary-600 to-primary-400",
+                        count >= 4 && count <= 5 && "bg-gradient-to-t from-primary-500 to-primary-300",
+                        count <= 3 && "bg-gradient-to-t from-primary-400 to-primary-200",
                       )}
                       style={{ height: `${fillH}%` }}
                     >
@@ -276,10 +276,10 @@ export default function ParentIbadahPage() {
           {config?.enableQuranPages !== false && (
             <div className="flex flex-col items-center pt-4 border-t border-gray-100">
               <div className="flex items-center gap-2 mb-2">
-                <BookOpen className="w-4 h-4 text-emerald-600" />
-                <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wide">{t("parentPages", "quranPages", lang)}</p>
+                <BookOpen className="w-4 h-4 text-primary-600" />
+                <p className="text-xs font-semibold text-primary-700 uppercase tracking-wide">{t("parentPages", "quranPages", lang)}</p>
               </div>
-              <span className="text-7xl font-black" style={{ background: 'linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{ibadah.weekly.quranPages}</span>
+              <span className="bg-gradient-to-r from-primary-700 via-primary to-primary-300 bg-clip-text text-7xl font-black text-transparent">{ibadah.weekly.quranPages}</span>
               <span className="text-xs text-gray-400 mt-1">{t("parentPages", "pagesReadThisWeek", lang)}</span>
             </div>
           )}
@@ -291,7 +291,7 @@ export default function ParentIbadahPage() {
             onClick={() => setView("form")}
             className={cn(
               "flex-1 py-2 rounded-lg text-sm font-medium transition-all",
-              view === "form" ? "bg-white text-emerald-700 shadow-sm" : "text-gray-400 hover:text-gray-600",
+              view === "form" ? "bg-white text-primary-700 shadow-sm" : "text-gray-400 hover:text-gray-600",
             )}
           >
             {t("parentPages", "record", lang)}
@@ -300,7 +300,7 @@ export default function ParentIbadahPage() {
             onClick={() => setView("history")}
             className={cn(
               "flex-1 py-2 rounded-lg text-sm font-medium transition-all",
-              view === "history" ? "bg-white text-emerald-700 shadow-sm" : "text-gray-400 hover:text-gray-600",
+              view === "history" ? "bg-white text-primary-700 shadow-sm" : "text-gray-400 hover:text-gray-600",
             )}
           >
             {t("parentPages", "historyLabel", lang)}
@@ -312,7 +312,7 @@ export default function ParentIbadahPage() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 pb-28">
         {/* Date nav */}
         <div className="flex items-center gap-3">
-          <button onClick={prevDay} className="p-2 rounded-xl bg-white border border-emerald-100 text-emerald-600 hover:bg-emerald-50 transition-colors">
+          <button onClick={prevDay} className="p-2 rounded-xl bg-white border border-primary-100 text-primary-600 hover:bg-primary-50 transition-colors">
             <ChevronLeft className="w-4 h-4" />
           </button>
           <div className="flex-1 text-center">
@@ -321,13 +321,13 @@ export default function ParentIbadahPage() {
               value={date}
               max={fmt(new Date())}
               onChange={(e) => setDate(e.target.value)}
-              className="text-sm font-semibold text-emerald-700 focus:outline-none bg-transparent text-center"
+              className="text-sm font-semibold text-primary-700 focus:outline-none bg-transparent text-center"
             />
           </div>
           <button
             onClick={nextDay}
             disabled={date >= fmt(new Date())}
-            className="p-2 rounded-xl bg-white border border-emerald-100 text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-40"
+            className="p-2 rounded-xl bg-white border border-primary-100 text-primary-600 hover:bg-primary-50 transition-colors disabled:opacity-40"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -338,19 +338,19 @@ export default function ParentIbadahPage() {
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
           <div className="px-4 py-3 bg-gray-50 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Moon className="w-4 h-4 text-emerald-600" />
+              <Moon className="w-4 h-4 text-primary-600" />
               <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">{t("parentPages", "fiveDailyPrayers", lang)}</p>
             </div>
             <div className="flex items-center gap-2">
               <span className={cn(
                 "text-xs font-bold",
-                prayerCount === activePrayers.length ? "text-emerald-600" : "text-gray-400",
+                prayerCount === activePrayers.length ? "text-primary-600" : "text-gray-400",
               )}>
                 {prayerCount}/{activePrayers.length}
               </span>
               <button
                 onClick={markAll}
-                className="text-[10px] font-semibold text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-1 rounded-lg transition-colors"
+                className="text-[10px] font-semibold text-primary-600 hover:text-primary-800 bg-primary-50 hover:bg-primary-100 px-2 py-1 rounded-lg transition-colors"
               >
                 {t("parentPages", "allAda", lang)}
               </button>
@@ -366,8 +366,8 @@ export default function ParentIbadahPage() {
                   key={p}
                   className={cn(
                     "flex items-center gap-3 px-4 py-3 cursor-pointer active:opacity-80 transition-all first:rounded-t-none last:rounded-b-none",
-                    status === "ADA" && "bg-gradient-to-r from-emerald-50/60 to-transparent",
-                    status === "NOT_PRAYABLE" && "bg-gradient-to-r from-emerald-50/60 to-transparent",
+                    status === "ADA" && "bg-gradient-to-r from-primary-50/60 to-transparent",
+                    status === "NOT_PRAYABLE" && "bg-gradient-to-r from-primary-50/60 to-transparent",
                     status === "QALA" && "bg-gradient-to-r from-amber-50/60 to-transparent",
                     status === "JAMA" && "bg-gradient-to-r from-blue-50/60 to-transparent",
                     !status && "hover:bg-gray-50",
@@ -376,7 +376,7 @@ export default function ParentIbadahPage() {
                 >
                   <div className={cn(
                     "w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 transition-all",
-                    (status === "ADA" || status === "NOT_PRAYABLE") && "text-emerald-500",
+                    (status === "ADA" || status === "NOT_PRAYABLE") && "text-primary-500",
                     status === "QALA" && "text-amber-500",
                     status === "JAMA" && "text-blue-500",
                     !status && "text-gray-300",
@@ -391,7 +391,7 @@ export default function ParentIbadahPage() {
                   </div>
                   <span className={cn(
                     "text-[11px] font-medium transition-all",
-                    (status === "ADA" || status === "NOT_PRAYABLE") && "text-emerald-500",
+                    (status === "ADA" || status === "NOT_PRAYABLE") && "text-primary-500",
                     status === "QALA" && "text-amber-500",
                     status === "JAMA" && "text-blue-500",
                     !status && "text-gray-300",
@@ -419,9 +419,9 @@ export default function ParentIbadahPage() {
 
         {/* Custom items */}
         {customItems.length > 0 && (
-        <div className="bg-white rounded-xl border border-emerald-100/50 overflow-hidden divide-y divide-emerald-50">
+        <div className="bg-white rounded-xl border border-primary-100/50 overflow-hidden divide-y divide-primary-50">
           <div className="px-4 py-3">
-            <p className="text-xs font-semibold text-emerald-700">{t("parentPages", "additionalIbadah", lang)}</p>
+            <p className="text-xs font-semibold text-primary-700">{t("parentPages", "additionalIbadah", lang)}</p>
           </div>
           {customItems.map((item) =>
             item.type === "boolean" ? (
@@ -431,7 +431,7 @@ export default function ParentIbadahPage() {
                 onClick={() => toggleCustomBoolean(item.key)}
                 className={cn(
                   "relative w-10 h-5 rounded-full transition-colors shrink-0",
-                  form.customData[item.key] ? "bg-emerald-500" : "bg-gray-200",
+                  form.customData[item.key] ? "bg-primary-500" : "bg-gray-200",
                 )}
               >
                 <span className={cn(
@@ -443,13 +443,13 @@ export default function ParentIbadahPage() {
             ) : item.type === "enum" ? (
             <div
               key={item.key}
-              className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-emerald-50/30 transition-colors"
+              className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-primary-50/30 transition-colors"
               onClick={() => setDrawerCustomEnum(item.key)}
             >
               <div className="flex-1">
                 <p className="text-sm text-gray-700">{item.label}</p>
               </div>
-              <span className="text-xs font-medium text-emerald-600">
+              <span className="text-xs font-medium text-primary-600">
                 {(form.customData[item.key] as string) ?? "—"}
               </span>
               <ChevronDown className="w-3.5 h-3.5 text-gray-200 shrink-0" />
@@ -471,7 +471,7 @@ export default function ParentIbadahPage() {
         )}
 
         {/* Notes */}
-        <div className="bg-white rounded-xl border border-emerald-100/50 px-4 py-3">
+        <div className="bg-white rounded-xl border border-primary-100/50 px-4 py-3">
           <textarea
             value={form.notes}
             onChange={(e) => { setForm((f) => ({ ...f, notes: e.target.value })); setSaved(false); }}
@@ -496,8 +496,8 @@ export default function ParentIbadahPage() {
             className={cn(
               "w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-semibold transition-all shadow-lg",
               saved
-              ? "bg-gradient-to-r from-emerald-100 to-emerald-50 text-emerald-600"
-              : "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white hover:from-emerald-700 hover:to-emerald-800 disabled:opacity-50",
+              ? "bg-gradient-to-r from-primary-100 to-primary-50 text-primary-600"
+              : "bg-gradient-to-r from-primary-600 to-primary-700 text-white hover:from-primary-700 hover:to-primary-800 disabled:opacity-50",
             )}
           >
             {saveMutation.isPending ? (
@@ -517,7 +517,7 @@ export default function ParentIbadahPage() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2 pb-20">
           {ibadah.logs.length === 0 ? (
             <div className="text-center py-16">
-              <Moon className="w-10 h-10 mx-auto mb-3 text-emerald-200" />
+              <Moon className="w-10 h-10 mx-auto mb-3 text-primary-200" />
               <p className="text-sm text-gray-400">{t("parentPages", "noHistory", lang)}</p>
             </div>
           ) : (
@@ -533,7 +533,7 @@ export default function ParentIbadahPage() {
                   key={log.id}
                   initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
                   className={cn(
-                    "bg-white rounded-xl border border-emerald-100/50 overflow-hidden transition-shadow",
+                    "bg-white rounded-xl border border-primary-100/50 overflow-hidden transition-shadow",
                     isExpanded && "shadow-sm",
                   )}
                 >
@@ -544,7 +544,7 @@ export default function ParentIbadahPage() {
                     <div className={cn(
                       "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-[11px] font-bold",
                       prayersDone === activePrayers.length
-                      ? "bg-emerald-100 text-emerald-700"
+                      ? "bg-primary-100 text-primary-700"
                       : "bg-gray-100 text-gray-500",
                     )}>
                       {prayersDone}/{activePrayers.length}
@@ -562,7 +562,7 @@ export default function ParentIbadahPage() {
                           key={p}
                           className={cn(
                             "w-1.5 h-1.5 rounded-full",
-                            log[p] != null ? "bg-emerald-500" : "bg-gray-200",
+                            log[p] != null ? "bg-primary-500" : "bg-gray-200",
                           )}
                         />
                       ))}
@@ -578,14 +578,14 @@ export default function ParentIbadahPage() {
                         initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }} className="overflow-hidden"
                       >
-                        <div className="border-t border-emerald-50 px-4 py-3 space-y-3">
+                        <div className="border-t border-primary-50 px-4 py-3 space-y-3">
                           <div className="flex gap-1.5">
                             {activePrayers.map((p) => (
                               <div
                                 key={p}
                                 className={cn(
                                   "flex-1 rounded-lg py-2 text-center text-[10px] font-semibold",
-                                  log[p] != null ? "bg-emerald-50 text-emerald-700" : "bg-gray-50 text-gray-400",
+                                  log[p] != null ? "bg-primary-50 text-primary-700" : "bg-gray-50 text-gray-400",
                                 )}
                               >
                                 <div>{prayerOptions.find((o) => o.value === log[p])?.label ?? "—"}</div>
@@ -594,7 +594,7 @@ export default function ParentIbadahPage() {
                             ))}
                           </div>
                           {log.quranPages > 0 && (
-                            <div className="flex items-center gap-1.5 text-xs text-emerald-600">
+                            <div className="flex items-center gap-1.5 text-xs text-primary-600">
                               <BookOpen className="w-3 h-3" /> {log.quranPages} {t("parentPages", "pages", lang)}
                             </div>
                           )}
@@ -625,7 +625,7 @@ export default function ParentIbadahPage() {
                           )}
                           <button
                             onClick={() => { setDate(fmt(new Date(log.date))); setView("form"); }}
-                            className="text-xs font-medium text-emerald-600 hover:text-emerald-800 transition-colors"
+                            className="text-xs font-medium text-primary-600 hover:text-primary-800 transition-colors"
                           >
                             {t("parentPages", "editRecord", lang)} →
                           </button>
@@ -663,7 +663,7 @@ export default function ParentIbadahPage() {
               <div className="relative px-5 pt-6 pb-6">
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-sm">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-sm">
                       <Moon className="w-4 h-4 text-white" />
                     </div>
                     <div>
@@ -753,7 +753,7 @@ export default function ParentIbadahPage() {
                 <div className="px-5 pt-6 pb-6">
                   <div className="flex items-center justify-between mb-5">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-sm">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-sm">
                         <Hash className="w-4 h-4 text-white" />
                       </div>
                       <p className="text-base font-semibold text-gray-900">{item.label}</p>
@@ -768,7 +768,7 @@ export default function ParentIbadahPage() {
                       const val = form.customData[drawerCustomEnum] as string | undefined;
                       const selected = opt.label && val === opt.label;
                       const colorMap: Record<string, string> = {
-                        emerald: "text-emerald-600", amber: "text-amber-600", blue: "text-blue-600",
+                        emerald: "text-primary-600", amber: "text-amber-600", blue: "text-blue-600",
                         purple: "text-purple-600", rose: "text-rose-600", cyan: "text-cyan-600",
                         orange: "text-orange-600", lime: "text-lime-600",
                       };
@@ -782,7 +782,7 @@ export default function ParentIbadahPage() {
                           }}
                           className={cn(
                             "w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all text-left",
-                            selected ? "bg-emerald-50" : "hover:bg-gray-50",
+                            selected ? "bg-primary-50" : "hover:bg-gray-50",
                           )}
                         >
                           {opt.icon ? (
@@ -791,12 +791,12 @@ export default function ParentIbadahPage() {
                             <X className={cn("w-4 h-4 shrink-0", selected ? "text-gray-500" : "text-gray-300")} />
                           )}
                           <div className="flex-1">
-                            <p className={cn("text-sm", selected ? "font-semibold text-emerald-700" : "text-gray-600")}>
+                            <p className={cn("text-sm", selected ? "font-semibold text-primary-700" : "text-gray-600")}>
                               {opt.label || t("parentPages", "notRecorded", lang)}
                             </p>
                           </div>
                           {selected && (
-                            <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
+                            <div className="w-6 h-6 rounded-full bg-primary-500 flex items-center justify-center">
                               <Check className="w-3.5 h-3.5 text-white" />
                             </div>
                           )}

@@ -77,7 +77,7 @@ export function PortalLinksCard({
       {/* Card Header */}
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-xl bg-primary-100 text-primary-700 flex items-center justify-center">
             <Share2 className="w-4 h-4" />
           </div>
           <div>
@@ -85,7 +85,7 @@ export function PortalLinksCard({
               <h2 className="text-sm font-bold text-gray-900">
                 Staff & Parent Portal Links
               </h2>
-              <span className="flex items-center gap-1 text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
+              <span className="flex items-center gap-1 text-[10px] font-semibold bg-primary-50 text-primary-700 border border-primary-200 px-2 py-0.5 rounded-full">
                 <Sparkles className="w-2.5 h-2.5" />
                 Live Portals
               </span>
@@ -98,7 +98,7 @@ export function PortalLinksCard({
 
         <button
           onClick={shareBroadcastViaWhatsApp}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-primary-50 hover:bg-primary-100 text-primary-700 border border-primary-200 transition-colors cursor-pointer"
         >
           <MessageCircle className="w-3.5 h-3.5" />
           Broadcast Both Links
@@ -108,11 +108,11 @@ export function PortalLinksCard({
       {/* Two Portal Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
         {/* Teacher Portal */}
-        <div className="bg-gradient-to-br from-emerald-50/40 via-white to-teal-50/30 rounded-2xl p-4 border border-emerald-100 hover:border-emerald-200 transition-all flex flex-col justify-between">
+        <div className="bg-gradient-to-br from-primary-50/40 via-white to-teal-50/30 rounded-2xl p-4 border border-primary-100 hover:border-primary-200 transition-all flex flex-col justify-between">
           <div>
             <div className="flex items-start justify-between gap-2 mb-2">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-primary-100 text-primary-700 flex items-center justify-center shrink-0">
                   <Users className="w-4 h-4" />
                 </div>
                 <div>
@@ -124,13 +124,13 @@ export function PortalLinksCard({
                   </p>
                 </div>
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-100/70 text-emerald-800">
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-primary-100/70 text-primary-800">
                 Staff
               </span>
             </div>
 
             {/* URL display */}
-            <div className="bg-white/80 rounded-xl p-2 border border-emerald-150 mb-3 flex items-center gap-2">
+            <div className="bg-white/80 rounded-xl p-2 border border-primary-150 mb-3 flex items-center gap-2">
               <span className="text-xs font-mono text-gray-600 truncate flex-1 select-all">
                 {teacherUrl}
               </span>
@@ -138,7 +138,7 @@ export function PortalLinksCard({
           </div>
 
           {/* Action buttons */}
-          <div className="flex items-center gap-1.5 pt-1 border-t border-emerald-100/60">
+          <div className="flex items-center gap-1.5 pt-1 border-t border-primary-100/60">
             <button
               onClick={() =>
                 copyToClipboard(teacherUrl, "teacher", "Teacher Portal Link")
@@ -147,8 +147,8 @@ export function PortalLinksCard({
             >
               {copiedKey === "teacher" ? (
                 <>
-                  <Check className="w-3.5 h-3.5 text-emerald-600" />
-                  <span className="text-emerald-600 font-bold">Copied!</span>
+                  <Check className="w-3.5 h-3.5 text-primary-600" />
+                  <span className="text-primary-600 font-bold">Copied!</span>
                 </>
               ) : (
                 <>
@@ -162,7 +162,7 @@ export function PortalLinksCard({
               onClick={() =>
                 shareSingleViaWhatsApp("Teacher Portal", teacherUrl)
               }
-              className="flex items-center justify-center gap-1 py-1.5 px-2.5 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-2xs cursor-pointer"
+              className="flex items-center justify-center gap-1 py-1.5 px-2.5 rounded-xl text-xs font-semibold bg-primary-600 text-white hover:bg-primary-700 transition-colors shadow-2xs cursor-pointer"
               title="Share to WhatsApp"
             >
               <MessageCircle className="w-3.5 h-3.5" />

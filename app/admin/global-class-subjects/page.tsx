@@ -47,7 +47,7 @@ interface SubjectForm {
 const EMPTY_GL: GradeLevelForm = { name: "", level: 1 };
 const EMPTY_SUBJECT: SubjectForm = { subjectName: "", maxMarks: "", passMarks: "", annualPassMarks: "", grades: [] };
 
-const inputCls = "w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all";
+const inputCls = "w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100 transition-all";
 const labelCls = "text-xs font-semibold text-gray-600 mb-1.5 block";
 
 export default function AdminGlobalClassSubjectsPage() {
@@ -299,7 +299,7 @@ export default function AdminGlobalClassSubjectsPage() {
         icon={BookOpen}
         action={
           <button onClick={openAddSys}
-            className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-colors"
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700 transition-colors"
           >
             <Plus className="w-4 h-4" /> Add System
           </button>
@@ -361,7 +361,7 @@ export default function AdminGlobalClassSubjectsPage() {
                     <Pencil className="w-4 h-4" />
                   </button>
                   <button onClick={(e) => { e.stopPropagation(); openDrawer(sys); }}
-                    className="p-1.5 rounded-lg hover:bg-emerald-100 text-gray-400 hover:text-emerald-600 mr-0.5"
+                    className="p-1.5 rounded-lg hover:bg-primary-100 text-gray-400 hover:text-primary-600 mr-0.5"
                     title="Manage classes & subjects">
                     <ArrowUpRight className="w-4 h-4" />
                   </button>
@@ -397,7 +397,7 @@ export default function AdminGlobalClassSubjectsPage() {
                 </div>
                 <div className="flex gap-3 mt-6">
                   <button onClick={() => setShowSysModal(false)} className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-gray-100 hover:bg-gray-200">Cancel</button>
-                  <button onClick={handleSaveSys} disabled={sysSaving} className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">
+                  <button onClick={handleSaveSys} disabled={sysSaving} className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-xl bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50">
                     {sysSaving && <Loader2 className="w-4 h-4 animate-spin" />}{editingSys ? "Save" : "Create"}
                   </button>
                 </div>
@@ -438,7 +438,7 @@ export default function AdminGlobalClassSubjectsPage() {
                     <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                       <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Classes</span>
                       <button onClick={() => openGlFormDrawer()}
-                        className="p-1 rounded-lg hover:bg-emerald-100 text-emerald-600 hover:text-emerald-700">
+                        className="p-1 rounded-lg hover:bg-primary-100 text-primary-600 hover:text-primary-700">
                         <Plus className="w-4 h-4" />
                       </button>
                     </div>
@@ -455,7 +455,7 @@ export default function AdminGlobalClassSubjectsPage() {
                               className={cn(
                                 "group flex items-center justify-between px-4 py-3 mx-2 rounded-xl cursor-pointer transition-colors",
                                 activeGlId === gl.id
-                                  ? "bg-emerald-50 text-emerald-700"
+                                  ? "bg-primary-50 text-primary-700"
                                   : "hover:bg-gray-50 text-gray-700",
                               )}
                             >
@@ -495,10 +495,10 @@ export default function AdminGlobalClassSubjectsPage() {
                       <div className="flex-1 overflow-y-auto px-6 py-4">
                         <div className="flex items-center justify-between mb-4">
                           <h3 className="font-bold text-gray-900">
-                            Subjects — <span className="text-emerald-600">{gradeLevels.find((g) => g.id === activeGlId)?.name}</span>
+                            Subjects — <span className="text-primary-600">{gradeLevels.find((g) => g.id === activeGlId)?.name}</span>
                           </h3>
                           <button onClick={openAddSubjForm}
-                            className="flex items-center gap-1 px-3 py-2 rounded-xl bg-emerald-100 text-emerald-700 text-sm font-semibold hover:bg-emerald-200 transition-colors">
+                            className="flex items-center gap-1 px-3 py-2 rounded-xl bg-primary-100 text-primary-700 text-sm font-semibold hover:bg-primary-200 transition-colors">
                             <Plus className="w-4 h-4" /> Add Subject
                           </button>
                         </div>
@@ -580,7 +580,7 @@ export default function AdminGlobalClassSubjectsPage() {
                 </div>
                 <div className="px-6 py-4 border-t border-gray-100 flex gap-3 shrink-0">
                   <button onClick={() => setGlFormDrawer(false)} className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-gray-100 hover:bg-gray-200">Cancel</button>
-                  <button onClick={saveGl} disabled={glSaving} className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">
+                  <button onClick={saveGl} disabled={glSaving} className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-xl bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50">
                     {glSaving && <Loader2 className="w-4 h-4 animate-spin" />}{editingGl ? "Save" : "Create"}
                   </button>
                 </div>
@@ -632,7 +632,7 @@ export default function AdminGlobalClassSubjectsPage() {
                           <input
                             value={g.grade}
                             onChange={(e) => updateGradeRow(i, "grade", e.target.value)}
-                            className="w-20 px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-emerald-400"
+                            className="w-20 px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-primary-400"
                             placeholder="A+"
                           />
                           <span className="text-xs text-gray-400">≥</span>
@@ -640,7 +640,7 @@ export default function AdminGlobalClassSubjectsPage() {
                             type="number"
                             value={g.min}
                             onChange={(e) => updateGradeRow(i, "min", parseInt(e.target.value) || 0)}
-                            className="w-24 px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-emerald-400"
+                            className="w-24 px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-primary-400"
                             placeholder="90"
                           />
                           <button onClick={() => removeGradeRow(i)}
@@ -650,7 +650,7 @@ export default function AdminGlobalClassSubjectsPage() {
                         </div>
                       ))}
                       <button onClick={addGradeRow}
-                        className="flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition-colors">
+                        className="flex items-center gap-1 text-xs font-semibold text-primary-600 hover:text-primary-700 transition-colors">
                         <Plus className="w-3.5 h-3.5" /> Add Grade
                       </button>
                     </div>
@@ -661,7 +661,7 @@ export default function AdminGlobalClassSubjectsPage() {
                 </div>
                 <div className="px-6 py-4 border-t border-gray-100 flex gap-3 shrink-0">
                   <button onClick={cancelSubjForm} className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-gray-100 hover:bg-gray-200">Cancel</button>
-                  <button onClick={saveSubj} disabled={subjSaving} className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">
+                  <button onClick={saveSubj} disabled={subjSaving} className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-xl bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50">
                     {subjSaving && <Loader2 className="w-4 h-4 animate-spin" />}{editingSubj ? "Save" : "Add"}
                   </button>
                 </div>

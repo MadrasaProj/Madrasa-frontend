@@ -15,7 +15,7 @@ import {
 
 function Bar({
   value,
-  color = "bg-emerald-500",
+  color = "bg-primary-500",
   height = "h-2",
 }: {
   value: number;
@@ -76,9 +76,9 @@ export default function CommitteeFinancePage() {
       value: `${d.fees.paidStudents}`,
       sub: `${lang === "ml" ? "ൽ" : "of"} ${d.overview.totalStudents} ${lang === "ml" ? "വിദ്യാർ." : "students"}`,
       icon: CheckCircle2,
-      color: "text-emerald-700",
-      bg: "bg-emerald-50",
-      border: "border-emerald-200",
+      color: "text-primary-700",
+      bg: "bg-primary-50",
+      border: "border-primary-200",
     },
   ];
 
@@ -90,7 +90,7 @@ export default function CommitteeFinancePage() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-6"
       >
-        <div className="bg-linear-to-r from-teal-700 to-emerald-600 rounded-3xl p-5 lg:p-6 text-white">
+        <div className="bg-linear-to-r from-teal-700 to-primary-600 rounded-3xl p-5 lg:p-6 text-white">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
               <IndianRupee className="w-5 h-5 text-white" />
@@ -165,7 +165,7 @@ export default function CommitteeFinancePage() {
         className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm mb-5"
       >
         <div className="flex items-center gap-2 mb-4">
-          <Users className="w-4.5 h-4.5 text-emerald-700" />
+          <Users className="w-4.5 h-4.5 text-primary-700" />
           <p className="font-bold text-gray-800">
             {lang === "ml" ? "വിദ്യാർത്ഥി ഫീസ് നില" : "Student Payment Status"}
           </p>
@@ -173,7 +173,7 @@ export default function CommitteeFinancePage() {
         <div className="flex items-center gap-3 mb-3">
           <div className="flex-1 h-10 rounded-2xl overflow-hidden flex">
             <div
-              className="bg-emerald-500 flex items-center justify-center text-white text-xs font-bold transition-all"
+              className="bg-primary-500 flex items-center justify-center text-white text-xs font-bold transition-all"
               style={{
                 width: `${pct(d.fees.paidStudents, d.overview.totalStudents)}%`,
               }}
@@ -187,7 +187,7 @@ export default function CommitteeFinancePage() {
         </div>
         <div className="flex gap-6 text-xs">
           <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded bg-emerald-500" />
+            <span className="w-3 h-3 rounded bg-primary-500" />
             <span className="font-semibold text-gray-700">
               {lang === "ml" ? "അടച്ചു" : "Paid"}: {d.fees.paidStudents}
             </span>

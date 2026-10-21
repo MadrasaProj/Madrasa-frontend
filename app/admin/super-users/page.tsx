@@ -38,7 +38,7 @@ function UserDrawer({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const inputCls = "w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400";
+  const inputCls = "w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400";
   const labelCls = "text-xs text-gray-500 mb-1 block font-medium";
 
   const handleSubmit = async () => {
@@ -166,7 +166,7 @@ function UserDrawer({
               Cancel
             </button>
             <button onClick={handleSubmit} disabled={saving}
-              className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-all disabled:opacity-60">
+              className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-primary-600 text-white rounded-2xl hover:bg-primary-700 transition-all disabled:opacity-60">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               {mode === "add" ? "Add User" : "Save Changes"}
             </button>
@@ -233,7 +233,7 @@ export default function AdminSuperUsersPage() {
         action={
           <button
             onClick={() => setDrawer({ mode: "add" })}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-xl hover:bg-emerald-700 transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white text-sm font-semibold rounded-xl hover:bg-primary-700 transition-all"
           >
             <UserPlus className="w-4 h-4" /> Add Admin User
           </button>
@@ -277,7 +277,7 @@ export default function AdminSuperUsersPage() {
                     </span>
                   )}
                   {u.role && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-mono uppercase">
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary-50 text-primary-700 font-mono uppercase">
                       {u.role.replace(/_/g, " ")}
                     </span>
                   )}
@@ -288,7 +288,7 @@ export default function AdminSuperUsersPage() {
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   onClick={() => setDrawer({ mode: "edit", user: u })}
-                  className="p-2 rounded-xl text-gray-400 hover:bg-gray-50 hover:text-emerald-600 transition-all"
+                  className="p-2 rounded-xl text-gray-400 hover:bg-gray-50 hover:text-primary-600 transition-all"
                 >
                   <Pencil className="w-4 h-4" />
                 </button>

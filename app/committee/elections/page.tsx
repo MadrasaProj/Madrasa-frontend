@@ -16,7 +16,7 @@ const roleBadge: Record<string, { emoji: string; bg: string; text: string }> = {
   Chairman: { emoji: "🎖️", bg: "bg-blue-100", text: "text-blue-800" },
   Convener: { emoji: "📋", bg: "bg-blue-100", text: "text-blue-800" },
   Secretary: { emoji: "📝", bg: "bg-teal-100", text: "text-teal-800" },
-  Treasurer: { emoji: "💰", bg: "bg-emerald-100", text: "text-emerald-800" },
+  Treasurer: { emoji: "💰", bg: "bg-primary-100", text: "text-primary-800" },
 };
 
 export default function CommitteeElectionsPage() {
@@ -51,9 +51,9 @@ export default function CommitteeElectionsPage() {
       value: `${d.elections.completedCount}`,
       sub: lang === "ml" ? "ഈ വർഷം" : "This year",
       icon: CheckCircle2,
-      color: "text-emerald-700",
-      bg: "bg-emerald-50",
-      border: "border-emerald-200",
+      color: "text-primary-700",
+      bg: "bg-primary-50",
+      border: "border-primary-200",
     },
     {
       label: lang === "ml" ? "SKSBV അംഗങ്ങൾ" : "SKSBV Members",
@@ -83,7 +83,7 @@ export default function CommitteeElectionsPage() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-6"
       >
-        <div className="bg-linear-to-r from-emerald-800 to-teal-600 rounded-3xl p-5 lg:p-6 text-white">
+        <div className="bg-linear-to-r from-primary-800 to-teal-600 rounded-3xl p-5 lg:p-6 text-white">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
               <Vote className="w-5 h-5 text-white" />
@@ -189,7 +189,7 @@ export default function CommitteeElectionsPage() {
                   className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                     isPending
                       ? "bg-amber-200 text-amber-800"
-                      : "bg-emerald-100 text-emerald-700"
+                      : "bg-primary-100 text-primary-700"
                   }`}
                 >
                   {isPending
@@ -242,7 +242,7 @@ export default function CommitteeElectionsPage() {
                   className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                     el.status === "active"
                       ? "bg-indigo-200 text-indigo-800"
-                      : "bg-emerald-100 text-emerald-700"
+                      : "bg-primary-100 text-primary-700"
                   }`}
                 >
                   {el.status === "active"

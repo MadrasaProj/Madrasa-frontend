@@ -642,7 +642,7 @@ export default function AdminExamsPage() {
           action={
             <button
               onClick={openCreateDrawer}
-              className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-4 py-2.5 rounded-xl transition-all shadow-sm hover:scale-[1.01]"
+              className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-bold text-sm px-4 py-2.5 rounded-xl transition-all shadow-sm hover:scale-[1.01]"
             >
               <Plus className="w-4 h-4" /> Create Exam
             </button>
@@ -654,7 +654,7 @@ export default function AdminExamsPage() {
             {
               label: "Upcoming Exams",
               value: upcomingExams.length,
-              color: "bg-emerald-50 text-emerald-600 border border-emerald-100",
+              color: "bg-primary-50 text-primary-600 border border-primary-100",
               icon: Clock,
             },
             {
@@ -695,7 +695,7 @@ export default function AdminExamsPage() {
             placeholder="Search exam by name..."
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 focus:border-emerald-500 transition-all"
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-500 transition-all"
           />
         </div>
 
@@ -782,7 +782,7 @@ export default function AdminExamsPage() {
                       className={cn(
                         "px-6 py-3 text-base font-semibold text-left whitespace-nowrap transition-all border-r-[3px] -mr-px",
                         selectedClassTab === cls.id
-                          ? "border-emerald-600 text-emerald-700 bg-emerald-50/60"
+                          ? "border-primary-600 text-primary-700 bg-primary-50/60"
                           : "border-transparent text-gray-500 hover:text-gray-800 hover:border-gray-300",
                       )}
                     >
@@ -805,7 +805,7 @@ export default function AdminExamsPage() {
                         className={cn(
                           "px-5 py-3 text-base font-semibold whitespace-nowrap shrink-0 transition-all border-b-[3px] -mb-px",
                           selectedClassTab === cls.id
-                            ? "border-emerald-600 text-emerald-700"
+                            ? "border-primary-600 text-primary-700"
                             : "border-transparent text-gray-500 hover:text-gray-800 hover:border-gray-300",
                         )}
                       >
@@ -835,7 +835,7 @@ export default function AdminExamsPage() {
                             className={cn(
                               "px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-1.5",
                               contentTab === "markentry"
-                                ? "bg-white text-emerald-700 shadow-sm"
+                                ? "bg-white text-primary-700 shadow-sm"
                                 : "text-gray-500 hover:text-gray-700",
                             )}
                           >
@@ -847,7 +847,7 @@ export default function AdminExamsPage() {
                             className={cn(
                               "px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-1.5",
                               contentTab === "report"
-                                ? "bg-white text-emerald-700 shadow-sm"
+                                ? "bg-white text-primary-700 shadow-sm"
                                 : "text-gray-500 hover:text-gray-700",
                             )}
                           >
@@ -905,7 +905,7 @@ export default function AdminExamsPage() {
                                   "flex items-center gap-2 px-4 py-3 rounded-xl text-sm",
                                   computeMsg.startsWith("Error")
                                     ? "bg-red-50 text-red-700 border border-red-100"
-                                    : "bg-emerald-50 text-emerald-700 border border-emerald-100",
+                                    : "bg-primary-50 text-primary-700 border border-primary-100",
                                 )}>
                                   {computeMsg.startsWith("Error")
                                     ? <AlertCircle className="w-4 h-4" />
@@ -919,7 +919,7 @@ export default function AdminExamsPage() {
                                 <button
                                   onClick={handleCompute}
                                   disabled={computing}
-                                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-50 transition-all shadow-sm"
+                                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold disabled:opacity-50 transition-all shadow-sm"
                                 >
                                   {computing
                                     ? <Loader2 className="w-4 h-4 animate-spin" />
@@ -930,7 +930,7 @@ export default function AdminExamsPage() {
                                   onClick={() => setImportOpen(true)}
                                   className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 bg-white hover:bg-gray-50 transition-colors shadow-xs"
                                 >
-                                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                                  <FileSpreadsheet className="w-4 h-4 text-primary-600" />
                                   Import Excel
                                 </button>
                               </div>
@@ -951,9 +951,9 @@ export default function AdminExamsPage() {
                                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                                     {[
                                       { label: "Total Students", value: reportData.stats.totalStudents, color: "text-gray-800", bg: "bg-gray-50" },
-                                      { label: "Passed", value: reportData.stats.passedCount, color: "text-emerald-700", bg: "bg-emerald-50" },
+                                      { label: "Passed", value: reportData.stats.passedCount, color: "text-primary-700", bg: "bg-primary-50" },
                                       { label: "Failed", value: reportData.stats.failedCount, color: "text-red-700", bg: "bg-red-50" },
-                                      { label: "Ranked", value: reportData.stats.rankedCount, color: "text-emerald-700", bg: "bg-emerald-50" },
+                                      { label: "Ranked", value: reportData.stats.rankedCount, color: "text-primary-700", bg: "bg-primary-50" },
                                       { label: "Class Average", value: `${reportData.stats.classAverage.toFixed(1)}%`, color: "text-teal-700", bg: "bg-teal-50" },
                                     ].map(({ label, value, color, bg }) => (
                                       <div key={label} className={cn("rounded-xl p-4 text-center", bg)}>
@@ -975,7 +975,7 @@ export default function AdminExamsPage() {
                                         className={cn(
                                           "px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap",
                                           reportTab === key
-                                            ? "text-emerald-600 border-emerald-600"
+                                            ? "text-primary-600 border-primary-600"
                                             : "text-gray-500 border-transparent hover:text-gray-700",
                                         )}>
                                         {label}
@@ -1113,7 +1113,7 @@ export default function AdminExamsPage() {
               >
                 <div className="space-y-4">
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                    <GraduationCap className="w-4 h-4 text-emerald-600" />{" "}
+                    <GraduationCap className="w-4 h-4 text-primary-600" />{" "}
                     Basic Information
                   </p>
                   <div>
@@ -1128,14 +1128,14 @@ export default function AdminExamsPage() {
                         setForm((f) => ({ ...f, name: e.target.value }))
                       }
                       placeholder="e.g. First Term Exam 2026"
-                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 focus:border-emerald-500 transition-all bg-white"
+                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-500 transition-all bg-white"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-4">
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5 border-t pt-4">
-                    <Calendar className="w-4 h-4 text-emerald-600" /> Exam
+                    <Calendar className="w-4 h-4 text-primary-600" /> Exam
                     Period
                   </p>
                   <div className="grid grid-cols-2 gap-3">
@@ -1150,7 +1150,7 @@ export default function AdminExamsPage() {
                         onChange={(e) =>
                           setForm((f) => ({ ...f, startDate: e.target.value }))
                         }
-                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 focus:border-emerald-500 transition-all bg-white"
+                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-500 transition-all bg-white"
                       />
                     </div>
                     <div>
@@ -1164,7 +1164,7 @@ export default function AdminExamsPage() {
                         onChange={(e) =>
                           setForm((f) => ({ ...f, endDate: e.target.value }))
                         }
-                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 focus:border-emerald-500 transition-all bg-white"
+                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-500 transition-all bg-white"
                       />
                     </div>
                   </div>
@@ -1172,7 +1172,7 @@ export default function AdminExamsPage() {
 
                 <div className="space-y-4">
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5 border-t pt-4">
-                    <PenLine className="w-4 h-4 text-emerald-600" /> Mark Entry
+                    <PenLine className="w-4 h-4 text-primary-600" /> Mark Entry
                     Period
                   </p>
                   <div className="grid grid-cols-2 gap-3">
@@ -1210,7 +1210,7 @@ export default function AdminExamsPage() {
                             markEntryLastDate: e.target.value,
                           }))
                         }
-                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 focus:border-emerald-500 transition-all bg-white"
+                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-500 transition-all bg-white"
                       />
                     </div>
                   </div>
@@ -1218,7 +1218,7 @@ export default function AdminExamsPage() {
 
                 <div className="space-y-4">
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5 border-t pt-4">
-                    <Award className="w-4 h-4 text-emerald-600" /> Result
+                    <Award className="w-4 h-4 text-primary-600" /> Result
                     Publication
                   </p>
                   <div>
@@ -1235,7 +1235,7 @@ export default function AdminExamsPage() {
                           publishedDate: e.target.value,
                         }))
                       }
-                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 focus:border-emerald-500 transition-all bg-white"
+                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-500 transition-all bg-white"
                     />
                   </div>
                   <div>
@@ -1250,7 +1250,7 @@ export default function AdminExamsPage() {
                           examStatus: e.target.value as ExamStatus,
                         }))
                       }
-                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 focus:border-emerald-500 transition-all bg-white"
+                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-500 transition-all bg-white"
                     >
                       <option value="DRAFT">Draft</option>
                       <option value="MARK_ENTRY">Mark Entry Open</option>
@@ -1271,7 +1271,7 @@ export default function AdminExamsPage() {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-2 transition-colors shadow-sm"
+                    className="flex-1 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-2 transition-colors shadow-sm"
                   >
                     {submitting && (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -1364,8 +1364,8 @@ function ReportMarklistTab({ report, marklistStudId, setMarklistStudId, madrasaN
             className={cn(
               "px-3 py-1.5 rounded-lg text-sm font-medium border transition-all",
               marklistStudId === r.student.id
-                ? "border-emerald-600 bg-emerald-50 text-emerald-700"
-                : "border-gray-200 bg-white text-gray-700 hover:border-emerald-300",
+                ? "border-primary-600 bg-primary-50 text-primary-700"
+                : "border-gray-200 bg-white text-gray-700 hover:border-primary-300",
             )}
           >
             {r.summary.rank === 1 ? "🥇 " : r.summary.rank === 2 ? "🥈 " : r.summary.rank === 3 ? "🥉 " : ""}
@@ -1421,7 +1421,7 @@ function ReportStatusTab({ report, statusMap, setStatusMap, savingId, savingAll,
         <button
           onClick={onSaveAll}
           disabled={savingAll || !report.students.some((r) => statusMap[r.student.id]?.finalStatus)}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold disabled:opacity-40 transition-colors"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold disabled:opacity-40 transition-colors"
         >
           {savingAll ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
           Save All
@@ -1430,7 +1430,7 @@ function ReportStatusTab({ report, statusMap, setStatusMap, savingId, savingAll,
       {statusMsg && (
         <div className={cn(
           "px-4 py-3 rounded-xl text-sm flex items-center gap-2",
-          statusMsg.startsWith("Error") ? "bg-red-50 text-red-700 border border-red-100" : "bg-emerald-50 text-emerald-700 border border-emerald-100",
+          statusMsg.startsWith("Error") ? "bg-red-50 text-red-700 border border-red-100" : "bg-primary-50 text-primary-700 border border-primary-100",
         )}>
           {statusMsg.startsWith("Error") ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
           {statusMsg}
@@ -1471,7 +1471,7 @@ function ReportStatusTab({ report, statusMap, setStatusMap, savingId, savingAll,
                         ...m,
                         [row.student.id]: { ...(m[row.student.id] ?? {}), finalStatus: e.target.value as ResultStatus },
                       }))}
-                      className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 w-full max-w-36"
+                      className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 w-full max-w-36"
                     >
                       <option value="">— Select —</option>
                       {statusOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -1484,7 +1484,7 @@ function ReportStatusTab({ report, statusMap, setStatusMap, savingId, savingAll,
                         ...m,
                         [row.student.id]: { ...(m[row.student.id] ?? {}), totalGrade: (e.target.value || null) as TotalGrade | null },
                       }))}
-                      className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 w-full max-w-40"
+                      className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 w-full max-w-40"
                     >
                       <option value="">— Optional —</option>
                       {TOTAL_GRADE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -1494,7 +1494,7 @@ function ReportStatusTab({ report, statusMap, setStatusMap, savingId, savingAll,
                     <button
                       onClick={() => onSave(row)}
                       disabled={!entry?.finalStatus || isSaving}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium disabled:opacity-40 transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-xs font-medium disabled:opacity-40 transition-colors"
                     >
                       {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
                       Save
@@ -1529,7 +1529,7 @@ function ReportPostersTab({ report, posterStudentId, setPosterStudentId, madrasa
     <div className="space-y-8">
       <div>
         <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+          <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />
           Result Announcement Poster
         </h3>
         <div className="max-w-sm mx-auto">
@@ -1559,8 +1559,8 @@ function ReportPostersTab({ report, posterStudentId, setPosterStudentId, madrasa
                 className={cn(
                   "px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all",
                   posterStudentId === r.student.id
-                    ? "border-emerald-600 bg-emerald-50 text-emerald-700"
-                    : "border-gray-200 bg-white text-gray-700 hover:border-emerald-300",
+                    ? "border-primary-600 bg-primary-50 text-primary-700"
+                    : "border-gray-200 bg-white text-gray-700 hover:border-primary-300",
                 )}
               >
                 {r.summary.rank === 1 ? "🥇" : r.summary.rank === 2 ? "🥈" : "🥉"} {r.student.name}

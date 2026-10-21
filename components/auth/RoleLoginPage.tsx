@@ -370,7 +370,7 @@ export default function RoleLoginPage({
   return (
     <div className="relative flex min-h-[100dvh] flex-col items-center justify-center overflow-x-hidden bg-[#f8fbf7] px-5 py-10">
       <GridPattern className="opacity-70" />
-      <div aria-hidden="true" className="pointer-events-none absolute -left-28 -top-28 h-72 w-72 rounded-full bg-emerald-200/30 blur-3xl" />
+      <div aria-hidden="true" className="pointer-events-none absolute -left-28 -top-28 h-72 w-72 rounded-full bg-primary-200/30 blur-3xl" />
       {/* <div aria-hidden="true" className="pointer-events-none absolute -bottom-32 -right-24 h-80 w-80 rounded-full bg-teal-200/30 blur-3xl" /> */}
       <div className="fixed top-4 right-4 z-50">
         <LanguageSwitcher />
@@ -386,7 +386,7 @@ export default function RoleLoginPage({
           <img src={meta.image} alt="" className="mx-auto mt-4 h-36 w-36 object-contain " />
  
 
-            <h1 className=" text-[1.8rem] font-semibold leading-tight tracking-[-0.04em] ">{meta.title} to   <span className="bg-gradient-to-r text-transparent  from-[#059669] to-[#0d9488] bg-clip-text font-black  ">{madrasaName}</span></h1>
+            <h1 className=" text-[1.8rem] font-semibold leading-tight tracking-[-0.04em] ">{meta.title} to   <span className="bg-gradient-to-r text-transparent from-primary to-primary-400 bg-clip-text font-black">{madrasaName}</span></h1>
           <p className="mx-auto mt-0 max-w-xs text-sm leading-6 text-slate-500">{meta.subtitle}</p>
         
         </div>
@@ -414,7 +414,7 @@ export default function RoleLoginPage({
                       ? "admin@example.com or 9876543210"
                       : "Enter your identifier"
                   }
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-gray-900 text-sm"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 text-sm"
                   required
                 />
               </div>
@@ -430,7 +430,7 @@ export default function RoleLoginPage({
                   value={parentPhone}
                   onChange={(e) => setParentPhone(e.target.value)}
                   placeholder="9876543210"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-gray-900 text-sm disabled:opacity-60"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 text-sm disabled:opacity-60"
                   required
                   disabled={mustSetPassword}
                 />
@@ -449,7 +449,7 @@ export default function RoleLoginPage({
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={t("login", "enterPassword", lang)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-gray-900 text-sm pr-12 disabled:opacity-60"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 text-sm pr-12 disabled:opacity-60"
                   required
                   disabled={mustSetPassword}
                 />
@@ -480,7 +480,7 @@ export default function RoleLoginPage({
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       placeholder="Enter new password (min 6 characters)"
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-gray-900 text-sm pr-12"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 text-sm pr-12"
                       required
                     />
                     <button
@@ -507,7 +507,7 @@ export default function RoleLoginPage({
                       value={confirmNewPassword}
                       onChange={(e) => setConfirmNewPassword(e.target.value)}
                       placeholder="Confirm new password"
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-gray-900 text-sm pr-12"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 text-sm pr-12"
                       required
                     />
                     <button
@@ -536,7 +536,7 @@ export default function RoleLoginPage({
                       setInfo("");
                       setError("");
                     }}
-                    className="text-xs text-emerald-600 hover:underline"
+                    className="text-xs text-primary-600 hover:underline"
                   >
                     Cancel & Edit Details
                   </button>
@@ -558,7 +558,7 @@ export default function RoleLoginPage({
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="text-sm text-emerald-700 bg-emerald-50 rounded-xl px-4 py-3"
+                className="text-sm text-primary-700 bg-primary-50 rounded-xl px-4 py-3"
               >
                 {info}
               </motion.p>
@@ -567,7 +567,7 @@ export default function RoleLoginPage({
             <Button
               type="submit"
               disabled={loading}
-              className="h-auto w-full rounded-xl  py-3.5 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(5,150,105,0.2)] hover:from-emerald-700 hover:to-teal-700 disabled:opacity-70"
+              className="h-auto w-full rounded-xl py-3.5 text-sm font-semibold text-white shadow-lg shadow-primary/20 hover:from-primary-700 hover:to-teal-700 disabled:opacity-70"
             >
               {loading ? (
                 <>

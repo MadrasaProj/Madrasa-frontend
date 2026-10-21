@@ -21,13 +21,13 @@ type StatusFilter = (typeof statuses)[number];
 const statusStyles: Record<HomeworkStatus, string> = {
   NOT_SUBMITTED: "bg-amber-50 text-amber-800 ring-amber-200",
   SUBMITTED: "bg-sky-50 text-sky-800 ring-sky-200",
-  CHECKED: "bg-emerald-50 text-emerald-800 ring-emerald-200",
+  CHECKED: "bg-primary-50 text-primary-800 ring-primary-200",
 };
 
 const statusGradients: Record<HomeworkStatus, string> = {
   NOT_SUBMITTED: "from-amber-100/60 via-amber-50/30 to-white",
   SUBMITTED: "from-sky-100/60 via-sky-50/30 to-white",
-  CHECKED: "from-emerald-100/60 via-emerald-50/30 to-white",
+  CHECKED: "from-primary-100/60 via-primary-50/30 to-white",
 };
 
 const statusLabelKeys = {

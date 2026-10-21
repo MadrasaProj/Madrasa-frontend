@@ -56,7 +56,7 @@ export default function OperationsDashboard() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-3">
-        <RefreshCw className="w-10 h-10 animate-spin text-emerald-600" />
+        <RefreshCw className="w-10 h-10 animate-spin text-primary-600" />
         <p className="text-gray-500 text-sm">Loading Operations Center...</p>
       </div>
     );
@@ -67,7 +67,7 @@ export default function OperationsDashboard() {
 
   const statCards = [
     { label: "Total Leads", value: metrics?.totalLeads ?? 0, icon: Users, color: "from-blue-500 to-indigo-600" },
-    { label: "Active Demos/Trials", value: metrics?.activeTrials ?? 0, icon: Play, color: "from-emerald-400 to-teal-600" },
+    { label: "Active Demos/Trials", value: metrics?.activeTrials ?? 0, icon: Play, color: "from-primary-400 to-teal-600" },
     { label: "Active Madrasas", value: metrics?.activeMadrasas ?? 0, icon: Activity, color: "from-purple-500 to-indigo-600" },
     { label: "Open Tickets", value: metrics?.openTickets ?? 0, icon: ShieldCheck, color: "from-amber-500 to-orange-600" }
   ];
@@ -85,7 +85,7 @@ export default function OperationsDashboard() {
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative bg-gradient-to-r from-emerald-800 to-teal-600 rounded-3xl p-6 text-white overflow-hidden shadow-lg"
+        className="relative bg-gradient-to-r from-primary-800 to-teal-600 rounded-3xl p-6 text-white overflow-hidden shadow-lg"
       >
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full translate-x-20 -translate-y-20 blur-2xl" />
         <p className="text-teal-200 text-xs font-bold uppercase tracking-widest mb-1">
@@ -158,15 +158,15 @@ export default function OperationsDashboard() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: (i + 4) * 0.05 }}
-                className="bg-emerald-50/50 border border-emerald-100 rounded-3xl p-4 flex flex-col justify-between"
+                className="bg-primary-50/50 border border-primary-100 rounded-3xl p-4 flex flex-col justify-between"
               >
                 <div className="flex items-center justify-between">
-                  <p className="text-emerald-800 text-xs font-semibold uppercase">{c.label}</p>
-                  <div className="p-2 rounded-2xl bg-emerald-100 text-emerald-800">
+                  <p className="text-primary-800 text-xs font-semibold uppercase">{c.label}</p>
+                  <div className="p-2 rounded-2xl bg-primary-100 text-primary-800">
                     <Icon className="w-4 h-4" />
                   </div>
                 </div>
-                <p className="text-2xl font-black text-emerald-950 mt-3">{c.value}</p>
+                <p className="text-2xl font-black text-primary-950 mt-3">{c.value}</p>
               </motion.div>
             );
           })}
@@ -179,12 +179,12 @@ export default function OperationsDashboard() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-black text-gray-800 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-emerald-600" />
+              <Calendar className="w-5 h-5 text-primary-600" />
               Follow-up Queue
             </h2>
             <button
               onClick={() => navigate("/admin/crm/leads")}
-              className="text-xs font-bold text-emerald-600 flex items-center gap-1 hover:underline"
+              className="text-xs font-bold text-primary-600 flex items-center gap-1 hover:underline"
             >
               CRM Pipeline <ArrowRight className="w-3.5 h-3.5" />
             </button>
@@ -198,7 +198,7 @@ export default function OperationsDashboard() {
             </h3>
             {ops?.followUpsToday.length === 0 ? (
               <div className="text-center py-6 text-gray-400 text-sm">
-                <CheckCircle className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
+                <CheckCircle className="w-8 h-8 text-primary-400 mx-auto mb-2" />
                 All set for today! No pending followups.
               </div>
             ) : (
@@ -227,7 +227,7 @@ export default function OperationsDashboard() {
               Overdue / Missed Actions ({ops?.missedFollowUps.length ?? 0})
             </h3>
             {ops?.missedFollowUps.length === 0 ? (
-              <div className="text-center py-4 text-emerald-700 text-xs font-semibold">
+              <div className="text-center py-4 text-primary-700 text-xs font-semibold">
                 🎉 Awesome! No missed follow-up schedules.
               </div>
             ) : (
@@ -255,7 +255,7 @@ export default function OperationsDashboard() {
           {/* Tasks Section */}
           <div className="space-y-4">
             <h2 className="text-lg font-black text-gray-800 flex items-center gap-2">
-              <ClipboardList className="w-5 h-5 text-emerald-600" />
+              <ClipboardList className="w-5 h-5 text-primary-600" />
               Critical Tasks ({ (ops?.tasksToday.length ?? 0) + (ops?.overdueTasks.length ?? 0) })
             </h2>
             <div className="bg-white rounded-3xl border border-gray-100 p-5 shadow-sm space-y-3">
@@ -296,12 +296,12 @@ export default function OperationsDashboard() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-black text-gray-800 flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5 text-emerald-600" />
+                  <MessageSquare className="w-5 h-5 text-primary-600" />
                   Active Support Tickets ({ops?.activeTickets.length ?? 0})
                 </h2>
                 <button
                   onClick={() => navigate("/admin/crm/support")}
-                  className="text-xs font-bold text-emerald-600 hover:underline"
+                  className="text-xs font-bold text-primary-600 hover:underline"
                 >
                   Support Portal
                 </button>
@@ -346,7 +346,7 @@ export default function OperationsDashboard() {
               </h2>
               <div className="bg-rose-50/20 rounded-3xl border border-rose-100 p-5 space-y-3">
                 {ops?.criticalCustomers.length === 0 ? (
-                  <div className="text-center py-4 text-emerald-800 text-xs font-bold">
+                  <div className="text-center py-4 text-primary-800 text-xs font-bold">
                     No customers at active churn risk.
                   </div>
                 ) : (

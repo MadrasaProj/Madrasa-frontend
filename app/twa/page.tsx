@@ -20,7 +20,7 @@ const onboardingSlides = [
 ] as const;
 
 const roleMeta: Record<UserRole, { label: string; icon: typeof Shield; color: string }> = {
-  admin: { label: "Admin", icon: Shield, color: "text-emerald-700 bg-emerald-50" },
+  admin: { label: "Admin", icon: Shield, color: "text-primary-700 bg-primary-50" },
   teacher: { label: "Teacher", icon: GraduationCap, color: "text-teal-700 bg-teal-50" },
   parent: { label: "Parent", icon: Users, color: "text-blue-700 bg-blue-50" },
   committee: { label: "Committee", icon: Building2, color: "text-amber-700 bg-amber-50" },
@@ -52,7 +52,7 @@ function SessionsList() {
         const meta = roleMeta[role] ?? roleMeta.admin;
         const Icon = meta.icon;
         return (
-          <button key={role} type="button" onClick={() => openSession(role, slug, actor)} className="flex h-14 w-full items-center gap-3 border-b border-emerald-950/5 px-1 text-left transition-colors hover:bg-emerald-50/50">
+          <button key={role} type="button" onClick={() => openSession(role, slug, actor)} className="flex h-14 w-full items-center gap-3 border-b border-primary-950/5 px-1 text-left transition-colors hover:bg-primary-50/50">
             <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${meta.color}`}><Icon className="h-4 w-4" /></span>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-semibold text-slate-900">{name}</span>
@@ -136,7 +136,7 @@ export default function TwaLandingPage() {
   const drawer = <OnboardingDrawer open={drawerOpen} onOpenChange={setDrawerOpen} role={role} setRole={setRole} slug={slug} setSlug={setSlug} onSubmit={handleSubmit} onClearSlug={handleClearSlug} />;
 
   if (!hasHydrated) {
-    return <main className="flex min-h-[100dvh] items-center justify-center bg-[#f8fbf7]"><span className="h-7 w-7 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-600" /></main>;
+    return <main className="flex min-h-[100dvh] items-center justify-center bg-[#f8fbf7]"><span className="h-7 w-7 animate-spin rounded-full border-2 border-primary-200 border-t-primary-600" /></main>;
   }
 
   if (hasSessions) {
@@ -155,7 +155,7 @@ export default function TwaLandingPage() {
               alt="Smart Madrasa"
               className="mt-3 h-10 w-11 object-contain"
             />
-            <h1 className="mt-4 bg-gradient-to-r from-[#059669] to-[#0d9488] bg-clip-text text-4xl font-semibold tracking-[-0.04em] text-transparent">
+            <h1 className="mt-4 bg-gradient-to-r from-primary to-primary-400 bg-clip-text text-4xl font-semibold tracking-[-0.04em] text-transparent">
               Welcome back
             </h1>
             <p className="mb-auto mt-2 text-sm leading-6 text-slate-500">
@@ -163,7 +163,7 @@ export default function TwaLandingPage() {
             </p>
           </div>
 
-          <section className="mt-auto flex h-max w-full flex-none flex-col rounded-t-[2rem] bg-white/85 px-6 pb-8 pt-7 shadow-[0_-18px_55px_rgba(5,150,105,0.14)] backdrop-blur-md">
+          <section className="mt-auto flex h-max w-full flex-none flex-col rounded-t-[2rem] bg-white/85 px-6 pb-8 pt-7 shadow-xl shadow-primary/15 backdrop-blur-md">
             <div className="mb-2 text-center">
               {/* <h2 className="text-base font-semibold text-slate-900">Your sessions</h2> */}
               {/* <p className="mt-1 text-xs text-slate-500">Select an account to continue</p> */}
@@ -194,14 +194,14 @@ export default function TwaLandingPage() {
             <SwiperSlide key={item.title} className="!flex flex-col items-center justify-center px-6 text-center">
               <div className="mb-3 flex h-[min(40vh,430px)] w-full items-center justify-center"><img src={item.image} alt={item.alt} className="mt-auto max-h-full w-full object-contain drop-shadow-[0_18px_18px_rgba(14,78,54,0.12)]" /></div>
               <img src="/imgs/onboarding/logo.svg" alt="Smart Madrasa" className="mb-5 h-10 w-10 object-contain" />
-              <h1 className="max-w-sm bg-gradient-to-r from-emerald-800 via-emerald-600 to-emerald-900 bg-clip-text text-[2.5rem] font-semibold leading-[1.06] tracking-[-0.045em] text-transparent">{item.title}</h1>
+              <h1 className="max-w-sm bg-gradient-to-r from-primary-800 via-primary-600 to-primary-900 bg-clip-text text-[2.5rem] font-semibold leading-[1.06] tracking-[-0.045em] text-transparent">{item.title}</h1>
               <p className="mt-4 max-w-sm text-sm leading-6 text-slate-600">{item.description}</p>
             </SwiperSlide>
           ))}
         </Swiper>
         <div className="space-y-5 px-6">
           <div className="flex justify-center gap-2" aria-label="Onboarding progress">
-            {onboardingSlides.map((item, index) => <button key={item.title} type="button" aria-label={`Go to slide ${index + 1}`} onClick={() => onboardingSwiper?.slideTo(index)} className={`h-1.5 rounded-full transition-all ${index === onboardingStep ? "w-8 bg-emerald-700" : "w-1.5 bg-emerald-700/20"}`} />)}
+            {onboardingSlides.map((item, index) => <button key={item.title} type="button" aria-label={`Go to slide ${index + 1}`} onClick={() => onboardingSwiper?.slideTo(index)} className={`h-1.5 rounded-full transition-all ${index === onboardingStep ? "w-8 bg-primary-700" : "w-1.5 bg-primary-700/20"}`} />)}
           </div>
           <Button type="button" onClick={() => setDrawerOpen(true)} className="h-auto w-full rounded-2xl px-5 py-4 text-sm font-bold shadow-[0_10px_24px_rgba(16,111,76,0.22)] active:scale-[0.99]">Get started</Button>
         </div>

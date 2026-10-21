@@ -88,7 +88,7 @@ export default function TeacherPresentPage() {
             className={cn(
               "px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 transition-all",
               selectedClass?.id === cls.id
-                ? "bg-emerald-600 text-white shadow-sm"
+                ? "bg-primary-600 text-white shadow-sm"
                 : "bg-white border border-gray-200 text-gray-600"
             )}
           >
@@ -101,7 +101,7 @@ export default function TeacherPresentPage() {
       {!loading && !error && (
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm font-semibold text-gray-700">
-            <span className="text-emerald-700 font-bold text-lg">{present.length}</span>
+            <span className="text-primary-700 font-bold text-lg">{present.length}</span>
             {" "}{t("teacherPages", "totalPresent", lang)}
           </p>
           <button
@@ -138,14 +138,14 @@ export default function TeacherPresentPage() {
           <div className="divide-y divide-gray-50">
             {present.map((r, i) => (
               <div key={r.id} className="flex items-center gap-3 px-4 py-3">
-                <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold shrink-0">
+                <div className="w-7 h-7 rounded-lg bg-primary-100 text-primary-700 flex items-center justify-center text-xs font-bold shrink-0">
                   {i + 1}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-gray-900 text-sm truncate">{r.student.name}</p>
                   <p className="text-xs text-gray-400">{r.student.adno}</p>
                 </div>
-                <span className="text-xs text-emerald-700 font-bold bg-emerald-50 px-2 py-1 rounded-lg">
+                <span className="text-xs text-primary-700 font-bold bg-primary-50 px-2 py-1 rounded-lg">
                   ✓ {t("common", "present", lang)}
                 </span>
               </div>

@@ -62,8 +62,8 @@ function getStatusMeta(
     },
     PAID: {
       label: t("common", "paid", lang),
-      color: "text-emerald-700",
-      bg: "bg-emerald-50",
+      color: "text-primary-700",
+      bg: "bg-primary-50",
     },
     PARTIAL: {
       label: t("teacherPages", "partialLabel", lang),
@@ -106,12 +106,12 @@ function ReceiptModal({
         animate={{ scale: 1, opacity: 1 }}
         className="relative bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden"
       >
-        <div className="bg-emerald-600 px-6 py-5 text-white text-center">
+        <div className="bg-primary-600 px-6 py-5 text-white text-center">
           <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-2">
             <Receipt className="w-6 h-6 text-white" />
           </div>
           <p className="font-bold text-lg">{receipt.client.name}</p>
-          <p className="text-emerald-100 text-xs uppercase tracking-widest mt-0.5">
+          <p className="text-primary-100 text-xs uppercase tracking-widest mt-0.5">
             {t("teacherPages", "feeReceiptTitle", lang)}
           </p>
         </div>
@@ -146,7 +146,7 @@ function ReceiptModal({
             <p className="font-bold text-gray-900">
               {t("teacherPages", "amountPaidLabel", lang)}
             </p>
-            <p className="text-xl font-bold text-emerald-600">
+            <p className="text-xl font-bold text-primary-600">
               ₹{Number(receipt.paidAmount ?? 0).toLocaleString()}
             </p>
           </div>
@@ -162,7 +162,7 @@ function ReceiptModal({
           <Button
             variant="ghost"
             onClick={() => window.print()}
-            className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5"
+            className="flex-1 py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5"
           >
             <Printer className="w-4 h-4" /> {t("common", "print", lang)}
           </Button>
@@ -464,7 +464,7 @@ export default function TeacherFeesPage() {
                   </TabsList>
                 </Tabs>
               </section>
-              <DrawerClose className="mt-8 w-full h-10 rounded-xl bg-emerald-600 text-white text-sm font-semibold">Done</DrawerClose>
+              <DrawerClose className="mt-8 w-full h-10 rounded-xl bg-primary-600 text-white text-sm font-semibold">Done</DrawerClose>
       </DrawerContent>
       </Drawer>
 
@@ -605,7 +605,7 @@ export default function TeacherFeesPage() {
                       )}
                   </span>
                   <div className="flex gap-3">
-                    <span className="font-medium text-emerald-600">
+                    <span className="font-medium text-primary-600">
                       {t("teacherPages", "collectedAmount", lang).replace(
                         "{amount}",
                         payments

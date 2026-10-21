@@ -36,7 +36,7 @@ import {
 } from "recharts";
 
 function getGrade(score: number) {
-  if (score >= 90) return { label: "A+", color: "#10b981", badge: "bg-emerald-100 text-emerald-700" };
+  if (score >= 90) return { label: "A+", color: "var(--primary)", badge: "bg-primary-100 text-primary-700" };
   if (score >= 75) return { label: "A", color: "#3b82f6", badge: "bg-blue-100 text-blue-700" };
   if (score >= 60) return { label: "B", color: "#8b5cf6", badge: "bg-purple-100 text-purple-700" };
   if (score >= 45) return { label: "C", color: "#f59e0b", badge: "bg-amber-100 text-amber-700" };
@@ -197,7 +197,7 @@ export default function TeacherPerformancePage() {
           onClick={() => setFiltersOpen(true)}
           className="flex min-w-0 w-full items-center gap-2 text-gray-700"
         >
-          <School className="h-4 w-4 shrink-0 text-emerald-700" />
+          <School className="h-4 w-4 shrink-0 text-primary-700" />
           <span className="min-w-0 truncate text-sm font-semibold">{activeClass?.name ?? t("common", "class", lang)}</span>
           <span className="shrink-0 text-gray-300" aria-hidden="true">|</span>
           <span className="min-w-0 truncate text-sm font-semibold">{activeExam?.name ?? t("teacherPages", "exam", lang)}</span>
@@ -304,7 +304,7 @@ export default function TeacherPerformancePage() {
               <button
                 onClick={handleDownloadPDF}
                 disabled={downloadingPdf}
-                className="flex items-center gap-2 px-3.5 py-2.5 bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 rounded-xl text-sm font-semibold transition-all shadow-sm"
+                className="flex items-center gap-2 px-3.5 py-2.5 bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60 rounded-xl text-sm font-semibold transition-all shadow-sm"
               >
                 {downloadingPdf ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -322,7 +322,7 @@ export default function TeacherPerformancePage() {
             <div className="border-b border-gray-100 pb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
               <div>
                 <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                  <Star className="w-5 h-5 text-emerald-600" />
+                  <Star className="w-5 h-5 text-primary-600" />
                   {t("teacherPages", "classPerformanceTitle", lang)}
                 </h2>
                 <p className="text-xs text-gray-500 mt-0.5">
@@ -354,8 +354,8 @@ export default function TeacherPerformancePage() {
                   label: t("teacherPages", "avgScoreSummary", lang),
                   value: `${avgScore}%`,
                   icon: TrendingUp,
-                  color: "text-emerald-600",
-                  bg: "bg-emerald-50",
+                  color: "text-primary-600",
+                  bg: "bg-primary-50",
                 },
                 {
                   label: t("teacherPages", "hwCompletionSummary", lang),

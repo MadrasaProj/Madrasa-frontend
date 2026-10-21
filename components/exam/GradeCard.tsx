@@ -151,10 +151,10 @@ export function GradeCard({ students, subjects, subjectId, scores, examMaxMarks,
       {/* Printable area */}
       <div ref={cardRef} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
         {/* Header */}
-        <div className="bg-gradient-to-r from-emerald-900 to-emerald-700 text-white px-5 py-4 text-center">
-          <p className="text-emerald-200 text-[10px] font-bold uppercase tracking-widest mb-1">Grade Report</p>
+        <div className="bg-gradient-to-r from-primary-900 to-primary-700 text-white px-5 py-4 text-center">
+          <p className="text-primary-200 text-[10px] font-bold uppercase tracking-widest mb-1">Grade Report</p>
           <h3 className="text-lg font-extrabold tracking-tight">{examName ?? "Class Test"}</h3>
-          <p className="text-emerald-100/80 text-xs mt-1">
+          <p className="text-primary-100/80 text-xs mt-1">
             Subject: <strong className="text-white font-bold">{subjectName}</strong>
             {stats && <> · Students: <strong className="text-white font-bold">{stats.total}</strong></>}
           </p>
@@ -164,12 +164,12 @@ export function GradeCard({ students, subjects, subjectId, scores, examMaxMarks,
         {stats && (
           <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-gray-100 border-b border-gray-100">
             <div className="p-3 text-center">
-              <div className="flex items-center justify-center gap-1 text-emerald-600 mb-0.5">
+              <div className="flex items-center justify-center gap-1 text-primary-600 mb-0.5">
                 <TrendingUp className="w-3.5 h-3.5" />
                 <span className="text-[9px] font-bold uppercase tracking-wider">Average</span>
               </div>
-              <p className="text-xl font-extrabold text-emerald-700">{stats.avg.toFixed(1)}</p>
-              <p className="text-[9px] text-emerald-600/70">out of {maxMarks}</p>
+              <p className="text-xl font-extrabold text-primary-700">{stats.avg.toFixed(1)}</p>
+              <p className="text-[9px] text-primary-600/70">out of {maxMarks}</p>
             </div>
             <div className="p-3 text-center">
               <div className="flex items-center justify-center gap-1 text-teal-600 mb-0.5">
@@ -232,7 +232,7 @@ export function GradeCard({ students, subjects, subjectId, scores, examMaxMarks,
                 <tr
                   key={g.student.id}
                   className={cn(
-                    "hover:bg-emerald-50/15 transition-colors",
+                    "hover:bg-primary-50/15 transition-colors",
                     !g.isPassed && "bg-red-50/30"
                   )}
                 >
@@ -250,7 +250,7 @@ export function GradeCard({ students, subjects, subjectId, scores, examMaxMarks,
                   <td className="px-4 py-2 text-center">
                     <span className={cn(
                       "text-xs font-extrabold",
-                      g.percentage >= 80 ? "text-emerald-600" :
+                      g.percentage >= 80 ? "text-primary-600" :
                       g.percentage >= 60 ? "text-teal-600" :
                       g.percentage >= 40 ? "text-amber-600" : "text-red-600"
                     )}>

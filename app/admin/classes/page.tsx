@@ -172,7 +172,7 @@ export default function AdminClassesPage() {
       sortable: true,
       render: (c) => (
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center font-bold text-sm shrink-0 text-emerald-700">
+          <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center font-bold text-sm shrink-0 text-primary-700">
             {c.name.charAt(0)}
           </div>
           <div>
@@ -202,7 +202,7 @@ export default function AdminClassesPage() {
       render: (c) => (
         <button
           onClick={(e) => { e.stopPropagation(); navigate(`/admin/subjects?classId=${c.id}`); }}
-          className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+          className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg bg-primary-50 text-primary-700 hover:bg-primary-100 transition-colors"
         >
           <BookOpen className="w-3 h-3" />
           {c.subjectCount ?? 0} subjects
@@ -261,7 +261,7 @@ export default function AdminClassesPage() {
           isAdmin ? (
             <button
               onClick={openAdd}
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-colors"
+              className="flex items-center gap-1.5 px-4 py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700 transition-colors"
             >
               <Plus className="w-4 h-4" /> Add Class
             </button>
@@ -278,7 +278,7 @@ export default function AdminClassesPage() {
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           placeholder="Search classes…"
-          className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+          className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
         />
       </div>
 
@@ -292,7 +292,7 @@ export default function AdminClassesPage() {
         mobileRender={(c) => (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center font-bold text-lg shrink-0 text-emerald-700">
+              <div className="w-12 h-12 rounded-2xl bg-primary-100 flex items-center justify-center font-bold text-lg shrink-0 text-primary-700">
                 {c.name.charAt(0)}
               </div>
               <div>
@@ -371,7 +371,7 @@ export default function AdminClassesPage() {
                   <select
                     value={form.gradeLevelId}
                     onChange={(e) => setForm((f) => ({ ...f, gradeLevelId: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-primary-400 focus:bg-white transition-colors"
                   >
                     <option value="">Select class…</option>
                     {gradeLevels.map((gl) => (
@@ -391,7 +391,7 @@ export default function AdminClassesPage() {
                         className={cn(
                           "px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors border",
                           form.division === d
-                            ? "bg-emerald-100 text-emerald-700 border-emerald-300"
+                            ? "bg-primary-100 text-primary-700 border-primary-300"
                             : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100",
                         )}
                       >
@@ -404,7 +404,7 @@ export default function AdminClassesPage() {
                     value={form.division}
                     onChange={(e) => setForm((f) => ({ ...f, division: e.target.value }))}
                     placeholder="Or type a custom division…"
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-primary-400 focus:bg-white transition-colors"
                   />
                 </div>
 
@@ -417,7 +417,7 @@ export default function AdminClassesPage() {
                     value={form.name}
                     onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                     placeholder="Auto-computed from class & division"
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-primary-400 focus:bg-white transition-colors"
                   />
                 </div>
 
@@ -426,7 +426,7 @@ export default function AdminClassesPage() {
                   <select
                     value={form.classTeacherId}
                     onChange={(e) => setForm((f) => ({ ...f, classTeacherId: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white transition-colors"
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-primary-400 focus:bg-white transition-colors"
                   >
                     <option value="">(No class teacher)</option>
                     {teachers.map((t) => (
@@ -446,7 +446,7 @@ export default function AdminClassesPage() {
                             type="radio" name="cls-status" value={s}
                             checked={form.status === s}
                             onChange={() => setForm((f) => ({ ...f, status: s }))}
-                            className="accent-emerald-600"
+                            className="accent-primary-600"
                           />
                           <span className="text-sm text-gray-700">{s === "ACTIVE" ? "Active" : "Inactive"}</span>
                         </label>
@@ -468,7 +468,7 @@ export default function AdminClassesPage() {
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 disabled:opacity-50"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-primary-600 rounded-xl hover:bg-primary-700 disabled:opacity-50"
                 >
                   {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                   {editTarget ? "Save Changes" : "Create Class"}

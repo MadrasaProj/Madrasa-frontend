@@ -63,7 +63,7 @@ const fmtCurrency = (n: string | number) =>
 
 const STATUS_OPTIONS = ["ACTIVE", "TRIAL", "SUSPENDED", "CANCELLED"] as const;
 const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: "bg-emerald-100 text-emerald-700 border-emerald-300",
+  ACTIVE: "bg-primary-100 text-primary-700 border-primary-300",
   TRIAL: "bg-blue-100 text-blue-700 border-blue-300",
   SUSPENDED: "bg-amber-100 text-amber-700 border-amber-300",
   CANCELLED: "bg-gray-100 text-gray-600 border-gray-300",
@@ -185,7 +185,7 @@ function EditMadrasaDrawer({
   };
 
   const inputCls =
-    "w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white";
+    "w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white";
   const labelCls = "text-xs text-gray-500 mb-1.5 block font-medium";
   const sectionCls =
     "text-xs font-bold text-gray-400 uppercase tracking-wide pt-6 pb-2 border-t border-gray-200 mt-8";
@@ -231,7 +231,7 @@ function EditMadrasaDrawer({
         {/* Body */}
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-3 pb-6">
           {success && (
-            <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-700">
+            <div className="flex items-center gap-2 p-3 bg-primary-50 border border-primary-200 rounded-xl text-xs text-primary-700">
               <CheckCircle className="w-4 h-4 shrink-0" />
               Changes saved successfully.
             </div>
@@ -375,7 +375,7 @@ function EditMadrasaDrawer({
               onClick={() => set("isLoginEnabled", !form.isLoginEnabled)}
               className={cn(
                 "relative w-12 h-6 rounded-full transition-colors duration-200 shrink-0",
-                form.isLoginEnabled ? "bg-emerald-500" : "bg-gray-300",
+                form.isLoginEnabled ? "bg-primary-500" : "bg-gray-300",
               )}
             >
               <span
@@ -400,7 +400,7 @@ function EditMadrasaDrawer({
                   className={cn(
                     "flex-1 py-2 rounded-xl text-xs font-semibold border transition-all",
                     form.attendanceMode === m
-                      ? "bg-emerald-600 border-emerald-600 text-white"
+                      ? "bg-primary-600 border-primary-600 text-white"
                       : "bg-white border-gray-200 text-gray-600 hover:bg-gray-100",
                   )}
                 >
@@ -438,7 +438,7 @@ function EditMadrasaDrawer({
           <button
             onClick={handleSave}
             disabled={saving || success}
-            className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 disabled:opacity-60 transition-all"
+            className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-primary-600 text-white rounded-2xl hover:bg-primary-700 disabled:opacity-60 transition-all"
           >
             {saving ? (
               <>
@@ -571,7 +571,7 @@ function ClientDetail({
         {tab === "payments" && (
           <button
             onClick={() => setShowAddPayment((s) => !s)}
-            className="ml-auto flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-all"
+            className="ml-auto flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary-600 text-white hover:bg-primary-700 transition-all"
           >
             <Plus className="w-3.5 h-3.5" /> Record Payment
           </button>
@@ -585,7 +585,7 @@ function ClientDetail({
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="bg-white rounded-xl p-4 border border-emerald-100 mb-3 overflow-hidden"
+            className="bg-white rounded-xl p-4 border border-primary-100 mb-3 overflow-hidden"
           >
             <p className="text-xs font-semibold text-gray-600 mb-3">
               Record Subscription Payment
@@ -602,7 +602,7 @@ function ClientDetail({
                   onChange={(e) =>
                     setForm((f) => ({ ...f, amount: e.target.value }))
                   }
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400"
                   placeholder="e.g. 2999"
                 />
               </div>
@@ -616,7 +616,7 @@ function ClientDetail({
                   onChange={(e) =>
                     setForm((f) => ({ ...f, paidAt: e.target.value }))
                   }
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400"
                 />
               </div>
               <div>
@@ -629,7 +629,7 @@ function ClientDetail({
                   onChange={(e) =>
                     setForm((f) => ({ ...f, periodStart: e.target.value }))
                   }
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400"
                 />
               </div>
               <div>
@@ -642,7 +642,7 @@ function ClientDetail({
                   onChange={(e) =>
                     setForm((f) => ({ ...f, periodEnd: e.target.value }))
                   }
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400"
                 />
               </div>
               <div>
@@ -654,7 +654,7 @@ function ClientDetail({
                   onChange={(e) =>
                     setForm((f) => ({ ...f, method: e.target.value }))
                   }
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
                 >
                   {["CASH", "BANK_TRANSFER", "UPI", "CHEQUE", "OTHER"].map(
                     (m) => (
@@ -676,7 +676,7 @@ function ClientDetail({
                     setForm((f) => ({ ...f, reference: e.target.value }))
                   }
                   placeholder="Optional"
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400"
                 />
               </div>
             </div>
@@ -690,7 +690,7 @@ function ClientDetail({
               <button
                 onClick={handleRecordPayment}
                 disabled={saving || !form.amount}
-                className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all disabled:opacity-60"
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all disabled:opacity-60"
               >
                 {saving ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -722,7 +722,7 @@ function ClientDetail({
                 className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-gray-100"
               >
                 <div>
-                  <p className="text-sm font-bold text-emerald-700">
+                  <p className="text-sm font-bold text-primary-700">
                     {fmtCurrency(p.amount)}
                   </p>
                   <p className="text-xs text-gray-400">
@@ -762,7 +762,7 @@ function ClientDetail({
                 key={log.id}
                 className="flex items-start gap-3 bg-white rounded-xl px-3 py-2.5 border border-gray-100"
               >
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
+                <div className="w-1.5 h-1.5 rounded-full bg-primary-400 mt-1.5 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-semibold text-gray-800">
@@ -892,7 +892,7 @@ function NewMadrasaDrawer({
   };
 
   const inputCls =
-    "w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400";
+    "w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400";
   const labelCls = "text-xs text-gray-500 mb-1 block font-medium";
 
   return (
@@ -997,7 +997,7 @@ function NewMadrasaDrawer({
                     className={cn(
                       "flex-1 py-2 text-xs font-semibold rounded-xl border transition-all",
                       form.attendanceMode === m
-                        ? "bg-emerald-600 border-emerald-600 text-white"
+                        ? "bg-primary-600 border-primary-600 text-white"
                         : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100",
                     )}
                   >
@@ -1046,7 +1046,7 @@ function NewMadrasaDrawer({
                   onClick={() => setForm((f) => ({ ...f, isLoginEnabled: !f.isLoginEnabled }))}
                   className={cn(
                     "relative w-12 h-6 rounded-full transition-colors duration-200 shrink-0",
-                    form.isLoginEnabled ? "bg-emerald-500" : "bg-gray-300",
+                    form.isLoginEnabled ? "bg-primary-500" : "bg-gray-300",
                   )}
                 >
                   <span
@@ -1182,7 +1182,7 @@ function NewMadrasaDrawer({
           <button
             onClick={handleSubmit}
             disabled={saving}
-            className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-all disabled:opacity-60"
+            className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-primary-600 text-white rounded-2xl hover:bg-primary-700 transition-all disabled:opacity-60"
           >
             {saving ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -1258,7 +1258,7 @@ export default function AdminMadrasasPage() {
         action={
           <button
             onClick={() => setShowNew(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-xl hover:bg-emerald-700 transition-all cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white text-sm font-semibold rounded-xl hover:bg-primary-700 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" /> New Madrasa
           </button>
@@ -1273,7 +1273,7 @@ export default function AdminMadrasasPage() {
           <p className="text-sm text-gray-400">No madrasas registered yet.</p>
           <button
             onClick={() => setShowNew(true)}
-            className="mt-3 px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-xl hover:bg-emerald-700 transition-all cursor-pointer"
+            className="mt-3 px-4 py-2 bg-primary-600 text-white text-sm font-semibold rounded-xl hover:bg-primary-700 transition-all cursor-pointer"
           >
             Add First Madrasa
           </button>
@@ -1293,8 +1293,8 @@ export default function AdminMadrasasPage() {
                 >
                   {/* Client row */}
                   <div className="p-4 flex items-center gap-3">
-                    <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center shrink-0">
-                      <Building2 className="w-5 h-5 text-emerald-700" />
+                    <div className="w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center shrink-0">
+                      <Building2 className="w-5 h-5 text-primary-700" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -1308,7 +1308,7 @@ export default function AdminMadrasasPage() {
                           className={cn(
                             "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
                             client.status === "ACTIVE"
-                              ? "bg-emerald-100 text-emerald-700"
+                              ? "bg-primary-100 text-primary-700"
                               : client.status === "TRIAL"
                                 ? "bg-blue-100 text-blue-700"
                                 : "bg-gray-100 text-gray-500",
@@ -1332,7 +1332,7 @@ export default function AdminMadrasasPage() {
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
                         {client.isLoginEnabled ? (
-                          <span className="flex items-center gap-0.5 text-[10px] text-emerald-600 font-medium">
+                          <span className="flex items-center gap-0.5 text-[10px] text-primary-600 font-medium">
                             <CheckCircle className="w-3 h-3" /> Login on
                           </span>
                         ) : (
@@ -1352,7 +1352,7 @@ export default function AdminMadrasasPage() {
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button
                         onClick={() => setSharingClient(client)}
-                        className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-100 hover:text-emerald-600 transition-all cursor-pointer"
+                        className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-100 hover:text-primary-600 transition-all cursor-pointer"
                         title="Share login links"
                       >
                         <Share2 className="w-4 h-4" />
@@ -1367,7 +1367,7 @@ export default function AdminMadrasasPage() {
                       <button
                         onClick={() => handleEnterClient(client.id, client.slug)}
                         disabled={entering === client.id}
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 transition-all cursor-pointer"
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60 transition-all cursor-pointer"
                       >
                         {entering === client.id ? (
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1425,7 +1425,7 @@ export default function AdminMadrasasPage() {
                     setPageSize(Number(e.target.value));
                     setPage(1);
                   }}
-                  className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                  className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer"
                 >
                   {[5, 10, 20, 50].map((n) => (
                     <option key={n} value={n}>

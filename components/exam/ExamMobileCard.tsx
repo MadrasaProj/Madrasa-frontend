@@ -26,7 +26,7 @@ export function ExamMobileCard({
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
-          <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0 shadow-inner">
+          <div className="w-11 h-11 rounded-2xl bg-primary-50 text-primary-600 border border-primary-100 flex items-center justify-center shrink-0 shadow-inner">
             <GraduationCap className="w-5.5 h-5.5" />
           </div>
           <div className="min-w-0 pt-0.5">
@@ -93,7 +93,7 @@ export function ExamMobileCard({
               e.stopPropagation();
               onEnterMarks(exam);
             }}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors text-xs font-bold"
+            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-primary-50 hover:bg-primary-100 text-primary-700 transition-colors text-xs font-bold"
           >
             <PenLine className="w-3.5 h-3.5" /> Enter Marks
           </button>
@@ -103,7 +103,7 @@ export function ExamMobileCard({
               e.stopPropagation();
               onClasses(exam);
             }}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors text-xs font-bold"
+            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-primary-50 hover:bg-primary-100 text-primary-700 transition-colors text-xs font-bold"
           >
             <BarChart2 className="w-3.5 h-3.5" /> Classes
           </button>

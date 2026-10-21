@@ -213,7 +213,7 @@ export default function SuperAdminIbadahPage() {
           {/* Prayer toggles */}
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
             <div className="px-4 py-3 bg-gray-50 flex items-center gap-2">
-              <Moon className="w-4 h-4 text-emerald-600" />
+              <Moon className="w-4 h-4 text-primary-600" />
               <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">
                 Prayers
               </p>
@@ -231,7 +231,7 @@ export default function SuperAdminIbadahPage() {
                       className={cn(
                         "w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 transition-all",
                         enabled
-                          ? "bg-emerald-500 text-white"
+                          ? "bg-primary-500 text-white"
                           : "bg-gray-100 text-gray-400",
                       )}
                     >
@@ -241,7 +241,7 @@ export default function SuperAdminIbadahPage() {
                       <p
                         className={cn(
                           "text-sm font-bold",
-                          enabled ? "text-emerald-800" : "text-gray-500",
+                          enabled ? "text-primary-800" : "text-gray-500",
                         )}
                       >
                         {label}
@@ -252,7 +252,7 @@ export default function SuperAdminIbadahPage() {
                       className={cn(
                         "text-xs font-semibold px-2 py-1 rounded-lg",
                         enabled
-                          ? "bg-emerald-100 text-emerald-700"
+                          ? "bg-primary-100 text-primary-700"
                           : "bg-gray-100 text-gray-500",
                       )}
                     >
@@ -317,7 +317,7 @@ export default function SuperAdminIbadahPage() {
               </p>
               <button
                 onClick={openAddItem}
-                className="flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1.5 rounded-lg transition-colors"
+                className="flex items-center gap-1 text-xs font-semibold text-primary-600 hover:text-primary-800 bg-primary-50 hover:bg-primary-100 px-2.5 py-1.5 rounded-lg transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" /> Add Item
               </button>
@@ -413,7 +413,7 @@ export default function SuperAdminIbadahPage() {
                     setItemForm((f) => ({ ...f, key: e.target.value }))
                   }
                   placeholder="e.g. dhikr_count"
-                  className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                  className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-300"
                   disabled={editingIdx !== null}
                 />
               </div>
@@ -431,7 +431,7 @@ export default function SuperAdminIbadahPage() {
                     setItemForm((f) => ({ ...f, label: e.target.value }))
                   }
                   placeholder="e.g. Morning Dhikr"
-                  className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                  className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-300"
                 />
               </div>
 
@@ -447,7 +447,7 @@ export default function SuperAdminIbadahPage() {
                       className={cn(
                         "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold border transition-colors",
                         itemForm.type === t
-                          ? "bg-emerald-600 text-white border-emerald-600"
+                          ? "bg-primary-600 text-white border-primary-600"
                           : "bg-white text-gray-600 border-gray-200",
                       )}
                     >
@@ -478,7 +478,7 @@ export default function SuperAdminIbadahPage() {
                         setItemForm((f) => ({ ...f, min: e.target.value }))
                       }
                       placeholder="0"
-                      className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                      className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-300"
                     />
                   </div>
                   <div className="flex-1">
@@ -495,7 +495,7 @@ export default function SuperAdminIbadahPage() {
                         setItemForm((f) => ({ ...f, max: e.target.value }))
                       }
                       placeholder="∞"
-                      className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                      className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-300"
                     />
                   </div>
                 </div>
@@ -509,7 +509,7 @@ export default function SuperAdminIbadahPage() {
 
               <button
                 onClick={saveItem}
-                className="w-full py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors"
+                className="w-full py-2.5 rounded-xl bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 transition-colors"
               >
                 {editingIdx !== null ? "Update Item" : "Add Item"}
               </button>
@@ -531,8 +531,8 @@ export default function SuperAdminIbadahPage() {
               className={cn(
                 "w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl font-bold text-sm transition-all shadow-lg",
                 saved
-                  ? "bg-emerald-100 text-emerald-700"
-                  : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60",
+                  ? "bg-primary-100 text-primary-700"
+                  : "bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60",
               )}
             >
               {saving ? (

@@ -433,7 +433,7 @@ export default function TeacherCheckinPage() {
                 onClick={fetchLocation}
                 disabled={locLoading}
                 size="lg"
-                className="w-full bg-emerald-600 text-white hover:bg-emerald-700"
+                className="w-full bg-primary-600 text-white hover:bg-primary-700"
               >
                 {locLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -549,7 +549,7 @@ export default function TeacherCheckinPage() {
                           </p>
                           <span className={cn(
                             "text-xs font-semibold",
-                            s.status === "CHECKED_IN" ? "text-emerald-600" : "text-gray-400",
+                            s.status === "CHECKED_IN" ? "text-primary-600" : "text-gray-400",
                           )}>
                             {s.status === "CHECKED_IN" ? t("teacherPages", "activeLabel", lang) : t("teacherPages", "outLabel", lang)}
                           </span>

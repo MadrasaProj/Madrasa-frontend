@@ -778,7 +778,7 @@ export default function IDCardsPage() {
           <div className="flex gap-2">
             <button
               onClick={handleExport}
-              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700"
+              className="flex items-center gap-1.5 px-3 py-2 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700"
             >
               <Download className="w-4 h-4" /> {t("common", "download", lang)}
             </button>
@@ -799,7 +799,7 @@ export default function IDCardsPage() {
               "flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold whitespace-nowrap border transition-all shrink-0",
 
               theme === t.id
-                ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                ? "border-primary-500 bg-primary-50 text-primary-700"
                 : "border-gray-200 bg-white text-gray-600 hover:border-gray-300",
             )}
           >
@@ -887,7 +887,7 @@ export default function IDCardsPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder={t("common", "searchByName", lang)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>
 
@@ -895,7 +895,7 @@ export default function IDCardsPage() {
                 <select
                   value={classFilter}
                   onChange={(e) => setClassFilter(e.target.value)}
-                  className="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 appearance-none cursor-pointer"
+                  className="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none cursor-pointer"
                 >
                   {classNames.map((c) => (
                     <option key={c} value={c}>
@@ -907,7 +907,7 @@ export default function IDCardsPage() {
                 <select
                   value={genderFilter}
                   onChange={(e) => setGenderFilter(e.target.value)}
-                  className="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 appearance-none cursor-pointer"
+                  className="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none cursor-pointer"
                 >
                   <option value="All">All</option>
 
@@ -945,14 +945,14 @@ export default function IDCardsPage() {
                     className={cn(
                       "w-full text-left px-4 py-3 flex items-center gap-3 border-b border-gray-50 hover:bg-gray-50 transition-colors",
 
-                      selectedId === s.id && "bg-emerald-50",
+                      selectedId === s.id && "bg-primary-50",
                     )}
                   >
                     <div
                       className={cn(
                         "w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0",
 
-                        selectedId === s.id ? "bg-emerald-500" : "bg-gray-300",
+                        selectedId === s.id ? "bg-primary-500" : "bg-gray-300",
                       )}
                     >
                       {initials(s.name)}
@@ -964,7 +964,7 @@ export default function IDCardsPage() {
                           "text-sm font-semibold truncate",
 
                           selectedId === s.id
-                            ? "text-emerald-700"
+                            ? "text-primary-700"
                             : "text-gray-900",
                         )}
                       >
@@ -1135,7 +1135,7 @@ export default function IDCardsPage() {
                 <div className="mt-4 flex gap-3">
                   <button
                     onClick={handleExport}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700"
                   >
                     <Download className="w-4 h-4" /> Download PNG
                   </button>

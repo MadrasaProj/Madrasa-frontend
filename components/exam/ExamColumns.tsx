@@ -29,7 +29,7 @@ export function useExamColumns(options: UseExamColumnsOptions = {}) {
         render: (exam) => (
           <div className="flex items-center gap-3 min-w-0">
             {showExamIcon && (
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-primary-50 text-primary-600 border border-primary-100 flex items-center justify-center shrink-0">
                 <GraduationCap className="w-5 h-5" />
               </div>
             )}
@@ -134,7 +134,7 @@ export function useExamColumns(options: UseExamColumnsOptions = {}) {
                         e.stopPropagation();
                         onEnterMarks(exam);
                       }}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors text-xs font-semibold"
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-primary-50 hover:bg-primary-100 text-primary-700 transition-colors text-xs font-semibold"
                       title="Enter Marks"
                     >
                       <PenLine className="w-3.5 h-3.5" />
@@ -146,7 +146,7 @@ export function useExamColumns(options: UseExamColumnsOptions = {}) {
                         e.stopPropagation();
                         onClasses(exam);
                       }}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors text-xs font-semibold"
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-primary-50 hover:bg-primary-100 text-primary-700 transition-colors text-xs font-semibold"
                       title="View Classes & Enter Marks"
                     >
                       <BarChart2 className="w-3.5 h-3.5" />

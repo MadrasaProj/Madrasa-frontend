@@ -13,7 +13,7 @@ interface StatCardProps {
   onClick?: () => void;
 }
 
-export function StatCard({ title, value, icon: Icon, iconColor = "text-emerald-600", iconBg = "bg-emerald-50", trend, trendUp, subtitle, onClick }: StatCardProps) {
+export function StatCard({ title, value, icon: Icon, iconColor = "text-primary-600", iconBg = "bg-primary-50", trend, trendUp, subtitle, onClick }: StatCardProps) {
   // If onClick provided, render as a button for interactivity
   const Content = (
     <div className="bg-white rounded-2xl p-4 lg:p-5 shadow-sm border border-gray-100 card-hover">
@@ -23,7 +23,7 @@ export function StatCard({ title, value, icon: Icon, iconColor = "text-emerald-6
           <p className="text-2xl lg:text-3xl font-bold text-gray-900 mt-1 leading-none">{value}</p>
           {subtitle && <p className="text-xs text-gray-400 mt-1">{subtitle}</p>}
           {trend && (
-            <p className={cn("text-xs font-medium mt-1", trendUp ? "text-emerald-600" : "text-red-500")}>
+            <p className={cn("text-xs font-medium mt-1", trendUp ? "text-primary-600" : "text-red-500")}>
               {trendUp ? "↑" : "↓"} {trend}
             </p>
           )}
@@ -57,7 +57,7 @@ interface ActionCardProps {
 }
 
 const colorMap = {
-  emerald: { bg: "bg-emerald-50", icon: "text-emerald-600", border: "border-emerald-100", badge: "bg-emerald-500" },
+  emerald: { bg: "bg-primary-50", icon: "text-primary-600", border: "border-primary-100", badge: "bg-primary-500" },
   teal:    { bg: "bg-teal-50",    icon: "text-teal-600",    border: "border-teal-100",    badge: "bg-teal-500" },
   amber:   { bg: "bg-amber-50",   icon: "text-amber-600",   border: "border-amber-100",   badge: "bg-amber-500" },
   rose:    { bg: "bg-rose-50",    icon: "text-rose-600",    border: "border-rose-100",    badge: "bg-rose-500" },

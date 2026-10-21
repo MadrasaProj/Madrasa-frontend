@@ -162,7 +162,7 @@ export default function ParentStudentProfile() {
             <p className="font-semibold text-lg">{t("parentPages", "noStudentSelected", lang)}</p>
             <button
               onClick={() => navigate(-1)}
-              className="mt-4 text-emerald-600 font-semibold text-sm underline"
+              className="mt-4 text-primary-600 font-semibold text-sm underline"
             >
               {t("parentPages", "goBack", lang)}
             </button>
@@ -189,7 +189,7 @@ export default function ParentStudentProfile() {
       <PageHeader title={t("parentPages", "studentProfileTitle", lang)} />
 
       {success && (
-        <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs text-emerald-700">
+        <div className="mb-4 p-3 bg-primary-50 border border-primary-200 rounded-xl flex items-center gap-2 text-xs text-primary-700">
           <CheckCircle className="w-4 h-4 shrink-0" /> {success}
         </div>
       )}
@@ -200,11 +200,11 @@ export default function ParentStudentProfile() {
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col items-center rounded-b-[2rem] px-4 pb-9 pt-9 text-center md:pt-12"
       >
-        <div className="aspect-square w-[60vw] max-w-[200px] overflow-hidden rounded-full bg-emerald-200">
+        <div className="aspect-square w-[60vw] max-w-[200px] overflow-hidden rounded-full bg-primary-200">
           {student.photoUrl ? (
             <img src={student.photoUrl} alt={student.name} className="h-full w-full object-cover" />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-[clamp(4rem,18vw,7rem)] font-semibold text-emerald-800">
+            <div className="flex h-full w-full items-center justify-center text-[clamp(4rem,18vw,7rem)] font-semibold text-primary-800">
               {student.name.charAt(0)}
             </div>
           )}
@@ -251,13 +251,13 @@ export default function ParentStudentProfile() {
                   onClick={() => switchStudent(id)}
                   aria-pressed={isActive}
                   className={cn(
-                    "inline-flex h-11 max-w-44 items-center gap-2 rounded-full border px-2 pr-3.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2",
+                    "inline-flex h-11 max-w-44 items-center gap-2 rounded-full border px-2 pr-3.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2",
                     isActive
-                      ? "border-emerald-600 bg-emerald-50 text-emerald-900"
+                      ? "border-primary-600 bg-primary-50 text-primary-900"
                       : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900",
                   )}
                 >
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-emerald-100 text-xs font-semibold text-emerald-900">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-100 text-xs font-semibold text-primary-900">
                     {photo ? <img src={photo} alt="" className="h-full w-full object-cover" /> : name.charAt(0)}
                   </span>
                   <span className="truncate">{name}</span>
@@ -363,7 +363,7 @@ export default function ParentStudentProfile() {
               key={label}
               className="flex min-w-0 items-start gap-4 border-b border-gray-100 py-4 last:border-b-0"
             >
-              <Icon icon={icon} className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" aria-hidden="true" />
+              <Icon icon={icon} className="mt-0.5 h-5 w-5 shrink-0 text-primary-700" aria-hidden="true" />
               <div className="min-w-0">
                 <p className="text-xs font-medium text-gray-500">{label}</p>
                 <p className="mt-0.5 break-words text-sm font-semibold text-gray-900">
@@ -385,7 +385,7 @@ export default function ParentStudentProfile() {
         <p className="mb-4 text-lg font-semibold text-gray-900">{t("parentPages", "attendanceSection", lang)}</p>
         <div className="mb-5 flex items-end justify-between gap-3">
           <div>
-            <span className="text-4xl font-bold tracking-tight text-emerald-900">{attPct}%</span>
+            <span className="text-4xl font-bold tracking-tight text-primary-900">{attPct}%</span>
             <p className="mt-1 text-xs text-gray-500">{t("parentPages", "attendanceRateLabel", lang)}</p>
           </div>
           <span className="text-sm font-medium text-gray-500">{attPresent} / {attTotal}</span>
@@ -399,13 +399,13 @@ export default function ParentStudentProfile() {
           aria-label={t("parentPages", "attendanceRateLabel", lang)}
         >
           <div
-            className={cn("h-full rounded-full transition-all", attPct >= 75 ? "bg-emerald-600" : "bg-amber-500")}
+            className={cn("h-full rounded-full transition-all", attPct >= 75 ? "bg-primary-600" : "bg-amber-500")}
             style={{ width: `${attPct}%` }}
           />
         </div>
         <div className="grid grid-cols-4 gap-2">
           {[
-            { label: t("parentPages", "presentStat", lang), val: attPresent, color: "text-emerald-700" },
+            { label: t("parentPages", "presentStat", lang), val: attPresent, color: "text-primary-700" },
             { label: t("parentPages", "absentStat", lang), val: attAbsent, color: "text-red-600" },
             { label: t("parentPages", "lateStat", lang), val: attLate, color: "text-amber-700" },
             { label: t("parentPages", "totalStat", lang), val: attTotal, color: "text-gray-800" },

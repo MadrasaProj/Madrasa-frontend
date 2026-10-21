@@ -470,7 +470,7 @@ export default function TeacherAttendancePage() {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex items-center gap-1.5 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 disabled:opacity-60 transition-colors"
+                className="flex items-center gap-1.5 bg-primary-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-700 disabled:opacity-60 transition-colors"
               >
                 {saving ? (
                   <>
@@ -484,7 +484,7 @@ export default function TeacherAttendancePage() {
                 )}
               </button>
             ) : saveSuccess ? (
-              <span className="flex items-center gap-1 text-emerald-600 text-sm font-semibold">
+              <span className="flex items-center gap-1 text-primary-600 text-sm font-semibold">
                 <CheckCircle2 className="w-4 h-4" />{" "}
                 {t("teacherPages", "saved", lang)}
               </span>
@@ -549,7 +549,7 @@ export default function TeacherAttendancePage() {
                           {cls.name}
                         </p>
                         {isOwn && (
-                          <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                          <span className="shrink-0 rounded-full bg-primary-100 px-2 py-0.5 text-[10px] font-bold text-primary-700">
                             {t("teacherPages", "mineBadge", lang)}
                           </span>
                         )}

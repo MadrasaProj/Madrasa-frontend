@@ -224,11 +224,11 @@ export default function ClassReportPage() {
  <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
  <button onClick={() => setImportOpen(true)}
  className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 bg-white hover:bg-gray-50 transition-colors shadow-xs">
- <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+ <FileSpreadsheet className="w-4 h-4 text-primary-600" />
  Import Excel
  </button>
  <button onClick={handleCompute} disabled={computing}
- className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-50 transition-all shadow-sm hover:scale-[1.01]">
+ className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold disabled:opacity-50 transition-all shadow-sm hover:scale-[1.01]">
  {computing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
  Compute Grades
  </button>
@@ -248,7 +248,7 @@ export default function ClassReportPage() {
  "flex items-center gap-2 px-4 py-3 rounded-xl text-sm",
  computeMsg.startsWith("Error")
  ? "bg-red-50 text-red-700 border border-red-100"
- : "bg-emerald-50 text-emerald-700 border border-emerald-100",
+ : "bg-primary-50 text-primary-700 border border-primary-100",
  )}
  >
  {computeMsg.startsWith("Error") ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
@@ -261,9 +261,9 @@ export default function ClassReportPage() {
  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
  {[
  { label: "Total Students", value: stats.totalStudents, color: "text-gray-800", bg: "bg-gray-50" },
- { label: "Passed", value: stats.passedCount, color: "text-emerald-700", bg: "bg-emerald-50" },
+ { label: "Passed", value: stats.passedCount, color: "text-primary-700", bg: "bg-primary-50" },
  { label: "Failed", value: stats.failedCount, color: "text-red-700", bg: "bg-red-50" },
- { label: "Ranked", value: stats.rankedCount, color: "text-emerald-700", bg: "bg-emerald-50" },
+ { label: "Ranked", value: stats.rankedCount, color: "text-primary-700", bg: "bg-primary-50" },
  { label: "Class Average", value: `${stats.classAverage.toFixed(1)}%`, color: "text-teal-700", bg: "bg-teal-50" },
  ].map(({ label, value, color, bg }) => (
  <div key={label} className={cn("rounded-xl p-4 text-center", bg)}>
@@ -285,7 +285,7 @@ export default function ClassReportPage() {
  className={cn(
  "px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap",
  tab === key
- ? "text-emerald-600 border-emerald-600"
+ ? "text-primary-600 border-primary-600"
  : "text-gray-500 border-transparent hover:text-gray-700",
  )}>
  {label}
@@ -380,8 +380,8 @@ function MarklistTab({ report, marklistStudId, setMarklistStudId, madrasaName, m
  className={cn(
  "px-3 py-1.5 rounded-lg text-sm font-medium border transition-all",
  marklistStudId === r.student.id
- ? "border-emerald-600 bg-emerald-50 text-emerald-700"
- : "border-gray-200 bg-white text-gray-700 hover:border-emerald-300",
+ ? "border-primary-600 bg-primary-50 text-primary-700"
+ : "border-gray-200 bg-white text-gray-700 hover:border-primary-300",
  )}
  >
  {r.summary.rank === 1 ? "🥇 " : r.summary.rank === 2 ? "🥈 " : r.summary.rank === 3 ? "🥉 " : ""}
@@ -437,7 +437,7 @@ function StatusTab({ report, statusMap, setStatusMap, savingId, savingAll, statu
  <button
  onClick={onSaveAll}
  disabled={savingAll || !report.students.some((r) => statusMap[r.student.id]?.finalStatus)}
- className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold disabled:opacity-40 transition-colors"
+ className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold disabled:opacity-40 transition-colors"
  >
  {savingAll ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
  Save All
@@ -446,7 +446,7 @@ function StatusTab({ report, statusMap, setStatusMap, savingId, savingAll, statu
  {statusMsg && (
  <div className={cn(
  "px-4 py-3 rounded-xl text-sm flex items-center gap-2",
- statusMsg.startsWith("Error") ? "bg-red-50 text-red-700 border border-red-100" : "bg-emerald-50 text-emerald-700 border border-emerald-100",
+ statusMsg.startsWith("Error") ? "bg-red-50 text-red-700 border border-red-100" : "bg-primary-50 text-primary-700 border border-primary-100",
  )}>
  {statusMsg.startsWith("Error") ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
  {statusMsg}
@@ -487,7 +487,7 @@ function StatusTab({ report, statusMap, setStatusMap, savingId, savingAll, statu
  ...m,
  [row.student.id]: { ...(m[row.student.id] ?? {}), finalStatus: e.target.value as ResultStatus },
  }))}
- className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 w-full max-w-36"
+ className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 w-full max-w-36"
  >
  <option value="">— Select —</option>
  {statusOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -500,7 +500,7 @@ function StatusTab({ report, statusMap, setStatusMap, savingId, savingAll, statu
  ...m,
  [row.student.id]: { ...(m[row.student.id] ?? {}), totalGrade: (e.target.value || null) as TotalGrade | null },
  }))}
- className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 w-full max-w-40"
+ className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 w-full max-w-40"
  >
  <option value="">— Optional —</option>
  {TOTAL_GRADE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -510,7 +510,7 @@ function StatusTab({ report, statusMap, setStatusMap, savingId, savingAll, statu
  <button
  onClick={() => onSave(row)}
  disabled={!entry?.finalStatus || isSaving}
- className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium disabled:opacity-40 transition-colors"
+ className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-xs font-medium disabled:opacity-40 transition-colors"
  >
  {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
  Save
@@ -547,7 +547,7 @@ function PostersTab({ rankedStudents, report, posterStudentId, setPosterStudentI
  {/* ── Announcement poster ── */}
  <div>
  <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
- <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+ <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />
  Result Announcement Poster
  </h3>
  <div className="max-w-sm mx-auto">
@@ -579,8 +579,8 @@ function PostersTab({ rankedStudents, report, posterStudentId, setPosterStudentI
  className={cn(
  "px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all",
  posterStudentId === r.student.id
- ? "border-emerald-600 bg-emerald-50 text-emerald-700"
- : "border-gray-200 bg-white text-gray-700 hover:border-emerald-300",
+ ? "border-primary-600 bg-primary-50 text-primary-700"
+ : "border-gray-200 bg-white text-gray-700 hover:border-primary-300",
  )}
  >
  {r.summary.rank === 1 ? "🥇" : r.summary.rank === 2 ? "🥈" : "🥉"} {r.student.name}

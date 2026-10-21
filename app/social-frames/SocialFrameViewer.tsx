@@ -280,7 +280,7 @@ export default function SocialFrameViewer({ frameId, fullScreen }: SocialFrameVi
           <h1 className="text-gray-600 text-lg font-semibold drop-shadow-md">{frame.title}</h1>
           <button
             onClick={handleDownload}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium"
+            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium"
           >
             <Download className="w-4 h-4" />
             Download PNG
@@ -345,7 +345,7 @@ export default function SocialFrameViewer({ frameId, fullScreen }: SocialFrameVi
         <h1 className="text-lg font-semibold">{frame.title}</h1>
         <button
           onClick={handleDownload}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium"
+          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium"
         >
           <Download className="w-4 h-4" />
           Download PNG

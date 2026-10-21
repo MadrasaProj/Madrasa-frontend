@@ -763,12 +763,12 @@ export function Sidebar({
       !l.isExternal && isLinkActive(pathname, fullHref, slugPrefix, l.exact);
 
     const linkClasses = cn(
-      "flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none",
+      "flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all focus-visible:ring-2 focus-visible:ring-primary-500 outline-none",
       isNested && "pl-8",
       isCheckin && !active
-        ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200 shadow-sm"
+        ? "bg-primary-100 text-primary-800 hover:bg-primary-200 shadow-sm"
         : active
-          ? "bg-emerald-600 text-white shadow-sm "
+          ? "bg-primary-600 text-white shadow-sm "
           : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
     );
 
@@ -782,7 +782,7 @@ export function Sidebar({
           onClick={handleLinkClick}
           className={linkClasses}
         >
-          <Icon className="w-5 h-5 shrink-0 text-emerald-600" />
+          <Icon className="w-5 h-5 shrink-0 text-primary-600" />
           <span>{t("nav", l.key, lang)}</span>
         </a>
       );
@@ -799,12 +799,12 @@ export function Sidebar({
         <Icon
           className={cn(
             "w-5 h-5 shrink-0",
-            isCheckin && !active && "text-emerald-600",
+            isCheckin && !active && "text-primary-600",
           )}
         />
         <span className="truncate">{t("nav", l.key, lang)}</span>
         {isCheckin && !active && (
-          <span className="ml-auto w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="ml-auto w-2 h-2 rounded-full bg-primary-500 animate-pulse" />
         )}
       </Link>
     );
@@ -856,7 +856,7 @@ export function Sidebar({
           )}
         </div>
         <div className="px-4 py-3 border-b border-gray-100 shrink-0">
-          <div className="flex items-center gap-3 bg-emerald-50 rounded-xl p-3">
+          <div className="flex items-center gap-3 bg-primary-50 rounded-xl p-3">
             {user.photoUrl ? (
               <img
                 src={user.photoUrl}
@@ -864,7 +864,7 @@ export function Sidebar({
                 className="w-9 h-9 rounded-full object-cover shrink-0"
               />
             ) : (
-              <div className="w-9 h-9 bg-emerald-600 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0">
+              <div className="w-9 h-9 bg-primary-600 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0">
                 {user.name.charAt(0)}
               </div>
             )}
@@ -872,7 +872,7 @@ export function Sidebar({
               <p className="text-sm  text-gray-900 truncate">
                 {user.name}
               </p>
-              <p className="text-xs text-emerald-700 capitalize">
+              <p className="text-xs text-primary-700 capitalize">
                 {isSuperAdmin
                   ? "Super Admin"
                   : user.role === "committee"
@@ -915,12 +915,12 @@ export function Sidebar({
                       className={cn(
                         "flex items-center justify-between w-full px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors",
                         hasActiveLink
-                          ? "text-emerald-700 bg-emerald-50/50"
+                          ? "text-primary-700 bg-primary-50/50"
                           : "text-gray-400 hover:text-gray-900 hover:bg-gray-50",
                       )}
                     >
                       <div className="flex items-center gap-2">
-                        <CatIcon className="w-4 h-4 text-emerald-600/70" />
+                        <CatIcon className="w-4 h-4 text-primary-600/70" />
                         <span>{t("nav", cat.titleKey, lang)}</span>
                       </div>
                       <ChevronDown
@@ -1069,7 +1069,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
     const className = cn(
       "flex  items-center justify-left gap-3 rounded-lg p-2 px-3 text-gray-500 text-[16px]    transition-colors  ",
       active
-        ? "bg-linear-160 from-secondary to-transparent text-emerald-700"
+        ? "bg-linear-160 from-secondary to-transparent text-primary-700"
         : "bg-white   hover:bg-gray-50",
     );
     return l.isExternal ? (
@@ -1094,7 +1094,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
         <Icon
           className={cn(
             "h-5 w-5 shrink-0",
-            active ? "text-emerald-600" : "",
+            active ? "text-primary-600" : "",
           )}
         />
         <span className="leading-tight">{t("nav", l.key, lang)}</span>
@@ -1128,7 +1128,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
                   )}
                 >
                   <div className="flex items-center justify-center rounded-xl w-10 h-7">
-                    <Icon className="w-5 h-5 shrink-0 text-emerald-600" />
+                    <Icon className="w-5 h-5 shrink-0 text-primary-600" />
                   </div>
                   <span className="text-[12px]  leading-none">
                     {t("nav", l.key, lang)}
@@ -1143,11 +1143,11 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
                 to={fullHref}
                 className={cn(
                   "flex flex-col items-center justify-center gap-1 p-2 relative transition-all active:scale-95",
-                  active ? "text-emerald-600" : "text-gray-400",
+                  active ? "text-primary-600" : "text-gray-400",
                 )}
               >
                 {/* {active && (
-                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-emerald-500 rounded-full" />
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary-500 rounded-full" />
                 )} */}
                 <div
                   className={cn(
@@ -1162,7 +1162,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
                 <span
                   className={cn(
                     "text-[11px] mt-1  leading-none text-center",
-                    active ? "text-emerald-600" : "text-gray-400",
+                    active ? "text-primary-600" : "text-gray-400",
                   )}
                 >
                   {t("nav", l.key, lang)}

@@ -19,7 +19,7 @@ function ReceiptModal({ receipt, onClose }: { receipt: ReceiptData; onClose: () 
         <div className="text-center mb-4 border-b border-dashed pb-4">
           <p className="font-bold text-lg">{receipt.client.name}</p>
           {receipt.client.address && <p className="text-xs text-gray-500">{receipt.client.address}</p>}
-          <p className="text-xs font-bold text-emerald-700 mt-1 uppercase tracking-widest">Fee Receipt</p>
+          <p className="text-xs font-bold text-primary-700 mt-1 uppercase tracking-widest">Fee Receipt</p>
         </div>
         <div className="space-y-2 text-sm mb-4">
           {[
@@ -41,7 +41,7 @@ function ReceiptModal({ receipt, onClose }: { receipt: ReceiptData; onClose: () 
         {receipt.notes && <p className="text-xs text-gray-400 italic mb-4">Note: {receipt.notes}</p>}
         <div className="flex gap-2">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border text-sm font-semibold text-gray-600">Close</button>
-          <button onClick={() => window.print()} className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold flex items-center justify-center gap-1.5">
+          <button onClick={() => window.print()} className="flex-1 py-2.5 rounded-xl bg-primary-600 text-white text-sm font-semibold flex items-center justify-center gap-1.5">
             <Printer className="w-4 h-4" /> Print
           </button>
         </div>
@@ -127,7 +127,7 @@ export default function AdminFeesPaidPage() {
           <div className="space-y-2">
             {filtered.map((p) => (
               <div key={p.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-sm shrink-0">
                   {p.student.name.charAt(0)}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -136,10 +136,10 @@ export default function AdminFeesPaidPage() {
                   {p.collectedBy ? (
                     <p className="text-[10px] text-gray-400 mt-0.5">Collected by {teachers[p.collectedBy] ?? (p.collectedBy === cid ? user?.name ?? "Admin" : p.collectedBy.slice(0, 8))}</p>
                   ) : null}
-                  {p.paidAt && <p className="text-xs text-emerald-600">{new Date(p.paidAt).toLocaleDateString("en-GB")}{p.reference ? ` · ${p.reference}` : ""}</p>}
+                  {p.paidAt && <p className="text-xs text-primary-600">{new Date(p.paidAt).toLocaleDateString("en-GB")}{p.reference ? ` · ${p.reference}` : ""}</p>}
                 </div>
                 <div className="text-right shrink-0 flex flex-col items-end gap-1">
-                  <p className="font-bold text-emerald-700">₹{Number(p.paidAmount ?? p.dueAmount).toLocaleString()}</p>
+                  <p className="font-bold text-primary-700">₹{Number(p.paidAmount ?? p.dueAmount).toLocaleString()}</p>
                   <button onClick={() => showReceipt(p.id)} disabled={loadingReceipt === p.id}
                     className="text-xs text-gray-500 flex items-center gap-1">
                     {loadingReceipt === p.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Receipt className="w-3 h-3" />} Receipt

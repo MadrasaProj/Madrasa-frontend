@@ -75,7 +75,7 @@ export function ClassDivisionsPicker({ value, onChange, gradeLevels, emptyLabel 
                       className={cn(
                         "w-8 h-8 rounded-lg text-xs font-bold border transition-all",
                         active
-                          ? "bg-emerald-600 border-emerald-600 text-white shadow-sm"
+                          ? "bg-primary-600 border-primary-600 text-white shadow-sm"
                           : "bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100",
                       )}
                     >
@@ -88,7 +88,7 @@ export function ClassDivisionsPicker({ value, onChange, gradeLevels, emptyLabel 
                     key={d}
                     type="button"
                     onClick={() => toggleDiv(d)}
-                    className="w-8 h-8 rounded-lg text-xs font-bold border bg-emerald-600 border-emerald-600 text-white shadow-sm"
+                    className="w-8 h-8 rounded-lg text-xs font-bold border bg-primary-600 border-primary-600 text-white shadow-sm"
                   >
                     {d}
                   </button>
@@ -103,7 +103,7 @@ export function ClassDivisionsPicker({ value, onChange, gradeLevels, emptyLabel 
                         return { ...prev, [gl.id]: [...current, "A"].sort() };
                       })
                     }
-                    className="px-2.5 py-1 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                    className="px-2.5 py-1 text-xs font-semibold text-primary-600 hover:bg-primary-50 rounded-lg transition-all"
                   >
                     + Add
                   </button>
@@ -125,7 +125,7 @@ export function ClassDivisionsPicker({ value, onChange, gradeLevels, emptyLabel 
                       setCustomInput((prev) => ({ ...prev, [gl.id]: "" }));
                     }
                   }}
-                  className="w-12 px-1.5 py-1 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  className="w-12 px-1.5 py-1 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400"
                   placeholder="+"
                   maxLength={10}
                 />
@@ -138,7 +138,7 @@ export function ClassDivisionsPicker({ value, onChange, gradeLevels, emptyLabel 
                     setCustomInput((prev) => ({ ...prev, [gl.id]: "" }));
                   }}
                   disabled={!customInput[gl.id]?.trim()}
-                  className="px-2 py-1 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 rounded-lg disabled:opacity-40 transition-all"
+                  className="px-2 py-1 text-xs font-semibold text-primary-600 hover:bg-primary-50 rounded-lg disabled:opacity-40 transition-all"
                 >
                   Add
                 </button>

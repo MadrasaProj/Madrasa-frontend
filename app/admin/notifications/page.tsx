@@ -18,7 +18,7 @@ import { SkeletonList } from "@/components/ui/Skeleton";
 
 const TYPE_CONFIG: Record<NotificationType, { label: string; icon: React.ElementType; color: string; bg: string }> = {
   ANNOUNCEMENT:       { label: "Announcement",    icon: Bell,          color: "text-indigo-700", bg: "bg-indigo-100" },
-  ATTENDANCE_ALERT:   { label: "Attendance",       icon: ClipboardList, color: "text-emerald-700", bg: "bg-emerald-100" },
+  ATTENDANCE_ALERT:   { label: "Attendance",       icon: ClipboardList, color: "text-primary-700", bg: "bg-primary-100" },
   FEE_REMINDER:       { label: "Fee Reminder",     icon: CreditCard,    color: "text-amber-700",   bg: "bg-amber-100" },
   HOMEWORK_REMINDER:  { label: "Homework",         icon: BookOpen,      color: "text-blue-700",    bg: "bg-blue-100" },
   EXAM_NOTICE:        { label: "Exam Notice",      icon: GraduationCap, color: "text-indigo-700",  bg: "bg-indigo-100" },
@@ -139,7 +139,7 @@ export default function AdminNotificationsPage() {
         icon={Bell}
         action={
           <button onClick={handleComposeClick}
-            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold">
+            className="flex items-center gap-1.5 px-3 py-2 bg-primary-600 text-white rounded-xl text-sm font-semibold">
             <Plus className="w-4 h-4" /> Compose
           </button>
         }
@@ -192,7 +192,7 @@ export default function AdminNotificationsPage() {
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <button onClick={() => handleEditClick(n)}
-                      className="p-1 text-gray-300 hover:text-emerald-600 transition-colors">
+                      className="p-1 text-gray-300 hover:text-primary-600 transition-colors">
                       <Pencil className="w-4.5 h-4.5" />
                     </button>
                     <button onClick={() => handleDelete(n.id)} disabled={deletingId === n.id}
@@ -238,13 +238,13 @@ export default function AdminNotificationsPage() {
                   <label className="block text-xs font-semibold text-gray-500 mb-1.5">Title *</label>
                   <input value={cTitle} onChange={(e) => setCTitle(e.target.value)}
                     placeholder="Notification title"
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1.5">Message *</label>
                   <textarea value={cBody} onChange={(e) => setCBody(e.target.value)} rows={3}
                     placeholder="Write your message..."
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none" />
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1.5">Type</label>
@@ -261,7 +261,7 @@ export default function AdminNotificationsPage() {
                     {ROLES.map((r) => (
                       <button key={r} onClick={() => toggleRole(r)}
                         className={cn("px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all",
-                          cRoles.includes(r) ? "bg-emerald-600 text-white border-emerald-600" : "bg-white text-gray-600 border-gray-200")}>
+                          cRoles.includes(r) ? "bg-primary-600 text-white border-primary-600" : "bg-white text-gray-600 border-gray-200")}>
                         {r}
                       </button>
                     ))}
@@ -290,7 +290,7 @@ export default function AdminNotificationsPage() {
                     Event Date <span className="text-gray-400 font-normal">(optional — shows in diary)</span>
                   </label>
                   <input type="date" value={cEventDate} onChange={(e) => setCEventDate(e.target.value)}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white" />
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white" />
                 </div>
               </div>
 
@@ -299,7 +299,7 @@ export default function AdminNotificationsPage() {
                 <button onClick={() => setShowCompose(false)}
                   className="flex-1 py-3.5 border border-gray-200 rounded-2xl text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all">Cancel</button>
                 <button onClick={handleSend} disabled={!cTitle || !cBody || !cRoles.length || sending}
-                  className="flex-1 py-3.5 bg-emerald-600 text-white rounded-2xl text-sm font-semibold disabled:opacity-60 flex items-center justify-center gap-2">
+                  className="flex-1 py-3.5 bg-primary-600 text-white rounded-2xl text-sm font-semibold disabled:opacity-60 flex items-center justify-center gap-2">
                   {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   Send
                 </button>

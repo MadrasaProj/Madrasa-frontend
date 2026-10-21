@@ -42,7 +42,7 @@ export default function CommitteeAttendancePage() {
           <p className="text-sm font-semibold text-gray-500">This section is not available</p>
           <p className="text-xs text-gray-400 mt-1">Contact admin to enable access</p>
           <button onClick={() => navigate("/committee")}
-            className="mt-6 px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors">
+            className="mt-6 px-6 py-2.5 rounded-xl bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 transition-colors">
             Go Back
           </button>
         </div>
@@ -62,7 +62,7 @@ import {
   Users, GraduationCap, UserCheck, UserX, CalendarOff,
 } from "lucide-react";
 
-function Bar({ value, color = "bg-emerald-500", height = "h-2" }: { value: number; color?: string; height?: string }) {
+function Bar({ value, color = "bg-primary-500", height = "h-2" }: { value: number; color?: string; height?: string }) {
   const safe = Math.min(100, Math.max(0, value));
   return (
     <div className={`w-full ${height} bg-gray-100 rounded-full overflow-hidden`}>
@@ -72,14 +72,14 @@ function Bar({ value, color = "bg-emerald-500", height = "h-2" }: { value: numbe
 }
 
 function attColor(v: number) {
-  if (v >= 90) return { text: "text-emerald-600", bg: "bg-emerald-50", bar: "bg-emerald-500", border: "border-emerald-200" };
+  if (v >= 90) return { text: "text-primary-600", bg: "bg-primary-50", bar: "bg-primary-500", border: "border-primary-200" };
   if (v >= 75) return { text: "text-blue-600", bg: "bg-blue-50", bar: "bg-blue-500", border: "border-blue-200" };
   if (v >= 60) return { text: "text-amber-600", bg: "bg-amber-50", bar: "bg-amber-400", border: "border-amber-200" };
   return { text: "text-red-600", bg: "bg-red-50", bar: "bg-red-400", border: "border-red-200" };
 }
 
 const statusConfig = {
-  present: { label_en: "Present", label_ml: "ഹാജർ", bg: "bg-emerald-100", text: "text-emerald-700" },
+  present: { label_en: "Present", label_ml: "ഹാജർ", bg: "bg-primary-100", text: "text-primary-700" },
   absent:  { label_en: "Absent",  label_ml: "ഗൈർഹാജർ", bg: "bg-red-100", text: "text-red-700" },
   leave:   { label_en: "Leave",   label_ml: "ലീവ്", bg: "bg-amber-100", text: "text-amber-700" },
 };
@@ -114,13 +114,13 @@ function CommitteeAttendanceContent() {
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-white/15 rounded-2xl p-3">
               <div className="flex items-center gap-2 mb-2"><GraduationCap className="w-4 h-4 text-white/70" /><span className="text-xs text-teal-200 font-semibold">{lang === "ml" ? "വിദ്യാർത്ഥികൾ" : "Students"}</span></div>
-              <div className="flex justify-between items-end mb-1.5"><span className="text-2xl font-black">{s.todayPresent}/{totalToday}</span><span className="text-sm font-bold text-emerald-300">{todayPct}%</span></div>
-              <div className="h-1.5 bg-white/20 rounded-full overflow-hidden"><div className="h-full bg-emerald-400 rounded-full" style={{ width: `${todayPct}%` }} /></div>
+              <div className="flex justify-between items-end mb-1.5"><span className="text-2xl font-black">{s.todayPresent}/{totalToday}</span><span className="text-sm font-bold text-primary-300">{todayPct}%</span></div>
+              <div className="h-1.5 bg-white/20 rounded-full overflow-hidden"><div className="h-full bg-primary-400 rounded-full" style={{ width: `${todayPct}%` }} /></div>
             </div>
             <div className="bg-white/15 rounded-2xl p-3">
               <div className="flex items-center gap-2 mb-2"><Users className="w-4 h-4 text-white/70" /><span className="text-xs text-teal-200 font-semibold">{lang === "ml" ? "സ്റ്റാഫ്" : "Staff"}</span></div>
-              <div className="flex justify-between items-end mb-1.5"><span className="text-2xl font-black">{st.presentToday}/{st.totalStaff}</span><span className="text-sm font-bold text-emerald-300">{staffTodayPct}%</span></div>
-              <div className="h-1.5 bg-white/20 rounded-full overflow-hidden"><div className="h-full bg-emerald-400 rounded-full" style={{ width: `${staffTodayPct}%` }} /></div>
+              <div className="flex justify-between items-end mb-1.5"><span className="text-2xl font-black">{st.presentToday}/{st.totalStaff}</span><span className="text-sm font-bold text-primary-300">{staffTodayPct}%</span></div>
+              <div className="h-1.5 bg-white/20 rounded-full overflow-hidden"><div className="h-full bg-primary-400 rounded-full" style={{ width: `${staffTodayPct}%` }} /></div>
             </div>
           </div>
         </div>
@@ -137,7 +137,7 @@ function CommitteeAttendanceContent() {
       {activeTab === "students" && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} key="students">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-            {[ { label: lang === "ml" ? "ഒ. ഹാജർ %" : "Overall %", value: `${s.overallPct}%`, sub: lang === "ml" ? "ശ.ശ." : "Average", icon: TrendingUp, color: "text-teal-700", bg: "bg-teal-50", border: "border-teal-200" }, { label: lang === "ml" ? "ഇന്ന് ഹാജർ" : "Present Today", value: `${s.todayPresent}`, sub: `${todayPct}%`, icon: CheckCircle2, color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-200" }, { label: lang === "ml" ? "ഗൈർഹാജർ" : "Absent Today", value: `${s.todayAbsent}`, sub: `${100 - todayPct}%`, icon: XCircle, color: "text-red-700", bg: "bg-red-50", border: "border-red-200" }, { label: lang === "ml" ? "ശ്രദ്ധ ആവ്." : "Low Attend.", value: `${s.lowAttendanceStudents}`, sub: lang === "ml" ? "വിദ്യാർ." : "students", icon: AlertTriangle, color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-200" } ].map((c, i) => (
+            {[ { label: lang === "ml" ? "ഒ. ഹാജർ %" : "Overall %", value: `${s.overallPct}%`, sub: lang === "ml" ? "ശ.ശ." : "Average", icon: TrendingUp, color: "text-teal-700", bg: "bg-teal-50", border: "border-teal-200" }, { label: lang === "ml" ? "ഇന്ന് ഹാജർ" : "Present Today", value: `${s.todayPresent}`, sub: `${todayPct}%`, icon: CheckCircle2, color: "text-primary-700", bg: "bg-primary-50", border: "border-primary-200" }, { label: lang === "ml" ? "ഗൈർഹാജർ" : "Absent Today", value: `${s.todayAbsent}`, sub: `${100 - todayPct}%`, icon: XCircle, color: "text-red-700", bg: "bg-red-50", border: "border-red-200" }, { label: lang === "ml" ? "ശ്രദ്ധ ആവ്." : "Low Attend.", value: `${s.lowAttendanceStudents}`, sub: lang === "ml" ? "വിദ്യാർ." : "students", icon: AlertTriangle, color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-200" } ].map((c, i) => (
               <motion.div key={c.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }} className={`bg-white rounded-2xl border ${c.border} p-4 shadow-sm`}>
                 <div className={`w-9 h-9 ${c.bg} rounded-xl flex items-center justify-center mb-3`}><c.icon className={`w-4 h-4 ${c.color}`} /></div>
                 <p className="text-2xl font-black text-gray-900">{c.value}</p>
@@ -152,13 +152,13 @@ function CommitteeAttendanceContent() {
             <div className="flex items-end gap-2 h-36">
               {s.weeklyTrend.map((w, i) => { const total = w.present + w.absent; const pH = maxStudentWeek === 0 ? 0 : Math.round((w.present / maxStudentWeek) * 100); const aH = maxStudentWeek === 0 ? 0 : Math.round((w.absent / maxStudentWeek) * 100); const pPct = total === 0 ? 0 : Math.round((w.present / total) * 100); return (
                 <motion.div key={w.day} initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} transition={{ delay: 0.3 + i * 0.07 }} className="flex-1 flex flex-col items-center gap-0.5">
-                  <div className="w-full flex flex-col-reverse gap-0.5" style={{ height: "100px" }}><div className="w-full bg-emerald-500 rounded-t" style={{ height: `${pH}%` }} /><div className="w-full bg-red-400 rounded-b" style={{ height: `${aH}%` }} /></div>
+                  <div className="w-full flex flex-col-reverse gap-0.5" style={{ height: "100px" }}><div className="w-full bg-primary-500 rounded-t" style={{ height: `${pH}%` }} /><div className="w-full bg-red-400 rounded-b" style={{ height: `${aH}%` }} /></div>
                   <p className="text-[10px] font-bold text-gray-600">{lang === "ml" ? w.day_ml : w.day}</p><p className="text-[9px] text-gray-400">{pPct}%</p>
                 </motion.div>
               ); })}
             </div>
             <div className="flex gap-5 mt-3 text-xs">
-              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-500" /><span className="text-gray-600 font-medium">{lang === "ml" ? "ഹാജർ" : "Present"}</span></div>
+              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-primary-500" /><span className="text-gray-600 font-medium">{lang === "ml" ? "ഹാജർ" : "Present"}</span></div>
               <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-red-400" /><span className="text-gray-600 font-medium">{lang === "ml" ? "ഗൈർഹാജർ" : "Absent"}</span></div>
             </div>
           </motion.div>
@@ -187,7 +187,7 @@ function CommitteeAttendanceContent() {
       {activeTab === "staff" && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} key="staff">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-            {[ { label: lang === "ml" ? "ഒ. ഹാജർ %" : "Overall %", value: `${st.overallPct}%`, sub: lang === "ml" ? "ശ.ശ." : "Average", icon: TrendingUp, color: "text-violet-700", bg: "bg-violet-50", border: "border-violet-200" }, { label: lang === "ml" ? "ഇന്ന് ഹാജർ" : "Present Today", value: `${st.presentToday}`, sub: `${staffTodayPct}%`, icon: UserCheck, color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-200" }, { label: lang === "ml" ? "ഗൈർഹാജർ" : "Absent Today", value: `${st.absentToday}`, sub: lang === "ml" ? "ഇന്ന്" : "Today", icon: UserX, color: "text-red-700", bg: "bg-red-50", border: "border-red-200" }, { label: lang === "ml" ? "ലീവിൽ" : "On Leave", value: `${st.onLeaveToday}`, sub: lang === "ml" ? "ഇന്ന്" : "Today", icon: CalendarOff, color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-200" } ].map((c, i) => (
+            {[ { label: lang === "ml" ? "ഒ. ഹാജർ %" : "Overall %", value: `${st.overallPct}%`, sub: lang === "ml" ? "ശ.ശ." : "Average", icon: TrendingUp, color: "text-violet-700", bg: "bg-violet-50", border: "border-violet-200" }, { label: lang === "ml" ? "ഇന്ന് ഹാജർ" : "Present Today", value: `${st.presentToday}`, sub: `${staffTodayPct}%`, icon: UserCheck, color: "text-primary-700", bg: "bg-primary-50", border: "border-primary-200" }, { label: lang === "ml" ? "ഗൈർഹാജർ" : "Absent Today", value: `${st.absentToday}`, sub: lang === "ml" ? "ഇന്ന്" : "Today", icon: UserX, color: "text-red-700", bg: "bg-red-50", border: "border-red-200" }, { label: lang === "ml" ? "ലീവിൽ" : "On Leave", value: `${st.onLeaveToday}`, sub: lang === "ml" ? "ഇന്ന്" : "Today", icon: CalendarOff, color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-200" } ].map((c, i) => (
               <motion.div key={c.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }} className={`bg-white rounded-2xl border ${c.border} p-4 shadow-sm`}>
                 <div className={`w-9 h-9 ${c.bg} rounded-xl flex items-center justify-center mb-3`}><c.icon className={`w-4 h-4 ${c.color}`} /></div>
                 <p className="text-2xl font-black text-gray-900">{c.value}</p><p className="text-xs font-semibold text-gray-700 mt-0.5">{c.label}</p><p className="text-[11px] text-gray-400 mt-0.5">{c.sub}</p>

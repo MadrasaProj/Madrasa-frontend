@@ -152,7 +152,7 @@ export function TeacherAttendanceContent({ backHref }: TeacherAttendanceContentP
           <button key={t.key} onClick={() => setTab(t.key)}
             className={cn(
               "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all",
-              tab === t.key ? "bg-white text-emerald-700 shadow-sm" : "text-gray-500 hover:text-gray-700",
+              tab === t.key ? "bg-white text-primary-700 shadow-sm" : "text-gray-500 hover:text-gray-700",
             )}>
             <t.icon className="w-4 h-4" />
             {t.label}
@@ -170,10 +170,10 @@ export function TeacherAttendanceContent({ backHref }: TeacherAttendanceContentP
             </button>
             <div className="flex items-center gap-3">
               <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                className="px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500" />
               {selectedDate !== todayISO() && (
                 <button onClick={() => setSelectedDate(todayISO())}
-                  className="text-xs font-semibold text-emerald-600 hover:text-emerald-700">Today</button>
+                  className="text-xs font-semibold text-primary-600 hover:text-primary-700">Today</button>
               )}
             </div>
             <button onClick={() => setSelectedDate((d) => shiftDays(d, 1))} disabled={selectedDate >= todayISO()}
@@ -190,7 +190,7 @@ export function TeacherAttendanceContent({ backHref }: TeacherAttendanceContentP
             <>
               <div className="grid grid-cols-2 gap-3 mb-5">
                 <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
-                  <p className="text-2xl font-black text-emerald-600">{dayByTeacher.length}</p>
+                  <p className="text-2xl font-black text-primary-600">{dayByTeacher.length}</p>
                   <p className="text-xs text-gray-500 mt-0.5">Teachers Present</p>
                 </div>
                 <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
@@ -207,7 +207,7 @@ export function TeacherAttendanceContent({ backHref }: TeacherAttendanceContentP
                     <div key={teacher?.id ?? sessions[0].teacherId}
                       className="flex items-center justify-between bg-white rounded-2xl border border-gray-100 px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-sm shrink-0">
                           {teacher?.name?.charAt(0)?.toUpperCase() ?? "?"}
                         </div>
                         <div>
@@ -217,7 +217,7 @@ export function TeacherAttendanceContent({ backHref }: TeacherAttendanceContentP
                           </p>
                         </div>
                       </div>
-                      <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">
+                      <span className="text-xs font-bold text-primary-700 bg-primary-50 px-2.5 py-1 rounded-lg">
                         {uniqueDays(sessions)} day
                       </span>
                     </div>
@@ -237,7 +237,7 @@ export function TeacherAttendanceContent({ backHref }: TeacherAttendanceContentP
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input value={teacherSearch} onChange={(e) => setTeacherSearch(e.target.value)}
                 placeholder="Search teachers…"
-                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm" />
+                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm" />
             </div>
             <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
               {filteredTeachers.map((t) => (
@@ -246,12 +246,12 @@ export function TeacherAttendanceContent({ backHref }: TeacherAttendanceContentP
                   className={cn(
                     "flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold whitespace-nowrap transition-all shrink-0",
                     selectedTeacherId === t.id
-                      ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                      : "border-gray-200 bg-white text-gray-600 hover:border-emerald-200",
+                      ? "border-primary-300 bg-primary-50 text-primary-700"
+                      : "border-gray-200 bg-white text-gray-600 hover:border-primary-200",
                   )}>
                   <div className={cn(
                     "w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0",
-                    selectedTeacherId === t.id ? "bg-emerald-200 text-emerald-800" : "bg-gray-100 text-gray-500",
+                    selectedTeacherId === t.id ? "bg-primary-200 text-primary-800" : "bg-gray-100 text-gray-500",
                   )}>
                     {t.name.charAt(0).toUpperCase()}
                   </div>
@@ -292,7 +292,7 @@ export function TeacherAttendanceContent({ backHref }: TeacherAttendanceContentP
                     <div key={date} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
                       <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-50">
                         <p className="text-sm font-semibold text-gray-900">{fmtDate(date)}</p>
-                        <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg">
+                        <span className="text-xs font-bold text-primary-700 bg-primary-50 px-2 py-0.5 rounded-lg">
                           {sessions.length} session{sessions.length !== 1 ? "s" : ""}
                         </span>
                       </div>

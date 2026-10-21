@@ -42,8 +42,8 @@ const STATUS_CONFIG: Record<
   },
   APPROVED: {
     labelKey: "approvedLabel",
-    color: "text-emerald-600",
-    bg: "bg-emerald-50",
+    color: "text-primary-600",
+    bg: "bg-primary-50",
     icon: CheckCircle2,
   },
   REJECTED: {
@@ -184,7 +184,7 @@ export default function ParentLeaveRequestsPage() {
                           }
                         }}
                         aria-label={`${t("parentPages", reason.labelKey as any, lang)} — ${new Date(request.startDate).toLocaleDateString()}`}
-                        className="cursor-pointer transition-colors hover:bg-gray-50 focus-visible:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-emerald-500"
+                        className="cursor-pointer transition-colors hover:bg-gray-50 focus-visible:bg-primary-50 focus-visible:outline-2 focus-visible:outline-primary-500"
                       >
                         <TableCell className="px-4 font-medium text-gray-900">{t("parentPages", reason.labelKey as any, lang)}</TableCell>
                         <TableCell className="px-4 text-gray-600">{new Date(request.startDate).toLocaleDateString()}</TableCell>

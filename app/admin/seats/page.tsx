@@ -24,7 +24,7 @@ export default function AdminSeatsPage() {
         action={
           <button
             onClick={() => setShowGenerator(true)}
-            className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-colors"
+            className="bg-primary-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-700 transition-colors"
           >
             {t("adminPages", "generateNew", lang)}
           </button>
@@ -50,7 +50,7 @@ export default function AdminSeatsPage() {
       </div>
 
       {/* Teacher / Invigilator */}
-      <div className="bg-emerald-600 text-white rounded-2xl p-3 mb-6 text-center text-sm font-semibold">
+      <div className="bg-primary-600 text-white rounded-2xl p-3 mb-6 text-center text-sm font-semibold">
         {t("adminPages", "invigilatorDesk", lang)}
       </div>
 
@@ -102,7 +102,7 @@ export default function AdminSeatsPage() {
               ].map(({ label, placeholder, type }) => (
                 <div key={label}>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-                  <input type={type ?? "text"} placeholder={placeholder} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm" />
+                  <input type={type ?? "text"} placeholder={placeholder} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm" />
                 </div>
               ))}
               <div>
@@ -110,7 +110,7 @@ export default function AdminSeatsPage() {
                 <div className="flex gap-2 flex-wrap">
                   {["Class 2","Class 3","Class 4","Class 5"].map((c) => (
                     <label key={c} className="flex items-center gap-1.5 bg-gray-50 rounded-lg px-3 py-1.5 cursor-pointer">
-                      <input type="checkbox" defaultChecked className="w-3.5 h-3.5 accent-emerald-600" />
+                      <input type="checkbox" defaultChecked className="w-3.5 h-3.5 accent-primary-600" />
                       <span className="text-sm text-gray-700">{c}</span>
                     </label>
                   ))}
@@ -119,7 +119,7 @@ export default function AdminSeatsPage() {
               <div className="flex gap-3 mt-2">
                 <button
                   onClick={() => { setShowGenerator(false); alert("✅ Seat arrangement generated! (Demo)"); }}
-                  className="flex-1 bg-emerald-600 text-white font-semibold py-3 rounded-xl hover:bg-emerald-700 transition-colors text-sm"
+                  className="flex-1 bg-primary-600 text-white font-semibold py-3 rounded-xl hover:bg-primary-700 transition-colors text-sm"
                 >
                   {t("adminPages", "generate", lang)}
                 </button>

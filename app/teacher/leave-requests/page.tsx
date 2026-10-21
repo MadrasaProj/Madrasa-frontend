@@ -132,7 +132,7 @@ export default function TeacherLeaveRequestsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("teacherPages", "searchNameAdmNo", lang)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 transition-all"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/30 transition-all"
             />
           </div>
         </div>
@@ -245,7 +245,7 @@ export default function TeacherLeaveRequestsPage() {
                       onChange={(e) => setReviewNote(e.target.value)}
                       placeholder={t("teacherPages", "addNoteOptional", lang)}
                       rows={3}
-                      className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm transition-all focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/30"
+                      className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm transition-all focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/30"
                     />
                     <div className="flex gap-2">
                       <Button
@@ -263,7 +263,7 @@ export default function TeacherLeaveRequestsPage() {
                         size="lg"
                         onClick={() => handleReview(request.id, "APPROVED")}
                         disabled={reviewingSave}
-                        className="  flex-1   bg-emerald-600   text-white hover:bg-emerald-700"
+                        className="  flex-1   bg-primary-600   text-white hover:bg-primary-700"
                       >
                         {reviewingSave ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : <span className="inline-flex items-center gap-1.5"><Check className="h-4 w-4" />{t("teacherPages", "approveLabel", lang)}</span>}
                       </Button>

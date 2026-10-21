@@ -71,7 +71,7 @@ function IndeterminateCheckbox({
       type="checkbox"
       checked={checked}
       onChange={(e) => onChange(e.target.checked)}
-      className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+      className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
     />
   );
 }
@@ -470,7 +470,7 @@ console.log(classes);
             checked={selectedIds.has(s.id)}
             onChange={(e) => handleSelectOne(s.id, e.target.checked)}
             onClick={(e) => e.stopPropagation()}
-            className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+            className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
           />
         ),
         className: "w-10",
@@ -597,7 +597,7 @@ console.log(classes);
                 e.stopPropagation();
                 navigate(`${slugPrefix}/admin/students/${s.id}`);
               }}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors text-xs font-semibold"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-primary-50 hover:bg-primary-100 text-primary-700 transition-colors text-xs font-semibold"
             >
               <Eye className="w-3.5 h-3.5" />
             </button>
@@ -629,7 +629,7 @@ console.log(classes);
               </button>
               <button
                 onClick={openAdd}
-                className="flex items-center gap-1.5 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-colors"
+                className="flex items-center gap-1.5 bg-primary-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-700 transition-colors"
               >
                 <Plus className="w-4 h-4" />{" "}
                 {t("adminPages", "addStudent", lang)}
@@ -652,7 +652,7 @@ console.log(classes);
           value={searchInput}
           onChange={(e) => handleSearch(e.target.value)}
           placeholder={t("adminPages", "searchNameOrAdm", lang)}
-          className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+          className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
         />
       </div>
 
@@ -665,7 +665,7 @@ console.log(classes);
               setActiveClassId(e.target.value);
               setPage(1);
             }}
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 appearance-none cursor-pointer"
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none cursor-pointer"
           >
             <option value="all">
               {t("adminPages", "allClassesFilter", lang)} ({total})
@@ -685,7 +685,7 @@ console.log(classes);
               setGender(e.target.value as typeof gender);
               setPage(1);
             }}
-            className="pl-3 pr-8 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 appearance-none cursor-pointer"
+            className="pl-3 pr-8 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none cursor-pointer"
           >
             <option value="all">{t("adminPages", "allFilter", lang)}</option>
             <option value="MALE">{t("adminPages", "boysFilter", lang)}</option>
@@ -700,9 +700,9 @@ console.log(classes);
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3 mb-4"
+          className="flex items-center justify-between bg-primary-50 border border-primary-200 rounded-2xl px-4 py-3 mb-4"
         >
-          <span className="text-sm font-semibold text-emerald-800">
+          <span className="text-sm font-semibold text-primary-800">
             {selectedIds.size} {t("common", "selected", lang)}
           </span>
           <div className="flex items-center gap-2">
@@ -759,7 +759,7 @@ console.log(classes);
                 checked={selectedIds.has(s.id)}
                 onChange={(e) => handleSelectOne(s.id, e.target.checked)}
                 onClick={(e) => e.stopPropagation()}
-                className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer shrink-0"
+                className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer shrink-0"
               />
               {s.photoUrl ? (
                 <img
@@ -824,7 +824,7 @@ console.log(classes);
                   e.stopPropagation();
                   navigate(`${slugPrefix}/admin/students/${s.id}`);
                 }}
-                className="flex items-center gap-1 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors text-xs font-semibold"
+                className="flex items-center gap-1 px-3 py-2 rounded-xl bg-primary-50 hover:bg-primary-100 text-primary-700 transition-colors text-xs font-semibold"
               >
                 <Eye className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">

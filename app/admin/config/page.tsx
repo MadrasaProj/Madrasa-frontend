@@ -361,7 +361,7 @@ export default function AdminConfigPage() {
                 <Tabs.Trigger
                   key={tab.value}
                   value={tab.value}
-                  className="data-[state=active]:text-emerald-600 data-[state=active]:bg-emerald-50 px-4 py-3 text-gray-500 border-b-2 border-transparent hover:text-emerald-600 hover:border-b-emerald-300 flex items-center gap-2 px-1 py-3 text-sm font-semibold transition-all whitespace-nowrap -mb-px lg:w-full lg:px-3 lg:py-2.5 lg:-mb-0 lg:border-b-0 lg:border-r-0 lg:data-[state=active]:border-b-0 lg:data-[state=active]:border-r-emerald-600 lg:hover:border-r-emerald-300 lg:hover:border-b-transparent"
+                  className="data-[state=active]:text-primary-600 data-[state=active]:bg-primary-50 px-4 py-3 text-gray-500 border-b-2 border-transparent hover:text-primary-600 hover:border-b-primary-300 flex items-center gap-2 px-1 py-3 text-sm font-semibold transition-all whitespace-nowrap -mb-px lg:w-full lg:px-3 lg:py-2.5 lg:-mb-0 lg:border-b-0 lg:border-r-0 lg:data-[state=active]:border-b-0 lg:data-[state=active]:border-r-primary-600 lg:hover:border-r-primary-300 lg:hover:border-b-transparent"
                 >
                   <Icon className="w-4 h-4 shrink-0" />
                   {tab.label}
@@ -391,7 +391,7 @@ export default function AdminConfigPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="bg-white rounded-2xl border border-gray-100 p-5"
               >
-                <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide mb-4">
+                <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-4">
                   {section.title}
                 </p>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -406,7 +406,7 @@ export default function AdminConfigPage() {
                           value={String(config[key] ?? "")}
                           onChange={(e) => handleChange(key, e.target.value)}
                           placeholder={placeholder}
-                          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
                       </div>
                     ),
@@ -437,7 +437,7 @@ export default function AdminConfigPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="bg-white rounded-2xl border border-gray-100 p-5"
               >
-                <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide mb-4">
+                <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-4">
                   {section.title}
                 </p>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -452,7 +452,7 @@ export default function AdminConfigPage() {
                           value={String(config[key] ?? "")}
                           onChange={(e) => handleChange(key, e.target.value)}
                           placeholder={placeholder}
-                          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
                       </div>
                     ),
@@ -480,8 +480,8 @@ export default function AdminConfigPage() {
               className="bg-white rounded-2xl border border-gray-100 p-5"
             >
               <div className="flex items-center gap-2 mb-4">
-                <CalendarCheck className="w-4 h-4 text-emerald-600" />
-                <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide">
+                <CalendarCheck className="w-4 h-4 text-primary-600" />
+                <p className="text-xs font-bold text-primary-600 uppercase tracking-wide">
                   Attendance Mode
                 </p>
               </div>
@@ -492,7 +492,7 @@ export default function AdminConfigPage() {
                     className={cn(
                       "flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition-all",
                       attMode === mode
-                        ? "border-emerald-500 bg-emerald-50"
+                        ? "border-primary-500 bg-primary-50"
                         : "border-gray-200 bg-gray-50",
                     )}
                   >
@@ -507,7 +507,7 @@ export default function AdminConfigPage() {
                     <span
                       className={cn(
                         "text-sm font-bold mb-1",
-                        attMode === mode ? "text-emerald-700" : "text-gray-700",
+                        attMode === mode ? "text-primary-700" : "text-gray-700",
                       )}
                     >
                       {mode === "CLASS_BASED" ? "Class Based" : "Period Based"}
@@ -531,8 +531,8 @@ export default function AdminConfigPage() {
                 className={cn(
                   "flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold transition-colors",
                   savedAtt
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60",
+                    ? "bg-primary-100 text-primary-700"
+                    : "bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60",
                 )}
               >
                 {savingAtt ? (
@@ -556,11 +556,11 @@ export default function AdminConfigPage() {
             >
               <div className="flex items-center gap-2 mb-4">
                 {showCommAtt ? (
-                  <Eye className="w-4 h-4 text-emerald-600" />
+                  <Eye className="w-4 h-4 text-primary-600" />
                 ) : (
                   <EyeOff className="w-4 h-4 text-gray-400" />
                 )}
-                <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide">
+                <p className="text-xs font-bold text-primary-600 uppercase tracking-wide">
                   Committee View
                 </p>
               </div>
@@ -577,7 +577,7 @@ export default function AdminConfigPage() {
                 <button
                   onClick={() => setShowCommAtt((v) => !v)}
                   className={`relative w-12 h-6 rounded-full transition-colors duration-200 shrink-0 ${
-                    showCommAtt ? "bg-emerald-500" : "bg-gray-300"
+                    showCommAtt ? "bg-primary-500" : "bg-gray-300"
                   }`}
                 >
                   <span
@@ -595,8 +595,8 @@ export default function AdminConfigPage() {
                 className={cn(
                   "flex items-center justify-center gap-2 w-full py-3 mt-4 rounded-xl text-sm font-bold transition-colors",
                   savedCommAtt
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60",
+                    ? "bg-primary-100 text-primary-700"
+                    : "bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60",
                 )}
               >
                 {savingCommAtt ? (
@@ -620,11 +620,11 @@ export default function AdminConfigPage() {
             >
               <div className="flex items-center gap-2 mb-4">
                 {showCommTC ? (
-                  <Eye className="w-4 h-4 text-emerald-600" />
+                  <Eye className="w-4 h-4 text-primary-600" />
                 ) : (
                   <EyeOff className="w-4 h-4 text-gray-400" />
                 )}
-                <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide">
+                <p className="text-xs font-bold text-primary-600 uppercase tracking-wide">
                   Committee View
                 </p>
               </div>
@@ -641,7 +641,7 @@ export default function AdminConfigPage() {
                 <button
                   onClick={() => setShowCommTC((v) => !v)}
                   className={`relative w-12 h-6 rounded-full transition-colors duration-200 shrink-0 ${
-                    showCommTC ? "bg-emerald-500" : "bg-gray-300"
+                    showCommTC ? "bg-primary-500" : "bg-gray-300"
                   }`}
                 >
                   <span
@@ -660,8 +660,8 @@ export default function AdminConfigPage() {
                 className={cn(
                   "flex items-center justify-center gap-2 w-full py-3 mt-4 rounded-xl text-sm font-bold transition-colors",
                   savedCommTC
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60",
+                    ? "bg-primary-100 text-primary-700"
+                    : "bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60",
                 )}
               >
                 {savingCommTC ? (
@@ -692,8 +692,8 @@ export default function AdminConfigPage() {
               className="bg-white rounded-2xl border border-gray-100 p-5"
             >
               <div className="flex items-center gap-2 mb-4">
-                <KeyRound className="w-4 h-4 text-emerald-600" />
-                <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide">
+                <KeyRound className="w-4 h-4 text-primary-600" />
+                <p className="text-xs font-bold text-primary-600 uppercase tracking-wide">
                   Username
                 </p>
               </div>
@@ -712,7 +712,7 @@ export default function AdminConfigPage() {
                   value={newUsername}
                   onChange={(e) => setNewUsername(e.target.value)}
                   placeholder="admin@madrasa.com or +91 9876543210"
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>
               {usernameError && (
@@ -726,8 +726,8 @@ export default function AdminConfigPage() {
                 className={cn(
                   "flex items-center justify-center gap-2 w-full py-3 mt-4 rounded-xl text-sm font-bold transition-colors",
                   savedUsername
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60",
+                    ? "bg-primary-100 text-primary-700"
+                    : "bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60",
                 )}
               >
                 {savingUsername ? (
@@ -747,8 +747,8 @@ export default function AdminConfigPage() {
             >
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                  <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide">
+                  <ShieldCheck className="w-4 h-4 text-primary-600" />
+                  <p className="text-xs font-bold text-primary-600 uppercase tracking-wide">
                     Password
                   </p>
                 </div>
@@ -781,7 +781,7 @@ export default function AdminConfigPage() {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="At least 6 characters"
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
                 <div>
@@ -798,7 +798,7 @@ export default function AdminConfigPage() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Re-enter new password"
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>
@@ -813,8 +813,8 @@ export default function AdminConfigPage() {
                 className={cn(
                   "flex items-center justify-center gap-2 w-full py-3 mt-4 rounded-xl text-sm font-bold transition-colors",
                   savedPassword
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60",
+                    ? "bg-primary-100 text-primary-700"
+                    : "bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60",
                 )}
               >
                 {savingPassword ? (
@@ -839,8 +839,8 @@ export default function AdminConfigPage() {
               className="bg-white rounded-2xl border border-gray-100 p-5"
             >
               <div className="flex items-center gap-2 mb-4">
-                <Users className="w-4 h-4 text-emerald-600" />
-                <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide">Parent Modules</p>
+                <Users className="w-4 h-4 text-primary-600" />
+                <p className="text-xs font-bold text-primary-600 uppercase tracking-wide">Parent Modules</p>
               </div>
               <div className="space-y-3">
                 {PARENT_MODULES.map((mod) => {
@@ -858,7 +858,7 @@ export default function AdminConfigPage() {
                           )
                         }
                         className={`relative w-12 h-6 rounded-full transition-colors duration-200 shrink-0 ${
-                          enabled ? "bg-emerald-500" : "bg-gray-300"
+                          enabled ? "bg-primary-500" : "bg-gray-300"
                         }`}
                       >
                         <span
@@ -876,7 +876,7 @@ export default function AdminConfigPage() {
                 disabled={savingParentToggles}
                 className={cn(
                   "flex items-center justify-center gap-2 w-full py-3 mt-4 rounded-xl text-sm font-bold transition-colors",
-                  savedParentToggles ? "bg-emerald-100 text-emerald-700" : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60",
+                  savedParentToggles ? "bg-primary-100 text-primary-700" : "bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60",
                 )}
               >
                 {savingParentToggles ? <Loader2 className="w-4 h-4 animate-spin" /> :
@@ -908,8 +908,8 @@ function StickySaveButton({
         disabled={saving}
         className={`w-full lg:w-auto lg:px-10 flex items-center justify-center gap-2.5 py-4 rounded-2xl font-bold text-sm transition-all shadow-lg ${
           saved
-            ? "bg-emerald-100 text-emerald-700"
-            : "bg-emerald-600 text-white hover:bg-emerald-700"
+            ? "bg-primary-100 text-primary-700"
+            : "bg-primary-600 text-white hover:bg-primary-700"
         }`}
       >
         {saving ? (

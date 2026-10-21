@@ -15,7 +15,7 @@ import {
 
 function Bar({
   value,
-  color = "bg-emerald-500",
+  color = "bg-primary-500",
   height = "h-2",
 }: {
   value: number;
@@ -36,14 +36,14 @@ function Bar({
 }
 
 function scoreColor(v: number) {
-  if (v >= 85) return "text-emerald-600 bg-emerald-50";
+  if (v >= 85) return "text-primary-600 bg-primary-50";
   if (v >= 70) return "text-blue-600 bg-blue-50";
   if (v >= 55) return "text-amber-600 bg-amber-50";
   return "text-red-600 bg-red-50";
 }
 
 function barColor(v: number) {
-  if (v >= 85) return "bg-emerald-500";
+  if (v >= 85) return "bg-primary-500";
   if (v >= 70) return "bg-blue-500";
   if (v >= 55) return "bg-amber-400";
   return "bg-red-400";

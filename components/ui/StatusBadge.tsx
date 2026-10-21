@@ -7,15 +7,15 @@ interface StatusBadgeProps {
 }
 
 const statusConfig = {
-  green:      { bg: "bg-emerald-100", text: "text-emerald-700", dot: "bg-emerald-500", label: "Completed" },
+  green:      { bg: "bg-primary-100", text: "text-primary-700", dot: "bg-primary-500", label: "Completed" },
   yellow:     { bg: "bg-amber-100",   text: "text-amber-700",   dot: "bg-amber-400",   label: "Pending" },
   red:        { bg: "bg-red-100",     text: "text-red-600",     dot: "bg-red-500",     label: "Missing" },
-  paid:       { bg: "bg-emerald-100", text: "text-emerald-700", dot: "bg-emerald-500", label: "Paid" },
+  paid:       { bg: "bg-primary-100", text: "text-primary-700", dot: "bg-primary-500", label: "Paid" },
   pending:    { bg: "bg-amber-100",   text: "text-amber-700",   dot: "bg-amber-400",   label: "Pending" },
   unpaid:     { bg: "bg-red-100",     text: "text-red-600",     dot: "bg-red-500",     label: "Unpaid" },
-  present:    { bg: "bg-emerald-100", text: "text-emerald-700", dot: "bg-emerald-500", label: "Present" },
+  present:    { bg: "bg-primary-100", text: "text-primary-700", dot: "bg-primary-500", label: "Present" },
   absent:     { bg: "bg-red-100",     text: "text-red-600",     dot: "bg-red-500",     label: "Absent" },
-  jama:       { bg: "bg-emerald-100", text: "text-emerald-700", dot: "bg-emerald-500", label: "Jama'a" },
+  jama:       { bg: "bg-primary-100", text: "text-primary-700", dot: "bg-primary-500", label: "Jama'a" },
   individual: { bg: "bg-amber-100",   text: "text-amber-700",   dot: "bg-amber-400",   label: "Individual" },
   missed:     { bg: "bg-red-100",     text: "text-red-600",     dot: "bg-red-500",     label: "Missed" },
   returned:   { bg: "bg-blue-100",    text: "text-blue-700",    dot: "bg-blue-500",    label: "Returned" },

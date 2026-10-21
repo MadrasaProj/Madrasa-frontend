@@ -19,14 +19,14 @@ const fmtDate = (d?: string) =>
   d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
 const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: "bg-emerald-500",
+  ACTIVE: "bg-primary-500",
   TRIAL: "bg-blue-400",
   SUSPENDED: "bg-amber-400",
   CANCELLED: "bg-gray-400",
 };
 
 const STATUS_TEXT: Record<string, string> = {
-  ACTIVE: "text-emerald-700 bg-emerald-100",
+  ACTIVE: "text-primary-700 bg-primary-100",
   TRIAL: "text-blue-700 bg-blue-100",
   SUSPENDED: "text-amber-700 bg-amber-100",
   CANCELLED: "text-gray-600 bg-gray-100",
@@ -151,7 +151,7 @@ export default function AdminPlatformReportsPage() {
               <StatCard label="Total Madrasas" value={stats.totalClients} icon={Building2} color="bg-indigo-500" />
             </motion.div>
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-              <StatCard label="Active Madrasas" value={stats.activeClients} icon={Building2} color="bg-emerald-500" />
+              <StatCard label="Active Madrasas" value={stats.activeClients} icon={Building2} color="bg-primary-500" />
             </motion.div>
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
               <StatCard label="Total Students" value={stats.totalStudents} icon={Users} color="bg-blue-500" />

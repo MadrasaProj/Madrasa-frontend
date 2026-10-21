@@ -23,15 +23,15 @@ import { PageSkeleton } from "@/components/ui/Skeleton";
 
 const GENDER_COLORS = { MALE: "#3b82f6", FEMALE: "#f472b6", OTHER: "#a78bfa" };
 const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: "#10b981", INACTIVE: "#f59e0b", GRADUATED: "#3b82f6",
+  ACTIVE: "var(--primary)", INACTIVE: "#f59e0b", GRADUATED: "#3b82f6",
   TRANSFERRED: "#8b5cf6", DROPPED_OUT: "#ef4444",
 };
 const FEE_COLORS: Record<string, string> = {
-  PAID: "#10b981", PENDING: "#f59e0b", PARTIAL: "#3b82f6",
+  PAID: "var(--primary)", PENDING: "#f59e0b", PARTIAL: "#3b82f6",
   OVERDUE: "#ef4444", WAIVED: "#9ca3af",
 };
 const ATT_COLORS: Record<string, string> = {
-  PRESENT: "#10b981", ABSENT: "#ef4444", LATE: "#f59e0b", EXCUSED: "#3b82f6",
+  PRESENT: "var(--primary)", ABSENT: "#ef4444", LATE: "#f59e0b", EXCUSED: "#3b82f6",
 };
 
 export default function AdminReportsPage() {
@@ -80,7 +80,7 @@ export default function AdminReportsPage() {
   const hwData = homework?.byStatus.map((s) => ({
     name: s.status.replace("_", " "),
     count: s._count.id,
-    fill: s.status === "CHECKED" ? "#10b981" : s.status === "SUBMITTED" ? "#f59e0b" : "#ef4444",
+    fill: s.status === "CHECKED" ? "var(--primary)" : s.status === "SUBMITTED" ? "#f59e0b" : "#ef4444",
   })) ?? [];
 
   return (
@@ -167,15 +167,15 @@ export default function AdminReportsPage() {
           {fees && (
             <div className="bg-white rounded-2xl border border-gray-100 p-5">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-emerald-100 rounded-xl flex items-center justify-center">
-                  <IndianRupee className="w-4 h-4 text-emerald-600" />
+                <div className="w-8 h-8 bg-primary-100 rounded-xl flex items-center justify-center">
+                  <IndianRupee className="w-4 h-4 text-primary-600" />
                 </div>
                 <p className="font-bold text-gray-900">Fees</p>
               </div>
               <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="bg-emerald-50 rounded-2xl p-3 border border-emerald-100">
-                  <p className="text-xs text-emerald-600 mb-1">Collected</p>
-                  <p className="text-xl font-bold text-emerald-700">₹{Number(fees.totalCollected).toLocaleString()}</p>
+                <div className="bg-primary-50 rounded-2xl p-3 border border-primary-100">
+                  <p className="text-xs text-primary-600 mb-1">Collected</p>
+                  <p className="text-xl font-bold text-primary-700">₹{Number(fees.totalCollected).toLocaleString()}</p>
                 </div>
                 <div className="bg-red-50 rounded-2xl p-3 border border-red-100">
                   <p className="text-xs text-red-500 mb-1">Pending</p>
@@ -210,13 +210,13 @@ export default function AdminReportsPage() {
                     <ClipboardList className="w-4 h-4 text-orange-600" />
                   </div>
                   <p className="font-bold text-gray-900 text-sm">Attendance</p>
-                  <span className={cn("ml-auto text-sm font-bold", attendance.rate >= 75 ? "text-emerald-600" : "text-red-500")}>
+                  <span className={cn("ml-auto text-sm font-bold", attendance.rate >= 75 ? "text-primary-600" : "text-red-500")}>
                     {attendance.rate}%
                   </span>
                 </div>
                 <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-3">
                   <div
-                    className="h-full rounded-full bg-emerald-500"
+                    className="h-full rounded-full bg-primary-500"
                     style={{ width: `${attendance.rate}%` }}
                   />
                 </div>
@@ -241,7 +241,7 @@ export default function AdminReportsPage() {
                     <BookOpen className="w-4 h-4 text-blue-600" />
                   </div>
                   <p className="font-bold text-gray-900 text-sm">Homework</p>
-                  <span className={cn("ml-auto text-sm font-bold", homework.completionRate >= 60 ? "text-emerald-600" : "text-amber-600")}>
+                  <span className={cn("ml-auto text-sm font-bold", homework.completionRate >= 60 ? "text-primary-600" : "text-amber-600")}>
                     {homework.completionRate}%
                   </span>
                 </div>

@@ -326,7 +326,7 @@ export default function TeacherHomeworkPage() {
                             "h-3.5 w-3.5",
                             status === "NOT_SUBMITTED" && "text-red-500",
                             status === "SUBMITTED" && "text-yellow-600",
-                            status === "CHECKED" && "text-emerald-600",
+                            status === "CHECKED" && "text-primary-600",
                           )}
                           aria-hidden="true"
                         />

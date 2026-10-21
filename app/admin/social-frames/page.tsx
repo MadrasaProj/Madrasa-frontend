@@ -133,7 +133,7 @@ export default function AdminSocialFramesPage() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="px-5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 flex items-center gap-2"
+              className="px-5 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 flex items-center gap-2"
             >
               {saving && <Loader2 className="w-4 h-4 animate-spin" />}
               {view === "edit" ? "Update" : "Save"}
@@ -160,7 +160,7 @@ export default function AdminSocialFramesPage() {
           <h1 className="text-lg font-semibold">Social Frames</h1>
           <button
             onClick={handleCreate}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium"
+            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium"
           >
             <Plus className="w-4 h-4" />
             Create Social Frame
@@ -174,7 +174,7 @@ export default function AdminSocialFramesPage() {
             <p className="text-sm">No social frames yet.</p>
             <button
               onClick={handleCreate}
-              className="mt-3 text-emerald-600 text-sm font-medium hover:underline"
+              className="mt-3 text-primary-600 text-sm font-medium hover:underline"
             >
               Create your first social frame
             </button>

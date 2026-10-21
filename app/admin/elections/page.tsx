@@ -52,8 +52,8 @@ const statusMeta: Record<
   active: {
     label: "Active",
     label_ml: "സജീവം",
-    color: "text-emerald-700",
-    bg: "bg-emerald-100",
+    color: "text-primary-700",
+    bg: "bg-primary-100",
     icon: Play,
   },
   closed: {
@@ -105,7 +105,7 @@ function CategoryChip({
 function ProgressBar({
   value,
   max,
-  color = "bg-emerald-500",
+  color = "bg-primary-500",
 }: {
   value: number;
   max: number;
@@ -148,7 +148,7 @@ function ElectionDetailModal({
     ? election.candidates.find((c) => c.id === election.winnerCandidateId)
     : null;
   const barColors = [
-    "bg-emerald-500",
+    "bg-primary-500",
     "bg-teal-500",
     "bg-amber-500",
     "bg-blue-500",
@@ -170,7 +170,7 @@ function ElectionDetailModal({
         className="bg-white rounded-3xl w-full  max-h-[90vh] overflow-y-auto shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="bg-linear-to-r from-emerald-600 to-teal-600 rounded-t-3xl p-6 text-white">
+        <div className="bg-linear-to-r from-primary-600 to-teal-600 rounded-t-3xl p-6 text-white">
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="flex flex-wrap gap-2 mb-2">
@@ -193,7 +193,7 @@ function ElectionDetailModal({
               <h2 className="text-xl font-bold leading-snug">
                 {lang === "ml" ? election.title_ml : election.title}
               </h2>
-              <p className="text-emerald-200 text-sm mt-1">
+              <p className="text-primary-200 text-sm mt-1">
                 {lang === "ml" ? election.position_ml : election.position}
                 {election.class !== "all" && ` · ${election.class}`}
               </p>
@@ -356,7 +356,7 @@ function ElectionCard({
   )[0];
   const isType1 = election.type === "parent_vote";
   const barColors = [
-    "bg-emerald-500",
+    "bg-primary-500",
     "bg-teal-500",
     "bg-amber-500",
     "bg-blue-500",
@@ -371,7 +371,7 @@ function ElectionCard({
       className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden"
     >
       <div
-        className={`h-1 ${isType1 ? "bg-linear-to-r from-emerald-500 to-teal-500" : "bg-linear-to-r from-teal-500 to-blue-500"}`}
+        className={`h-1 ${isType1 ? "bg-linear-to-r from-primary-500 to-teal-500" : "bg-linear-to-r from-teal-500 to-blue-500"}`}
       />
       <div className="p-4 lg:p-5">
         <div className="flex items-start gap-3 mb-3">
@@ -384,7 +384,7 @@ function ElectionCard({
             <div className="flex flex-wrap gap-1.5 mb-1">
               <CategoryChip category={election.category} lang={lang} />
               <span
-                className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isType1 ? "bg-emerald-100 text-emerald-700" : "bg-teal-100 text-teal-700"}`}
+                className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isType1 ? "bg-primary-100 text-primary-700" : "bg-teal-100 text-teal-700"}`}
               >
                 {isType1 ? "Parent" : "Class"}
               </span>
@@ -413,11 +413,11 @@ function ElectionCard({
               {lang === "ml" ? "സ്ഥാനാർ." : "Candidates"}
             </p>
           </div>
-          <div className="bg-emerald-50 rounded-xl p-2 text-center border border-emerald-100">
-            <p className="text-xs lg:text-sm font-bold text-emerald-700">
+          <div className="bg-primary-50 rounded-xl p-2 text-center border border-primary-100">
+            <p className="text-xs lg:text-sm font-bold text-primary-700">
               {totalVotes}
             </p>
-            <p className="text-[10px] text-emerald-600">
+            <p className="text-[10px] text-primary-600">
               {lang === "ml" ? "വോട്ടുകൾ" : "Votes Cast"}
             </p>
           </div>
@@ -490,7 +490,7 @@ function ElectionCard({
         <div className="flex items-center gap-2">
           <button
             onClick={onView}
-            className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition-all"
+            className="flex-1 flex items-center justify-center gap-1.5 bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition-all"
           >
             <Eye className="w-3.5 h-3.5" />
             {lang === "ml" ? "വിശദാംശങ്ങൾ" : "View Details"}
@@ -761,10 +761,10 @@ function CreateElectionModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="bg-linear-to-r from-emerald-600 to-teal-600 rounded-t-3xl p-5 text-white shrink-0">
+        <div className="bg-linear-to-r from-primary-600 to-teal-600 rounded-t-3xl p-5 text-white shrink-0">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="text-emerald-200 text-xs font-semibold uppercase tracking-widest">
+              <p className="text-primary-200 text-xs font-semibold uppercase tracking-widest">
                 {lang === "ml" ? "പുതിയ തിരഞ്ഞെടുപ്പ്" : "New Election"}
               </p>
               <h2 className="text-lg font-bold">
@@ -787,9 +787,9 @@ function CreateElectionModal({
                 <div
                   className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all ${
                     wizard.step > s.num
-                      ? "bg-white text-emerald-700"
+                      ? "bg-white text-primary-700"
                       : wizard.step === s.num
-                        ? "bg-white text-emerald-700 ring-2 ring-white/50"
+                        ? "bg-white text-primary-700 ring-2 ring-white/50"
                         : "bg-white/25 text-white/70"
                   }`}
                 >
@@ -844,12 +844,12 @@ function CreateElectionModal({
                           <button
                             key={cat}
                             onClick={() => selectCategory(cat)}
-                            className={`flex items-center gap-2.5 p-3 rounded-2xl border-2 text-left transition-all ${sel ? "border-emerald-500 bg-emerald-50" : "border-gray-100 bg-gray-50 hover:border-emerald-200"}`}
+                            className={`flex items-center gap-2.5 p-3 rounded-2xl border-2 text-left transition-all ${sel ? "border-primary-500 bg-primary-50" : "border-gray-100 bg-gray-50 hover:border-primary-200"}`}
                           >
                             <span className="text-2xl shrink-0">{m.emoji}</span>
                             <div className="min-w-0">
                               <p
-                                className={`text-xs font-bold leading-tight ${sel ? "text-emerald-800" : "text-gray-800"}`}
+                                className={`text-xs font-bold leading-tight ${sel ? "text-primary-800" : "text-gray-800"}`}
                               >
                                 {lang === "ml" ? m.label_ml : m.label}
                               </p>
@@ -858,7 +858,7 @@ function CreateElectionModal({
                               </p>
                             </div>
                             {sel && (
-                              <Check className="w-4 h-4 text-emerald-600 ml-auto shrink-0" />
+                              <Check className="w-4 h-4 text-primary-600 ml-auto shrink-0" />
                             )}
                           </button>
                         );
@@ -895,7 +895,7 @@ function CreateElectionModal({
                 </div>
                 <div className="ml-auto">
                   <span
-                    className={`text-[10px] font-bold px-2 py-1 rounded-full ${wizard.type === "parent_vote" ? "bg-emerald-100 text-emerald-700" : "bg-teal-100 text-teal-700"}`}
+                    className={`text-[10px] font-bold px-2 py-1 rounded-full ${wizard.type === "parent_vote" ? "bg-primary-100 text-primary-700" : "bg-teal-100 text-teal-700"}`}
                   >
                     {wizard.type === "parent_vote"
                       ? "Parent Vote"
@@ -911,7 +911,7 @@ function CreateElectionModal({
                     : "Title (English) *"}
                 </label>
                 <input
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-200"
                   placeholder="e.g. SKSBV Chairman Election 2026"
                   value={wizard.title}
                   onChange={(e) => setW({ title: e.target.value })}
@@ -924,7 +924,7 @@ function CreateElectionModal({
                     : "Title (Malayalam)"}
                 </label>
                 <input
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-400"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary-400"
                   placeholder="ഉദാ: SKSBV ചെയർമാൻ തിരഞ്ഞെടുപ്പ് 2026"
                   value={wizard.title_ml}
                   onChange={(e) => setW({ title_ml: e.target.value })}
@@ -937,7 +937,7 @@ function CreateElectionModal({
                     {lang === "ml" ? "പദവി (EN) *" : "Position (EN) *"}
                   </label>
                   <input
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-400"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary-400"
                     value={wizard.position}
                     onChange={(e) => setW({ position: e.target.value })}
                   />
@@ -947,7 +947,7 @@ function CreateElectionModal({
                     {lang === "ml" ? "പദവി (ML)" : "Position (ML)"}
                   </label>
                   <input
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-400"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary-400"
                     value={wizard.position_ml}
                     onChange={(e) => setW({ position_ml: e.target.value })}
                   />
@@ -960,7 +960,7 @@ function CreateElectionModal({
                 </label>
                 <textarea
                   rows={3}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-400 resize-none"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary-400 resize-none"
                   placeholder="Brief description..."
                   value={wizard.description}
                   onChange={(e) => setW({ description: e.target.value })}
@@ -974,7 +974,7 @@ function CreateElectionModal({
                   </label>
                   <input
                     type="date"
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-400"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary-400"
                     value={wizard.startDate}
                     onChange={(e) => setW({ startDate: e.target.value })}
                   />
@@ -985,7 +985,7 @@ function CreateElectionModal({
                   </label>
                   <input
                     type="date"
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-400"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary-400"
                     value={wizard.endDate}
                     onChange={(e) => setW({ endDate: e.target.value })}
                   />
@@ -998,7 +998,7 @@ function CreateElectionModal({
                     {lang === "ml" ? "ക്ലാസ് / സ്കോപ്" : "Class / Scope"}
                   </label>
                   <select
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-400 bg-white"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary-400 bg-white"
                     value={wizard.forClass}
                     onChange={(e) => setW({ forClass: e.target.value })}
                   >
@@ -1016,7 +1016,7 @@ function CreateElectionModal({
                   <input
                     type="number"
                     min={1}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-400"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary-400"
                     value={wizard.eligibleVoters}
                     onChange={(e) =>
                       setW({ eligibleVoters: parseInt(e.target.value) || 1 })
@@ -1030,7 +1030,7 @@ function CreateElectionModal({
                   {lang === "ml" ? "മദ്‌റസ നാമം" : "Madrasa Name"}
                 </label>
                 <input
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-400"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary-400"
                   value={wizard.madrasaName}
                   onChange={(e) => setW({ madrasaName: e.target.value })}
                 />
@@ -1048,7 +1048,7 @@ function CreateElectionModal({
                 </p>
                 <button
                   onClick={addCandidate}
-                  className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition-all"
+                  className="flex items-center gap-1.5 bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition-all"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   {lang === "ml" ? "ചേർക്കുക" : "Add"}
@@ -1096,7 +1096,7 @@ function CreateElectionModal({
                           {lang === "ml" ? "പേര് *" : "Full Name *"}
                         </label>
                         <input
-                          className="w-full border border-gray-200 rounded-xl px-2.5 py-2 text-sm focus:outline-none focus:border-emerald-400 bg-white"
+                          className="w-full border border-gray-200 rounded-xl px-2.5 py-2 text-sm focus:outline-none focus:border-primary-400 bg-white"
                           placeholder="Student name"
                           value={cand.name}
                           onChange={(e) =>
@@ -1109,7 +1109,7 @@ function CreateElectionModal({
                           {lang === "ml" ? "ക്ലാസ്" : "Class"}
                         </label>
                         <select
-                          className="w-full border border-gray-200 rounded-xl px-2.5 py-2 text-sm focus:outline-none focus:border-emerald-400 bg-white"
+                          className="w-full border border-gray-200 rounded-xl px-2.5 py-2 text-sm focus:outline-none focus:border-primary-400 bg-white"
                           value={cand.class}
                           onChange={(e) =>
                             updateCandidate(i, { class: e.target.value })
@@ -1132,7 +1132,7 @@ function CreateElectionModal({
                       </label>
                       <textarea
                         rows={2}
-                        className="w-full border border-gray-200 rounded-xl px-2.5 py-2 text-sm focus:outline-none focus:border-emerald-400 bg-white resize-none"
+                        className="w-full border border-gray-200 rounded-xl px-2.5 py-2 text-sm focus:outline-none focus:border-primary-400 bg-white resize-none"
                         placeholder="Brief bio..."
                         value={cand.bio}
                         onChange={(e) =>
@@ -1156,8 +1156,8 @@ function CreateElectionModal({
           {/* STEP 4: Review */}
           {wizard.step === 4 && (
             <div className="space-y-4">
-              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
-                <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide mb-3">
+              <div className="bg-primary-50 border border-primary-200 rounded-2xl p-4">
+                <p className="text-xs font-bold text-primary-700 uppercase tracking-wide mb-3">
                   {lang === "ml" ? "അവലോകനം" : "Review & Confirm"}
                 </p>
                 <div className="space-y-2 text-sm">
@@ -1251,7 +1251,7 @@ function CreateElectionModal({
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="bg-emerald-500 text-white rounded-2xl p-4 text-center font-bold text-sm"
+                    className="bg-primary-500 text-white rounded-2xl p-4 text-center font-bold text-sm"
                   >
                     ✅{" "}
                     {lang === "ml"
@@ -1282,7 +1282,7 @@ function CreateElectionModal({
                 setW({ step: (wizard.step + 1) as 1 | 2 | 3 | 4 })
               }
               disabled={!canAdvance()}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${canAdvance() ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${canAdvance() ? "bg-primary-600 hover:bg-primary-700 text-white" : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}
             >
               {lang === "ml" ? "തുടരുക" : "Continue"}
               <ChevronRight className="w-4 h-4" />
@@ -1291,7 +1291,7 @@ function CreateElectionModal({
             !toast && (
               <button
                 onClick={handleCreate}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-all"
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold bg-primary-600 hover:bg-primary-700 text-white transition-all"
               >
                 <Vote className="w-4 h-4" />
                 {lang === "ml"
@@ -1409,8 +1409,8 @@ export default function AdminElectionsPage() {
       >
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-emerald-100 rounded-2xl flex items-center justify-center">
-              <Vote className="w-5 h-5 text-emerald-700" />
+            <div className="w-10 h-10 bg-primary-100 rounded-2xl flex items-center justify-center">
+              <Vote className="w-5 h-5 text-primary-700" />
             </div>
             <div>
               <h1 className="text-xl lg:text-2xl font-bold text-gray-900">
@@ -1427,7 +1427,7 @@ export default function AdminElectionsPage() {
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2.5 rounded-2xl shadow-sm transition-all"
+            className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold px-4 py-2.5 rounded-2xl shadow-sm transition-all"
           >
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">
@@ -1450,8 +1450,8 @@ export default function AdminElectionsPage() {
             label: lang === "ml" ? "ആകെ" : "Total",
             value: stats.total,
             icon: Vote,
-            color: "text-emerald-700",
-            bg: "bg-emerald-50",
+            color: "text-primary-700",
+            bg: "bg-primary-50",
           },
           {
             label: lang === "ml" ? "സജീവം" : "Active",
@@ -1515,26 +1515,26 @@ export default function AdminElectionsPage() {
           initial={{ opacity: 0, y: 5 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 lg:p-4 mb-4 flex items-center gap-3"
+          className="bg-primary-50 border border-primary-200 rounded-2xl p-3 lg:p-4 mb-4 flex items-center gap-3"
         >
-          <div className="w-8 h-8 bg-emerald-100 rounded-xl flex items-center justify-center shrink-0">
-            <AlertCircle className="w-4 h-4 text-emerald-700" />
+          <div className="w-8 h-8 bg-primary-100 rounded-xl flex items-center justify-center shrink-0">
+            <AlertCircle className="w-4 h-4 text-primary-700" />
           </div>
           <div>
-            <p className="text-sm font-bold text-emerald-800">
+            <p className="text-sm font-bold text-primary-800">
               {lang === "ml"
                 ? `${stats.active} തിരഞ്ഞെടുപ്പ് ഇപ്പോൾ നടക്കുന്നു`
                 : `${stats.active} election(s) currently active`}
             </p>
-            <p className="text-xs text-emerald-600">
+            <p className="text-xs text-primary-600">
               {lang === "ml"
                 ? "ലൈവ് ഫലങ്ങൾ തൽസമയം"
                 : "Live results updating in real-time"}
             </p>
           </div>
           <div className="ml-auto flex items-center gap-1.5 shrink-0">
-            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-            <span className="text-xs font-bold text-emerald-700">LIVE</span>
+            <span className="w-2 h-2 bg-primary-500 rounded-full animate-pulse" />
+            <span className="text-xs font-bold text-primary-700">LIVE</span>
           </div>
         </motion.div>
       )}
@@ -1547,7 +1547,7 @@ export default function AdminElectionsPage() {
             onClick={() => setCategoryFilter(opt.key)}
             className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all shrink-0 ${
               categoryFilter === opt.key
-                ? "bg-emerald-600 text-white shadow-sm"
+                ? "bg-primary-600 text-white shadow-sm"
                 : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
             }`}
           >

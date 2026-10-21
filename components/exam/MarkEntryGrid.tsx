@@ -120,7 +120,7 @@ export function   MarkEntryGrid({
               <select
                 value={examId}
                 onChange={(e) => onExamChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 bg-white"
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/20 bg-white"
               >
                 {exams.map((ex) => (
                   <option key={ex.id} value={ex.id}>
@@ -138,7 +138,7 @@ export function   MarkEntryGrid({
               <select
                 value={classId}
                 onChange={(e) => onClassChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 bg-white"
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/20 bg-white"
               >
                 {classes.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -157,7 +157,7 @@ export function   MarkEntryGrid({
                 value={subjectId}
                 onChange={(e) => onSubjectChange(e.target.value)}
                 disabled={subjects.length === 0}
-                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 bg-white disabled:opacity-50"
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/20 bg-white disabled:opacity-50"
               >
                 {subjects.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -257,7 +257,7 @@ export function   MarkEntryGrid({
                               ? "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed"
                               : invalid
                                 ? "border-red-400 bg-red-50 text-red-700 focus:border-red-500 focus:ring-2 focus:ring-red-400/20"
-                                : "border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/20",
+                                : "border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-400/20",
                           )}
                         />
                       </td>
@@ -271,7 +271,7 @@ export function   MarkEntryGrid({
                               onRemarkChange?.(s.id, e.target.value)
                             }
                             placeholder="Good progress, excellent..."
-                            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-emerald-500 transition-all bg-white"
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-primary-500 transition-all bg-white"
                           />
                         </td>
                       )}
@@ -328,7 +328,7 @@ export function   MarkEntryGrid({
                             ? "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed"
                             : invalid
                               ? "border-red-400 bg-red-50 text-red-700 focus:border-red-500 focus:ring-2 focus:ring-red-400/20"
-                              : "border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/20",
+                              : "border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-400/20",
                         )}
                       />
                     </div>
@@ -343,7 +343,7 @@ export function   MarkEntryGrid({
                           onRemarkChange?.(s.id, e.target.value)
                         }
                         placeholder="Add remark..."
-                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-emerald-500 transition-all bg-white"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-primary-500 transition-all bg-white"
                       />
                     </div>
                   )}
@@ -362,8 +362,8 @@ export function   MarkEntryGrid({
                 </strong>
               </div>
               <div className="text-xs">
-                <span className="text-emerald-500 font-semibold">Entered:</span>{" "}
-                <strong className="text-emerald-700 font-extrabold ml-1">
+                <span className="text-primary-500 font-semibold">Entered:</span>{" "}
+                <strong className="text-primary-700 font-extrabold ml-1">
                   {filled}
                 </strong>
               </div>
@@ -389,7 +389,7 @@ export function   MarkEntryGrid({
                 <button
                   onClick={() => onSave(false)}
                   disabled={saving || isLocked || hasInvalidMarks}
-                  className="inline-flex items-center gap-1.5 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs px-4 py-2.5 rounded-xl transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-1.5 border border-primary-200 bg-primary-50 hover:bg-primary-100 text-primary-700 font-bold text-xs px-4 py-2.5 rounded-xl transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -402,7 +402,7 @@ export function   MarkEntryGrid({
               <button
                 onClick={() => onSave(true)}
                 disabled={saving || isLocked || hasInvalidMarks}
-                className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-sm hover:scale-[1.01] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                className="inline-flex items-center gap-1.5 bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-sm hover:scale-[1.01] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 {saving ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />

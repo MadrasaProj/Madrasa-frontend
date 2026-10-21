@@ -46,8 +46,8 @@ export const parentProfileConfig: ProfileConfig = {
 export const adminProfileConfig: ProfileConfig = {
   roleLabel: t("common", "admin", "en") + " Admin",
   roleShort: "MAD_ADMIN",
-  roleBadgeClass: "bg-emerald-100",
-  roleBadgeTextClass: "text-emerald-700",
+  roleBadgeClass: "bg-primary-100",
+  roleBadgeTextClass: "text-primary-700",
   homePath: "/admin",
   notifPath: "/admin/notifications",
   quickLinks: [
