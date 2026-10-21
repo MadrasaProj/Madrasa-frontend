@@ -1104,7 +1104,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
 
   return (
     <>
-      <nav className="lg:hidden fixed bottom-0 left-1/2 py-1  w-full rounded-t-2xl -translate-x-1/2 z-30   border border-white/60 bg-white/85 shadow-[0_8px_30px_rgba(15,67,45,0.12)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/70 pb-safe">
+      <nav className="lg:hidden fixed bottom-0 left-1/2 py-1 pb-2  w-full rounded-t-2xl -translate-x-1/2 z-30   border border-white/60 bg-white/85 shadow-[0_8px_30px_rgba(15,67,45,0.12)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/70 pb-safe">
         <div className="flex items-stretch justify-center gap-2 px-0">
           {links.map((l) => {
             const fullHref = l.isExternal
