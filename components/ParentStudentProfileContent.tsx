@@ -158,7 +158,7 @@ export function ParentStudentProfileContent({
   const labelCls = "block text-xs font-semibold text-gray-600 mb-1.5";
 
   return (
-    <>
+    <div className="">
       {success && (
         <div className="mb-4 p-3 bg-primary-50 border border-primary-200 rounded-xl flex items-center gap-2 text-xs text-primary-700">
           <CheckCircle className="w-4 h-4 shrink-0" /> {success}
@@ -455,6 +455,6 @@ export function ParentStudentProfileContent({
           </section>
         </div>
       </ResponsivePopover>
-    </>
+    </div>
   );
 }
