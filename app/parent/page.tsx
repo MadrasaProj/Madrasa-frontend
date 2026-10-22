@@ -44,32 +44,32 @@ export default function ParentDashboard() {
 
   return (
     <DashboardLayout>
-      <header className="mb-2 pb-4 flex items-center gap-4 border-b border-gray-200 ">
-        <Avatar className="size-14 shrink-0 ring-2 ring-primary-100 sm:size-16">
+      <header className="mb-2 flex flex-col items-center gap-3   pb-4 text-center pt-10">
+        <Avatar className="size-20 ring-2 ring-primary-100 sm:size-16">
           <AvatarImage src={user?.photoUrl ?? undefined} alt="" />
           <AvatarFallback className="bg-primary-100 text-xl font-semibold text-primary-800">{initials}</AvatarFallback>
         </Avatar>
-        <div className="min-w-0">
-          <span className="mb-1 inline-flex rounded-full bg-primary-50 px-2.5 py-1 text-xs font-semibold text-primary-700">
-            {t("parentPages", "parentPortal", lang)}
-          </span>
-          <h1 className="break-words text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">{user?.name ?? t("parentPages", "parentPortal", lang)}</h1>
-         </div>
+        <div className=" space-y-2 mt-2 min-w-0 flex-wrap items-center justify-center gap-2">
+          <h1 className="break-words text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">{user?.name ?? t("common", "parent", lang)}</h1>
+          <div className="inline-flex rounded-full bg-primary-50 px-2.5 py-1 text-xs font-semibold text-primary-700">
+            {t("common", "parent", lang)}
+          </div>
+        </div>
       </header>
 
       <section aria-labelledby="parent-overview" aria-busy={loadingUnread} className="mb-7">
          
-        <dl className="grid grid-cols-2 divide-x divide-gray-200 py-4 sm:py-5">
+        <div className="grid grid-cols-2 divide-x divide-gray-200 py-4 sm:py-5">
           {[
             { label: t("parentPages", "childrenLabel", lang), value: childCount },
             { label: t("parentPages", "unreadLabel", lang), value: loadingUnread ? "—" : unread },
           ].map((stat) => (
-            <div key={stat.label} className="flex min-w-0 flex-col items-center px-3 text-center sm:px-5">
-              <dt className="order-2 text-[11px] leading-tight text-gray-700 sm:text-xs">{stat.label}</dt>
-              <dd className="order-1 text-2xl font-semibold leading-none tracking-tight text-gray-900 tabular-nums sm:text-3xl">{stat.value}</dd>
+            <div key={stat.label} className="flex min-w-0 flex-col items-center px-3 text-center sm:px-5 font-semibold">
+              <div className=" text-[18px]   leading-none tracking-tight text-gray-900 tabular-nums  ">{stat.value}</div>
+              <div className=" text-[11px] mt-1  leading-tight text-gray-700  ">{stat.label}</div>
             </div>
           ))}
-        </dl>
+        </div>
       </section>
 
       <section aria-labelledby="parent-actions" className="pb-0">
