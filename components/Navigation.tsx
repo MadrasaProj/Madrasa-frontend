@@ -45,6 +45,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
+import { ParentStudentProfileContent } from "@/components/ParentStudentProfileContent";
 import OnboardingDrawer from "@/components/twa/OnboardingDrawer";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import PwaInstallButton from "@/components/PwaInstallButton";
@@ -989,7 +990,6 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
     accessToken,
     logout,
     activeStudentId,
-    setActiveStudent,
   } = useAuthStore();
   const { lang } = useLanguageStore();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -1093,7 +1093,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
       >
         <Icon
           className={cn(
-            "h-5 w-5 shrink-0",
+            "h-5 w-5 shrink-0 *:stroke-[1.5px]",
             active ? "text-primary-600" : "",
           )}
         />
@@ -1106,6 +1106,30 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
     <>
       <nav className="lg:hidden fixed bottom-0 left-1/2 py-1 pb-2  w-full rounded-t-2xl -translate-x-1/2 z-30   border border-white/60 bg-white/85 shadow-[0_8px_30px_rgba(15,67,45,0.12)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/70 pb-safe">
         <div className="flex items-stretch justify-center gap-2 px-0">
+          
+          
+               {isParent && studentIds.length > 0 && (
+            <button
+              type="button"
+              aria-label={lang === "ml" ? "വിദ്യാർത്ഥിയെ തിരഞ്ഞെടുക്കുക" : "Switch student"}
+              aria-haspopup="dialog"
+              onClick={() => setStudentSwitcherOpen(true)}
+              className="flex w-16 shrink-0 flex-col items-center justify-center gap-1 p-2 text-gray-400 transition-all active:scale-95"
+            >
+              <Avatar size="sm">
+                <AvatarImage src={currentStudent?.photoUrl ?? undefined} />
+                <AvatarFallback className="bg-primary text-primary-foreground">
+                  {(currentStudent?.name ?? "Student").charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-center text-[12px] leading-none">
+                  {(currentStudent?.name ?? "Student").substring(0, 5)}
+              </span>
+            </button>
+          )}
+
+          
+          
           {links.map((l) => {
             const fullHref = l.isExternal
               ? l.href
@@ -1128,7 +1152,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
                   )}
                 >
                   <div className="flex items-center justify-center rounded-xl w-10 h-7">
-                    <Icon className="w-5 h-5 shrink-0 text-primary-600" />
+                    <Icon className="w-5 h-5 shrink-0  text-primary-600" />
                   </div>
                   <span className="text-[12px]  leading-none">
                     {t("nav", l.key, lang)}
@@ -1156,7 +1180,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
                   )}
                 >
                   <Icon
-                    className={cn("size-5 shrink-0", active && "stroke-[2.5]")}
+                    className={cn("size-5 shrink-0 *:stroke-[1.5px]", active && " ")}
                   />
                 </div>
                 <span
@@ -1171,35 +1195,16 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
             );
           })}
 
-          {isParent && studentIds.length > 0 && (
-            <button
-              type="button"
-              aria-label={lang === "ml" ? "വിദ്യാർത്ഥിയെ തിരഞ്ഞെടുക്കുക" : "Switch student"}
-              aria-haspopup="dialog"
-              onClick={() => setStudentSwitcherOpen(true)}
-              className="flex w-16 shrink-0 flex-col items-center justify-center gap-1 p-2 text-gray-400 transition-all active:scale-95"
-            >
-              <Avatar size="sm">
-                <AvatarImage src={currentStudent?.photoUrl ?? undefined} />
-                <AvatarFallback className="bg-primary text-primary-foreground">
-                  {(currentStudent?.name ?? "Student").charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <span className="text-center text-[12px] leading-none">
-                {lang === "ml" ? "വിദ്യാർത്ഥി" : "Student"}
-              </span>
-            </button>
-          )}
-
+     
           {showMore && (
             <div
               onClick={() => setMoreOpen(true)}
                className={cn(
-                    "flex flex-col w-12 items-center justify-center gap-1 p-2 relative transition-all active:scale-95  text-gray-400",
+                    "flex flex-col w-12 items-center  justify-center gap-1 p-2 relative transition-all active:scale-95  text-gray-400",
                    )}
             >
-                 <ChevronUp className="w-5 h-5 shrink-0" />
-              <span className="text-[12px]  leading-none">
+                 <ChevronUp className="w-5 h-5 shrink-0 *:stroke-[1.5px]" />
+              <span className="text-[11px]  leading-none">
                 {lang === "ml" ? "കൂടുതൽ" : "More"}
               </span>
              </div>
@@ -1289,51 +1294,11 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
           open={studentSwitcherOpen}
           onOpenChange={setStudentSwitcherOpen}
           side="bottom"
-          title={lang === "ml" ? "വിദ്യാർത്ഥിയെ തിരഞ്ഞെടുക്കുക" : "Switch student"}
           contentClassName="p-4"
         >
-          <ButtonGroup
-            orientation="vertical"
-            style={{ gap: 0 }}
-            className="w-full overflow-hidden rounded-lg border border-gray-100 *:border-b *:border-gray-100"
-          >
-            {studentIds.map((id) => {
-              const student = students.find((item) => item.id === id);
-              const name = student?.name ?? "Student";
-              const isActive = currentStudentId === id;
-
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  aria-current={isActive ? "true" : undefined}
-                  onClick={() => {
-                    setActiveStudent(id);
-                    setStudentSwitcherOpen(false);
-                  }}
-                  className={cn(
-                    "flex w-full items-center gap-3 p-3 text-left transition-colors",
-                    isActive
-                      ? "bg-linear-90 from-primary/10 to-transparent text-primary"
-                      : "hover:bg-gray-50 active:bg-gray-100",
-                  )}
-                >
-                  <Avatar size="sm">
-                    <AvatarImage src={student?.photoUrl ?? undefined} />
-                    <AvatarFallback className="bg-primary text-primary-foreground">
-                      {name.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
-                    <span className="truncate text-sm">{name}</span>
-                    <span className="shrink-0 text-xs text-gray-500">
-                      {student?.className ?? "—"}
-                    </span>
-                  </span>
-                </button>
-              );
-            })}
-          </ButtonGroup>
+          <ParentStudentProfileContent
+            onBack={() => setStudentSwitcherOpen(false)}
+          />
         </ResponsivePopover>
       )}
       <ResponsivePopover
