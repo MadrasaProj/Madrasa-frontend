@@ -185,7 +185,7 @@ export default function ParentAttendancePage() {
               </PieChart>
             </ChartContainer>
             <div  style={{
-              transform: "translate(-50%, -170px)",
+              transform: "translate(-50%, -150px)",
             }} className="  absolute left-1/2 top-1/2  text-center">
 
             <p className="-mt-2 text-4xl font-bold tracking-tight text-gray-900">{percentage}%</p>

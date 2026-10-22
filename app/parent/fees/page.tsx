@@ -221,7 +221,7 @@ export default function ParentFeesPage() {
     <DashboardLayout>
       <PageHeader title={t("parentPages", "myFeesTitle", lang)} />
 
-      <div className="sticky top-12 z-30 -mx-4 mb-4 flex h-12 gap-2 bg-white px-4 shadow-lg shadow-gray-400/10 *:my-auto">
+      <div className="fixed w-full top-12 z-30    mb-4 flex   gap-2 bg-white !p-2 shadow-lg shadow-gray-400/10 *:my-auto">
         <div className="relative min-w-0 flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input

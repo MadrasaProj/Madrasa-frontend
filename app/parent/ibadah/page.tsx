@@ -202,7 +202,8 @@ export default function ParentIbadahPage() {
     <DashboardLayout>
       <PageHeader title={t("parentPages", "ibadahTitle", lang)} />
 
-      {isLoading ? (
+      <div className="px-4">
+        {isLoading ? (
         <div className="space-y-4">
           <Skeleton className="h-16 rounded-2xl" />
           <Skeleton className="h-28 rounded-2xl" />
@@ -642,6 +643,7 @@ export default function ParentIbadahPage() {
         </>
       ) : null}
 
+      </div>
       {/* Prayer status drawer */}
       <AnimatePresence>
         {drawerPrayer && (

@@ -130,7 +130,7 @@ export default function ParentLeaveRequestsPage() {
 
   return (
     <DashboardLayout>
-      <div className="p-4 sm:p-6 mx-auto px-0">
+      <div className=" mx-auto ">
         <PageHeader
           title={t("parentPages", "leaveRequestsTitle", lang)}
           action={
@@ -142,7 +142,7 @@ export default function ParentLeaveRequestsPage() {
 
         {errorMessage && <ApiErrorBanner message={errorMessage} />}
 
-        <div className="space-y-3">
+        <div className="space-y-3 pt-5">
           {isLoading ? (
             <div className="space-y-3">
               {[1, 2, 3, 4].map((i) => (
@@ -156,7 +156,7 @@ export default function ParentLeaveRequestsPage() {
               description={t("parentPages", "leaveRequestsSub", lang)}
             />
           ) : (
-            <div className="rounded-xl border border-gray-200 bg-white">
+            <div className="rounded-xl border overflow-hidden border-gray-200 bg-white">
               <Table className="min-w-[640px]">
                 <TableHeader className="bg-gray-50">
                   <TableRow>

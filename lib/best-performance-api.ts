@@ -9,6 +9,7 @@ export interface BestPerformer {
   adno: string;
   score: number;
   totalPrayers: number;
+  photoUrl:string|null;
   totalQuranPages: number;
   customCounts?: Record<string, number>;
   daysWithLog: number;

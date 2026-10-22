@@ -86,7 +86,7 @@ export default function ParentHomeworkPage() {
 
   return (
     <DashboardLayout>
-      <div className="-mx-4 -mt-4 min-h-[100svh] bg-muted/30 px-4 pt-4 pb-28 lg:-mx-8 lg:-mt-8 lg:px-8 lg:pt-8 lg:pb-8">
+      <div className="  px-4">
       <PageHeader title={t("parentPages", "homeworkPageTitle", lang)} />
 
       <div className="mx-auto pt-2 max-w-5xl space-y-6 pb-12">
