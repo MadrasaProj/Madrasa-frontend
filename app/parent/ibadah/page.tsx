@@ -223,7 +223,7 @@ export default function ParentIbadahPage() {
       ) : ibadah ? (
         <>
         {/* Student card */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-600 to-primary-700 p-5 mb-5">
+        {/* <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-600 to-primary-700 p-5 mb-5">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
           <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-1/3 -translate-x-1/4" />
           <div className="relative flex items-center gap-3">
@@ -238,7 +238,7 @@ export default function ParentIbadahPage() {
             </div>
 
           </div>
-        </div>
+        </div> */}
 
         {/* Weekly summary */}
         <div className="bg-white rounded-2xl border border-primary-100/50 p-5 mb-5 space-y-6">

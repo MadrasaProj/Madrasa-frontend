@@ -1053,6 +1053,12 @@ export default function IDCardsPage() {
                   />
                 </div>
 
+                <img
+                  src="/icons/id-cards/tag.webp"
+                  alt="ID card tag"
+                  className="mt-4 h-40 w-auto object-contain"
+                />
+
                 {/* Avatar upload */}
 
                 <div className="mt-3 flex items-center gap-2">

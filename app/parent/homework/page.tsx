@@ -25,7 +25,7 @@ const statusStyles: Record<HomeworkStatus, string> = {
 };
 
 const statusGradients: Record<HomeworkStatus, string> = {
-  NOT_SUBMITTED: "from-amber-100/60 via-amber-50/30 to-white",
+  NOT_SUBMITTED: "from-amber-100/40 to-amber-50/10  ",
   SUBMITTED: "from-sky-100/60 via-sky-50/30 to-white",
   CHECKED: "from-primary-100/60 via-primary-50/30 to-white",
 };
@@ -156,18 +156,18 @@ export default function ParentHomeworkPage() {
                         setSelected(item);
                       }
                     }}
-                    className={cn("w-full cursor-pointer gap-0 rounded-2xl bg-gradient-to-br py-0 shadow-lg shadow-gray-500/10 ring-0 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-gray-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary", statusGradients[item.submission.status])}
+                    className={cn("w-full cursor-pointer gap-0 rounded-2xl bg-gradient-to-r py-0    right-1   transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-gray-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary", statusGradients[item.submission.status])}
                   >
                     <CardContent className="flex flex-col px-4 py-4 sm:px-5">
-                      <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start justify-between gap-3 relative">
                         <h2 className="min-w-0 text-base font-semibold leading-snug text-foreground">
                           {item.title}
                         </h2>
-                        <span className={cn("shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1", statusStyles[item.submission.status])}>
+                        <span className={cn("shrink-0 absolute -right-1 -top-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1", statusStyles[item.submission.status])}>
                           {t("parentPages", statusLabelKeys[item.submission.status], lang)}
                         </span>
                       </div>
-                      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
                         <span>{item.subject?.name ?? "—"}</span>
                         <span className="inline-flex items-center gap-1.5">
                           <CalendarDays className="size-3.5" />

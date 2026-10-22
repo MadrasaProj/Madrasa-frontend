@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import {
   getSentNotifications, createNotification, deleteNotification, updateNotification,
@@ -11,7 +12,7 @@ import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
   Bell, Plus, Send, Trash2, Loader2, X, Pencil, ExternalLink,
-  BookOpen, ClipboardList, GraduationCap, CreditCard, FileText, Users,
+  BookOpen, ClipboardList, GraduationCap, CreditCard,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SkeletonList } from "@/components/ui/Skeleton";
@@ -28,7 +29,7 @@ const TYPE_CONFIG: Record<NotificationType, { label: string; icon: React.Element
 const ROLES = ["CLIENT_ADMIN", "TEACHER", "PARENT"];
 
 export default function AdminNotificationsPage() {
-  const { user, accessToken, activeClientId } = useAuthStore();
+  const { accessToken, activeClientId } = useAuthStore();
   const cid   = activeClientId ?? "";
   const token = accessToken ?? "";
 
@@ -133,17 +134,14 @@ export default function AdminNotificationsPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader
-        title="Notifications"
-        subtitle={`${total} sent`}
-        icon={Bell}
-        action={
-          <button onClick={handleComposeClick}
-            className="flex items-center gap-1.5 px-3 py-2 bg-primary-600 text-white rounded-xl text-sm font-semibold">
-            <Plus className="w-4 h-4" /> Compose
-          </button>
-        }
-      />
+      <PageHeader title="Notifications" />
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <p className="text-sm text-gray-500">{total} sent</p>
+        <button onClick={handleComposeClick}
+          className="flex items-center gap-1.5 px-3 py-2 bg-primary-600 text-white rounded-xl text-sm font-semibold">
+          <Plus className="w-4 h-4" /> Compose
+        </button>
+      </div>
 
       {error && <ApiErrorBanner message={error} onRetry={loadSent} />}
 
@@ -152,58 +150,60 @@ export default function AdminNotificationsPage() {
       ) : sent.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm">No notifications sent yet</div>
       ) : (
-        <div className="max-w-4xl mx-auto w-full space-y-3 pb-20">
-          {sent.map((n, i) => {
-            const cfg = TYPE_CONFIG[n.type] ?? TYPE_CONFIG.GENERAL;
-            const Icon = cfg.icon;
-            return (
-              <motion.div
-                key={n.id}
-                initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-                className="bg-white rounded-2xl border border-gray-100 p-4"
-              >
-                <div className="flex items-start gap-3">
-                  <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0", cfg.bg)}>
-                    <Icon className={cn("w-4 h-4", cfg.color)} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-900 text-sm">{n.title}</p>
-                    <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{n.body}</p>
-                    {n.actionUrl && (
-                      <div className="flex items-center gap-1 mt-1 text-[10px] text-blue-600">
-                        <ExternalLink className="w-3 h-3" />
-                        <span className="truncate">{n.actionUrl}</span>
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white mb-20">
+          <Table className="min-w-[760px]">
+            <TableHeader className="bg-gray-50">
+              <TableRow className="hover:bg-transparent">
+                <TableHead scope="col" className="w-[40%]">Notification</TableHead>
+                <TableHead scope="col">Type</TableHead>
+                <TableHead scope="col">Audience</TableHead>
+                <TableHead scope="col">Sent / reads</TableHead>
+                <TableHead scope="col" className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sent.map((n) => {
+                const cfg = TYPE_CONFIG[n.type] ?? TYPE_CONFIG.GENERAL;
+                const Icon = cfg.icon;
+                return (
+                  <TableRow key={n.id}>
+                    <TableCell className="whitespace-normal">
+                      <p className="font-semibold text-gray-900">{n.title}</p>
+                      <p className="mt-0.5 text-xs text-gray-500 line-clamp-2">{n.body}</p>
+                      {n.actionUrl && (
+                        <p className="mt-1 flex items-center gap-1 text-xs text-blue-600 break-all">
+                          <ExternalLink className="h-3 w-3 shrink-0" />{n.actionUrl}
+                        </p>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <span className={cn("inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold", cfg.bg, cfg.color)}>
+                        <Icon className="h-3.5 w-3.5" />{cfg.label}
+                      </span>
+                    </TableCell>
+                    <TableCell className="whitespace-normal text-xs text-gray-600">{n.targetRoles.join(", ")}</TableCell>
+                    <TableCell className="text-xs text-gray-500">
+                      {new Date(n.createdAt).toLocaleDateString("en-GB")}
+                      {n._count && <p className="mt-1">{n._count.reads} read</p>}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <button onClick={() => handleEditClick(n)} aria-label={`Edit ${n.title}`}
+                          className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-primary-600">
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button onClick={() => handleDelete(n.id)} disabled={deletingId === n.id}
+                          aria-label={`Delete ${n.title}`}
+                          className="rounded-lg p-2 text-gray-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-50">
+                          {deletingId === n.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </button>
                       </div>
-                    )}
-                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                      <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-lg", cfg.bg, cfg.color)}>
-                        {cfg.label}
-                      </span>
-                      {n.targetRoles.map((r) => (
-                        <span key={r} className="text-[10px] bg-gray-100 text-gray-600 font-semibold px-2 py-0.5 rounded-lg">
-                          {r}
-                        </span>
-                      ))}
-                      <span className="text-[10px] text-gray-400 ml-auto">
-                        {new Date(n.createdAt).toLocaleDateString("en-GB")}
-                        {n._count ? ` · ${n._count.reads} read` : ""}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button onClick={() => handleEditClick(n)}
-                      className="p-1 text-gray-300 hover:text-primary-600 transition-colors">
-                      <Pencil className="w-4.5 h-4.5" />
-                    </button>
-                    <button onClick={() => handleDelete(n.id)} disabled={deletingId === n.id}
-                      className="p-1 text-gray-300 hover:text-red-500 transition-colors">
-                      {deletingId === n.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </div>
       )}
 

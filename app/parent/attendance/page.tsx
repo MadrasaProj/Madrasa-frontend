@@ -143,7 +143,7 @@ export default function ParentAttendancePage() {
 
       {!isLoading && !errorMessage && data && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mx-auto max-w-lg space-y-5">
-          <section className="rounded-3xl border border-gray-100 bg-white px-5 py-7 text-center sm:px-8">
+          <section className="rounded-3xl  bg-white px-5 py-7 text-center sm:px-8">
             <ChartContainer
               config={chartConfig}
               className="mx-auto h-[150px] w-[260px] max-w-full"

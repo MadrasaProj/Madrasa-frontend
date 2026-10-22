@@ -11,6 +11,7 @@ import { useClientConfig, useStudentProfileV2 } from "@/lib/queries";
 import { t } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
+import { Button } from "@/components/ui/button";
 
 function initials(name: string) {
   return name
@@ -108,7 +109,7 @@ export default function ParentIdCardsPage() {
         </div>
       ) : (
         <div className="flex flex-col items-center gap-5">
-          <div className="w-full overflow-x-auto pb-2">
+          <div className="w-full overflow-x-auto pb-20 mt-10">
             <div
               ref={cardRef}
               className="relative mx-auto h-[85.6mm] w-[54mm] overflow-hidden rounded-[14px]  shadow-[0_12px_28px_rgba(15,45,57,0.18)]"
@@ -158,15 +159,16 @@ export default function ParentIdCardsPage() {
             </div>
           </div>
 
-          <button
+          <Button
             type="button"
             onClick={handleDownload}
             disabled={isDownloading}
-            className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60"
+            size="lg"
+            className=" "
           >
             {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
             {t("parentPages", "downloadPng", lang)}
-          </button>
+          </Button>
           {downloadError && (
             <p role="alert" className="text-sm text-red-600">Could not download the ID card. Please try again.</p>
           )}

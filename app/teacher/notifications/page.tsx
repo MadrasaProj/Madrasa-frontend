@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import {
@@ -16,7 +17,6 @@ import {
   Bell, ExternalLink,
   BookOpen, ClipboardList, GraduationCap, CreditCard,
 } from "lucide-react";
-import { motion } from "framer-motion";
 
 const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
   ANNOUNCEMENT:      { icon: Bell,          color: "text-indigo-700", bg: "bg-indigo-100" },
@@ -61,20 +61,14 @@ export default function TeacherNotificationsPage() {
     }
   };
 
-  const handleRead = async (id: string) => {
-    await markNotificationRead(cid, token, id).catch(() => {});
-    setNotifs((prev) => prev.map((n) => n.id === id ? { ...n, isRead: true } : n));
-  };
-
   const unread = notifs.filter((n) => !n.isRead).length;
 
   return (
     <DashboardLayout>
-      <PageHeader
-        title={t("teacherPages", "notifTitle", lang)}
-        subtitle={unread > 0 ? `${unread} ${t("teacherPages", "unread", lang)}` : t("teacherPages", "allCaughtUp", lang)}
-        icon={Bell}
-      />
+      <PageHeader title={t("teacherPages", "notifTitle", lang)} />
+      <p className="mb-4 text-sm text-gray-500">
+        {unread > 0 ? `${unread} ${t("teacherPages", "unread", lang)}` : t("teacherPages", "allCaughtUp", lang)}
+      </p>
 
       {error && <ApiErrorBanner message={error} onRetry={load} />}
 
@@ -85,38 +79,47 @@ export default function TeacherNotificationsPage() {
       ) : notifs.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm">{t("teacherPages", "allCaughtUp", lang)}</div>
       ) : (
-        <div className="space-y-2 pb-20">
-          {notifs.map((n, i) => {
-            const cfg = TYPE_CONFIG[n.type] ?? TYPE_CONFIG.GENERAL;
-            const Icon = cfg.icon;
-            return (
-              <motion.div
-                key={n.id}
-                initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-                className={cn("rounded-2xl border p-4 transition-all cursor-pointer active:scale-[0.98]",
-                  n.isRead ? "bg-white border-gray-100 hover:border-gray-200" : "bg-blue-50/40 border-blue-100 hover:border-blue-300")}
-                onClick={() => handleClick(n)}
-              >
-                <div className="flex items-start gap-3">
-                  <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0", cfg.bg)}>
-                    <Icon className={cn("w-4 h-4", cfg.color)} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-gray-900 text-sm">{n.title}</p>
-                      {n.actionUrl && <ExternalLink className="w-3.5 h-3.5 text-blue-500 shrink-0" />}
-                      {!n.isRead && <span className="w-2 h-2 bg-blue-500 rounded-full shrink-0" />}
-                    </div>
-                    <p className="text-xs text-gray-500 mt-0.5">{n.body}</p>
-                    <p className="text-[10px] text-gray-400 mt-1">
-                      {new Date(n.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                      {n.creator ? ` · ${n.creator.name}` : ""}
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white mb-20">
+          <Table className="min-w-[680px]">
+            <TableHeader className="bg-gray-50">
+              <TableRow className="hover:bg-transparent">
+                <TableHead scope="col" className="w-[55%]">{t("teacherPages", "notifTitle", lang)}</TableHead>
+                <TableHead scope="col">{t("teacherPages", "notifFrom", lang)}</TableHead>
+                <TableHead scope="col">{t("teacherPages", "notifDate", lang)}</TableHead>
+                <TableHead scope="col">{t("teacherPages", "notifStatus", lang)}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {notifs.map((n) => {
+                const cfg = TYPE_CONFIG[n.type] ?? TYPE_CONFIG.GENERAL;
+                const Icon = cfg.icon;
+                return (
+                  <TableRow key={n.id} className={cn(!n.isRead && "bg-blue-50/40")}>
+                    <TableCell className="whitespace-normal">
+                      <button onClick={() => handleClick(n)} className="flex w-full items-start gap-3 text-left">
+                        <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", cfg.bg)}>
+                          <Icon className={cn("h-4 w-4", cfg.color)} />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="flex items-center gap-1.5 font-semibold text-gray-900">
+                            {n.title}{n.actionUrl && <ExternalLink className="h-3.5 w-3.5 shrink-0 text-blue-500" />}
+                          </span>
+                          <span className="mt-0.5 block text-xs text-gray-500">{n.body}</span>
+                        </span>
+                      </button>
+                    </TableCell>
+                    <TableCell className="text-gray-600">{n.creator?.name ?? "—"}</TableCell>
+                    <TableCell className="text-gray-500">{new Date(n.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</TableCell>
+                    <TableCell>
+                      <span className={cn("rounded-full px-2 py-1 text-xs font-semibold", n.isRead ? "bg-gray-100 text-gray-600" : "bg-blue-100 text-blue-700")}>
+                        {n.isRead ? t("teacherPages", "notifRead", lang) : t("teacherPages", "unread", lang)}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </div>
       )}
     </DashboardLayout>

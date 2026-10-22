@@ -993,6 +993,10 @@ const translations = {
     notifTitle: { en: "Notifications", ml: "അറിയിപ്പുകൾ" },
     unread: { en: "unread", ml: "വായിക്കാത്തത്" },
     allCaughtUp: { en: "All caught up", ml: "എല്ലാം വായിച്ചു" },
+    notifFrom: { en: "From", ml: "അയച്ചത്" },
+    notifDate: { en: "Date", ml: "തീയതി" },
+    notifStatus: { en: "Status", ml: "സ്ഥിതി" },
+    notifRead: { en: "Read", ml: "വായിച്ചു" },
 
     // Attendance body
     present: { en: "Present", ml: "ഹാജർ" },
@@ -2034,6 +2038,11 @@ const translations = {
     markAllReadBtn: { en: "Mark all read", ml: "എല്ലാം വായിച്ചതായി അടയാളപ്പെടുത്തുക" },
     noNotificationsYet: { en: "No notifications yet", ml: "ഇതുവരെ അറിയിപ്പുകളൊന്നുമില്ല" },
     notifFromMsg: { en: "From:", ml: "ഇതിൽ നിന്ന്:" },
+    notifFrom: { en: "From", ml: "അയച്ചത്" },
+    notifRead: { en: "Read", ml: "വായിച്ചു" },
+    notifMarkRead: { en: "Mark read", ml: "വായിച്ചതായി അടയാളപ്പെടുത്തുക" },
+    notifRefresh: { en: "Refresh notifications", ml: "അറിയിപ്പുകൾ പുതുക്കുക" },
+    notifActions: { en: "Actions", ml: "പ്രവർത്തനങ്ങൾ" },
     // Fees page receipt labels
     admNoLabel: { en: "Adm No", ml: "അഡ്മിഷൻ നമ്പർ" },
     dateLabel: { en: "Date", ml: "തീയതി" },
