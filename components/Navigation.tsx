@@ -1339,10 +1339,12 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
         }}
         onSubmit={(event) => {
           event.preventDefault();
-          if (onboardingRole && onboardingSlug.trim())
+          if (onboardingRole && onboardingSlug.trim()) {
+            setOnboardingOpen(false);
             navigate(
-              `/m/${onboardingSlug.trim().toLowerCase()}/${onboardingRole}`,
+              `/m/${onboardingSlug.trim().toLowerCase()}/${onboardingRole}/login`,
             );
+          }
         }}
       />
     </>

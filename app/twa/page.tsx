@@ -124,7 +124,7 @@ export default function TwaLandingPage() {
     if (!role || !slug.trim()) return;
     const normalizedSlug = slug.trim().toLowerCase();
     saveTenantSlug(normalizedSlug, role);
-    navigate(`/m/${normalizedSlug}/${role}`);
+    navigate(`/m/${normalizedSlug}/${role}/login`);
   };
 
   const handleClearSlug = () => {
