@@ -8,12 +8,12 @@ import {
   upsertDiary, updateDiary, deleteDiary,
   type DiaryEntry, type DiaryComment,
 } from "@/lib/diary-api";
-import { type ClassRecord } from "@/lib/classes-api";
-import { useClasses, useDiaryList } from "@/lib/queries";
+import { useDiaryList } from "@/lib/queries";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { getStudents, type StudentRecord } from "@/lib/students-api";
 import { useAuthStore } from "@/store/auth";
+import { useActiveClass } from "@/store/activeClass";
 import { useLanguageStore } from "@/store/language";
 import { t, type Lang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -197,16 +197,12 @@ export default function TeacherDiaryPage() {
   const { lang } = useLanguageStore();
   const cid   = user?.clientId ?? "";
   const token = accessToken ?? "";
-  const teacherId = user?.id ?? "";
 
   const qc = useQueryClient();
-  const { data: classesData } = useClasses({ clientId: cid, token });
-  const classes = useMemo(() => {
-    return (classesData ?? []).filter((c) => c.classTeacherId === teacherId);
-  }, [classesData, teacherId]);
+  const { activeClassId, activeClass } = useActiveClass();
 
-  const { data: diaryData, isLoading: loadingDiary } = useDiaryList({ clientId: cid, token });
-  const entries = diaryData ?? [];
+  const { data: diaryData, isLoading: loadingDiary } = useDiaryList({ clientId: cid, token }, { classId: activeClassId }, { enabled: !!cid && !!token && !!activeClassId });
+  const entries = (diaryData ?? []).filter((entry) => entry.classId === activeClassId);
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -219,7 +215,7 @@ export default function TeacherDiaryPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<DiaryEntry | null>(null);
   const [targetType, setTargetType] = useState<"class" | "student">("class");
-  const [selectedClassId, setSelectedClassId] = useState("");
+  const selectedClassId = activeClassId;
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -289,12 +285,6 @@ export default function TeacherDiaryPage() {
 
 
 
-  useEffect(() => {
-    if (classes.length > 0 && !selectedClassId) {
-      setSelectedClassId(classes[0].id);
-    }
-  }, [classes, selectedClassId]);
-
   const loadStudents = useCallback(async (classId: string) => {
     if (!cid || !token || !classId) return;
     try {
@@ -310,7 +300,7 @@ export default function TeacherDiaryPage() {
   const openCreate = () => {
     setEditingEntry(null);
     setTargetType("class");
-    setSelectedClassId(classes[0]?.id ?? "");
+
     setSelectedStudentIds([]);
     setTitle(""); setContent("");
     setDate(fmt(new Date()));
@@ -324,7 +314,7 @@ export default function TeacherDiaryPage() {
   const openEdit = (entry: DiaryEntry) => {
     setEditingEntry(entry);
     setTargetType(entry.targetType);
-    setSelectedClassId(entry.classId ?? classes[0]?.id ?? "");
+
     setSelectedStudentIds(entry.recipients?.map((r) => r.studentId) ?? []);
     setTitle(entry.title);
             setContent(entry.content);
@@ -421,7 +411,6 @@ export default function TeacherDiaryPage() {
     }
   }, [step, editingEntry]); // eslint-disable-line
 
-  const activeClass = classes.find((c) => c.id === selectedClassId);
 
   return (
     <DashboardLayout>
@@ -542,17 +531,6 @@ export default function TeacherDiaryPage() {
                       </div>
                     )}
 
-                    {/* Class selector */}
-                    <select
-                      value={selectedClassId}
-                      onChange={(e) => setSelectedClassId(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg text-sm bg-gray-50 border-0 focus:ring-2 focus:ring-primary-500"
-                    >
-                      {classes.map((cls) => (
-                        <option key={cls.id} value={cls.id}>{cls.name}</option>
-                      ))}
-                    </select>
-
                     {/* Student multi-select */}
                     {targetType === "student" && (
                       <div>
@@ -636,7 +614,7 @@ export default function TeacherDiaryPage() {
                         <FileText className="w-4 h-4 text-primary-600 shrink-0" />
                         <p className="text-xs text-primary-700 font-medium truncate">
                           {targetType === "class"
-                            ? `To ${classes.find((c) => c.id === selectedClassId)?.name ?? "class"}`
+                            ? `To ${activeClass?.name ?? "class"}`
                             : `To ${selectedStudentIds.length} student${selectedStudentIds.length > 1 ? "s" : ""}`}
                           {" · "}
                           {new Date(date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}

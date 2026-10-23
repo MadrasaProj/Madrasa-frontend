@@ -6,7 +6,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { ClassRecord } from "@/lib/classes-api";
 import { t, type Lang } from "@/lib/i18n";
 import type { SubjectRecord } from "@/lib/subjects-api";
 import { Calendar, Check, Loader2, Plus } from "lucide-react";
@@ -17,10 +16,8 @@ interface HomeworkAssignmentDrawerProps {
   mode: "create" | "edit";
   lang: Lang;
   isPeriodBased: boolean;
-  classes: ClassRecord[];
   classSubjects: SubjectRecord[];
   classId: string;
-  onClassChange: (classId: string) => void;
   subjectId: string;
   onSubjectChange: (subjectId: string) => void;
   title: string;
@@ -40,10 +37,8 @@ export function HomeworkAssignmentDrawer({
   mode,
   lang,
   isPeriodBased,
-  classes,
   classSubjects,
   classId,
-  onClassChange,
   subjectId,
   onSubjectChange,
   title,
@@ -67,25 +62,6 @@ export function HomeworkAssignmentDrawer({
       description={isCreate ? t("teacherPages", "newHomeworkDesc", lang) : undefined}
     >
       <div className="space-y-4 p-5 pb-8">
-        {isCreate && (
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold text-gray-500">{t("teacherPages", "classRequired", lang)}</label>
-            <Select value={classId} onValueChange={(value) => { if (value !== null) onClassChange(value); }}>
-              <SelectTrigger size="lg" className="w-full">
-                <SelectValue>
-                  {(value: string | null) => classes.find((item) => item.id === value)?.name
-                    ?? (classes.length === 0 ? t("teacherPages", "noAccessibleClasses", lang) : t("teacherPages", "classRequired", lang))}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {classes.length === 0
-                  ? <SelectItem size="lg" value="none" disabled>{t("teacherPages", "noAccessibleClasses", lang)}</SelectItem>
-                  : classes.map((item) => <SelectItem size="lg" key={item.id} value={item.id}>{item.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-
         <div>
           <label className="mb-1.5 block text-xs font-semibold text-gray-500">
             {t("teacherPages", "subjectRequired", lang)}
@@ -97,7 +73,7 @@ export function HomeworkAssignmentDrawer({
                 {(value: string | null) => classSubjects.find((item) => item.id === value)?.name
                   ?? (classSubjects.length === 0
                     ? isCreate && !classId
-                      ? t("teacherPages", "selectClassFirst", lang)
+                      ? t("teacherPages", "noAccessibleClasses", lang)
                       : isCreate
                         ? isPeriodBased ? t("teacherPages", "noSubjectsAssigned", lang) : t("teacherPages", "noSubjectsInClass", lang)
                         : t("teacherPages", "noSubjectsAvail", lang)
@@ -108,7 +84,7 @@ export function HomeworkAssignmentDrawer({
               {classSubjects.length === 0
                 ? <SelectItem size="lg" value="none" disabled>
                     {isCreate && !classId
-                      ? t("teacherPages", "selectClassFirst", lang)
+                      ? t("teacherPages", "noAccessibleClasses", lang)
                       : isCreate
                         ? isPeriodBased ? t("teacherPages", "noSubjectsAssigned", lang) : t("teacherPages", "noSubjectsInClass", lang)
                         : t("teacherPages", "noSubjectsAvail", lang)}

@@ -5,7 +5,7 @@ import { getClassAttendance, type ClassAttendanceRecord } from "@/lib/attendance
 import { type ClassRecord } from "@/lib/classes-api";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
-import { useClasses } from "@/lib/queries";
+import { useActiveClass } from "@/store/activeClass";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { UserX, RefreshCw, Bell } from "lucide-react";
@@ -29,23 +29,12 @@ export default function TeacherAbsentPage() {
   const { lang } = useLanguageStore();
   const { user, accessToken } = useAuthStore();
 
-  const [selectedClass, setSelectedClass] = useState<ClassRecord | null>(null);
+  const { activeClass: selectedClass } = useActiveClass();
   const [records, setRecords]           = useState<ClassAttendanceRecord[]>([]);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState<string | null>(null);
 
   const today = todayISO();
-
-  // Load teacher's classes using cached query hook
-  const { data: classesData } = useClasses({ clientId: user?.clientId ?? "", token: accessToken ?? "" });
-  const classes = classesData ?? [];
-
-  // Set default class once loaded
-  useEffect(() => {
-    if (classes.length > 0 && !selectedClass) {
-      setSelectedClass(classes[0]);
-    }
-  }, [classes, selectedClass]);
 
   const loadAttendance = useCallback(async (cls: ClassRecord, signal?: AbortSignal) => {
     if (!user?.clientId || !accessToken) return;
@@ -84,24 +73,6 @@ export default function TeacherAbsentPage() {
         back
         backHref="/teacher"
       />
-
-      {/* Class selector */}
-      <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide">
-        {classes.map((cls) => (
-          <button
-            key={cls.id}
-            onClick={() => setSelectedClass(cls)}
-            className={cn(
-              "px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 transition-all",
-              selectedClass?.id === cls.id
-                ? "bg-red-600 text-white shadow-sm"
-                : "bg-white border border-gray-200 text-gray-600"
-            )}
-          >
-            {cls.name}
-          </button>
-        ))}
-      </div>
 
       {/* Summary + notify */}
       {!loading && !error && nonPresent.length > 0 && (

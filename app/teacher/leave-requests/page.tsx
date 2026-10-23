@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/auth";
+import { useActiveClass } from "@/store/activeClass";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import {
@@ -36,6 +37,7 @@ export default function TeacherLeaveRequestsPage() {
   const { lang } = useLanguageStore();
   const cid = activeClientId ?? "";
   const token = accessToken ?? "";
+  const { activeClassId } = useActiveClass();
 
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,11 +50,12 @@ export default function TeacherLeaveRequestsPage() {
   const [reviewingSave, setReviewingSave] = useState(false);
 
   const loadRequests = async () => {
-    if (!cid || !token) return;
+    if (!cid || !token || !activeClassId) { setRequests([]); return; }
+    setRequests([]);
     setLoading(true);
     try {
       const res = await getPendingLeaveRequests(cid, token, { status: filter });
-      setRequests(res.requests);
+      setRequests(res.requests.filter((request) => request.student.class?.id === activeClassId));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -62,7 +65,7 @@ export default function TeacherLeaveRequestsPage() {
 
   useEffect(() => {
     loadRequests();
-  }, [cid, token, filter]);
+  }, [cid, token, filter, activeClassId]);
 
   const handleReview = async (id: string, status: "APPROVED" | "REJECTED") => {
     setReviewingSave(true);

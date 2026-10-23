@@ -13,6 +13,7 @@ interface TeacherMarkEntryViewProps {
   onImportOpenChange: (open: boolean) => void;
   onReload: () => Promise<void>;
   showSelectors?: boolean;
+  showClassSelector?: boolean;
 }
 
 export function TeacherMarkEntryView({
@@ -24,6 +25,7 @@ export function TeacherMarkEntryView({
   onImportOpenChange,
   onReload,
   showSelectors = true,
+  showClassSelector = true,
 }: TeacherMarkEntryViewProps) {
   const { examId, classId, subjectId, classes, subjects, students, activeExam } = gridProps;
   const currentSubject = subjects.find((subject) => subject.id === subjectId);
@@ -31,7 +33,7 @@ export function TeacherMarkEntryView({
   return (
     <div className="space-y-4 p-4 sm:p-6">
       {showSelectors && <ButtonGroup aria-label="Mark entry class and subject" className="w-full max-w-xl">
-        <DrawerSelector
+        {showClassSelector && <DrawerSelector
           title="Select Class"
           triggerLabel="Class"
           options={classes.map((classRecord) => ({
@@ -42,7 +44,7 @@ export function TeacherMarkEntryView({
           onChange={gridProps.onClassChange}
           placeholder="Select Class"
           className="min-w-0 flex-1"
-        />
+        />}
         <DrawerSelector
           title="Select Subject"
           triggerLabel="Subject"

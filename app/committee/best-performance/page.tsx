@@ -12,12 +12,12 @@ import { Icon } from "@iconify/react";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useLanguageStore } from "@/store/language";
 import { useAuthStore } from "@/store/auth";
+import { useActiveClass } from "@/store/activeClass";
 import { useState, useEffect, useRef } from "react";
 import {
   getBestPerformers,
   type BestPerformer,
 } from "@/lib/best-performance-api";
-import { getMyClasses } from "@/lib/classes-api";
 import { getStudents } from "@/lib/students-api";
 import {
   Trophy,
@@ -53,6 +53,7 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
 
   const cid = user?.clientId ?? "";
   const token = accessToken ?? "";
+  const { activeClassId, activeClass } = useActiveClass();
 
   const roleLabel = lang === "ml"
     ? ({ admin: "അഡ്മിൻ", teacher: "അധ്യാപകൻ", parent: "രക്ഷിതാവ്", committee: "കമ്മിറ്റി" } as const)[user?.role as string] ?? "കമ്മിറ്റി"
@@ -71,13 +72,13 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
   };
 
   useEffect(() => {
-    if (!cid || !token) return;
+    if (!cid || !token || (variant === "teacher" && !activeClassId)) return;
     let cancelled = false;
     setLoading(true);
     setError(null);
 
     const dates = customRange ?? getPeriodDates(periodType);
-    getBestPerformers(cid, token, { ...dates, limit: isParent ? 100 : 20 })
+    getBestPerformers(cid, token, { ...dates, classId: variant === "teacher" ? activeClassId || undefined : undefined, limit: isParent ? 100 : 20 })
       .then((res) => {
         if (cancelled) return;
         setData(res.performers);
@@ -94,25 +95,21 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
 
       if (user?.role === "teacher") {
         setClassRankings([]);
-        getMyClasses(cid, token).then(async (teacherClasses) => {
-          if (cancelled) return;
-          const rankings = await Promise.all(teacherClasses.map(async (cls) => {
-            const [ranking, students] = await Promise.all([
-              getBestPerformers(cid, token, { ...dates, classId: cls.id, limit: 100 }),
-              getStudents(cid, token, { classId: cls.id, limit: 500 }).catch(() => null),
-            ]);
-            return { className: cls.name, performers: ranking.performers, students: students?.data ?? [] };
-          }));
-          if (!cancelled) {
-            setClassRankings(rankings.map(({ className, performers }) => ({ className, performers })));
-            setStudentPhotos(Object.fromEntries(rankings.flatMap(({ students }) => students
+        if (activeClass) {
+          Promise.all([
+            getBestPerformers(cid, token, { ...dates, classId: activeClass.id, limit: 100 }),
+            getStudents(cid, token, { classId: activeClass.id, limit: 500 }).catch(() => null),
+          ]).then(([ranking, students]) => {
+            if (cancelled) return;
+            setClassRankings([{ className: activeClass.name, performers: ranking.performers }]);
+            setStudentPhotos(Object.fromEntries((students?.data ?? [])
               .filter((student) => student.photoUrl || student.photo)
-              .map((student) => [student.id, (student.photoUrl || student.photo)!]))));
-          }
-        }).catch(() => { if (!cancelled) setClassRankings([]); });
+              .map((student) => [student.id, (student.photoUrl || student.photo)!])));
+          }).catch(() => { if (!cancelled) setClassRankings([]); });
+        }
       }
     return () => { cancelled = true; };
-  }, [cid, token, periodType, customRange, user?.role]);
+  }, [cid, token, periodType, customRange, user?.role, variant, activeClassId]);
 
   const formatDateRange = () => {
     if (!period) return "";

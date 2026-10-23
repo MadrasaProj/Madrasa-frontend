@@ -10,8 +10,6 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
-import { type ClassRecord } from "@/lib/classes-api";
-import { useClasses } from "@/lib/queries";
 import { getStudents } from "@/lib/students-api";
 import {
   getClassAttendance,
@@ -21,6 +19,7 @@ import {
   type ClassAttendanceRecord,
 } from "@/lib/attendance-api";
 import { useAuthStore } from "@/store/auth";
+import { useActiveClass } from "@/store/activeClass";
 import {
   Save,
   Loader2,
@@ -134,7 +133,6 @@ export default function TeacherAttendancePage() {
   const cid = user?.clientId ?? "";
   const token = accessToken ?? "";
 
-  const [activeClassId, setActiveClassId] = useState<string | null>(null);
   const [date, setDate] = useState(todayISO());
   const [students, setStudents] = useState<
     { id: string; name: string; adno: string; gender?: string }[]
@@ -160,12 +158,8 @@ export default function TeacherAttendancePage() {
     [],
   );
 
-  // Load teacher's classes using cached query hook
-  const { data: classesData, isLoading: classesLoading } = useClasses({
-    clientId: cid,
-    token,
-  });
-  const classes = classesData ?? [];
+  const { activeClass, activeClassId, isLoading: classesLoading } = useActiveClass();
+  const classes = useMemo(() => activeClass ? [activeClass] : [], [activeClass]);
 
   useEffect(() => {
     if (!cid || !token || classes.length === 0) return;
@@ -203,13 +197,6 @@ export default function TeacherAttendancePage() {
       cancelled = true;
     };
   }, [classes, cid, token, date, user?.defaultAcademicYearId]);
-
-  // Set default class once loaded
-  useEffect(() => {
-    if (classes.length > 0 && !activeClassId) {
-      setActiveClassId(classes[0].id);
-    }
-  }, [classes, activeClassId]);
 
   // Load students + existing attendance whenever class or date changes
   const loadAttendance = useCallback(
@@ -339,7 +326,6 @@ export default function TeacherAttendancePage() {
     setSaveSuccess(false);
   };
 
-  const activeClass = classes.find((c) => c.id === activeClassId) ?? null;
   const isOwnClass = activeClass?.classTeacherId === user?.id;
 
   const hasDirty = useMemo(() => {
@@ -528,7 +514,6 @@ export default function TeacherAttendancePage() {
                 key={cls.id}
                 type="button"
                 onClick={() => {
-                  setActiveClassId(cls.id);
                   setSaveSuccess(false);
                   setEditorOpen(true);
                 }}

@@ -11,9 +11,9 @@ import {
   getSubmissions, bulkUpdateSubmissions,
   type HomeworkAssignment, type HomeworkStatus, type SubmissionsResponse,
 } from "@/lib/homework-api";
-import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
 import { getSubjects, type SubjectRecord } from "@/lib/subjects-api";
 import { useAuthStore } from "@/store/auth";
+import { useActiveClass } from "@/store/activeClass";
 import { useLanguageStore } from "@/store/language";
 import { t, type Lang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -57,7 +57,6 @@ export default function TeacherHomeworkPage() {
   const teacherId    = user?.id ?? "";
   const isPeriodBased = user?.attendanceMode === "PERIOD_BASED";
 
-  const [classes, setClasses]         = useState<ClassRecord[]>([]);
   const [homework, setHomework]       = useState<HomeworkAssignment[]>([]);
   const [loading, setLoading]         = useState(true);
   const [submissions, setSubmissions] = useState<Record<string, SubmissionsResponse>>({});
@@ -69,7 +68,8 @@ export default function TeacherHomeworkPage() {
   const [error, setError]             = useState<string | null>(null);
 
   const [showHomeworkDrawer, setShowHomeworkDrawer] = useState(false);
-  const [classId, setClassId]         = useState("");
+  const { activeClassId } = useActiveClass();
+  const classId = activeClassId;
   const [title, setTitle]             = useState("");
   const [desc, setDesc]               = useState("");
   const [dueDate, setDueDate]         = useState(fmt(new Date(Date.now() + 86400_000)));
@@ -84,23 +84,21 @@ export default function TeacherHomeworkPage() {
   const [assessHw, setAssessHw]                 = useState<HomeworkAssignment | null>(null);
 
   useEffect(() => {
-    if (!cid || !token) return;
-    const ac = new AbortController();
+    if (!cid || !token || !activeClassId) { setHomework([]); setLoading(false); return; }
+    let cancelled = false;
+    setLoading(true);
     setError(null);
-    Promise.all([
-      getMyClasses(cid, token, ac.signal),
-      listHomework(cid, token),
-    ]).then(async ([cls, hw]) => {
-      const accessible = isPeriodBased
-        ? cls
-        : cls.filter((c) => c.classTeacherId === teacherId);
-      setClasses(accessible);
-      setHomework(hw);
-      setSubmissions(await fetchHomeworkSubmissions(cid, token, hw));
-      if (accessible.length > 0) setClassId(accessible[0].id);
-    }).catch((e) => { setError((e as Error).message); }).finally(() => setLoading(false));
-    return () => ac.abort();
-  }, [cid, token]); // eslint-disable-line
+    listHomework(cid, token, { classId: activeClassId })
+      .then(async (assignments) => {
+        if (cancelled) return;
+        setHomework(assignments.filter((item) => item.classId === activeClassId));
+        const submitted = await fetchHomeworkSubmissions(cid, token, assignments.filter((item) => item.classId === activeClassId));
+        if (!cancelled) setSubmissions(submitted);
+      })
+      .catch((error) => { if (!cancelled) setError((error as Error).message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [cid, token, activeClassId]);
 
   useEffect(() => {
     if (!cid || !token || !classId) return;
@@ -118,10 +116,12 @@ export default function TeacherHomeworkPage() {
   }, [classId, cid, token]); // eslint-disable-line
 
   const reload = useCallback(async () => {
-    const hw = await listHomework(cid, token).catch((e) => { setError((e as Error).message); return [] as HomeworkAssignment[]; });
-    setHomework(hw);
-    setSubmissions(await fetchHomeworkSubmissions(cid, token, hw));
-  }, [cid, token]);
+    if (!activeClassId) return;
+    const hw = await listHomework(cid, token, { classId: activeClassId }).catch((e) => { setError((e as Error).message); return [] as HomeworkAssignment[]; });
+    const current = hw.filter((item) => item.classId === activeClassId);
+    setHomework(current);
+    setSubmissions(await fetchHomeworkSubmissions(cid, token, current));
+  }, [cid, token, activeClassId]);
 
   const loadSubmissions = async (hwId: string) => {
     setLoadingSubs(hwId);
@@ -161,7 +161,7 @@ export default function TeacherHomeworkPage() {
     setTitle("");
     setDesc("");
     setDueDate(fmt(new Date(Date.now() + 86400_000)));
-    if (classes.length > 0) setClassId(classes[0].id);
+
     setSubjectId(classSubjects[0]?.id ?? "");
     setShowHomeworkDrawer(true);
   };
@@ -347,10 +347,8 @@ export default function TeacherHomeworkPage() {
         mode={editTarget ? "edit" : "create"}
         lang={lang}
         isPeriodBased={isPeriodBased}
-        classes={classes}
         classSubjects={classSubjects}
         classId={classId}
-        onClassChange={setClassId}
         subjectId={subjectId}
         onSubjectChange={setSubjectId}
         title={title}

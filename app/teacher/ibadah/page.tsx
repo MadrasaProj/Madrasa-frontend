@@ -11,9 +11,9 @@ import {
   type IbadahConfig,
   type IbadahRecord,
 } from "@/lib/ibadah-api";
-import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
 import { getStudents, type StudentRecord } from "@/lib/students-api";
 import { useAuthStore } from "@/store/auth";
+import { useActiveClass } from "@/store/activeClass";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import {
@@ -149,7 +149,7 @@ interface StudentRow {
 }
 
 function fmt(d: Date) {
-  return d.toISOString().split("T")[0];
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 function fmtShort(iso: string) {
   const d = new Date(iso);
@@ -194,16 +194,17 @@ function reportPrayerType(status: PrayerStatus | null): string {
   return "Ada";
 }
 
-export default function TeacherIbadahPage() {
+export default function TeacherIbadahPage({ initialDate, embedded = false }: { initialDate?: string; embedded?: boolean } = {}) {
   const { user, accessToken } = useAuthStore();
   const { lang } = useLanguageStore();
   const cid = user?.clientId ?? "";
   const token = accessToken ?? "";
-  const teacherId = user?.id ?? "";
 
-  const [classes, setClasses] = useState<ClassRecord[]>([]);
-  const [activeClassId, setActiveClassId] = useState<string | null>(null);
-  const [date, setDate] = useState(fmt(new Date()));
+  const { activeClassId, activeClass, classes, isLoading: loadingClasses } = useActiveClass();
+  const [date, setDate] = useState(initialDate ?? fmt(new Date()));
+  useEffect(() => {
+    if (initialDate) setDate(initialDate);
+  }, [initialDate]);
   const [viewMode, setViewMode] = useState<ViewMode>("daily");
   const [selectorDrawer, setSelectorDrawer] = useState(false);
 
@@ -217,27 +218,8 @@ export default function TeacherIbadahPage() {
   const [weeklyStudents, setWeeklyStudents] = useState<StudentRecord[]>([]);
   const [expandedCell, setExpandedCell] = useState<string | null>(null); // "studentId|date"
 
-  const [loadingClasses, setLoadingClasses] = useState(true);
   const [loadingIbadah, setLoadingIbadah] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Load own classes only
-  useEffect(() => {
-    if (!cid || !token) return;
-    const ac = new AbortController();
-    setLoadingClasses(true);
-    getMyClasses(cid, token, ac.signal)
-      .then((cls) => {
-        const own = cls.filter((c) => c.classTeacherId === teacherId);
-        setClasses(own);
-        if (own.length > 0) setActiveClassId(own[0].id);
-      })
-      .catch((e) => {
-        setError((e as Error).message);
-      })
-      .finally(() => setLoadingClasses(false));
-    return () => ac.abort();
-  }, [cid, token]); // eslint-disable-line
 
   // Daily load
   const loadDailyIbadah = useCallback(async () => {
@@ -352,7 +334,7 @@ export default function TeacherIbadahPage() {
     ] as { key: Section; label: string; show: boolean }[]
   ).filter((s) => s.show);
 
-  const activeClass = classes.find((c) => c.id === activeClassId);
+
 
   const downloadWeeklyReport = useCallback(() => {
     if (!activeClass || weeklyStudents.length === 0) return;
@@ -452,11 +434,11 @@ export default function TeacherIbadahPage() {
     );
   }, [activeClass, activePrayers, logMap, weekDates, weeklyStudents]);
 
-  return (
-    <DashboardLayout>
-      <PageHeader title={t("teacherPages", "ibadahRecordsTitle", lang)} />
+  const content = (
+    <>
+      {!embedded && <PageHeader title={t("teacherPages", "ibadahRecordsTitle", lang)} />}
 
-      <div className="h-[46px]" />
+      {!embedded && <div className="h-[46px]" />}
 
       {error && (
         <ApiErrorBanner
@@ -492,8 +474,11 @@ export default function TeacherIbadahPage() {
           <button
             type="button"
             onClick={() => setSelectorDrawer(true)}
-            aria-label="Choose ibadah date and class"
-            className="fixed inset-x-0 top-[47px] z-40 flex justify-between  gap-2 border-b border-gray-100 bg-white/95 px-4 py-3 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3 lg:left-64   lg:px-8 shadow-lg shadow-gray-100 "
+            aria-label="Choose ibadah date"
+            className={cn(
+              "flex justify-between gap-2 border-b border-gray-100 bg-white/95 px-4 py-3 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3",
+              embedded ? "sticky top-0 z-10 -mx-4 mb-4" : "fixed inset-x-0 top-[47px] z-40 shadow-lg shadow-gray-100 lg:left-64 lg:px-8",
+            )}
           >
             <span className="flex min-w-0 items-center gap-2">
               {viewMode === "daily" ? (
@@ -535,7 +520,6 @@ export default function TeacherIbadahPage() {
                 {activeClass?.name ??
                   t("teacherPages", "noClassesAssigned", lang)}
               </span>
-              <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" />
             </span>
           </button>
 
@@ -571,30 +555,7 @@ export default function TeacherIbadahPage() {
                     fmtShort={fmtShort}
                   />
                 )}
-                <p className="mb-2 mt-4 text-xs font-bold uppercase tracking-wide text-gray-400">
-                  Classes
-                </p>
-                <div className="divide-y divide-gray-100 border-gray-100 border-[0.5px] rounded-lg *:px-2">
-                  {classes.map((cls) => (
-                    <button
-                      key={cls.id}
-                      type="button"
-                      onClick={() => {
-                        setActiveClassId(cls.id);
-                        setSelectorDrawer(false);
-                      }}
-                      className={cn(
-                        "flex w-full min-w-0 items-center gap-3 py-3 text-left text-sm",
-                        activeClassId === cls.id ? "font-medium text-primary-700" : "text-gray-700",
-                      )}
-                    >
-                      <span className="truncate">{cls.name}</span>
-                      {activeClassId === cls.id && (
-                        <Check className="ml-auto h-4 w-4 shrink-0" />
-                      )}
-                    </button>
-                  ))}
-                </div>
+
               </div>
             </DrawerContent>
           </Drawer>
@@ -1059,6 +1020,8 @@ export default function TeacherIbadahPage() {
           <div className="h-20" aria-hidden="true" />
         </>
       )}
-    </DashboardLayout>
+    </>
   );
+
+  return embedded ? content : <DashboardLayout>{content}</DashboardLayout>;
 }

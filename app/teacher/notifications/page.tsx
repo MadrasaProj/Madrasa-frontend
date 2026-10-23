@@ -10,6 +10,7 @@ import {
   type NotificationRecord,
 } from "@/lib/notifications-api";
 import { useAuthStore } from "@/store/auth";
+import { useActiveClass } from "@/store/activeClass";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,7 @@ export default function TeacherNotificationsPage() {
   const { lang } = useLanguageStore();
   const cid   = user?.clientId ?? "";
   const token = accessToken ?? "";
+  const { activeClassId } = useActiveClass();
   const navigate = useNavigate();
 
   const [notifs, setNotifs]       = useState<NotificationRecord[]>([]);
@@ -40,14 +42,15 @@ export default function TeacherNotificationsPage() {
 
   const load = useCallback(async () => {
     if (!cid || !token) return;
+    setNotifs([]);
     setLoading(true);
     setError(null);
     try {
       const data = await getNotifications(cid, token, { take: 50 });
-      setNotifs(data.notifications ?? []);
+      setNotifs((data.notifications ?? []).filter((item) => item.targetClassIds.length === 0 || item.targetClassIds.includes(activeClassId)));
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
-  }, [cid, token]);
+  }, [cid, token, activeClassId]);
 
   useEffect(() => { load(); }, [load]);
 

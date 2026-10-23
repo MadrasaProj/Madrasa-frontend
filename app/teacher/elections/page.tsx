@@ -2,6 +2,7 @@ import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguageStore } from "@/store/language";
+import { useActiveClass } from "@/store/activeClass";
 import { t } from "@/lib/i18n";
 import { elections, Election, students } from "@/mock-data";
 import {
@@ -12,7 +13,6 @@ import {
 
 // Simulated: logged-in teacher T001
 const MY_TEACHER_ID = "T001";
-const MY_CLASSES = ["Class 4", "Class 3"];
 
 // Runtime state for teacher-opened sessions
 interface SessionVote { studentId: string; studentName: string; candidateId: string; }
@@ -25,6 +25,7 @@ interface LiveSession {
 
 export default function TeacherElectionsPage() {
   const { lang } = useLanguageStore();
+  const { activeClass } = useActiveClass();
 
   // Sessions managed by this teacher
   const [sessions, setSessions] = useState<Record<string, LiveSession>>({});
@@ -41,7 +42,7 @@ export default function TeacherElectionsPage() {
 
   // Filter to teacher's elections (class_vote type, teacher's classes)
   const myElections = elections.filter(
-    (e) => e.type === "class_vote" && MY_CLASSES.includes(e.class as string)
+    (e) => e.type === "class_vote" && e.class === activeClass?.name
   );
 
   const draftReady = myElections.filter((e) => e.status === "draft");

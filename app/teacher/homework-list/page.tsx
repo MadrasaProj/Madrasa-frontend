@@ -5,11 +5,11 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { getSubmissions, type HomeworkAssignment, type SubmissionsResponse } from "@/lib/homework-api";
-import { type ClassRecord } from "@/lib/classes-api";
-import { useClasses, useHomeworkList } from "@/lib/queries";
+import { useHomeworkList } from "@/lib/queries";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { useAuthStore } from "@/store/auth";
+import { useActiveClass } from "@/store/activeClass";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -28,11 +28,9 @@ export default function TeacherHomeworkListPage() {
   const token = accessToken ?? "";
 
   const qc = useQueryClient();
-  const [activeClassId, setActiveClassId] = useState("");
+  const { activeClassId, isLoading: loadingClasses } = useActiveClass();
   const [customError, setCustomError] = useState<string | null>(null);
 
-  const { data: classesData, isLoading: loadingClasses } = useClasses({ clientId: cid, token });
-  const classes = classesData ?? [];
 
   const { data: homeworkData, isLoading: loadingHomework, error: homeworkError } = useHomeworkList({ clientId: cid, token });
   const homework = homeworkData ?? [];
@@ -48,12 +46,6 @@ export default function TeacherHomeworkListPage() {
     qc.invalidateQueries({ queryKey: queryKeys.homework.all });
   }, [qc]);
 
-  useEffect(() => {
-    if (classes.length > 0 && !activeClassId) {
-      setActiveClassId(classes[0].id);
-    }
-  }, [classes, activeClassId]);
-
   const loadSubs = async (hwId: string) => {
     if (subsMap[hwId]) { setExpandedId(expandedId === hwId ? null : hwId); return; }
     setLoadingSubs(hwId);
@@ -67,7 +59,7 @@ export default function TeacherHomeworkListPage() {
   };
 
   const today = fmt(new Date());
-  const filtered = homework.filter((hw) => !activeClassId || hw.classId === activeClassId);
+  const filtered = homework.filter((hw) => activeClassId && hw.classId === activeClassId);
   const overdue  = filtered.filter((hw) => hw.dueDate.split("T")[0] < today);
   const upcoming = filtered.filter((hw) => hw.dueDate.split("T")[0] >= today);
 
@@ -98,22 +90,6 @@ export default function TeacherHomeworkListPage() {
         </div>
       ) : (
         <>
-          {/* Class filter */}
-          <div className="flex gap-2 mb-4 flex-wrap">
-            {classes.map((cls) => (
-              <button
-                key={cls.id}
-                onClick={() => setActiveClassId(cls.id)}
-                className={cn(
-                  "px-3 py-1.5 rounded-xl text-xs font-semibold transition-all",
-                  activeClassId === cls.id ? "bg-primary-600 text-white" : "bg-white border border-gray-200 text-gray-600",
-                )}
-              >
-                {cls.name}
-              </button>
-            ))}
-          </div>
-
           {/* Summary */}
           <div className="grid grid-cols-3 gap-2 mb-5">
             {[

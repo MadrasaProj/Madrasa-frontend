@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -18,6 +18,7 @@ import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
 import { getSubjects, type SubjectRecord } from "@/lib/subjects-api";
 import { getStudents, type StudentRecord } from "@/lib/students-api";
 import { useAuthStore } from "@/store/auth";
+import { useActiveClass } from "@/store/activeClass";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -74,10 +75,20 @@ export default function TeacherClassTestsPage() {
   const [subjects, setSubjects] = useState<SubjectRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filterClassId, setFilterClassId] = useState("");
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const { activeClassId: filterClassId, activeClass } = useActiveClass();
+  const previousClassId = useRef(filterClassId);
 
   const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (previousClassId.current && previousClassId.current !== filterClassId) {
+      setShowDrawer(false);
+      setSelectedExamId(null);
+      setSearchParams((prev) => { prev.delete("view"); prev.delete("examId"); return prev; });
+    }
+    previousClassId.current = filterClassId;
+    setFormClassId(filterClassId);
+  }, [filterClassId, setSearchParams]);
 
   const [showDrawer, setShowDrawer] = useState(false);
   const [editTarget, setEditTarget] = useState<ExamRecord | null>(null);
@@ -116,16 +127,7 @@ export default function TeacherClassTestsPage() {
   const isPeriodBased = user?.attendanceMode === "PERIOD_BASED";
   const teacherId = user?.id ?? "";
 
-  const myClassIds = new Set(
-    subjects.filter((s) => s.teacherId === teacherId).map((s) => s.classId),
-  );
-  const teacherClasses = isPeriodBased
-    ? classes.filter(
-        (c) => myClassIds.has(c.id) || c.classTeacherId === teacherId,
-      )
-    : classes.filter((c) => c.classTeacherId === teacherId);
-  const selectedClassName = teacherClasses.find((cls) => cls.id === filterClassId)?.name
-    ?? t("adminPages", "allClasses", lang);
+  const selectedClassName = activeClass?.name ?? t("teacherPages", "noClassesAssigned", lang);
 
   const searchFiltered = useMemo(() => {
     const q = searchText.toLowerCase();
@@ -229,7 +231,7 @@ export default function TeacherClassTestsPage() {
 
   const load = useCallback(
     async (clsId?: string) => {
-      if (!cid || !token) return;
+      if (!cid || !token || !clsId) { setExams([]); setLoading(false); return; }
       setLoading(true);
       setError(null);
       try {
@@ -256,12 +258,12 @@ export default function TeacherClassTestsPage() {
 
   useEffect(() => {
     load(filterClassId);
-  }, [load]);
+  }, [load, filterClassId]);
 
   const openAdd = () => {
     setEditTarget(null);
     setFormName("");
-    setFormClassId("");
+    setFormClassId(filterClassId);
     setFormSubjectId("");
     setFormStartDate("");
     setFormEndDate("");
@@ -482,53 +484,10 @@ export default function TeacherClassTestsPage() {
               <X className="h-4 w-4" />
             </Button>
           )}
-          <button
-            type="button"
-            aria-label={`Choose class: ${selectedClassName}`}
-            onClick={() => setFiltersOpen(true)}
-            className="flex min-w-0 max-w-[55vw] items-center gap-2 text-gray-700"
-          >
-            <School className="h-4 w-4 shrink-0 text-primary-700" />
-            <span className="max-w-36 truncate text-sm font-semibold">{selectedClassName}</span>
-            <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" />
-          </button>
+          <span className="flex min-w-0 items-center gap-2 text-sm font-semibold text-gray-700"><School className="h-4 w-4 text-primary-700" />{selectedClassName}</span>
         </div>
 
-        <ResponsivePopover
-          open={filtersOpen}
-          onOpenChange={setFiltersOpen}
-          side="bottom"
-          drawerOnDesktop
-          title="Filter class tests"
-          className="mx-auto w-full max-w-2xl rounded-t-2xl"
-        >
-          <div className="p-5">
-            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400">Classes</p>
-            <div className="divide-y divide-gray-100 rounded-lg border border-gray-100 px-2">
-              {[
-                { id: "", name: t("adminPages", "allClasses", lang) },
-                ...teacherClasses,
-              ].map((cls) => (
-                <button
-                  key={cls.id || "all"}
-                  type="button"
-                  aria-pressed={filterClassId === cls.id}
-                  onClick={() => {
-                    setFilterClassId(cls.id);
-                    setFiltersOpen(false);
-                  }}
-                  className={cn(
-                    "flex w-full min-w-0 items-center gap-3 py-3 text-left text-sm",
-                    filterClassId === cls.id ? "font-medium text-primary-700" : "text-gray-700",
-                  )}
-                >
-                  <span className="truncate">{cls.name}</span>
-                  {filterClassId === cls.id && <Check className="ml-auto h-4 w-4 shrink-0" />}
-                </button>
-              ))}
-            </div>
-          </div>
-        </ResponsivePopover>
+
 
         {error && <ApiErrorBanner message={error} onRetry={() => { setError(null); load(filterClassId); }} />}
 
@@ -650,6 +609,7 @@ export default function TeacherClassTestsPage() {
         >
           {isMarkEntryView && markEntryExam && (
             <TeacherMarkEntryView
+              showClassSelector={false}
               gridProps={{
                 exams: [markEntryExam],
                 classes: classes.filter((cls) => cls.id === markEntryExam.classId),
@@ -736,21 +696,6 @@ export default function TeacherClassTestsPage() {
 
           {!editTarget && (
             <>
-              <div>
-                <p className="mb-1.5 text-sm font-medium text-gray-700">
-                  {t("teacherPages", "classRequired", lang)}
-                </p>
-                <DrawerSelector
-                  title={t("teacherPages", "classRequired", lang)}
-                  options={teacherClasses.map((cls) => ({ value: cls.id, label: cls.name }))}
-                  value={formClassId}
-                  onChange={(value) => {
-                    setFormClassId(value);
-                    setFormSubjectId("");
-                  }}
-                  placeholder={t("teacherPages", "selectClassOpt", lang)}
-                />
-              </div>
               <div>
                 <p className="mb-1.5 text-sm font-medium text-gray-700">
                   {t("teacherPages", "subjectRequired", lang)}

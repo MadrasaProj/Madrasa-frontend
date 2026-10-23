@@ -10,7 +10,7 @@ import { Download, Loader2, FileText } from "lucide-react";
 const today = new Date().toISOString().slice(0, 10);
 const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
 
-export default function IndividualStudentReportPage() {
+export default function IndividualStudentReportPage({ classId }: { classId?: string }) {
   const { user, accessToken } = useAuthStore();
   const cid = user?.clientId ?? "";
   const token = accessToken ?? "";
@@ -25,7 +25,11 @@ export default function IndividualStudentReportPage() {
   const [exporting, setExporting] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { if (cid && token) getStudents(cid, token, { limit: 1000, status: "ACTIVE" }).then(r => setStudents(r.data)); }, [cid, token]);
+  useEffect(() => {
+    setStudentId("");
+    setStudents([]);
+    if (cid && token && classId !== "") getStudents(cid, token, { classId, limit: 1000, status: "ACTIVE" }).then(r => setStudents(r.data));
+  }, [cid, token, classId]);
   useEffect(() => {
     if (!cid || !token || !studentId || from > to) return;
     setLoading(true);

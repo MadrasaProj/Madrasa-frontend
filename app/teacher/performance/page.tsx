@@ -3,9 +3,8 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { getResults, type ResultRecord } from "@/lib/results-api";
 import { getExams, type ExamRecord } from "@/lib/exams-api";
-import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
-import { getHomeworkSummary } from "@/lib/reports-api";
 import { useAuthStore } from "@/store/auth";
+import { useActiveClass } from "@/store/activeClass";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -50,45 +49,20 @@ export default function TeacherPerformancePage() {
   const token = accessToken ?? "";
   const ayId = user?.defaultAcademicYearId ?? "";
 
-  const [classes, setClasses] = useState<ClassRecord[]>([]);
   const [exams, setExams] = useState<ExamRecord[]>([]);
   const [results, setResults] = useState<ResultRecord[]>([]);
-  const [hwSummary, setHwSummary] = useState<{
-    completionRate: number;
-    totalAssignments: number;
-  } | null>(null);
-  const [activeClassId, setActiveClassId] = useState("");
+  const { activeClassId, activeClass } = useActiveClass();
   const [activeExamId, setActiveExamId] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   const printRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!cid || !token) return;
-    Promise.all([
-      getMyClasses(cid, token),
-      getHomeworkSummary(cid, token).catch(() => null),
-    ])
-      .then(([cls, hw]) => {
-        setClasses(cls);
-        setHwSummary(
-          hw
-            ? {
-                completionRate: hw.completionRate,
-                totalAssignments: hw.totalAssignments,
-              }
-            : null,
-        );
-        if (cls.length > 0) setActiveClassId(cls[0].id);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [cid, token]);
-
-  useEffect(() => {
     if (!cid || !token || !activeClassId) return;
+    setExams([]);
+    setResults([]);
     let cancelled = false;
     getExams(cid, token, { accademicYearId: ayId || undefined, limit: 20 })
       .then((data) => {
@@ -135,7 +109,7 @@ export default function TeacherPerformancePage() {
   const sortedStudents = [...results].sort((a, b) => b.score - a.score);
   const topStudents = sortedStudents.slice(0, 5);
 
-  const activeClass = classes.find((c) => c.id === activeClassId);
+
   const activeExam = exams.find((e) => e.id === activeExamId);
 
   const handleDownloadPDF = async () => {
@@ -215,34 +189,6 @@ export default function TeacherPerformancePage() {
       >
         <div className="space-y-5 p-5">
           <div>
-            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400">{t("nav", "classes", lang)}</p>
-            <div className="flex flex-wrap gap-2">
-              {classes.map((cls) => (
-                <button
-                  key={cls.id}
-                  type="button"
-                  aria-pressed={activeClassId === cls.id}
-                  onClick={() => {
-                    if (activeClassId !== cls.id) {
-                      setActiveClassId(cls.id);
-                      setActiveExamId("");
-                      setExams([]);
-                      setResults([]);
-                    }
-                  }}
-                  className={cn(
-                    "inline-flex max-w-full items-center rounded-full border px-3 py-2 text-sm font-medium transition-colors",
-                    activeClassId === cls.id
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50",
-                  )}
-                >
-                  <span className="block truncate">{cls.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
             <p className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400">{t("nav", "exams", lang)}</p>
             {exams.length > 0 ? (
               <div className="flex flex-wrap gap-2">
@@ -276,7 +222,7 @@ export default function TeacherPerformancePage() {
 
       {loading ? (
         <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             {Array.from({ length: 3 }).map((_, i) => (
               <Skeleton key={i} className="h-20 rounded-2xl" />
             ))}
@@ -341,7 +287,7 @@ export default function TeacherPerformancePage() {
             </div>
 
             {/* Summary cards */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               {[
                 {
                   label: t("teacherPages", "studentsSummary", lang),
@@ -357,13 +303,7 @@ export default function TeacherPerformancePage() {
                   color: "text-primary-600",
                   bg: "bg-primary-50",
                 },
-                {
-                  label: t("teacherPages", "hwCompletionSummary", lang),
-                  value: hwSummary ? `${hwSummary.completionRate}%` : "—",
-                  icon: BookOpen,
-                  color: "text-indigo-600",
-                  bg: "bg-indigo-50",
-                },
+
               ].map(({ label, value, icon: Icon, color, bg }) => (
                 <div
                   key={label}

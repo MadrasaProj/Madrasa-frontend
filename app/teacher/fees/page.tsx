@@ -38,6 +38,7 @@ import {
   type FeePaymentStatus,
 } from "@/lib/fees-api";
 import { useAuthStore } from "@/store/auth";
+import { useActiveClass } from "@/store/activeClass";
 import { useLanguageStore } from "@/store/language";
 import { t, type Lang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -178,6 +179,7 @@ export default function TeacherFeesPage() {
   const STATUS_META = getStatusMeta(lang);
   const cid = activeClientId ?? "";
   const token = accessToken ?? "";
+  const { activeClassId } = useActiveClass();
 
   const [feeTypes, setFeeTypes] = useState<FeeType[]>([]);
   const [activeTypeId, setActiveTypeId] = useState<string | null>(null);
@@ -207,29 +209,32 @@ export default function TeacherFeesPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const loadTypes = useCallback(async () => {
-    if (!cid || !token) return;
+    if (!cid || !token || !activeClassId) { setFeeTypes([]); setTypesLoading(false); return; }
+    setFeeTypes([]);
     setTypesLoading(true);
     setError(null);
     try {
       setFeeTypes(
-        await getFeeTypes(cid, token, user?.defaultAcademicYearId ?? undefined),
+        (await getFeeTypes(cid, token, user?.defaultAcademicYearId ?? undefined)).filter((type) => type.targetClassIds.length === 0 || type.targetClassIds.includes(activeClassId)),
       );
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setTypesLoading(false);
     }
-  }, [cid, token, user?.defaultAcademicYearId]);
+  }, [cid, token, user?.defaultAcademicYearId, activeClassId]);
 
   useEffect(() => {
     if (cid && token) loadTypes();
   }, [cid, token, loadTypes]);
 
   const loadPayments = useCallback(async () => {
-    if (!cid || !token) return;
+    if (!cid || !token || !activeClassId) { setPayments([]); setPayLoading(false); return; }
+    setPayments([]);
     setPayLoading(true);
     try {
       const res = await getPayments(cid, token, {
+        classId: activeClassId,
         feeTypeId: activeTypeId ?? undefined,
         status:
           statusFilter !== "all"
@@ -245,7 +250,7 @@ export default function TeacherFeesPage() {
     } finally {
       setPayLoading(false);
     }
-  }, [cid, token, activeTypeId, statusFilter, paySkip]);
+  }, [cid, token, activeClassId, activeTypeId, statusFilter, paySkip]);
 
   useEffect(() => {
     loadPayments();

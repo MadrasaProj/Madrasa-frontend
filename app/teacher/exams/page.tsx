@@ -14,6 +14,7 @@ import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
 import { getSubjects, type SubjectRecord } from "@/lib/subjects-api";
 import { getStudents, type StudentRecord } from "@/lib/students-api";
 import { useAuthStore } from "@/store/auth";
+import { useActiveClass } from "@/store/activeClass";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import {
@@ -48,7 +49,7 @@ export default function TeacherExamsPage() {
   // Selection states (from query params or fallback)
   const queryExamId = searchParams.get("examId") ?? "";
   const initialExamId = useRef(queryExamId);
-  const queryClassId = searchParams.get("classId") ?? "";
+  const { activeClassId: queryClassId, activeClass } = useActiveClass();
   const querySubjectId = searchParams.get("subjectId") ?? "";
 
   // Data
@@ -78,9 +79,7 @@ export default function TeacherExamsPage() {
 
   // Derived arrays
   const myClassIds = new Set(mySubjects.map((s) => s.classId));
-  const teacherClasses = allClasses.filter(
-    (c) => myClassIds.has(c.id) || c.classTeacherId === teacherId,
-  );
+  const teacherClasses = activeClass ? [activeClass] : [];
 
   const activeExam = exams.find((e) => e.id === queryExamId);
   const selectedExam = exams.find((e) => e.id === selectedExamId);
@@ -136,16 +135,16 @@ export default function TeacherExamsPage() {
   // ── Initial load ─────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!cid || !token || !teacherId) return;
+    if (!cid || !token || !teacherId || !queryClassId) return;
     setLoading(true);
 
     Promise.all([
       getMyClasses(cid, token),
       getSubjects(cid, token, { teacherId, limit: 500 }),
-      getExams(cid, token, { accademicYearId: ayId || undefined, limit: 50 }),
+      getExams(cid, token, { accademicYearId: ayId || undefined, classId: queryClassId, limit: 50 }),
     ])
       .then(([cls, subs, examData]) => {
-        setAllClasses(cls);
+        setAllClasses(cls.filter((item) => item.id === queryClassId));
         setMySubjects(subs.data ?? []);
         const loadedExams = (examData.data ?? []).filter(
           (e) => e.type === "TERM_EXAM" || !e.type,
@@ -153,10 +152,9 @@ export default function TeacherExamsPage() {
         setExams(loadedExams);
 
         // Auto-initialize query params if not set
-        if (!initialExamId.current && loadedExams[0]) {
+        if (!loadedExams.some((exam) => exam.id === initialExamId.current) && loadedExams[0]) {
           initialExamId.current = loadedExams[0].id;
-          const firstClass =
-            cls.find((c) => c.classTeacherId === teacherId) || cls[0];
+          const firstClass = cls.find((c) => c.id === queryClassId);
           const mine = (subs.data ?? []).filter(
             (s) => s.classId === firstClass?.id,
           );
@@ -164,13 +162,14 @@ export default function TeacherExamsPage() {
             prev.set("examId", loadedExams[0].id);
             if (firstClass) prev.set("classId", firstClass.id);
             if (mine[0]) prev.set("subjectId", mine[0].id);
+            else prev.delete("subjectId");
             return prev;
           });
         }
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [cid, token, teacherId, ayId, setSearchParams]);
+  }, [cid, token, teacherId, ayId, queryClassId, setSearchParams]);
 
   // ── Load subjects for selected class ─────────────────────────────────────────
 
@@ -535,6 +534,7 @@ export default function TeacherExamsPage() {
         >
           {isMarkEntryView && (
             <TeacherMarkEntryView
+              showClassSelector={false}
               gridProps={{
                 exams,
                 classes: teacherClasses,
