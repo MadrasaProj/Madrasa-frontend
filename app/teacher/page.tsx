@@ -5,8 +5,15 @@ import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { useNavigate } from "react-router-dom";
 import {
+  Bell,
+  BookOpen,
   CalendarCheck2,
   ChevronRight,
+  ClipboardList,
+  GraduationCap,
+  MoonStar,
+  NotebookPen,
+  TrendingUp,
   UserCheck,
   UserX,
   UsersRound,
@@ -15,6 +22,7 @@ import { Icon } from "@iconify/react";
 import { useQuery } from "@tanstack/react-query";
 import { getClassIbadah } from "@/lib/ibadah-api";
 import { getClassAttendance } from "@/lib/attendance-api";
+import { getSubmissions, listHomework } from "@/lib/homework-api";
 import { useAttendanceSummary, useStudentsList } from "@/lib/queries";
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
 import { PolarRadiusAxis, RadialBar, RadialBarChart } from "recharts";
@@ -33,6 +41,9 @@ import { Button } from "@/components/ui/button";
 const TeacherIbadahPage = lazy(() => import("@/app/teacher/ibadah/page"));
 const attendanceChartConfig = {
   rate: { label: "Attendance rate", color: "var(--primary)" },
+} satisfies ChartConfig;
+const homeworkChartConfig = {
+  rate: { label: "Homework submission rate", color: "var(--primary)" },
 } satisfies ChartConfig;
 
 export default function TeacherDashboard() {
@@ -93,7 +104,64 @@ export default function TeacherDashboard() {
     undefined,
     { refetchOnMount: "always" },
   );
+  const homework = useQuery({
+    queryKey: ["homework", "class-stats", clientId, activeClassId],
+    queryFn: async () => {
+      const assignments = (
+        await listHomework(clientId, token, {
+          classId: activeClassId,
+        })
+      ).filter((assignment) => assignment.classId === activeClassId);
+      const submissions = await Promise.all(
+        assignments.map((assignment) =>
+          getSubmissions(clientId, token, assignment.id),
+        ),
+      );
+      const completedByStudent = new Map<string, number>();
+      let submittedCount = 0;
+      for (const result of submissions) {
+        for (const submission of result.submissions) {
+          if (
+            submission.status === "SUBMITTED" ||
+            submission.status === "CHECKED"
+          ) {
+            submittedCount += 1;
+          }
+          if (submission.student?.id && submission.status !== "NOT_SUBMITTED") {
+            completedByStudent.set(
+              submission.student.id,
+              (completedByStudent.get(submission.student.id) ?? 0) + 1,
+            );
+          }
+        }
+      }
+      return {
+        assignments: assignments.length,
+        submittedCount,
+        completedStudents: [...completedByStudent.values()].filter(
+          (count) => count === assignments.length,
+        ).length,
+      };
+    },
+    enabled: !!clientId && !!token && !!activeClassId,
+    refetchOnMount: "always",
+  });
   const total = students.data?.total ?? 0;
+  const homeworkCompleted = Math.min(
+    total,
+    homework.data?.completedStudents ?? 0,
+  );
+  const homeworkPending = Math.max(0, total - homeworkCompleted);
+  const expectedSubmissions = total * (homework.data?.assignments ?? 0);
+  const homeworkPercent =
+    expectedSubmissions > 0
+      ? Math.min(
+          100,
+          Math.round(
+            ((homework.data?.submittedCount ?? 0) / expectedSubmissions) * 100,
+          ),
+        )
+      : 0;
   const attendanceRecords = attendance.data?.records ?? [];
   const presentCount = attendanceRecords.filter(
     (record) => record.status === "PRESENT",
@@ -136,18 +204,51 @@ export default function TeacherDashboard() {
     .toUpperCase();
 
   const actions = [
-    { title: t("common", "present", lang), href: "/teacher/present" },
-    { title: t("common", "absent", lang), href: "/teacher/absent" },
-    { title: t("nav", "homework", lang), href: "/teacher/homework" },
+    {
+      title: t("common", "present", lang),
+      href: "/teacher/present",
+      icon: UserCheck,
+    },
+    {
+      title: t("common", "absent", lang),
+      href: "/teacher/absent",
+      icon: UserX,
+    },
+    {
+      title: t("nav", "homework", lang),
+      href: "/teacher/homework",
+      icon: BookOpen,
+    },
     {
       title: t("teacherPages", "hwOverviewAction", lang),
       href: "/teacher/homework-list",
+      icon: ClipboardList,
     },
-    { title: t("nav", "ibadah", lang), href: "/teacher/ibadah" },
-    { title: t("nav", "exams", lang), href: "/teacher/exams" },
-    { title: t("nav", "performance", lang), href: "/teacher/performance" },
-    { title: t("nav", "diary", lang), href: "/teacher/diary" },
-    { title: t("nav", "notifications", lang), href: "/teacher/notifications" },
+    {
+      title: t("nav", "ibadah", lang),
+      href: "/teacher/ibadah",
+      icon: MoonStar,
+    },
+    {
+      title: t("nav", "exams", lang),
+      href: "/teacher/exams",
+      icon: GraduationCap,
+    },
+    {
+      title: t("nav", "performance", lang),
+      href: "/teacher/performance",
+      icon: TrendingUp,
+    },
+    {
+      title: t("nav", "diary", lang),
+      href: "/teacher/diary",
+      icon: NotebookPen,
+    },
+    {
+      title: t("nav", "notifications", lang),
+      href: "/teacher/notifications",
+      icon: Bell,
+    },
   ];
 
   return (
@@ -170,11 +271,7 @@ export default function TeacherDashboard() {
           </Avatar>
         </header>
 
-
-
-
-
-<section className="mb-7">
+        <section className="mb-7">
           <button
             type="button"
             onClick={() => setIbadahDrawerOpen(true)}
@@ -265,110 +362,117 @@ export default function TeacherDashboard() {
           aria-labelledby="attendance-overview-title"
           className="mb-7 overflow-hidden  card p-6 rounded-2xl "
         >
-          <div className="">
-            <h2
-              id="attendance-overview-title"
-              className="text-base font-semibold text-gray-900"
-            >
-              {t("teacherPages", "overallAttendance", lang)}
-            </h2>
-            
-            {overallAttendance.isLoading ? (
-              <div className="pt-5 text-sm text-gray-500">
-                {t("common", "loading", lang)}
-              </div>
-            ) : overallAttendance.isError ? (
-              <div className="pt-5 text-sm text-gray-500">
-                {t("teacherPages", "chartUnavailable", lang)}
-              </div>
-            ) : (
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                {[
-                  {
-                    label: t("common", "present", lang),
-                    value: overallPresent,
-                    icon: UserCheck,
-                    surface: "bg-violet-50",
-                    iconSurface: "bg-violet-200 text-violet-700",
-                  },
-                  {
-                    label: t("common", "absent", lang),
-                    value: overallAbsent,
-                    icon: UserX,
-                    surface: "bg-amber-50",
-                    iconSurface: "bg-amber-200 text-amber-800",
-                  },
-                ].map((stat) => (
-                  <div
-                    key={stat.label}
-                    className={`flex min-h-18 items-center justify-between gap-1 rounded-xl p-3 ${stat.surface}`}
-                  >
-                    <div className="min-w-0">
-                      <p className="text-xs text-gray-700">{stat.label}</p>
-                      <strong className="block text-xl font-semibold tabular-nums text-gray-950">
-                        {stat.value}
-                      </strong>
-                    </div>
-                    <span
-                      className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${stat.iconSurface}`}
+          <h2
+            id="attendance-overview-title"
+            className="text-2xl font-semibold text-gray-900"
+          >
+            {t("teacherPages", "overallAttendance", lang)}
+          </h2>
+          <div className="overflow-hidden rounded-2xl mt-3">
+            <div className="rounded-2xl overflow-hidden">
+              {overallAttendance.isLoading ? (
+                <div className="pt-5 text-sm text-gray-500">
+                  {t("common", "loading", lang)}
+                </div>
+              ) : overallAttendance.isError ? (
+                <div className="pt-5 text-sm text-gray-500">
+                  {t("teacherPages", "chartUnavailable", lang)}
+                </div>
+              ) : (
+                <div className=" grid grid-cols-2 gap-0.5">
+                  {[
+                    {
+                      label: t("common", "present", lang),
+                      value: overallPresent,
+                      icon: UserCheck,
+                      surface: "bg-violet-50",
+                      iconSurface: "bg-violet-200 text-violet-700",
+                    },
+                    {
+                      label: t("common", "absent", lang),
+                      value: overallAbsent,
+                      icon: UserX,
+                      surface: "bg-amber-50",
+                      iconSurface: "bg-amber-200 text-amber-800",
+                    },
+                  ].map((stat) => (
+                    <div
+                      key={stat.label}
+                      className={`flex min-h-18 items-center justify-between gap-1  p-3 ${stat.surface}`}
                     >
-                      <stat.icon aria-hidden="true" className="size-5" />
+                      <div className="min-w-0">
+                        <strong className="block text-3xl font-semibold tabular-nums text-gray-950">
+                          {stat.value}
+                        </strong>
+                        <p className="text-sm font-bold text-gray-700">
+                          {stat.label}
+                        </p>
+                      </div>
+                      <span
+                        className={`flex size-9 shrink-0 items-center justify-center  ${stat.iconSurface}`}
+                      >
+                        <stat.icon aria-hidden="true" className="size-5" />
+                      </span>
+                    </div>
+                  ))}
+                  <div className="flex min-h-18 items-center justify-between gap-1  bg-emerald-50 p-3">
+                    <div className="min-w-0">
+                      <strong className="block text-3xl font-semibold tabular-nums text-gray-950">
+                        {overallRate}%
+                      </strong>
+                      <p className="text-sm font-bold  leading-tight text-gray-700">
+                        {t("teacherPages", "attendanceRateLabel", lang)}
+                      </p>
+                    </div>
+                    <div className="size-11 shrink-0">
+                      <ChartContainer
+                        config={attendanceChartConfig}
+                        className="size-full"
+                        role="img"
+                        aria-label={t(
+                          "teacherPages",
+                          "attendanceRateLabel",
+                          lang,
+                        )}
+                      >
+                        <RadialBarChart
+                          data={[{ rate: overallRate, fill: "var(--primary)" }]}
+                          startAngle={90}
+                          endAngle={-270}
+                          innerRadius="72%"
+                          outerRadius="100%"
+                        >
+                          <PolarRadiusAxis
+                            type="number"
+                            domain={[0, 100]}
+                            tick={false}
+                            axisLine={false}
+                          />
+                          <RadialBar
+                            dataKey="rate"
+                            background
+                            cornerRadius={8}
+                          />
+                        </RadialBarChart>
+                      </ChartContainer>
+                    </div>
+                  </div>
+                  <div className="flex min-h-18 items-center justify-between gap-1  bg-green-50 p-3">
+                    <div className="min-w-0">
+                      <strong className="block text-3xl font-semibold tabular-nums text-gray-950">
+                        {overall?.total ?? 0}
+                      </strong>
+                      <p className="text-sm font-bold text-gray-700">
+                        {t("teacherPages", "totalRecords", lang)}
+                      </p>
+                    </div>
+                    <span className="flex size-9 shrink-0 items-center justify-center   bg-green-200 text-green-700">
+                      <UsersRound aria-hidden="true" className="size-5" />
                     </span>
                   </div>
-                ))}
-                <div className="flex min-h-18 items-center justify-between gap-1 rounded-xl bg-emerald-50 p-3">
-                  <div className="min-w-0">
-                    <p className="text-xs leading-tight text-gray-700">
-                      {t("teacherPages", "attendanceRateLabel", lang)}
-                    </p>
-                    <strong className="block text-xl font-semibold tabular-nums text-gray-950">
-                      {overallRate}%
-                    </strong>
-                  </div>
-                  <div className="size-11 shrink-0">
-                    <ChartContainer
-                      config={attendanceChartConfig}
-                      className="size-full"
-                      role="img"
-                      aria-label={t(
-                        "teacherPages",
-                        "attendanceRateLabel",
-                        lang,
-                      )}
-                    >
-                      <RadialBarChart
-                        data={[{ rate: overallRate, fill: "var(--primary)" }]}
-                        startAngle={90}
-                        endAngle={-270}
-                        innerRadius="72%"
-                        outerRadius="100%"
-                      >
-                        <PolarRadiusAxis
-                          type="number"
-                          domain={[0, 100]}
-                          tick={false}
-                          axisLine={false}
-                        />
-                        <RadialBar dataKey="rate" background cornerRadius={8} />
-                      </RadialBarChart>
-                    </ChartContainer>
-                  </div>
                 </div>
-                <div className="flex min-h-18 items-center justify-between gap-1 rounded-xl bg-green-50 p-3">
-                  <div className="min-w-0">
-                    <p className="text-xs text-gray-700">
-                      {t("teacherPages", "totalRecords", lang)}
-                    </p>
-                    <strong className="block text-xl font-semibold tabular-nums text-gray-950">
-                      {overall?.total ?? 0}
-                    </strong>
-                  </div>
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-green-200 text-green-700">
-                    <UsersRound aria-hidden="true" className="size-5" />
-                  </span>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
           <div className="border-t border-gray-100 ">
             {!activeClassId && !loadingClass ? (
@@ -443,13 +547,12 @@ export default function TeacherDashboard() {
                   className="absolute inset-0 size-full object-cover object-center"
                 />
                 <div className="relative  z-10 flex min-h-38 max-w-[65%] flex-col justify-center p-5">
-                  
                   <p className="mt-1 text-lg text-gray-700 font-bold">
                     {t("teacherPages", "takeAttendanceInstruction", lang)}
                   </p>
                   <div className=" mt-3 ">
                     <Button
-                       onClick={() => navigate("/teacher/attendance")}
+                      onClick={() => navigate("/teacher/attendance")}
                       className=""
                       size={"lg"}
                     >
@@ -465,7 +568,79 @@ export default function TeacherDashboard() {
           </div>
         </section>
 
-        
+        <section
+          aria-labelledby="homework-overview-title"
+          className="mb-7 rounded-2xl card bg-primary-100/20 text-whit p-6"
+        >
+          <div className="flex flex-col  justify-between gap-3">
+            <h2
+              id="homework-overview-title"
+              className="text-2xl font-semibold text-gray-900"
+            >
+              {t("teacherPages", "classHomework", lang)}
+            </h2>
+            <img
+              src="/imgs/homework/1.webp"
+              alt=""
+              loading="lazy"
+              className="mx-auto h-36 w-auto max-w-full object-contain"
+            />
+            <Button
+              size="lg"
+              className={"w-max mx-auto"}
+              onClick={() => navigate("/teacher/homework-list")}
+            >
+              {t("teacherPages", "hwListTitle", lang)}
+              <ChevronRight aria-hidden="true" className="size-4" />
+            </Button>
+          </div>
+          {!activeClassId && !loadingClass ? (
+            <p className="mt-4 text-sm text-gray-500">
+              {t("teacherPages", "noClassesFound", lang)}
+            </p>
+          ) : loadingClass || students.isLoading || homework.isLoading ? (
+            <p className="mt-4 text-sm text-gray-500">
+              {t("common", "loading", lang)}
+            </p>
+          ) : students.isError || homework.isError ? (
+            <p className="mt-4 text-sm text-gray-500">
+              {t("teacherPages", "homeworkStatsUnavailable", lang)}
+            </p>
+          ) : homework.data?.assignments === 0 ? (
+            <p className="mt-4 text-sm text-gray-500">
+              {t("teacherPages", "noAssignmentsYet", lang)}
+            </p>
+          ) : (
+            <div className="mt-6 flex   gap-2 justify-between">
+              {[
+                {
+                  label: t("teacherPages", "completedStudents", lang),
+                  value: homeworkCompleted,
+                },
+                {
+                  label: t("teacherPages", "pendingHw", lang),
+                  value: homeworkPending,
+                },
+                {
+                  label: t("teacherPages", "submittedStatus", lang),
+                  value: homeworkPercent + "%",
+                },
+              ].map((stat) => (
+                <div
+                  key={stat.label}
+                  className="px-2 w-full not-last:border-r  border-gray-200 text-center"
+                >
+                  <strong className="block text-3xl font-semibold tabular-nums text-gray-900">
+                    {stat.value}
+                  </strong>
+                  <span className="block text-[13px] leading-tight text-gray-900">
+                    {stat.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
         <Drawer open={ibadahDrawerOpen} onOpenChange={setIbadahDrawerOpen}>
           <DrawerContent className="h-[90dvh] max-h-[90dvh] bg-white">
@@ -496,26 +671,30 @@ export default function TeacherDashboard() {
           </DrawerContent>
         </Drawer>
 
-        <section aria-labelledby="teacher-actions" className="pb-20">
+        <section
+          aria-labelledby="teacher-actions"
+          className="card mb-0 rounded-2xl border border-gray-200 bg-white p-5"
+        >
           <h2
             id="teacher-actions"
-            className="mb-3 text-base font-semibold text-gray-900"
+            className="mb-4 text-base font-semibold text-gray-900"
           >
             {t("teacherPages", "quickActions", lang)}
           </h2>
-          <ul className="divide-y divide-gray-100 rounded-2xl border border-gray-200 bg-white">
+          <ul className="grid grid-cols-3 gap-x-2 gap-y-4 sm:grid-cols-5">
             {actions.map((action) => (
-              <li key={action.href}>
+              <li key={action.href} className="min-w-0">
                 <button
                   type="button"
                   onClick={() => navigate(action.href)}
-                  className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-medium text-gray-800 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
+                  className="flex min-h-24 w-full flex-col items-center gap-2 rounded-xl p-2 text-center hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
                 >
-                  <span>{action.title}</span>
-                  <ChevronRight
-                    aria-hidden="true"
-                    className="size-4 shrink-0 text-gray-400"
-                  />
+                  <span className="flex btn size-12 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700">
+                    <action.icon aria-hidden="true" className="size-6" />
+                  </span>
+                  <span className="min-w-0 text-xs font-semibold leading-snug text-gray-800 sm:text-sm">
+                    {action.title}
+                  </span>
                 </button>
               </li>
             ))}

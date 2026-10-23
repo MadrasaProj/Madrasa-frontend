@@ -919,6 +919,8 @@ const translations = {
     },
     homeworkTitle: { en: "Homework", ml: "ഹോംവർക്ക്" },
     homeworkSub: { en: "Assign and track", ml: "നൽകുക & ട്രാക്ക് ചെയ്യുക" },
+    classHomework: { en: "Class Homework", ml: "ക്ലാസ് ഹോംവർക്ക്" },
+    homeworkStatsUnavailable: { en: "Homework stats are unavailable", ml: "ഹോംവർക്ക് സ്ഥിതിവിവരക്കണക്കുകൾ ലഭ്യമല്ല" },
     diaryTitle: { en: "Daily Diary", ml: "ദിനചര്യ ഡയറി" },
     diarySub: {
       en: "Write class diary notes",
