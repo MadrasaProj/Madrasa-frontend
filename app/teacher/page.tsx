@@ -292,7 +292,7 @@ export default function TeacherDashboard() {
                   />
                   {dateLabel}
                 </span>
-                <span className="mt-2 block text-2xl font-bold tabular-nums text-gray-950">
+                <span className="mt-2 block text-xl font-bold tabular-nums text-gray-950">
                   {t("teacherPages", "ibadahTrackingDescription", lang)}{" "}
                 </span>
               </span>
@@ -360,11 +360,11 @@ export default function TeacherDashboard() {
         </section>
         <section
           aria-labelledby="attendance-overview-title"
-          className="mb-7 overflow-hidden  card p-6 rounded-2xl "
+          className="mb-7 overflow-hidden  card p-5 rounded-2xl "
         >
           <h2
             id="attendance-overview-title"
-            className="text-2xl font-semibold text-gray-900"
+            className="  block text-xl font-bold tabular-nums text-gray-950"
           >
             {t("teacherPages", "overallAttendance", lang)}
           </h2>
@@ -575,7 +575,7 @@ export default function TeacherDashboard() {
           <div className="flex flex-col  justify-between gap-3">
             <h2
               id="homework-overview-title"
-              className="text-2xl font-semibold text-gray-900"
+              className=" block text-xl font-bold tabular-nums text-gray-950"
             >
               {t("teacherPages", "classHomework", lang)}
             </h2>
@@ -677,7 +677,7 @@ export default function TeacherDashboard() {
         >
           <h2
             id="teacher-actions"
-            className="mb-4 text-base font-semibold text-gray-900"
+            className=" block text-xl font-bold mb-4 tabular-nums text-gray-950"
           >
             {t("teacherPages", "quickActions", lang)}
           </h2>
