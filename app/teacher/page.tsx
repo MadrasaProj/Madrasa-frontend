@@ -360,16 +360,16 @@ export default function TeacherDashboard() {
         </section>
         <section
           aria-labelledby="attendance-overview-title"
-          className="mb-7 overflow-hidden  card p-0 rounded-2xl "
+          className="mb-7 overflow-hidden  card p-4 rounded-2xl "
         >
           <h2
             id="attendance-overview-title"
-            className="  block text-xl p-4 pb-0 font-bold tabular-nums text-gray-950"
+            className="  block text-xl    font-bold tabular-nums text-gray-950"
           >
             {t("teacherPages", "overallAttendance", lang)}
           </h2>
           <div className="  mt-3">
-            <div className=" overflow-hidden ">
+            <div className=" overflow-hidden rounded-t-2xl ">
               {overallAttendance.isLoading ? (
                 <div className="pt-5 text-sm text-gray-500">
                   {t("common", "loading", lang)}
