@@ -202,6 +202,8 @@ export default function App() {
           path="/admin/global-class-subjects"
           element={<AdminGlobalClassSubjectsPage />}
         />
+        <Route path="/admin/crm" element={<OperationsDashboard />} />
+        <Route path="/admin/crm/operations" element={<OperationsDashboard />} />
         <Route path="/admin/crm/leads" element={<CrmLeadsPage />} />
         <Route path="/admin/crm/support" element={<SupportDashboard />} />
         <Route

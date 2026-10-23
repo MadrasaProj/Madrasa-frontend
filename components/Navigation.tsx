@@ -39,6 +39,10 @@ import {
   MapPin,
   Receipt,
   Download,
+  Briefcase,
+  Target,
+  LifeBuoy,
+  RefreshCw,
 } from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import PwaInstallButton from "@/components/PwaInstallButton";
@@ -90,7 +94,18 @@ type NavKey =
   | "settings"
   | "bestPerformance"
   | "feeTypes"
-  | "globalClassSubjects";
+  | "globalClassSubjects"
+  | "leads"
+  | "commissions"
+  | "support"
+  | "renewals"
+  | "districts"
+  | "expenses"
+  | "crmOperations"
+  | "crmSales"
+  | "contentMedia"
+  | "coreManagement"
+  | "ibadahConfig";
 
 const adminLinks = [
   { href: "/admin", icon: LayoutDashboard, key: "dashboard" as NavKey },
@@ -242,17 +257,14 @@ const committeeLinks = [
   { href: "/committee/profile", icon: UserCircle2, key: "profile" as NavKey },
 ];
 
-const superAdminLinks = [
-  { href: "/admin", icon: LayoutDashboard, key: "dashboard" as NavKey },
+const superAdminLinks: NavLink[] = [
+  { href: "/admin", icon: LayoutDashboard, key: "dashboard" as NavKey, exact: true },
   { href: "/admin/madrasas", icon: Building2, key: "madrasas" as NavKey },
   {
     href: "/admin/super-users",
     icon: ShieldCheck,
     key: "superUsers" as NavKey,
   },
-  { href: "/admin/ibadah-config", icon: Moon, key: "ibadah" as NavKey },
-  { href: "/admin/social-frames", icon: Image, key: "socialFrames" as NavKey },
-  { href: "/admin/posters", icon: FileText, key: "posters" as NavKey },
   {
     href: "/admin/global-class-subjects",
     icon: BookOpen,
@@ -263,8 +275,69 @@ const superAdminLinks = [
     icon: BarChart3,
     key: "platformReports" as NavKey,
   },
+  { href: "/admin/crm/operations", icon: Briefcase, key: "crmOperations" as NavKey },
+  { href: "/admin/crm/leads", icon: Target, key: "leads" as NavKey },
+  { href: "/admin/crm/support", icon: LifeBuoy, key: "support" as NavKey },
+  { href: "/admin/crm/commissions", icon: IndianRupee, key: "commissions" as NavKey },
+  { href: "/admin/crm/renewals", icon: RefreshCw, key: "renewals" as NavKey },
+  { href: "/admin/crm/districts", icon: MapPin, key: "districts" as NavKey },
+  { href: "/admin/crm/expenses", icon: Receipt, key: "expenses" as NavKey },
+  { href: "/admin/ibadah-config", icon: Moon, key: "ibadahConfig" as NavKey },
+  { href: "/admin/social-frames", icon: Image, key: "socialFrames" as NavKey },
+  { href: "/admin/posters", icon: FileText, key: "posters" as NavKey },
   { href: "/admin/profile", icon: UserCircle2, key: "profile" as NavKey },
 ];
+
+const getSuperAdminCategories = (role: string, actorType?: string) => {
+  const artsfestLink = getArtsfestLink(role, actorType);
+  return [
+    {
+      id: "coreManagement",
+      titleKey: "coreManagement" as NavKey,
+      icon: LayoutDashboard,
+      links: [
+        { href: "/admin", icon: LayoutDashboard, key: "dashboard" as NavKey, exact: true },
+        { href: "/admin/madrasas", icon: Building2, key: "madrasas" as NavKey },
+        { href: "/admin/super-users", icon: ShieldCheck, key: "superUsers" as NavKey },
+        { href: "/admin/global-class-subjects", icon: BookOpen, key: "globalClassSubjects" as NavKey },
+        { href: "/admin/platform-reports", icon: BarChart3, key: "platformReports" as NavKey },
+      ],
+    },
+    {
+      id: "crmSales",
+      titleKey: "crmSales" as NavKey,
+      icon: Target,
+      links: [
+        { href: "/admin/crm/operations", icon: Briefcase, key: "crmOperations" as NavKey },
+        { href: "/admin/crm/leads", icon: Target, key: "leads" as NavKey },
+        { href: "/admin/crm/support", icon: LifeBuoy, key: "support" as NavKey },
+        { href: "/admin/crm/commissions", icon: IndianRupee, key: "commissions" as NavKey },
+        { href: "/admin/crm/renewals", icon: RefreshCw, key: "renewals" as NavKey },
+        { href: "/admin/crm/districts", icon: MapPin, key: "districts" as NavKey },
+        { href: "/admin/crm/expenses", icon: Receipt, key: "expenses" as NavKey },
+      ],
+    },
+    {
+      id: "contentMedia",
+      titleKey: "contentMedia" as NavKey,
+      icon: Image,
+      links: [
+        { href: "/admin/ibadah-config", icon: Moon, key: "ibadahConfig" as NavKey },
+        { href: "/admin/social-frames", icon: Image, key: "socialFrames" as NavKey },
+        { href: "/admin/posters", icon: FileText, key: "posters" as NavKey },
+        artsfestLink,
+      ],
+    },
+    {
+      id: "settings",
+      titleKey: "settings" as NavKey,
+      icon: Settings,
+      links: [
+        { href: "/admin/profile", icon: UserCircle2, key: "profile" as NavKey },
+      ],
+    },
+  ];
+};
 
 interface NavLink {
   href: string;
@@ -554,26 +627,34 @@ export function Sidebar({
 
   const isSuperAdmin = user.actorType === "SUPER_ADMIN";
   const hasActiveClient = !!activeClientId;
-  const isAdminView =
+  const isSuperAdminPortal = isSuperAdmin && !hasActiveClient;
+  const isClientAdminView =
     (user.role === "admin" && !isSuperAdmin) ||
     (isSuperAdmin && hasActiveClient);
 
-  const adminCats = isAdminView
-    ? getAdminCategories(user.role, user.actorType)
-    : [];
+  const isCategorizedView = isClientAdminView || isSuperAdminPortal;
+
+  const categories = isSuperAdminPortal
+    ? getSuperAdminCategories(user.role, user.actorType)
+    : isClientAdminView
+      ? getAdminCategories(user.role, user.actorType)
+      : [];
 
   const [expandedCategories, setExpandedCategories] = useState<
     Record<string, boolean>
   >(() => {
-    if (!isAdminView) return {};
+    if (!isCategorizedView) return {};
     const initial: Record<string, boolean> = {
       overview: true,
       academics: false,
       operations: false,
       finance: false,
       settings: false,
+      coreManagement: true,
+      crmSales: true,
+      contentMedia: false,
     };
-    adminCats.forEach((cat) => {
+    categories.forEach((cat) => {
       const hasActive = cat.links.some((l) => {
         const fullHref = l.isExternal
           ? l.href
@@ -599,8 +680,8 @@ export function Sidebar({
   });
 
   useEffect(() => {
-    if (!isAdminView) return;
-    adminCats.forEach((cat) => {
+    if (!isCategorizedView) return;
+    categories.forEach((cat) => {
       const hasActive = cat.links.some((l) => {
         const fullHref = l.isExternal
           ? l.href
@@ -625,7 +706,7 @@ export function Sidebar({
         });
       }
     });
-  }, [pathname, isAdminView, slugPrefix]);
+  }, [pathname, isCategorizedView, slugPrefix]);
 
   const toggleCategory = (id: string) => {
     setExpandedCategories((prev) => {
@@ -801,10 +882,10 @@ export function Sidebar({
         </div>
 
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto min-h-0 scrollbar-thin">
-          {isAdminView ? (
-            // Categorized Navigation for Admin User
+          {isCategorizedView ? (
+            // Categorized Navigation with Smart Submenu System
             <div className="space-y-4">
-              {adminCats.map((cat) => {
+              {categories.map((cat) => {
                 const isExpanded = expandedCategories[cat.id];
                 const CatIcon = cat.icon;
                 const hasActiveLink = cat.links.some((l) => {

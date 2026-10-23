@@ -276,6 +276,11 @@ const translations = {
     support: { en: "Support Desk", ml: "സപ്പോർട്ട് ഡെസ്ക്" },
     renewals: { en: "Renewals", ml: "റിന്യൂവലുകൾ" },
     districts: { en: "Districts Catalog", ml: "ജില്ലകൾ" },
+    crmSales: { en: "CRM & Growth", ml: "സിആർഎം & ഗ്രോത്ത്" },
+    crmOperations: { en: "Operations Hub", ml: "ഓപ്പറേഷൻസ് ഹബ്ബ്" },
+    contentMedia: { en: "Content & Media", ml: "കണ്ടന്റ് & മീഡിയ" },
+    coreManagement: { en: "Core Management", ml: "പ്രധാന മാനേജ്‌മെന്റ്" },
+    ibadahConfig: { en: "Ibadah Setup", ml: "ഇബാദത്ത് ക്രമീകരണം" },
   },
 
   // ── Admin Dashboard ───────────────────────────────────────────────────────
