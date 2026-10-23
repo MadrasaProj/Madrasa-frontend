@@ -1469,7 +1469,14 @@ const translations = {
     completedStudents: { en: "Completed", ml: "പൂർത്തിയാക്കി" },
     pendingIbadahStudents: { en: "Pending", ml: "ബാക്കിയുള്ളവർ" },
     attendanceSnapshot: { en: "Attendance snapshot", ml: "ഹാജർ സംഗ്രഹം" },
+    overallAttendance: { en: "Overall attendance", ml: "മൊത്തത്തിലുള്ള ഹാജർ" },
     recordedAttendance: { en: "Recorded attendance for your class", ml: "നിങ്ങളുടെ ക്ലാസിലെ രേഖപ്പെടുത്തിയ ഹാജർ" },
+    totalRecords: { en: "Total records", ml: "മൊത്തം രേഖകൾ" },
+    todayAttendance: { en: "Today's attendance", ml: "ഇന്നത്തെ ഹാജർ" },
+    markedStudents: { en: "Students marked", ml: "ഹാജർ രേഖപ്പെടുത്തിയ വിദ്യാർത്ഥികൾ" },
+    takeAttendancePrompt: { en: "Ready for roll call?", ml: "ഹാജർ എടുക്കാൻ തയ്യാറാണോ?" },
+    takeAttendanceInstruction: { en: "Mark your class attendance for today.", ml: "ഇന്നത്തെ ക്ലാസ് ഹാജർ രേഖപ്പെടുത്തുക." },
+    reviewAttendance: { en: "Review today's attendance", ml: "ഇന്നത്തെ ഹാജർ പരിശോധിക്കുക" },
     otherAttendance: { en: "Other", ml: "മറ്റുള്ളവ" },
     homeworkDue: { en: "Homework due", ml: "ഹോംവർക്ക് അവസാന തീയതി" },
     nextSevenDays: { en: "Next 7 days", ml: "അടുത്ത 7 ദിവസങ്ങൾ" },
@@ -1500,7 +1507,7 @@ const translations = {
 
     // Dashboard action cards
     markAttendanceBtn: { en: "Mark Attendance", ml: "ഹാജർ രേഖപ്പെടുത്തുക" },
-    markAttendanceDesc: { en: "Take today's roll call", ml: "ഇന്നത്തെ ഹാജർ എടുക്കുക" },
+    markAttendanceDesc: { en: "Take Attendance", ml: "ഇന്നത്തെ ഹാജർ എടുക്കുക" },
     presentActionDesc: { en: "Today's present students", ml: "ഇന്ന് ഹാജരായ വിദ്യാർത്ഥികൾ" },
     absentActionDesc: { en: "Today's absent list", ml: "ഇന്ന് ഹാജരാകാത്തവരുടെ പട്ടിക" },
     hwOverviewAction: { en: "HW Overview", ml: "HW അവലോകനം" },

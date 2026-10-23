@@ -4,11 +4,20 @@ import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight } from "lucide-react";
+import {
+  CalendarCheck2,
+  ChevronRight,
+  UserCheck,
+  UserX,
+  UsersRound,
+} from "lucide-react";
 import { Icon } from "@iconify/react";
 import { useQuery } from "@tanstack/react-query";
 import { getClassIbadah } from "@/lib/ibadah-api";
-import { useStudentsList } from "@/lib/queries";
+import { getClassAttendance } from "@/lib/attendance-api";
+import { useAttendanceSummary, useStudentsList } from "@/lib/queries";
+import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
+import { PolarRadiusAxis, RadialBar, RadialBarChart } from "recharts";
 import { useActiveClass } from "@/store/activeClass";
 import { lazy, Suspense, useState } from "react";
 import {
@@ -19,8 +28,12 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const TeacherIbadahPage = lazy(() => import("@/app/teacher/ibadah/page"));
+const attendanceChartConfig = {
+  rate: { label: "Attendance rate", color: "var(--primary)" },
+} satisfies ChartConfig;
 
 export default function TeacherDashboard() {
   const { user, accessToken } = useAuthStore();
@@ -32,6 +45,8 @@ export default function TeacherDashboard() {
   const token = accessToken ?? "";
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
+  const today = new Date();
+  const todayDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
   const date = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
   const dateLabel = yesterday.toLocaleDateString(
     lang === "ml" ? "ml-IN" : "en-IN",
@@ -53,7 +68,54 @@ export default function TeacherDashboard() {
       getClassIbadah(clientId, token, { classId: activeClassId, date }),
     enabled: !!clientId && !!token && !!activeClassId,
   });
+  const attendance = useQuery({
+    queryKey: [
+      "attendance",
+      "class",
+      clientId,
+      activeClassId,
+      todayDate,
+      user?.defaultAcademicYearId,
+    ],
+    queryFn: () =>
+      getClassAttendance(clientId, token, {
+        classId: activeClassId,
+        date: todayDate,
+        ...(user?.defaultAcademicYearId
+          ? { academicYearId: user.defaultAcademicYearId }
+          : {}),
+        take: 500,
+      }),
+    enabled: !!clientId && !!token && !!activeClassId,
+  });
+  const overallAttendance = useAttendanceSummary(
+    { clientId, token },
+    undefined,
+    { refetchOnMount: "always" },
+  );
   const total = students.data?.total ?? 0;
+  const attendanceRecords = attendance.data?.records ?? [];
+  const presentCount = attendanceRecords.filter(
+    (record) => record.status === "PRESENT",
+  ).length;
+  const absentCount = attendanceRecords.filter(
+    (record) => record.status === "ABSENT",
+  ).length;
+  const markedCount = attendance.data?.total ?? 0;
+  const unmarkedCount = Math.max(0, total - markedCount);
+  const attendancePercent =
+    total > 0 ? Math.min(100, Math.round((markedCount / total) * 100)) : 0;
+  const attendanceTaken = markedCount > 0;
+  const overall = overallAttendance.data;
+  const overallPresent = overall?.present ?? 0;
+  const overallAbsent =
+    overall?.byStatus.find((entry) => entry.status === "ABSENT")?._count.id ??
+    0;
+  const overallRate = Math.max(0, Math.min(100, overall?.rate ?? 0));
+  const loadingAttendance =
+    loadingClass ||
+    (!!activeClassId && (students.isLoading || attendance.isLoading));
+  const attendanceError = students.isError || attendance.isError;
   const completed = Math.min(
     total,
     new Set(ibadah.data?.logs.map((log) => log.studentId) ?? []).size,
@@ -61,7 +123,7 @@ export default function TeacherDashboard() {
   const remaining = Math.max(0, total - completed);
   const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
   const color = `hsl(${percent * 1.2} 75% 60%)`;
-  const tint = `hsl(${percent * 1.2} 75% 60% / 0.05)`;
+  const tint = `hsl(${percent * 1.2} 75% 60% / 0.005)`;
   const loadingIbadah =
     loadingClass ||
     (!!activeClassId && (students.isLoading || ibadah.isLoading));
@@ -74,10 +136,6 @@ export default function TeacherDashboard() {
     .toUpperCase();
 
   const actions = [
-    {
-      title: t("teacherPages", "markAttendanceBtn", lang),
-      href: "/teacher/attendance",
-    },
     { title: t("common", "present", lang), href: "/teacher/present" },
     { title: t("common", "absent", lang), href: "/teacher/absent" },
     { title: t("nav", "homework", lang), href: "/teacher/homework" },
@@ -112,7 +170,11 @@ export default function TeacherDashboard() {
           </Avatar>
         </header>
 
-        <section className="mb-7">
+
+
+
+
+<section className="mb-7">
           <button
             type="button"
             onClick={() => setIbadahDrawerOpen(true)}
@@ -177,7 +239,10 @@ export default function TeacherDashboard() {
                         value: remaining,
                       },
                     ].map((stat) => (
-                      <span key={stat.label} className="min-w-0 not-last:border-r-1 border-gray-200 text-center justify-center">
+                      <span
+                        key={stat.label}
+                        className="min-w-0 not-last:border-r-1 border-gray-200 text-center justify-center"
+                      >
                         <span className="mt-1 block text-3xl font-semibold tabular-nums text-gray-900">
                           {stat.value}
                         </span>
@@ -196,6 +261,211 @@ export default function TeacherDashboard() {
             )}
           </button>
         </section>
+        <section
+          aria-labelledby="attendance-overview-title"
+          className="mb-7 overflow-hidden  card p-6 rounded-2xl "
+        >
+          <div className="">
+            <h2
+              id="attendance-overview-title"
+              className="text-base font-semibold text-gray-900"
+            >
+              {t("teacherPages", "overallAttendance", lang)}
+            </h2>
+            
+            {overallAttendance.isLoading ? (
+              <div className="pt-5 text-sm text-gray-500">
+                {t("common", "loading", lang)}
+              </div>
+            ) : overallAttendance.isError ? (
+              <div className="pt-5 text-sm text-gray-500">
+                {t("teacherPages", "chartUnavailable", lang)}
+              </div>
+            ) : (
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {[
+                  {
+                    label: t("common", "present", lang),
+                    value: overallPresent,
+                    icon: UserCheck,
+                    surface: "bg-violet-50",
+                    iconSurface: "bg-violet-200 text-violet-700",
+                  },
+                  {
+                    label: t("common", "absent", lang),
+                    value: overallAbsent,
+                    icon: UserX,
+                    surface: "bg-amber-50",
+                    iconSurface: "bg-amber-200 text-amber-800",
+                  },
+                ].map((stat) => (
+                  <div
+                    key={stat.label}
+                    className={`flex min-h-18 items-center justify-between gap-1 rounded-xl p-3 ${stat.surface}`}
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs text-gray-700">{stat.label}</p>
+                      <strong className="block text-xl font-semibold tabular-nums text-gray-950">
+                        {stat.value}
+                      </strong>
+                    </div>
+                    <span
+                      className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${stat.iconSurface}`}
+                    >
+                      <stat.icon aria-hidden="true" className="size-5" />
+                    </span>
+                  </div>
+                ))}
+                <div className="flex min-h-18 items-center justify-between gap-1 rounded-xl bg-emerald-50 p-3">
+                  <div className="min-w-0">
+                    <p className="text-xs leading-tight text-gray-700">
+                      {t("teacherPages", "attendanceRateLabel", lang)}
+                    </p>
+                    <strong className="block text-xl font-semibold tabular-nums text-gray-950">
+                      {overallRate}%
+                    </strong>
+                  </div>
+                  <div className="size-11 shrink-0">
+                    <ChartContainer
+                      config={attendanceChartConfig}
+                      className="size-full"
+                      role="img"
+                      aria-label={t(
+                        "teacherPages",
+                        "attendanceRateLabel",
+                        lang,
+                      )}
+                    >
+                      <RadialBarChart
+                        data={[{ rate: overallRate, fill: "var(--primary)" }]}
+                        startAngle={90}
+                        endAngle={-270}
+                        innerRadius="72%"
+                        outerRadius="100%"
+                      >
+                        <PolarRadiusAxis
+                          type="number"
+                          domain={[0, 100]}
+                          tick={false}
+                          axisLine={false}
+                        />
+                        <RadialBar dataKey="rate" background cornerRadius={8} />
+                      </RadialBarChart>
+                    </ChartContainer>
+                  </div>
+                </div>
+                <div className="flex min-h-18 items-center justify-between gap-1 rounded-xl bg-green-50 p-3">
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-700">
+                      {t("teacherPages", "totalRecords", lang)}
+                    </p>
+                    <strong className="block text-xl font-semibold tabular-nums text-gray-950">
+                      {overall?.total ?? 0}
+                    </strong>
+                  </div>
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-green-200 text-green-700">
+                    <UsersRound aria-hidden="true" className="size-5" />
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="border-t border-gray-100 ">
+            {!activeClassId && !loadingClass ? (
+              <p className="mt-2 text-sm text-gray-500">
+                {t("teacherPages", "noClassesFound", lang)}
+              </p>
+            ) : loadingAttendance ? (
+              <p className="mt-2 text-sm text-gray-500">
+                {t("common", "loading", lang)}
+              </p>
+            ) : attendanceError ? (
+              <p className="mt-2 text-sm text-gray-500">
+                {t("teacherPages", "chartUnavailable", lang)}
+              </p>
+            ) : attendanceTaken ? (
+              <>
+                <div className="mt-3 flex items-end justify-between">
+                  <div>
+                    <p className="text-xs text-gray-600">
+                      {t("teacherPages", "markedStudents", lang)}
+                    </p>
+                    <p className="text-xl font-semibold tabular-nums text-gray-950">
+                      {markedCount}/{total}
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold tabular-nums text-primary-700">
+                    {attendancePercent}%
+                  </span>
+                </div>
+                <div
+                  role="progressbar"
+                  aria-label={t("teacherPages", "markedStudents", lang)}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={attendancePercent}
+                  className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-100"
+                >
+                  <div
+                    className="h-full rounded-full bg-primary-600"
+                    style={{ width: `${attendancePercent}%` }}
+                  />
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  {[
+                    {
+                      label: t("common", "present", lang),
+                      value: presentCount,
+                    },
+                    { label: t("common", "absent", lang), value: absentCount },
+                    {
+                      label: t("teacherPages", "unmarkedLabel", lang),
+                      value: unmarkedCount,
+                    },
+                  ].map((stat) => (
+                    <div
+                      key={stat.label}
+                      className="rounded-lg bg-gray-50 px-2 py-1.5 text-center"
+                    >
+                      <p className="text-base font-semibold tabular-nums text-gray-900">
+                        {stat.value}
+                      </p>
+                      <p className="text-xs text-gray-600">{stat.label}</p>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="relative mt-3 min-h-38 card overflow-hidden rounded-xl bg-cyan-50">
+                <img
+                  src="/imgs/attendance/roll-call-banner.png"
+                  alt=""
+                  className="absolute inset-0 size-full object-cover object-center"
+                />
+                <div className="relative  z-10 flex min-h-38 max-w-[65%] flex-col justify-center p-5">
+                  
+                  <p className="mt-1 text-lg text-gray-700 font-bold">
+                    {t("teacherPages", "takeAttendanceInstruction", lang)}
+                  </p>
+                  <div className=" mt-3 ">
+                    <Button
+                       onClick={() => navigate("/teacher/attendance")}
+                      className=""
+                      size={"lg"}
+                    >
+                      {attendanceTaken
+                        ? t("teacherPages", "reviewAttendance", lang)
+                        : t("teacherPages", "markAttendanceDesc", lang)}
+                      <ChevronRight aria-hidden="true" className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        
 
         <Drawer open={ibadahDrawerOpen} onOpenChange={setIbadahDrawerOpen}>
           <DrawerContent className="h-[90dvh] max-h-[90dvh] bg-white">
