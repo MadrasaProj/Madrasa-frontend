@@ -360,16 +360,16 @@ export default function TeacherDashboard() {
         </section>
         <section
           aria-labelledby="attendance-overview-title"
-          className="mb-7 overflow-hidden  card p-5 rounded-2xl "
+          className="mb-7 overflow-hidden  card p-0 rounded-2xl "
         >
           <h2
             id="attendance-overview-title"
-            className="  block text-xl font-bold tabular-nums text-gray-950"
+            className="  block text-xl p-4 pb-0 font-bold tabular-nums text-gray-950"
           >
             {t("teacherPages", "overallAttendance", lang)}
           </h2>
-          <div className="overflow-hidden rounded-2xl mt-3">
-            <div className="rounded-2xl overflow-hidden">
+          <div className="  mt-3">
+            <div className=" overflow-hidden ">
               {overallAttendance.isLoading ? (
                 <div className="pt-5 text-sm text-gray-500">
                   {t("common", "loading", lang)}
@@ -540,7 +540,7 @@ export default function TeacherDashboard() {
                 </div>
               </>
             ) : (
-              <div className="relative mt-3 min-h-38 card overflow-hidden rounded-xl bg-cyan-50">
+              <div className="relative mt-1 min-h-38 card overflow-hidden rounded-b-2xl bg-cyan-50">
                 <img
                   src="/imgs/attendance/roll-call-banner.png"
                   alt=""
