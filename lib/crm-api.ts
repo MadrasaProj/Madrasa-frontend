@@ -91,11 +91,12 @@ export function getDailyOperations(token: string) {
 
 export interface LeadContact {
   id?: string;
-  name: string;
-  phone: string;
+  name?: string;
+  phone?: string;
+  secondaryPhone?: string;
   whatsapp?: string;
   email?: string;
-  role: string;
+  role?: string;
   isPrimary?: boolean;
 }
 
@@ -214,6 +215,35 @@ export function createLead(dto: Partial<LeadListItem>, token: string) {
 
 export function updateLead(id: string, dto: Partial<LeadListItem>, token: string) {
   return mutateJson<LeadListItem>("PATCH", `/crm/leads/${id}`, dto, token);
+}
+
+export interface BulkImportLeadItem {
+  name?: string;
+  type?: string;
+  district: string;
+  place?: string;
+  address?: string;
+  contactName?: string;
+  contactPhone?: string;
+  secondaryPhone?: string;
+  contactRole?: string;
+  contactEmail?: string;
+  contactWhatsapp?: string;
+  status?: string;
+  source?: string;
+  studentCount?: number;
+  teacherCount?: number;
+  commissionPercentage?: number;
+}
+
+export function bulkImportLeads(
+  leads: BulkImportLeadItem[],
+  token: string,
+) {
+  return mutateJson<{
+    imported: Array<{ rowIndex: number; action: "created" | "updated" }>;
+    failed: Array<{ rowIndex: number; message: string }>;
+  }>("POST", "/crm/leads/bulk-import", { leads }, token);
 }
 
 export function deleteLead(id: string, token: string) {
