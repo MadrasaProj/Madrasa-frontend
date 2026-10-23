@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useLanguageStore } from "@/store/language";
 import { useAuthStore } from "@/store/auth";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   getBestPerformers,
@@ -12,7 +12,7 @@ import {
   type OverallBestPerformer,
   type OverallBestPerformanceResponse,
 } from "@/lib/best-performance-api";
-import { getMyClasses } from "@/lib/classes-api";
+import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
 import {
   Trophy,
   Star,
@@ -44,7 +44,7 @@ export default function BestPerformancePage() {
   const classIdParam = searchParams.get("classId");
 
   const { lang } = useLanguageStore();
-  const { user, accessToken } = useAuthStore();
+  const { user, accessToken, activeClientId } = useAuthStore();
   const [rankingCategory, setRankingCategory] = useState<"total" | "ibadah">(
     categoryParam === "ibadah" ? "ibadah" : "total"
   );
@@ -59,26 +59,38 @@ export default function BestPerformancePage() {
   const [periodType, setPeriodType] = useState<"week" | "month">(
     periodParam === "week" ? "week" : "month"
   );
-  const [classRankings, setClassRankings] = useState<{
-    classId: string;
-    className: string;
-    isClassTeacher?: boolean;
-    performers: BestPerformer[];
-  }[]>([]);
-  const [overallClassRankings, setOverallClassRankings] = useState<{
-    classId: string;
-    className: string;
-    isClassTeacher?: boolean;
-    performers: OverallBestPerformer[];
-  }[]>([]);
+  const [availableClasses, setAvailableClasses] = useState<ClassRecord[]>([]);
+  const [classRankingsMap, setClassRankingsMap] = useState<Record<string, BestPerformer[]>>({});
+  const [overallClassRankingsMap, setOverallClassRankingsMap] = useState<Record<string, OverallBestPerformer[]>>({});
+  const [classLoading, setClassLoading] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(classIdParam);
   const [classSearch, setClassSearch] = useState<Record<string, string>>({});
   const [showAllPerClass, setShowAllPerClass] = useState<Record<string, boolean>>({});
 
   const printRef = useRef<HTMLDivElement>(null);
 
-  const cid = user?.clientId ?? "";
+  const cid = activeClientId || user?.clientId || "";
   const token = accessToken ?? "";
+
+  const classRankings = useMemo(() => {
+    return availableClasses.map((cls) => ({
+      classId: cls.id,
+      className: cls.name,
+      isClassTeacher: cls.classTeacherId === user?.id,
+      studentCount: cls.studentCount,
+      performers: classRankingsMap[cls.id] ?? [],
+    }));
+  }, [availableClasses, classRankingsMap, user?.id]);
+
+  const overallClassRankings = useMemo(() => {
+    return availableClasses.map((cls) => ({
+      classId: cls.id,
+      className: cls.name,
+      isClassTeacher: cls.classTeacherId === user?.id,
+      studentCount: cls.studentCount,
+      performers: overallClassRankingsMap[cls.id] ?? [],
+    }));
+  }, [availableClasses, overallClassRankingsMap, user?.id]);
 
   const roleLabel = lang === "ml"
     ? ({ admin: "അഡ്മിൻ", teacher: "അധ്യാപകൻ", parent: "രക്ഷിതാവ്", committee: "കമ്മിറ്റി" } as const)[user?.role as string] ?? "കമ്മിറ്റി"
@@ -107,15 +119,6 @@ export default function BestPerformancePage() {
     }, { replace: true });
   };
 
-  const handleSelectClass = (clsId: string) => {
-    setSelectedClassId(clsId);
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      next.set("classId", clsId);
-      return next;
-    }, { replace: true });
-  };
-
   const getPeriodDates = (type: "week" | "month") => {
     const now = new Date();
     const fmt = (d: Date) => {
@@ -134,11 +137,48 @@ export default function BestPerformancePage() {
     return { from: fmt(start), to: endStr };
   };
 
+  const fetchClassRankingData = useCallback(
+    async (clsId: string, currentCid: string, currentToken: string, currentPeriodType: "week" | "month") => {
+      if (!clsId || !currentCid || !currentToken) return;
+      const dates = getPeriodDates(currentPeriodType);
+      setClassLoading(true);
+      try {
+        const [ibadahRes, overallRes] = await Promise.all([
+          getBestPerformers(currentCid, currentToken, { ...dates, classId: clsId, limit: 500 }).catch(() => ({ performers: [] })),
+          getOverallBestStudents(currentCid, currentToken, { ...dates, classId: clsId, limit: 500 }).catch(() => ({ performers: [] })),
+        ]);
+        setClassRankingsMap((prev) => ({ ...prev, [clsId]: ibadahRes.performers }));
+        setOverallClassRankingsMap((prev) => ({ ...prev, [clsId]: overallRes.performers }));
+      } finally {
+        setClassLoading(false);
+      }
+    },
+    []
+  );
+
+  const handleSelectClass = (clsId: string) => {
+    setSelectedClassId(clsId);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("classId", clsId);
+      return next;
+    }, { replace: true });
+
+    if (!classRankingsMap[clsId] || !overallClassRankingsMap[clsId]) {
+      fetchClassRankingData(clsId, cid, token, periodType);
+    }
+  };
+
   useEffect(() => {
-    if (!cid || !token) return;
+    if (!cid || !token) {
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setClassRankingsMap({});
+    setOverallClassRankingsMap({});
 
     const dates = getPeriodDates(periodType);
 
@@ -165,7 +205,7 @@ export default function BestPerformancePage() {
       })
       .catch(() => {});
 
-    // 3. For Teachers & Admins, fetch both class-wise Ibadah & Overall rankings
+    // 3. For Teachers & Admins, fetch available classes and ranking for active class
     const p3 = canViewClassRankings
       ? getMyClasses(cid, token)
           .then(async (allClasses) => {
@@ -174,41 +214,32 @@ export default function BestPerformancePage() {
             const targetClasses = isTeacher
               ? (myClassTeacherClasses.length > 0 ? myClassTeacherClasses : allClasses)
               : allClasses;
-            
-            const [rankings, oRankings] = await Promise.all([
-              Promise.all(
-                targetClasses.map(async (cls) => ({
-                  classId: cls.id,
-                  className: cls.name,
-                  isClassTeacher: cls.classTeacherId === user?.id,
-                  performers: (await getBestPerformers(cid, token, { ...dates, classId: cls.id, limit: 500 })).performers,
-                }))
-              ),
-              Promise.all(
-                targetClasses.map(async (cls) => ({
-                  classId: cls.id,
-                  className: cls.name,
-                  isClassTeacher: cls.classTeacherId === user?.id,
-                  performers: (await getOverallBestStudents(cid, token, { ...dates, classId: cls.id, limit: 500 })).performers,
-                }))
-              ),
-            ]);
 
-            if (!cancelled) {
-              setClassRankings(rankings);
-              setOverallClassRankings(oRankings);
-              if (targetClasses.length > 0) {
-                const defaultCls = classIdParam && targetClasses.some((c) => c.id === classIdParam)
+            setAvailableClasses(targetClasses);
+
+            if (targetClasses.length > 0) {
+              const defaultCls = (selectedClassId && targetClasses.some((c) => c.id === selectedClassId))
+                ? selectedClassId
+                : (classIdParam && targetClasses.some((c) => c.id === classIdParam)
                   ? classIdParam
-                  : targetClasses[0].id;
-                setSelectedClassId((prev) => prev ?? defaultCls);
+                  : targetClasses[0].id);
+
+              setSelectedClassId(defaultCls);
+
+              const [ibadahRes, overallRes] = await Promise.all([
+                getBestPerformers(cid, token, { ...dates, classId: defaultCls, limit: 500 }).catch(() => ({ performers: [] })),
+                getOverallBestStudents(cid, token, { ...dates, classId: defaultCls, limit: 500 }).catch(() => ({ performers: [] })),
+              ]);
+
+              if (!cancelled) {
+                setClassRankingsMap({ [defaultCls]: ibadahRes.performers });
+                setOverallClassRankingsMap({ [defaultCls]: overallRes.performers });
               }
             }
           })
           .catch(() => {
             if (!cancelled) {
-              setClassRankings([]);
-              setOverallClassRankings([]);
+              setAvailableClasses([]);
             }
           })
       : Promise.resolve();
@@ -880,23 +911,26 @@ export default function BestPerformancePage() {
                 </div>
 
                 {/* Class tabs if teacher has multiple classes */}
-                {((rankingCategory === "total" ? overallClassRankings : classRankings).length > 1) && (
+                {availableClasses.length > 1 && (
                   <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
-                    {(rankingCategory === "total" ? overallClassRankings : classRankings).map((c) => (
-                      <button
-                        key={c.classId}
-                        type="button"
-                        onClick={() => handleSelectClass(c.classId)}
-                        className={cn(
-                          "px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap border shrink-0 cursor-pointer",
-                          selectedClassId === c.classId
-                            ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
-                            : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50",
-                        )}
-                      >
-                        {c.className} ({c.performers.length})
-                      </button>
-                    ))}
+                    {availableClasses.map((c) => {
+                      const count = (rankingCategory === "total" ? overallClassRankingsMap[c.id] : classRankingsMap[c.id])?.length;
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => handleSelectClass(c.id)}
+                          className={cn(
+                            "px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap border shrink-0 cursor-pointer",
+                            selectedClassId === c.id
+                              ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                              : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50",
+                          )}
+                        >
+                          {c.name} {count !== undefined ? `(${count})` : (c.studentCount ? `(${c.studentCount})` : "")}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -959,7 +993,14 @@ export default function BestPerformancePage() {
                         </div>
 
                         {/* Students List */}
-                        {performers.length === 0 ? (
+                        {classLoading ? (
+                          <div className="py-12 flex flex-col items-center justify-center gap-2">
+                            <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
+                            <p className="text-xs text-gray-500 font-medium">
+                              {lang === "ml" ? "വിവരങ്ങൾ ശേഖരിക്കുന്നു..." : "Loading class rankings..."}
+                            </p>
+                          </div>
+                        ) : performers.length === 0 ? (
                           <div className="text-center py-10 text-gray-400 text-xs">
                             {lang === "ml" ? "ഈ ക്ലാസിൽ വിദ്യാർത്ഥികളില്ല" : "No students found in this class."}
                           </div>
@@ -1121,7 +1162,14 @@ export default function BestPerformancePage() {
                         </div>
 
                         {/* Students List */}
-                        {performers.length === 0 ? (
+                        {classLoading ? (
+                          <div className="py-12 flex flex-col items-center justify-center gap-2">
+                            <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
+                            <p className="text-xs text-gray-500 font-medium">
+                              {lang === "ml" ? "വിവരങ്ങൾ ശേഖരിക്കുന്നു..." : "Loading class rankings..."}
+                            </p>
+                          </div>
+                        ) : performers.length === 0 ? (
                           <div className="text-center py-10 text-gray-400 text-xs">
                             {lang === "ml" ? "ഈ ക്ലാസിൽ വിദ്യാർത്ഥികളില്ല" : "No students found in this class."}
                           </div>
