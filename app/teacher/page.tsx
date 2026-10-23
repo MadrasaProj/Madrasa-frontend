@@ -540,7 +540,7 @@ export default function TeacherDashboard() {
                 </div>
               </>
             ) : (
-              <div className="relative mt-1 min-h-38 card overflow-hidden rounded-b-2xl bg-cyan-50">
+              <div className="relative mt-[0.5px] min-h-38 card overflow-hidden rounded-b-2xl bg-cyan-50">
                 <img
                   src="/imgs/attendance/roll-call-banner.png"
                   alt=""
