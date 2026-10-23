@@ -254,7 +254,7 @@ export default function TeacherDashboard() {
   return (
     <DashboardLayout>
       <div className="">
-        <header className="mb-4 flex min-h-[104px] items-center justify-between gap-4 bg-[#f9f9fc] ">
+        <header className="mb-4 flex min-h-[104px] items-center justify-between gap-4   ">
           <div className="min-w-0">
             <p className="mb-1 text-lg font-medium leading-7 text-gray-700 sm:text-2xl">
               {t("common", "teacher", lang)}
