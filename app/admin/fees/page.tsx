@@ -999,6 +999,8 @@ export default function AdminFeesPage() {
           )}
 
           {/* Tabs */}
+          <div className="">
+
           <div className="flex gap-1.5 mb-4 bg-gray-100 p-1 rounded-xl w-fit">
             {(["records", "transactions", "reports"] as const).map((t) => (
               <button
@@ -1018,6 +1020,7 @@ export default function AdminFeesPage() {
                     : "Reports"}
               </button>
             ))}
+          </div>
           </div>
 
           {/* ── Records tab ── */}

@@ -456,7 +456,7 @@ export default function TeacherIbadahPage() {
     <DashboardLayout>
       <PageHeader title={t("teacherPages", "ibadahRecordsTitle", lang)} />
 
-      <div className="h-[76px]" />
+      <div className="h-[46px]" />
 
       {error && (
         <ApiErrorBanner
@@ -614,7 +614,7 @@ export default function TeacherIbadahPage() {
                       {t("teacherPages", "noIbadahSubmitted", lang)}
                     </div>
                   ) : (
-                    <>
+                    <div>
                       {/* Section tabs */}
                       {sections.length > 1 && (
                         <div className="flex gap-1.5 mb-4 bg-gray-100 p-1 rounded-xl w-fit">
@@ -832,7 +832,7 @@ export default function TeacherIbadahPage() {
                           ))}
                         </div>
                       )}
-                    </>
+                    </div>
                   )}
                 </>
               )}

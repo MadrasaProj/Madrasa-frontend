@@ -357,7 +357,7 @@ export default function AdminIbadahPage() {
               <Loader2 className="w-4 h-4 animate-spin" />
             </div>
           ) : (
-            <>
+            <div>
               {/* ── DAILY VIEW ── */}
               {viewMode === "daily" && (
                 rows.length === 0 ? (
@@ -623,7 +623,7 @@ export default function AdminIbadahPage() {
                   </div>
                 )
               )}
-            </>
+            </div>
           )}
         </>
       )}
