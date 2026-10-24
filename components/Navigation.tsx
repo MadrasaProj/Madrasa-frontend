@@ -99,7 +99,7 @@ function ProfileOptions({
             onClick={onSwitchSession}
           >
             <Users className="h-5 w-5 text-gray-500" />
-          {lang === "ml" ? "സെഷൻ മാറ്റുക" : "Switch session"}
+            {lang === "ml" ? "സെഷൻ മാറ്റുക" : "Switch session"}
           </Button>
         )}
         <Button
@@ -108,7 +108,9 @@ function ProfileOptions({
           className="justify-start gap-3 rounded-none border-0 border-b border-gray-100 px-3 last:border-b-0"
           onClick={onAddSession}
         >
-          <span className="flex h-5 w-5 items-center justify-center text-lg text-gray-500">+</span>
+          <span className="flex h-5 w-5 items-center justify-center text-lg text-gray-500">
+            +
+          </span>
           {lang === "ml" ? "സെഷൻ ചേർക്കുക" : "Add session"}
         </Button>
         <Button
@@ -792,7 +794,7 @@ export function Sidebar({
 
     return (
       <Link
-        key={l.href}  
+        key={l.href}
         to={fullHref}
         onClick={handleLinkClick}
         ref={active ? activeRef : undefined}
@@ -871,9 +873,7 @@ export function Sidebar({
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-sm  text-gray-900 truncate">
-                {user.name}
-              </p>
+              <p className="text-sm  text-gray-900 truncate">{user.name}</p>
               <p className="text-xs text-primary-700 capitalize">
                 {isSuperAdmin
                   ? "Super Admin"
@@ -968,7 +968,6 @@ export function Sidebar({
               onClick={() => {
                 logout();
               }}
-            
               size={"lg"}
               className=" w-full rounded-full"
             >
@@ -982,21 +981,25 @@ export function Sidebar({
   );
 }
 
+const switcherOrbClass =
+  "absolute -top-5 shadow-lg shadow-primary-700/10 left-1/2 flex size-12 -translate-x-1/2 items-center justify-center rounded-full border-[3px] border-white bg-linear-to-br from-primary-500 via-primary-600 to-primary-800 text-primary-foreground   ";
+
 export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const {
-    user,
-    activeClientId,
-    accessToken,
-    logout,
-    activeStudentId,
-  } = useAuthStore();
+  const { user, activeClientId, accessToken, logout, activeStudentId } =
+    useAuthStore();
   const { lang } = useLanguageStore();
   const [moreOpen, setMoreOpen] = useState(false);
   const [studentSwitcherOpen, setStudentSwitcherOpen] = useState(false);
   const [classSwitcherOpen, setClassSwitcherOpen] = useState(false);
-  const { classes: teacherClasses, activeClass, activeClassId, setActiveClassId, isLoading: classesLoading } = useActiveClass();
+  const {
+    classes: teacherClasses,
+    activeClass,
+    activeClassId,
+    setActiveClassId,
+    isLoading: classesLoading,
+  } = useActiveClass();
   const [profileOptionsOpen, setProfileOptionsOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [onboardingRole, setOnboardingRole] = useState<
@@ -1023,7 +1026,9 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
   const studentIds = isParent ? (user.accessibleStudentIds ?? []) : [];
   const students = isParent ? (user.accessibleStudents ?? []) : [];
   const currentStudentId = activeStudentId ?? studentIds[0] ?? null;
-  const currentStudent = students.find((student) => student.id === currentStudentId);
+  const currentStudent = students.find(
+    (student) => student.id === currentStudentId,
+  );
 
   let allLinks = getLinksByRole(user.role, user.actorType, hasActiveClient);
   allLinks = insertArtsfestLink(allLinks, user.role, user.actorType);
@@ -1065,7 +1070,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
       : slugPrefix
         ? `${slugPrefix}${l.href}`
         : l.href;
-        
+
     const active =
       !l.isExternal && isLinkActive(pathname, fullHref, slugPrefix);
     const Icon = l.icon;
@@ -1112,39 +1117,50 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
           {user.role === "teacher" && (
             <button
               type="button"
-              aria-label={lang === "ml" ? "ക്ലാസ് മാറ്റുക" : "Switch active class"}
+              aria-label={
+                lang === "ml" ? "ക്ലാസ് മാറ്റുക" : "Switch active class"
+              }
               aria-haspopup="dialog"
               onClick={() => setClassSwitcherOpen(true)}
-              className="flex w-16 shrink-0 flex-col items-center justify-center gap-1 p-2 text-primary-700 transition-all active:scale-95"
+              className="relative z-10 flex h-14 w-16 shrink-0 flex-col items-center justify-end pb-2 text-primary-700 transition-transform active:scale-95 focus-visible:rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
             >
-              <School className="size-5" />
-              <span className="max-w-16 truncate text-center text-[11px] leading-none">{activeClass?.name ?? "Class"}</span>
-            </button>
-          )}
-          
-          
-               {isParent && studentIds.length > 0 && (
-            <button
-              type="button"
-              aria-label={lang === "ml" ? "വിദ്യാർത്ഥിയെ തിരഞ്ഞെടുക്കുക" : "Switch student"}
-              aria-haspopup="dialog"
-              onClick={() => setStudentSwitcherOpen(true)}
-              className="flex w-16 shrink-0 flex-col items-center justify-center gap-1 p-2 text-gray-400 transition-all active:scale-95"
-            >
-              <Avatar size="sm">
-                <AvatarImage src={currentStudent?.photoUrl ?? undefined} />
-                <AvatarFallback className="bg-primary text-primary-foreground">
-                  {(currentStudent?.name ?? "Student").charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <span className="text-center text-[12px] leading-none">
-                  {(currentStudent?.name ?? "Student").substring(0, 5)}
+              <span className={switcherOrbClass}>
+                <School className="size-5" aria-hidden="true" />
+              </span>
+              <span className="max-w-16 truncate text-center text-[11px] font-medium leading-none">
+                {activeClass?.name ?? "Class"}
               </span>
             </button>
           )}
 
-          
-          
+          {isParent && studentIds.length > 0 && (
+            <button
+              type="button"
+              aria-label={
+                lang === "ml"
+                  ? "വിദ്യാർത്ഥിയെ തിരഞ്ഞെടുക്കുക"
+                  : "Switch student"
+              }
+              aria-haspopup="dialog"
+              onClick={() => setStudentSwitcherOpen(true)}
+              className="relative z-10 flex h-16 w-16 shrink-0 flex-col items-center justify-end pb-2 text-primary-700 transition-transform active:scale-95 focus-visible:rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+            >
+              <span className={switcherOrbClass}>
+                <Avatar size="sm">
+                  <AvatarImage src={currentStudent?.photoUrl ?? undefined} />
+                  <AvatarFallback className="bg-transparent text-white">
+                    {(currentStudent?.name ?? "Student")
+                      .charAt(0)
+                      .toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </span>
+              <span className="max-w-16 truncate text-center text-[11px] font-medium leading-none">
+                {(currentStudent?.name ?? "Student").substring(0, 5)}
+              </span>
+            </button>
+          )}
+
           {links.map((l) => {
             const fullHref = l.isExternal
               ? l.href
@@ -1191,11 +1207,14 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
                 <div
                   className={cn(
                     "flex items-center justify-center rounded-xl w-12 transition-all",
-                    active ? " ":"",
+                    active ? " " : "",
                   )}
                 >
                   <Icon
-                    className={cn("size-5 shrink-0 *:stroke-[1.5px]", active && " ")}
+                    className={cn(
+                      "size-5 shrink-0 *:stroke-[1.5px]",
+                      active && " ",
+                    )}
                   />
                 </div>
                 <span
@@ -1210,19 +1229,18 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
             );
           })}
 
-     
           {showMore && (
             <div
               onClick={() => setMoreOpen(true)}
-               className={cn(
-                    "flex flex-col w-12 items-center  justify-center gap-1 p-2 relative transition-all active:scale-95  text-gray-400",
-                   )}
+              className={cn(
+                "flex flex-col w-12 items-center  justify-center gap-1 p-2 relative transition-all active:scale-95  text-gray-400",
+              )}
             >
-                 <ChevronUp className="w-5 h-5 shrink-0 *:stroke-[1.5px]" />
+              <ChevronUp className="w-5 h-5 shrink-0 *:stroke-[1.5px]" />
               <span className="text-[11px]  leading-none">
                 {lang === "ml" ? "കൂടുതൽ" : "More"}
               </span>
-             </div>
+            </div>
           )}
 
           {isSuperAdmin && !hasActiveClient && !showMore && (
@@ -1235,26 +1253,49 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
               <div className="flex items-center justify-center rounded-xl w-10 h-7">
                 <LogOut className="w-5 h-5 shrink-0" />
               </div>
-              <span className="text-[12px]  leading-none">
-                Logout
-              </span>
+              <span className="text-[12px]  leading-none">Logout</span>
             </Button>
           )}
         </div>
       </nav>
       {user.role === "teacher" && (
-        <ResponsivePopover open={classSwitcherOpen} onOpenChange={setClassSwitcherOpen} side="bottom" title={lang === "ml" ? "സജീവ ക്ലാസ്" : "Active class"} contentClassName="p-4">
-          {classesLoading ? <p className="py-4 text-sm text-gray-500">{lang === "ml" ? "ക്ലാസുകൾ ലോഡ് ചെയ്യുന്നു…" : "Loading classes…"}</p> : teacherClasses.length === 0 ? (
-            <p className="py-4 text-sm text-gray-500">{lang === "ml" ? "ക്ലാസുകൾ നൽകിയിട്ടില്ല" : "No classes assigned"}</p>
+        <ResponsivePopover
+          open={classSwitcherOpen}
+          onOpenChange={setClassSwitcherOpen}
+          side="bottom"
+          title={lang === "ml" ? "സജീവ ക്ലാസ്" : "Active class"}
+          contentClassName="p-4"
+        >
+          {classesLoading ? (
+            <p className="py-4 text-sm text-gray-500">
+              {lang === "ml" ? "ക്ലാസുകൾ ലോഡ് ചെയ്യുന്നു…" : "Loading classes…"}
+            </p>
+          ) : teacherClasses.length === 0 ? (
+            <p className="py-4 text-sm text-gray-500">
+              {lang === "ml" ? "ക്ലാസുകൾ നൽകിയിട്ടില്ല" : "No classes assigned"}
+            </p>
           ) : (
             <div className="divide-y divide-gray-100">
               {teacherClasses.map((cls) => (
-                <button key={cls.id} type="button" aria-pressed={activeClassId === cls.id}
-                  onClick={() => { setActiveClassId(cls.id); setClassSwitcherOpen(false); }}
-                  className={cn("flex w-full items-center justify-between gap-3 py-3 text-left text-sm", activeClassId === cls.id ? "font-semibold text-primary-700" : "text-gray-700")}
+                <button
+                  key={cls.id}
+                  type="button"
+                  aria-pressed={activeClassId === cls.id}
+                  onClick={() => {
+                    setActiveClassId(cls.id);
+                    setClassSwitcherOpen(false);
+                  }}
+                  className={cn(
+                    "flex w-full items-center justify-between gap-3 py-3 text-left text-sm",
+                    activeClassId === cls.id
+                      ? "font-semibold text-primary-700"
+                      : "text-gray-700",
+                  )}
                 >
                   <span>{cls.name}</span>
-                  {activeClassId === cls.id && <BadgeCheck className="size-5 shrink-0" />}
+                  {activeClassId === cls.id && (
+                    <BadgeCheck className="size-5 shrink-0" />
+                  )}
                 </button>
               ))}
             </div>
@@ -1275,52 +1316,53 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
 
         contentClassName="p-4"
       >
-       
         <>
-        <ButtonGroup
-          orientation="vertical"
-          style={{ gap: 0 }}
-          className="w-full rounded-lg border border-gray-100"
-        >
-          <div className="flex items-center gap-3 p-2 px-3">
-            <Link
-              to={profileHref}
-              onClick={() => setMoreOpen(false)}
-              className="flex min-w-0 flex-1 items-center gap-3"
-            >
-              <Avatar size="lg">
-                <AvatarImage src={user.photoUrl!} />
-                <AvatarFallback className="bg-primary text-primary-foreground">
-                  {user.name.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
+          <ButtonGroup
+            orientation="vertical"
+            style={{ gap: 0 }}
+            className="w-full rounded-lg border border-gray-100"
+          >
+            <div className="flex items-center gap-3 p-2 px-3">
+              <Link
+                to={profileHref}
+                onClick={() => setMoreOpen(false)}
+                className="flex min-w-0 flex-1 items-center gap-3"
+              >
+                <Avatar size="lg">
+                  <AvatarImage src={user.photoUrl!} />
+                  <AvatarFallback className="bg-primary text-primary-foreground">
+                    {user.name.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
 
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-bold text-gray-900">
-                  {user.name}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-bold text-gray-900">
+                    {user.name}
+                  </span>
+                  <span className="block truncate text-xs capitalize text-gray-700">
+                    {user.role}
+                  </span>
                 </span>
-                <span className="block truncate text-xs capitalize text-gray-700">
-                  {user.role}
-                </span>
-              </span>
-            </Link>
-            <LanguageSwitcher />
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={lang === "ml" ? "പ്രൊഫൈൽ ഓപ്ഷനുകൾ" : "Profile options"}
-              onClick={() => {
-                setProfileOptionsOpen(true);
-              }}
-            >
-              <Settings2 className="h-5 w-5 shrink-0 text-gray-600" />
-            </Button>
-          </div>
-        </ButtonGroup>
+              </Link>
+              <LanguageSwitcher />
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={
+                  lang === "ml" ? "പ്രൊഫൈൽ ഓപ്ഷനുകൾ" : "Profile options"
+                }
+                onClick={() => {
+                  setProfileOptionsOpen(true);
+                }}
+              >
+                <Settings2 className="h-5 w-5 shrink-0 text-gray-600" />
+              </Button>
+            </div>
+          </ButtonGroup>
 
-        <div className="grid grid-cols-1 gap-2 py-3 sm:grid-cols-1 max-h-[80dvh] overflow-auto">
+          <div className="grid grid-cols-1 gap-2 py-3 sm:grid-cols-1 max-h-[80dvh] overflow-auto">
             {moreLinks.map(renderMoreLink)}
-        </div>
+          </div>
         </>
       </ResponsivePopover>
       {isParent && studentIds.length > 0 && (

@@ -253,8 +253,9 @@ export default function TeacherDashboard() {
 
   return (
     <DashboardLayout>
+      
       <div className="">
-        <header className="mb-4 flex min-h-[104px] items-center justify-between gap-4   ">
+        <header className="mb-9 flex   items-center justify-between gap-4   ">
           <div className="min-w-0">
             <p className="mb-1 text-base font-medium leading-7 text-gray-700 sm:text-lg">
               {t("common", "teacher", lang)}
@@ -271,16 +272,14 @@ export default function TeacherDashboard() {
           </Avatar>
         </header>
 
-        <section className="mb-7">
+        <section className="mb-7 ">
           <button
             type="button"
             onClick={() => setIbadahDrawerOpen(true)}
             disabled={!activeClassId}
             aria-label={`${t("teacherPages", "previousDayIbadah", lang)}: ${dateLabel}`}
-            className="card block w-full rounded-2xl p-5 text-left shadow-xl transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:cursor-default disabled:hover:translate-y-0 sm:p-6"
-            style={{
-              background: `linear-gradient(90deg, ${tint} 0%, transparent 100%)`,
-            }}
+            className="card block w-full bg-background rounded-2xl p-5 text-left shadow-xl transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:cursor-default disabled:hover:translate-y-0 sm:p-6"
+             
           >
             <span className="flex items-start justify-between gap-4">
               <span className="min-w-0">
@@ -358,17 +357,17 @@ export default function TeacherDashboard() {
             )}
           </button>
         </section>
+        <h2
+          id="attendance-overview-title"
+          className="  block text-lg    font-bold tabular-nums text-gray-950"
+        >
+          {t("teacherPages", "overallAttendance", lang)}
+        </h2>
         <section
           aria-labelledby="attendance-overview-title"
-          className="mb-7 overflow-hidden  card p-4 rounded-2xl "
+          className="mb-7 mt-4 bg-background overflow-hidden  card   rounded-2xl "
         >
-          <h2
-            id="attendance-overview-title"
-            className="  block text-lg    font-bold tabular-nums text-gray-950"
-          >
-            {t("teacherPages", "overallAttendance", lang)}
-          </h2>
-          <div className="  mt-3">
+          <div className=" ">
             <div className=" overflow-hidden rounded-t-2xl ">
               {overallAttendance.isLoading ? (
                 <div className="pt-5 text-sm text-gray-500">
@@ -568,17 +567,17 @@ export default function TeacherDashboard() {
           </div>
         </section>
 
-        <section
-          aria-labelledby="homework-overview-title"
-          className="mb-7 rounded-2xl card bg-primary-100/20 text-whit p-6"
-        >
-          <div className="flex flex-col  justify-between gap-3">
             <h2
               id="homework-overview-title"
               className=" block text-lg font-bold tabular-nums text-gray-950"
             >
               {t("teacherPages", "classHomework", lang)}
             </h2>
+        <section
+          aria-labelledby="homework-overview-title"
+          className="mb-7 mt-3 bg-background rounded-2xl card  text-whit p-6"
+        >
+          <div className="flex flex-col  justify-between gap-3">
             <img
               src="/imgs/homework/1.webp"
               alt=""
@@ -673,7 +672,7 @@ export default function TeacherDashboard() {
 
         <section
           aria-labelledby="teacher-actions"
-          className="card mb-0 rounded-2xl border border-gray-200 bg-white p-5"
+          className="card mb-0 rounded-2xl   bg-background p-5"
         >
           <h2
             id="teacher-actions"

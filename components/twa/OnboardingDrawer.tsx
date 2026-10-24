@@ -21,9 +21,9 @@ interface OnboardingDrawerProps {
 }
 
 const roles = [
-  ["parent", "Parent", "/imgs/onboarding/parent_ico.png"],
-  ["admin", "Admin", "/imgs/onboarding/admin_ico.png"],
-  ["teacher", "Teacher", "/imgs/onboarding/teacher_ico.png"],
+  ["parent", "Parent", "/imgs/onboarding/parent_ico.webp"],
+  ["admin", "Admin", "/imgs/onboarding/admin_ico.webp"],
+  ["teacher", "Teacher", "/imgs/onboarding/teacher_ico.webp"],
 ] as const;
 
 export default function OnboardingDrawer({

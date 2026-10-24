@@ -45,31 +45,31 @@ const metaByType = {
     title: "Welcome, Super Admin",
     subtitle: "Platform-level secure access",
     icon: Shield,
-    image: "/imgs/onboarding/admin_ico.png",
+    image: "/imgs/onboarding/admin_ico.webp",
   },
   CLIENT_ADMIN: {
     title: "Welcome, Admin",
     subtitle: "Manage your institution operations",
     icon: Building2,
-    image: "/imgs/onboarding/admin_ico.png",
+    image: "/imgs/onboarding/admin_ico.webp",
   },
   TEACHER: {
     title: "Welcome, Teacher",
     subtitle: "Access attendance, homework, and class tools",
     icon: GraduationCap,
-    image: "/imgs/onboarding/teacher_ico.png",
+    image: "/imgs/onboarding/teacher_ico.webp",
   },
   PARENT: {
     title: "Welcome, Parent",
     subtitle: "Track your child progress and updates",
     icon: Users,
-    image: "/imgs/onboarding/parent_ico.png",
+    image: "/imgs/onboarding/parent_ico.webp",
   },
   COMMITTEE: {
     title: "Welcome, Committee Member",
     subtitle: "View reports, finances, and send announcements",
     icon: Users,
-    image: "/imgs/onboarding/admin_ico.png",
+    image: "/imgs/onboarding/admin_ico.webp",
   },
 } satisfies Record<
   LoginType,
@@ -406,6 +406,7 @@ export default function RoleLoginPage({
                         : "Teacher Username"}
                 </label>
                 <Input
+                size="lg"
                   type="text"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
@@ -426,6 +427,7 @@ export default function RoleLoginPage({
                   Parent Phone
                 </label>
                 <Input
+                size="lg"
                   type="tel"
                   value={parentPhone}
                   onChange={(e) => setParentPhone(e.target.value)}
@@ -445,6 +447,7 @@ export default function RoleLoginPage({
               </label>
               <div className="relative">
                 <Input
+                  size="lg"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -476,6 +479,7 @@ export default function RoleLoginPage({
                   </label>
                   <div className="relative">
                     <Input
+                      size="lg"
                       type={showNewPassword ? "text" : "password"}
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}

@@ -3,6 +3,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -370,14 +371,14 @@ export default function TeacherCheckinPage() {
           </div>
         </div>
       ) : (
-        <div className="max-w-md mx-auto space-y-6 ">
+        <div className="max-w-md mx-auto space-y-6 relative ">
           {/* Status card */}
           {activeSession ? (
             <Button
               onClick={handleCheckOut}
               disabled={actionLoading}
               size="lg"
-              className="fixed bottom-12 left-4 rounded-full right-4 z-30 mx-auto w-max max-w-md lg:bottom-6 lg:left-auto lg:right-6 lg:mx-0 lg:w-80"
+              className="fixed bottom-16 left-4 rounded-full right-4 z-30 mx-auto w-max max-w-md lg:bottom-6 lg:left-auto lg:right-6 lg:mx-0 lg:w-80"
             >
               {actionLoading && <Loader2 className="animate-spin" />}
               {!actionLoading && <Icon icon="solar:logout-2-linear" className="h-4 w-4" />}
@@ -391,7 +392,7 @@ export default function TeacherCheckinPage() {
               disabled={actionLoading || locLoading}
               size={"lg"}
               className={cn(
-                "group flex items-center gap-2 shadow-lg transition-all fixed bottom-12 left-4 right-4 z-30 mx-auto w-max max-w-full rounded-full   lg:bottom-6 lg:left-auto lg:right-6 lg:mx-0 lg:w-80",
+                "group flex items-center gap-2 shadow-lg transition-all fixed bottom-16 left-4 right-4 z-30 mx-auto w-max max-w-full rounded-full   lg:bottom-6 lg:left-auto lg:right-6 lg:mx-0 lg:w-80",
                 location
                   ? ""
                   : "   bg-red-600 text-white ",
@@ -445,50 +446,36 @@ export default function TeacherCheckinPage() {
             </div>
           </ResponsivePopover>
 
-          <div>
+          <div className="sticky top-0 z-10  left-0">
             {(todaySessions.length > 0 || history.length > 0) && (
-              <div className="mb-4 flex items-center gap-2">
-                <div className="flex min-w-0 flex-1 rounded-xl bg-gray-100 p-1">
-                <Button
-                  type="button"
-                  size="lg"
-                  variant="ghost"
-                  className={cn(
-                    "flex-1",
-                    sessionTab === "today" && "bg-white shadow-sm",
-                  )}
-                  onClick={() => setSessionTab("today")}
-                >
-                  {t("teacherPages", "todaySessions", lang)}
-                </Button>
-                <Button
-                  type="button"
-                  size="lg"
-                  variant="ghost"
-                  className={cn(
-                    "flex-1",
-                    sessionTab === "history" && "bg-white shadow-sm",
-                  )}
-                  onClick={() => setSessionTab("history")}
-                >
-                  {t("teacherPages", "historyLabel", lang)}
-                </Button>
-                </div>
+              <Tabs
+                value={sessionTab}
+                onValueChange={(value) => setSessionTab(value as "today" | "history")}
+                className="mb-4 flex items-center gap-2"
+              >
+                <TabsList  >
+                  <TabsTrigger value="today" className="  flex-1">
+                    {t("teacherPages", "todaySessions", lang)}
+                  </TabsTrigger>
+                  <TabsTrigger value="history" className="  flex-1">
+                    {t("teacherPages", "historyLabel", lang)}
+                  </TabsTrigger>
+                </TabsList>
                 {sessionTab === "history" && (
                   <Button
                     type="button"
-                    size="lg"
+                    size="sm"
                     variant="outline"
-                    className="shrink-0 px-3"
+                    className="shrink-0 h-full !min-h-10  px-3 ml-auto"
                     onClick={() => {
                       setHistoryPickerOpen(true);
                     }}
                   >
-                    <CalendarDays className="h-4 w-4" />
+                    <CalendarDays className="h-5 w-5" />
                     <span className="hidden sm:inline">{historyRange?.from ? "Date range" : "Filter"}</span>
                   </Button>
                 )}
-              </div>
+              </Tabs>
             )}
 
             <DateRangePicker

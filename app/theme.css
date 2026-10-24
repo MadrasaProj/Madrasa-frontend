@@ -52,14 +52,18 @@
 }
 
 :is([data-ui-style="smooth-3d"] .btn:not([data-ui-style]), .btn[data-ui-style="smooth-3d"]):not([data-variant="ghost"]):not([data-variant="link"]) {
-  border-radius: 0.75rem;
-  border-color: color-mix(in oklch, var(--foreground) 2%, transparent);
+  /* border-radius: 0.75rem;
+  border-color: color-mix(in oklch, var(--foreground) 2%, transparent); */
    font-size: 1rem;
   background-image: none;
   box-shadow: inset 0 2px 2px -1px color-mix(in oklch, white 35%, transparent),
-    inset 0 -6px 5px -3px color-mix(in oklch, black 30%, transparent),
-    inset 0 -1px 0 color-mix(in oklch, black 12%, transparent);
+    inset 0 -6px 5px -3px color-mix(in oklch, var(--smooth-3d-shadow-color, black) 30%, transparent),
+    inset 0 -1px 0 color-mix(in oklch, var(--smooth-3d-shadow-color, black) 12%, transparent);
   transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+:is([data-ui-style="smooth-3d"] .btn:not([data-ui-style]), .btn[data-ui-style="smooth-3d"])[data-variant="outline"] {
+  --smooth-3d-shadow-color: var(--primary);
 }
 
 :is([data-ui-style="smooth-3d"] .btn:not([data-ui-style]), .btn[data-ui-style="smooth-3d"])[data-ui-size="xs"]:not([data-variant="ghost"]):not([data-variant="link"]) {
@@ -97,22 +101,22 @@
 
 :is([data-ui-style="smooth-3d"] .btn:not([data-ui-style]), .btn[data-ui-style="smooth-3d"]):not([data-variant="ghost"]):not([data-variant="link"]):hover:not(:disabled) {
   box-shadow: inset 0 2px 2px -1px color-mix(in oklch, white 40%, transparent),
-    inset 0 -6px 5px -3px color-mix(in oklch, black 34%, transparent),
-    inset 0 -1px 0 color-mix(in oklch, black 14%, transparent);
+    inset 0 -6px 5px -3px color-mix(in oklch, var(--smooth-3d-shadow-color, black) 34%, transparent),
+    inset 0 -1px 0 color-mix(in oklch, var(--smooth-3d-shadow-color, black) 14%, transparent);
 }
 
 :is([data-ui-style="smooth-3d"] .btn:not([data-ui-style]), .btn[data-ui-style="smooth-3d"]):not([data-variant="ghost"]):not([data-variant="link"]):active:not(:disabled) {
-  box-shadow: inset 0 2px 4px color-mix(in oklch, black 17%, transparent),
-    inset 0 -3px 3px color-mix(in oklch, black 18%, transparent);
+  box-shadow: inset 0 2px 4px color-mix(in oklch, var(--smooth-3d-shadow-color, black) 17%, transparent),
+    inset 0 -3px 3px color-mix(in oklch, var(--smooth-3d-shadow-color, black) 18%, transparent);
   transform: translateY(1px);
 }
 
 :is([data-ui-style="smooth-3d"] .card:not([data-ui-style]), .card[data-ui-style="smooth-3d"]) {
-  border: 1px solid color-mix(in oklch, var(--foreground) 8%, transparent);
+  /* border: 1px solid color-mix(in oklch, var(--foreground) 8%, transparent); */
   background-image: linear-gradient(180deg, color-mix(in oklch, white 8%, transparent), transparent 60%);
   box-shadow: inset 0 1px 1px color-mix(in oklch, white 25%, transparent),
     inset 0 -2px 2px color-mix(in oklch, black 5%, transparent),
-    0 3px 0 color-mix(in oklch, black 8%, transparent),
+    0 3px 0 color-mix(in oklch, var(--color-primary) 8%, transparent 10%),
     0 6px 10px color-mix(in oklch, black 5%, transparent);
 }
 

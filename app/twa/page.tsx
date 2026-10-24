@@ -14,9 +14,9 @@ import { getStoredSessionsSync, useAuthStore, type UserRole } from "@/store/auth
 type LandingRole = "parent" | "teacher" | "admin";
 
 const onboardingSlides = [
-  { title: "One place for your whole madrasa", description: "Connect management, teachers, students, and parents with one simple system built for better learning.", image: "/imgs/onboarding/1.png", alt: "Madrasa community" },
-  { title: "Make every ibada count", description: "Track ibada consistently and help students build meaningful daily habits with support from their madrasa and family.", image: "/imgs/onboarding/2.png", alt: "Quran and prayer beads" },
-  { title: "Exams made simple", description: "Create exams, manage results, and understand progress clearly so teachers can help every student grow.", image: "/imgs/onboarding/3.png", alt: "Exam papers and pencil" },
+  { title: "One place for your whole madrasa", description: "Connect management, teachers, students, and parents with one simple system built for better learning.", image: "/imgs/onboarding/1.webp", alt: "Madrasa community" },
+  { title: "Make every ibada count", description: "Track ibada consistently and help students build meaningful daily habits with support from their madrasa and family.", image: "/imgs/onboarding/2.webp", alt: "Quran and prayer beads" },
+  { title: "Exams made simple", description: "Create exams, manage results, and understand progress clearly so teachers can help every student grow.", image: "/imgs/onboarding/3.webp", alt: "Exam papers and pencil" },
 ] as const;
 
 const roleMeta: Record<UserRole, { label: string; icon: typeof Shield; color: string }> = {
@@ -146,7 +146,7 @@ export default function TwaLandingPage() {
         <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-md flex-col items-center pt-7">
           <div className="flex w-full flex-1 flex-col items-center px-6 text-center">
             <img
-              src="/imgs/onboarding/1.png"
+              src="/imgs/onboarding/1.webp"
               alt="Madrasa community"
               className="mt-auto h-[min(30vh,250px)] w-full object-contain drop-shadow-[0_16px_18px_rgba(15,67,45,0.12)]"
             />
