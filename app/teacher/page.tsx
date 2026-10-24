@@ -256,16 +256,16 @@ export default function TeacherDashboard() {
       <div className="">
         <header className="mb-4 flex min-h-[104px] items-center justify-between gap-4   ">
           <div className="min-w-0">
-            <p className="mb-1 text-lg font-medium leading-7 text-gray-700 sm:text-2xl">
+            <p className="mb-1 text-base font-medium leading-7 text-gray-700 sm:text-lg">
               {t("common", "teacher", lang)}
             </p>
-            <h1 className="break-words text-2xl font-bold leading-tight tracking-tight text-gray-950 sm:text-[34px]">
+            <h1 className="break-words text-xl font-bold leading-tight tracking-tight text-gray-950 sm:text-2xl">
               {user?.name ?? "Teacher"} <span aria-hidden="true">👋</span>
             </h1>
           </div>
-          <Avatar className="size-16 shrink-0 ring-2 ring-gray-200 sm:size-20">
+          <Avatar className="size-12 shrink-0 ring-2 ring-gray-200 sm:size-16">
             <AvatarImage src={user?.photoUrl ?? undefined} alt="" />
-            <AvatarFallback className="bg-gray-100 text-xl font-semibold text-gray-700">
+            <AvatarFallback className="bg-gray-100 text-base font-semibold text-gray-700">
               {initials}
             </AvatarFallback>
           </Avatar>
@@ -292,7 +292,7 @@ export default function TeacherDashboard() {
                   />
                   {dateLabel}
                 </span>
-                <span className="mt-2 block text-xl font-bold tabular-nums text-gray-950">
+                <span className="mt-2 block text-lg font-bold tabular-nums text-gray-950">
                   {t("teacherPages", "ibadahTrackingDescription", lang)}{" "}
                 </span>
               </span>
@@ -340,7 +340,7 @@ export default function TeacherDashboard() {
                         key={stat.label}
                         className="min-w-0 not-last:border-r-1 border-gray-200 text-center justify-center"
                       >
-                        <span className="mt-1 block text-3xl font-semibold tabular-nums text-gray-900">
+                        <span className="mt-1 block text-2xl font-semibold tabular-nums text-gray-900">
                           {stat.value}
                         </span>
                         <span className="block text-[13px] leading-tight text-gray-900">
@@ -364,7 +364,7 @@ export default function TeacherDashboard() {
         >
           <h2
             id="attendance-overview-title"
-            className="  block text-xl    font-bold tabular-nums text-gray-950"
+            className="  block text-lg    font-bold tabular-nums text-gray-950"
           >
             {t("teacherPages", "overallAttendance", lang)}
           </h2>
@@ -401,7 +401,7 @@ export default function TeacherDashboard() {
                       className={`flex min-h-18 items-center justify-between gap-1  p-3 ${stat.surface}`}
                     >
                       <div className="min-w-0">
-                        <strong className="block text-3xl font-semibold tabular-nums text-gray-950">
+                        <strong className="block text-2xl font-semibold tabular-nums text-gray-950">
                           {stat.value}
                         </strong>
                         <p className="text-sm font-bold text-gray-700">
@@ -417,7 +417,7 @@ export default function TeacherDashboard() {
                   ))}
                   <div className="flex min-h-18 items-center justify-between gap-1  bg-emerald-50 p-3">
                     <div className="min-w-0">
-                      <strong className="block text-3xl font-semibold tabular-nums text-gray-950">
+                      <strong className="block text-2xl font-semibold tabular-nums text-gray-950">
                         {overallRate}%
                       </strong>
                       <p className="text-sm font-bold  leading-tight text-gray-700">
@@ -459,7 +459,7 @@ export default function TeacherDashboard() {
                   </div>
                   <div className="flex min-h-18 items-center justify-between gap-1  bg-green-50 p-3">
                     <div className="min-w-0">
-                      <strong className="block text-3xl font-semibold tabular-nums text-gray-950">
+                      <strong className="block text-2xl font-semibold tabular-nums text-gray-950">
                         {overall?.total ?? 0}
                       </strong>
                       <p className="text-sm font-bold text-gray-700">
@@ -494,7 +494,7 @@ export default function TeacherDashboard() {
                     <p className="text-xs text-gray-600">
                       {t("teacherPages", "markedStudents", lang)}
                     </p>
-                    <p className="text-xl font-semibold tabular-nums text-gray-950">
+                    <p className="text-lg font-semibold tabular-nums text-gray-950">
                       {markedCount}/{total}
                     </p>
                   </div>
@@ -542,12 +542,12 @@ export default function TeacherDashboard() {
             ) : (
               <div className="relative mt-[0.5px] min-h-38 card overflow-hidden rounded-b-2xl bg-cyan-50">
                 <img
-                  src="/imgs/attendance/roll-call-banner.png"
+                  src="/imgs/attendance/roll-call-banner.webp"
                   alt=""
                   className="absolute inset-0 size-full object-cover object-center"
                 />
                 <div className="relative  z-10 flex min-h-38 max-w-[65%] flex-col justify-center p-5">
-                  <p className="mt-1 text-lg text-gray-700 font-bold">
+                  <p className="mt-1 text-base text-gray-700 font-bold">
                     {t("teacherPages", "takeAttendanceInstruction", lang)}
                   </p>
                   <div className=" mt-3 ">
@@ -575,7 +575,7 @@ export default function TeacherDashboard() {
           <div className="flex flex-col  justify-between gap-3">
             <h2
               id="homework-overview-title"
-              className=" block text-xl font-bold tabular-nums text-gray-950"
+              className=" block text-lg font-bold tabular-nums text-gray-950"
             >
               {t("teacherPages", "classHomework", lang)}
             </h2>
@@ -630,7 +630,7 @@ export default function TeacherDashboard() {
                   key={stat.label}
                   className="px-2 w-full not-last:border-r  border-gray-200 text-center"
                 >
-                  <strong className="block text-3xl font-semibold tabular-nums text-gray-900">
+                  <strong className="block text-2xl font-semibold tabular-nums text-gray-900">
                     {stat.value}
                   </strong>
                   <span className="block text-[13px] leading-tight text-gray-900">
@@ -677,7 +677,7 @@ export default function TeacherDashboard() {
         >
           <h2
             id="teacher-actions"
-            className=" block text-xl font-bold mb-4 tabular-nums text-gray-950"
+            className=" block text-lg font-bold mb-4 tabular-nums text-gray-950"
           >
             {t("teacherPages", "quickActions", lang)}
           </h2>
