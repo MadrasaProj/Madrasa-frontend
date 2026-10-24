@@ -4,7 +4,8 @@ import { useAuthStore } from "@/store/auth";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import {
   CreditCard, Award, DollarSign, Loader2, CheckCircle2,
-  AlertCircle, RefreshCw, Sparkles, TrendingUp, Landmark, MapPin, Gift
+  AlertCircle, RefreshCw, Sparkles, TrendingUp, Landmark, MapPin, Gift,
+  Search, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,12 @@ export default function CommissionsDashboard() {
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Filters & Pagination
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const loadData = async () => {
     if (!accessToken) return;
@@ -81,6 +88,27 @@ export default function CommissionsDashboard() {
 
   const userEarningsList = Object.values(userEarningsMap);
   const isFinanceOrAdmin = ["SUPER_ADMIN", "FINANCE_EXECUTIVE", "SALES_MANAGER"].includes(user?.actorType ?? "");
+
+  // Filtered & Paginated records
+  const filteredRecords = records.filter((r) => {
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch =
+      !q ||
+      r.client.name.toLowerCase().includes(q) ||
+      (r.lead?.name && r.lead.name.toLowerCase().includes(q)) ||
+      (r.user?.name && r.user.name.toLowerCase().includes(q));
+    const matchesStatus = statusFilter === "ALL" || r.paymentStatus === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const totalPages = Math.ceil(filteredRecords.length / pageSize) || 1;
+  const paginatedRecords = filteredRecords.slice((page - 1) * pageSize, page * pageSize);
+
+  const filterCounts = {
+    ALL: records.length,
+    UNPAID: records.filter((r) => r.paymentStatus === "UNPAID").length,
+    PAID: records.filter((r) => r.paymentStatus === "PAID").length,
+  };
 
   const fmtCurrency = (val: number | string) => {
     return new Intl.NumberFormat("en-IN", {
@@ -220,20 +248,60 @@ export default function CommissionsDashboard() {
 
         {/* Payout transactions register */}
         <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
-          <div className="p-5 border-b border-gray-50 flex items-center justify-between">
-            <h2 className="text-sm font-black text-gray-800 flex items-center gap-2">
+          <div className="p-5 border-b border-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
               <CreditCard className="w-4.5 h-4.5 text-emerald-600" />
-              Payout Transactions Register
-            </h2>
+              <div>
+                <h2 className="text-sm font-black text-gray-800">Payout Transactions Register</h2>
+                <span className="text-[10px] text-gray-400">Total {filteredRecords.length} transactions found</span>
+              </div>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative w-full sm:w-64">
+              <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search madrasa, lead, rep..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full pl-9 pr-3 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Status Filter Chips */}
+          <div className="px-5 py-2.5 bg-gray-50/50 border-b border-gray-50 flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] font-bold uppercase text-gray-400 mr-1">Status:</span>
+            {(["ALL", "UNPAID", "PAID"] as const).map((st) => (
+              <button
+                key={st}
+                onClick={() => {
+                  setStatusFilter(st);
+                  setPage(1);
+                }}
+                className={cn(
+                  "px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase transition-all",
+                  statusFilter === st
+                    ? "bg-emerald-600 text-white shadow-xs"
+                    : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-100"
+                )}
+              >
+                {st} ({filterCounts[st as keyof typeof filterCounts] ?? 0})
+              </button>
+            ))}
           </div>
 
           {loading ? (
             <div className="flex justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
             </div>
-          ) : records.length === 0 ? (
+          ) : paginatedRecords.length === 0 ? (
             <div className="text-center py-12 text-gray-400 text-sm font-medium">
-              No commission transactions recorded yet.
+              No commission transactions match the selected criteria.
             </div>
           ) : (
             <>
@@ -253,7 +321,7 @@ export default function CommissionsDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50 text-gray-700 font-medium">
-                    {records.map((r) => (
+                    {paginatedRecords.map((r) => (
                       <tr key={r.id} className="hover:bg-gray-50/30 transition-all">
                         <td className="py-4 px-6">
                           <span className="font-bold text-gray-800">{r.client.name}</span>
@@ -307,7 +375,7 @@ export default function CommissionsDashboard() {
 
               {/* Mobile Cards Stack View */}
               <div className="md:hidden space-y-4 p-4 bg-gray-50/30">
-                {records.map((r) => (
+                {paginatedRecords.map((r) => (
                   <motion.div
                     key={r.id}
                     initial={{ opacity: 0, y: 8 }}
@@ -370,6 +438,51 @@ export default function CommissionsDashboard() {
                   </motion.div>
                 ))}
               </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="p-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white text-xs">
+                  <div className="flex items-center gap-2 text-gray-500">
+                    <span>
+                      Showing <strong className="text-gray-850">{(page - 1) * pageSize + 1}</strong> to{" "}
+                      <strong className="text-gray-850">{Math.min(page * pageSize, filteredRecords.length)}</strong> of{" "}
+                      <strong className="text-gray-850">{filteredRecords.length}</strong> transactions
+                    </span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        setPageSize(Number(e.target.value));
+                        setPage(1);
+                      }}
+                      className="ml-2 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    >
+                      <option value={10}>10 / page</option>
+                      <option value={20}>20 / page</option>
+                      <option value={50}>50 / page</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                      className="p-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="text-xs text-gray-600 font-semibold px-2">
+                      Page {page} of {totalPages}
+                    </span>
+                    <button
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={page === totalPages}
+                      className="p-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>

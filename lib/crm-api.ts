@@ -40,6 +40,7 @@ export interface DailyOperations {
     place: string;
     status: string;
     nextFollowUpDate?: string;
+    timeline?: Array<{ notes: string; type: string; createdAt: string; user?: { name: string } }>;
   }>;
   missedFollowUps: Array<{
     id: string;
@@ -47,6 +48,7 @@ export interface DailyOperations {
     place: string;
     status: string;
     nextFollowUpDate?: string;
+    timeline?: Array<{ notes: string; type: string; createdAt: string; user?: { name: string } }>;
   }>;
   tasksToday: Array<{
     id: string;
@@ -127,6 +129,14 @@ export interface LeadListItem {
   commissionPercentage?: number;
   contacts: LeadContact[];
   contributors: LeadContributor[];
+  timeline?: Array<{
+    id?: string;
+    type: string;
+    notes: string;
+    createdAt: string;
+    followUpDate?: string;
+    user?: { name: string };
+  }>;
   createdAt: string;
 }
 

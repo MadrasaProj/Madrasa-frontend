@@ -25,6 +25,9 @@ import {
   Briefcase,
   X,
   Check,
+  Search,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -35,6 +38,12 @@ export default function ExpensesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Filters & Pagination
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Form modals
   const [showModal, setShowModal] = useState(false);
@@ -143,6 +152,29 @@ export default function ExpensesPage() {
   const totalRejected = expenses
     .filter((e) => e.status === "REJECTED")
     .reduce((sum, e) => sum + Number(e.amount), 0);
+
+  // Filters & Pagination calculations
+  const filteredExpenses = expenses.filter((exp) => {
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch =
+      !q ||
+      exp.title.toLowerCase().includes(q) ||
+      (exp.description && exp.description.toLowerCase().includes(q)) ||
+      (exp.submittedBy?.name && exp.submittedBy.name.toLowerCase().includes(q)) ||
+      exp.category.toLowerCase().includes(q);
+    const matchesStatus = statusFilter === "ALL" || exp.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const totalPages = Math.ceil(filteredExpenses.length / pageSize) || 1;
+  const paginatedExpenses = filteredExpenses.slice((page - 1) * pageSize, page * pageSize);
+
+  const filterCounts = {
+    ALL: expenses.length,
+    PENDING: expenses.filter((e) => e.status === "PENDING").length,
+    APPROVED: expenses.filter((e) => e.status === "APPROVED").length,
+    REJECTED: expenses.filter((e) => e.status === "REJECTED").length,
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -263,16 +295,54 @@ export default function ExpensesPage() {
           </div>
         </div>
 
+        {/* Filter & Search Bar */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] font-bold uppercase text-gray-400 mr-1">Status:</span>
+            {(["ALL", "PENDING", "APPROVED", "REJECTED"] as const).map((st) => (
+              <button
+                key={st}
+                onClick={() => {
+                  setStatusFilter(st);
+                  setPage(1);
+                }}
+                className={cn(
+                  "px-3 py-1.5 rounded-xl text-xs font-bold uppercase transition-all",
+                  statusFilter === st
+                    ? "bg-emerald-600 text-white shadow-xs"
+                    : "bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100"
+                )}
+              >
+                {st} ({filterCounts[st as keyof typeof filterCounts] ?? 0})
+              </button>
+            ))}
+          </div>
+
+          <div className="relative w-full sm:w-64">
+            <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search title, submitter, cat..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setPage(1);
+              }}
+              className="w-full pl-9 pr-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+            />
+          </div>
+        </div>
+
         {/* Content list */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
           </div>
-        ) : expenses.length === 0 ? (
+        ) : paginatedExpenses.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center shadow-sm">
             <Receipt className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-            <p className="text-gray-500 font-medium">No expenses recorded yet.</p>
-            <p className="text-xs text-gray-400 mt-1">Submit your first business expense claim above.</p>
+            <p className="text-gray-500 font-medium">No expenses match the selected filters.</p>
+            <p className="text-xs text-gray-400 mt-1">Try adjusting your search or status criteria.</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -291,7 +361,7 @@ export default function ExpensesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {expenses.map((exp) => (
+                  {paginatedExpenses.map((exp) => (
                     <tr key={exp.id} className="hover:bg-gray-50/30 transition-all text-sm">
                       <td className="py-4 px-6">
                         <div>
@@ -360,7 +430,7 @@ export default function ExpensesPage() {
 
             {/* Mobile Cards Stack View */}
             <div className="md:hidden space-y-4">
-              {expenses.map((exp) => (
+              {paginatedExpenses.map((exp) => (
                 <motion.div
                   key={exp.id}
                   initial={{ opacity: 0, y: 8 }}
@@ -427,6 +497,51 @@ export default function ExpensesPage() {
                 </motion.div>
               ))}
             </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2 text-gray-500">
+                  <span>
+                    Showing <strong className="text-gray-850">{(page - 1) * pageSize + 1}</strong> to{" "}
+                    <strong className="text-gray-850">{Math.min(page * pageSize, filteredExpenses.length)}</strong> of{" "}
+                    <strong className="text-gray-850">{filteredExpenses.length}</strong> expenses
+                  </span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setPage(1);
+                    }}
+                    className="ml-2 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  >
+                    <option value={10}>10 / page</option>
+                    <option value={20}>20 / page</option>
+                    <option value={50}>50 / page</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className="p-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="text-xs text-gray-600 font-semibold px-2">
+                    Page {page} of {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    className="p-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

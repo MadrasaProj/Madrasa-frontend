@@ -14,7 +14,8 @@ import { useAuthStore } from "@/store/auth";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import {
   MessageSquare, ShieldAlert, CheckCircle2, Clock, Search, HelpCircle,
-  CornerDownLeft, Loader2, Plus, Sparkles, Filter, X, ArrowRight
+  CornerDownLeft, Loader2, Plus, Sparkles, Filter, X, ArrowRight,
+  ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -147,11 +148,22 @@ export default function SupportDashboard() {
     }
   };
 
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   const filteredTickets = tickets.filter((t) => {
     if (statusFilter && t.status !== statusFilter) return false;
     if (categoryFilter && t.category !== categoryFilter) return false;
     return true;
   });
+
+  const totalPages = Math.ceil(filteredTickets.length / pageSize) || 1;
+
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, categoryFilter, pageSize]);
+
+  const paginatedTickets = filteredTickets.slice((page - 1) * pageSize, page * pageSize);
 
   return (
     <DashboardLayout>
@@ -224,39 +236,71 @@ export default function SupportDashboard() {
                 No active tickets matching this filter.
               </div>
             ) : (
-              <div className="divide-y divide-gray-50">
-                {filteredTickets.map((t) => (
-                  <div
-                    key={t.id}
-                    onClick={() => setSelectedTicket(t)}
-                    className="py-4 hover:bg-gray-50/50 px-2 rounded-2xl cursor-pointer transition-all flex items-start justify-between"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-gray-800 text-sm">{t.title}</span>
-                        <span className="bg-gray-100 text-gray-600 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase">
-                          {t.category}
-                        </span>
+              <div className="space-y-2">
+                <div className="divide-y divide-gray-50">
+                  {paginatedTickets.map((t) => (
+                    <div
+                      key={t.id}
+                      onClick={() => setSelectedTicket(t)}
+                      className="py-4 hover:bg-gray-50/50 px-2 rounded-2xl cursor-pointer transition-all flex items-start justify-between"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-gray-800 text-sm">{t.title}</span>
+                          <span className="bg-gray-100 text-gray-600 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase">
+                            {t.category}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 line-clamp-1">{t.description}</p>
+                        <p className="text-[10px] text-gray-400">
+                          Madrasa: {t.client?.name} • Opened: {new Date(t.createdAt).toLocaleString()}
+                        </p>
                       </div>
-                      <p className="text-xs text-gray-500 line-clamp-1">{t.description}</p>
-                      <p className="text-[10px] text-gray-400">
-                        Madrasa: {t.client?.name} • Opened: {new Date(t.createdAt).toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1.5 shrink-0">
-                      <span className={cn("text-[9px] font-bold px-2 py-0.5 rounded-md",
-                        t.priority === "CRITICAL" || t.priority === "HIGH" ? "bg-rose-50 text-rose-800" : "bg-gray-100 text-gray-600"
-                      )}>
-                        {t.priority}
-                      </span>
-                      {t.slaBreached && (
-                        <span className="bg-rose-100 text-rose-800 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase flex items-center gap-0.5">
-                          <ShieldAlert className="w-3 h-3" /> SLA Breach
+                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                        <span className={cn("text-[9px] font-bold px-2 py-0.5 rounded-md",
+                          t.priority === "CRITICAL" || t.priority === "HIGH" ? "bg-rose-50 text-rose-800" : "bg-gray-100 text-gray-600"
+                        )}>
+                          {t.priority}
                         </span>
-                      )}
+                        {t.slaBreached && (
+                          <span className="bg-rose-100 text-rose-800 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase flex items-center gap-0.5">
+                            <ShieldAlert className="w-3 h-3" /> SLA Breach
+                          </span>
+                        )}
+                      </div>
                     </div>
+                  ))}
+                </div>
+
+                {/* Pagination Controls */}
+                {filteredTickets.length > 0 && (
+                  <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-3 text-xs">
+                    <span className="text-gray-400 font-medium">
+                      Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, filteredTickets.length)} of {filteredTickets.length} tickets
+                    </span>
+                    {totalPages > 1 && (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          disabled={page <= 1}
+                          onClick={() => setPage((p) => p - 1)}
+                          className="w-7 h-7 rounded-lg border border-gray-200 bg-white flex items-center justify-center disabled:opacity-40 hover:bg-gray-50 transition-colors cursor-pointer"
+                        >
+                          <ChevronLeft className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="text-gray-600 font-semibold px-2">
+                          {page} / {totalPages}
+                        </span>
+                        <button
+                          disabled={page >= totalPages}
+                          onClick={() => setPage((p) => p + 1)}
+                          className="w-7 h-7 rounded-lg border border-gray-200 bg-white flex items-center justify-center disabled:opacity-40 hover:bg-gray-50 transition-colors cursor-pointer"
+                        >
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
-                ))}
+                )}
               </div>
             )}
           </div>

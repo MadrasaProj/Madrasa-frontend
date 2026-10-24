@@ -4,7 +4,8 @@ import { useAuthStore } from "@/store/auth";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import {
   Calendar, AlertTriangle, ShieldCheck, Clock, Loader2,
-  DollarSign, RefreshCw, Send, Sparkles, User, BadgeAlert
+  DollarSign, RefreshCw, Send, Sparkles, User, BadgeAlert,
+  Search, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,12 @@ export default function RenewalsDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [triggerLoading, setTriggerLoading] = useState<string | null>(null);
+
+  // Filters & Pagination
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const loadData = async () => {
     if (!accessToken) return;
@@ -108,6 +115,27 @@ export default function RenewalsDashboard() {
   const fmtDate = (d: string) =>
     new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 
+  // Filtered & Paginated records
+  const filteredRenewals = renewals.filter((r) => {
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch =
+      !q ||
+      r.name.toLowerCase().includes(q) ||
+      (r.subdomain && r.subdomain.toLowerCase().includes(q));
+    const matchesStatus = statusFilter === "ALL" || r.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const totalPages = Math.ceil(filteredRenewals.length / pageSize) || 1;
+  const paginatedRenewals = filteredRenewals.slice((page - 1) * pageSize, page * pageSize);
+
+  const filterCounts = {
+    ALL: renewals.length,
+    URGENT: renewals.filter((r) => r.status === "URGENT").length,
+    ATTENTION: renewals.filter((r) => r.status === "ATTENTION").length,
+    SAFE: renewals.filter((r) => r.status === "SAFE").length,
+  };
+
   return (
     <DashboardLayout>
       <div className="pb-24 space-y-6">
@@ -166,18 +194,60 @@ export default function RenewalsDashboard() {
 
         {/* Renewals Table Registry */}
         <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
-          <div className="p-5 border-b border-gray-50 flex items-center gap-1.5">
-            <Calendar className="w-4.5 h-4.5 text-emerald-600" />
-            <h2 className="text-sm font-black text-gray-800">Upcoming Expirations Register</h2>
+          <div className="p-5 border-b border-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4.5 h-4.5 text-emerald-600" />
+              <div>
+                <h2 className="text-sm font-black text-gray-800">Upcoming Expirations Register</h2>
+                <span className="text-[10px] text-gray-400">Total {filteredRenewals.length} accounts found</span>
+              </div>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative w-full sm:w-64">
+              <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search madrasa or subdomain..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full pl-9 pr-3 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Status Filter Chips */}
+          <div className="px-5 py-2.5 bg-gray-50/50 border-b border-gray-50 flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] font-bold uppercase text-gray-400 mr-1">Status:</span>
+            {(["ALL", "URGENT", "ATTENTION", "SAFE"] as const).map((st) => (
+              <button
+                key={st}
+                onClick={() => {
+                  setStatusFilter(st);
+                  setPage(1);
+                }}
+                className={cn(
+                  "px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase transition-all",
+                  statusFilter === st
+                    ? "bg-emerald-600 text-white shadow-xs"
+                    : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-100"
+                )}
+              >
+                {st} ({filterCounts[st]})
+              </button>
+            ))}
           </div>
 
           {loading ? (
             <div className="flex justify-center py-10">
               <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
             </div>
-          ) : renewals.length === 0 ? (
+          ) : paginatedRenewals.length === 0 ? (
             <div className="text-center py-12 text-gray-400 text-sm font-medium">
-              No customer accounts found.
+              No customer accounts match the selected filters.
             </div>
           ) : (
             <>
@@ -196,7 +266,7 @@ export default function RenewalsDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50 text-gray-700 font-medium">
-                    {renewals.map((r) => (
+                    {paginatedRenewals.map((r) => (
                       <tr key={r.id} className="hover:bg-gray-50/50 transition-all">
                         <td className="py-4 px-6">
                           <span className="font-bold text-gray-800">{r.name}</span>
@@ -240,7 +310,7 @@ export default function RenewalsDashboard() {
 
               {/* Mobile Card Stack */}
               <div className="md:hidden space-y-4 p-4 bg-gray-50/30">
-                {renewals.map((r) => (
+                {paginatedRenewals.map((r) => (
                   <motion.div
                     key={r.id}
                     initial={{ opacity: 0, y: 8 }}
@@ -294,6 +364,51 @@ export default function RenewalsDashboard() {
                   </motion.div>
                 ))}
               </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="p-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white text-xs">
+                  <div className="flex items-center gap-2 text-gray-500">
+                    <span>
+                      Showing <strong className="text-gray-850">{(page - 1) * pageSize + 1}</strong> to{" "}
+                      <strong className="text-gray-850">{Math.min(page * pageSize, filteredRenewals.length)}</strong> of{" "}
+                      <strong className="text-gray-850">{filteredRenewals.length}</strong> renewals
+                    </span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        setPageSize(Number(e.target.value));
+                        setPage(1);
+                      }}
+                      className="ml-2 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    >
+                      <option value={10}>10 / page</option>
+                      <option value={20}>20 / page</option>
+                      <option value={50}>50 / page</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                      className="p-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="text-xs text-gray-600 font-semibold px-2">
+                      Page {page} of {totalPages}
+                    </span>
+                    <button
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={page === totalPages}
+                      className="p-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>

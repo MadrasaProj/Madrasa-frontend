@@ -39,6 +39,8 @@ import {
   Pencil,
   Save,
   Share2,
+  Search,
+  Filter,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -1215,6 +1217,10 @@ export default function AdminMadrasasPage() {
   const [sharingClient, setSharingClient] = useState<ClientListItem | null>(null);
   const [showNew, setShowNew] = useState(false);
 
+  // Search & Filter states
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+
   // Pagination states
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -1237,20 +1243,32 @@ export default function AdminMadrasasPage() {
     setClients((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
   };
 
-  const totalClients = clients.length;
-  const totalPages = Math.ceil(totalClients / pageSize);
+  // Filtered clients based on search & status filter
+  const filteredClients = useMemo(() => {
+    return clients.filter((c) => {
+      const q = search.toLowerCase().trim();
+      const matchSearch =
+        !q ||
+        c.name.toLowerCase().includes(q) ||
+        c.slug.toLowerCase().includes(q) ||
+        (c.city && c.city.toLowerCase().includes(q)) ||
+        (c.state && c.state.toLowerCase().includes(q));
+      const matchStatus = statusFilter === "ALL" || c.status === statusFilter;
+      return matchSearch && matchStatus;
+    });
+  }, [clients, search, statusFilter]);
 
-  // Auto adjustment for out of bound pages (e.g. if list shrinks)
+  const totalFiltered = filteredClients.length;
+  const totalPages = Math.ceil(totalFiltered / pageSize) || 1;
+
   useEffect(() => {
-    if (page > totalPages && totalPages > 0) {
-      setPage(totalPages);
-    }
-  }, [totalPages, page]);
+    setPage(1);
+  }, [search, statusFilter, pageSize]);
 
   // Paginated subset of clients
   const paginatedClients = useMemo(() => {
-    return clients.slice((page - 1) * pageSize, page * pageSize);
-  }, [clients, page, pageSize]);
+    return filteredClients.slice((page - 1) * pageSize, page * pageSize);
+  }, [filteredClients, page, pageSize]);
 
   return (
     <DashboardLayout>
@@ -1282,7 +1300,61 @@ export default function AdminMadrasasPage() {
         </div>
       ) : (
         <div className="space-y-4 pb-20">
-          <div className="space-y-2">
+          {/* Search + Filter toolbar */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-3.5 space-y-3 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-gray-800">All Registered Madrasas</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Showing {filteredClients.length} of {clients.length} madrasas
+                </p>
+              </div>
+
+              {/* Search Bar */}
+              <div className="relative w-full sm:w-72">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search by name, slug, city..."
+                  className="w-full pl-9 pr-3 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                />
+              </div>
+            </div>
+
+            {/* Status Tabs */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+              {[
+                { key: "ALL", label: "All", count: clients.length },
+                { key: "ACTIVE", label: "Active", count: clients.filter((c) => c.status === "ACTIVE").length },
+                { key: "TRIAL", label: "Trial", count: clients.filter((c) => c.status === "TRIAL").length },
+                { key: "SUSPENDED", label: "Suspended", count: clients.filter((c) => c.status === "SUSPENDED").length },
+                { key: "CANCELLED", label: "Cancelled", count: clients.filter((c) => c.status === "CANCELLED").length },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setStatusFilter(tab.key)}
+                  className={cn(
+                    "px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border shrink-0 cursor-pointer",
+                    statusFilter === tab.key
+                      ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                      : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                  )}
+                >
+                  {tab.label} <span className="opacity-75 text-[10px]">({tab.count})</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {filteredClients.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-xs">
+              No madrasas match your search or filter.
+            </div>
+          ) : (
+            <div className="space-y-2">
             {paginatedClients.map((client) => {
               const expired = isExpired(client.subscriptionEnd);
               const isOpen = expanded === client.id;
@@ -1411,59 +1483,62 @@ export default function AdminMadrasasPage() {
               );
             })}
           </div>
+          )}
 
           {/* Pagination bar */}
-          <div className="flex items-center justify-between mt-4 px-1 gap-3 flex-wrap bg-white border border-gray-100 rounded-2xl p-4">
-            {/* Left side: stats and page size */}
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-gray-400 whitespace-nowrap">
-                {totalClients} total
-              </span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-gray-400 hidden sm:inline">Show</span>
-                <select
-                  value={pageSize}
-                  onChange={(e) => {
-                    setPageSize(Number(e.target.value));
-                    setPage(1);
-                  }}
-                  className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-                >
-                  {[5, 10, 20, 50].map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-                <span className="text-xs text-gray-400 hidden sm:inline">per page</span>
-              </div>
-            </div>
-
-            {/* Right side: navigation */}
-            {totalPages > 1 && (
-              <div className="flex items-center gap-2">
-                <button
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => p - 1)}
-                  className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center disabled:opacity-40 hover:bg-gray-50 transition-colors cursor-pointer"
-                  aria-label="Previous page"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <span className="text-sm text-gray-600 font-medium min-w-[5rem] text-center">
-                  {page} / {totalPages}
+          {filteredClients.length > 0 && (
+            <div className="flex items-center justify-between mt-4 px-1 gap-3 flex-wrap bg-white border border-gray-100 rounded-2xl p-4 shadow-xs">
+              {/* Left side: stats and page size */}
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-gray-500 font-medium whitespace-nowrap">
+                  Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, totalFiltered)} of {totalFiltered}
                 </span>
-                <button
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => p + 1)}
-                  className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center disabled:opacity-40 hover:bg-gray-50 transition-colors cursor-pointer"
-                  aria-label="Next page"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-gray-400 hidden sm:inline">Show</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setPage(1);
+                    }}
+                    className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                  >
+                    {[5, 10, 20, 50, 100].map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-xs text-gray-400 hidden sm:inline">per page</span>
+                </div>
               </div>
-            )}
-          </div>
+
+              {/* Right side: navigation */}
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <button
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => p - 1)}
+                    className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center disabled:opacity-40 hover:bg-gray-50 transition-colors cursor-pointer"
+                    aria-label="Previous page"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="text-sm text-gray-600 font-medium min-w-[5rem] text-center">
+                    {page} / {totalPages}
+                  </span>
+                  <button
+                    disabled={page >= totalPages}
+                    onClick={() => setPage((p) => p + 1)}
+                    className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center disabled:opacity-40 hover:bg-gray-50 transition-colors cursor-pointer"
+                    aria-label="Next page"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

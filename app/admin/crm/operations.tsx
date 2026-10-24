@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { getGlobalMetrics, getDailyOperations, type GlobalMetrics, type DailyOperations, runChurnCheck } from "@/lib/crm-api";
 import { useAuthStore } from "@/store/auth";
+import { DashboardLayout } from "@/components/DashboardLayout";
 import { useNavigate } from "react-router-dom";
 import {
   Users, CreditCard, BarChart3, ShieldCheck, AlertTriangle,
@@ -55,10 +56,12 @@ export default function OperationsDashboard() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-3">
-        <RefreshCw className="w-10 h-10 animate-spin text-emerald-600" />
-        <p className="text-gray-500 text-sm">Loading Operations Center...</p>
-      </div>
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-3">
+          <RefreshCw className="w-10 h-10 animate-spin text-emerald-600" />
+          <p className="text-gray-500 text-sm">Loading Operations Center...</p>
+        </div>
+      </DashboardLayout>
     );
   }
 
@@ -80,7 +83,8 @@ export default function OperationsDashboard() {
   ] : [];
 
   return (
-    <div className="pb-24 space-y-6">
+    <DashboardLayout>
+      <div className="pb-24 space-y-6">
       {/* Top Welcome Banner */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -212,6 +216,11 @@ export default function OperationsDashboard() {
                     <div>
                       <h4 className="text-sm font-bold text-gray-800">{f.name}</h4>
                       <p className="text-xs text-gray-400">{f.place}, {f.status.replace(/_/g, " ")}</p>
+                      {f.timeline && f.timeline.length > 0 && f.timeline[0]?.notes && (
+                        <p className="text-[10px] text-gray-500 mt-1 line-clamp-1 italic bg-white/80 px-2 py-0.5 rounded border border-gray-100">
+                          💬 {f.timeline[0].notes}
+                        </p>
+                      )}
                     </div>
                     <ArrowRight className="w-4 h-4 text-gray-300" />
                   </div>
@@ -241,6 +250,11 @@ export default function OperationsDashboard() {
                     <div>
                       <h4 className="text-sm font-bold text-rose-950">{f.name}</h4>
                       <p className="text-xs text-rose-600/70">{f.place} • Next: {f.nextFollowUpDate ? new Date(f.nextFollowUpDate).toLocaleDateString() : "No date"}</p>
+                      {f.timeline && f.timeline.length > 0 && f.timeline[0]?.notes && (
+                        <p className="text-[10px] text-rose-800/80 mt-1 line-clamp-1 italic bg-white/80 px-2 py-0.5 rounded border border-rose-100">
+                          💬 {f.timeline[0].notes}
+                        </p>
+                      )}
                     </div>
                     <ArrowRight className="w-4 h-4 text-rose-400" />
                   </div>
@@ -372,6 +386,7 @@ export default function OperationsDashboard() {
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

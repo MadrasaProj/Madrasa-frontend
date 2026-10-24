@@ -618,6 +618,58 @@ export default function CrmLeadsPage() {
     </span>
   );
 
+  const getFollowUpStatus = (dateStr?: string) => {
+    if (!dateStr) {
+      return {
+        label: "No Follow-up Scheduled",
+        urgency: "none" as const,
+        badgeClass: "bg-gray-100 text-gray-500 border-gray-200",
+      };
+    }
+    const nextDate = new Date(dateStr);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const nextZero = new Date(nextDate);
+    nextZero.setHours(0, 0, 0, 0);
+    const diffDays = Math.round((nextZero.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+    const formattedDate = nextDate.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+
+    if (diffDays < 0) {
+      return {
+        label: `Overdue by ${Math.abs(diffDays)}d (${formattedDate})`,
+        urgency: "overdue" as const,
+        badgeClass: "bg-rose-100 text-rose-800 border-rose-200 font-bold",
+        daysDiff: diffDays,
+      };
+    } else if (diffDays === 0) {
+      return {
+        label: `Due Today! (${formattedDate})`,
+        urgency: "today" as const,
+        badgeClass: "bg-amber-100 text-amber-800 border-amber-200 font-bold",
+        daysDiff: 0,
+      };
+    } else if (diffDays === 1) {
+      return {
+        label: `Tomorrow (${formattedDate})`,
+        urgency: "upcoming" as const,
+        badgeClass: "bg-sky-100 text-sky-800 border-sky-200 font-bold",
+        daysDiff: 1,
+      };
+    } else {
+      return {
+        label: `In ${diffDays} days (${formattedDate})`,
+        urgency: "upcoming" as const,
+        badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200 font-bold",
+        daysDiff: diffDays,
+      };
+    }
+  };
+
   // ─── Lead Detail Content ──────────────────────────────────────────────────
   const renderDetailContent = () => {
     if (!selectedLead) return null;
@@ -625,8 +677,105 @@ export default function CrmLeadsPage() {
     const isWon = lead.status === "WON";
     const currentStepIdx = getPipelineStep(lead.status);
 
+    // Latest timeline activity (interaction / follow-up note)
+    const latestActivity = lead.timeline && lead.timeline.length > 0 ? lead.timeline[0] : null;
+    const followUpStatus = getFollowUpStatus(lead.nextFollowUpDate);
+
     return (
       <div className="space-y-5">
+        {/* ── HIGHLIGHTED TOP CARD: LATEST FOLLOW-UP & STATUS ── */}
+        <div className={cn(
+          "rounded-3xl p-5 border shadow-sm transition-all relative overflow-hidden",
+          followUpStatus.urgency === "overdue"
+            ? "bg-gradient-to-br from-rose-50/90 via-white to-rose-50/30 border-rose-200 ring-1 ring-rose-200/50"
+            : followUpStatus.urgency === "today"
+            ? "bg-gradient-to-br from-amber-50/90 via-white to-amber-50/40 border-amber-200 ring-1 ring-amber-200/50"
+            : "bg-gradient-to-br from-slate-50/90 via-white to-emerald-50/30 border-gray-200"
+        )}>
+          {/* Top Row: Next Follow-up Deadline & Current Stage */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100/80">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] font-black uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-emerald-600" /> Next Follow-up:
+              </span>
+              <span className={cn("text-xs px-3 py-1 rounded-full border shadow-2xs inline-flex items-center gap-1.5", followUpStatus.badgeClass)}>
+                {followUpStatus.urgency === "overdue" && <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />}
+                {followUpStatus.urgency === "today" && <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />}
+                {followUpStatus.urgency === "upcoming" && <Calendar className="w-3.5 h-3.5 text-emerald-600" />}
+                {followUpStatus.label}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] uppercase font-bold text-gray-400">Current Status:</span>
+              {renderStatusBadge(lead.status)}
+              {renderScoreBadge(lead.score)}
+            </div>
+          </div>
+
+          {/* Bottom Section: Latest Discussion Notes & Activity Details */}
+          <div className="pt-3.5 space-y-2.5">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase font-black text-gray-400 tracking-wider">
+                  Latest Interaction & Notes:
+                </span>
+                {latestActivity && (
+                  <span className="bg-gray-100 text-gray-700 text-[10px] font-bold px-2 py-0.5 rounded-lg uppercase">
+                    {latestActivity.type}
+                  </span>
+                )}
+              </div>
+              {latestActivity && (
+                <span className="text-[11px] text-gray-400 font-medium">
+                  {new Date(latestActivity.createdAt).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                  {latestActivity.user?.name ? ` · by ${latestActivity.user.name}` : ""}
+                </span>
+              )}
+            </div>
+
+            {latestActivity ? (
+              <div className="bg-white border border-gray-100 rounded-2xl p-3.5 shadow-2xs">
+                <p className="text-xs font-medium text-gray-800 leading-relaxed whitespace-pre-wrap">
+                  {latestActivity.notes}
+                </p>
+                {latestActivity.followUpDate && (
+                  <div className="mt-2.5 pt-2 border-t border-gray-50 flex items-center justify-between text-[10px] text-gray-500">
+                    <span className="font-semibold text-gray-400">Scheduled during this interaction:</span>
+                    <span className="font-bold text-amber-700 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {new Date(latestActivity.followUpDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="bg-white/60 border border-dashed border-gray-200 rounded-2xl p-3 text-center">
+                <p className="text-xs text-gray-400 font-medium italic">
+                  No interactions or follow-up notes logged yet.
+                </p>
+              </div>
+            )}
+
+            {/* Quick action trigger inside highlight card */}
+            <div className="flex justify-end pt-1">
+              <button
+                type="button"
+                onClick={() => setActiveSection(activeSection === "followup" ? null : "followup")}
+                className="text-[11px] font-bold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 transition-all"
+              >
+                <Phone className="w-3 h-3" />
+                {activeSection === "followup" ? "Close Follow-up Form" : "+ Log New Follow-up Action"}
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* ── Pipeline Progress Bar ── */}
         <div className="bg-gray-50/70 rounded-2xl p-4 border border-gray-100">
           <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
@@ -1232,14 +1381,27 @@ export default function CrmLeadsPage() {
                         </div>
                         {renderScoreBadge(l.score)}
                       </div>
-                      <div className="flex items-center justify-between">
+
+                      {/* Latest Interaction / Follow-up snippet if available */}
+                      {l.timeline && l.timeline.length > 0 && l.timeline[0]?.notes && (
+                        <p className="text-[10px] text-gray-600 bg-gray-50/90 p-1.5 rounded-lg border border-gray-100 line-clamp-1 italic" title={l.timeline[0].notes}>
+                          💬 {l.timeline[0].notes}
+                        </p>
+                      )}
+
+                      <div className="flex items-center justify-between gap-1 flex-wrap pt-0.5">
                         {renderStatusBadge(l.status)}
-                        {l.nextFollowUpDate && (
-                          <span className="text-[9px] text-amber-600 font-semibold flex items-center gap-0.5">
-                            <Clock className="w-3 h-3" />
-                            {new Date(l.nextFollowUpDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                          </span>
-                        )}
+                        {l.nextFollowUpDate && (() => {
+                          const st = getFollowUpStatus(l.nextFollowUpDate);
+                          return (
+                            <span className={cn("text-[9px] px-1.5 py-0.5 rounded-md border flex items-center gap-1 shrink-0", st.badgeClass)}>
+                              {st.urgency === "overdue" && <AlertTriangle className="w-2.5 h-2.5 text-rose-600 shrink-0" />}
+                              {st.urgency === "today" && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping shrink-0" />}
+                              {st.urgency === "upcoming" && <Clock className="w-2.5 h-2.5 text-emerald-600 shrink-0" />}
+                              {st.label}
+                            </span>
+                          );
+                        })()}
                       </div>
                     </motion.div>
                   );
@@ -1264,6 +1426,17 @@ export default function CrmLeadsPage() {
                         <h2 className="text-base font-black text-gray-800">{selectedLead.name}</h2>
                         {renderStatusBadge(selectedLead.status)}
                         {renderScoreBadge(selectedLead.score)}
+                        {selectedLead.nextFollowUpDate && (() => {
+                          const st = getFollowUpStatus(selectedLead.nextFollowUpDate);
+                          return (
+                            <span className={cn("text-[10px] px-2.5 py-0.5 rounded-full border flex items-center gap-1", st.badgeClass)}>
+                              {st.urgency === "overdue" && <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0" />}
+                              {st.urgency === "today" && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping shrink-0" />}
+                              {st.urgency === "upcoming" && <Clock className="w-3 h-3 text-emerald-600 shrink-0" />}
+                              Next: {st.label}
+                            </span>
+                          );
+                        })()}
                       </div>
                       <p className="text-xs text-gray-400 mt-0.5">
                         {selectedLead.type} · {selectedLead.place}{selectedLead.district ? `, ${selectedLead.district}` : ""}
@@ -1339,6 +1512,14 @@ export default function CrmLeadsPage() {
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <h2 className="text-sm font-black text-gray-800">{selectedLead.name}</h2>
                           {renderStatusBadge(selectedLead.status)}
+                          {selectedLead.nextFollowUpDate && (() => {
+                            const st = getFollowUpStatus(selectedLead.nextFollowUpDate);
+                            return (
+                              <span className={cn("text-[9px] px-2 py-0.5 rounded-full border flex items-center gap-1", st.badgeClass)}>
+                                {st.label}
+                              </span>
+                            );
+                          })()}
                         </div>
                         <p className="text-[10px] text-gray-400 mt-0.5">
                           {selectedLead.type} · {selectedLead.place} · {selectedLead.studentCount} students
