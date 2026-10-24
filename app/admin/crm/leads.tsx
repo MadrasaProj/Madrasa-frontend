@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   listLeads, getLead, createLead, updateLead, deleteLead,
   logActivity, scheduleDemo, provisionTrial, convertLead,
@@ -14,7 +14,7 @@ import {
   Plus, Search, Phone, MessageSquare, Play, CheckCircle, X, Loader2,
   DollarSign, Calendar, Users, Award, Trash, Clock, ChevronRight,
   AlertTriangle, Copy, Check, List, Filter, RefreshCw, ExternalLink,
-  ArrowRight, TrendingUp, Upload, FileSpreadsheet
+  ArrowRight, TrendingUp, Upload, FileSpreadsheet, Sparkles, Zap, Flame, RotateCcw
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -112,6 +112,7 @@ const SCORE_COLORS: Record<string, string> = {
 export default function CrmLeadsPage() {
   const { accessToken, user } = useAuthStore();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   const [leads, setLeads] = useState<LeadListItem[]>([]);
   const [districts, setDistricts] = useState<DistrictItem[]>([]);
@@ -121,6 +122,9 @@ export default function CrmLeadsPage() {
 
   const [search, setSearch] = useState("");
   const [activeStage, setActiveStage] = useState<string>("ALL");
+  const [smartPreset, setSmartPreset] = useState<"ALL" | "OVERDUE" | "TODAY" | "HOT_WARM" | "ACTIVE_TRIALS" | "NO_FOLLOWUP">("ALL");
+  const [selectedDistrict, setSelectedDistrict] = useState<string>("ALL");
+  const [sortBy, setSortBy] = useState<"URGENT" | "NEWEST" | "STUDENTS" | "NAME">("URGENT");
   const [showMobileDetail, setShowMobileDetail] = useState(false);
 
   const [loading, setLoading] = useState(true);
@@ -215,12 +219,19 @@ export default function CrmLeadsPage() {
 
   useEffect(() => { loadData(); }, [accessToken, search]); // eslint-disable-line
 
-  // Read ?id= query param on mount to auto-open lead
+  // Read ?id= and ?filter= query params on mount to auto-open lead or activate preset
   useEffect(() => {
     const idParam = searchParams.get("id");
     if (idParam && idParam !== selectedLeadId) {
       setSelectedLeadId(idParam);
       setShowMobileDetail(true);
+    }
+    const filterParam = searchParams.get("filter");
+    if (filterParam) {
+      const upper = filterParam.toUpperCase();
+      if (["ALL", "OVERDUE", "TODAY", "HOT_WARM", "ACTIVE_TRIALS", "NO_FOLLOWUP"].includes(upper)) {
+        setSmartPreset(upper as any);
+      }
     }
   }, [searchParams]); // eslint-disable-line
 
@@ -592,10 +603,247 @@ export default function CrmLeadsPage() {
     } catch (e) { toast((e as Error).message, true); }
   };
 
-  // ─── Filtered leads ───────────────────────────────────────────────────────
-  const filteredLeads = leads.filter(l =>
-    activeStage === "ALL" ? true : l.status === activeStage
-  );
+  // ─── Filtered leads & Smart Presets ────────────────────────────────────────
+  const availableDistricts = useMemo(() => {
+    const set = new Set<string>();
+    districts.forEach(d => { if (d.name) set.add(d.name); });
+    leads.forEach(l => { if (l.district) set.add(l.district); });
+    return Array.from(set).sort();
+  }, [districts, leads]);
+
+  const smartCounts = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    let overdue = 0;
+    let today = 0;
+    let hotWarm = 0;
+    let activeTrials = 0;
+    let noFollowup = 0;
+
+    for (const l of leads) {
+      if (l.score === "HOT" || l.score === "WARM") hotWarm++;
+      if (l.status === "TRIAL_SHARED" || l.status === "TRIAL_CREATED" || l.status.includes("TRIAL")) activeTrials++;
+
+      if (l.status !== "WON" && l.status !== "LOST") {
+        if (!l.nextFollowUpDate) {
+          noFollowup++;
+        } else {
+          const d = new Date(l.nextFollowUpDate);
+          d.setHours(0, 0, 0, 0);
+          const diff = Math.round((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          if (diff < 0) overdue++;
+          else if (diff === 0) today++;
+        }
+      }
+    }
+
+    return {
+      all: leads.length,
+      overdue,
+      today,
+      hotWarm,
+      activeTrials,
+      noFollowup,
+    };
+  }, [leads]);
+
+  const filteredLeads = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    return leads.filter(l => {
+      // Stage filter
+      if (activeStage !== "ALL" && l.status !== activeStage) return false;
+
+      // District filter
+      if (selectedDistrict !== "ALL") {
+        const dName = l.district || "";
+        if (dName.toLowerCase() !== selectedDistrict.toLowerCase()) return false;
+      }
+
+      // Smart Preset
+      if (smartPreset === "OVERDUE") {
+        if (l.status === "WON" || l.status === "LOST" || !l.nextFollowUpDate) return false;
+        const d = new Date(l.nextFollowUpDate);
+        d.setHours(0, 0, 0, 0);
+        return d.getTime() < now.getTime();
+      }
+      if (smartPreset === "TODAY") {
+        if (l.status === "WON" || l.status === "LOST" || !l.nextFollowUpDate) return false;
+        const d = new Date(l.nextFollowUpDate);
+        d.setHours(0, 0, 0, 0);
+        return d.getTime() === now.getTime();
+      }
+      if (smartPreset === "HOT_WARM") {
+        return l.score === "HOT" || l.score === "WARM";
+      }
+      if (smartPreset === "ACTIVE_TRIALS") {
+        return l.status === "TRIAL_SHARED" || l.status === "TRIAL_CREATED" || l.status.includes("TRIAL");
+      }
+      if (smartPreset === "NO_FOLLOWUP") {
+        return !l.nextFollowUpDate && l.status !== "WON" && l.status !== "LOST";
+      }
+
+      return true;
+    }).sort((a, b) => {
+      if (sortBy === "URGENT") {
+        const isAClosed = a.status === "WON" || a.status === "LOST";
+        const isBClosed = b.status === "WON" || b.status === "LOST";
+        if (isAClosed && !isBClosed) return 1;
+        if (!isAClosed && isBClosed) return -1;
+
+        const dateA = a.nextFollowUpDate ? new Date(a.nextFollowUpDate).getTime() : Infinity;
+        const dateB = b.nextFollowUpDate ? new Date(b.nextFollowUpDate).getTime() : Infinity;
+        return dateA - dateB;
+      }
+      if (sortBy === "NEWEST") {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      if (sortBy === "STUDENTS") {
+        return (b.studentCount || 0) - (a.studentCount || 0);
+      }
+      if (sortBy === "NAME") {
+        return a.name.localeCompare(b.name);
+      }
+      return 0;
+    });
+  }, [leads, activeStage, selectedDistrict, smartPreset, sortBy, districts]);
+
+  const getSmartSuggestion = (lead: LeadDetail) => {
+    const isWon = lead.status === "WON";
+    const isLost = lead.status === "LOST";
+    const nextDate = lead.nextFollowUpDate ? new Date(lead.nextFollowUpDate) : null;
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    let diffDays: number | null = null;
+    if (nextDate) {
+      const nextZero = new Date(nextDate);
+      nextZero.setHours(0, 0, 0, 0);
+      diffDays = Math.round((nextZero.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    }
+
+    if (isWon) {
+      return {
+        tone: "positive" as const,
+        title: "Successfully Converted & Active",
+        actionLabel: "View Madrasa Operations",
+        badge: "Closed Won",
+        description: "Ensure teacher rosters and class divisions are configured. Monitor initial attendance marking.",
+        onAction: () => navigate(`/admin/madrasas?search=${encodeURIComponent(lead.name)}`),
+      };
+    }
+
+    if (isLost) {
+      return {
+        tone: "neutral" as const,
+        title: "Deal Closed / Archived",
+        actionLabel: "Re-engage Prospect",
+        badge: "Lost",
+        description: "Set a 30-day touchpoint or send updated syllabus feature releases to revive interest.",
+        onAction: () => setActiveSection("followup"),
+      };
+    }
+
+    if (diffDays !== null && diffDays < 0) {
+      return {
+        tone: "critical" as const,
+        title: `Overdue Follow-up (${Math.abs(diffDays)}d delayed)`,
+        actionLabel: "Log Follow-up Call / Note",
+        badge: "Urgent Priority",
+        description: "Prospect is cooling down. Reach out immediately via phone or WhatsApp to address questions or schedule a demo.",
+        onAction: () => setActiveSection("followup"),
+      };
+    }
+
+    if (diffDays !== null && diffDays === 0) {
+      return {
+        tone: "urgent" as const,
+        title: "Follow-up Scheduled For Today",
+        actionLabel: "Complete Follow-up",
+        badge: "Due Today",
+        description: "Call or message the key contact to confirm decision status, demo feedback, or onboarding readiness.",
+        onAction: () => setActiveSection("followup"),
+      };
+    }
+
+    if (lead.status === "TRIAL_SHARED" || lead.status === "TRIAL_CREATED" || lead.status.includes("TRIAL")) {
+      const logins = lead.trialMonitoring?.loginFrequency ?? 0;
+      if (logins === 0) {
+        return {
+          tone: "warning" as const,
+          title: "Trial Active — 0 Logins Detected",
+          actionLabel: "Send Quick Login Guide",
+          badge: "Trial Inactivity",
+          description: "Madrasa staff haven't logged in yet. Message the primary contact to assist with their first login.",
+          onAction: () => setActiveSection("followup"),
+        };
+      } else {
+        return {
+          tone: "high_intent" as const,
+          title: `Active Trial (${logins} logins recorded)`,
+          actionLabel: "Convert to Paying Client",
+          badge: "High Intent",
+          description: "Prospect is actively testing the platform. Propose annual subscription plans and finalize licensing.",
+          onAction: () => setActiveSection("convert"),
+        };
+      }
+    }
+
+    if (["OFFLINE_DEMO_COMPLETED", "DEMO_COMPLETED", "INTERESTED"].includes(lead.status)) {
+      return {
+        tone: "high_intent" as const,
+        title: "Demo Completed — Prospect Interested",
+        actionLabel: "Launch 14-Day Free Trial",
+        badge: "Ready for Trial",
+        description: "Demonstration was well received. Provide sandboxed trial credentials so committee members can test.",
+        onAction: handleProvisionTrial,
+      };
+    }
+
+    if (["OFFLINE_DEMO_SCHEDULED", "ONLINE_DEMO_SCHEDULED", "DEMO_SCHEDULED"].includes(lead.status)) {
+      return {
+        tone: "urgent" as const,
+        title: "Demonstration Scheduled",
+        actionLabel: "Prepare Demo Walkthrough",
+        badge: "Demo Ahead",
+        description: "Prepare syllabus samples, fee management preview, and student report card templates.",
+        onAction: () => setActiveSection("demo"),
+      };
+    }
+
+    if (lead.status === "NEW") {
+      return {
+        tone: "urgent" as const,
+        title: "Fresh Inbound Lead",
+        actionLabel: "Initiate First Contact",
+        badge: "New Prospect",
+        description: "Calling within 2 hours yields 4x higher demo bookings. Introduce Smart Madrasa features now.",
+        onAction: () => setActiveSection("followup"),
+      };
+    }
+
+    if (!lead.nextFollowUpDate) {
+      return {
+        tone: "warning" as const,
+        title: "No Next Follow-up Scheduled",
+        actionLabel: "Schedule Next Touchpoint",
+        badge: "Needs Schedule",
+        description: "Keep deals moving smoothly through the pipeline. Lock in the next date to speak with the committee.",
+        onAction: () => setActiveSection("followup"),
+      };
+    }
+
+    return {
+      tone: "neutral" as const,
+      title: "Pipeline Progression",
+      actionLabel: "Log Follow-up",
+      badge: "In Progress",
+      description: "Qualify committee decision-makers (President/Secretary/Sadr Usthad) and confirm madrasa student count.",
+      onAction: () => setActiveSection("followup"),
+    };
+  };
 
   // ─── Pipeline step index ──────────────────────────────────────────────────
   const getPipelineStep = (status: string) => {
@@ -775,6 +1023,66 @@ export default function CrmLeadsPage() {
             </div>
           </div>
         </div>
+
+        {/* ── SMART AI NEXT-ACTION SUGGESTION BANNER ── */}
+        {(() => {
+          const suggestion = getSmartSuggestion(lead);
+          const toneClasses = {
+            critical: "bg-gradient-to-r from-rose-500/10 via-rose-50 to-white border-rose-200 text-rose-900",
+            urgent: "bg-gradient-to-r from-amber-500/10 via-amber-50 to-white border-amber-200 text-amber-900",
+            high_intent: "bg-gradient-to-r from-violet-500/10 via-violet-50 to-white border-violet-200 text-violet-900",
+            warning: "bg-yellow-50/80 via-white to-white border-yellow-200 text-yellow-900",
+            positive: "bg-gradient-to-r from-emerald-500/10 via-emerald-50 to-white border-emerald-200 text-emerald-900",
+            neutral: "bg-gradient-to-r from-blue-500/10 via-blue-50 to-white border-blue-200 text-blue-900",
+          }[suggestion.tone];
+
+          const toneBadge = {
+            critical: "bg-rose-100 text-rose-800 border-rose-300",
+            urgent: "bg-amber-100 text-amber-800 border-amber-300",
+            high_intent: "bg-violet-100 text-violet-800 border-violet-300",
+            warning: "bg-yellow-100 text-yellow-800 border-yellow-300",
+            positive: "bg-emerald-100 text-emerald-800 border-emerald-300",
+            neutral: "bg-blue-100 text-blue-800 border-blue-300",
+          }[suggestion.tone];
+
+          const toneBtn = {
+            critical: "bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200",
+            urgent: "bg-amber-600 hover:bg-amber-700 text-white shadow-amber-200",
+            high_intent: "bg-violet-600 hover:bg-violet-700 text-white shadow-violet-200",
+            warning: "bg-amber-600 hover:bg-amber-700 text-white shadow-amber-200",
+            positive: "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200",
+            neutral: "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200",
+          }[suggestion.tone];
+
+          return (
+            <div className={cn("p-4 rounded-3xl border shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-all", toneClasses)}>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="p-1 rounded-lg bg-white shadow-2xs">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  </span>
+                  <span className="text-[10px] uppercase font-black tracking-wider text-gray-500">
+                    Smart Operational Suggestion
+                  </span>
+                  <span className={cn("text-[9px] font-bold px-2 py-0.5 rounded-full border shadow-2xs", toneBadge)}>
+                    {suggestion.badge}
+                  </span>
+                </div>
+                <h4 className="text-sm font-black text-gray-900">{suggestion.title}</h4>
+                <p className="text-xs text-gray-600 max-w-xl leading-relaxed">{suggestion.description}</p>
+              </div>
+
+              <button
+                type="button"
+                onClick={suggestion.onAction}
+                className={cn("px-4 py-2.5 rounded-xl text-xs font-bold shrink-0 transition-all shadow-sm active:scale-95 flex items-center gap-1.5", toneBtn)}
+              >
+                <Zap className="w-3.5 h-3.5" />
+                {suggestion.actionLabel}
+              </button>
+            </div>
+          );
+        })()}
 
         {/* ── Pipeline Progress Bar ── */}
         <div className="bg-gray-50/70 rounded-2xl p-4 border border-gray-100">
@@ -1122,34 +1430,80 @@ export default function CrmLeadsPage() {
                       <span className="ml-1.5 text-[8px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">Primary</span>
                     )}
                   </p>
-                  {c.phone && (
-                    <div className="flex items-center gap-1.5 text-gray-600">
-                      <Phone className="w-3 h-3 text-gray-400" />
-                      <span>{c.phone}</span>
-                      <button
-                        type="button"
-                        onClick={() => copyToClipboard(c.phone!, c.phone!)}
-                        className="p-0.5 text-gray-400 hover:text-gray-600"
-                        title="Copy phone"
-                      >
-                        {copiedText === c.phone ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                      </button>
-                    </div>
-                  )}
-                  {c.secondaryPhone && (
-                    <div className="flex items-center gap-1.5 text-gray-500 text-[11px]">
-                      <span className="text-[9px] text-gray-400 font-medium">Alt:</span>
-                      <span>{c.secondaryPhone}</span>
-                      <button
-                        type="button"
-                        onClick={() => copyToClipboard(c.secondaryPhone!, c.secondaryPhone!)}
-                        className="p-0.5 text-gray-400 hover:text-gray-600"
-                        title="Copy alt phone"
-                      >
-                        {copiedText === c.secondaryPhone ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                      </button>
-                    </div>
-                  )}
+                  {c.phone && (() => {
+                    const cleanPhone = c.phone.replace(/[^0-9]/g, "");
+                    const waPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+                    return (
+                      <div className="flex items-center gap-2 text-gray-600 flex-wrap pt-0.5">
+                        <Phone className="w-3 h-3 text-gray-400" />
+                        <span className="font-semibold">{c.phone}</span>
+                        <div className="flex items-center gap-1">
+                          <a
+                            href={`tel:${c.phone}`}
+                            className="p-1 rounded-md text-blue-600 hover:bg-blue-50 transition-colors"
+                            title="Direct Call"
+                          >
+                            <Phone className="w-3 h-3" />
+                          </a>
+                          <a
+                            href={`https://wa.me/${waPhone}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors"
+                            title="Chat on WhatsApp"
+                          >
+                            <MessageSquare className="w-2.5 h-2.5" />
+                            <span>WhatsApp</span>
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(c.phone!, c.phone!)}
+                            className="p-1 text-gray-400 hover:text-gray-600"
+                            title="Copy phone"
+                          >
+                            {copiedText === c.phone ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  {c.secondaryPhone && (() => {
+                    const cleanPhone = c.secondaryPhone.replace(/[^0-9]/g, "");
+                    const waPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+                    return (
+                      <div className="flex items-center gap-2 text-gray-500 text-[11px] flex-wrap pt-0.5">
+                        <span className="text-[9px] text-gray-400 font-medium">Alt:</span>
+                        <span className="font-semibold">{c.secondaryPhone}</span>
+                        <div className="flex items-center gap-1">
+                          <a
+                            href={`tel:${c.secondaryPhone}`}
+                            className="p-1 rounded-md text-blue-600 hover:bg-blue-50 transition-colors"
+                            title="Call Alt Phone"
+                          >
+                            <Phone className="w-3 h-3" />
+                          </a>
+                          <a
+                            href={`https://wa.me/${waPhone}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors"
+                            title="Chat on WhatsApp"
+                          >
+                            <MessageSquare className="w-2.5 h-2.5" />
+                            <span>WhatsApp</span>
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(c.secondaryPhone!, c.secondaryPhone!)}
+                            className="p-1 text-gray-400 hover:text-gray-600"
+                            title="Copy alt phone"
+                          >
+                            {copiedText === c.secondaryPhone ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             ))
@@ -1296,31 +1650,132 @@ export default function CrmLeadsPage() {
           )}
         </AnimatePresence>
 
-        {/* Search + Stage Filter */}
-        <div className="flex flex-col sm:flex-row gap-2.5 mb-5">
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
-            <input
-              type="text" value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search by name, place, district..."
-              className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-sm placeholder-gray-400 focus:outline-none focus:border-emerald-500"
-            />
+        {/* ── Filter Suite ── */}
+        <div className="space-y-3 mb-5">
+          {/* Top row: Search + District Filter + Sort Controls */}
+          <div className="flex flex-col md:flex-row gap-2.5">
+            {/* Search Input */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
+              <input
+                type="text" value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="Search leads by name, place, district..."
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-100 rounded-2xl text-sm placeholder-gray-400 focus:outline-none focus:border-emerald-500 shadow-2xs"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            {/* District Selector */}
+            <div className="w-full md:w-56 shrink-0">
+              <select
+                value={selectedDistrict}
+                onChange={e => setSelectedDistrict(e.target.value)}
+                className="w-full bg-white border border-gray-100 text-xs font-semibold py-2.5 px-3 rounded-2xl focus:outline-none focus:border-emerald-500 text-gray-700 shadow-2xs"
+              >
+                <option value="ALL">All Districts ({availableDistricts.length})</option>
+                {availableDistricts.map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Sort Selector */}
+            <div className="w-full md:w-56 shrink-0">
+              <select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value as any)}
+                className="w-full bg-white border border-gray-100 text-xs font-semibold py-2.5 px-3 rounded-2xl focus:outline-none focus:border-emerald-500 text-gray-700 shadow-2xs"
+              >
+                <option value="URGENT">Sort: Urgency / Follow-up</option>
+                <option value="NEWEST">Sort: Newest Added</option>
+                <option value="STUDENTS">Sort: Student Strength (High to Low)</option>
+                <option value="NAME">Sort: Name (A to Z)</option>
+              </select>
+            </div>
+
+            {/* Reset Filter Button */}
+            {(activeStage !== "ALL" || smartPreset !== "ALL" || selectedDistrict !== "ALL" || search !== "" || sortBy !== "URGENT") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveStage("ALL");
+                  setSmartPreset("ALL");
+                  setSelectedDistrict("ALL");
+                  setSearch("");
+                  setSortBy("URGENT");
+                }}
+                className="flex items-center gap-1 px-3 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-2xl text-xs font-bold transition-all shrink-0"
+                title="Reset all filters"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Reset</span>
+              </button>
+            )}
           </div>
-          <div className="flex gap-2 overflow-x-auto scrollbar-none pb-0.5">
-            {[{ key: "ALL", label: "All", count: leads.length }, ...LEAD_STATUSES.map(s => ({
+
+          {/* Smart Presets Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-0.5">
+            <span className="text-[10px] uppercase font-black tracking-wider text-gray-400 shrink-0 flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-amber-500" /> Presets:
+            </span>
+
+            {[
+              { key: "ALL", label: "All Leads", count: smartCounts.all, activeColor: "bg-gray-800 text-white border-gray-800", badgeColor: "bg-gray-100 text-gray-700" },
+              { key: "OVERDUE", label: "🚨 Overdue", count: smartCounts.overdue, activeColor: "bg-rose-600 text-white border-rose-600", badgeColor: "bg-rose-100 text-rose-800" },
+              { key: "TODAY", label: "⏱️ Due Today", count: smartCounts.today, activeColor: "bg-amber-600 text-white border-amber-600", badgeColor: "bg-amber-100 text-amber-800" },
+              { key: "HOT_WARM", label: "🔥 Warm & Hot", count: smartCounts.hotWarm, activeColor: "bg-orange-600 text-white border-orange-600", badgeColor: "bg-orange-100 text-orange-800" },
+              { key: "ACTIVE_TRIALS", label: "🚀 Active Trials", count: smartCounts.activeTrials, activeColor: "bg-indigo-600 text-white border-indigo-600", badgeColor: "bg-indigo-100 text-indigo-800" },
+              { key: "NO_FOLLOWUP", label: "⚠️ Needs Follow-up", count: smartCounts.noFollowup, activeColor: "bg-slate-700 text-white border-slate-700", badgeColor: "bg-gray-100 text-gray-700" },
+            ].map(pill => {
+              const isSelected = smartPreset === pill.key;
+              return (
+                <button
+                  key={pill.key}
+                  type="button"
+                  onClick={() => setSmartPreset(pill.key as any)}
+                  className={cn(
+                    "shrink-0 px-3 py-1.5 text-[11px] font-bold rounded-xl border transition-all flex items-center gap-1.5",
+                    isSelected
+                      ? cn(pill.activeColor, "shadow-sm scale-[1.02]")
+                      : "bg-white text-gray-600 border-gray-100 hover:bg-gray-50"
+                  )}
+                >
+                  <span>{pill.label}</span>
+                  <span className={cn(
+                    "px-1.5 py-0.2 rounded-full text-[9px] font-black",
+                    isSelected ? "bg-white/25 text-white" : pill.badgeColor || "bg-gray-100 text-gray-500"
+                  )}>
+                    {pill.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Pipeline Stage Bar */}
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-none pb-0.5 pt-1">
+            {[{ key: "ALL", label: "All Stages", count: leads.length }, ...LEAD_STATUSES.map(s => ({
               key: s, label: LEAD_STATUS_LABELS[s] ?? s.replace(/_/g, " "), count: leads.filter(l => l.status === s).length
             }))].map(item => (
               <button key={item.key} type="button"
                 onClick={() => setActiveStage(item.key)}
                 className={cn(
-                  "shrink-0 px-3 py-2 text-[10px] font-bold rounded-xl border transition-all flex items-center gap-1.5",
+                  "shrink-0 px-2.5 py-1.5 text-[10px] font-bold rounded-xl border transition-all flex items-center gap-1.5",
                   activeStage === item.key
                     ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
                     : "bg-white text-gray-500 border-gray-100 hover:bg-gray-50"
                 )}
               >
                 {item.label}
-                <span className={cn("px-1.5 py-0.5 rounded-full text-[9px] font-bold",
+                <span className={cn("px-1.5 py-0.2 rounded-full text-[9px] font-bold",
                   activeStage === item.key ? "bg-emerald-700 text-white" : "bg-gray-100 text-gray-400"
                 )}>{item.count}</span>
               </button>
