@@ -13,7 +13,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import {
   Users, CreditCard, BookOpen, BarChart3, Settings, GraduationCap,
   BookMarked, ClipboardList, Loader2, Building2, ShieldCheck,
-  UserCircle2, LogIn, CheckCircle, XCircle, Briefcase, Target, LifeBuoy, Moon,
+  UserCircle2, LogIn, CheckCircle, XCircle, Briefcase, Target, LifeBuoy,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -46,7 +46,6 @@ function PlatformOverview() {
     { title: "Support Desk",     icon: LifeBuoy,    href: "/admin/crm/support",           desc: "Support tickets & SLA monitoring" },
     { title: "Admin Users",      icon: ShieldCheck, href: "/admin/super-users",           desc: "Platform administrator accounts" },
     { title: "Global Syllabus",  icon: BookOpen,    href: "/admin/global-class-subjects", desc: "Curriculum, classes & subjects" },
-    { title: "Ibadah Settings",  icon: Moon,        href: "/admin/ibadah-config",         desc: "Global prayer tracking rules" },
   ];
 
   return (

@@ -117,11 +117,11 @@ export default function IbadahConfigPage() {
   const [editItemError, setEditItemError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!token) return;
+    if (!token || !cid) return;
     setLoading(true);
     setError(null);
     try {
-      const cfg = await getIbadahConfig(token, cid || undefined);
+      const cfg = await getIbadahConfig(token, cid);
       setConfig(cfg);
       setToggles({
         enableFajr: cfg.enableFajr,
@@ -154,7 +154,10 @@ export default function IbadahConfigPage() {
   }, [load]);
 
   const handleSave = async () => {
-    if (!token) return;
+    if (!token || !cid) {
+      setError("Madrasa client context not found");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -170,7 +173,7 @@ export default function IbadahConfigPage() {
           customItems,
           scoringConfig: scoring,
         },
-        cid || undefined,
+        cid,
       );
       setConfig(updated);
       setSaved(true);
