@@ -19,8 +19,8 @@ import { SkeletonGrid } from "@/components/ui/Skeleton";
 type View = "list" | "create" | "edit";
 
 export default function AdminSocialFramesPage() {
-  const { user, accessToken } = useAuthStore();
-  const clientId = user?.clientId ?? "";
+  const { user, accessToken, activeClientId, hasHydrated } = useAuthStore();
+  const clientId = activeClientId ?? user?.clientId ?? "";
   const token = accessToken ?? "";
 
   const [view, setView] = useState<View>("list");
@@ -33,11 +33,10 @@ export default function AdminSocialFramesPage() {
   const creatorRef = useRef<SocialFrameCreatorRef>(null);
 
   const loadFrames = useCallback(async () => {
-    if (!clientId) return;
     setLoading(true);
     try {
-      const res = await getSocialFrames(clientId, { limit: 100 });
-      setFrames(res.data);
+      const res = await getSocialFrames(clientId || undefined, { limit: 100 });
+      setFrames(Array.isArray(res?.data) ? res.data : []);
     } catch {
       setFrames([]);
     } finally {
@@ -64,7 +63,7 @@ export default function AdminSocialFramesPage() {
   const handleDelete = async (frame: SocialFrameRecord) => {
     if (!confirm(`Delete "${frame.title}"?`)) return;
     try {
-      await deleteSocialFrame(clientId, token, frame.id);
+      await deleteSocialFrame(clientId || undefined, token, frame.id);
       setFrames((prev) => prev.filter((p) => p.id !== frame.id));
     } catch {
       alert("Failed to delete social frame");
@@ -80,7 +79,7 @@ export default function AdminSocialFramesPage() {
     setSaving(true);
     try {
       if (view === "edit" && editingFrame) {
-        const updated = await updateSocialFrame(clientId, token, editingFrame.id, {
+        const updated = await updateSocialFrame(clientId || undefined, token, editingFrame.id, {
           title,
           sceneData,
         });
@@ -88,7 +87,7 @@ export default function AdminSocialFramesPage() {
           prev.map((p) => (p.id === updated.id ? updated : p))
         );
       } else {
-        const created = await createSocialFrame(clientId, token, {
+        const created = await createSocialFrame(clientId || undefined, token, {
           title,
           sceneData,
         });

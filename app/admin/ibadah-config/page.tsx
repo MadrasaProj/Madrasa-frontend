@@ -7,6 +7,7 @@ import {
   type IbadahConfig,
   type IbadahScoringConfig,
 } from "@/lib/ibadah-api";
+import { listClients, type ClientListItem } from "@/lib/super-admin-api";
 import { useAuthStore } from "@/store/auth";
 import { Icon } from "@iconify/react";
 import {
@@ -32,6 +33,7 @@ import {
   Calculator,
   Bell,
   ArrowRight,
+  Building2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -55,6 +57,24 @@ const PRAYER_FIELDS: {
     desc: "Daily Quran reading tracker",
   },
 ];
+
+const DEFAULT_TOGGLES: Partial<Record<keyof IbadahConfig, boolean>> = {
+  enableFajr: true,
+  enableDhuhr: true,
+  enableAsr: true,
+  enableMaghrib: true,
+  enableIsha: true,
+  enableQuranPages: true,
+};
+
+const DEFAULT_SCORING: IbadahScoringConfig = {
+  jamaPoints: 10,
+  adaPoints: 7,
+  excusedPoints: 7,
+  qalaPoints: 3,
+  quranPointsPerPage: 2,
+  maxQuranPagesPerDay: 20,
+};
 
 const EMPTY_ITEM: Omit<CustomItem, "key"> & { key: string } = {
   key: "",
@@ -82,32 +102,39 @@ function validateKey(key: string): string | null {
 }
 
 export default function IbadahConfigPage() {
-  const { accessToken, user, activeClientId } = useAuthStore();
+  const { accessToken, user, activeClientId, hasHydrated } = useAuthStore();
   const token = accessToken ?? "";
-  const cid = activeClientId ?? user?.clientId ?? "";
   const isSuperAdmin = user?.actorType === "SUPER_ADMIN";
   const isAdmin =
     isSuperAdmin ||
     user?.actorType === "CLIENT_ADMIN" ||
     user?.role === "admin";
 
+  const urlParamClientId =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("clientId")
+      : null;
+
+  const [clients, setClients] = useState<ClientListItem[]>([]);
+  const [loadingClients, setLoadingClients] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState<string>(() => {
+    return (
+      urlParamClientId ||
+      activeClientId ||
+      (user?.actorType !== "SUPER_ADMIN" ? user?.clientId : "") ||
+      ""
+    );
+  });
+
   const [config, setConfig] = useState<IbadahConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [toggles, setToggles] = useState<
-    Partial<Record<keyof IbadahConfig, boolean>>
-  >({});
+  const [toggles, setToggles] =
+    useState<Partial<Record<keyof IbadahConfig, boolean>>>(DEFAULT_TOGGLES);
   const [customItems, setCustomItems] = useState<CustomItem[]>([]);
-  const [scoring, setScoring] = useState<IbadahScoringConfig>({
-    jamaPoints: 10,
-    adaPoints: 7,
-    excusedPoints: 7,
-    qalaPoints: 3,
-    quranPointsPerPage: 2,
-    maxQuranPagesPerDay: 20,
-  });
+  const [scoring, setScoring] = useState<IbadahScoringConfig>(DEFAULT_SCORING);
 
   const [addingItem, setAddingItem] = useState(false);
   const [newItem, setNewItem] = useState<CustomItem>({ ...EMPTY_ITEM });
@@ -116,46 +143,129 @@ export default function IbadahConfigPage() {
   const [editItem, setEditItem] = useState<CustomItem>({ ...EMPTY_ITEM });
   const [editItemError, setEditItemError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    if (!token || !cid) return;
+  // Fetch clients for Super Admin so they can select any madrasa
+  useEffect(() => {
+    if (!hasHydrated || !isSuperAdmin || !token) return;
+
+    let cancelled = false;
+    setLoadingClients(true);
+    listClients(token)
+      .then((res) => {
+        if (cancelled) return;
+        const list = Array.isArray(res?.data) ? res.data : [];
+        setClients(list);
+
+        if (!selectedClientId && list.length > 0) {
+          const match = urlParamClientId
+            ? list.find((c) => c.id === urlParamClientId)
+            : null;
+          const chosenId = match ? match.id : list[0].id;
+          setSelectedClientId(chosenId);
+        }
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        console.error("Failed to load clients for ibadah config:", e);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingClients(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hasHydrated, isSuperAdmin, token]);
+
+  // Sync client for regular madrasa admins
+  useEffect(() => {
+    if (!hasHydrated) return;
+    if (!isSuperAdmin) {
+      const cid = activeClientId || user?.clientId || urlParamClientId || "";
+      if (cid && cid !== selectedClientId) {
+        setSelectedClientId(cid);
+      }
+    }
+  }, [hasHydrated, isSuperAdmin, activeClientId, user?.clientId, urlParamClientId]);
+
+  const loadConfig = useCallback(async (targetCid?: string) => {
+    const cidToLoad = targetCid || selectedClientId;
+
+    if (!token) {
+      if (hasHydrated) {
+        setLoading(false);
+      }
+      return;
+    }
+
+    if (!cidToLoad) {
+      if (hasHydrated) {
+        setLoading(false);
+      }
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
-      const cfg = await getIbadahConfig(token, cid);
+      const cfg = await getIbadahConfig(token, cidToLoad);
       setConfig(cfg);
       setToggles({
-        enableFajr: cfg.enableFajr,
-        enableDhuhr: cfg.enableDhuhr,
-        enableAsr: cfg.enableAsr,
-        enableMaghrib: cfg.enableMaghrib,
-        enableIsha: cfg.enableIsha,
-        enableQuranPages: cfg.enableQuranPages,
+        enableFajr: cfg?.enableFajr ?? true,
+        enableDhuhr: cfg?.enableDhuhr ?? true,
+        enableAsr: cfg?.enableAsr ?? true,
+        enableMaghrib: cfg?.enableMaghrib ?? true,
+        enableIsha: cfg?.enableIsha ?? true,
+        enableQuranPages: cfg?.enableQuranPages ?? true,
       });
-      setCustomItems(Array.isArray(cfg.customItems) ? cfg.customItems : []);
-      if (cfg.scoringConfig) {
-        setScoring({
-          jamaPoints: cfg.scoringConfig.jamaPoints ?? 10,
-          adaPoints: cfg.scoringConfig.adaPoints ?? 7,
-          excusedPoints: cfg.scoringConfig.excusedPoints ?? 7,
-          qalaPoints: cfg.scoringConfig.qalaPoints ?? 3,
-          quranPointsPerPage: cfg.scoringConfig.quranPointsPerPage ?? 2,
-          maxQuranPagesPerDay: cfg.scoringConfig.maxQuranPagesPerDay ?? 20,
-        });
+
+      let parsedCustomItems: CustomItem[] = [];
+      if (Array.isArray(cfg?.customItems)) {
+        parsedCustomItems = cfg.customItems;
+      } else if (typeof cfg?.customItems === "string") {
+        try {
+          const p = JSON.parse(cfg.customItems);
+          if (Array.isArray(p)) parsedCustomItems = p;
+        } catch {}
       }
+      setCustomItems(parsedCustomItems);
+
+      const sc = cfg?.scoringConfig;
+      setScoring({
+        jamaPoints: sc?.jamaPoints ?? DEFAULT_SCORING.jamaPoints,
+        adaPoints: sc?.adaPoints ?? DEFAULT_SCORING.adaPoints,
+        excusedPoints: sc?.excusedPoints ?? DEFAULT_SCORING.excusedPoints,
+        qalaPoints: sc?.qalaPoints ?? DEFAULT_SCORING.qalaPoints,
+        quranPointsPerPage:
+          sc?.quranPointsPerPage ?? DEFAULT_SCORING.quranPointsPerPage,
+        maxQuranPagesPerDay:
+          sc?.maxQuranPagesPerDay ?? DEFAULT_SCORING.maxQuranPagesPerDay,
+      });
     } catch (e) {
       setError((e as Error).message);
+      // Fallback gracefully to defaults so UI never gets permanently blocked
+      setToggles(DEFAULT_TOGGLES);
+      setCustomItems([]);
+      setScoring(DEFAULT_SCORING);
     } finally {
       setLoading(false);
     }
-  }, [token, cid]);
+  }, [token, selectedClientId, hasHydrated]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!hasHydrated) return;
+    if (selectedClientId) {
+      loadConfig(selectedClientId);
+    } else if (!isSuperAdmin) {
+      setLoading(false);
+    } else if (!loadingClients) {
+      setLoading(false);
+    }
+  }, [hasHydrated, selectedClientId, loadConfig, isSuperAdmin, loadingClients]);
 
   const handleSave = async () => {
-    if (!token || !cid) {
-      setError("Madrasa client context not found");
+    const targetCid = selectedClientId;
+    if (!token || !targetCid) {
+      setError("Madrasa client context not found. Please select a madrasa.");
       return;
     }
     setSaving(true);
@@ -173,7 +283,7 @@ export default function IbadahConfigPage() {
           customItems,
           scoringConfig: scoring,
         },
-        cid,
+        targetCid,
       );
       setConfig(updated);
       setSaved(true);
@@ -182,6 +292,15 @@ export default function IbadahConfigPage() {
       setError((e as Error).message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSelectClient = (clientId: string) => {
+    setSelectedClientId(clientId);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("clientId", clientId);
+      window.history.replaceState({}, "", url.toString());
     }
   };
 
@@ -265,7 +384,7 @@ export default function IbadahConfigPage() {
     setEditItemError(null);
   };
 
-  if (!isAdmin) {
+  if (hasHydrated && !isAdmin) {
     return (
       <DashboardLayout>
         <PageHeader
@@ -308,11 +427,72 @@ export default function IbadahConfigPage() {
         subtitle="Tracking settings and performance scoring rules"
         icon={Moon}
         back
-        backHref="/admin/ibadah"
+        backHref={isSuperAdmin ? "/admin" : "/admin/ibadah"}
       />
+
+      {isSuperAdmin && (
+        <div className="bg-white border border-gray-100 rounded-3xl p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+              <Building2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-gray-900">
+                Configure Madrasa Client
+              </h3>
+              <p className="text-xs text-gray-500">
+                Each madrasa has its own custom ibadah items, prayer toggles, and performance scoring.
+              </p>
+            </div>
+          </div>
+          <div className="w-full sm:w-72">
+            {loadingClients ? (
+              <div className="flex items-center gap-2 text-xs text-gray-400 py-2">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading madrasas...
+              </div>
+            ) : clients.length === 0 ? (
+              <div className="text-xs text-amber-600 font-medium">No madrasas registered yet</div>
+            ) : (
+              <select
+                value={selectedClientId}
+                onChange={(e) => handleSelectClient(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                {clients.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({c.slug})
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <PageSkeleton />
+      ) : !selectedClientId ? (
+        <div className="bg-white border border-gray-100 rounded-3xl p-8 text-center max-w-lg mx-auto space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto">
+            <Building2 className="w-6 h-6" />
+          </div>
+          <h3 className="text-base font-bold text-gray-900">No Madrasa Selected</h3>
+          <p className="text-xs text-gray-500">
+            {isSuperAdmin
+              ? "Ibadah configuration is managed client-specifically per madrasa. Select a madrasa above or switch to a madrasa from the Madrasas list to configure it."
+              : "No madrasa client was found for your account. Please log in through your madrasa portal."}
+          </p>
+          {isSuperAdmin && (
+            <div className="pt-2">
+              <a
+                href="/admin/madrasas"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
+              >
+                Go to Madrasas
+              </a>
+            </div>
+          )}
+        </div>
       ) : (
         <div className="space-y-6 pb-28">
           {error && (

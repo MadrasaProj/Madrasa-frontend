@@ -12,6 +12,7 @@ const RESERVED_SUBDOMAINS = new Set([
   "app",
   "api",
   "admin",
+  "dashboard",
   "localhost",
 ]);
 

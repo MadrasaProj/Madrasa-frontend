@@ -282,7 +282,6 @@ const superAdminLinks: NavLink[] = [
   { href: "/admin/crm/renewals", icon: RefreshCw, key: "renewals" as NavKey },
   { href: "/admin/crm/districts", icon: MapPin, key: "districts" as NavKey },
   { href: "/admin/crm/expenses", icon: Receipt, key: "expenses" as NavKey },
-  { href: "/admin/ibadah-config", icon: Moon, key: "ibadahConfig" as NavKey },
   { href: "/admin/social-frames", icon: Image, key: "socialFrames" as NavKey },
   { href: "/admin/posters", icon: FileText, key: "posters" as NavKey },
   { href: "/admin/profile", icon: UserCircle2, key: "profile" as NavKey },
@@ -322,7 +321,6 @@ const getSuperAdminCategories = (role: string, actorType?: string) => {
       titleKey: "contentMedia" as NavKey,
       icon: Image,
       links: [
-        { href: "/admin/ibadah-config", icon: Moon, key: "ibadahConfig" as NavKey },
         { href: "/admin/social-frames", icon: Image, key: "socialFrames" as NavKey },
         { href: "/admin/posters", icon: FileText, key: "posters" as NavKey },
         artsfestLink,

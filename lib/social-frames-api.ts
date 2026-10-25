@@ -62,57 +62,62 @@ async function publicFetch<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export function getSocialFrames(
-  clientId: string,
+  clientId?: string,
   params?: { page?: number; limit?: number; signal?: AbortSignal },
 ): Promise<SocialFrameListResponse> {
   const { page = 1, limit = 20, signal } = params ?? {};
   const q = new URLSearchParams({ page: String(page), limit: String(limit) });
-  return publicFetch<SocialFrameListResponse>(`${BASE}/${clientId}/social-frames?${q}`, { signal });
+  const url = clientId ? `${BASE}/${clientId}/social-frames?${q}` : `${BASE}/social-frames?${q}`;
+  return publicFetch<SocialFrameListResponse>(url, { signal });
 }
 
 export function getSocialFrame(
-  clientId: string,
+  clientId: string | undefined,
   frameId: string,
   signal?: AbortSignal,
 ): Promise<SocialFrameRecord> {
-  return publicFetch<SocialFrameRecord>(`${BASE}/${clientId}/social-frames/${frameId}`, { signal });
+  const url = clientId ? `${BASE}/${clientId}/social-frames/${frameId}` : `${BASE}/social-frames/${frameId}`;
+  return publicFetch<SocialFrameRecord>(url, { signal });
 }
 
 export function createSocialFrame(
-  clientId: string,
+  clientId: string | undefined,
   token: string,
   data: CreateSocialFramePayload,
   signal?: AbortSignal,
 ): Promise<SocialFrameRecord> {
+  const url = clientId ? `${BASE}/${clientId}/social-frames` : `${BASE}/social-frames`;
   return apiFetch<SocialFrameRecord>(
-    `${BASE}/${clientId}/social-frames`,
+    url,
     token,
     { method: "POST", body: JSON.stringify(data), signal },
   );
 }
 
 export function updateSocialFrame(
-  clientId: string,
+  clientId: string | undefined,
   token: string,
   frameId: string,
   data: UpdateSocialFramePayload,
   signal?: AbortSignal,
 ): Promise<SocialFrameRecord> {
+  const url = clientId ? `${BASE}/${clientId}/social-frames/${frameId}` : `${BASE}/social-frames/${frameId}`;
   return apiFetch<SocialFrameRecord>(
-    `${BASE}/${clientId}/social-frames/${frameId}`,
+    url,
     token,
     { method: "PATCH", body: JSON.stringify(data), signal },
   );
 }
 
 export function deleteSocialFrame(
-  clientId: string,
+  clientId: string | undefined,
   token: string,
   frameId: string,
   signal?: AbortSignal,
 ): Promise<{ message: string }> {
+  const url = clientId ? `${BASE}/${clientId}/social-frames/${frameId}` : `${BASE}/social-frames/${frameId}`;
   return apiFetch<{ message: string }>(
-    `${BASE}/${clientId}/social-frames/${frameId}`,
+    url,
     token,
     { method: "DELETE", signal },
   );

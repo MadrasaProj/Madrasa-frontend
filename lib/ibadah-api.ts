@@ -184,10 +184,13 @@ export const getStudentIbadah = (
 
 /** Get ibadah config for madrasa admin or super admin */
 export const getIbadahConfig = (token: string, clientId?: string) => {
-  if (clientId) {
+  if (clientId && clientId !== "default") {
     return apiFetch<IbadahConfig>(`${API_BASE}/${clientId}/ibadah/config`, token);
   }
-  return apiFetch<IbadahConfig>(`${API_BASE}/super-admin/ibadah-config`, token);
+  return apiFetch<IbadahConfig>(
+    `${API_BASE}/super-admin/ibadah-config${clientId ? `?clientId=${clientId}` : ""}`,
+    token,
+  );
 };
 
 /** Update ibadah config & scoring for madrasa admin or super admin */
@@ -196,9 +199,10 @@ export const updateIbadahConfig = (
   dto: UpdateIbadahConfigPayload,
   clientId?: string,
 ) => {
-  const url = clientId
-    ? `${API_BASE}/${clientId}/ibadah/config`
-    : `${API_BASE}/super-admin/ibadah-config`;
+  const url =
+    clientId && clientId !== "default"
+      ? `${API_BASE}/${clientId}/ibadah/config`
+      : `${API_BASE}/super-admin/ibadah-config${clientId ? `?clientId=${clientId}` : ""}`;
   return apiFetch<IbadahConfig>(url, token, {
     method: "PATCH",
     body: JSON.stringify(dto),
