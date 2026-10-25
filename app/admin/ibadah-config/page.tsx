@@ -34,6 +34,7 @@ import {
   Bell,
   ArrowRight,
   Building2,
+  Globe,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -271,6 +272,7 @@ export default function IbadahConfigPage() {
     setSaving(true);
     setError(null);
     try {
+      const clientItems = customItems.filter((i) => !i.isGlobal);
       const updated = await updateIbadahConfig(
         token,
         {
@@ -280,12 +282,13 @@ export default function IbadahConfigPage() {
           enableMaghrib: toggles.enableMaghrib,
           enableIsha: toggles.enableIsha,
           enableQuranPages: toggles.enableQuranPages,
-          customItems,
+          customItems: clientItems,
           scoringConfig: scoring,
         },
         targetCid,
       );
       setConfig(updated);
+      setCustomItems(Array.isArray(updated.customItems) ? updated.customItems : []);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (e) {
@@ -315,7 +318,7 @@ export default function IbadahConfigPage() {
       return;
     }
     if (customItems.some((i) => i.key === newItem.key)) {
-      setNewItemError("Key already exists");
+      setNewItemError("Key already exists or is reserved by a global item");
       return;
     }
     const item: CustomItem = {
@@ -338,10 +341,12 @@ export default function IbadahConfigPage() {
   };
 
   const handleDeleteItem = (idx: number) => {
+    if (customItems[idx]?.isGlobal) return;
     setCustomItems((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const startEdit = (idx: number) => {
+    if (customItems[idx]?.isGlobal) return;
     setEditingIdx(idx);
     setEditItem({ ...customItems[idx] });
     setEditItemError(null);
@@ -850,6 +855,11 @@ export default function IbadahConfigPage() {
                             <span className="text-[10px] font-mono text-gray-400 bg-gray-200/60 px-1.5 py-0.5 rounded shrink-0">
                               {item.key}
                             </span>
+                            {item.isGlobal && (
+                              <span className="text-[10px] font-bold text-blue-700 bg-blue-100/80 border border-blue-200/60 px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1">
+                                <Globe className="w-3 h-3" /> Global (Legacy)
+                              </span>
+                            )}
                             {(item.points ?? 0) > 0 && (
                               <span className="text-[10px] font-bold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-full shrink-0">
                                 +{item.points} pts
@@ -867,19 +877,27 @@ export default function IbadahConfigPage() {
                             </p>
                           )}
                         </div>
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => startEdit(idx)}
-                            className="px-2.5 py-1.5 rounded-xl hover:bg-white text-gray-500 hover:text-gray-900 transition-colors text-xs font-semibold"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteItem(idx)}
-                            className="p-1.5 rounded-xl hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                        <div className="flex items-center gap-1">
+                          {item.isGlobal ? (
+                            <span className="text-[11px] text-gray-400 italic px-2 py-1">
+                              Global (Read-only)
+                            </span>
+                          ) : (
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => startEdit(idx)}
+                                className="px-2.5 py-1.5 rounded-xl hover:bg-white text-gray-500 hover:text-gray-900 transition-colors text-xs font-semibold"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteItem(idx)}
+                                className="p-1.5 rounded-xl hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}

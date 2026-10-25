@@ -37,6 +37,7 @@ export interface IbadahScoringConfig {
 
 export interface IbadahConfig {
   id: string;
+  clientId?: string | null;
   enableFajr: boolean;
   enableDhuhr: boolean;
   enableAsr: boolean;
@@ -51,6 +52,7 @@ export interface IbadahConfig {
     max?: number;
     points?: number;
     options?: { icon: string; label: string; color: string }[];
+    isGlobal?: boolean;
   }[];
   scoringConfig?: IbadahScoringConfig;
 }
