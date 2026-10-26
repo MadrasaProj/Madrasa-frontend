@@ -1,7 +1,12 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DatePickerDrawer } from "@/components/DatePickerDrawer";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
@@ -20,9 +25,9 @@ import { cn } from "@/lib/utils";
 import {
   FileText, Plus, Save, CheckCircle2, Loader2, Trash2, Pencil,
   Users, GraduationCap, X, Search, ChevronLeft, ChevronRight,
-  Bold, Italic, Underline, List, ListOrdered, Image, Palette, MessageSquare,
+  Bold, Italic, Underline, List, ListOrdered, Image, Palette, MessageSquare, CalendarDays,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 function fmt(d: Date) { return d.toISOString().split("T")[0]; }
 
@@ -120,14 +125,14 @@ function JournalList({ entries, openEdit, handleDelete, deletingId, lang }: {
                         </div>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        <button onClick={() => openEdit(entry)} className="p-2 rounded-xl hover:bg-black/5 text-gray-400 hover:text-blue-500 transition-colors">
+                        <Button variant="ghost" size="icon" aria-label="Edit diary entry" onClick={() => openEdit(entry)} className="rounded-xl text-gray-400 hover:text-blue-500">
                           <Pencil className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleDelete(entry.id)} disabled={deletingId === entry.id} className="p-2 rounded-xl hover:bg-black/5 text-gray-400 hover:text-red-500 transition-colors">
+                        </Button>
+                        <Button variant="ghost" size="icon" aria-label="Delete diary entry" onClick={() => handleDelete(entry.id)} disabled={deletingId === entry.id} className="rounded-xl text-gray-400 hover:text-red-500">
                           {deletingId === entry.id
                             ? <Loader2 className="w-4 h-4 animate-spin" />
                             : <Trash2 className="w-4 h-4" />}
-                        </button>
+                        </Button>
                       </div>
                     </div>
 
@@ -136,13 +141,15 @@ function JournalList({ entries, openEdit, handleDelete, deletingId, lang }: {
 
                     {/* Footer */}
                     <div className="flex items-center gap-3 mt-4 pt-3 border-t border-black/5">
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => setCommentViewId(entry.id)}
-                        className="flex items-center gap-1.5 text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors px-3 py-1.5 rounded-full hover:bg-gray-100"
+                        className="gap-1.5 rounded-full text-xs text-gray-400 hover:text-gray-600"
                       >
                         <MessageSquare className="w-3.5 h-3.5" />
                         {entry.comments?.length ?? 0}
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </motion.div>
@@ -153,41 +160,33 @@ function JournalList({ entries, openEdit, handleDelete, deletingId, lang }: {
       ))}
     </div>
 
-      {/* Comments drawer */}
-      {commentViewId && (
-        <div className="fixed inset-0 z-50 flex flex-col">
-          <div className="flex-1 bg-black/30" onClick={() => setCommentViewId(null)} />
-          <div className="bg-white rounded-t-2xl shadow-2xl max-h-[50vh] overflow-y-auto">
-            <div className="p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-gray-900">{t("teacherPages", "responsesTitle", lang)}</h3>
-                <button onClick={() => setCommentViewId(null)} className="p-2 rounded-xl hover:bg-gray-100">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              {(() => {
-                const entry = entries.find((e) => e.id === commentViewId);
-                if (!entry) return null;
-                if (!entry.comments || entry.comments.length === 0) {
-                  return <p className="text-sm text-gray-400 text-center py-6">{t("teacherPages", "noResponsesYet", lang)}</p>;
-                }
-                return (
-                  <div className="space-y-3">
-                    {entry.comments.map((c: DiaryComment) => (
-                      <div key={c.id} className="bg-gray-50 rounded-xl p-3">
-                        <p className="text-xs font-medium text-gray-500 mb-0.5">
-                          {c.parentName ?? t("teacherPages", "parentRole", lang)}
-                        </p>
-                        <p className="text-sm text-gray-700">{c.content}</p>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
+    <ResponsivePopover
+      open={commentViewId !== null}
+      onOpenChange={(open) => { if (!open) setCommentViewId(null); }}
+      title={t("teacherPages", "responsesTitle", lang)}
+    >
+      <div className="p-5">
+        {(() => {
+          const entry = entries.find((e) => e.id === commentViewId);
+          if (!entry) return null;
+          if (!entry.comments || entry.comments.length === 0) {
+            return <p className="text-sm text-gray-400 text-center py-6">{t("teacherPages", "noResponsesYet", lang)}</p>;
+          }
+          return (
+            <div className="space-y-3">
+              {entry.comments.map((c: DiaryComment) => (
+                <div key={c.id} className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-xs font-medium text-gray-500 mb-0.5">
+                    {c.parentName ?? t("teacherPages", "parentRole", lang)}
+                  </p>
+                  <p className="text-sm text-gray-700">{c.content}</p>
+                </div>
+              ))}
             </div>
-          </div>
-        </div>
-      )}
+          );
+        })()}
+      </div>
+    </ResponsivePopover>
   </>
   );
 }
@@ -220,6 +219,7 @@ export default function TeacherDiaryPage() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [date, setDate] = useState(fmt(new Date()));
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [studentSearch, setStudentSearch] = useState("");
   const [step, setStep] = useState(1);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -304,6 +304,7 @@ export default function TeacherDiaryPage() {
     setSelectedStudentIds([]);
     setTitle(""); setContent("");
     setDate(fmt(new Date()));
+    setDatePickerOpen(false);
     setStudentSearch("");
     setStep(1);
     setTheme("default");
@@ -319,6 +320,7 @@ export default function TeacherDiaryPage() {
     setTitle(entry.title);
             setContent(entry.content);
             setDate(entry.date.split("T")[0]);
+            setDatePickerOpen(false);
             setStudentSearch("");
             setTheme(entry.theme ?? "default");
             setThemeOpen(false);
@@ -326,7 +328,7 @@ export default function TeacherDiaryPage() {
             setDrawerOpen(true);
   };
 
-  const closeDrawer = () => setDrawerOpen(false);
+  const closeDrawer = () => { setDrawerOpen(false); setDatePickerOpen(false); };
 
   const toggleStudent = (sid: string) => {
     setSelectedStudentIds((prev) =>
@@ -414,18 +416,7 @@ export default function TeacherDiaryPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader
-        title={t("teacherPages", "classDiaryTitle", lang)}
-        subtitle={t("teacherPages", "entriesCount", lang).replace("{n}", String(entries.length))}
-        action={
-          <Button
-            onClick={openCreate}
-            className="gap-1.5 bg-primary-600 px-4 text-white hover:bg-primary-700"
-          >
-            <Plus className="size-4" /> {t("teacherPages", "addDiaryBtn", lang)}
-          </Button>
-        }
-      />
+      <PageHeader title={t("teacherPages", "classDiaryTitle", lang)} />
 
       {error && (
         <ApiErrorBanner
@@ -448,52 +439,48 @@ export default function TeacherDiaryPage() {
         />
       )}
 
-      {/* Backdrop */}
-      <AnimatePresence>
-        {drawerOpen && (
-          <motion.div
-            key="backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => { closeDrawer(); setThemeOpen(false); }}
-            className="fixed inset-0 bg-black/30 z-40"
-          />
-        )}
-      </AnimatePresence>
+      <Button
+        size="lg"
+        onClick={openCreate}
+        className="fixed bottom-22 left-1/2 z-30 -translate-x-1/2 rounded-full shadow-lg lg:bottom-6"
+      >
+        <Plus className="size-4" />
+        {t("teacherPages", "addDiaryBtn", lang)}
+      </Button>
 
-      {/* Drawer */}
-      <AnimatePresence>
-        {drawerOpen && (
-          <motion.div
-            key="drawer"
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className={cn(
-              "fixed bottom-0 left-0 right-0 w-full bg-white z-50 shadow-2xl rounded-t-2xl transition-all duration-300 flex flex-col",
-              step === 2 || editingEntry ? "h-dvh rounded-none" : "max-h-[85vh]",
+      <ResponsivePopover
+        open={drawerOpen}
+        onOpenChange={(open) => { if (!open) { closeDrawer(); setThemeOpen(false); } }}
+        title={
+          <span className="flex items-center gap-3">
+            {step === 2 && !editingEntry && (
+              <Button variant="ghost" size="icon" onClick={() => setStep(1)} aria-label="Back">
+                <ChevronLeft className="w-5 h-5 text-gray-600" />
+              </Button>
             )}
-          >
-             <div className="flex-1 overflow-y-auto min-h-0">
-                <div className="p-5">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-5">
-                  <div className="flex items-center gap-3">
-                    {step === 2 && (
-                      <button onClick={() => setStep(1)} className="p-1.5 rounded-lg hover:bg-gray-100 active:scale-95 transition-all">
-                        <ChevronLeft className="w-5 h-5 text-gray-600" />
-                      </button>
-                    )}
-                    <h2 className="text-lg font-bold text-gray-900">
-                      {editingEntry ? t("teacherPages", "editDiaryTitle", lang) : t("teacherPages", "newEntryTitle", lang)}
-                    </h2>
-                  </div>
-                  <button onClick={closeDrawer} className="p-2 rounded-xl hover:bg-gray-100 active:scale-95 transition-all">
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
+            {editingEntry ? t("teacherPages", "editDiaryTitle", lang) : t("teacherPages", "newEntryTitle", lang)}
+          </span>
+        }
+        className={step === 2 || editingEntry ? "h-dvh max-h-dvh data-[swipe-axis=y]:[--drawer-content-max-height:100dvh]" : undefined}
+        footer={step === 2 || editingEntry ? (
+          <div className="border-t border-gray-100 bg-white p-4">
+            <Button
+              size="lg"
+              onClick={handleSave}
+              disabled={saving || !title.trim() || !content.trim()}
+              className={cn(
+                "w-full rounded-xl",
+                saved ? "bg-primary-100 text-primary-700" : "bg-primary-600 text-white hover:bg-primary-700",
+              )}
+            >
+              {saving ? <Loader2 className="w-5 h-5 animate-spin" /> :
+               saved  ? <><CheckCircle2 className="w-5 h-5" /> {t("teacherPages", "savedExcl", lang)}</> :
+                         <><Save className="w-5 h-5" /> {editingEntry ? t("teacherPages", "updateEntryBtn", lang) : t("teacherPages", "postEntryBtn", lang)}</>}
+            </Button>
+          </div>
+        ) : undefined}
+      >
+        <div className="p-5">
 
                 {step === 1 ? (
                   <motion.div
@@ -503,43 +490,28 @@ export default function TeacherDiaryPage() {
                     transition={{ duration: 0.2 }}
                     className="space-y-5"
                   >
-                    {/* Target type toggle */}
-                    {!editingEntry && (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setTargetType("class")}
-                          className={cn(
-                            "flex-1 py-2 rounded-lg text-xs font-semibold transition-all",
-                            targetType === "class"
-                              ? "bg-primary-600 text-white"
-                              : "bg-gray-100 text-gray-500",
-                          )}
-                        >
-                          {t("teacherPages", "toClassBtn", lang)}
-                        </button>
-                        <button
-                          onClick={() => setTargetType("student")}
-                          className={cn(
-                            "flex-1 py-2 rounded-lg text-xs font-semibold transition-all",
-                            targetType === "student"
-                              ? "bg-primary-600 text-white"
-                              : "bg-gray-100 text-gray-500",
-                          )}
-                        >
-                          {t("teacherPages", "toStudentsBtn", lang)}
-                        </button>
-                      </div>
-                    )}
+                    <Tabs value={targetType}
+                     onValueChange={(value) => setTargetType(value as "class" | "student")}>
+                      {!editingEntry && (
+                        <TabsList className="grid w-max grid-cols-2">
+                          <TabsTrigger value="class" className="text-xs">
+                            {t("teacherPages", "toClassBtn", lang)}
+                          </TabsTrigger>
+                          <TabsTrigger value="student" className="text-xs">
+                            {t("teacherPages", "toStudentsBtn", lang)}
+                          </TabsTrigger>
+                        </TabsList>
+                      )}
 
-                    {/* Student multi-select */}
-                    {targetType === "student" && (
+                      <TabsContent value="student" className="mt-4">
                       <div>
                         <div className="relative">
-                          <input
+                          <Input
                             value={studentSearch}
                             onChange={(e) => setStudentSearch(e.target.value)}
                             placeholder={t("teacherPages", "searchDiary", lang)}
-                            className="w-full px-3 py-2 rounded-lg text-sm bg-gray-50 border-0 focus:ring-2 focus:ring-primary-500"
+                            size="lg"
+                            className="bg-gray-50"
                           />
                         </div>
                         <div className="mt-1 max-h-32 overflow-y-auto rounded-lg bg-gray-50 divide-y divide-gray-100 text-sm">
@@ -547,58 +519,73 @@ export default function TeacherDiaryPage() {
                             <p className="text-xs text-gray-400 p-2 text-center">None</p>
                           ) : (
                             <>
-                              <label className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-gray-100 text-xs text-gray-500">
-                                <input
-                                  type="checkbox"
+                              <div className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 text-xs text-gray-500">
+                                <Checkbox
+                                  id="diary-select-all-students"
                                   checked={filteredStudents.every((s) => selectedStudentIds.includes(s.id))}
-                                  onChange={() => {
-                                    const allSelected = filteredStudents.every((s) => selectedStudentIds.includes(s.id));
-                                    if (allSelected) {
+                                  onCheckedChange={(checked) => {
+                                    if (!checked) {
                                       setSelectedStudentIds((prev) => prev.filter((id) => !filteredStudents.some((s) => s.id === id)));
                                     } else {
                                       setSelectedStudentIds((prev) => [...new Set([...prev, ...filteredStudents.map((s) => s.id)])]);
                                     }
                                   }}
-                                  className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                                 />
-                                {t("teacherPages", "selectAllCount", lang).replace("{n}", String(filteredStudents.length))}
-                              </label>
-                              {filteredStudents.map((s) => (
-                                <label
-                                  key={s.id}
-                                  className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-gray-100"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedStudentIds.includes(s.id)}
-                                    onChange={() => toggleStudent(s.id)}
-                                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                                  />
-                                  {s.name}
+                                <label htmlFor="diary-select-all-students" className="cursor-pointer">
+                                  {t("teacherPages", "selectAllCount", lang).replace("{n}", String(filteredStudents.length))}
                                 </label>
+                              </div>
+                              {filteredStudents.map((s) => (
+                                <div
+                                  key={s.id}
+                                  className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100"
+                                >
+                                  <Checkbox
+                                    id={`diary-student-${s.id}`}
+                                    checked={selectedStudentIds.includes(s.id)}
+                                    onCheckedChange={() => toggleStudent(s.id)}
+                                  />
+                                  <label htmlFor={`diary-student-${s.id}`} className="flex-1 cursor-pointer">{s.name}</label>
+                                </div>
                               ))}
                             </>
                           )}
                         </div>
                       </div>
-                    )}
+                      </TabsContent>
+                    </Tabs>
 
                     {/* Date */}
-                    <input
-                      type="date"
-                      value={date}
-                      max={fmt(new Date())}
-                      onChange={(e) => setDate(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg text-sm bg-gray-50 border-0 focus:ring-2 focus:ring-primary-500"
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="lg"
+                      aria-haspopup="dialog"
+                      aria-expanded={datePickerOpen}
+                      onClick={() => setDatePickerOpen(true)}
+                      className="w-full justify-start font-normal shadow-none!"
+                    >
+                      <CalendarDays className="size-4 text-gray-500" />
+                      {new Date(`${date}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                    </Button>
+                    <DatePickerDrawer
+                      open={datePickerOpen}
+                      onOpenChange={setDatePickerOpen}
+                      date={date}
+                      onDateChange={setDate}
+                      title={t("teacherPages", "dateLabel", lang)}
+                      disableFuture
                     />
 
-                    <button
+                    <Button
+                      type="button"
+                      size="lg"
                       onClick={() => setStep(2)}
                       disabled={targetType === "class" ? !selectedClassId : selectedStudentIds.length === 0}
-                      className="w-full py-2.5 rounded-lg font-semibold text-sm bg-primary-600 text-white hover:bg-primary-700 transition-all disabled:opacity-40"
+                      className="w-full bg-primary-600 text-white hover:bg-primary-700"
                     >
                       {t("teacherPages", "continueBtn", lang)}
-                    </button>
+                    </Button>
                   </motion.div>
                 ) : (
                   <>
@@ -621,9 +608,9 @@ export default function TeacherDiaryPage() {
                         </p>
                       </div>
                       <div className="shrink-0">
-                        <button type="button" onClick={() => setThemeOpen(true)} className="p-2 rounded-xl hover:bg-gray-100 text-gray-500">
+                        <Button type="button" variant="ghost" size="icon" aria-label={t("common", "themes", lang)} onClick={() => setThemeOpen(true)} className="rounded-xl text-gray-500">
                           <Palette className="w-5 h-5" />
-                        </button>
+                        </Button>
                       </div>
                     </div>
 
@@ -631,12 +618,12 @@ export default function TeacherDiaryPage() {
                     <div className={cn("rounded-2xl transition-colors duration-200", themes[theme].bg)} style={{ fontFamily: `${themes[theme].font}, ${themes[theme].mlFont}` }}>
                       {/* Title */}
                       <div className="px-4 pt-5">
-                        <input
+                        <Input
                           value={title}
                           onChange={(e) => setTitle(e.target.value)}
                           placeholder={t("teacherPages", "giveTitlePlc", lang)}
                           className={cn(
-                            "w-full text-2xl font-bold bg-transparent border-none outline-none placeholder-gray-300",
+                            "h-auto w-full border-none bg-transparent px-0 text-2xl font-bold shadow-none focus-visible:ring-0 placeholder:text-gray-300",
                             themes[theme].text,
                           )}
                         />
@@ -644,27 +631,27 @@ export default function TeacherDiaryPage() {
 
                       {/* Mobile-friendly toolbar */}
                       <div className="flex items-center gap-0.5 px-3 pt-3 pb-1 overflow-x-auto scrollbar-none">
-                        <button type="button" onClick={() => execFormat("bold")} title={t("teacherPages", "boldTooltip", lang)} className="p-2.5 rounded-xl hover:bg-black/5 text-gray-500 shrink-0 active:bg-black/10 transition-colors">
+                        <Button type="button" variant="ghost" size="icon" onClick={() => execFormat("bold")} title={t("teacherPages", "boldTooltip", lang)} className="size-10 rounded-xl text-gray-500 shrink-0">
                           <Bold className="w-5 h-5" />
-                        </button>
-                        <button type="button" onClick={() => execFormat("italic")} title={t("teacherPages", "italicTooltip", lang)} className="p-2.5 rounded-xl hover:bg-black/5 text-gray-500 shrink-0 active:bg-black/10 transition-colors">
+                        </Button>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => execFormat("italic")} title={t("teacherPages", "italicTooltip", lang)} className="size-10 rounded-xl text-gray-500 shrink-0">
                           <Italic className="w-5 h-5" />
-                        </button>
-                        <button type="button" onClick={() => execFormat("underline")} title={t("teacherPages", "underlineTooltip", lang)} className="p-2.5 rounded-xl hover:bg-black/5 text-gray-500 shrink-0 active:bg-black/10 transition-colors">
+                        </Button>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => execFormat("underline")} title={t("teacherPages", "underlineTooltip", lang)} className="size-10 rounded-xl text-gray-500 shrink-0">
                           <Underline className="w-5 h-5" />
-                        </button>
+                        </Button>
                         <span className="w-px h-6 bg-gray-200 mx-1 shrink-0" />
-                        <button type="button" onClick={() => execFormat("insertUnorderedList")} className="p-2.5 rounded-xl hover:bg-black/5 text-gray-500 shrink-0 active:bg-black/10 transition-colors">
+                        <Button type="button" variant="ghost" size="icon" aria-label="Bulleted list" onClick={() => execFormat("insertUnorderedList")} className="size-10 rounded-xl text-gray-500 shrink-0">
                           <List className="w-5 h-5" />
-                        </button>
-                        <button type="button" onClick={() => execFormat("insertOrderedList")} className="p-2.5 rounded-xl hover:bg-black/5 text-gray-500 shrink-0 active:bg-black/10 transition-colors">
+                        </Button>
+                        <Button type="button" variant="ghost" size="icon" aria-label="Numbered list" onClick={() => execFormat("insertOrderedList")} className="size-10 rounded-xl text-gray-500 shrink-0">
                           <ListOrdered className="w-5 h-5" />
-                        </button>
+                        </Button>
                         <span className="w-px h-6 bg-gray-200 mx-1 shrink-0" />
-                        <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2.5 rounded-xl hover:bg-black/5 text-gray-500 shrink-0 active:bg-black/10 transition-colors">
+                        <Button type="button" variant="ghost" size="icon" aria-label="Insert image" onClick={() => fileInputRef.current?.click()} className="size-10 rounded-xl text-gray-500 shrink-0">
                           <Image className="w-5 h-5" />
-                        </button>
-                        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) insertImage(f); e.target.value = ""; }} />
+                        </Button>
+                        <Input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) insertImage(f); e.target.value = ""; }} />
                       </div>
 
                       {/* Editor */}
@@ -685,68 +672,38 @@ export default function TeacherDiaryPage() {
                   </motion.div>
                   </>
                 )}
-                </div>
+        </div>
 
-                {/* Theme drawer */}
-                {themeOpen && (
-                  <div className="absolute inset-0 z-20 flex flex-col">
-                    <div className="flex-1 bg-black/20" onClick={() => setThemeOpen(false)} />
-                    <div className="bg-white rounded-t-2xl shadow-2xl max-h-[60vh] overflow-y-auto">
-                      <div className="p-5">
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="font-bold text-gray-900">{t("common", "themes", lang)}</h3>
-                          <button onClick={() => setThemeOpen(false)} className="p-2 rounded-xl hover:bg-gray-100">
-                            <X className="w-5 h-5" />
-                          </button>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          {Object.entries(themes).map(([key, t]) => (
-                            <button
-                              key={key}
-                              type="button"
-                              onClick={() => { setTheme(key); setThemeOpen(false); }}
-                              className={cn(
-                                "flex flex-col items-center gap-2 px-3 py-4 rounded-xl text-sm font-medium transition-all",
-                                theme === key ? "ring-2 ring-primary-400 shadow-sm" : "hover:bg-gray-50",
-                                t.bg, t.text,
-                              )}
-                            >
-                              <div className="w-full h-16 rounded-lg flex items-center justify-center">
-                                <span className="text-3xl font-bold opacity-30" style={{ fontFamily: t.font }}>Aa</span>
-                              </div>
-                              <p className="font-semibold text-xs">{t.label}</p>
-                              {theme === key && (
-                                <CheckCircle2 className="w-4 h-4 text-primary-600 absolute top-2 right-2" />
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+        <ResponsivePopover
+          open={themeOpen}
+          onOpenChange={setThemeOpen}
+          title={t("common", "themes", lang)}
+        >
+          <div className="grid grid-cols-2 gap-2 p-5">
+            {Object.entries(themes).map(([key, themeOption]) => (
+              <Button
+                key={key}
+                type="button"
+                variant="ghost"
+                onClick={() => { setTheme(key); setThemeOpen(false); }}
+                className={cn(
+                  "relative flex h-auto w-full flex-col items-center gap-2 whitespace-normal rounded-xl px-3 py-4 text-sm font-medium",
+                  theme === key ? "ring-2 ring-primary-400 shadow-sm" : "hover:bg-gray-50",
+                  themeOption.bg, themeOption.text,
                 )}
-              </div>
-              <div className="border-t border-gray-100 bg-white shrink-0">
-                {step === 2 || editingEntry ? (
-                  <div className="p-4">
-                    <button
-                      onClick={handleSave}
-                      disabled={saving || !title.trim() || !content.trim()}
-                      className={cn(
-                        "w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition-all",
-                        saved ? "bg-primary-100 text-primary-700" : "bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50",
-                      )}
-                    >
-                      {saving ? <Loader2 className="w-5 h-5 animate-spin" /> :
-                       saved  ? <><CheckCircle2 className="w-5 h-5" /> {t("teacherPages", "savedExcl", lang)}</> :
-                                 <><Save className="w-5 h-5" /> {editingEntry ? t("teacherPages", "updateEntryBtn", lang) : t("teacherPages", "postEntryBtn", lang)}</>}
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-            </motion.div>
-        )}
-      </AnimatePresence>
+              >
+                <div className="w-full h-16 rounded-lg flex items-center justify-center">
+                  <span className="text-3xl font-bold opacity-30" style={{ fontFamily: themeOption.font }}>Aa</span>
+                </div>
+                <p className="font-semibold text-xs">{themeOption.label}</p>
+                {theme === key && (
+                  <CheckCircle2 className="w-4 h-4 text-primary-600 absolute top-2 right-2" />
+                )}
+              </Button>
+            ))}
+          </div>
+        </ResponsivePopover>
+      </ResponsivePopover>
     </DashboardLayout>
   );
 }
