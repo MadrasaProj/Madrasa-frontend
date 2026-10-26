@@ -1,9 +1,18 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { DateNavigator } from "@/components/DateNavigator";
-import { WeekNavigator } from "@/components/WeekNavigator";
+import { ScrollableDateNavigator } from "@/components/ScrollableDateNavigator";
+import { ScrollableWeekNavigator } from "@/components/ScrollableWeekNavigator";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
+import { Button } from "@/components/ui/button";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
   getClassIbadah,
@@ -19,31 +28,19 @@ import { t } from "@/lib/i18n";
 import {
   Moon,
   BookOpen,
-  ChevronLeft,
-  ChevronRight,
   Loader2,
-  AlertCircle,
-  CheckCircle2,
   Users,
   Check,
   Sun,
   Minus,
-  X,
-  School,
   Download,
+  Hash,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { jsPDF } from "jspdf";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-type Section = "prayers" | "quran" | "custom";
 type ViewMode = "daily" | "weekly";
 
 export const PRAYER_STATUS_META: Record<
@@ -97,9 +94,9 @@ function PrayerStatusIcon({
     return (
       <div
         title={t("parentPages", "missedLabel", lang)}
-        className="w-8 h-8 mx-auto rounded-xl text-xs font-bold flex items-center justify-center bg-gray-50 text-gray-300 border border-gray-100"
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-gray-100 bg-gray-50 text-gray-300"
       >
-        <Minus className="w-3.5 h-3.5" />
+        <Minus className="h-2.5 w-2.5" />
       </div>
     );
   }
@@ -112,13 +109,13 @@ function PrayerStatusIcon({
     <div
       title={t("parentPages", meta.labelKey, lang)}
       className={cn(
-        "w-8 h-8 mx-auto rounded-xl text-xs font-bold flex items-center justify-center border transition-all hover:scale-105",
+        "flex h-5 w-5 shrink-0 items-center justify-center rounded-md border",
         meta.bg,
         meta.text,
         meta.border,
       )}
     >
-      <Icon className="w-4 h-4" />
+      <Icon className="h-2.5 w-2.5" />
     </div>
   );
 }
@@ -145,23 +142,260 @@ interface StudentRow {
   maghrib: PrayerStatus | null;
   isha: PrayerStatus | null;
   quranPages: number;
-  customData: Record<string, boolean | number>;
+  customData: Record<string, boolean | number | string>;
+  hasRecord?: boolean;
+}
+
+function isCompletedPrayer(status: PrayerStatus | null): boolean {
+  return status !== null && status !== "NOT_PRAYABLE";
+}
+
+function StudentSummaryCard({
+  student,
+  activePrayers,
+  showQuran,
+  lang,
+  onClick,
+}: {
+  student: StudentRow;
+  activePrayers: typeof ALL_PRAYERS;
+  showQuran: boolean;
+  lang: "en" | "ml";
+  onClick: () => void;
+}) {
+  const completedPrayers = activePrayers.filter((prayer) =>
+    isCompletedPrayer(student[prayer.key]),
+  ).length;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full rounded-2xl p-4 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+    >
+      <span className="block truncate text-sm font-semibold text-gray-900">
+        {student.name}
+      </span>
+      <span className="block text-xs text-gray-500">{student.adno}</span>
+      <span className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+        {activePrayers.length > 0 && (
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600">
+            <Moon aria-hidden="true" className="h-3.5 w-3.5 text-primary-600" />
+            {completedPrayers}/{activePrayers.length}{" "}
+            {t("teacherPages", "prayerSection", lang)}
+          </span>
+        )}
+        {showQuran && (
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600">
+            <BookOpen aria-hidden="true" className="h-3.5 w-3.5 text-blue-600" />
+            {student.quranPages} {t("parentPages", "pages", lang)}
+          </span>
+        )}
+      </span>
+    </button>
+  );
+}
+
+function WeeklyStudentSummaryCard({
+  student,
+  logs,
+  activePrayers,
+  showQuran,
+  customItems,
+  daysInWeek,
+  lang,
+  onClick,
+}: {
+  student: StudentRecord;
+  logs: IbadahRecord[];
+  activePrayers: typeof ALL_PRAYERS;
+  showQuran: boolean;
+  customItems: IbadahConfig["customItems"];
+  daysInWeek: number;
+  lang: "en" | "ml";
+  onClick: () => void;
+}) {
+  const completedPrayers = logs.reduce(
+    (total, log) =>
+      total +
+      activePrayers.filter((prayer) => isCompletedPrayer(log[prayer.key])).length,
+    0,
+  );
+  const quranPages = logs.reduce((total, log) => total + log.quranPages, 0);
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full rounded-2xl p-4 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+    >
+      <span className="block truncate text-sm font-semibold text-gray-900">
+        {student.name}
+      </span>
+      <span className="block text-xs text-gray-500">{student.adno}</span>
+      <span className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+        {activePrayers.length > 0 && (
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600">
+            <Moon aria-hidden="true" className="h-3.5 w-3.5 text-primary-600" />
+            {completedPrayers}/{activePrayers.length * daysInWeek}{" "}
+            {t("teacherPages", "prayerSection", lang)}
+          </span>
+        )}
+        {showQuran && (
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600">
+            <BookOpen aria-hidden="true" className="h-3.5 w-3.5 text-blue-600" />
+            {quranPages} {t("parentPages", "pages", lang)}
+          </span>
+        )}
+        {customItems.map((item) => {
+          const count =
+            item.type === "number"
+              ? logs.reduce(
+                  (total, log) =>
+                    total + Number(log.customData?.[item.key] ?? 0),
+                  0,
+                )
+              : logs.filter((log) => {
+                  const value = log.customData?.[item.key];
+                  return item.type === "boolean"
+                    ? value === true
+                    : value !== undefined && value !== null && value !== "";
+                }).length;
+          return (
+            <span
+              key={item.key}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600"
+            >
+              <Hash aria-hidden="true" className="h-3.5 w-3.5 text-violet-600" />
+              {item.label}: {count}
+              {item.type !== "number" && `/${daysInWeek}`}
+            </span>
+          );
+        })}
+      </span>
+    </button>
+  );
+}
+
+function StudentDetailSections({
+  student,
+  activePrayers,
+  config,
+  lang,
+}: {
+  student: StudentRow;
+  activePrayers: typeof ALL_PRAYERS;
+  config: IbadahConfig | null;
+  lang: "en" | "ml";
+}) {
+  const customItems = config?.customItems ?? [];
+  return (
+    <div className="space-y-5">
+      {activePrayers.length > 0 && (
+        <section>
+          <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">
+            {t("teacherPages", "prayerSection", lang)}
+          </h3>
+          <div className="divide-y divide-gray-100 rounded-xl border border-gray-100 bg-white">
+            {activePrayers.map((prayer) => {
+              const status = student[prayer.key];
+              return (
+                <div
+                  key={prayer.key}
+                  className="flex items-center justify-between gap-3 px-3 py-2.5"
+                >
+                  <span className="text-sm font-medium text-gray-800">
+                    {prayer.label}
+                  </span>
+                  <span className="flex items-center gap-2 text-xs text-gray-600">
+                    <PrayerStatusIcon status={status} lang={lang} />
+                    {student.hasRecord === false
+                      ? t("teacherPages", "notRecordedLabel", lang)
+                      : status
+                      ? t(
+                          "parentPages",
+                          PRAYER_STATUS_META[status].labelKey,
+                          lang,
+                        )
+                      : t("parentPages", "missedLabel", lang)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+      {config?.enableQuranPages !== false && (
+        <section>
+          <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">
+            {t("teacherPages", "quranPagesHeader", lang)}
+          </h3>
+          <div className="flex items-center gap-2 rounded-xl border border-gray-100 bg-white px-3 py-3 text-sm text-gray-800">
+            <BookOpen aria-hidden="true" className="h-4 w-4 text-blue-600" />
+            {student.hasRecord === false ? (
+              t("teacherPages", "notRecordedLabel", lang)
+            ) : (
+              <>
+                <span className="font-semibold">{student.quranPages}</span>
+                {t("parentPages", "pages", lang)}
+              </>
+            )}
+          </div>
+        </section>
+      )}
+      {customItems.length > 0 && (
+        <section>
+          <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">
+            {t("teacherPages", "customSection", lang)}
+          </h3>
+          <div className="divide-y divide-gray-100 rounded-xl border border-gray-100 bg-white">
+            {customItems.map((item) => {
+              const value = student.customData[item.key];
+              const displayValue =
+                value === undefined || value === null || value === ""
+                  ? t("teacherPages", "notRecordedLabel", lang)
+                  : item.type === "boolean"
+                    ? t(
+                        "parentPages",
+                        value ? "yesLabel" : "noLabel",
+                        lang,
+                      )
+                    : String(value);
+              return (
+                <div
+                  key={item.key}
+                  className="flex items-center justify-between gap-3 px-3 py-3 text-sm"
+                >
+                  <span className="text-gray-600">{item.label}</span>
+                  <span className="text-right font-semibold text-gray-900">
+                    {displayValue}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+    </div>
+  );
 }
 
 function fmt(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 function fmtShort(iso: string) {
-  const d = new Date(iso);
+  const d = new Date(`${iso}T00:00:00`);
   return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 }
 function fmtWeekday(iso: string) {
-  return new Date(iso).toLocaleDateString("en-IN", { weekday: "short" });
+  return new Date(`${iso}T00:00:00`).toLocaleDateString("en-IN", {
+    weekday: "short",
+  });
 }
 
 function getLast7Days(endDate: string): string[] {
   const dates: string[] = [];
-  const end = new Date(endDate);
+  const end = new Date(`${endDate}T00:00:00`);
   for (let i = 6; i >= 0; i--) {
     const d = new Date(end);
     d.setDate(d.getDate() - i);
@@ -170,53 +404,48 @@ function getLast7Days(endDate: string): string[] {
   return dates;
 }
 
-function prayerCount(
-  log: IbadahRecord | undefined,
-  prayers: typeof ALL_PRAYERS,
-): number {
-  if (!log) return 0;
-  return prayers.filter((p) => log[p.key]).length;
-}
-
-function countBadgeColor(count: number, total: number) {
-  if (total === 0) return "bg-gray-100 text-gray-400";
-  if (count === total) return "bg-primary-100 text-primary-700";
-  if (count >= total * 0.6) return "bg-amber-100 text-amber-700";
-  if (count > 0) return "bg-red-100 text-red-600";
-  return "bg-gray-100 text-gray-400";
-}
-
 function reportPrayerType(status: PrayerStatus | null): string {
-  if (!status) return "—";
+  if (!status) return "-";
   if (status === "JAMA") return "Jamaath";
   if (status === "QALA") return "Qada";
   if (status === "NOT_PRAYABLE") return "Excused";
   return "Ada";
 }
 
-export default function TeacherIbadahPage({ initialDate, embedded = false }: { initialDate?: string; embedded?: boolean } = {}) {
+export default function TeacherIbadahPage({
+  initialDate,
+  embedded = false,
+}: { initialDate?: string; embedded?: boolean } = {}) {
   const { user, accessToken } = useAuthStore();
   const { lang } = useLanguageStore();
   const cid = user?.clientId ?? "";
   const token = accessToken ?? "";
 
-  const { activeClassId, activeClass, classes, isLoading: loadingClasses } = useActiveClass();
+  const {
+    activeClassId,
+    activeClass,
+    classes,
+    isLoading: loadingClasses,
+  } = useActiveClass();
   const [date, setDate] = useState(initialDate ?? fmt(new Date()));
   useEffect(() => {
     if (initialDate) setDate(initialDate);
   }, [initialDate]);
   const [viewMode, setViewMode] = useState<ViewMode>("daily");
-  const [selectorDrawer, setSelectorDrawer] = useState(false);
 
   // Daily view state
   const [rows, setRows] = useState<StudentRow[]>([]);
   const [config, setConfig] = useState<IbadahConfig | null>(null);
-  const [activeSection, setActiveSection] = useState<Section>("prayers");
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [selectedWeekDayIndex, setSelectedWeekDayIndex] = useState(6);
+  useEffect(() => {
+    setSelectedStudentId(null);
+    setSelectedWeekDayIndex(6);
+  }, [date, activeClassId]);
 
   // Weekly view state
   const [weeklyLogs, setWeeklyLogs] = useState<IbadahRecord[]>([]);
   const [weeklyStudents, setWeeklyStudents] = useState<StudentRecord[]>([]);
-  const [expandedCell, setExpandedCell] = useState<string | null>(null); // "studentId|date"
 
   const [loadingIbadah, setLoadingIbadah] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -243,7 +472,7 @@ export default function TeacherIbadahPage({ initialDate, embedded = false }: { i
           maghrib: r.maghrib,
           isha: r.isha,
           quranPages: r.quranPages,
-          customData: (r.customData as Record<string, boolean | number>) ?? {},
+          customData: r.customData ?? {},
         })),
       );
     } catch (e) {
@@ -290,18 +519,8 @@ export default function TeacherIbadahPage({ initialDate, embedded = false }: { i
   );
   const customItems = config?.customItems ?? [];
 
-  const prevWeek = () => {
-    const d = new Date(date);
-    d.setDate(d.getDate() - 7);
-    setDate(fmt(d));
-  };
-  const nextWeek = () => {
-    const d = new Date(date);
-    d.setDate(d.getDate() + 7);
-    if (d <= new Date()) setDate(fmt(d));
-  };
-
   const weekDates = useMemo(() => getLast7Days(date), [date]);
+  const selectedWeekDay = weekDates[selectedWeekDayIndex] ?? weekDates[6];
 
   // Build log map for weekly view: studentId → date → log
   const logMap = useMemo(() => {
@@ -314,33 +533,37 @@ export default function TeacherIbadahPage({ initialDate, embedded = false }: { i
     return map;
   }, [weeklyLogs]);
 
-  const sections = (
-    [
-      {
-        key: "prayers" as Section,
-        label: t("teacherPages", "prayerSection", lang),
-        show: activePrayers.length > 0,
-      },
-      {
-        key: "quran" as Section,
-        label: t("teacherPages", "quranSection", lang),
-        show: config?.enableQuranPages !== false,
-      },
-      {
-        key: "custom" as Section,
-        label: t("teacherPages", "customSection", lang),
-        show: customItems.length > 0,
-      },
-    ] as { key: Section; label: string; show: boolean }[]
-  ).filter((s) => s.show);
-
-
+  const weeklyDayRows = useMemo(
+    () =>
+      weeklyStudents.map((student): StudentRow => {
+        const log = logMap.get(student.id)?.get(selectedWeekDay);
+        return {
+          studentId: student.id,
+          name: student.name,
+          adno: student.adno,
+          fajr: log?.fajr ?? null,
+          dhuhr: log?.dhuhr ?? null,
+          asr: log?.asr ?? null,
+          maghrib: log?.maghrib ?? null,
+          isha: log?.isha ?? null,
+          quranPages: log?.quranPages ?? 0,
+          customData: log?.customData ?? {},
+          hasRecord: Boolean(log),
+        };
+      }),
+    [weeklyStudents, logMap, selectedWeekDay],
+  );
+  const selectedStudent =
+    (viewMode === "daily" ? rows : weeklyDayRows).find(
+      (row) => row.studentId === selectedStudentId,
+    ) ?? null;
+  const detailDate = viewMode === "daily" ? date : selectedWeekDay;
 
   const downloadWeeklyReport = useCallback(() => {
     if (!activeClass || weeklyStudents.length === 0) return;
 
     const pdf = new jsPDF({
-      orientation: "landscape",
+      orientation: "portrait",
       unit: "mm",
       format: "a4",
     });
@@ -350,15 +573,31 @@ export default function TeacherIbadahPage({ initialDate, embedded = false }: { i
     const pageHeight = pdf.internal.pageSize.getHeight();
     const columns = [
       "Student",
-      "Admission No.",
+      "Adm. No.",
       "Date",
       ...activePrayers.map((p) => p.label),
-      "Quran",
+      ...(config?.enableQuranPages === false ? [] : ["Quran"]),
     ];
-    const widths = [42, 25, 22, ...activePrayers.map(() => 22), 18];
+    const widths = [
+      39,
+      23,
+      19,
+      ...activePrayers.map(() => 18),
+      ...(config?.enableQuranPages === false ? [] : [15]),
+    ];
     const totalWidth = widths.reduce((sum, width) => sum + width, 0);
     const startX = Math.max(margin, (pageWidth - totalWidth) / 2);
     let y = 10;
+
+    const fitCellText = (value: string, width: number) => {
+      const availableWidth = width - 4;
+      if (pdf.getTextWidth(value) <= availableWidth) return value;
+      let shortened = value;
+      while (shortened && pdf.getTextWidth(`${shortened}...`) > availableWidth) {
+        shortened = shortened.slice(0, -1);
+      }
+      return `${shortened}...`;
+    };
 
     const drawHeader = () => {
       pdf.setFontSize(15);
@@ -368,7 +607,10 @@ export default function TeacherIbadahPage({ initialDate, embedded = false }: { i
       pdf.setFontSize(9);
       pdf.setFont("helvetica", "normal");
       pdf.text(
-        `${activeClass.name}  •  ${fmtShort(weekDates[0])} — ${fmtShort(weekDates[6])}`,
+        fitCellText(
+          `${activeClass.name}  |  ${weekDates[0]} to ${weekDates[6]}`,
+          pageWidth - startX - margin + 4,
+        ),
         startX,
         y,
       );
@@ -379,7 +621,7 @@ export default function TeacherIbadahPage({ initialDate, embedded = false }: { i
       pdf.setTextColor(255, 255, 255);
       pdf.setFont("helvetica", "bold");
       columns.forEach((column, index) => {
-        pdf.text(column, x + 2, y + 4.7);
+        pdf.text(fitCellText(column, widths[index]), x + 2, y + 4.7);
         x += widths[index];
       });
       pdf.setTextColor(0, 0, 0);
@@ -405,7 +647,9 @@ export default function TeacherIbadahPage({ initialDate, embedded = false }: { i
           student.adno,
           fmtShort(day),
           ...activePrayers.map((p) => reportPrayerType(log?.[p.key] ?? null)),
-          String(log?.quranPages ?? 0),
+          ...(config?.enableQuranPages === false
+            ? []
+            : [log ? String(log.quranPages) : "-"]),
         ];
         let x = startX;
         if (Math.round(y / rowHeight) % 2 === 0) {
@@ -414,7 +658,11 @@ export default function TeacherIbadahPage({ initialDate, embedded = false }: { i
         }
         values.forEach((value, index) => {
           pdf.setTextColor(31, 41, 55);
-          pdf.text(String(value).slice(0, 18), x + 2, y + 4.7);
+          pdf.text(
+            fitCellText(String(value), widths[index]),
+            x + 2,
+            y + 4.7,
+          );
           pdf.setDrawColor(226, 232, 240);
           pdf.rect(x, y, widths[index], rowHeight);
           x += widths[index];
@@ -425,20 +673,28 @@ export default function TeacherIbadahPage({ initialDate, embedded = false }: { i
     pdf.setFontSize(8);
     pdf.setTextColor(75, 85, 99);
     pdf.text(
-      "Prayer type: Jamaath = performed in congregation • Qada = made up later • Ada = performed • Excused = not prayable",
+      "Prayer type: Jamaath = congregation | Qada = made up | Ada = performed | Excused = not prayable | - = not recorded",
       startX,
       pageHeight - 8,
     );
     pdf.save(
       `ibadah-weekly-${activeClass.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-${weekDates[6]}.pdf`,
     );
-  }, [activeClass, activePrayers, logMap, weekDates, weeklyStudents]);
+  }, [
+    activeClass,
+    activePrayers,
+    config?.enableQuranPages,
+    logMap,
+    weekDates,
+    weeklyStudents,
+  ]);
 
   const content = (
     <>
-      {!embedded && <PageHeader title={t("teacherPages", "ibadahRecordsTitle", lang)} />}
+      {!embedded && (
+        <PageHeader title={t("teacherPages", "ibadahRecordsTitle", lang)} />
+      )}
 
-      {!embedded && <div className="h-[46px]" />}
 
       {error && (
         <ApiErrorBanner
@@ -471,94 +727,84 @@ export default function TeacherIbadahPage({ initialDate, embedded = false }: { i
         </div>
       ) : (
         <>
-          <button
-            type="button"
-            onClick={() => setSelectorDrawer(true)}
-            aria-label="Choose ibadah date"
+          <div
             className={cn(
-              "flex justify-between gap-2 border-b border-gray-100 bg-white/95 px-4 py-3 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3",
-              embedded ? "sticky top-0 z-10 -mx-4 mb-4" : "fixed inset-x-0 top-[47px] z-40 shadow-lg shadow-gray-100 lg:left-64 lg:px-8",
+              "border-b border-gray-100   px-4 py-2  ",
+              embedded
+                ? " "
+                : " ",
             )}
           >
-            <span className="flex min-w-0 items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               {viewMode === "daily" ? (
-                <>
-                  <span className="flex flex-col items-center leading-none">
-                    <span className="text-sm font-bold text-primary ">
-                      {new Date(`${date}T00:00:00`).toLocaleDateString(
-                        "en-IN",
-                        { day: "numeric" },
-                      )}
-                    </span>
-                  </span>
-                  <span className="h-3 w-px bg-primary/25"></span>
-                  <span className="text-sm font-normal text-gray-900">
-                    {new Date(`${date}T00:00:00`).toLocaleDateString("en-IN", {
-                      month: "short",
-                      year: "2-digit",
-                    })}
-                  </span>
-                </>
+                <ScrollableDateNavigator
+                  hideCalendarButton
+                  date={date}
+                  onDateChange={setDate}
+                  pickerTitle="Choose ibadah date"
+                />
               ) : (
-                <>
-                  <span className="flex flex-col items-start leading-none">
-                    <span className="text-sm font-normal text-gray-500">
-                      {new Date(`${date}T00:00:00`).toLocaleDateString(
-                        "en-IN",
-                        { month: "short", year: "2-digit" },
-                      )}
-                    </span>
-                  </span>
-                  <span className="h-4 w-px bg-gray-200" />
-                  <span className="text-sm font-normal text-gray-900">{`${fmtShort(weekDates[0])}-${fmtShort(weekDates[6])}`}</span>
-                </>
+                <ScrollableWeekNavigator
+                  date={date}
+                  hideCalendarButton
+                  onDateChange={setDate}
+                  pickerTitle="Choose ibadah week"
+                />
               )}
-            </span>
-            <span className="flex min-w-0 items-center gap-2 text-gray-700">
-              <School className="h-4 w-4 shrink-0 text-primary-700" />
-              <span className="max-w-36 truncate text-sm font-semibold">
-                {activeClass?.name ??
-                  t("teacherPages", "noClassesAssigned", lang)}
-              </span>
-            </span>
-          </button>
-
-          <Drawer open={selectorDrawer} onOpenChange={setSelectorDrawer}>
-            <DrawerContent>
-              <DrawerHeader>
-                <DrawerTitle> </DrawerTitle>
-                <DrawerDescription>
-                 </DrawerDescription>
-              </DrawerHeader>
-              <div className="max-h-[60vh] overflow-y-auto px-4 pb-6">
-                <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as ViewMode)}>
-                  <TabsList className="mb-4">
-                    <TabsTrigger value="daily" className="px-3 py-1 text-sm">{t("teacherPages", "dailyView", lang)}</TabsTrigger>
-                    <TabsTrigger value="weekly" className="px-3 py-1 text-sm">{t("teacherPages", "weeklyView", lang)}</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-                {viewMode === "daily" ? (
-                  <DateNavigator
-                    date={date}
-                    onDateChange={setDate}
-                    pickerTitle="Choose ibadah date"
-                    inline
+            </div>
+            {viewMode === "weekly" && (
+              <section className="mt-3 rounded-2xl border border-cyan-100 bg-[#e9f7f8] p-4 shadow-sm sm:p-5" aria-labelledby="weekly-report-title">
+                <div className="flex items-center gap-3 sm:gap-5">
+                  <div className="min-w-0 flex-1">
+                    <h2 id="weekly-report-title" className="text-base font-semibold text-gray-900">
+                      Weekly report
+                    </h2>
+                    <p className="mt-1 text-sm leading-5 text-gray-600">
+                      Download an A4 PDF of your class&apos;s ibadah records for the selected week.
+                    </p>
+                  </div>
+                  <img
+                    src="/icons/ibadah/weekly-report.webp"
+                    alt=""
+                    aria-hidden="true"
+                    className="h-24 w-24 shrink-0 object-contain sm:h-32 sm:w-32"
                   />
-                ) : (
-                  <WeekNavigator
-                    weekDates={weekDates}
-                    date={date}
-                    onPrevWeek={prevWeek}
-                    onNextWeek={nextWeek}
-                    onDownloadReport={downloadWeeklyReport}
-                    downloadDisabled={weeklyStudents.length === 0}
-                    fmtShort={fmtShort}
-                  />
-                )}
+                </div>
+                <Button
+                  type="button"
+                  onClick={downloadWeeklyReport}
+                  disabled={loadingIbadah || weeklyStudents.length === 0}
+                  size="lg"
+                  className="mt-4 h-10 w-full px-4 sm:w-auto"
+                >
+                  <Download aria-hidden="true" className="h-4 w-4" />
+                  Download report
+                </Button>
+              </section>
+            )}
+          </div>
 
-              </div>
-            </DrawerContent>
-          </Drawer>
+          <Tabs
+            value={viewMode}
+
+            onValueChange={(value) => {
+              setSelectedStudentId(null);
+              setViewMode(value as ViewMode);
+            }}
+            className={cn(
+              "fixed left-1/2  z-40 -translate-x-1/2 rounded-lg    ",
+              embedded ? "bottom-[calc(10dvh+1rem)]" : "bottom-22 lg:bottom-6",
+            )}
+          >
+            <TabsList aria-label="Ibadah view" className="bg-gray-100">
+              <TabsTrigger value="daily" className="px-5 py-2 text-sm">
+                {t("teacherPages", "dailyView", lang)}
+              </TabsTrigger>
+              <TabsTrigger value="weekly" className="px-5 py-2 text-sm">
+                {t("teacherPages", "weeklyView", lang)}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
 
           {loadingIbadah ? (
             <div className="flex items-center justify-center gap-2 py-10 text-gray-400">
@@ -575,448 +821,132 @@ export default function TeacherIbadahPage({ initialDate, embedded = false }: { i
                       {t("teacherPages", "noIbadahSubmitted", lang)}
                     </div>
                   ) : (
-                    <div>
-                      {/* Section tabs */}
-                      {sections.length > 1 && (
-                        <div className="flex gap-1.5 mb-4 bg-gray-100 p-1 rounded-xl w-fit">
-                          {sections.map((s) => (
-                            <button
-                              key={s.key}
-                              onClick={() => setActiveSection(s.key)}
-                              className={cn(
-                                "px-4 py-1.5 rounded-lg text-xs font-semibold transition-all",
-                                activeSection === s.key
-                                  ? "bg-white shadow-sm text-primary-700"
-                                  : "text-gray-500",
-                              )}
-                            >
-                              {s.label}
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                    <div className="space-y-2 px-3 ">
+                      <div className="bg-white card rounded-2xl">
 
-                      {/* Prayers table */}
-                      {activeSection === "prayers" &&
-                        activePrayers.length > 0 && (
-                          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-4 shadow-xs">
-                            {/* Table header */}
-                            <div className="overflow-x-auto">
-                              <table className="w-full">
-                                <thead className="bg-gray-50 sticky top-0 z-10 border-b border-gray-100">
-                                  <tr>
-                                    <th className="text-left px-4 py-3 text-[10px] font-bold text-gray-400 uppercase w-48 sticky left-0 bg-gray-50">
-                                      {t("teacherPages", "studentHeader", lang)}
-                                    </th>
-                                    {activePrayers.map((p) => (
-                                      <th
-                                        key={p.key}
-                                        className="text-center px-2 py-3 text-[10px] font-bold text-gray-400 uppercase"
-                                      >
-                                        {p.label}
-                                      </th>
-                                    ))}
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-50">
-                                  {rows.map((r) => (
-                                    <tr
-                                      key={r.studentId}
-                                      className="hover:bg-gray-50/60 transition-colors"
-                                    >
-                                      <td className="px-4 py-2.5 sticky left-0 bg-white shadow-[1px_0_0_0_rgba(0,0,0,0.03)]">
-                                        <p className="text-sm font-semibold text-gray-900 truncate max-w-[160px]">
-                                          {r.name}
-                                        </p>
-                                        <p className="text-[10px] text-gray-400">
-                                          {r.adno}
-                                        </p>
-                                      </td>
-                                      {activePrayers.map((p) => (
-                                        <td
-                                          key={p.key}
-                                          className="px-2 py-2.5 text-center"
-                                        >
-                                          <PrayerStatusIcon
-                                            status={r[p.key]}
-                                            lang={lang}
-                                          />
-                                        </td>
-                                      ))}
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-
-                            {/* Prayer Status Legend */}
-                            <div className="px-4 py-3 bg-gray-50/70 border-t border-gray-100 flex flex-wrap items-center gap-4 text-xs">
-                              <div className="flex items-center gap-1.5">
-                                <span className="w-5 h-5 rounded-lg bg-blue-100 text-blue-700 border border-blue-200 flex items-center justify-center">
-                                  <Users className="w-3 h-3" />
-                                </span>
-                                <span className="font-medium text-gray-700">
-                                  {t("parentPages", "jama", lang)}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="w-5 h-5 rounded-lg bg-primary-100 text-primary-700 border border-primary-200 flex items-center justify-center">
-                                  <Check className="w-3 h-3" />
-                                </span>
-                                <span className="font-medium text-gray-700">
-                                  {t("parentPages", "adaLabel", lang)}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="w-5 h-5 rounded-lg bg-amber-100 text-amber-700 border border-amber-200 flex items-center justify-center">
-                                  <Sun className="w-3 h-3" />
-                                </span>
-                                <span className="font-medium text-gray-700">
-                                  {t("parentPages", "qalaLabel", lang)}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="w-5 h-5 rounded-lg bg-primary-100 text-primary-700 border border-primary-200 flex items-center justify-center">
-                                  <Check className="w-3 h-3" />
-                                </span>
-                                <span className="font-medium text-gray-700">
-                                  {t("parentPages", "excusedLabel", lang)}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="w-5 h-5 rounded-lg bg-gray-100 text-gray-400 border border-gray-200 flex items-center justify-center">
-                                  <Minus className="w-3 h-3" />
-                                </span>
-                                <span className="font-medium text-gray-400">
-                                  {t("parentPages", "missedLabel", lang)}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                      {/* Quran table */}
-                      {activeSection === "quran" &&
-                        config?.enableQuranPages !== false && (
-                          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-4">
-                            <div className="px-4 py-2.5 bg-gray-50 flex items-center gap-2">
-                              <BookOpen className="w-4 h-4 text-blue-500" />
-                              <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                                {t("teacherPages", "quranPagesHeader", lang)}
-                              </p>
-                            </div>
-                            <div className="divide-y divide-gray-50">
-                              {rows.map((r) => (
-                                <div
-                                  key={r.studentId}
-                                  className="flex items-center gap-4 px-4 py-3"
-                                >
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-semibold text-gray-900 truncate">
-                                      {r.name}
-                                    </p>
-                                    <p className="text-xs text-gray-400">
-                                      {r.adno}
-                                    </p>
-                                  </div>
-                                  <span
-                                    className={cn(
-                                      "text-lg font-bold",
-                                      r.quranPages > 0
-                                        ? "text-blue-700"
-                                        : "text-gray-300",
-                                    )}
-                                  >
-                                    {r.quranPages}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                      {/* Custom items */}
-                      {activeSection === "custom" && customItems.length > 0 && (
-                        <div className="space-y-4">
-                          {customItems.map((item) => (
-                            <div
-                              key={item.key}
-                              className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
-                            >
-                              <div className="px-4 py-2.5 bg-gray-50">
-                                <p className="text-xs font-bold text-gray-500 uppercase">
-                                  {item.label}
-                                </p>
-                              </div>
-                              <div className="divide-y divide-gray-50">
-                                {rows.map((r) => (
-                                  <div
-                                    key={r.studentId}
-                                    className="flex items-center gap-4 px-4 py-3"
-                                  >
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-semibold text-gray-900 truncate">
-                                        {r.name}
-                                      </p>
-                                      <p className="text-xs text-gray-400">
-                                        {r.adno}
-                                      </p>
-                                    </div>
-                                    {item.type === "boolean" ? (
-                                      <div
-                                        className={cn(
-                                          "w-8 h-8 rounded-lg text-sm font-bold flex items-center justify-center",
-                                          r.customData[item.key]
-                                            ? "bg-primary-100 text-primary-700"
-                                            : "bg-gray-100 text-gray-400",
-                                        )}
-                                      >
-                                        {r.customData[item.key] ? "✓" : "–"}
-                                      </div>
-                                    ) : (
-                                      <span
-                                        className={cn(
-                                          "text-lg font-bold",
-                                          (r.customData[item.key] as number) > 0
-                                            ? "text-blue-700"
-                                            : "text-gray-300",
-                                        )}
-                                      >
-                                        {(r.customData[item.key] as number) ??
-                                          0}
-                                      </span>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      {rows.map((student) => (
+                        <StudentSummaryCard
+                          key={student.studentId}
+                          student={student}
+                          activePrayers={activePrayers}
+                          showQuran={config?.enableQuranPages !== false}
+                          lang={lang}
+                          onClick={() => setSelectedStudentId(student.studentId)}
+                        />
+                      ))}
+                      </div>
                     </div>
                   )}
                 </>
               )}
 
               {/* ── WEEKLY VIEW ── */}
-              {viewMode === "weekly" &&
-                (weeklyStudents.length === 0 ? (
-                  <div className="text-center py-12 text-gray-400 text-sm">
-                    <Moon className="w-10 h-10 mx-auto mb-3 text-gray-200" />
-                    {t("teacherPages", "noStudentsInClass", lang)}
-                  </div>
-                ) : (
-                  <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table
-                        className="w-full text-sm"
-                        style={{ minWidth: "520px" }}
-                      >
-                        <thead className="bg-gray-50 sticky top-0 z-10">
-                          <tr>
-                            {/* Frozen student column */}
-                            <th className="text-left px-4 py-3 text-[10px] font-bold text-gray-400 uppercase sticky left-0 bg-gray-50 min-w-[140px] border-r border-gray-100">
-                              {t("teacherPages", "studentHeader", lang)}
-                            </th>
-                            {weekDates.map((d) => (
-                              <th
-                                key={d}
-                                className="text-center px-2 py-3 min-w-[68px]"
-                              >
-                                <p className="text-[10px] font-bold text-gray-400 uppercase">
-                                  {fmtWeekday(d)}
-                                </p>
-                                <p className="text-xs font-semibold text-gray-600">
-                                  {fmtShort(d)}
-                                </p>
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                          {weeklyStudents.map((student) => {
-                            const studentLogs = logMap.get(student.id);
-                            return (
-                              <tr
-                                key={student.id}
-                                className="hover:bg-gray-50/50 transition-colors"
-                              >
-                                {/* Frozen student cell */}
-                                <td className="px-4 py-3 sticky left-0 bg-white border-r border-gray-100">
-                                  <p className="text-sm font-semibold text-gray-900 truncate max-w-[130px]">
-                                    {student.name}
-                                  </p>
-                                  <p className="text-[10px] text-gray-400">
-                                    {student.adno}
-                                  </p>
-                                </td>
-                                {weekDates.map((d) => {
-                                  const log = studentLogs?.get(d);
-                                  const count = prayerCount(log, activePrayers);
-                                  const total = activePrayers.length;
-                                  const cellKey = `${student.id}|${d}`;
-                                  const isExpanded = expandedCell === cellKey;
-                                  return (
-                                    <td
-                                      key={d}
-                                      className="px-2 py-3 text-center align-top"
-                                    >
-                                      {!log ? (
-                                        <div className="w-10 h-7 mx-auto rounded-lg bg-gray-50 text-[10px] text-gray-300 flex items-center justify-center">
-                                          —
-                                        </div>
-                                      ) : (
-                                        <div className="flex flex-col items-center gap-1">
-                                          <button
-                                            onClick={() =>
-                                              setExpandedCell(
-                                                isExpanded ? null : cellKey,
-                                              )
-                                            }
-                                            className={cn(
-                                              "px-2 py-1 rounded-lg text-xs font-bold transition-all",
-                                              countBadgeColor(count, total),
-                                            )}
-                                          >
-                                            {count}/{total}
-                                          </button>
-                                          {isExpanded && (
-                                            <div className="flex flex-col gap-1 mt-1.5 bg-white rounded-xl border border-gray-100 shadow-md p-2 min-w-[110px] z-20 relative">
-                                              {activePrayers.map((p) => {
-                                                const status = log[p.key];
-                                                const meta = status
-                                                  ? PRAYER_STATUS_META[status]
-                                                  : null;
-                                                const Icon =
-                                                  meta?.icon ?? Minus;
-                                                return (
-                                                  <div
-                                                    key={p.key}
-                                                    className="flex items-center justify-between gap-1.5 text-[10px] py-0.5 border-b border-gray-50 last:border-0"
-                                                  >
-                                                    <span className="text-gray-500 font-medium">
-                                                      {p.label.slice(0, 3)}
-                                                    </span>
-                                                    <div className="flex items-center gap-1">
-                                                      <span
-                                                        className={cn(
-                                                          "w-4 h-4 rounded flex items-center justify-center shrink-0",
-                                                          meta
-                                                            ? cn(
-                                                                meta.bg,
-                                                                meta.text,
-                                                              )
-                                                            : "bg-gray-100 text-gray-400",
-                                                        )}
-                                                      >
-                                                        <Icon className="w-2.5 h-2.5" />
-                                                      </span>
-                                                      <span
-                                                        className={cn(
-                                                          "text-[9px] font-semibold",
-                                                          meta
-                                                            ? meta.text
-                                                            : "text-gray-400",
-                                                        )}
-                                                      >
-                                                        {meta
-                                                          ? t(
-                                                              "parentPages",
-                                                              meta.labelKey,
-                                                              lang,
-                                                            )
-                                                          : "—"}
-                                                      </span>
-                                                    </div>
-                                                  </div>
-                                                );
-                                              })}
-                                              {config?.enableQuranPages && (
-                                                <div className="flex items-center justify-between gap-1 text-[10px] border-t border-gray-100 pt-1 mt-0.5">
-                                                  <div className="flex items-center gap-1 text-blue-600">
-                                                    <BookOpen className="w-2.5 h-2.5 text-blue-500" />
-                                                    <span className="text-gray-500">
-                                                      {t(
-                                                        "teacherPages",
-                                                        "quran",
-                                                        lang,
-                                                      ) || "Quran"}
-                                                    </span>
-                                                  </div>
-                                                  <span className="font-bold text-blue-700">
-                                                    {log.quranPages}p
-                                                  </span>
-                                                </div>
-                                              )}
-                                              {customItems.length > 0 &&
-                                                log.customData && (
-                                                  <div className="flex flex-col gap-0.5 border-t border-gray-100 pt-1 mt-0.5">
-                                                    {customItems.map((item) => {
-                                                      const val =
-                                                        log.customData?.[
-                                                          item.key
-                                                        ];
-                                                      if (
-                                                        val === undefined ||
-                                                        val === null
-                                                      )
-                                                        return null;
-                                                      return (
-                                                        <div
-                                                          key={item.key}
-                                                          className="flex items-center justify-between text-[9px]"
-                                                        >
-                                                          <span className="text-gray-500 truncate max-w-[50px]">
-                                                            {item.label}
-                                                          </span>
-                                                          <span className="text-blue-600 font-semibold">
-                                                            {item.type ===
-                                                            "boolean"
-                                                              ? val
-                                                                ? "✓"
-                                                                : "—"
-                                                              : String(val)}
-                                                          </span>
-                                                        </div>
-                                                      );
-                                                    })}
-                                                  </div>
-                                                )}
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+              {viewMode === "weekly" && (
+                <div className="px-3">
+                  {weeklyStudents.length === 0 ? (
+                    <div className="text-center py-12 text-gray-400 text-sm">
+                      <Moon className="w-10 h-10 mx-auto mb-3 text-gray-200" />
+                      {t("teacherPages", "noStudentsInClass", lang)}
                     </div>
-                    <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex flex-wrap gap-4 text-xs text-gray-500">
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-3 h-3 rounded bg-primary-100 inline-block" />{" "}
-                        {t("teacherPages", "legendAllPrayers", lang)}
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-3 h-3 rounded bg-amber-100 inline-block" />{" "}
-                        {t("teacherPages", "legendPartial", lang)}
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-3 h-3 rounded bg-red-100 inline-block" />{" "}
-                        {t("teacherPages", "legendFew", lang)}
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-3 h-3 rounded bg-gray-50 border inline-block" />{" "}
-                        {t("teacherPages", "legendNotRecorded", lang)}
-                      </div>
+                  ) : (
+                    <div className="bg-white card rounded-2xl">
+                      {weeklyStudents.map((student) => {
+                        const logs = weekDates
+                          .map((day) => logMap.get(student.id)?.get(day))
+                          .filter((log): log is IbadahRecord => log !== undefined);
+                        return (
+                          <WeeklyStudentSummaryCard
+                            key={student.id}
+                            student={student}
+                            logs={logs}
+                            activePrayers={activePrayers}
+                            showQuran={config?.enableQuranPages !== false}
+                            customItems={customItems}
+                            daysInWeek={weekDates.length}
+                            lang={lang}
+                            onClick={() => {
+                              setSelectedWeekDayIndex(6);
+                              setSelectedStudentId(student.id);
+                            }}
+                          />
+                        );
+                      })}
                     </div>
-                  </div>
-                ))}
+                  )}
+                </div>
+              )}
             </>
           )}
+          <Drawer
+            open={selectedStudent !== null}
+            onOpenChange={(open) => {
+              if (!open) setSelectedStudentId(null);
+            }}
+          >
+            <DrawerContent className="max-h-[85dvh] bg-white">
+              <DrawerHeader className="flex-row items-start justify-between gap-3 border-b border-gray-100 pb-4 text-left">
+                <div className="min-w-0">
+                  <DrawerTitle className="truncate text-lg font-semibold text-gray-900">
+                    {selectedStudent?.name}
+                  </DrawerTitle>
+                  <DrawerDescription className="text-xs text-gray-500">
+                    {selectedStudent?.adno} · {fmtShort(detailDate)}
+                  </DrawerDescription>
+                </div>
+                <DrawerClose
+                  aria-label={t("common", "close", lang)}
+                  className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100"
+                >
+                  <X aria-hidden="true" className="h-5 w-5" />
+                </DrawerClose>
+              </DrawerHeader>
+              {selectedStudent && (
+                <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                  {viewMode === "weekly" ? (
+                    <Tabs
+                      value={selectedWeekDay}
+                      onValueChange={(value) => {
+                        const index = weekDates.indexOf(value);
+                        if (index >= 0) setSelectedWeekDayIndex(index);
+                      }}
+                    >
+                      <div className="overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                        <TabsList aria-label="Ibadah day" className="gap-1 bg-transparent p-0">
+                          {weekDates.map((day) => (
+                            <TabsTrigger
+                              key={day}
+                              value={day}
+                              className="flex h-14 w-20 shrink-0 flex-col gap-0.5 rounded-xl border border-transparent bg-gray-50 px-2 py-1 text-center data-[state=active]:border-primary-500 data-[state=active]:bg-primary-50 data-[state=active]:text-primary-700 data-[state=active]:shadow-none"
+                            >
+                              <span className="text-[10px] font-semibold uppercase">
+                                {fmtWeekday(day)}
+                              </span>
+                              <span className="text-xs">{fmtShort(day)}</span>
+                            </TabsTrigger>
+                          ))}
+                        </TabsList>
+                      </div>
+                      <TabsContent value={selectedWeekDay} className="mt-4">
+                        <StudentDetailSections
+                          student={selectedStudent}
+                          activePrayers={activePrayers}
+                          config={config}
+                          lang={lang}
+                        />
+                      </TabsContent>
+                    </Tabs>
+                  ) : (
+                    <StudentDetailSections
+                      student={selectedStudent}
+                      activePrayers={activePrayers}
+                      config={config}
+                      lang={lang}
+                    />
+                  )}
+                </div>
+              )}
+            </DrawerContent>
+          </Drawer>
           <div className="h-20" aria-hidden="true" />
         </>
       )}
