@@ -1,10 +1,9 @@
 import { useState } from "react";
+import { DatePickerDrawer } from "@/components/DatePickerDrawer";
+import { DrawerSelector } from "@/components/DrawerSelector";
 import { Button } from "@/components/ui/button";
-import { Calendar as HomeworkCalendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { t, type Lang } from "@/lib/i18n";
 import type { SubjectRecord } from "@/lib/subjects-api";
@@ -53,6 +52,13 @@ export function HomeworkAssignmentDrawer({
 }: HomeworkAssignmentDrawerProps) {
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const isCreate = mode === "create";
+  const subjectPlaceholder = classSubjects.length === 0
+    ? isCreate && !classId
+      ? t("teacherPages", "noAccessibleClasses", lang)
+      : isCreate
+        ? t("teacherPages", isPeriodBased ? "noSubjectsAssigned" : "noSubjectsInClass", lang)
+        : t("teacherPages", "noSubjectsAvail", lang)
+    : t("teacherPages", "selectSubjectOpt", lang);
 
   return (
     <ResponsivePopover
@@ -63,35 +69,17 @@ export function HomeworkAssignmentDrawer({
     >
       <div className="space-y-4 p-5 pb-8">
         <div>
-          <label className="mb-1.5 block text-xs font-semibold text-gray-500">
+          <p className="mb-1.5 block text-xs font-semibold text-gray-500">
             {t("teacherPages", "subjectRequired", lang)}
             {isPeriodBased && isCreate && <span className="ml-1 font-normal text-gray-400">{t("teacherPages", "yourSubjectsHint", lang)}</span>}
-          </label>
-          <Select value={subjectId} onValueChange={(value) => { if (value !== null) onSubjectChange(value); }}>
-            <SelectTrigger size="lg" className="w-full">
-              <SelectValue>
-                {(value: string | null) => classSubjects.find((item) => item.id === value)?.name
-                  ?? (classSubjects.length === 0
-                    ? isCreate && !classId
-                      ? t("teacherPages", "noAccessibleClasses", lang)
-                      : isCreate
-                        ? isPeriodBased ? t("teacherPages", "noSubjectsAssigned", lang) : t("teacherPages", "noSubjectsInClass", lang)
-                        : t("teacherPages", "noSubjectsAvail", lang)
-                    : t("teacherPages", "subjectRequired", lang))}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {classSubjects.length === 0
-                ? <SelectItem size="lg" value="none" disabled>
-                    {isCreate && !classId
-                      ? t("teacherPages", "noAccessibleClasses", lang)
-                      : isCreate
-                        ? isPeriodBased ? t("teacherPages", "noSubjectsAssigned", lang) : t("teacherPages", "noSubjectsInClass", lang)
-                        : t("teacherPages", "noSubjectsAvail", lang)}
-                  </SelectItem>
-                : classSubjects.map((item) => <SelectItem size="lg" key={item.id} value={item.id}>{item.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          </p>
+          <DrawerSelector
+            title={t("teacherPages", "subjectRequired", lang)}
+            options={classSubjects.map((subject) => ({ value: subject.id, label: subject.name }))}
+            value={subjectId}
+            onChange={onSubjectChange}
+            placeholder={subjectPlaceholder}
+          />
         </div>
 
         <div>
@@ -105,30 +93,30 @@ export function HomeworkAssignmentDrawer({
         </div>
 
         <div>
-          <label className="mb-1.5 block text-xs font-semibold text-gray-500">{t("teacherPages", "dueDateRequired", lang)}</label>
-          <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
-            <PopoverTrigger render={<Button type="button" variant="outline" size="lg" className="h-11 w-full justify-start font-normal" />}>
-              <Calendar className="text-muted-foreground" />
-              {dueDate
-                ? new Date(`${dueDate}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
-                : t("teacherPages", "dueDateRequired", lang)}
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-auto p-0">
-              <HomeworkCalendar
-                mode="single"
-                selected={dueDate ? new Date(`${dueDate}T00:00:00`) : undefined}
-                onSelect={(date) => {
-                  if (!date) return;
-                  const year = date.getFullYear();
-                  const month = String(date.getMonth() + 1).padStart(2, "0");
-                  const day = String(date.getDate()).padStart(2, "0");
-                  onDueDateChange(`${year}-${month}-${day}`);
-                  setDatePickerOpen(false);
-                }}
-                disabled={{ before: new Date(`${today}T00:00:00`) }}
-              />
-            </PopoverContent>
-          </Popover>
+          <p className="mb-1.5 block text-xs font-semibold text-gray-500">{t("teacherPages", "dueDateRequired", lang)}</p>
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="h-11 w-full justify-start font-normal shadow-none!"
+            aria-haspopup="dialog"
+            aria-expanded={datePickerOpen}
+            onClick={() => setDatePickerOpen(true)}
+          >
+            <Calendar className="text-muted-foreground" />
+            {dueDate
+              ? new Date(`${dueDate}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+              : t("teacherPages", "dueDateRequired", lang)}
+          </Button>
+          <DatePickerDrawer
+            open={datePickerOpen}
+            onOpenChange={setDatePickerOpen}
+            date={dueDate}
+            onDateChange={onDueDateChange}
+            title={t("teacherPages", "dueDateRequired", lang)}
+            minDate={today}
+            disableFuture={false}
+          />
         </div>
 
         <Button

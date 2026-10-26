@@ -4,6 +4,7 @@ import { HomeworkAssignmentDrawer } from "@/components/teacher/HomeworkAssignmen
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
+import { Item, ItemContent, ItemMedia, ItemSeparator, ItemTitle } from "@/components/ui/item";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import {
@@ -18,7 +19,7 @@ import { useLanguageStore } from "@/store/language";
 import { t, type Lang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
-  Plus, Trash2, Loader2, Check, Pencil, CircleDashed, Send, CircleCheck,
+  Plus, Trash2, Loader2, Check, Pencil, Ellipsis, CircleDashed, Inbox, CircleCheck,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
 
@@ -49,7 +50,7 @@ export default function TeacherHomeworkPage() {
   const STATUS_CONFIG = useStatusConfig(lang);
   const STATUS_ICONS = {
     NOT_SUBMITTED: CircleDashed,
-    SUBMITTED: Send,
+    SUBMITTED: Inbox,
     CHECKED: CircleCheck,
   };
   const cid          = user?.clientId ?? "";
@@ -81,6 +82,7 @@ export default function TeacherHomeworkPage() {
   const [updating, setUpdating]             = useState(false);
 
   const [showAssessDrawer, setShowAssessDrawer] = useState(false);
+  const [showAssessOptions, setShowAssessOptions] = useState(false);
   const [assessHw, setAssessHw]                 = useState<HomeworkAssignment | null>(null);
 
   useEffect(() => {
@@ -152,6 +154,7 @@ export default function TeacherHomeworkPage() {
 
   const openAssess = async (hw: HomeworkAssignment) => {
     setAssessHw(hw);
+    setShowAssessOptions(false);
     setShowAssessDrawer(true);
     if (!submissions[hw.id]) await loadSubmissions(hw.id);
   };
@@ -243,15 +246,7 @@ export default function TeacherHomeworkPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader
-        title={t("teacherPages", "homeworkTitle", lang)}
-        action={(
-          <Button size="lg" onClick={openCreate}>
-            <Plus className="h-4 w-4" />
-            {t("teacherPages", "newHwBtn", lang)}
-          </Button>
-        )}
-      />
+      <PageHeader title={t("teacherPages", "homeworkTitle", lang)} />
 
       {error && <ApiErrorBanner message={error} onRetry={() => { setError(null); }} />}
 
@@ -283,16 +278,11 @@ export default function TeacherHomeworkPage() {
             <p className="mx-auto mt-1 max-w-xs text-sm text-gray-500">
               {t("teacherPages", "createFirstHw", lang)}
             </p>
-            <div className="mt-5">
-              <Button onClick={openCreate} size="lg">
-                <Plus className="w-4 h-4" />
-                {t("teacherPages", "newHwBtn", lang)}
-              </Button>
-            </div>
           </div>
         </div>
       ) : (
-        <div className="divide-y divide-gray-100 pb-24">
+        <div className="mt-5">
+          <div className="divide-y card bg-background  !p-2 rounded-2xl divide-gray-100     ">
           {homework.map((hw) => {
             const rows = submissions[hw.id]?.submissions ?? [];
             const countByStatus = {
@@ -302,12 +292,14 @@ export default function TeacherHomeworkPage() {
             };
 
             return (
-              <button key={hw.id} onClick={() => openAssess(hw)} className="flex w-full items-center gap-4 py-4 text-left">
-                <div className="min-w-0 flex-1">
+            <button key={hw.id} onClick={() => openAssess(hw)} className="flex px-4 py-3 flex-col w-full justify-start gap-2  text-left">
+                <div className="flex gap-4">
+                  <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-gray-900">{hw.title}</p>
                   <p className="mt-1 truncate text-sm text-gray-500">
                     {hw.class?.name ?? "—"} <span className="mx-1 text-gray-300">·</span> {hw.subject?.name ?? "—"}
                   </p>
+                </div>
                 </div>
                 <div
                   className="flex shrink-0 items-center text-xs tabular-nums text-gray-500"
@@ -330,6 +322,7 @@ export default function TeacherHomeworkPage() {
                           )}
                           aria-hidden="true"
                         />
+                        {/* {STATUS_CONFIG[status].label} */}
                         <span className="font-semibold">{countByStatus[status]}</span>
                       </span>
                     );
@@ -339,7 +332,17 @@ export default function TeacherHomeworkPage() {
             );
           })}
         </div>
+        </div>
       )}
+
+      <Button
+        size="lg"
+        onClick={openCreate}
+        className="fixed bottom-22 left-1/2 z-30 -translate-x-1/2 rounded-full shadow-lg lg:bottom-6"
+      >
+        <Plus className="h-4 w-4" />
+        {t("teacherPages", "newHwBtn", lang)}
+      </Button>
 
       <HomeworkAssignmentDrawer
         open={showHomeworkDrawer}
@@ -365,8 +368,9 @@ export default function TeacherHomeworkPage() {
       {/* Assess Homework Drawer */}
       <ResponsivePopover
         open={showAssessDrawer}
-        contentClassName="max-h-[calc(100dvh-15rem)] flex flex-col overflow-hidden"
-        onOpenChange={(open) => { if (!open) { setShowAssessDrawer(false); setAssessHw(null); setDeleteTarget(null); } }}
+        className="h-dvh max-h-dvh data-[swipe-axis=y]:[--drawer-content-max-height:100dvh]"
+        contentClassName="flex min-h-0 flex-col overflow-hidden"
+        onOpenChange={(open) => { if (!open) { setShowAssessDrawer(false); setShowAssessOptions(false); setAssessHw(null); setDeleteTarget(null); } }}
         title={assessHw?.title ?? t("teacherPages", "assessHomeworkTitle", lang)}
         description={
           assessHw
@@ -375,7 +379,7 @@ export default function TeacherHomeworkPage() {
         }
       >
         {assessHw && (
-          <div className="flex h-[calc(100dvh-15rem)] max-h-[calc(100dvh-15rem)] flex-col">
+          <div className="flex min-h-0 flex-1 flex-col">
             <div className="shrink-0 px-5 pt-5">
             <div className="mb-4 flex items-center justify-between">
               <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
@@ -398,20 +402,26 @@ export default function TeacherHomeworkPage() {
                       <p className="text-xs text-gray-400">{sub.student!.adno}</p>
                     </div>
                     <ButtonGroup className="shrink-0">
-                      {(["NOT_SUBMITTED", "SUBMITTED", "CHECKED"] as HomeworkStatus[]).map((s) => (
-                        <Button
-                          key={s}
-                          type="button"
-                          size="sm"
-                          variant={curStatus === s ? "default" : "outline"}
-                          onClick={() => setLocalStatus((prev) => ({
-                            ...prev,
-                            [assessHw.id]: { ...(prev[assessHw.id] ?? {}), [sub.student!.id]: s },
-                          }))}
-                        >
-                          {STATUS_CONFIG[s].label}
-                        </Button>
-                      ))}
+                      {(["NOT_SUBMITTED", "SUBMITTED", "CHECKED"] as HomeworkStatus[]).map((s) => {
+                        const StatusIcon = STATUS_ICONS[s];
+                        return (
+                          <Button
+                            key={s}
+                            type="button"
+                            size="icon"
+                            variant={curStatus === s ? "default" : "outline"}
+                            aria-label={STATUS_CONFIG[s].label}
+                            aria-pressed={curStatus === s}
+                            title={STATUS_CONFIG[s].label}
+                            onClick={() => setLocalStatus((prev) => ({
+                              ...prev,
+                              [assessHw.id]: { ...(prev[assessHw.id] ?? {}), [sub.student!.id]: s },
+                            }))}
+                          >
+                            <StatusIcon aria-hidden="true" />
+                          </Button>
+                        );
+                      })}
                     </ButtonGroup>
                   </div>
                 );
@@ -419,33 +429,17 @@ export default function TeacherHomeworkPage() {
             </div>
             )}
             <div className="shrink-0 border-t border-gray-100 bg-white p-5">
-            <ButtonGroup className="w-full">
+            <ButtonGroup className="flex gap-0 w-full">
               <Button
                 type="button"
+                size="lg"
                 variant="outline"
-                size="lg"
-                className="flex-1"
-                onClick={() => {
-                  const homeworkToEdit = assessHw;
-                  setShowAssessDrawer(false);
-                  setAssessHw(null);
-                  setDeleteTarget(null);
-                  void openEdit(homeworkToEdit);
-                }}
+                className=" "
+                aria-label={t("common", "actions", lang)}
+                title={t("common", "actions", lang)}
+                onClick={() => setShowAssessOptions(true)}
               >
-                <Pencil />
-                {t("common", "edit", lang)}
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                size="lg"
-                className="flex-1"
-                onClick={() => setDeleteTarget(assessHw)}
-                disabled={deletingId === assessHw.id}
-              >
-                <Trash2 />
-                {t("common", "delete", lang)}
+                <Ellipsis aria-hidden="true" />
               </Button>
               <Button
                 size="lg"
@@ -460,6 +454,47 @@ export default function TeacherHomeworkPage() {
             </div>
           </div>
         )}
+      </ResponsivePopover>
+
+      <ResponsivePopover
+        open={showAssessOptions && assessHw !== null}
+        onOpenChange={setShowAssessOptions}
+        side="bottom"
+        drawerOnDesktop
+        className="mx-auto w-full max-w-md rounded-t-2xl"
+        title={t("common", "actions", lang)}
+      >
+        <div className="p-2">
+          <Item
+            render={<button type="button" />}
+            className="cursor-pointer text-left hover:bg-muted focus-visible:bg-muted"
+            onClick={() => {
+              if (!assessHw) return;
+              const homeworkToEdit = assessHw;
+              setShowAssessOptions(false);
+              setShowAssessDrawer(false);
+              setAssessHw(null);
+              setDeleteTarget(null);
+              void openEdit(homeworkToEdit);
+            }}
+          >
+            <ItemMedia variant="icon"><Pencil /></ItemMedia>
+            <ItemContent><ItemTitle>{t("common", "edit", lang)}</ItemTitle></ItemContent>
+          </Item>
+          <ItemSeparator className="my-0" />
+          <Item
+            render={<button type="button" disabled={!assessHw || deletingId === assessHw?.id} />}
+            className="cursor-pointer text-left text-destructive hover:bg-destructive/10 focus-visible:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={() => {
+              if (!assessHw) return;
+              setShowAssessOptions(false);
+              setDeleteTarget(assessHw);
+            }}
+          >
+            <ItemMedia variant="icon"><Trash2 /></ItemMedia>
+            <ItemContent><ItemTitle>{t("common", "delete", lang)}</ItemTitle></ItemContent>
+          </Item>
+        </div>
       </ResponsivePopover>
 
       <ResponsivePopover

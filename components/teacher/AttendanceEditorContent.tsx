@@ -383,7 +383,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
         ))}
 
       {activeClassId && (hasDirty || hasExisting) && (
-        <div className="  bottom-0 w-full  left-0 sticky right-0 px-4 lg:pl-72 z-20 pointer-events-none">
+        <div className="sticky bottom-0 z-20   py-3  w-max">
           <div className="pointer-events-auto w-full max-w-2xl mx-auto flex gap-2">
             {hasExisting && (
               <Button

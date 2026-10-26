@@ -6,6 +6,7 @@ import { SkeletonList } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuthStore } from "@/store/auth";
 import { useActiveClass } from "@/store/activeClass";
 import { useLanguageStore } from "@/store/language";
@@ -108,26 +109,22 @@ export default function TeacherLeaveRequestsPage() {
         {error && <ApiErrorBanner message={error} />}
 
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          <div className="flex gap-1 rounded-xl bg-gray-100 p-1">
-            {(["PENDING", "APPROVED", "REJECTED"] as const).map((s) => (
-              <Button
-                key={s}
-                type="button"
-                size="lg"
-                variant="ghost"
-                onClick={() => {
-                  setFilter(s);
-                  setSelectedRequest(null);
-                }}
-                className={cn(
-                  "flex-1",
-                  filter === s && "bg-white shadow-sm",
-                )}
-              >
-                {statusLabel(s)}
-              </Button>
-            ))}
-          </div>
+          <Tabs
+            value={filter}
+            onValueChange={(value) => {
+              setFilter(value);
+              setSelectedRequest(null);
+            }}
+            className="w-full sm:w-auto"
+          >
+            <TabsList className="w-full sm:w-auto">
+              {(["PENDING", "APPROVED", "REJECTED"] as const).map((s) => (
+                <TabsTrigger key={s} value={s} className="flex-1">
+                  {statusLabel(s)}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
@@ -153,19 +150,18 @@ export default function TeacherLeaveRequestsPage() {
             <p className="text-sm">{t("teacherPages", "noLeaveRequests", lang)}</p>
           </div>
         ) : (
-          <div>
+          <div className="p-4 bg-background rounded-2xl card">
             {filtered.map((r) => {
               const rc = REASON_CONFIG[r.reasonType];
               return (
-                <Button
+                <button
                   key={r.id}
                   type="button"
-                  variant="ghost"
-                  onClick={() => {
+                   onClick={() => {
                     setReviewNote("");
                     setSelectedRequest(r);
                   }}
-                  className="h-auto w-full justify-start gap-3 rounded-none border-x-0 border-t-0 border-b border-gray-200 bg-transparent p-4 text-left shadow-none transition-colors hover:bg-gray-50"
+                  className="h-auto w-full flex  justify-start gap-3 rounded-none border-x-0 border-t-0  border-b last:border-b-0 border-gray-200  p-2 text-left shadow-none transition-colors hover:bg-gray-50"
                 >
                   <span className="min-w-0 flex-1 truncate font-semibold text-sm text-gray-900">
                     {r.student.name}
@@ -178,7 +174,7 @@ export default function TeacherLeaveRequestsPage() {
                   <span className={cn("shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold", rc.bg, rc.color)}>
                     {t("teacherPages", rc.labelKey as any, lang)}
                   </span>
-                </Button>
+                </button>
               );
             })}
           </div>

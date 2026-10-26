@@ -473,7 +473,7 @@ export default function TeacherDashboard() {
               )}
             </div>
           </div>
-          <div className="border-t border-gray-100 ">
+          <div className="border-t border-gray-100 px-4">
             {!activeClassId && !loadingClass ? (
               <p className="mt-2 text-sm text-gray-500">
                 {t("teacherPages", "noClassesFound", lang)}

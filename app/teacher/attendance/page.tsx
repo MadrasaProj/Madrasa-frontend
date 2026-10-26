@@ -1,40 +1,35 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
-import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { getStudents } from "@/lib/students-api";
 import {
   getClassAttendance,
   bulkUpsertAttendance,
   bulkDeleteAttendance,
   type AttendanceStatus,
-  type ClassAttendanceRecord,
 } from "@/lib/attendance-api";
 import { useAuthStore } from "@/store/auth";
 import { useActiveClass } from "@/store/activeClass";
-import {
-  Save,
-  Loader2,
-  Users,
-  AlertCircle,
-  AlertTriangle,
-  CheckCircle2,
-  Trash2,
-} from "lucide-react";
-import { Skeleton, SkeletonList } from "@/components/ui/Skeleton";
-import { cn } from "@/lib/utils";
+import { useAttendanceSummary, useClasses } from "@/lib/queries";
+import { queryKeys } from "@/lib/queryKeys";
+import { AlertTriangle, CheckCircle2, School, UserCheck, UserX, UsersRound, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
-import { DateNavigator } from "@/components/DateNavigator";
+import { ScrollableDateNavigator } from "@/components/ScrollableDateNavigator";
+import { DrawerSelector } from "@/components/DrawerSelector";
+import { Button } from "@/components/ui/button";
+import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
+import { PolarRadiusAxis, RadialBar, RadialBarChart } from "recharts";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import {
   AttendanceEditorContent,
   type ActiveStatus,
@@ -47,20 +42,6 @@ function todayISO() {
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 }
 
-function attendanceColor(percentage: number) {
-  const red = [239, 68, 68];
-  const yellow = [234, 179, 8];
-  const green = [34, 197, 94];
-  const [from, to, ratio] =
-    percentage <= 50
-      ? [red, yellow, percentage / 50]
-      : [yellow, green, (percentage - 50) / 50];
-  const color = from.map((channel, index) =>
-    Math.round(channel + (to[index] - channel) * ratio),
-  );
-  return `rgba(${color.join(",")},0.1)`;
-}
-
 interface LocalRecord {
   attendanceId?: string;
   status: AttendanceStatus | null;
@@ -68,11 +49,9 @@ interface LocalRecord {
   dirty: boolean;
 }
 
-interface ClassAttendanceSummary {
-  total: number;
-  present: number;
-  taken: boolean;
-}
+const attendanceChartConfig = {
+  rate: { label: "Attendance rate", color: "var(--primary)" },
+} satisfies ChartConfig;
 
 // ── Other-class confirmation modal ─────────────────────────────────────────
 
@@ -131,10 +110,12 @@ function OtherClassConfirmModal({
 export default function TeacherAttendancePage() {
   const { user, accessToken } = useAuthStore();
   const { lang } = useLanguageStore();
+  const queryClient = useQueryClient();
   const cid = user?.clientId ?? "";
   const token = accessToken ?? "";
 
-  const [date, setDate] = useState(todayISO());
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [date, setDate] = useState(todayISO);
   const [students, setStudents] = useState<
     { id: string; name: string; adno: string; gender?: string }[]
   >([]);
@@ -146,10 +127,7 @@ export default function TeacherAttendancePage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [confirmSave, setConfirmSave] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
-  const [attendanceSummaries, setAttendanceSummaries] = useState<
-    Map<string, ClassAttendanceSummary>
-  >(new Map());
-  const [editorOpen, setEditorOpen] = useState(false);
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
 
   const saveSuccessTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
@@ -159,45 +137,24 @@ export default function TeacherAttendancePage() {
     [],
   );
 
-  const { activeClass, activeClassId, isLoading: classesLoading } = useActiveClass();
-  const classes = useMemo(() => activeClass ? [activeClass] : [], [activeClass]);
-
-  useEffect(() => {
-    if (!cid || !token || classes.length === 0) return;
-    let cancelled = false;
-    Promise.all(
-      classes.map(async (cls) => {
-        const response = await getClassAttendance(cid, token, {
-          date,
-          classId: cls.id,
-          ...(user?.defaultAcademicYearId
-            ? { academicYearId: user.defaultAcademicYearId }
-            : {}),
-          take: 500,
-        });
-        const present = response.records.filter(
-          (record) => record.status === "PRESENT",
-        ).length;
-        return [
-          cls.id,
-          {
-            total: cls.studentCount ?? 0,
-            present,
-            taken: response.records.length > 0,
-          },
-        ] as const;
-      }),
-    )
-      .then((entries) => {
-        if (!cancelled) setAttendanceSummaries(new Map(entries));
-      })
-      .catch(() => {
-        if (!cancelled) setAttendanceSummaries(new Map());
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [classes, cid, token, date, user?.defaultAcademicYearId]);
+  const { activeClass: defaultClass, isLoading: activeClassLoading } = useActiveClass();
+  const classesQuery = useClasses({ clientId: cid, token });
+  const overallAttendance = useAttendanceSummary(
+    { clientId: cid, token },
+    undefined,
+    { refetchOnMount: "always" },
+  );
+  const overall = overallAttendance.data;
+  const overallAbsent =
+    overall?.byStatus.find((entry) => entry.status === "ABSENT")?._count.id ?? 0;
+  const overallRate = Math.max(0, Math.min(100, overall?.rate ?? 0));
+  const classes = classesQuery.data ?? [];
+  const classesLoading = classesQuery.isLoading || activeClassLoading;
+  const activeClass = classes.find((cls) => cls.id === selectedClassId)
+    ?? defaultClass
+    ?? classes[0]
+    ?? null;
+  const activeClassId = activeClass?.id ?? "";
 
   // Load students + existing attendance whenever class or date changes
   const loadAttendance = useCallback(
@@ -205,6 +162,8 @@ export default function TeacherAttendancePage() {
       if (!cid || !token || !classId) return;
       setLoading(true);
       setError(null);
+      setStudents([]);
+      setRecords(new Map());
       try {
         const [attendanceRes, studentsRes] = await Promise.all([
           getClassAttendance(
@@ -227,6 +186,8 @@ export default function TeacherAttendancePage() {
             signal,
           }),
         ]);
+
+        if (signal?.aborted) return;
 
         const map = new Map<string, LocalRecord>();
         const hasExistingRecords =
@@ -256,10 +217,10 @@ export default function TeacherAttendancePage() {
         );
         setRecords(map);
       } catch (e) {
-        if ((e as Error).name === "AbortError") return;
+        if (signal?.aborted || (e as Error).name === "AbortError") return;
         setError((e as Error).message);
       } finally {
-        setLoading(false);
+        if (!signal?.aborted) setLoading(false);
       }
     },
     [cid, token, user?.defaultAcademicYearId],
@@ -267,8 +228,13 @@ export default function TeacherAttendancePage() {
 
   useEffect(() => {
     const ac = new AbortController();
+    setSaveError(null);
+    setSaveSuccess(false);
+    setConfirmSave(false);
+    setConfirmClear(false);
     if (activeClassId) loadAttendance(activeClassId, date, ac.signal);
     else {
+      setLoading(false);
       setStudents([]);
       setRecords(new Map());
     }
@@ -308,14 +274,17 @@ export default function TeacherAttendancePage() {
     setSaving(true);
     try {
       await bulkDeleteAttendance(cid, token, { date, classId: activeClassId });
-      await loadAttendance(activeClassId, date);
+      await Promise.all([
+        loadAttendance(activeClassId, date),
+        queryClient.invalidateQueries({ queryKey: queryKeys.reports.attendanceSummary(cid) }),
+      ]);
     } catch (e) {
       setSaveError((e as Error).message);
     } finally {
       setSaving(false);
       setConfirmClear(false);
     }
-  }, [activeClassId, cid, token, date, loadAttendance]);
+  }, [activeClassId, cid, token, date, loadAttendance, queryClient]);
 
   const markAll = (status: ActiveStatus) => {
     setRecords((prev) => {
@@ -390,17 +359,6 @@ export default function TeacherAttendancePage() {
         records: entries,
       });
 
-      setAttendanceSummaries((prev) => {
-        const next = new Map(prev);
-        const current = next.get(activeClassId);
-        next.set(activeClassId, {
-          total: current?.total ?? students.length,
-          present: entries.filter((entry) => entry.status === "PRESENT").length,
-          taken: entries.length > 0,
-        });
-        return next;
-      });
-
       setRecords((prev) => {
         const next = new Map(prev);
         for (const [sid, rec] of next) next.set(sid, { ...rec, dirty: false });
@@ -409,7 +367,10 @@ export default function TeacherAttendancePage() {
       setSaveSuccess(true);
       if (saveSuccessTimer.current) clearTimeout(saveSuccessTimer.current);
       saveSuccessTimer.current = setTimeout(() => setSaveSuccess(false), 3000);
-      await loadAttendance(activeClassId, date);
+      await Promise.all([
+        loadAttendance(activeClassId, date),
+        queryClient.invalidateQueries({ queryKey: queryKeys.reports.attendanceSummary(cid) }),
+      ]);
     } catch (e) {
       setSaveError((e as Error).message);
     } finally {
@@ -423,6 +384,7 @@ export default function TeacherAttendancePage() {
     records,
     user?.defaultAcademicYearId,
     loadAttendance,
+    queryClient,
   ]);
 
   const handleSave = useCallback(async () => {
@@ -451,149 +413,214 @@ export default function TeacherAttendancePage() {
 
       <PageHeader
         title={t("teacherPages", "attendancePageTitle", lang)}
-        action={
-          <div className="flex items-center gap-2">
-            {/* {hasDirty ? (
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex items-center gap-1.5 bg-primary-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-700 disabled:opacity-60 transition-colors"
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />{" "}
-                    {t("teacherPages", "savingEllipsis", lang)}
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" /> {t("common", "save", lang)}
-                  </>
-                )}
-              </button>
-            ) : saveSuccess ? (
-              <span className="flex items-center gap-1 text-primary-600 text-sm font-semibold">
-                <CheckCircle2 className="w-4 h-4" />{" "}
-                {t("teacherPages", "saved", lang)}
-              </span>
-            ) : null} */}
-          </div>
-        }
       />
 
-      {error && (
-        <ApiErrorBanner
-          message={error}
-          onRetry={() =>
-            activeClassId ? loadAttendance(activeClassId, date) : undefined
-          }
-        />
-      )}
-
-      <DateNavigator date={date} onDateChange={setDate} pickerTitle="Choose attendance date" />
-
-      {/* Class list */}
-      <div className="mb-4 overflow-hidden rounded-2xl border border-gray-100 bg-white">
-        {classesLoading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-16 w-full rounded-2xl" />
-            ))}
+      <section aria-labelledby="attendance-overview-title" className="mb-6">
+        {/* <h2 id="attendance-overview-title" className="mb-4 text-lg font-bold text-gray-950">
+          {t("teacherPages", "overallAttendance", lang)}
+        </h2> */}
+        <div className="grid gap-1 lg:grid-cols-2">
+          <div className="aspect-video overflow-hidden mt-4 rounded-t-2xl bg-cyan-50 p-3 sm:p-5 lg:aspect-auto lg:min-h-72">
+            <img
+              src="/imgs/attendance/attendance-checklist.png"
+              alt="Illustration of an attendance checklist and pencil"
+              className="h-full w-full object-contain"
+              decoding="async"
+            />
           </div>
-        ) : classes.length === 0 ? (
-          <p className="text-xs text-gray-400 px-3 py-2">
-            {t("teacherPages", "noClassesFound", lang)}
-          </p>
-        ) : (
-          classes.map((cls) => {
-            const isOwn = cls.classTeacherId === user?.id;
-            const attendance = attendanceSummaries.get(cls.id);
-            const percentage = attendance?.total
-              ? Math.round((attendance.present / attendance.total) * 100)
-              : 0;
-            return (
-              <button
-                key={cls.id}
-                type="button"
-                onClick={() => {
-                  setSaveSuccess(false);
-                  setEditorOpen(true);
-                }}
-                className="relative w-full border-0 border-b border-gray-100 bg-transparent px-4 py-4 text-left transition-colors last:border-b-0 hover:bg-gray-50/70"
-              >
-                <div
-                  className="absolute left-0 top-0 h-full w-full"
-                  style={{
-                    width: `${percentage}%`,
-                    background: `linear-gradient(to right, transparent, ${attendanceColor(percentage)})`,
-                  }}
-                />
-                <div className="relative z-10 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
+          <div className="min-w-0">
+            {overallAttendance.isLoading ? (
+              <p className="text-sm text-gray-500">{t("common", "loading", lang)}</p>
+            ) : overallAttendance.isError ? (
+              <ApiErrorBanner
+                message={overallAttendance.error.message}
+                onRetry={() => { void overallAttendance.refetch(); }}
+              />
+            ) : (
+              <div className="grid h-full auto-rows-fr grid-cols-2 gap-0.5 overflow-hidden rounded-b-2xl bg-white">
+                {[
+                  {
+                    label: t("common", "present", lang),
+                    value: overall?.present ?? 0,
+                    icon: UserCheck,
+                    surface: "bg-violet-50",
+                    iconSurface: "bg-violet-200 text-violet-700",
+                  },
+                  {
+                    label: t("common", "absent", lang),
+                    value: overallAbsent,
+                    icon: UserX,
+                    surface: "bg-amber-50",
+                    iconSurface: "bg-amber-200 text-amber-800",
+                  },
+                ].map((stat) => (
+                  <div key={stat.label} className={`flex min-h-18 items-center justify-between gap-1 p-3 ${stat.surface}`}>
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="truncate text-sm font-bold text-gray-900">
-                          {cls.name}
-                        </p>
-                        {isOwn && (
-                          <span className="shrink-0 rounded-full bg-primary-100 px-2 py-0.5 text-[10px] font-bold text-primary-700">
-                            {t("teacherPages", "mineBadge", lang)}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-gray-400">
-                        {cls.studentCount ?? 0} students
-                      </p>
+                      <strong className="block text-2xl font-semibold tabular-nums text-gray-950">{stat.value}</strong>
+                      <p className="text-sm font-bold text-gray-700">{stat.label}</p>
                     </div>
+                    <span className={`flex size-9 shrink-0 items-center justify-center ${stat.iconSurface}`}>
+                      <stat.icon aria-hidden="true" className="size-5" />
+                    </span>
                   </div>
-                  {!attendance?.taken ? (
-                    <span className="shrink-0 text-xs font-semibold text-gray-400">
-                      Not taken
-                    </span>
-                  ) : (
-                    <span className="shrink-0 text-sm font-bold text-gray-700">
-                      {attendance.present}/{attendance.total}
-                    </span>
-                  )}
+                ))}
+                <div className="flex min-h-18 items-center justify-between gap-1 bg-emerald-50 p-3">
+                  <div className="min-w-0">
+                    <strong className="block text-2xl font-semibold tabular-nums text-gray-950">{overallRate}%</strong>
+                    <p className="text-sm font-bold leading-tight text-gray-700">
+                      {t("teacherPages", "attendanceRateLabel", lang)}
+                    </p>
+                  </div>
+                  <div className="size-11 shrink-0">
+                    <ChartContainer
+                      config={attendanceChartConfig}
+                      className="size-full"
+                      role="img"
+                      aria-label={t("teacherPages", "attendanceRateLabel", lang)}
+                    >
+                      <RadialBarChart
+                        data={[{ rate: overallRate, fill: "var(--primary)" }]}
+                        startAngle={90}
+                        endAngle={-270}
+                        innerRadius="72%"
+                        outerRadius="100%"
+                      >
+                        <PolarRadiusAxis type="number" domain={[0, 100]} tick={false} axisLine={false} />
+                        <RadialBar dataKey="rate" background cornerRadius={8} />
+                      </RadialBarChart>
+                    </ChartContainer>
+                  </div>
                 </div>
-              </button>
-            );
-          })
-        )}
-      </div>
+                <div className="flex min-h-18 items-center justify-between gap-1 bg-green-50 p-3">
+                  <div className="min-w-0">
+                    <strong className="block text-2xl font-semibold tabular-nums text-gray-950">{overall?.total ?? 0}</strong>
+                    <p className="text-sm font-bold text-gray-700">
+                      {t("teacherPages", "totalRecords", lang)}
+                    </p>
+                  </div>
+                  <span className="flex size-9 shrink-0 items-center justify-center bg-green-200 text-green-700">
+                    <UsersRound aria-hidden="true" className="size-5" />
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      <Button size="lg" className="w-full mt-4" onClick={() => setDrawerOpen(true)}>
+        {t("teacherPages", "markAttendanceDesc", lang)}
+      </Button>
+      </section>
 
-      <ResponsivePopover
-        open={editorOpen}
-        onOpenChange={setEditorOpen}
-        title={activeClass?.name ?? "Attendance"}
-        description={`${new Date(`${date}T00:00:00`).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })} · Edit attendance`}
-        side="bottom"
-        contentClassName="p-4"
-      >
-        <AttendanceEditorContent
-          isOwnClass={isOwnClass}
-          activeClassId={activeClassId}
-          classesLoading={classesLoading}
-          records={records}
-          summary={summary}
-          pct={pct}
-          confirmClear={confirmClear}
-          setConfirmClear={setConfirmClear}
-          activeClassName={activeClass?.name}
-          date={date}
-          clearAll={clearAll}
-          saving={saving}
-          markAll={markAll}
-          saveError={saveError}
-          loading={loading}
-          error={error}
-          students={students}
-          setStatus={setStatus}
-          setNotes={setNotes}
-          hasDirty={hasDirty}
-          hasExisting={hasExisting}
-          handleSave={handleSave}
-        />
-      </ResponsivePopover>
+
+      <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
+        <DrawerContent
+          className="data-[swipe-direction=down]:rounded-none bg-white"
+          style={{
+            "--drawer-content-height": "100dvh",
+            "--drawer-content-max-height": "100dvh",
+          } as React.CSSProperties}
+        >
+          <DrawerHeader className="flex-row items-center justify-between border-b border-gray-100 p-1 px-2 text-left">
+            <DrawerTitle className="font-bold">
+              {t("teacherPages", "markAttendanceDesc", lang)}
+            </DrawerTitle>
+            <DrawerClose
+              aria-label={t("common", "close", lang)}
+              className="rounded-lg p-2 text-gray-600 hover:bg-gray-100"
+            >
+              <X aria-hidden="true" className="size-5" />
+            </DrawerClose>
+          </DrawerHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
+            <div className="mx-auto max-w-2xl">
+              {error && (
+                <ApiErrorBanner
+                  message={error}
+                  onRetry={() =>
+                    activeClassId ? loadAttendance(activeClassId, date) : undefined
+                  }
+                />
+              )}
+
+              <div className="mb-4 space-y-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <ScrollableDateNavigator
+                    date={date}
+                    onDateChange={setDate}
+                    pickerTitle="Choose attendance date"
+                    disabled={saving}
+                    hideCalendarButton
+                  />
+                  <DrawerSelector
+                    title={t("teacherPages", "selectClassOpt", lang)}
+                    value={activeClassId}
+                    onChange={setSelectedClassId}
+                    options={classes.map((cls) => ({
+                      value: cls.id,
+                      label: `${cls.name}${cls.classTeacherId === user?.id ? ` · ${t("teacherPages", "mineBadge", lang)}` : ""}`,
+                    }))}
+                    placeholder={classesLoading ? t("common", "loading", lang) : t("teacherPages", "noClassesFound", lang)}
+                    disabled={saving || classesLoading}
+                    triggerItem={
+                      <Button
+                        variant="outline"
+                        className="h-14 w-12 rounded-lg px-0 py-1           "
+                      >
+                        <School aria-hidden="true" className="size-5" />
+                      </Button>
+                    }
+                  />
+                </div>
+                <div className="flex items-center justify-between gap-3 text-xs font-medium text-gray-500">
+                  <span>{new Date(`${date}T00:00:00`).toLocaleDateString(lang === "ml" ? "ml-IN" : "en-GB", { day: "numeric", month: "long", year: "numeric" })}</span>
+                  <span className="truncate text-right">{activeClass?.name ?? t("teacherPages", "noClassesFound", lang)}</span>
+                </div>
+              </div>
+
+              {classesQuery.error && (
+                <ApiErrorBanner
+                  message={classesQuery.error.message}
+                  onRetry={() => { void classesQuery.refetch(); }}
+                />
+              )}
+
+              {saveSuccess && (
+                <p role="status" className="mb-4 flex items-center gap-1 text-sm font-semibold text-primary-600">
+                  <CheckCircle2 className="h-4 w-4" />
+                  {t("teacherPages", "saved", lang)}
+                </p>
+              )}
+
+              <div aria-busy={loading || classesLoading}>
+                <AttendanceEditorContent
+                  isOwnClass={isOwnClass}
+                  activeClassId={activeClassId}
+                  classesLoading={classesLoading}
+                  records={records}
+                  summary={summary}
+                  pct={pct}
+                  confirmClear={confirmClear}
+                  setConfirmClear={setConfirmClear}
+                  activeClassName={activeClass?.name}
+                  date={date}
+                  clearAll={clearAll}
+                  saving={saving}
+                  markAll={markAll}
+                  saveError={saveError}
+                  loading={loading}
+                  error={error}
+                  students={students}
+                  setStatus={setStatus}
+                  setNotes={setNotes}
+                  hasDirty={hasDirty}
+                  hasExisting={hasExisting}
+                  handleSave={handleSave}
+                />
+              </div>
+            </div>
+          </div>
+        </DrawerContent>
+      </Drawer>
     </DashboardLayout>
   );
 }
