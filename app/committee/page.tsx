@@ -11,6 +11,7 @@ import {
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
+import PwaInstallButton from "@/components/PwaInstallButton";
 
 function ProgressBar({ value, color = "bg-emerald-500" }: { value: number; color?: string }) {
   const safe = Math.min(100, Math.max(0, value || 0));
@@ -87,6 +88,9 @@ export default function CommitteeDashboard() {
           </div>
         </div>
       </motion.div>
+
+      {/* PWA Install Banner */}
+      <PwaInstallButton variant="banner" className="mb-5" />
 
       {d.loading && (
         <div className="space-y-3 mb-5">

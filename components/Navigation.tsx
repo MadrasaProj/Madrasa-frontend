@@ -948,10 +948,10 @@ export function Sidebar({
         </div>
 
         <div className="border-t border-gray-100 shrink-0">
-          <div className="px-4 pt-2 pb-1">
-            <PwaInstallButton />
+          <div className="px-3.5 pt-3 pb-1">
+            <PwaInstallButton variant="card" />
           </div>
-          <div className="p-4 pt-2">
+          <div className="p-3.5 pt-1.5">
             <button
               onClick={() => {
                 logout();

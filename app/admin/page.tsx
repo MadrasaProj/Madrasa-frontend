@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import PwaInstallButton from "@/components/PwaInstallButton";
 
 function PlatformOverview() {
   const { user, accessToken } = useAuthStore();
@@ -73,6 +74,9 @@ function PlatformOverview() {
           </div>
         </motion.div>
       </div>
+
+      {/* PWA Install Banner */}
+      <PwaInstallButton variant="banner" className="mb-5" />
 
       {/* Quick actions */}
       <SectionHeader title="Quick Actions" className="mb-3" />
@@ -162,6 +166,9 @@ function MadrasaAdminDashboard() {
           )}
         </motion.div>
       </div>
+
+      {/* PWA Install Banner */}
+      <PwaInstallButton variant="banner" className="mb-5" />
 
       {/* Staff & Parent Portal Links Card */}
       <PortalLinksCard

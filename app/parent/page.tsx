@@ -17,6 +17,7 @@ import {
   User,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import PwaInstallButton from "@/components/PwaInstallButton";
 
 export default function ParentDashboard() {
   const { user, accessToken } = useAuthStore();
@@ -109,6 +110,9 @@ export default function ParentDashboard() {
           </div>
         </div>
       </motion.div>
+
+      {/* PWA Install Banner */}
+      <PwaInstallButton variant="banner" className="mb-5" />
 
       <SectionHeader
         title={t("parentPages", "quickAccess", lang)}

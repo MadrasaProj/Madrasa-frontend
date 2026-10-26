@@ -19,6 +19,7 @@ import {
   usePendingLeaveRequests,
   useReviewLeaveRequest,
 } from "@/lib/queries";
+import PwaInstallButton from "@/components/PwaInstallButton";
 
 export default function TeacherDashboard() {
   const { user, accessToken } = useAuthStore();
@@ -108,6 +109,9 @@ export default function TeacherDashboard() {
           )}
         </div>
       </motion.div>
+
+      {/* PWA Install Banner */}
+      <PwaInstallButton variant="banner" className="mb-5" />
 
       {stats.pendingLeaves > 0 && (
         <motion.div
