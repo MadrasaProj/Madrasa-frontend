@@ -14,6 +14,7 @@ interface ScrollableDateNavigatorProps {
   pickerTitle: string;
   disabled?: boolean;
   hideCalendarButton?: boolean;
+  visibleDates?: string[];
 }
 
 export function ScrollableDateNavigator({
@@ -22,6 +23,7 @@ export function ScrollableDateNavigator({
   pickerTitle,
   disabled = false,
   hideCalendarButton = false,
+  visibleDates,
 }: ScrollableDateNavigatorProps) {
   const { lang } = useLanguageStore();
   const locale = lang === "ml" ? "ml-IN" : "en-GB";
@@ -34,6 +36,9 @@ export function ScrollableDateNavigator({
   // Keep the surrounding months available to swipe through. Picking a distant
   // date in the calendar moves this window and brings that date into view.
   const dates = useMemo(() => {
+    if (visibleDates) {
+      return visibleDates.map((value) => new Date(`${value}T00:00:00`));
+    }
     const [year, monthNumber] = month.split("-").map(Number);
     const cursor = new Date(year, monthNumber - 2, 1);
     const end = new Date(year, monthNumber + 1, 0);
@@ -43,7 +48,7 @@ export function ScrollableDateNavigator({
       cursor.setDate(cursor.getDate() + 1);
     }
     return result;
-  }, [month]);
+  }, [month, visibleDates]);
 
   useEffect(() => {
     const strip = stripRef.current;

@@ -39,7 +39,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { jsPDF } from "jspdf";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type ViewMode = "daily" | "weekly";
 
@@ -86,14 +86,20 @@ export const PRAYER_STATUS_META: Record<
 function PrayerStatusIcon({
   status,
   lang,
+  unrecorded = false,
 }: {
   status: PrayerStatus | null;
   lang: "en" | "ml";
+  unrecorded?: boolean;
 }) {
   if (!status) {
     return (
       <div
-        title={t("parentPages", "missedLabel", lang)}
+        title={
+          unrecorded
+            ? t("teacherPages", "notRecordedLabel", lang)
+            : t("parentPages", "missedLabel", lang)
+        }
         className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-gray-100 bg-gray-50 text-gray-300"
       >
         <Minus className="h-2.5 w-2.5" />
@@ -252,7 +258,7 @@ function WeeklyStudentSummaryCard({
             item.type === "number"
               ? logs.reduce(
                   (total, log) =>
-                    total + Number(log.customData?.[item.key] ?? 0),
+                    total + (Number(log.customData?.[item.key]) || 0),
                   0,
                 )
               : logs.filter((log) => {
@@ -308,7 +314,11 @@ function StudentDetailSections({
                     {prayer.label}
                   </span>
                   <span className="flex items-center gap-2 text-xs text-gray-600">
-                    <PrayerStatusIcon status={status} lang={lang} />
+                    <PrayerStatusIcon
+                      status={status}
+                      lang={lang}
+                      unrecorded={student.hasRecord === false}
+                    />
                     {student.hasRecord === false
                       ? t("teacherPages", "notRecordedLabel", lang)
                       : status
@@ -387,12 +397,6 @@ function fmtShort(iso: string) {
   const d = new Date(`${iso}T00:00:00`);
   return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 }
-function fmtWeekday(iso: string) {
-  return new Date(`${iso}T00:00:00`).toLocaleDateString("en-IN", {
-    weekday: "short",
-  });
-}
-
 function getLast7Days(endDate: string): string[] {
   const dates: string[] = [];
   const end = new Date(`${endDate}T00:00:00`);
@@ -821,19 +825,20 @@ export default function TeacherIbadahPage({
                       {t("teacherPages", "noIbadahSubmitted", lang)}
                     </div>
                   ) : (
-                    <div className="space-y-2 px-3 ">
-                      <div className="bg-white card rounded-2xl">
-
-                      {rows.map((student) => (
-                        <StudentSummaryCard
-                          key={student.studentId}
-                          student={student}
-                          activePrayers={activePrayers}
-                          showQuran={config?.enableQuranPages !== false}
-                          lang={lang}
-                          onClick={() => setSelectedStudentId(student.studentId)}
-                        />
-                      ))}
+                    <div className="px-3">
+                      <div className="rounded-2xl bg-white card">
+                        {rows.map((student) => (
+                          <StudentSummaryCard
+                            key={student.studentId}
+                            student={student}
+                            activePrayers={activePrayers}
+                            showQuran={config?.enableQuranPages !== false}
+                            lang={lang}
+                            onClick={() =>
+                              setSelectedStudentId(student.studentId)
+                            }
+                          />
+                        ))}
                       </div>
                     </div>
                   )}
@@ -849,7 +854,7 @@ export default function TeacherIbadahPage({
                       {t("teacherPages", "noStudentsInClass", lang)}
                     </div>
                   ) : (
-                    <div className="bg-white card rounded-2xl">
+                    <div className="rounded-2xl bg-white card">
                       {weeklyStudents.map((student) => {
                         const logs = weekDates
                           .map((day) => logMap.get(student.id)?.get(day))
@@ -865,7 +870,14 @@ export default function TeacherIbadahPage({
                             daysInWeek={weekDates.length}
                             lang={lang}
                             onClick={() => {
-                              setSelectedWeekDayIndex(6);
+                              const latestRecordedDay = weekDates.reduce(
+                                (latest, day, index) =>
+                                  logMap.get(student.id)?.has(day)
+                                    ? index
+                                    : latest,
+                                6,
+                              );
+                              setSelectedWeekDayIndex(latestRecordedDay);
                               setSelectedStudentId(student.id);
                             }}
                           />
@@ -903,38 +915,28 @@ export default function TeacherIbadahPage({
               {selectedStudent && (
                 <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
                   {viewMode === "weekly" ? (
-                    <Tabs
-                      value={selectedWeekDay}
-                      onValueChange={(value) => {
-                        const index = weekDates.indexOf(value);
-                        if (index >= 0) setSelectedWeekDayIndex(index);
-                      }}
-                    >
-                      <div className="overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                        <TabsList aria-label="Ibadah day" className="gap-1 bg-transparent p-0">
-                          {weekDates.map((day) => (
-                            <TabsTrigger
-                              key={day}
-                              value={day}
-                              className="flex h-14 w-20 shrink-0 flex-col gap-0.5 rounded-xl border border-transparent bg-gray-50 px-2 py-1 text-center data-[state=active]:border-primary-500 data-[state=active]:bg-primary-50 data-[state=active]:text-primary-700 data-[state=active]:shadow-none"
-                            >
-                              <span className="text-[10px] font-semibold uppercase">
-                                {fmtWeekday(day)}
-                              </span>
-                              <span className="text-xs">{fmtShort(day)}</span>
-                            </TabsTrigger>
-                          ))}
-                        </TabsList>
+                    <div>
+                      <div className="flex min-w-0">
+                        <ScrollableDateNavigator
+                          date={selectedWeekDay}
+                          visibleDates={weekDates}
+                          hideCalendarButton
+                          pickerTitle="Ibadah day"
+                          onDateChange={(value) => {
+                            const index = weekDates.indexOf(value);
+                            if (index >= 0) setSelectedWeekDayIndex(index);
+                          }}
+                        />
                       </div>
-                      <TabsContent value={selectedWeekDay} className="mt-4">
+                      <div className="mt-4">
                         <StudentDetailSections
                           student={selectedStudent}
                           activePrayers={activePrayers}
                           config={config}
                           lang={lang}
                         />
-                      </TabsContent>
-                    </Tabs>
+                      </div>
+                    </div>
                   ) : (
                     <StudentDetailSections
                       student={selectedStudent}
