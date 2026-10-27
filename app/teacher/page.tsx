@@ -1,33 +1,8 @@
+import { useState, lazy, Suspense } from "react";
+import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useAuthStore } from "@/store/auth";
-import { useLanguageStore } from "@/store/language";
-import { t } from "@/lib/i18n";
-import { useNavigate } from "react-router-dom";
-import {
-  Bell,
-  BookOpen,
-  CalendarCheck2,
-  ChevronRight,
-  ClipboardList,
-  GraduationCap,
-  MoonStar,
-  NotebookPen,
-  TrendingUp,
-  UserCheck,
-  UserX,
-  UsersRound,
-} from "lucide-react";
-import { Icon } from "@iconify/react";
-import { useQuery } from "@tanstack/react-query";
-import { getClassIbadah } from "@/lib/ibadah-api";
-import { getClassAttendance } from "@/lib/attendance-api";
-import { getSubmissions, listHomework } from "@/lib/homework-api";
-import { useAttendanceSummary, useStudentsList } from "@/lib/queries";
-import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
-import { PolarRadiusAxis, RadialBar, RadialBarChart } from "recharts";
-import { useActiveClass } from "@/store/activeClass";
-import { lazy, Suspense, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Drawer,
   DrawerClose,
@@ -35,25 +10,103 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useAuthStore } from "@/store/auth";
+import { useActiveClass } from "@/store/activeClass";
+import { useLanguageStore } from "@/store/language";
+import { t } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { getClassIbadah } from "@/lib/ibadah-api";
+import { getClassAttendance } from "@/lib/attendance-api";
+import { getSubmissions, listHomework } from "@/lib/homework-api";
+import { useStudentsList } from "@/lib/queries";
+import {
+  Bell,
+  BookOpen,
+  CalendarCheck2,
+  ChevronRight,
+  CircleCheck,
+  CircleX,
+  ClipboardList,
+  Clock3,
+  GraduationCap,
+  IndianRupee,
+  Loader2,
+  MoonStar,
+  NotebookPen,
+  TrendingUp,
+  UserCheck,
+  UserX,
+  X,
+} from "lucide-react";
 
 const TeacherIbadahPage = lazy(() => import("@/app/teacher/ibadah/page"));
-const attendanceChartConfig = {
-  rate: { label: "Attendance rate", color: "var(--primary)" },
-} satisfies ChartConfig;
-const homeworkChartConfig = {
-  rate: { label: "Homework submission rate", color: "var(--primary)" },
-} satisfies ChartConfig;
+
+function CompactGauge({
+  value,
+  color = "#059669",
+  label = "Rate",
+}: {
+  value: number;
+  color?: string;
+  label?: string;
+}) {
+  const clamped = Math.max(0, Math.min(100, Math.round(value)));
+  const angle = Math.PI * (1 - clamped / 100);
+  const x = Number((50 + 36 * Math.cos(angle)).toFixed(2));
+  const y = Number((45 - 36 * Math.sin(angle)).toFixed(2));
+
+  return (
+    <div className="flex flex-col items-center justify-center shrink-0">
+      <svg
+        viewBox="0 0 100 54"
+        className="h-11 w-20 sm:h-12 sm:w-22 overflow-visible"
+        role="img"
+        aria-label={`${label}: ${clamped}%`}
+      >
+        <path
+          d="M 14 45 A 36 36 0 0 1 86 45"
+          fill="none"
+          stroke="#e5e7eb"
+          strokeWidth="8"
+          strokeLinecap="round"
+        />
+        {clamped > 0 && (
+          <path
+            d={`M 14 45 A 36 36 0 0 1 ${x} ${y}`}
+            fill="none"
+            stroke={color}
+            strokeWidth="8"
+            strokeLinecap="round"
+          />
+        )}
+        <text
+          x="50"
+          y="42"
+          textAnchor="middle"
+          className="fill-gray-950 text-[13px] font-bold"
+        >
+          {clamped}%
+        </text>
+      </svg>
+      {label && (
+        <span className="text-[10px] font-medium text-gray-500 mt-0.5">
+          {label}
+        </span>
+      )}
+    </div>
+  );
+}
 
 export default function TeacherDashboard() {
   const { user, accessToken } = useAuthStore();
   const { lang } = useLanguageStore();
   const navigate = useNavigate();
   const [ibadahDrawerOpen, setIbadahDrawerOpen] = useState(false);
-  const { activeClassId, isLoading: loadingClass } = useActiveClass();
+  const { activeClass, activeClassId, isLoading: loadingClass } = useActiveClass();
   const clientId = user?.clientId ?? "";
   const token = accessToken ?? "";
+
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
   const today = new Date();
@@ -62,23 +115,26 @@ export default function TeacherDashboard() {
   const dateLabel = yesterday.toLocaleDateString(
     lang === "ml" ? "ml-IN" : "en-IN",
     {
-      weekday: "long",
+      weekday: "short",
       day: "numeric",
-      month: "long",
+      month: "short",
       year: "numeric",
     },
   );
+
   const students = useStudentsList(
     { clientId, token },
     { classId: activeClassId, limit: 1 },
     { enabled: !!clientId && !!token && !!activeClassId },
   );
+
   const ibadah = useQuery({
     queryKey: ["ibadah", "class", clientId, activeClassId, date],
     queryFn: () =>
       getClassIbadah(clientId, token, { classId: activeClassId, date }),
     enabled: !!clientId && !!token && !!activeClassId,
   });
+
   const attendance = useQuery({
     queryKey: [
       "attendance",
@@ -99,11 +155,7 @@ export default function TeacherDashboard() {
       }),
     enabled: !!clientId && !!token && !!activeClassId,
   });
-  const overallAttendance = useAttendanceSummary(
-    { clientId, token },
-    undefined,
-    { refetchOnMount: "always" },
-  );
+
   const homework = useQuery({
     queryKey: ["homework", "class-stats", clientId, activeClassId],
     queryFn: async () => {
@@ -146,12 +198,41 @@ export default function TeacherDashboard() {
     enabled: !!clientId && !!token && !!activeClassId,
     refetchOnMount: "always",
   });
+
   const total = students.data?.total ?? 0;
+
+  // Attendance metrics
+  const attendanceRecords = attendance.data?.records ?? [];
+  const presentCount = attendanceRecords.filter(
+    (record) => record.status === "PRESENT",
+  ).length;
+  const absentCount = attendanceRecords.filter(
+    (record) => record.status === "ABSENT",
+  ).length;
+  const markedCount = attendance.data?.total ?? 0;
+  const attendancePercent =
+    total > 0 ? Math.min(100, Math.round((presentCount / total) * 100)) : 0;
+  const attendanceTaken = markedCount > 0;
+  const loadingAttendance =
+    loadingClass ||
+    (!!activeClassId && (students.isLoading || attendance.isLoading));
+
+  // Ibadah metrics
+  const completed = Math.min(
+    total,
+    new Set(ibadah.data?.logs.map((log) => log.studentId) ?? []).size,
+  );
+  const remaining = Math.max(0, total - completed);
+  const ibadahPercent = total > 0 ? Math.round((completed / total) * 100) : 0;
+  const loadingIbadah =
+    loadingClass ||
+    (!!activeClassId && (students.isLoading || ibadah.isLoading));
+
+  // Homework metrics
   const homeworkCompleted = Math.min(
     total,
     homework.data?.completedStudents ?? 0,
   );
-  const homeworkPending = Math.max(0, total - homeworkCompleted);
   const expectedSubmissions = total * (homework.data?.assignments ?? 0);
   const homeworkPercent =
     expectedSubmissions > 0
@@ -162,40 +243,10 @@ export default function TeacherDashboard() {
           ),
         )
       : 0;
-  const attendanceRecords = attendance.data?.records ?? [];
-  const presentCount = attendanceRecords.filter(
-    (record) => record.status === "PRESENT",
-  ).length;
-  const absentCount = attendanceRecords.filter(
-    (record) => record.status === "ABSENT",
-  ).length;
-  const markedCount = attendance.data?.total ?? 0;
-  const unmarkedCount = Math.max(0, total - markedCount);
-  const attendancePercent =
-    total > 0 ? Math.min(100, Math.round((markedCount / total) * 100)) : 0;
-  const attendanceTaken = markedCount > 0;
-  const overall = overallAttendance.data;
-  const overallPresent = overall?.present ?? 0;
-  const overallAbsent =
-    overall?.byStatus.find((entry) => entry.status === "ABSENT")?._count.id ??
-    0;
-  const overallRate = Math.max(0, Math.min(100, overall?.rate ?? 0));
-  const loadingAttendance =
+  const loadingHomework =
     loadingClass ||
-    (!!activeClassId && (students.isLoading || attendance.isLoading));
-  const attendanceError = students.isError || attendance.isError;
-  const completed = Math.min(
-    total,
-    new Set(ibadah.data?.logs.map((log) => log.studentId) ?? []).size,
-  );
-  const remaining = Math.max(0, total - completed);
-  const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
-  const color = `hsl(${percent * 1.2} 75% 60%)`;
-  const tint = `hsl(${percent * 1.2} 75% 60% / 0.005)`;
-  const loadingIbadah =
-    loadingClass ||
-    (!!activeClassId && (students.isLoading || ibadah.isLoading));
-  const ibadahError = students.isError || ibadah.isError;
+    (!!activeClassId && (students.isLoading || homework.isLoading));
+
   const initials = (user?.name?.trim() || "Teacher")
     .split(/\s+/)
     .slice(0, 2)
@@ -245,6 +296,11 @@ export default function TeacherDashboard() {
       icon: NotebookPen,
     },
     {
+      title: t("nav", "fees", lang),
+      href: "/teacher/fees",
+      icon: IndianRupee,
+    },
+    {
       title: t("nav", "notifications", lang),
       href: "/teacher/notifications",
       icon: Bell,
@@ -253,414 +309,391 @@ export default function TeacherDashboard() {
 
   return (
     <DashboardLayout>
-      
-      <div className="">
-        <header className="mb-9 flex   items-center justify-between gap-4   ">
-          <div className="min-w-0">
-            <p className="mb-1 text-base font-medium leading-7 text-gray-700 sm:text-lg">
-              {t("common", "teacher", lang)}
-            </p>
-            <h1 className="break-words text-xl font-bold leading-tight tracking-tight text-gray-950 sm:text-2xl">
-              {user?.name ?? "Teacher"} <span aria-hidden="true">👋</span>
-            </h1>
+      <div className="space-y-4 sm:space-y-5">
+        {/* Welcome Header */}
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <Avatar className="size-13 shrink-0 ring-2 ring-primary-100 sm:size-14">
+              <AvatarImage src={user?.photoUrl ?? undefined} alt="" />
+              <AvatarFallback className="bg-primary-50 text-base font-semibold text-primary-700">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="break-words text-lg font-bold tracking-tight text-gray-950 sm:text-xl">
+                  {user?.name ?? t("common", "teacher", lang)}{" "}
+                  <span aria-hidden="true">👋</span>
+                </h1>
+                <span className="rounded-full border border-primary-100 bg-primary-50 px-2 py-0.5 text-[11px] font-semibold text-primary-700">
+                  {t("common", "teacher", lang)}
+                </span>
+              </div>
+              <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                {activeClass && (
+                  <span className="rounded-full bg-white px-2 py-0.5 font-medium text-gray-700 ring-1 ring-gray-200">
+                    {t("common", "class", lang)}: {activeClass.name}
+                  </span>
+                )}
+                <span className="flex items-center gap-1 font-medium text-gray-500">
+                  <CalendarCheck2 className="size-3.5" />
+                  {today.toLocaleDateString(lang === "ml" ? "ml-IN" : "en-IN", {
+                    weekday: "short",
+                    day: "numeric",
+                    month: "short",
+                  })}
+                </span>
+              </div>
+            </div>
           </div>
-          <Avatar className="size-12 shrink-0 ring-2 ring-gray-200 sm:size-16">
-            <AvatarImage src={user?.photoUrl ?? undefined} alt="" />
-            <AvatarFallback className="bg-gray-100 text-base font-semibold text-gray-700">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
         </header>
 
-        <section className="mb-7 ">
-          <button
-            type="button"
-            onClick={() => setIbadahDrawerOpen(true)}
-            disabled={!activeClassId}
-            aria-label={`${t("teacherPages", "previousDayIbadah", lang)}: ${dateLabel}`}
-            className="card block w-full bg-background rounded-2xl p-5 text-left shadow-xl transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:cursor-default disabled:hover:translate-y-0 sm:p-6"
-             
-          >
-            <span className="flex items-start justify-between gap-4">
-              <span className="min-w-0">
-                <span className="flex items-center gap-1.5 text-xs font-medium text-gray-600">
-                  <Icon
-                    icon="tabler:clock"
-                    aria-hidden="true"
-                    className="size-4 shrink-0 *:stroke-[1.2px]"
-                  />
-                  {dateLabel}
-                </span>
-                <span className="mt-2 block text-lg font-bold tabular-nums text-gray-950">
-                  {t("teacherPages", "ibadahTrackingDescription", lang)}{" "}
-                </span>
-              </span>
-              {!loadingIbadah && !ibadahError && !!activeClassId && (
-                <span
-                  className="shrink-0 rounded-lg px-2.5 py-1 text-sm font-semibold tabular-nums"
-                  style={{ color, backgroundColor: tint }}
-                >
-                  {percent}%
-                </span>
-              )}
-            </span>
-            {!loadingIbadah && !ibadahError && !!activeClassId && (
-              <>
-                <span
-                  role="progressbar"
-                  aria-label={t("teacherPages", "previousDayIbadah", lang)}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={percent}
-                  className="mt-5 block h-2 overflow-hidden rounded-full bg-gray-200/70"
-                >
-                  <span
-                    className="block h-full rounded-full transition-[width]"
-                    style={{ width: `${percent}%`, backgroundColor: color }}
-                  />
-                </span>
-                <span className="mt-5 flex items-end justify-between gap-3   pt-0">
-                  <span className="grid flex-1 grid-cols-3 gap-2">
-                    {[
-                      {
-                        label: t("teacherPages", "totalStudents", lang),
-                        value: total,
-                      },
-                      {
-                        label: t("teacherPages", "completedStudents", lang),
-                        value: completed,
-                      },
-                      {
-                        label: t("teacherPages", "pendingIbadahStudents", lang),
-                        value: remaining,
-                      },
-                    ].map((stat) => (
-                      <span
-                        key={stat.label}
-                        className="min-w-0 not-last:border-r-1 border-gray-200 text-center justify-center"
-                      >
-                        <span className="mt-1 block text-2xl font-semibold tabular-nums text-gray-900">
-                          {stat.value}
-                        </span>
-                        <span className="block text-[13px] leading-tight text-gray-900">
-                          {stat.label}
-                        </span>
-                      </span>
-                    ))}
-                  </span>
-                  {/* <ChevronRight
-                    aria-hidden="true"
-                    className="size-5 shrink-0 text-gray-500"
-                  /> */}
-                </span>
-              </>
-            )}
-          </button>
-        </section>
-        <h2
-          id="attendance-overview-title"
-          className="  block text-lg    font-bold tabular-nums text-gray-950"
-        >
-          {t("teacherPages", "overallAttendance", lang)}
-        </h2>
+        {/* Attendance Card */}
         <section
-          aria-labelledby="attendance-overview-title"
-          className="mb-7 mt-4 bg-background overflow-hidden  card   rounded-2xl "
+          aria-labelledby="attendance-card-heading"
+          className="overflow-hidden rounded-2xl border border-gray-100 bg-gradient-to-br from-white via-white to-sky-50/70 p-4 sm:p-5 shadow-xs transition-all hover:border-gray-200"
         >
-          <div className=" ">
-            <div className=" overflow-hidden rounded-t-2xl ">
-              {overallAttendance.isLoading ? (
-                <div className="pt-5 text-sm text-gray-500">
-                  {t("common", "loading", lang)}
-                </div>
-              ) : overallAttendance.isError ? (
-                <div className="pt-5 text-sm text-gray-500">
-                  {t("teacherPages", "chartUnavailable", lang)}
-                </div>
-              ) : (
-                <div className=" grid grid-cols-2 gap-0.5">
-                  {[
-                    {
-                      label: t("common", "present", lang),
-                      value: overallPresent,
-                      icon: UserCheck,
-                      surface: "bg-violet-50",
-                      iconSurface: "bg-violet-200 text-violet-700",
-                    },
-                    {
-                      label: t("common", "absent", lang),
-                      value: overallAbsent,
-                      icon: UserX,
-                      surface: "bg-amber-50",
-                      iconSurface: "bg-amber-200 text-amber-800",
-                    },
-                  ].map((stat) => (
-                    <div
-                      key={stat.label}
-                      className={`flex min-h-18 items-center justify-between gap-1  p-3 ${stat.surface}`}
-                    >
-                      <div className="min-w-0">
-                        <strong className="block text-2xl font-semibold tabular-nums text-gray-950">
-                          {stat.value}
-                        </strong>
-                        <p className="text-sm font-bold text-gray-700">
-                          {stat.label}
-                        </p>
-                      </div>
-                      <span
-                        className={`flex size-9 shrink-0 items-center justify-center  ${stat.iconSurface}`}
-                      >
-                        <stat.icon aria-hidden="true" className="size-5" />
-                      </span>
-                    </div>
-                  ))}
-                  <div className="flex min-h-18 items-center justify-between gap-1  bg-emerald-50 p-3">
-                    <div className="min-w-0">
-                      <strong className="block text-2xl font-semibold tabular-nums text-gray-950">
-                        {overallRate}%
-                      </strong>
-                      <p className="text-sm font-bold  leading-tight text-gray-700">
-                        {t("teacherPages", "attendanceRateLabel", lang)}
-                      </p>
-                    </div>
-                    <div className="size-11 shrink-0">
-                      <ChartContainer
-                        config={attendanceChartConfig}
-                        className="size-full"
-                        role="img"
-                        aria-label={t(
-                          "teacherPages",
-                          "attendanceRateLabel",
-                          lang,
-                        )}
-                      >
-                        <RadialBarChart
-                          data={[{ rate: overallRate, fill: "var(--primary)" }]}
-                          startAngle={90}
-                          endAngle={-270}
-                          innerRadius="72%"
-                          outerRadius="100%"
-                        >
-                          <PolarRadiusAxis
-                            type="number"
-                            domain={[0, 100]}
-                            tick={false}
-                            axisLine={false}
-                          />
-                          <RadialBar
-                            dataKey="rate"
-                            background
-                            cornerRadius={8}
-                          />
-                        </RadialBarChart>
-                      </ChartContainer>
-                    </div>
-                  </div>
-                  <div className="flex min-h-18 items-center justify-between gap-1  bg-green-50 p-3">
-                    <div className="min-w-0">
-                      <strong className="block text-2xl font-semibold tabular-nums text-gray-950">
-                        {overall?.total ?? 0}
-                      </strong>
-                      <p className="text-sm font-bold text-gray-700">
-                        {t("teacherPages", "totalRecords", lang)}
-                      </p>
-                    </div>
-                    <span className="flex size-9 shrink-0 items-center justify-center   bg-green-200 text-green-700">
-                      <UsersRound aria-hidden="true" className="size-5" />
-                    </span>
-                  </div>
-                </div>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <h2
+                id="attendance-card-heading"
+                className="text-sm sm:text-base font-bold text-gray-900 truncate"
+              >
+                {t("teacherPages", "attendanceTitle", lang)}
+              </h2>
+              {activeClass && (
+                <span className="hidden sm:inline-block rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-gray-600 ring-1 ring-gray-200">
+                  {activeClass.name}
+                </span>
               )}
             </div>
+            <span
+              className={cn(
+                "rounded-full px-2.5 py-0.5 text-xs font-semibold shrink-0",
+                attendanceTaken
+                  ? "border border-primary-100 bg-primary-50 text-primary-700"
+                  : "border border-amber-100 bg-amber-50 text-amber-700",
+              )}
+            >
+              {attendanceTaken
+                ? t("teacherPages", "markedStudents", lang)
+                : t("common", "pending", lang)}
+            </span>
           </div>
-          <div className="border-t border-gray-100 px-4">
-            {!activeClassId && !loadingClass ? (
-              <p className="mt-2 text-sm text-gray-500">
-                {t("teacherPages", "noClassesFound", lang)}
-              </p>
-            ) : loadingAttendance ? (
-              <p className="mt-2 text-sm text-gray-500">
-                {t("common", "loading", lang)}
-              </p>
-            ) : attendanceError ? (
-              <p className="mt-2 text-sm text-gray-500">
-                {t("teacherPages", "chartUnavailable", lang)}
-              </p>
-            ) : attendanceTaken ? (
-              <>
-                <div className="mt-3 flex items-end justify-between">
-                  <div>
-                    <p className="text-xs text-gray-600">
-                      {t("teacherPages", "markedStudents", lang)}
-                    </p>
-                    <p className="text-lg font-semibold tabular-nums text-gray-950">
-                      {markedCount}/{total}
-                    </p>
-                  </div>
-                  <span className="text-sm font-semibold tabular-nums text-primary-700">
-                    {attendancePercent}%
-                  </span>
-                </div>
-                <div
-                  role="progressbar"
-                  aria-label={t("teacherPages", "markedStudents", lang)}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={attendancePercent}
-                  className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-100"
-                >
-                  <div
-                    className="h-full rounded-full bg-primary-600"
-                    style={{ width: `${attendancePercent}%` }}
-                  />
-                </div>
-                <div className="mt-3 grid grid-cols-3 gap-2">
-                  {[
-                    {
-                      label: t("common", "present", lang),
-                      value: presentCount,
-                    },
-                    { label: t("common", "absent", lang), value: absentCount },
-                    {
-                      label: t("teacherPages", "unmarkedLabel", lang),
-                      value: unmarkedCount,
-                    },
-                  ].map((stat) => (
-                    <div
-                      key={stat.label}
-                      className="rounded-lg bg-gray-50 px-2 py-1.5 text-center"
-                    >
-                      <p className="text-base font-semibold tabular-nums text-gray-900">
-                        {stat.value}
-                      </p>
-                      <p className="text-xs text-gray-600">{stat.label}</p>
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div className="relative mt-[0.5px] min-h-38 card overflow-hidden rounded-b-2xl bg-cyan-50">
-                <img
-                  src="/imgs/attendance/roll-call-banner.webp"
-                  alt=""
-                  className="absolute inset-0 size-full object-cover object-center"
-                />
-                <div className="relative  z-10 flex min-h-38 max-w-[65%] flex-col justify-center p-5">
-                  <p className="mt-1 text-base text-gray-700 font-bold">
-                    {t("teacherPages", "takeAttendanceInstruction", lang)}
-                  </p>
-                  <div className=" mt-3 ">
-                    <Button
-                      onClick={() => navigate("/teacher/attendance")}
-                      className=""
-                      size={"lg"}
-                    >
-                      {attendanceTaken
-                        ? t("teacherPages", "reviewAttendance", lang)
-                        : t("teacherPages", "markAttendanceDesc", lang)}
-                      <ChevronRight aria-hidden="true" className="size-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </section>
 
-            <h2
-              id="homework-overview-title"
-              className=" block text-lg font-bold tabular-nums text-gray-950"
-            >
-              {t("teacherPages", "classHomework", lang)}
-            </h2>
-        <section
-          aria-labelledby="homework-overview-title"
-          className="mb-7 mt-3 bg-background rounded-2xl card  text-whit p-6"
-        >
-          <div className="flex flex-col  justify-between gap-3">
-            <img
-              src="/imgs/homework/1.webp"
-              alt=""
-              loading="lazy"
-              className="mx-auto h-36 w-auto max-w-full object-contain"
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+              <img
+                src="/imgs/attendance/attendance-checklist.png"
+                alt=""
+                className="size-15 sm:size-18 shrink-0 object-contain drop-shadow-xs"
+                loading="lazy"
+              />
+              <div className="min-w-0">
+                {loadingAttendance ? (
+                  <div className="flex items-center gap-2 text-gray-400 py-1">
+                    <Loader2 className="size-4 animate-spin" />
+                    <span className="text-xs">{t("common", "loading", lang)}</span>
+                  </div>
+                ) : attendanceTaken ? (
+                  <>
+                    <div className="text-xl sm:text-2xl font-bold tabular-nums text-gray-950">
+                      {presentCount}{" "}
+                      <span className="text-xs font-semibold text-gray-500">
+                        / {total} {t("common", "present", lang)}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-gray-600">
+                      <span className="inline-flex items-center gap-1 text-emerald-700 font-medium">
+                        <CircleCheck className="size-3" /> {presentCount}
+                      </span>
+                      <span>·</span>
+                      <span className="inline-flex items-center gap-1 text-red-600 font-medium">
+                        <CircleX className="size-3" /> {absentCount} {t("common", "absent", lang)}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-base sm:text-lg font-bold text-gray-900 leading-snug">
+                      {t("teacherPages", "takeAttendanceInstruction", lang)}
+                    </div>
+                    <p className="mt-0.5 text-xs text-amber-700 font-medium">
+                      {total} {t("teacherPages", "totalStudents", lang).toLowerCase()}
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <CompactGauge
+              value={attendancePercent}
+              color="#059669"
+              label={t("teacherPages", "attendanceRateLabel", lang)}
             />
+          </div>
+
+          <div className="mt-3.5 flex items-center justify-between border-t border-gray-100 pt-3">
+            <span className="text-xs text-gray-500">
+              {today.toLocaleDateString(lang === "ml" ? "ml-IN" : "en-IN", {
+                day: "numeric",
+                month: "short",
+              })}
+            </span>
             <Button
-              size="lg"
-              className={"w-max mx-auto"}
-              onClick={() => navigate("/teacher/homework-list")}
+              onClick={() => navigate("/teacher/attendance")}
+              size="sm"
+              variant={attendanceTaken ? "outline" : "default"}
+              className="gap-1.5 rounded-xl text-xs h-8 px-3"
             >
-              {t("teacherPages", "hwListTitle", lang)}
-              <ChevronRight aria-hidden="true" className="size-4" />
+              <UserCheck className="size-3.5" />
+              {attendanceTaken
+                ? t("teacherPages", "reviewAttendance", lang)
+                : t("teacherPages", "markAttendanceDesc", lang)}
+              <ChevronRight className="size-3.5" />
             </Button>
           </div>
-          {!activeClassId && !loadingClass ? (
-            <p className="mt-4 text-sm text-gray-500">
-              {t("teacherPages", "noClassesFound", lang)}
-            </p>
-          ) : loadingClass || students.isLoading || homework.isLoading ? (
-            <p className="mt-4 text-sm text-gray-500">
-              {t("common", "loading", lang)}
-            </p>
-          ) : students.isError || homework.isError ? (
-            <p className="mt-4 text-sm text-gray-500">
-              {t("teacherPages", "homeworkStatsUnavailable", lang)}
-            </p>
-          ) : homework.data?.assignments === 0 ? (
-            <p className="mt-4 text-sm text-gray-500">
-              {t("teacherPages", "noAssignmentsYet", lang)}
-            </p>
-          ) : (
-            <div className="mt-6 flex   gap-2 justify-between">
-              {[
-                {
-                  label: t("teacherPages", "completedStudents", lang),
-                  value: homeworkCompleted,
-                },
-                {
-                  label: t("teacherPages", "pendingHw", lang),
-                  value: homeworkPending,
-                },
-                {
-                  label: t("teacherPages", "submittedStatus", lang),
-                  value: homeworkPercent + "%",
-                },
-              ].map((stat) => (
-                <div
-                  key={stat.label}
-                  className="px-2 w-full not-last:border-r  border-gray-200 text-center"
-                >
-                  <strong className="block text-2xl font-semibold tabular-nums text-gray-900">
-                    {stat.value}
-                  </strong>
-                  <span className="block text-[13px] leading-tight text-gray-900">
-                    {stat.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
         </section>
 
-        <Drawer open={ibadahDrawerOpen} onOpenChange={setIbadahDrawerOpen}>
-          <DrawerContent className="h-[90dvh] max-h-[90dvh] bg-white">
-            <DrawerHeader className="flex-row items-center justify-between border-b border-gray-100 pb-4 text-left">
-              <DrawerTitle className="text-base font-semibold">
-                {t("teacherPages", "ibadahRecordsTitle", lang)}
-              </DrawerTitle>
+        {/* Ibadah Card */}
+        <section
+          aria-labelledby="ibadah-card-heading"
+          className="overflow-hidden rounded-2xl border border-gray-100 bg-gradient-to-br from-white via-white to-emerald-50/40 p-4 sm:p-5 shadow-xs transition-all hover:border-gray-200"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <h2
+                id="ibadah-card-heading"
+                className="text-sm sm:text-base font-bold text-gray-900 truncate"
+              >
+                {t("teacherPages", "ibadahTitle", lang)}
+              </h2>
+              <span className="hidden sm:inline-block rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-gray-600 ring-1 ring-gray-200">
+                {dateLabel}
+              </span>
+            </div>
+            <span className="rounded-full border border-primary-100 bg-primary-50 px-2.5 py-0.5 text-xs font-semibold text-primary-700 shrink-0">
+              {ibadahPercent}% {t("teacherPages", "completion", lang)}
+            </span>
+          </div>
+
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+              <img
+                src="/icons/ibadah/weekly-report.webp"
+                alt=""
+                className="size-15 sm:size-18 shrink-0 object-contain drop-shadow-xs"
+                loading="lazy"
+              />
+              <div className="min-w-0">
+                {loadingIbadah ? (
+                  <div className="flex items-center gap-2 text-gray-400 py-1">
+                    <Loader2 className="size-4 animate-spin" />
+                    <span className="text-xs">{t("common", "loading", lang)}</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-xl sm:text-2xl font-bold tabular-nums text-gray-950">
+                      {completed}{" "}
+                      <span className="text-xs font-semibold text-gray-500">
+                        / {total} {t("teacherPages", "completedStudents", lang)}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-600">
+                      <span className="text-amber-700 font-medium">{remaining}</span>{" "}
+                      {t("teacherPages", "pendingIbadahStudents", lang).toLowerCase()}
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <CompactGauge
+              value={ibadahPercent}
+              color="#059669"
+              label={t("teacherPages", "completion", lang)}
+            />
+          </div>
+
+          <div className="mt-3.5 flex items-center justify-between border-t border-gray-100 pt-3">
+            <span className="text-xs text-gray-500">
+              {t("teacherPages", "previousDayIbadah", lang)}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIbadahDrawerOpen(true)}
+              disabled={!activeClassId}
+              className="gap-1.5 rounded-xl border-primary-200 text-primary-700 hover:bg-primary-50 text-xs h-8 px-3"
+            >
+              <MoonStar className="size-3.5" />
+              {t("teacherPages", "ibadahRecordsTitle", lang)}
+              <ChevronRight className="size-3.5" />
+            </Button>
+          </div>
+        </section>
+
+        {/* Homework Card */}
+        <section
+          aria-labelledby="homework-card-heading"
+          className="overflow-hidden rounded-2xl border border-gray-100 bg-gradient-to-br from-white via-white to-amber-50/30 p-4 sm:p-5 shadow-xs transition-all hover:border-gray-200"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <h2
+                id="homework-card-heading"
+                className="text-sm sm:text-base font-bold text-gray-900 truncate"
+              >
+                {t("teacherPages", "classHomework", lang)}
+              </h2>
+              {activeClass && (
+                <span className="hidden sm:inline-block rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-gray-600 ring-1 ring-gray-200">
+                  {activeClass.name}
+                </span>
+              )}
+            </div>
+            <span className="rounded-full border border-primary-100 bg-primary-50 px-2.5 py-0.5 text-xs font-semibold text-primary-700 shrink-0">
+              {homeworkPercent}% {t("teacherPages", "submittedStatus", lang)}
+            </span>
+          </div>
+
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+              <img
+                src="/imgs/homework/1.webp"
+                alt=""
+                className="size-15 sm:size-18 shrink-0 object-contain drop-shadow-xs"
+                loading="lazy"
+              />
+              <div className="min-w-0">
+                {loadingHomework ? (
+                  <div className="flex items-center gap-2 text-gray-400 py-1">
+                    <Loader2 className="size-4 animate-spin" />
+                    <span className="text-xs">{t("common", "loading", lang)}</span>
+                  </div>
+                ) : (homework.data?.assignments ?? 0) === 0 ? (
+                  <div className="text-sm font-medium text-gray-600">
+                    {t("teacherPages", "noAssignmentsYet", lang)}
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-xl sm:text-2xl font-bold tabular-nums text-gray-950">
+                      {homework.data?.assignments ?? 0}{" "}
+                      <span className="text-xs font-semibold text-gray-500">
+                        {t("teacherPages", "homeworkTitle", lang)}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-600">
+                      <span className="font-medium text-gray-900">{homeworkCompleted}</span>{" "}
+                      / {total} {t("teacherPages", "completedStudents", lang).toLowerCase()}
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <CompactGauge
+              value={homeworkPercent}
+              color="#059669"
+              label={t("teacherPages", "completion", lang)}
+            />
+          </div>
+
+          <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3">
+            <span className="text-xs text-gray-500">
+              {homework.data?.submittedCount ?? 0} {t("teacherPages", "studentSubmissions", lang).toLowerCase()}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate("/teacher/homework")}
+                className="gap-1 rounded-xl text-xs h-8 px-2.5"
+              >
+                <BookOpen className="size-3.5" />
+                {t("teacherPages", "assignHomework", lang)}
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => navigate("/teacher/homework-list")}
+                className="gap-1 rounded-xl text-xs h-8 px-3"
+              >
+                <ClipboardList className="size-3.5" />
+                {t("teacherPages", "hwListTitle", lang)}
+                <ChevronRight className="size-3.5" />
+              </Button>
+            </div>
+          </div>
+        </section>
+
+        {/* Quick Actions Grid */}
+        <section
+          aria-labelledby="teacher-actions-heading"
+          className="overflow-hidden rounded-2xl border border-gray-100 bg-white p-4 sm:p-5 shadow-xs"
+        >
+          <div className="mb-3.5 flex items-center justify-between">
+            <h2
+              id="teacher-actions-heading"
+              className="text-sm sm:text-base font-bold text-gray-950"
+            >
+              {t("teacherPages", "quickActions", lang)}
+            </h2>
+            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-600">
+              {actions.length}
+            </span>
+          </div>
+
+          <ul className="grid grid-cols-3 gap-2 sm:gap-3">
+            {actions.map((action) => (
+              <li key={action.href} className="min-w-0">
+                <button
+                  type="button"
+                  onClick={() => navigate(action.href)}
+                  className="group flex w-full flex-col items-center justify-center gap-1.5 rounded-xl p-2.5 text-center transition-colors hover:bg-gray-50 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
+                >
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary-50 text-primary-700 transition-colors group-hover:bg-primary-100">
+                    <action.icon aria-hidden="true" className="size-5" />
+                  </span>
+                  <span className="min-w-0 truncate text-xs font-semibold leading-snug text-gray-800 group-hover:text-primary-700">
+                    {action.title}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* Ibadah Details Drawer */}
+        <Drawer
+          open={ibadahDrawerOpen}
+          onOpenChange={setIbadahDrawerOpen}
+          swipeDirection="down"
+        >
+          <DrawerContent className="max-h-[90dvh] bg-white p-0">
+            <DrawerHeader className="flex flex-row items-center justify-between border-b border-gray-100 px-5 py-4 text-left">
+              <div>
+                <DrawerTitle className="text-base sm:text-lg font-bold text-gray-900">
+                  {t("teacherPages", "ibadahRecordsTitle", lang)}
+                </DrawerTitle>
+                <p className="mt-0.5 text-xs text-gray-500">
+                  {activeClass ? `${activeClass.name} · ` : ""}
+                  {dateLabel}
+                </p>
+              </div>
               <DrawerClose
                 aria-label={t("common", "close", lang)}
-                className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100"
+                className="rounded-xl border border-gray-200 p-2 text-gray-500 hover:bg-gray-100 active:scale-95"
               >
-                <X className="size-5" />
+                <X className="size-4" />
               </DrawerClose>
             </DrawerHeader>
-            <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-8">
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-8 pt-3">
               {ibadahDrawerOpen && (
                 <Suspense
                   fallback={
-                    <p className="py-8 text-center text-sm text-gray-500">
-                      {t("common", "loading", lang)}
-                    </p>
+                    <div className="flex items-center justify-center py-16 text-gray-400">
+                      <Loader2 className="size-6 animate-spin" />
+                    </div>
                   }
                 >
                   <TeacherIbadahPage initialDate={date} embedded />
@@ -669,37 +702,9 @@ export default function TeacherDashboard() {
             </div>
           </DrawerContent>
         </Drawer>
-
-        <section
-          aria-labelledby="teacher-actions"
-          className="card mb-0 rounded-2xl   bg-background p-5"
-        >
-          <h2
-            id="teacher-actions"
-            className=" block text-lg font-bold mb-4 tabular-nums text-gray-950"
-          >
-            {t("teacherPages", "quickActions", lang)}
-          </h2>
-          <ul className="grid grid-cols-3 gap-x-2 gap-y-4 sm:grid-cols-5">
-            {actions.map((action) => (
-              <li key={action.href} className="min-w-0">
-                <button
-                  type="button"
-                  onClick={() => navigate(action.href)}
-                  className="flex min-h-24 w-full flex-col items-center gap-2 rounded-xl p-2 text-center hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
-                >
-                  <span className="flex btn size-12 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700">
-                    <action.icon aria-hidden="true" className="size-6" />
-                  </span>
-                  <span className="min-w-0 text-xs font-semibold leading-snug text-gray-800 sm:text-sm">
-                    {action.title}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
       </div>
     </DashboardLayout>
   );
 }
+
+
