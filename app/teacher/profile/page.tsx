@@ -494,7 +494,7 @@ export default function TeacherProfilePage() {
         </div>
 
         {/* Profile Information List (Referencing classic card style from fees/page.tsx) */}
-        <div className="px-3">
+        <div className="">
           <div className="mb-2 flex items-center justify-between px-1">
             <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">
               Account Information
@@ -637,7 +637,7 @@ export default function TeacherProfilePage() {
         </div>
 
         {/* Teacher Quick Shortcuts */}
-        <div className="px-3">
+        <div className="">
           <h2 className="mb-2 px-1 text-xs font-bold uppercase tracking-wider text-gray-500">
             {t("common", "quickLinks", lang)}
           </h2>
