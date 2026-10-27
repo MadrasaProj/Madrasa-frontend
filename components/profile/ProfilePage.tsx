@@ -14,7 +14,7 @@ import {
   Shield, Sparkles, IdCard, CalendarDays,
   Building2, Hash,
   CheckCircle2, Circle, User, X,
-  Camera, MapPin, Briefcase, Pencil, Users,
+  Camera, MapPin, Briefcase, Pencil, Users, ChevronRight,
 } from "lucide-react";
 
 const inputCls =
@@ -164,9 +164,10 @@ export interface ProfileConfig {
 
 interface ProfilePageProps {
   config: ProfileConfig;
+  layout?: "teacher";
 }
 
-export default function ProfilePage({ config }: ProfilePageProps) {
+export default function ProfilePage({ config, layout }: ProfilePageProps) {
   const { lang } = useLanguageStore();
   const { user, accessToken, updateUser } = useAuthStore();
   const isParent = user?.actorType === "PARENT";
@@ -227,9 +228,9 @@ export default function ProfilePage({ config }: ProfilePageProps) {
     setError("");
   };
 
-  const openDrawer = () => {
+  const openDrawer = (tab: "account" | "security" = "account") => {
     resetForm();
-    setDrawerTab("account");
+    setDrawerTab(tab);
     setSuccess("");
     setDrawerOpen(true);
   };
@@ -353,12 +354,27 @@ export default function ProfilePage({ config }: ProfilePageProps) {
     { id: "security" as const, label: t("common", "security", lang), icon: Shield },
   ];
 
+  const teacherLayout = layout === "teacher";
+  const parentPhone = user?.phone || user?.parentPhone;
+  const parentStudents = user?.accessibleStudents?.length ?? 0;
+  const compactToday = new Date().toLocaleDateString(lang === "ml" ? "ml-IN" : "en-IN", {
+    weekday: "short", day: "numeric", month: "short", year: "numeric",
+  });
+  const parentInfoRows = [
+    { label: t("common", "displayName", lang), value: user?.name || "—", icon: User },
+    { label: t("common", "role", lang), value: config.roleLabel, icon: IdCard },
+    { label: t("common", "userId", lang), value: user?.id || "—", icon: Hash, mono: true },
+    { label: t("common", "tenant", lang), value: user?.madrasaName || user?.tenantSlug || "—", icon: Building2 },
+    { label: t("common", "primaryPhone", lang), value: parentPhone || t("common", "notSet", lang), icon: Phone },
+    { label: t("common", "email", lang), value: user?.email || t("common", "notSet", lang), icon: Mail },
+    { label: t("common", "address", lang), value: user?.address || t("common", "notSet", lang), icon: MapPin, wrap: true },
+  ];
+
   return (
     <DashboardLayout>
       <PageHeader
         title={t("nav", "profile", lang)}
-        subtitle={t("nav", "settings", lang)}
-        icon={UserCircle2}
+        {...(teacherLayout ? {} : { subtitle: t("nav", "settings", lang), icon: UserCircle2 })}
       />
 
       <AnimatePresence>
@@ -372,6 +388,117 @@ export default function ProfilePage({ config }: ProfilePageProps) {
         )}
       </AnimatePresence>
 
+      {teacherLayout ? (
+        <div className="pt-6 pb-24">
+          <section className="mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-white to-sky-50">
+            <div className="border-b border-gray-100 px-4 py-4 sm:px-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-center gap-3.5 sm:gap-4">
+                  <div className="relative shrink-0">
+                    {user?.photoUrl ? (
+                      <img src={user.photoUrl} alt={user.name} className="h-16 w-16 rounded-2xl bg-white/60 object-cover shadow-md ring-2 ring-white sm:h-20 sm:w-20" />
+                    ) : (
+                      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-600 text-2xl font-bold text-white shadow-md ring-2 ring-white sm:h-20 sm:w-20 sm:text-3xl">
+                        {user?.name?.charAt(0)?.toUpperCase() ?? "P"}
+                      </div>
+                    )}
+                    <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-white">
+                      <CheckCircle className="h-3.5 w-3.5 text-white" />
+                    </span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h1 className="truncate text-lg font-bold text-gray-950 sm:text-xl">{user?.name ?? config.roleLabel}</h1>
+                      <span className="inline-flex items-center gap-1 rounded-full border border-primary-100 bg-primary-50 px-2.5 py-0.5 text-[11px] font-semibold text-primary-700">
+                        <Sparkles className="h-3 w-3" /> {config.roleShort}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">{user?.madrasaName || user?.tenantSlug || "Smart Madrasa"}</p>
+                    <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-medium">
+                      {parentStudents > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-0.5 text-gray-700 ring-1 ring-gray-200">
+                          <Users className="h-3 w-3 text-primary-600" />
+                          {parentStudents} {t("parentPages", "childrenLabel", lang)}
+                        </span>
+                      )}
+                      <span className="inline-flex items-center rounded-full bg-white px-2.5 py-0.5 text-gray-600 ring-1 ring-gray-200">{compactToday}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 sm:self-start">
+                  <button type="button" onClick={() => openDrawer("security")} className="inline-flex h-9 items-center rounded-xl border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-800 transition-colors hover:bg-gray-50">
+                    <KeyRound className="mr-1.5 h-3.5 w-3.5" /> {t("login", "password", lang)}
+                  </button>
+                  <button type="button" onClick={() => openDrawer("account")} className="inline-flex h-9 items-center rounded-xl bg-primary-600 px-3 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-primary-700">
+                    <Pencil className="mr-1.5 h-3.5 w-3.5" /> {t("common", "updateProfile", lang)}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-px border-t border-gray-100 bg-gray-100 sm:grid-cols-4">
+              {[
+                { label: t("parentPages", "childrenLabel", lang), value: user?.accessibleStudents ? String(parentStudents) : "—", icon: Users, iconColor: "text-primary-700" },
+                { label: t("common", "primaryPhone", lang), value: parentPhone || "—", icon: Phone, iconColor: "text-emerald-700" },
+                { label: t("common", "email", lang), value: user?.email || "—", icon: Mail, iconColor: "text-amber-700" },
+                { label: t("common", "tenant", lang), value: user?.madrasaName || user?.tenantSlug || "—", icon: Building2, iconColor: "text-blue-700" },
+              ].map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div key={item.label} className="min-w-0 bg-white/90 p-3 sm:p-4">
+                    <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-600">
+                      <Icon className={cn("h-3.5 w-3.5 shrink-0", item.iconColor)} />
+                      <span>{item.label}</span>
+                    </div>
+                    <div className="mt-2 truncate text-base font-semibold text-gray-950 sm:text-lg" title={item.value}>{item.value}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="mb-6">
+            <div className="mb-2 flex items-center justify-between px-1">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">{t("common", "accountDetails", lang)}</h2>
+              <button type="button" onClick={() => openDrawer("account")} className="inline-flex items-center text-xs font-semibold text-primary-700 hover:text-primary-800">
+                <Pencil className="mr-1 h-3 w-3" /> {t("common", "updateProfile", lang)}
+              </button>
+            </div>
+            <div data-ui-style="classic" className="card divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white p-0! shadow-none">
+              {parentInfoRows.map((row) => {
+                const Icon = row.icon;
+                return (
+                  <div key={row.label} className="flex min-w-0 items-start gap-3 p-4">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-50 text-gray-500"><Icon className="h-4 w-4" /></div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-muted-foreground">{row.label}</p>
+                      <p className={cn("text-sm font-semibold text-gray-900", row.mono && "font-mono", row.wrap ? "whitespace-pre-wrap break-words" : "truncate")} title={row.wrap ? undefined : row.value}>{row.value}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          <section>
+            <h2 className="mb-2 px-1 text-xs font-bold uppercase tracking-wider text-gray-500">{t("common", "quickLinks", lang)}</h2>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {config.quickLinks.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <a key={item.href} href={item.href} className="flex min-w-0 items-center justify-between rounded-2xl border border-gray-100 bg-white p-3.5 transition-all hover:border-primary-200 hover:bg-primary-50/50">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-50 text-gray-600"><Icon className="h-4 w-4" /></div>
+                      <span className="truncate text-xs font-semibold text-gray-900">{item.label}</span>
+                    </div>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-gray-300" />
+                  </a>
+                );
+              })}
+            </div>
+          </section>
+        </div>
+      ) : (
+      <>
       <div className="grid grid-cols-1 gap-4 pb-28">
         {/* Identity card */}
         <motion.div
@@ -562,7 +689,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
         <motion.button
           whileHover={{ y: -1 }}
           whileTap={{ scale: 0.97 }}
-          onClick={openDrawer}
+          onClick={() => openDrawer()}
           className="inline-flex items-center gap-2 px-5 py-3 text-sm font-bold
                      bg-primary-600 text-white rounded-2xl hover:bg-primary-700
                      shadow-lg transition-colors"
@@ -575,7 +702,7 @@ export default function ProfilePage({ config }: ProfilePageProps) {
       {/* Mobile floating Update Profile button */}
       <motion.button
         whileTap={{ scale: 0.95 }}
-        onClick={openDrawer}
+        onClick={() => openDrawer()}
         className="sm:hidden fixed bottom-20 right-4 z-30 inline-flex items-center gap-2
                    px-4 py-3 text-sm font-bold text-white
                    bg-primary-600 rounded-full
@@ -584,6 +711,8 @@ export default function ProfilePage({ config }: ProfilePageProps) {
         <Pencil className="w-4 h-4" />
         {t("common", "updateProfile", lang)}
       </motion.button>
+      </>
+      )}
 
       {/* Edit Drawer */}
       <ResponsivePopover

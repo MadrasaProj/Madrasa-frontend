@@ -4,8 +4,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { SkeletonList } from "@/components/ui/Skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { HomeworkStatus, StudentHomeworkItem } from "@/lib/homework-api";
 import { useParentSubmitHomework, useStudentHomework } from "@/lib/queries";
@@ -13,7 +12,7 @@ import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { AlertCircle, BookOpen, CalendarDays, CheckCircle2, Loader2, RefreshCw, User } from "lucide-react";
+import { AlertCircle, BookOpen, CalendarDays, CheckCircle2, Loader2, RefreshCw, Search, User } from "lucide-react";
 
 const statuses = ["all", "NOT_SUBMITTED", "SUBMITTED", "CHECKED"] as const;
 type StatusFilter = (typeof statuses)[number];
@@ -25,9 +24,9 @@ const statusStyles: Record<HomeworkStatus, string> = {
 };
 
 const statusGradients: Record<HomeworkStatus, string> = {
-  NOT_SUBMITTED: "from-amber-100/40 to-amber-50/10  ",
-  SUBMITTED: "from-sky-100/60 via-sky-50/30 to-white",
-  CHECKED: "from-primary-100/60 via-primary-50/30 to-white",
+  NOT_SUBMITTED: "from-amber-100/20 via-amber-50/10 to-white",
+  SUBMITTED: "from-sky-100/20 via-sky-50/10 to-white",
+  CHECKED: "from-primary-100/20 via-primary-50/10 to-white",
 };
 
 const statusLabelKeys = {
@@ -51,6 +50,7 @@ export default function ParentHomeworkPage() {
   const token = accessToken ?? "";
   const studentId = activeStudentId ?? user?.accessibleStudentIds?.[0] ?? "";
   const [filter, setFilter] = useState<StatusFilter>("all");
+  const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<StudentHomeworkItem | null>(null);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
 
@@ -60,9 +60,17 @@ export default function ParentHomeworkPage() {
   );
   const submitMutation = useParentSubmitHomework({ clientId, token });
   const homework = data?.homework ?? [];
-  const filtered = filter === "all"
+  const statusFiltered = filter === "all"
     ? homework
     : homework.filter((item) => item.submission.status === filter);
+  const query = search.trim().toLocaleLowerCase();
+  const filtered = query
+    ? statusFiltered.filter((item) =>
+        [item.title, item.subject?.name ?? "", item.description ?? ""].some((value) =>
+          value.toLocaleLowerCase().includes(query),
+        ),
+      )
+    : statusFiltered;
   const pendingCount = homework.filter((item) => item.submission.status === "NOT_SUBMITTED").length;
 
   const closeDetails = () => {
@@ -116,66 +124,75 @@ export default function ParentHomeworkPage() {
               </Alert>
             )}
 
-            <Tabs value={filter} onValueChange={(value) => setFilter(value as StatusFilter)}>
-              <div className="max-w-full overflow-x-auto pb-1">
-                <TabsList className="w-max">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Tabs
+                value={filter}
+                onValueChange={(value) => {
+                  setFilter(value as StatusFilter);
+                  closeDetails();
+                }}
+                className="w-full overflow-x-auto sm:w-auto"
+              >
+                <TabsList className="min-w-full w-max sm:min-w-0">
                   {statuses.map((status) => (
-                    <TabsTrigger key={status} value={status}>
+                    <TabsTrigger key={status} value={status} className="flex-1 shrink-0 px-3">
                       {status === "all"
                         ? t("parentPages", "allFilterTab", lang)
                         : t("parentPages", statusLabelKeys[status], lang)}
                     </TabsTrigger>
                   ))}
                 </TabsList>
+              </Tabs>
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder={t("parentPages", "searchHomework", lang)}
+                  aria-label={t("parentPages", "searchHomework", lang)}
+                  className="w-full rounded-xl border border-gray-200 py-2.5 pl-10 pr-4 text-sm transition-all focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/30"
+                />
               </div>
-            </Tabs>
+            </div>
 
             {isLoading ? (
-              <div className="grid gap-4 sm:grid-cols-2">
-                {[1, 2, 3, 4].map((item) => (
-                  <Skeleton key={item} className="h-36 rounded-2xl" />
-                ))}
-              </div>
+              <SkeletonList count={4} />
             ) : filtered.length === 0 ? (
               <div className="rounded-2xl border border-border/70 bg-card px-6 py-16 text-center text-muted-foreground">
                 <BookOpen className="mx-auto mb-3 size-9 opacity-40" />
-                <p className="font-medium">{t("parentPages", "noHomeworkFound", lang)}</p>
+                <p className="font-medium">
+                  {homework.length === 0 && filter === "all" && !query
+                    ? t("parentPages", "noHomeworkFound", lang)
+                    : t("parentPages", "noHomeworkCategory", lang)}
+                </p>
               </div>
             ) : (
-              <div className="grid items-start gap-4 sm:grid-cols-2">
+              <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
                 {filtered.map((item) => (
-                  <Card
+                  <button
                     key={item.id}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={item.title}
+                    type="button"
                     onClick={() => setSelected(item)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        setSelected(item);
-                      }
-                    }}
-                    className={cn("w-full cursor-pointer gap-0 rounded-2xl bg-gradient-to-r py-0    right-1   transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-gray-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary", statusGradients[item.submission.status])}
+                    className={cn(
+                      "flex w-full flex-wrap items-center gap-2 border-b border-border/70 bg-gradient-to-r p-4 text-left transition-colors last:border-b-0 hover:brightness-[0.98] focus-visible:relative focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-primary-500 sm:gap-3",
+                      statusGradients[item.submission.status],
+                    )}
                   >
-                    <CardContent className="flex flex-col px-4 py-4 sm:px-5">
-                      <div className="flex items-start justify-between gap-3 relative">
-                        <h2 className="min-w-0 text-base font-semibold leading-snug text-foreground">
-                          {item.title}
-                        </h2>
-                        <span className={cn("shrink-0 absolute -right-1 -top-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1", statusStyles[item.submission.status])}>
-                          {t("parentPages", statusLabelKeys[item.submission.status], lang)}
-                        </span>
-                      </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                    <span className="min-w-0 flex-1 basis-full sm:basis-0">
+                      <span className="block truncate text-sm font-semibold text-gray-900">{item.title}</span>
+                      <span className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
                         <span>{item.subject?.name ?? "—"}</span>
                         <span className="inline-flex items-center gap-1.5">
                           <CalendarDays className="size-3.5" />
-                          Due {formatDate(item.dueDate)}
+                          {t("parentPages", "dueDateCol", lang)}: {formatDate(item.dueDate)}
                         </span>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </span>
+                    </span>
+                    <span className={cn("shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ring-1", statusStyles[item.submission.status])}>
+                      {t("parentPages", statusLabelKeys[item.submission.status], lang)}
+                    </span>
+                  </button>
                 ))}
               </div>
             )}

@@ -1,9 +1,11 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import type { ExamRecord } from "@/lib/exams-api";
 import type { ResultRecord, ExamSummary, ClassReport } from "@/lib/results-api";
-import { GRADE_COLORS, TOTAL_GRADE_LABELS } from "@/lib/results-api";
+import { getResults, getSummaries, GRADE_COLORS, TOTAL_GRADE_LABELS } from "@/lib/results-api";
+import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
 import { useStudent, useStudentPhoto } from "@/lib/hooks/useStudentPhoto";
 import { useStudentFullDataFromParent } from "@/lib/hooks/useStudentFullDataFromParent";
 import { useRefreshParentStudents } from "@/lib/hooks/useRefreshParentStudents";
@@ -14,11 +16,13 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { downloadAsJPG, downloadAsPDF, shareAsJPG, downloadAsPNG } from "@/lib/poster-utils";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import { Bar, BarChart, CartesianGrid, PolarAngleAxis, RadialBar, RadialBarChart, XAxis, YAxis } from "recharts";
 import {
   Medal, Loader2, AlertCircle, RefreshCw, GraduationCap, Trophy,
-  Download, Share2, FileText, ChevronDown, Printer, Calendar, Award, Eye, FileBadge2
+  Download, Share2, FileText, ChevronRight, Printer, Calendar, Award, FileBadge2, BookOpen, Users, TrendingUp
 } from "lucide-react";
-import { useExams, useResults, useResultSummaries, useClassReport } from "@/lib/queries";
+import { useExams, useResults, useClassReport } from "@/lib/queries";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -40,6 +44,34 @@ function calcFallbackGrade(score: number, totalMarks: number): string {
 }
 
 function gradeIsPassed(grade: string) { return grade !== "D"; }
+
+const resultChartConfig = {
+  score: { label: "Score", color: "var(--primary)" },
+  rate: { label: "Pass rate", color: "#0d9488" },
+} satisfies ChartConfig;
+
+function HalfRadialChart({ value, label, color }: { value: number; label: string; color: string }) {
+  const safeValue = Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
+  return (
+    <div className="relative h-16 w-24" role="img" aria-label={`${label}: ${safeValue.toFixed(0)}%`}>
+      <ChartContainer config={resultChartConfig} className="!aspect-auto h-16 w-24">
+        <RadialBarChart
+          data={[{ value: safeValue, fill: color }]}
+          startAngle={180}
+          endAngle={0}
+          cx="50%"
+          cy="95%"
+          innerRadius={30}
+          outerRadius={40}
+        >
+          <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
+          <RadialBar dataKey="value" background cornerRadius={5} isAnimationActive={false} />
+        </RadialBarChart>
+      </ChartContainer>
+      <span className="pointer-events-none absolute inset-x-0 bottom-0 text-center text-sm font-semibold tabular-nums text-gray-950">{safeValue.toFixed(0)}%</span>
+    </div>
+  );
+}
 
 const RANK_HEADER: Record<number, { grad: string; badge: string }> = {
   1: { grad: "from-yellow-500 via-amber-400 to-yellow-600", badge: "bg-yellow-700" },
@@ -447,16 +479,20 @@ export default function ParentResultsPage() {
   const madrasaName = user?.madrasaName ?? user?.name ?? "My Madrasa";
   const madrasaLogo = user?.madrasaLogo ?? null;
 
-  // multi-child support
-  const [selectedChildId, setSelectedChildId] = useState<string>(() => activeStudentId ?? ids[0] ?? "");
-  const effectiveId = selectedChildId || ids[0] || "";
+  const effectiveId = activeStudentId ?? ids[0] ?? "";
 
-  const [activeExamId, setActiveExamId] = useState("");
+  const [examSelection, setExamSelection] = useState<{ studentId: string; examId: string } | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   // Drawer state
-  const [overviewOpen, setOverviewOpen] = useState(false);
   const [cardOpen,     setCardOpen]     = useState(false);
   const [posterOpen,   setPosterOpen]   = useState(false);
+
+  useEffect(() => {
+    setDetailOpen(false);
+    setCardOpen(false);
+    setPosterOpen(false);
+  }, [effectiveId]);
 
   // Load child details
   const students = user?.accessibleStudents ?? [];
@@ -465,28 +501,44 @@ export default function ParentResultsPage() {
   // ── Load published exams ──────────────────────────────────────────────────────
   const { data: examData, isLoading: loadingExams, error: examError, refetch: refetchExams, isRefetching } = useExams(
     { clientId: cid, token },
-    { accademicYearId: ayId || undefined, studentId: effectiveId, limit: 50 },
+    { accademicYearId: ayId || undefined, studentId: effectiveId, limit: 100 },
   );
   const exams: ExamRecord[] = (examData?.data ?? []).filter((e) => e.examStatus === "PUBLISHED");
   const loading = loadingExams;
   const error = examError instanceof Error ? examError.message : null;
 
-  // Auto-select first published exam on load
-  if (!activeExamId && exams.length > 0 && exams[0]) {
-    setActiveExamId(exams[0].id);
+  const { data: summariesData, isLoading: loadingSummaries } = useQuery({
+    queryKey: queryKeys.results.summaries(cid, { studentId: effectiveId, accademicYearId: ayId, limit: 100 }),
+    queryFn: () => getSummaries(cid, token, { studentId: effectiveId, accademicYearId: ayId || undefined, limit: 100 }),
+    enabled: !!cid && !!token && !!effectiveId,
+  });
+  const summaries = summariesData?.data ?? [];
+  const summariesByExam = new Map(summaries.map((item) => [item.examId, item]));
+  const { data: allResultsData, isLoading: loadingAllResults } = useQuery({
+    queryKey: queryKeys.results.list(cid, { studentId: effectiveId, limit: 1000 }),
+    queryFn: () => getResults(cid, token, { studentId: effectiveId, limit: 1000 }),
+    enabled: !!cid && !!token && !!effectiveId,
+  });
+  const resultTotalsByExam = new Map<string, { score: number; max: number }>();
+  for (const result of allResultsData?.data ?? []) {
+    if (!result.exam?.id) continue;
+    const totals = resultTotalsByExam.get(result.exam.id) ?? { score: 0, max: 0 };
+    totals.score += result.score;
+    totals.max += result.totalMarks;
+    resultTotalsByExam.set(result.exam.id, totals);
   }
 
+  const activeExamId = detailOpen && examSelection?.studentId === effectiveId && exams.some((exam) => exam.id === examSelection.examId)
+    ? examSelection.examId
+    : "";
+
   // ── Load results + summary when exam changes ──────────────────────────────────
-  const { data: resultsData, isLoading: loadingResults } = useResults(
+  const { data: resultsData, isLoading: loadingResults, error: resultsError } = useResults(
     { clientId: cid, token },
     { examId: activeExamId, studentId: effectiveId, limit: 50 },
   );
-  const { data: summaryData } = useResultSummaries(
-    { clientId: cid, token },
-    { examId: activeExamId, studentId: effectiveId, limit: 1 },
-  );
   const results: ResultRecord[] = resultsData?.data ?? [];
-  const summary: ExamSummary | null = summaryData?.data?.[0] ?? null;
+  const summary: ExamSummary | null = summariesByExam.get(activeExamId) ?? null;
 
   // ── Load class report (class-level stats) when exam changes ────────────────────
   const activeExamForReport = exams.find((e) => e.id === activeExamId);
@@ -502,6 +554,15 @@ export default function ParentResultsPage() {
   const totalObtained = summary?.totalScore ?? results.reduce((s, r) => s + r.score, 0);
   const totalMax      = summary?.totalMaxMarks ?? results.reduce((s, r) => s + r.totalMarks, 0);
   const overallPct    = summary?.totalPercentage ?? (totalMax > 0 ? (totalObtained / totalMax) * 100 : 0);
+  const passedCount = results.filter((result) => {
+    const grade = result.grade ?? calcFallbackGrade(result.score, result.totalMarks);
+    return result.isPassed ?? gradeIsPassed(grade);
+  }).length;
+  const passRate = results.length > 0 ? (passedCount / results.length) * 100 : 0;
+  const subjectChartData = results.map((result, index) => ({
+    subject: result.subject?.name ?? `Subject ${index + 1}`,
+    score: result.totalMarks > 0 ? Math.max(0, Math.min(100, (result.score / result.totalMarks) * 100)) : 0,
+  }));
 
   // Class-level statistics — prefer the values stored on the student's
   // summary (computed during the last `summaries/compute` run), fall back to
@@ -524,262 +585,188 @@ export default function ParentResultsPage() {
   return (
     <DashboardLayout>
       <PageHeader title={t("parentPages", "resultsPageTitle", lang)} />
-      <div className="px-3 sm:px-4 py-3 lg:px-8 lg:py-6 space-y-5 sm:space-y-6">
+      <div className="space-y-5 px-3 py-3 sm:px-4 lg:px-8 lg:py-6">
         {loading ? (
-            <div className="space-y-5">
-            <Skeleton className="h-20 rounded-2xl" />
-            <div className="flex gap-1">
-              {[1, 2, 3, 4].map((i) => (
-                <Skeleton key={i} className="h-9 w-20 rounded-xl" />
-              ))}
-            </div>
-            <div className="space-y-3">
-              <Skeleton className="h-40 rounded-2xl" />
-              <Skeleton className="h-56 rounded-2xl" />
-            </div>
+          <div className="space-y-3">
+            {[1, 2, 3].map((item) => <Skeleton key={item} className="h-28 rounded-2xl" />)}
           </div>
         ) : !effectiveId ? (
-              <div className="text-center py-16 sm:py-20 bg-white border border-gray-100 rounded-2xl p-5">
-                <GraduationCap className="w-10 sm:w-12 h-10 sm:h-12 text-gray-200 mx-auto mb-3" />
-                <p className="text-sm font-semibold text-gray-900">No children linked to this account</p>
-              </div>
+          <div className="rounded-2xl border border-gray-100 bg-white p-10 text-center">
+            <GraduationCap className="mx-auto mb-3 size-10 text-gray-300" />
+            <p className="text-sm font-semibold text-gray-900">No children linked to this account</p>
+          </div>
         ) : error ? (
-          <div className="bg-rose-50 border border-rose-100 text-rose-600 text-sm px-4 py-3 rounded-xl flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" /> {error}
+          <div className="flex items-center gap-2 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-600">
+            <AlertCircle className="size-4 shrink-0" /> {error}
           </div>
         ) : (
-          <div className="space-y-6">
-
-            {/* Child switcher */}
-            {ids.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 print:hidden">
-                {students.map((s) => (
-                  <button key={s.id}
-                    onClick={() => { setSelectedChildId(s.id); setActiveExamId(""); }}
-                    className={cn(
-                      "px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors border active:scale-[0.97]",
-                      selectedChildId === s.id
-                        ? "border-primary-600 bg-primary-50 text-primary-700"
-                        : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50",
-                    )}>
-                    {s.name}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Top Summary — simple elegant view */}
-            {activeExam && activeStudent && (
-              <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-4 border-b-2 border-gray-200">
-                <div className="space-y-1.5 min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="inline-block text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.18em] text-primary-700">
-                      Examination Result
-                    </span>
-                    <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                      · {activeExam.classId ? "Class Level" : "Madrasa Level"}
-                    </span>
-                  </div>
-                  <h2 className="text-lg sm:text-2xl lg:text-3xl font-extrabold text-gray-900 leading-tight tracking-tight">
-                    {activeExam.name}
-                  </h2>
-                  <p className="text-xs sm:text-sm text-gray-500 font-medium">
-                    For <span className="text-gray-900 font-semibold">{activeStudent.name}</span>
-                    <span className="text-gray-300 mx-1.5">·</span>
-                    <span>{activeStudent.className ?? "Class"}</span>
-                  </p>
-                  <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[10px] sm:text-[11px] text-gray-500 pt-0.5">
-                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3 text-gray-400" /> {fmt(activeExam.startDate)} – {fmt(activeExam.endDate)}</span>
-                    <span className="flex items-center gap-1"><Award className="w-3 h-3 text-gray-400" /> Published {fmt(activeExam.publishedDate)}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 self-start md:self-end shrink-0 print:hidden">
-                  <div className="relative">
-                    <select
-                      value={activeExamId}
-                      onChange={(e) => setActiveExamId(e.target.value)}
-                      className="appearance-none pl-3 pr-8 py-2 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:border-gray-400 focus:outline-none focus:border-primary-500 transition-colors cursor-pointer"
-                    >
-                      {exams.map((ex) => <option key={ex.id} value={ex.id}>{ex.name}</option>)}
-                    </select>
-                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
-                  </div>
-                  <button onClick={() => refetchExams()} className="p-2 text-gray-500 hover:text-gray-900 border border-gray-200 hover:border-gray-400 rounded-xl transition-colors bg-white">
-                    <RefreshCw className={cn("w-4 h-4", isRefetching && "animate-spin")} />
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Action bar — opens drawers */}
-            {activeExam && activeStudent && results.length > 0 && (
-              <div className="flex items-center gap-2 flex-wrap print:hidden">
-                <button
-                  onClick={() => setOverviewOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 transition-colors active:scale-[0.97]"
-                >
-                  <Eye className="w-3.5 h-3.5" /> Overview
-                </button>
-                <button
-                  onClick={() => setCardOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-primary-600 hover:bg-primary-700 text-white transition-colors active:scale-[0.97] shadow-sm"
-                >
-                  <FileBadge2 className="w-3.5 h-3.5" /> Result Card
-                </button>
-                {canRankCard && (
-                  <button
-                    onClick={() => setPosterOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 transition-colors active:scale-[0.97]"
-                  >
-                    <Trophy className="w-3.5 h-3.5" /> Rank Poster
-                  </button>
-                )}
-                <button
-                  onClick={() => window.print()}
-                  className="ml-auto inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 transition-colors active:scale-[0.97]"
-                >
-                  <Printer className="w-3.5 h-3.5" /> Print
-                </button>
-              </div>
-            )}
-
-            {/* Marks — always shown inline on the page */}
+          <div className="space-y-4">
             {exams.length === 0 ? (
-              <div className="text-center py-16 sm:py-20 bg-white border border-gray-100 rounded-2xl p-5">
-                <Medal className="w-10 sm:w-12 h-10 sm:h-12 text-gray-200 mx-auto mb-3" />
+              <div className="rounded-2xl border border-gray-100 bg-white p-10 text-center">
+                <Medal className="mx-auto mb-3 size-10 text-gray-300" />
                 <p className="text-sm font-semibold text-gray-900">No published results yet</p>
-                <p className="text-xs text-gray-400 mt-1">Once examination results are published, they will appear here.</p>
+                <p className="mt-1 text-xs text-gray-500">Once examination results are published, they will appear here.</p>
               </div>
-            ) : loadingResults ? (
-              <div className="space-y-5">
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
-                  {[1, 2, 3, 4, 5, 6].map((i) => (
-                    <Skeleton key={i} className="h-16 sm:h-20 rounded-2xl" />
-                  ))}
-                </div>
-                <Skeleton className="h-56 sm:h-64 rounded-2xl" />
-              </div>
-            ) : results.length === 0 ? (
-              <div className="text-center py-12 text-gray-400 text-xs">No marks records available for this exam.</div>
             ) : (
-              <div className="space-y-5">
-                {/* Hero summary — prominent boxes for each metric */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3 print:hidden">
-                  <div className="bg-white border border-primary-100 rounded-2xl p-3.5 sm:p-5 shadow-sm">
-                    <p className="text-[9px] sm:text-[10px] text-primary-700 uppercase tracking-[0.15em] font-bold">Percentage</p>
-                    <p className="mt-1.5 sm:mt-2 text-xl sm:text-3xl font-extrabold text-primary-700 leading-none tabular-nums tracking-tight">
-                      {overallPct.toFixed(1)}<span className="text-sm sm:text-lg text-primary-600/70 font-bold">%</span>
-                    </p>
-                  </div>
-                  <div className="bg-white border border-primary-100 rounded-2xl p-3.5 sm:p-5 shadow-sm">
-                    <p className="text-[9px] sm:text-[10px] text-primary-700 uppercase tracking-[0.15em] font-bold">Grade</p>
-                    <p className="mt-1.5 sm:mt-2 text-xl sm:text-3xl font-extrabold text-primary-700 leading-none tracking-tight">
-                      {summary?.totalGrade ? TOTAL_GRADE_LABELS[summary.totalGrade] : calcFallbackGrade(totalObtained, totalMax)}
-                    </p>
-                  </div>
-                  {rank && (
-                    <div className="bg-white border border-primary-100 rounded-2xl p-3.5 sm:p-5 shadow-sm">
-                      <p className="text-[9px] sm:text-[10px] text-primary-700 uppercase tracking-[0.15em] font-bold">Class Rank</p>
-                      <p className="mt-1.5 sm:mt-2 text-xl sm:text-3xl font-extrabold text-primary-700 leading-none tabular-nums tracking-tight">
-                        <span className="text-sm sm:text-lg text-primary-600/70 font-bold">#</span>{rank}
-                      </p>
-                    </div>
-                  )}
-                  {summary?.finalStatus && (
-                    <div className={cn(
-                      "border rounded-2xl p-3.5 sm:p-5 shadow-sm",
-                      summary.finalStatus === "PASSED" || summary.finalStatus === "PROMOTED"
-                        ? "bg-primary-50 border-primary-200"
-                        : summary.finalStatus === "FAILED"
-                        ? "bg-red-50 border-red-200"
-                        : "bg-amber-50 border-amber-200"
-                    )}>
-                      <p className={cn("text-[9px] sm:text-[10px] uppercase tracking-[0.15em] font-bold",
-                        summary.finalStatus === "PASSED" || summary.finalStatus === "PROMOTED" ? "text-primary-700" : "text-rose-600")}>Status</p>
-                      <p className={cn("mt-1.5 sm:mt-2 text-lg sm:text-2xl font-extrabold leading-none uppercase tracking-tight",
-                        summary.finalStatus === "PASSED" || summary.finalStatus === "PROMOTED" ? "text-primary-700" : "text-rose-600")}>
-                        {summary.finalStatus}
-                      </p>
-                    </div>
-                  )}
-                  <div className="bg-white border border-gray-100 rounded-2xl p-3.5 sm:p-5 shadow-sm">
-                    <p className="text-[9px] sm:text-[10px] text-gray-500 uppercase tracking-wider font-bold">Subjects</p>
-                    <p className="mt-1.5 sm:mt-2 text-xl sm:text-3xl font-extrabold text-gray-900 leading-none tabular-nums tracking-tight">
-                      {results.length}
-                    </p>
-                  </div>
-                  <div className="bg-white border border-gray-100 rounded-2xl p-3.5 sm:p-5 shadow-sm">
-                    <p className="text-[9px] sm:text-[10px] text-gray-500 uppercase tracking-wider font-bold">Total Marks</p>
-                    <p className="mt-1.5 sm:mt-2 text-xl sm:text-3xl font-extrabold text-gray-900 leading-none tabular-nums tracking-tight">
-                      {totalObtained.toFixed(0)}<span className="text-sm sm:text-lg text-gray-400 font-bold">/{totalMax}</span>
-                    </p>
-                  </div>
-                </div>
-
-                {/* Class-level stats row — average, highest, lowest, pass rate, total students */}
-                {(() => {
-                  const passedCount = results.filter((r) => {
-                    const g = r.grade ?? calcFallbackGrade(r.score, r.totalMarks);
-                    return r.isPassed ?? gradeIsPassed(g);
-                  }).length;
-                  const passRate = results.length > 0 ? (passedCount / results.length) * 100 : 0;
-                  const stats = classReport?.stats;
-                  const aboveAvg = classAverage != null && overallPct > classAverage;
+              <div className="space-y-0 divide-y divide-primary-100 overflow-hidden rounded-2xl mt-3">
+                {exams.map((exam) => {
+                  const examSummary = summariesByExam.get(exam.id);
+                  const totals = resultTotalsByExam.get(exam.id);
+                  const percentage = examSummary?.totalPercentage != null
+                    ? examSummary.totalPercentage
+                    : totals && totals.max > 0 ? (totals.score / totals.max) * 100 : null;
+                  const displayPercentage = percentage != null && Number.isFinite(percentage)
+                    ? Math.max(0, Math.min(100, percentage)) : null;
                   return (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3 print:hidden">
-                      <div className="bg-white border border-gray-100 rounded-2xl p-3.5 sm:p-5 shadow-sm">
-                        <p className="text-[9px] sm:text-[10px] text-gray-500 uppercase tracking-wider font-bold">Class Average</p>
-                        <p className="mt-1.5 sm:mt-2 text-xl sm:text-3xl font-extrabold text-gray-900 leading-none tabular-nums tracking-tight">
-                          {classAverage != null
-                            ? <>{classAverage.toFixed(1)}<span className="text-sm sm:text-lg text-gray-400 font-bold">%</span></>
-                            : "—"}
-                        </p>
-                        {classAverage != null && (
-                          <p className={cn("mt-1 sm:mt-1.5 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider", aboveAvg ? "text-primary-600" : "text-amber-600")}>
-                            {aboveAvg ? "▲ Above avg" : "▼ Below avg"}
+                    <button
+                      key={exam.id}
+                      type="button"
+                      onClick={() => { setExamSelection({ studentId: effectiveId, examId: exam.id }); setDetailOpen(true); }}
+                      className="block w-full    bg-gradient-to-r from-white via-white to-primary-50/50 p-4 text-left transition-colors hover:border-primary-300 hover:from-primary-50/40 sm:p-5"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="text-sm font-semibold text-gray-950 sm:text-base">{exam.name}</h3>
+                          <p className="mt-1 flex items-center gap-1.5 text-xs text-gray-500">
+                            <Calendar className="size-3.5 shrink-0" /> {fmt(exam.startDate)}{exam.endDate && exam.endDate !== exam.startDate ? ` – ${fmt(exam.endDate)}` : ""}
                           </p>
-                        )}
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <span className="text-base font-semibold tabular-nums text-primary-700 sm:text-lg">
+                            {displayPercentage != null ? `${displayPercentage.toFixed(1)}%` : loadingSummaries || loadingAllResults ? "…" : "—"}
+                          </span>
+                          <ChevronRight className="size-4 text-gray-400" />
+                        </div>
                       </div>
-                      <div className="bg-white border border-gray-100 rounded-2xl p-3.5 sm:p-5 shadow-sm">
-                        <p className="text-[9px] sm:text-[10px] text-gray-500 uppercase tracking-wider font-bold">Highest</p>
-                        <p className="mt-1.5 sm:mt-2 text-xl sm:text-3xl font-extrabold text-gray-900 leading-none tabular-nums tracking-tight">
-                          {classHighest != null
-                            ? <>{classHighest.toFixed(1)}<span className="text-sm sm:text-lg text-gray-400 font-bold">%</span></>
-                            : "—"}
-                        </p>
+                      <div
+                        className="mt-4 h-2 w-full overflow-hidden rounded-full bg-gradient-to-r from-primary-50 via-emerald-50 to-teal-100"
+                        role="progressbar"
+                        aria-label={`${exam.name} percentage`}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={displayPercentage ?? undefined}
+                      >
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-primary-500 to-emerald-500 transition-all"
+                          style={{ width: `${displayPercentage ?? 0}%` }}
+                        />
                       </div>
-                      <div className="bg-white border border-gray-100 rounded-2xl p-3.5 sm:p-5 shadow-sm">
-                        <p className="text-[9px] sm:text-[10px] text-gray-500 uppercase tracking-wider font-bold">Lowest</p>
-                        <p className="mt-1.5 sm:mt-2 text-xl sm:text-3xl font-extrabold text-gray-900 leading-none tabular-nums tracking-tight">
-                          {classLowest != null
-                            ? <>{classLowest.toFixed(1)}<span className="text-sm sm:text-lg text-gray-400 font-bold">%</span></>
-                            : "—"}
-                        </p>
-                      </div>
-                      <div className="bg-white border border-gray-100 rounded-2xl p-3.5 sm:p-5 shadow-sm">
-                        <p className="text-[9px] sm:text-[10px] text-gray-500 uppercase tracking-wider font-bold">Pass Rate</p>
-                        <p className="mt-1.5 sm:mt-2 text-xl sm:text-3xl font-extrabold text-gray-900 leading-none tabular-nums tracking-tight">
-                          {passRate.toFixed(0)}<span className="text-sm sm:text-lg text-gray-400 font-bold">%</span>
-                        </p>
-                        <p className="mt-1 sm:mt-1.5 text-[9px] sm:text-[10px] text-gray-400 font-semibold tabular-nums">
-                          {passedCount}/{results.length} subjects
-                        </p>
-                      </div>
-                      <div className="bg-white border border-gray-100 rounded-2xl p-3.5 sm:p-5 shadow-sm">
-                        <p className="text-[9px] sm:text-[10px] text-gray-500 uppercase tracking-wider font-bold">Class Size</p>
-                        <p className="mt-1.5 sm:mt-2 text-xl sm:text-3xl font-extrabold text-gray-900 leading-none tabular-nums tracking-tight">
-                          {classSize != null ? classSize : "—"}
-                        </p>
-                        {stats && (
-                          <p className="mt-1 sm:mt-1.5 text-[9px] sm:text-[10px] text-gray-400 font-semibold">
-                            {stats.passedCount} passed · {stats.failedCount} failed
-                          </p>
-                        )}
-                      </div>
-                    </div>
+                    </button>
                   );
-                })()}
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        <ResponsivePopover
+          open={detailOpen && !!activeExam}
+          onOpenChange={setDetailOpen}
+          side="responsive"
+          className="h-dvh max-h-dvh"
+          title={activeExam?.name ?? "Exam details"}
+          description={activeStudent ? `${activeStudent.name} · ${fmt(activeExam?.startDate)}${activeExam?.endDate ? ` – ${fmt(activeExam.endDate)}` : ""}` : undefined}
+        >
+          {activeExam && (
+            <div className="mx-auto w-full max-w-5xl space-y-5 p-4 pb-8 sm:p-6">
+              <div className="flex flex-wrap items-center gap-2 print:hidden">
+                <button onClick={() => setCardOpen(true)} disabled={loadingResults || results.length === 0}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-2 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-50">
+                  <FileBadge2 className="size-3.5" /> Result card
+                </button>
+                {canRankCard && <button onClick={() => setPosterOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100">
+                  <Trophy className="size-3.5" /> Rank poster
+                </button>}
+                <button onClick={() => window.print()}
+                  className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50">
+                  <Printer className="size-3.5" /> Print
+                </button>
+              </div>
+
+              {loadingResults || loadingSummaries ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-28 rounded-2xl" />
+                  <Skeleton className="h-64 rounded-2xl" />
+                </div>
+              ) : resultsError ? (
+                <div className="rounded-xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-600">Unable to load marks for this exam.</div>
+              ) : results.length === 0 ? (
+                <div className="rounded-xl border border-gray-100 bg-white p-8 text-center text-sm text-gray-500">No marks records available for this exam.</div>
+              ) : (
+                <div className="space-y-5">
+                {/* Results overview follows the compact statistics layout used on the fees page. */}
+                <section className="overflow-hidden rounded-2xl border border-gray-100 bg-gradient-to-br from-white to-sky-50 print:hidden">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-3 sm:px-5">
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-950">Performance overview</h3>
+                      <p className="mt-0.5 text-xs text-gray-500">{results.length} subjects · {totalObtained.toFixed(0)} of {totalMax} marks</p>
+                    </div>
+                    {summary?.finalStatus && (
+                      <span className={cn("rounded-full border px-2.5 py-1 text-xs font-semibold", STATUS_STYLE[summary.finalStatus] ?? "border-gray-200 bg-gray-50 text-gray-700")}>
+                        {summary.finalStatus}
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-px bg-gray-100 sm:grid-cols-3 lg:grid-cols-4">
+                    <div className="min-w-0 bg-white/90 p-3 sm:p-4">
+                      <h4 className="text-[11px] font-medium text-gray-600">Overall score</h4>
+                      <HalfRadialChart value={overallPct} label="of total marks" color="var(--primary)" />
+                      <p className="text-[11px] text-gray-500">{totalObtained.toFixed(0)} / {totalMax} marks</p>
+                    </div>
+                    <div className="min-w-0 bg-white/90 p-3 sm:p-4">
+                      <h4 className="text-[11px] font-medium text-gray-600">Subjects passed</h4>
+                      <HalfRadialChart value={passRate} label="pass rate" color="#0d9488" />
+                      <p className="text-[11px] text-gray-500">{passedCount} of {results.length} subjects</p>
+                    </div>
+                    {[
+                      { label: "Grade", value: summary?.totalGrade ? TOTAL_GRADE_LABELS[summary.totalGrade] : calcFallbackGrade(totalObtained, totalMax), detail: "Overall result", icon: Award },
+                      { label: "Class rank", value: rank ? `#${rank}` : "—", detail: classSize != null ? `of ${classSize} students` : "Class standing", icon: Trophy },
+                      { label: "Class average", value: classAverage != null ? `${classAverage.toFixed(1)}%` : "—", detail: classAverage != null ? `${Math.abs(overallPct - classAverage).toFixed(1)} points ${overallPct >= classAverage ? "above" : "below"}` : "Not available", icon: TrendingUp },
+                      { label: "Subjects", value: results.length, detail: `${passedCount} passed`, icon: BookOpen },
+                      { label: "Highest", value: classHighest != null ? `${classHighest.toFixed(1)}%` : "—", detail: "Class score", icon: Medal },
+                      { label: "Lowest", value: classLowest != null ? `${classLowest.toFixed(1)}%` : "—", detail: "Class score", icon: Medal },
+                      { label: "Class size", value: classSize ?? "—", detail: "Students", icon: Users },
+                      { label: "Total marks", value: `${totalObtained.toFixed(0)}/${totalMax}`, detail: "Obtained / maximum", icon: FileText },
+                    ].map((stat) => {
+                      const Icon = stat.icon;
+                      return (
+                        <div key={stat.label} className="min-w-0 bg-white/90 p-3 sm:p-4">
+                          <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-600">
+                            <Icon aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-primary-700" />
+                            <span>{stat.label}</span>
+                          </div>
+                          <div className="mt-2 text-base font-semibold tabular-nums text-gray-950 sm:text-lg">{stat.value}</div>
+                          <div className="mt-1 text-[11px] text-gray-500">{stat.detail}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+
+                <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white print:hidden">
+                  <div className="border-b border-gray-100 px-4 py-3 sm:px-5">
+                    <h3 className="text-sm font-semibold text-gray-950">Subject performance</h3>
+                    <p className="mt-0.5 text-xs text-gray-500">Score as a percentage of each subject's full marks</p>
+                  </div>
+                  <div className="p-3 sm:p-5">
+                    <ChartContainer
+                      config={resultChartConfig}
+                      className="w-full"
+                      style={{ height: Math.max(220, subjectChartData.length * 42) }}
+                      role="img"
+                      aria-label="Score percentage by subject"
+                    >
+                      <BarChart accessibilityLayer data={subjectChartData} layout="vertical" margin={{ top: 4, right: 18, bottom: 4, left: 0 }}>
+                        <CartesianGrid horizontal={false} stroke="#e5e7eb" />
+                        <XAxis type="number" domain={[0, 100]} tickLine={false} axisLine={false} tickFormatter={(value: number) => `${value}%`} />
+                        <YAxis dataKey="subject" type="category" width={110} tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
+                        <ChartTooltip content={<ChartTooltipContent hideLabel formatter={(value) => `${Number(value).toFixed(1)}%`} />} />
+                        <Bar dataKey="score" fill="var(--color-score)" radius={[0, 5, 5, 0]} maxBarSize={22} />
+                      </BarChart>
+                    </ChartContainer>
+                  </div>
+                </section>
 
                 {/* Subject wise marks — simple elegant table */}
                 <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
@@ -908,130 +895,23 @@ export default function ParentResultsPage() {
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
 
-          </div>
-        )}
+                </div>
+              )}
 
-        {/* Overview drawer — date details, exam rules, subjects (responsive: right on desktop, bottom on mobile) */}
-        <ResponsivePopover
-          open={overviewOpen}
-          onOpenChange={setOverviewOpen}
-          side="responsive"
-          title={activeExam ? `Overview · ${activeExam.name}` : "Overview"}
-          description={activeStudent ? `For ${activeStudent.name} · ${activeStudent.className ?? "Class"}` : undefined}
-        >
-          <div className="p-4 sm:p-5 space-y-4 sm:space-y-5">
-            {activeExam && (
-              <>
-                <section className="space-y-2">
-                  <h4 className="text-[10px] uppercase tracking-[0.18em] font-bold text-primary-700">Date Details</h4>
-                  <div className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
-                    <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
-                      <span className="text-gray-500">Exam Period</span>
-                      <span className="font-semibold text-gray-900 text-right">{fmt(activeExam.startDate)} – {fmt(activeExam.endDate)}</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
-                      <span className="text-gray-500">Mark Entry Deadline</span>
-                      <span className="font-semibold text-gray-900 text-right">{fmt(activeExam.markEntryLastDate)}</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
-                      <span className="text-gray-500">Published On</span>
-                      <span className="font-semibold text-gray-900 text-right">{fmt(activeExam.publishedDate)}</span>
-                    </div>
-                  </div>
-                </section>
-
-                <section className="space-y-2">
-                  <h4 className="text-[10px] uppercase tracking-[0.18em] font-bold text-primary-700">Exam Rules</h4>
-                  <div className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
-                    <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
-                      <span className="text-gray-500">Maximum Marks</span>
-                      <span className="font-semibold text-gray-900 tabular-nums">{activeExam.maxMarks ?? 100}</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
-                      <span className="text-gray-500">Pass Percentage</span>
-                      <span className="font-semibold text-gray-900 tabular-nums">40%</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
-                      <span className="text-gray-500">Academic Year</span>
-                      <span className="font-semibold text-gray-900 text-right">{activeExam.accademicYear?.name ?? "Current"}</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
-                      <span className="text-gray-500">Level</span>
-                      <span className="font-semibold text-gray-900">{activeExam.classId ? "Class Level" : "Madrasa Level"}</span>
-                    </div>
-                  </div>
-                </section>
-
-                {(classAverage != null || classHighest != null || classLowest != null || classSize != null) && (() => {
-                  const stats = classReport?.stats;
-                  return (
-                    <section className="space-y-2">
-                      <h4 className="text-[10px] uppercase tracking-[0.18em] font-bold text-primary-700">Class Statistics</h4>
-                      <div className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
-                        <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
-                          <span className="text-gray-500">Class Average</span>
-                          <span className="font-semibold text-gray-900 tabular-nums">{classAverage != null ? `${classAverage.toFixed(2)}%` : "—"}</span>
-                        </div>
-                        {classHighest != null && (
-                          <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
-                            <span className="text-gray-500">Class Highest</span>
-                            <span className="font-semibold text-gray-900 tabular-nums">{classHighest.toFixed(2)}%</span>
-                          </div>
-                        )}
-                        {classLowest != null && (
-                          <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
-                            <span className="text-gray-500">Class Lowest</span>
-                            <span className="font-semibold text-gray-900 tabular-nums">{classLowest.toFixed(2)}%</span>
-                          </div>
-                        )}
-                        <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
-                          <span className="text-gray-500">Total Students</span>
-                          <span className="font-semibold text-gray-900 tabular-nums">{classSize != null ? classSize : "—"}</span>
-                        </div>
-                        {stats && (
-                          <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
-                            <span className="text-gray-500">Pass / Fail</span>
-                            <span className="font-semibold text-gray-900 tabular-nums">
-                              <span className="text-primary-700">{stats.passedCount}</span>
-                              <span className="text-gray-300 mx-1">/</span>
-                            <span className="text-rose-600">{stats.failedCount}</span>
-                          </span>
-                        </div>
-                        )}
-                      </div>
-                    </section>
-                  );
-                })()}
-              </>
-            )}
-
-            <section className="space-y-2">
-              <h4 className="text-[10px] uppercase tracking-[0.18em] font-bold text-primary-700">Subjects ({results.length})</h4>
-              <div className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
-                {results.map((r, idx) => {
-                  const grade = r.grade ?? calcFallbackGrade(r.score, r.totalMarks);
-                  const gClass = GRADE_COLORS[grade] ?? "text-gray-600 bg-gray-50 border-gray-200";
-                  return (
-                    <div key={r.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="w-6 h-6 shrink-0 rounded-full bg-gray-100 text-gray-500 text-[10px] font-bold flex items-center justify-center tabular-nums">{idx + 1}</span>
-                        <p className="font-medium text-gray-800 truncate">{r.subject?.name ?? "Subject"}</p>
-                      </div>
-                      <div className="flex items-center gap-2.5 shrink-0">
-                        <span className="text-[11px] text-gray-500 tabular-nums">{r.score}/{r.totalMarks}</span>
-                        <span className={cn("inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded border w-8 text-center", gClass)}>
-                          {grade}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          </div>
+              <section className="rounded-2xl border border-gray-100 bg-white p-4 sm:p-5">
+                <h3 className="text-sm font-semibold text-gray-950">Exam information</h3>
+                <dl className="mt-3 grid grid-cols-2 gap-3 text-xs sm:grid-cols-3">
+                  <div><dt className="text-gray-500">Exam period</dt><dd className="mt-1 font-semibold text-gray-900">{fmt(activeExam.startDate)} – {fmt(activeExam.endDate)}</dd></div>
+                  <div><dt className="text-gray-500">Published</dt><dd className="mt-1 font-semibold text-gray-900">{fmt(activeExam.publishedDate)}</dd></div>
+                  <div><dt className="text-gray-500">Academic year</dt><dd className="mt-1 font-semibold text-gray-900">{activeExam.accademicYear?.name ?? "Current"}</dd></div>
+                  <div><dt className="text-gray-500">Mark entry deadline</dt><dd className="mt-1 font-semibold text-gray-900">{fmt(activeExam.markEntryLastDate)}</dd></div>
+                  <div><dt className="text-gray-500">Maximum marks</dt><dd className="mt-1 font-semibold text-gray-900">{activeExam.maxMarks ?? 100}</dd></div>
+                  <div><dt className="text-gray-500">Pass marks</dt><dd className="mt-1 font-semibold text-gray-900">{activeExam.passMarks ?? 40}</dd></div>
+                </dl>
+              </section>
+            </div>
+          )}
         </ResponsivePopover>
 
         {/* Result Card drawer — responsive: right on desktop, bottom on mobile */}

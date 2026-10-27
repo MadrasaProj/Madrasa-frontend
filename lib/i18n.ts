@@ -1936,6 +1936,10 @@ const translations = {
     },
     newRequest: { en: "New Request", ml: "പുതിയ അപേക്ഷ" },
     noLeaveRequests: { en: "No leave requests yet", ml: "ഇതുവരെ ലീവ് അപേക്ഷകളൊന്നുമില്ല" },
+    noMatchingLeaveRequests: { en: "No requests found", ml: "അപേക്ഷകളൊന്നും കണ്ടെത്തിയില്ല" },
+    allRequests: { en: "All", ml: "എല്ലാം" },
+    searchLeaveRequests: { en: "Search requests...", ml: "അപേക്ഷകൾ തിരയുക..." },
+    leavePeriod: { en: "Leave period", ml: "ലീവ് കാലയളവ്" },
     applyForLeave: { en: "Apply for Leave", ml: "ലീവിന് അപേക്ഷിക്കുക" },
     descriptionLabel: { en: "Description", ml: "വിവരണം" },
     reasonType: { en: "Reason Type", ml: "കാരണ തരം" },
@@ -2049,6 +2053,7 @@ const translations = {
     sickLabel: { en: "Sick", ml: "അസുഖം" },
     // Homework page
     homeworkPageTitle: { en: "Homework", ml: "ഹോംവർക്ക്" },
+    searchHomework: { en: "Search homework...", ml: "ഹോംവർക്ക് തിരയുക..." },
     noChildrenLinked: { en: "No children linked", ml: "കുട്ടികളെ ലിങ്ക് ചെയ്‌തിട്ടില്ല" },
     addChildTrack: { en: "Add a child to track homework", ml: "ഹോംവർക്ക് ട്രാക്ക് ചെയ്യാൻ ഒരു കുട്ടിയെ ചേർക്കുക" },
     pendingLabel: { en: "Pending", ml: "ബാക്കി" },

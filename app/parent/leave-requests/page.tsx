@@ -2,15 +2,13 @@ import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DatePickerInput } from "@/components/DatePickerInput";
 import { cn } from "@/lib/utils";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { SkeletonList } from "@/components/ui/Skeleton";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth";
@@ -20,10 +18,15 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
-  AlertCircle,
   CalendarDays,
   HeartPulse,
+  Search,
+  UserCheck,
+  Plus,
 } from "lucide-react";
+
+type StatusFilter = LeaveRequestStatus | "ALL";
+const STATUS_FILTERS: StatusFilter[] = ["ALL", "PENDING", "APPROVED", "REJECTED"];
 
 const STATUS_CONFIG: Record<
   LeaveRequestStatus,
@@ -81,6 +84,8 @@ export default function ParentLeaveRequestsPage() {
 
   const [showForm, setShowForm] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<LeaveRequest | null>(null);
+  const [filter, setFilter] = useState<StatusFilter>("ALL");
+  const [search, setSearch] = useState("");
   const [reasonType, setReasonType] = useState<LeaveReasonType>("LEAVE");
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -88,9 +93,20 @@ export default function ParentLeaveRequestsPage() {
 
   const { data, isLoading, error, refetch } = useMyLeaveRequests(
     { clientId: cid, token },
-    { studentId },
+    { studentId, status: filter === "ALL" ? undefined : filter },
   );
   const requests = data?.requests ?? [];
+  const query = search.trim().toLocaleLowerCase();
+  const filtered = query
+    ? requests.filter((request) =>
+        [
+          request.student.name,
+          request.student.adno,
+          request.description,
+          t("parentPages", REASON_CONFIG[request.reasonType].labelKey as any, lang),
+        ].some((value) => value.toLocaleLowerCase().includes(query)),
+      )
+    : requests;
 
   const createMutation = useCreateLeaveRequest({ clientId: cid, token });
 
@@ -130,87 +146,110 @@ export default function ParentLeaveRequestsPage() {
 
   return (
     <DashboardLayout>
-      <div className=" mx-auto ">
-        <PageHeader
-          title={t("parentPages", "leaveRequestsTitle", lang)}
-          action={
-            <Button type="button" onClick={() => setShowForm(true)}>
-              {t("parentPages", "newRequest", lang)}
-            </Button>
-          }
-        />
+      <div className="mx-auto px-0 py-4 sm:py-6">
+        <PageHeader title={t("parentPages", "leaveRequestsTitle", lang)} />
 
         {errorMessage && <ApiErrorBanner message={errorMessage} />}
 
-        <div className="space-y-3 pt-5">
-          {isLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3, 4].map((i) => (
-                <Skeleton key={i} className="h-24 rounded-2xl" />
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row">
+          <Tabs
+            value={filter}
+            onValueChange={(value) => {
+              setFilter(value as StatusFilter);
+              setSelectedRequest(null);
+            }}
+            className="w-full overflow-x-auto sm:w-auto"
+          >
+            <TabsList className="min-w-full w-max sm:min-w-0">
+              {STATUS_FILTERS.map((status) => (
+                <TabsTrigger key={status} value={status} className="flex-1 shrink-0 px-3">
+                  {status === "ALL"
+                    ? t("parentPages", "allRequests", lang)
+                    : t("parentPages", STATUS_CONFIG[status].labelKey as any, lang)}
+                </TabsTrigger>
               ))}
-            </div>
-          ) : requests.length === 0 ? (
-            <EmptyState
-              icon={AlertCircle}
-              title={t("parentPages", "noLeaveRequests", lang)}
-              description={t("parentPages", "leaveRequestsSub", lang)}
+            </TabsList>
+          </Tabs>
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t("parentPages", "searchLeaveRequests", lang)}
+              aria-label={t("parentPages", "searchLeaveRequests", lang)}
+              className="w-full rounded-xl border border-gray-200 py-2.5 pl-10 pr-4 text-sm transition-all focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/30"
             />
-          ) : (
-            <div className="rounded-xl border overflow-hidden border-gray-200 bg-white">
-              <Table className="min-w-[640px]">
-                <TableHeader className="bg-gray-50">
-                  <TableRow>
-                    <TableHead scope="col" className="px-4">{t("parentPages", "reasonType", lang)}</TableHead>
-                    <TableHead scope="col" className="px-4">{t("parentPages", "startDateLabel", lang)}</TableHead>
-                    <TableHead scope="col" className="px-4">{t("parentPages", "endDateLabel", lang)}</TableHead>
-                    <TableHead scope="col" className="px-4">{t("parentPages", "statusLabel", lang)}</TableHead>
-                    <TableHead scope="col" className="px-4">{t("parentPages", "submittedLabel", lang)}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {requests.map((request) => {
-                    const status = STATUS_CONFIG[request.status];
-                    const reason = REASON_CONFIG[request.reasonType];
-                    const StatusIcon = status.icon;
-                    return (
-                      <TableRow
-                        key={request.id}
-                        tabIndex={0}
-                        onClick={() => setSelectedRequest(request)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            setSelectedRequest(request);
-                          }
-                        }}
-                        aria-label={`${t("parentPages", reason.labelKey as any, lang)} — ${new Date(request.startDate).toLocaleDateString()}`}
-                        className="cursor-pointer transition-colors hover:bg-gray-50 focus-visible:bg-primary-50 focus-visible:outline-2 focus-visible:outline-primary-500"
-                      >
-                        <TableCell className="px-4 font-medium text-gray-900">{t("parentPages", reason.labelKey as any, lang)}</TableCell>
-                        <TableCell className="px-4 text-gray-600">{new Date(request.startDate).toLocaleDateString()}</TableCell>
-                        <TableCell className="px-4 text-gray-600">{request.endDate ? new Date(request.endDate).toLocaleDateString() : "—"}</TableCell>
-                        <TableCell className="px-4">
-                          <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold", status.bg, status.color)}>
-                            <StatusIcon className="h-3.5 w-3.5" />
-                            {t("parentPages", status.labelKey as any, lang)}
-                          </span>
-                        </TableCell>
-                        <TableCell className="px-4 text-gray-600">{new Date(request.createdAt).toLocaleDateString()}</TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+          </div>
         </div>
+
+        {isLoading ? (
+          <SkeletonList count={4} />
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center py-12 text-center text-gray-400">
+            <img
+              src="/imgs/leave-request/1.png"
+              alt=""
+              aria-hidden="true"
+              className="mb-4 h-40 w-44 object-contain"
+            />
+            <p className="text-sm">
+              {requests.length === 0 && filter === "ALL" && !query
+                ? t("parentPages", "noLeaveRequests", lang)
+                : t("parentPages", "noMatchingLeaveRequests", lang)}
+            </p>
+          </div>
+        ) : (
+          <div className="card rounded-2xl bg-background p-4">
+            {filtered.map((request) => {
+              const reason = REASON_CONFIG[request.reasonType];
+              const status = STATUS_CONFIG[request.status];
+              const StatusIcon = status.icon;
+              return (
+                <button
+                  key={request.id}
+                  type="button"
+                  onClick={() => setSelectedRequest(request)}
+                  className="flex h-auto w-full flex-wrap items-center justify-start gap-2 border-b border-gray-200 p-2 text-left transition-colors last:border-b-0 hover:bg-gray-50 focus-visible:rounded-lg focus-visible:outline-2 focus-visible:outline-primary-500 sm:gap-3"
+                >
+                  <span className="min-w-0 flex-1 basis-full sm:basis-0">
+                    <span className="block truncate text-sm font-semibold text-gray-900">{request.student.name}</span>
+                    <span className="block text-xs text-gray-500">{new Date(request.startDate).toLocaleDateString()}{request.endDate && ` – ${new Date(request.endDate).toLocaleDateString()}`}</span>
+                  </span>
+                  {request.student.class && (
+                    <span className="shrink-0 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
+                      {request.student.class.name}
+                    </span>
+                  )}
+                  <span className={cn("shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold", reason.bg, reason.color)}>
+                    {t("parentPages", reason.labelKey as any, lang)}
+                  </span>
+                  <span className={cn("inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold", status.bg, status.color)}>
+                    <StatusIcon className="h-3.5 w-3.5" />
+                    {t("parentPages", status.labelKey as any, lang)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
+
+      <Button
+        type="button"
+        size="lg"
+        onClick={() => setShowForm(true)}
+        className="fixed bottom-24 right-4 z-40 h-12 rounded-full px-5 shadow-lg lg:bottom-6 lg:right-8"
+      >
+        <Plus className="size-4" />
+        {t("parentPages", "newRequest", lang)}
+      </Button>
 
       <ResponsivePopover
         open={selectedRequest !== null}
         onOpenChange={(open) => { if (!open) setSelectedRequest(null); }}
-        title={t("parentPages", "leaveRequestsTitle", lang)}
-        description={selectedRequest && [selectedRequest.student.name, selectedRequest.student.class?.name, selectedRequest.student.adno].filter(Boolean).join(" · ")}
+        title={selectedRequest?.student.name}
+        description={selectedRequest?.student.class?.name}
       >
         {selectedRequest && (() => {
           const request = selectedRequest;
@@ -218,8 +257,11 @@ export default function ParentLeaveRequestsPage() {
           const reason = REASON_CONFIG[request.reasonType];
           const StatusIcon = status.icon;
           return (
-            <div className="space-y-5 p-5 text-sm">
-              <div className="flex flex-wrap gap-2">
+            <div className="space-y-5 p-5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
+                  #{request.student.adno}
+                </span>
                 <span className={cn("rounded-full px-2.5 py-1 text-xs font-semibold", reason.bg, reason.color)}>
                   {t("parentPages", reason.labelKey as any, lang)}
                 </span>
@@ -228,40 +270,33 @@ export default function ParentLeaveRequestsPage() {
                   {t("parentPages", status.labelKey as any, lang)}
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs font-semibold text-gray-500">{t("parentPages", "startDateLabel", lang)}</p>
-                  <p className="mt-1 text-gray-900">{new Date(request.startDate).toLocaleDateString()}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-500">{t("parentPages", "endDateLabel", lang)}</p>
-                  <p className="mt-1 text-gray-900">{request.endDate ? new Date(request.endDate).toLocaleDateString() : "—"}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-500">{t("parentPages", "submittedLabel", lang)}</p>
-                  <p className="mt-1 text-gray-900">{new Date(request.createdAt).toLocaleDateString()}</p>
-                </div>
-                {request.reviewedAt && (
-                  <div>
-                    <p className="text-xs font-semibold text-gray-500">{t("parentPages", "reviewedLabel", lang)}</p>
-                    <p className="mt-1 text-gray-900">{new Date(request.reviewedAt).toLocaleDateString()}</p>
-                  </div>
-                )}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{t("parentPages", "leavePeriod", lang)}</p>
+                <p className="mt-1 text-sm text-gray-700">
+                  {new Date(request.startDate).toLocaleDateString()}
+                  {request.endDate && <> – {new Date(request.endDate).toLocaleDateString()}</>}
+                </p>
               </div>
               <div>
-                <p className="text-xs font-semibold text-gray-500">{t("parentPages", "descriptionLabel", lang)}</p>
-                <p className="mt-1 whitespace-pre-wrap text-gray-900">{request.description}</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{t("parentPages", "descriptionLabel", lang)}</p>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{request.description}</p>
+              </div>
+              <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-gray-500">
+                <span>{t("parentPages", "submittedLabel", lang)}: {new Date(request.createdAt).toLocaleDateString()}</span>
+                {request.reviewedAt && (
+                  <span>{t("parentPages", "reviewedLabel", lang)}: {new Date(request.reviewedAt).toLocaleDateString()}</span>
+                )}
               </div>
               {request.reviewedBy && (
-                <div>
-                  <p className="text-xs font-semibold text-gray-500">{t("parentPages", "reviewedByLabel", lang)}</p>
-                  <p className="mt-1 text-gray-900">{request.reviewedBy.name}</p>
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <UserCheck className="h-3.5 w-3.5" />
+                  {t("parentPages", "reviewedByLabel", lang)} {request.reviewedBy.name}
                 </div>
               )}
               {request.reviewNote && (
                 <div>
-                  <p className="text-xs font-semibold text-gray-500">{t("parentPages", "reviewNote", lang)}</p>
-                  <p className="mt-1 whitespace-pre-wrap text-gray-900">{request.reviewNote}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{t("parentPages", "reviewNote", lang)}</p>
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{request.reviewNote}</p>
                 </div>
               )}
             </div>
