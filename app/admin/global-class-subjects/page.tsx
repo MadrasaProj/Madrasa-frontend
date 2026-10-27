@@ -14,13 +14,15 @@ import {
   createClassSubject,
   updateClassSubject,
   deleteClassSubject,
+  syncEducationSystemSubjects,
+  syncGradeLevelSubjects,
   type EducationSystemInfo,
   type GradeLevelDetail,
   type ClassSubjectInfo,
 } from "@/lib/super-admin-api";
 import { useAuthStore } from "@/store/auth";
 import {
-  BookOpen, GraduationCap, Plus, Pencil, Trash2, X, Loader2, ArrowUpRight,
+  BookOpen, GraduationCap, Plus, Pencil, Trash2, X, Loader2, ArrowUpRight, RefreshCw,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -87,6 +89,7 @@ export default function AdminGlobalClassSubjectsPage() {
   const [subjForm, setSubjForm] = useState<SubjectForm>(EMPTY_SUBJECT);
   const [editingSubj, setEditingSubj] = useState<string | null>(null);
   const [subjSaving, setSubjSaving] = useState(false);
+  const [deletingSubjId, setDeletingSubjId] = useState<string | null>(null);
 
   // ── Systems ───────────────────────────────────────────────────────────────────
 
@@ -129,6 +132,7 @@ export default function AdminGlobalClassSubjectsPage() {
   };
 
   const handleDeleteSys = async (sysId: string) => {
+    if (!confirm("Are you sure you want to deactivate this education system?")) return;
     try {
       await deleteEducationSystem(sysId, token);
       setSystems((prev) => prev.filter((s) => s.id !== sysId));
@@ -196,6 +200,7 @@ export default function AdminGlobalClassSubjectsPage() {
   };
 
   const deleteGl = async (glId: string) => {
+    if (!confirm("Are you sure you want to deactivate this class?")) return;
     try {
       await deleteGradeLevel(glId, token);
       setGradeLevels((prev) => prev.filter((g) => g.id !== glId));
@@ -252,17 +257,68 @@ export default function AdminGlobalClassSubjectsPage() {
       if (editingSubj) {
         const updated = await updateClassSubject(editingSubj, dto, token);
         setSubjects((prev) => prev.map((s) => (s.id === editingSubj ? { ...s, ...updated } : s)));
-        toast.success("Subject updated");
+        const prop = (updated as any)?.propagation;
+        if (prop && prop.classesUpdated > 0) {
+          toast.success(`Subject updated & synced across ${prop.classesUpdated} madrasa class(es)`);
+        } else {
+          toast.success("Subject updated");
+        }
       } else {
         const created = await createClassSubject(activeGlId, dto, token);
         setSubjects((prev) => [...prev, created]);
-        toast.success("Subject created");
+        const prop = (created as any)?.propagation;
+        if (prop && prop.classesUpdated > 0) {
+          toast.success(`Subject added to ${prop.classesUpdated} existing madrasa class(es)`);
+        } else {
+          toast.success("Subject created");
+        }
       }
       setShowSubjForm(false);
       setSubjForm(EMPTY_SUBJECT);
       setEditingSubj(null);
     } catch (e) { toast.error((e as Error).message); }
     finally { setSubjSaving(false); }
+  };
+
+  const [syncingSys, setSyncingSys] = useState(false);
+  const [syncingGl, setSyncingGl] = useState(false);
+
+  const handleSyncSystem = async () => {
+    if (!drawerSys || !token) return;
+    setSyncingSys(true);
+    try {
+      const res = await syncEducationSystemSubjects(drawerSys.id, token);
+      if (res.async) {
+        toast.success(res.message || "Sync job started in background across all enrolled madrasas.");
+      } else {
+        toast.success(
+          `Academic system synced! ${res.stats?.classesUpdated ?? 0} class(es) updated, ${res.stats?.subjectsAdded ?? 0} subject(s) added, ${res.stats?.subjectsLinked ?? 0} linked.`
+        );
+      }
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSyncingSys(false);
+    }
+  };
+
+  const handleSyncGradeLevel = async () => {
+    if (!activeGlId || !token) return;
+    setSyncingGl(true);
+    try {
+      const res = await syncGradeLevelSubjects(activeGlId, token);
+      if (res.async) {
+        toast.success(res.message || "Class sync started in background across all enrolled madrasas.");
+      } else {
+        toast.success(
+          `Class synced! ${res.stats?.classesUpdated ?? 0} class(es) updated, ${res.stats?.subjectsAdded ?? 0} subject(s) added, ${res.stats?.subjectsLinked ?? 0} linked.`
+        );
+      }
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSyncingGl(false);
+    }
   };
 
   const addGradeRow = () => {
@@ -282,11 +338,23 @@ export default function AdminGlobalClassSubjectsPage() {
   };
 
   const deleteSubj = async (subjId: string) => {
+    if (!confirm("Are you sure you want to remove this subject from this grade level? This will remove or deactivate it across all classes in this system.")) {
+      return;
+    }
+    setDeletingSubjId(subjId);
     try {
-      await deleteClassSubject(subjId, token);
+      const res: any = await deleteClassSubject(subjId, token);
       setSubjects((prev) => prev.filter((s) => s.id !== subjId));
-      toast.success("Subject deleted");
-    } catch (e) { toast.error((e as Error).message); }
+      if (res?.deactivatedCount > 0) {
+        toast.success(`Subject removed. Preserved ${res.deactivatedCount} historical exam/result record(s).`);
+      } else {
+        toast.success("Subject deleted");
+      }
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setDeletingSubjId(null);
+    }
   };
 
   // ── Render ────────────────────────────────────────────────────────────────────
@@ -426,7 +494,20 @@ export default function AdminGlobalClassSubjectsPage() {
                     <p className="text-xs text-gray-400">{drawerSys.code} · {gradeLevels.length} classes</p>
                   </div>
 
-                    <button onClick={() => setDrawerSys(null)} className=" absolute right-4 p-2 rounded-xl hover:bg-gray-100 text-gray-500">
+                  <div className="ml-auto flex items-center gap-2 pr-10">
+                    <button
+                      type="button"
+                      onClick={handleSyncSystem}
+                      disabled={syncingSys}
+                      title="Sync subjects and ensure all active classes have all subjects of their grade level"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-all disabled:opacity-50"
+                    >
+                      <RefreshCw className={cn("w-3.5 h-3.5", syncingSys && "animate-spin text-emerald-600")} />
+                      <span>{syncingSys ? "Syncing..." : "Sync to All Classes"}</span>
+                    </button>
+                  </div>
+
+                  <button onClick={() => setDrawerSys(null)} className="absolute right-4 p-2 rounded-xl hover:bg-gray-100 text-gray-500">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
@@ -497,10 +578,21 @@ export default function AdminGlobalClassSubjectsPage() {
                           <h3 className="font-bold text-gray-900">
                             Subjects — <span className="text-emerald-600">{gradeLevels.find((g) => g.id === activeGlId)?.name}</span>
                           </h3>
-                          <button onClick={openAddSubjForm}
-                            className="flex items-center gap-1 px-3 py-2 rounded-xl bg-emerald-100 text-emerald-700 text-sm font-semibold hover:bg-emerald-200 transition-colors">
-                            <Plus className="w-4 h-4" /> Add Subject
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={handleSyncGradeLevel}
+                              disabled={syncingGl}
+                              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                              title="Sync this class's subjects to all enrolled madrasas"
+                            >
+                              <RefreshCw className={cn("w-3.5 h-3.5", syncingGl && "animate-spin text-emerald-600")} />
+                              <span>{syncingGl ? "Syncing..." : "Sync Class"}</span>
+                            </button>
+                            <button onClick={openAddSubjForm}
+                              className="flex items-center gap-1 px-3 py-2 rounded-xl bg-emerald-100 text-emerald-700 text-sm font-semibold hover:bg-emerald-200 transition-colors">
+                              <Plus className="w-4 h-4" /> Add Subject
+                            </button>
+                          </div>
                         </div>
 
                         {/* Subjects table */}
@@ -534,8 +626,17 @@ export default function AdminGlobalClassSubjectsPage() {
                                     <button onClick={() => editSubj(s)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 mr-1">
                                       <Pencil className="w-4 h-4" />
                                     </button>
-                                    <button onClick={() => deleteSubj(s.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500">
-                                      <Trash2 className="w-4 h-4" />
+                                    <button
+                                      onClick={() => deleteSubj(s.id)}
+                                      disabled={deletingSubjId === s.id}
+                                      className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 disabled:opacity-50 transition-colors"
+                                      title="Delete subject"
+                                    >
+                                      {deletingSubjId === s.id ? (
+                                        <Loader2 className="w-4 h-4 animate-spin text-red-500" />
+                                      ) : (
+                                        <Trash2 className="w-4 h-4" />
+                                      )}
                                     </button>
                                   </td>
                                 </tr>

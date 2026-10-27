@@ -266,6 +266,36 @@ export function logActivity(leadId: string, dto: { type: string; notes: string; 
   return mutateJson<any>("POST", `/crm/leads/${leadId}/activity`, dto, token);
 }
 
+export function updateActivity(
+  leadId: string,
+  timelineId: string,
+  dto: { type?: string; notes?: string; followUpDate?: string | null },
+  token: string,
+) {
+  return mutateJson<{
+    timeline: { id: string; type: string; notes: string; createdAt: string; followUpDate?: string; user?: { name: string } };
+    nextFollowUpDate?: string | null;
+  }>("PATCH", `/crm/leads/${leadId}/activity/${timelineId}`, dto, token);
+}
+
+export function deleteActivity(leadId: string, timelineId: string, token: string) {
+  return mutateJson<{ success: boolean; nextFollowUpDate?: string | null }>(
+    "DELETE",
+    `/crm/leads/${leadId}/activity/${timelineId}`,
+    null,
+    token,
+  );
+}
+
+export function updateFollowUpDate(leadId: string, followUpDate: string | null, token: string) {
+  return mutateJson<{ success: boolean; nextFollowUpDate?: string | null }>(
+    "PATCH",
+    `/crm/leads/${leadId}/follow-up`,
+    { followUpDate },
+    token,
+  );
+}
+
 export function scheduleDemo(leadId: string, dto: { date: string; type: string; attendees: string[]; notes?: string; outcome: string; recordingUrl?: string }, token: string) {
   return mutateJson<any>("POST", `/crm/leads/${leadId}/demo`, dto, token);
 }

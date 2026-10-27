@@ -4,6 +4,7 @@ import {
   listLeads, getLead, createLead, updateLead, deleteLead,
   logActivity, scheduleDemo, provisionTrial, convertLead,
   listDistricts, bulkImportLeads,
+  updateActivity, deleteActivity, updateFollowUpDate,
   type LeadListItem, type LeadDetail, type DistrictItem, type BulkImportLeadItem
 } from "@/lib/crm-api";
 import { listInternalUsers, type InternalUserItem } from "@/lib/crm-api";
@@ -14,7 +15,8 @@ import {
   Plus, Search, Phone, MessageSquare, Play, CheckCircle, X, Loader2,
   DollarSign, Calendar, Users, Award, Trash, Clock, ChevronRight,
   AlertTriangle, Copy, Check, List, Filter, RefreshCw, ExternalLink,
-  ArrowRight, TrendingUp, Upload, FileSpreadsheet, Sparkles, Zap, Flame, RotateCcw
+  ArrowRight, TrendingUp, Upload, FileSpreadsheet, Sparkles, Zap, Flame, RotateCcw,
+  Pencil, CalendarClock, School, Building2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -240,9 +242,28 @@ export default function CrmLeadsPage() {
     else setSelectedLead(null);
   }, [selectedLeadId]); // eslint-disable-line
 
+  // Active Tab inside Lead Drawer for simple, clean organization
+  const [activeLeadTab, setActiveLeadTab] = useState<"activity" | "details" | "pipeline">("activity");
+
+  // Editing existing timeline activity
+  const [editingTimelineId, setEditingTimelineId] = useState<string | null>(null);
+  const [editTimelineForm, setEditTimelineForm] = useState<{
+    type: string;
+    notes: string;
+    followUpDate: string;
+  }>({ type: "CALL", notes: "", followUpDate: "" });
+  const [timelineActionLoading, setTimelineActionLoading] = useState(false);
+
+  // Quick next follow-up date changer
+  const [showFollowUpPicker, setShowFollowUpPicker] = useState(false);
+  const [quickFollowUpDate, setQuickFollowUpDate] = useState("");
+  const [followUpSaving, setFollowUpSaving] = useState(false);
+
   const selectLead = (id: string) => {
     setSelectedLeadId(id);
     setActiveSection(null);
+    setEditingTimelineId(null);
+    setShowFollowUpPicker(false);
     setShowMobileDetail(true);
     setSearchParams({ id });
   };
@@ -252,6 +273,8 @@ export default function CrmLeadsPage() {
     setSelectedLead(null);
     setShowMobileDetail(false);
     setActiveSection(null);
+    setEditingTimelineId(null);
+    setShowFollowUpPicker(false);
     setSearchParams({});
   };
 
@@ -266,6 +289,173 @@ export default function CrmLeadsPage() {
     if (isError) setError(msg);
     else setSuccessMsg(msg);
     setTimeout(() => { setError(null); setSuccessMsg(null); }, 4000);
+  };
+
+  const handleStartEditTimeline = (item: { id: string; type: string; notes: string; followUpDate?: string }) => {
+    setEditingTimelineId(item.id);
+    setEditTimelineForm({
+      type: item.type,
+      notes: item.notes,
+      followUpDate: item.followUpDate ? item.followUpDate.split("T")[0] : "",
+    });
+  };
+
+  const handleSaveEditTimeline = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!accessToken || !selectedLeadId || !editingTimelineId) return;
+    setTimelineActionLoading(true);
+    try {
+      await updateActivity(
+        selectedLeadId,
+        editingTimelineId,
+        {
+          type: editTimelineForm.type,
+          notes: editTimelineForm.notes,
+          followUpDate: editTimelineForm.followUpDate || null,
+        },
+        accessToken,
+      );
+      toast("Log entry updated successfully!");
+      setEditingTimelineId(null);
+      loadLeadDetail(selectedLeadId);
+      loadData();
+    } catch (e) {
+      toast((e as Error).message, true);
+    } finally {
+      setTimelineActionLoading(false);
+    }
+  };
+
+  const handleDeleteTimeline = async (timelineId: string) => {
+    if (!accessToken || !selectedLeadId) return;
+    if (!window.confirm("Are you sure you want to delete this log entry? This cannot be undone.")) return;
+    setTimelineActionLoading(true);
+    try {
+      await deleteActivity(selectedLeadId, timelineId, accessToken);
+      toast("Log entry deleted successfully!");
+      loadLeadDetail(selectedLeadId);
+      loadData();
+    } catch (e) {
+      toast((e as Error).message, true);
+    } finally {
+      setTimelineActionLoading(false);
+    }
+  };
+
+  const handleQuickUpdateFollowUp = async (newDate: string | null) => {
+    if (!accessToken || !selectedLeadId) return;
+    setFollowUpSaving(true);
+    try {
+      await updateFollowUpDate(selectedLeadId, newDate, accessToken);
+      toast(newDate ? `Next follow-up set to ${new Date(newDate).toLocaleDateString()}` : "Follow-up date cleared");
+      setShowFollowUpPicker(false);
+      loadLeadDetail(selectedLeadId);
+      loadData();
+    } catch (e) {
+      toast((e as Error).message, true);
+    } finally {
+      setFollowUpSaving(false);
+    }
+  };
+
+  // ─── Edit Lead Modal / Drawer State & Handlers ───────────────────────────
+  const [showEditDrawer, setShowEditDrawer] = useState(false);
+  const [editLeadSaving, setEditLeadSaving] = useState(false);
+  const [editLeadForm, setEditLeadForm] = useState({
+    name: "",
+    type: "Samastha",
+    districtId: "",
+    district: "",
+    place: "",
+    address: "",
+    studentCount: 150,
+    teacherCount: 8,
+    existingSoftware: "",
+    source: "WHATSAPP",
+    status: "NEW",
+    commissionPercentage: 20,
+    contactName: "",
+    contactPhone: "",
+    contactSecondaryPhone: "",
+    contactRole: "",
+  });
+
+  const handleStartEditLead = (lead: LeadDetail) => {
+    const primaryContact = lead.contacts?.find(c => c.isPrimary) || lead.contacts?.[0];
+    setEditLeadForm({
+      name: lead.name || "",
+      type: lead.type || "Samastha",
+      districtId: lead.district ? districts.find(d => d.name.toLowerCase() === lead.district.toLowerCase())?.id || "" : "",
+      district: lead.district || "",
+      place: lead.place || "",
+      address: lead.address || "",
+      studentCount: lead.studentCount ?? 0,
+      teacherCount: lead.teacherCount ?? 0,
+      existingSoftware: lead.existingSoftware || "",
+      source: lead.source || "WHATSAPP",
+      status: lead.status || "NEW",
+      commissionPercentage: lead.commissionPercentage ?? 20,
+      contactName: primaryContact?.name || "",
+      contactPhone: primaryContact?.phone || "",
+      contactSecondaryPhone: primaryContact?.secondaryPhone || "",
+      contactRole: primaryContact?.role || "",
+    });
+    setShowEditDrawer(true);
+  };
+
+  const handleSaveEditLead = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedLead || !accessToken) return;
+    if (!editLeadForm.name.trim()) {
+      toast("Madrasa name is required", true);
+      return;
+    }
+    if (!editLeadForm.district.trim() && !editLeadForm.districtId) {
+      toast("District is required", true);
+      return;
+    }
+
+    setEditLeadSaving(true);
+    try {
+      const selectedDistrict = editLeadForm.districtId
+        ? districts.find(d => d.id === editLeadForm.districtId)?.name || editLeadForm.district
+        : editLeadForm.district;
+
+      const contacts: any[] = [];
+      if (editLeadForm.contactName.trim() || editLeadForm.contactPhone.trim() || editLeadForm.contactSecondaryPhone.trim()) {
+        contacts.push({
+          name: editLeadForm.contactName.trim() || undefined,
+          phone: editLeadForm.contactPhone.trim() || undefined,
+          secondaryPhone: editLeadForm.contactSecondaryPhone.trim() || undefined,
+          role: editLeadForm.contactRole.trim() || undefined,
+          isPrimary: true,
+        });
+      }
+
+      const updated = await updateLead(selectedLead.id, {
+        name: editLeadForm.name.trim(),
+        type: editLeadForm.type,
+        district: selectedDistrict.trim(),
+        place: editLeadForm.place.trim(),
+        address: editLeadForm.address.trim() || undefined,
+        studentCount: Number(editLeadForm.studentCount) || 0,
+        teacherCount: Number(editLeadForm.teacherCount) || 0,
+        existingSoftware: editLeadForm.existingSoftware.trim() || undefined,
+        source: editLeadForm.source as any,
+        status: editLeadForm.status as any,
+        commissionPercentage: Number(editLeadForm.commissionPercentage) || 0,
+        contacts,
+      }, accessToken);
+
+      toast("Lead details updated successfully!");
+      setShowEditDrawer(false);
+      loadLeadDetail(selectedLead.id);
+      loadData();
+    } catch (err: any) {
+      toast((err as Error).message || "Failed to update lead", true);
+    } finally {
+      setEditLeadSaving(false);
+    }
   };
 
   // ─── Bulk Import Configuration ───────────────────────────────────────────
@@ -931,35 +1121,302 @@ export default function CrmLeadsPage() {
 
     return (
       <div className="space-y-5">
-        {/* ── HIGHLIGHTED TOP CARD: LATEST FOLLOW-UP & STATUS ── */}
+        {/* ── HIGHLIGHTED COMMAND CENTER: STATUS, PIPELINE, KEY INFO & FOLLOW-UP ── */}
         <div className={cn(
-          "rounded-3xl p-5 border shadow-sm transition-all relative overflow-hidden",
+          "rounded-3xl p-5 border shadow-sm transition-all relative overflow-hidden space-y-4",
           followUpStatus.urgency === "overdue"
             ? "bg-gradient-to-br from-rose-50/90 via-white to-rose-50/30 border-rose-200 ring-1 ring-rose-200/50"
             : followUpStatus.urgency === "today"
             ? "bg-gradient-to-br from-amber-50/90 via-white to-amber-50/40 border-amber-200 ring-1 ring-amber-200/50"
             : "bg-gradient-to-br from-slate-50/90 via-white to-emerald-50/30 border-gray-200"
         )}>
-          {/* Top Row: Next Follow-up Deadline & Current Stage */}
+          {/* Top Row: Lead Overview, Direct Status Changer & Edit Lead Action */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100/80">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[11px] font-black uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
-                <Clock className="w-4 h-4 text-emerald-600" /> Next Follow-up:
-              </span>
-              <span className={cn("text-xs px-3 py-1 rounded-full border shadow-2xs inline-flex items-center gap-1.5", followUpStatus.badgeClass)}>
-                {followUpStatus.urgency === "overdue" && <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />}
-                {followUpStatus.urgency === "today" && <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />}
-                {followUpStatus.urgency === "upcoming" && <Calendar className="w-3.5 h-3.5 text-emerald-600" />}
-                {followUpStatus.label}
-              </span>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-lg font-black text-gray-900 tracking-tight">{lead.name}</h2>
+                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/70 border border-emerald-200 px-2 py-0.5 rounded-lg">
+                  {lead.type || "Madrasa"}
+                </span>
+                {lead.place && (
+                  <span className="text-[10px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-lg">
+                    📍 {lead.place}{lead.district ? `, ${lead.district}` : ""}
+                  </span>
+                )}
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase font-bold text-gray-400">Current Status:</span>
-              {renderStatusBadge(lead.status)}
+            {/* Prominent Stage Selector & Edit Button */}
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
+              {/* Interactive Status Selector */}
+              <div className="flex items-center gap-1.5 bg-white border border-gray-200/90 rounded-xl px-2.5 py-1.5 shadow-2xs">
+                <span className="text-[10px] uppercase font-bold text-gray-400">Stage:</span>
+                <select
+                  value={lead.status}
+                  onChange={(e) => handleUpdateStage(e.target.value)}
+                  className="text-xs font-black text-gray-800 bg-transparent focus:outline-none cursor-pointer"
+                >
+                  {LEAD_STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {LEAD_STATUS_LABELS[s] ?? s.replace(/_/g, " ")}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {renderScoreBadge(lead.score)}
+
+              {/* Edit Lead Button */}
+              <button
+                type="button"
+                onClick={() => handleStartEditLead(lead)}
+                className="px-3 py-1.5 text-xs font-bold rounded-xl border border-blue-200 bg-blue-50/80 hover:bg-blue-100 text-blue-700 shadow-2xs transition-all flex items-center gap-1.5 active:scale-95"
+                title="Edit Madrasa Details, Metrics, and Contacts"
+              >
+                <Pencil className="w-3.5 h-3.5 text-blue-600" />
+                <span>Edit Lead</span>
+              </button>
             </div>
           </div>
+
+          {/* 1-Click Interactive Pipeline Stage Stepper (Right at the top!) */}
+          <div className="space-y-1">
+            <span className="text-[9px] uppercase font-black text-gray-400 tracking-wider">
+              Quick Advance Pipeline Stage:
+            </span>
+            <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-1">
+              {PIPELINE_STEPS.map((step, i) => {
+                const isActive = step.statuses.includes(lead.status);
+                const isDone = i < currentStepIdx || (isWon && step.key === "won");
+                return (
+                  <div key={step.key} className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateStage(step.statuses[0])}
+                      className={cn(
+                        "px-2.5 py-1 text-[10px] font-bold rounded-xl transition-all border shrink-0 flex items-center gap-1",
+                        isActive
+                          ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                          : isDone
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                          : "bg-white/80 text-gray-500 border-gray-200 hover:border-gray-300"
+                      )}
+                    >
+                      {isDone && !isActive && <Check className="w-2.5 h-2.5 text-emerald-600" />}
+                      {step.label}
+                    </button>
+                    {i < PIPELINE_STEPS.length - 1 && (
+                      <ChevronRight className="w-3 h-3 text-gray-300 shrink-0" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Best Relevant Info Grid: Contact Person, Metrics, and Follow-up Deadline */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
+            {/* Box 1: Primary Contact Person with direct Call, WA & Copy */}
+            <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-2xs space-y-1">
+              <span className="text-[9px] uppercase font-bold text-gray-400 flex items-center gap-1">
+                <Users className="w-3 h-3 text-blue-500" /> Primary Contact
+              </span>
+              {lead.contacts && lead.contacts.length > 0 ? (() => {
+                const c = lead.contacts.find((x) => x.isPrimary) || lead.contacts[0];
+                const cleanPhone = c.phone?.replace(/[^0-9]/g, "") || "";
+                const waPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+                return (
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-gray-800 truncate" title={c.name || ""}>
+                        {c.name || <span className="text-gray-400 font-normal italic">Name not set</span>}
+                      </span>
+                      {c.role && (
+                        <span className="text-[9px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                          {c.role}
+                        </span>
+                      )}
+                    </div>
+                    {c.phone ? (
+                      <div className="flex items-center justify-between text-xs pt-1">
+                        <span className="font-mono font-bold text-gray-700">{c.phone}</span>
+                        <div className="flex items-center gap-1">
+                          <a
+                            href={`tel:${c.phone}`}
+                            className="p-1 rounded-md text-blue-600 hover:bg-blue-50 transition-colors"
+                            title="Call Phone"
+                          >
+                            <Phone className="w-3.5 h-3.5" />
+                          </a>
+                          <a
+                            href={`https://wa.me/${waPhone}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200"
+                            title="Chat on WhatsApp"
+                          >
+                            <MessageSquare className="w-2.5 h-2.5" />
+                            <span>WA</span>
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(c.phone!, c.phone!)}
+                            className="p-1 text-gray-400 hover:text-gray-600"
+                            title="Copy phone"
+                          >
+                            {copiedText === c.phone ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-gray-400 italic">No phone added</span>
+                    )}
+                  </div>
+                );
+              })() : (
+                <p className="text-xs text-gray-400 italic">No contacts added yet</p>
+              )}
+            </div>
+
+            {/* Box 2: Institutional Scale */}
+            <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-2xs space-y-1">
+              <span className="text-[9px] uppercase font-bold text-gray-400 flex items-center gap-1">
+                <Building2 className="w-3 h-3 text-emerald-600" /> Madrasa Scale
+              </span>
+              <div className="grid grid-cols-3 gap-1 pt-0.5 text-center">
+                <div className="bg-gray-50/80 rounded-xl p-1.5 border border-gray-100">
+                  <span className="block text-[8px] uppercase font-bold text-gray-400">Students</span>
+                  <span className="text-xs font-black text-gray-800">{lead.studentCount || "—"}</span>
+                </div>
+                <div className="bg-gray-50/80 rounded-xl p-1.5 border border-gray-100">
+                  <span className="block text-[8px] uppercase font-bold text-gray-400">Teachers</span>
+                  <span className="text-xs font-black text-gray-800">{lead.teacherCount || "—"}</span>
+                </div>
+                <div className="bg-gray-50/80 rounded-xl p-1.5 border border-gray-100 truncate" title={lead.existingSoftware || "None"}>
+                  <span className="block text-[8px] uppercase font-bold text-gray-400">Software</span>
+                  <span className="text-[10px] font-bold text-gray-700 truncate block">
+                    {lead.existingSoftware ? lead.existingSoftware.substring(0, 8) : "None"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Box 3: Next Follow-up Deadline & Action */}
+            <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-2xs space-y-1 sm:col-span-2 lg:col-span-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] uppercase font-bold text-gray-400 flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-amber-500" /> Next Follow-up
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowFollowUpPicker(!showFollowUpPicker);
+                    setQuickFollowUpDate(lead.nextFollowUpDate ? lead.nextFollowUpDate.split("T")[0] : "");
+                  }}
+                  className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1"
+                >
+                  <CalendarClock className="w-3 h-3" />
+                  <span>{lead.nextFollowUpDate ? "Change Date" : "+ Set Date"}</span>
+                </button>
+              </div>
+
+              <div className="pt-0.5">
+                <span className={cn("text-xs px-2.5 py-1 rounded-xl border shadow-2xs inline-flex items-center gap-1.5 w-full justify-between font-bold", followUpStatus.badgeClass)}>
+                  <span className="truncate">{followUpStatus.label}</span>
+                  {followUpStatus.urgency === "overdue" && <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />}
+                  {followUpStatus.urgency === "today" && <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping shrink-0" />}
+                  {followUpStatus.urgency === "upcoming" && <Clock className="w-3 h-3 text-emerald-600 shrink-0" />}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Inline Follow-up Date Picker Popover */}
+          <AnimatePresence>
+            {showFollowUpPicker && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="mt-3 p-3.5 bg-white border border-emerald-100 rounded-2xl shadow-sm space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 flex items-center gap-1">
+                      <CalendarClock className="w-3.5 h-3.5 text-emerald-600" /> Update Next Follow-up Date
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowFollowUpPicker(false)}
+                      className="p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Preset Pills */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {[
+                      { label: "Today", days: 0 },
+                      { label: "Tomorrow", days: 1 },
+                      { label: "In 3 Days", days: 3 },
+                      { label: "Next Week", days: 7 },
+                      { label: "In 2 Weeks", days: 14 },
+                    ].map((preset) => {
+                      const target = new Date();
+                      target.setDate(target.getDate() + preset.days);
+                      const isoDate = target.toISOString().split("T")[0];
+                      return (
+                        <button
+                          key={preset.label}
+                          type="button"
+                          onClick={() => setQuickFollowUpDate(isoDate)}
+                          className={cn(
+                            "px-2.5 py-1 text-[10px] font-bold rounded-lg border transition-all",
+                            quickFollowUpDate === isoDate
+                              ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs"
+                              : "bg-gray-50 hover:bg-gray-100 text-gray-600 border-gray-200"
+                          )}
+                        >
+                          {preset.label}
+                        </button>
+                      );
+                    })}
+
+                    {lead.nextFollowUpDate && (
+                      <button
+                        type="button"
+                        onClick={() => handleQuickUpdateFollowUp(null)}
+                        disabled={followUpSaving}
+                        className="px-2.5 py-1 text-[10px] font-bold rounded-lg border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-all ml-auto"
+                      >
+                        Clear Date
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Custom Date Input & Submit */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="date"
+                      value={quickFollowUpDate}
+                      onChange={(e) => setQuickFollowUpDate(e.target.value)}
+                      className="flex-1 bg-gray-50 border border-gray-200 text-xs py-1.5 px-3 rounded-xl focus:outline-none focus:border-emerald-500 font-medium"
+                    />
+                    <button
+                      type="button"
+                      disabled={followUpSaving || !quickFollowUpDate}
+                      onClick={() => handleQuickUpdateFollowUp(quickFollowUpDate)}
+                      className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-1.5"
+                    >
+                      {followUpSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                      Save Date
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Bottom Section: Latest Discussion Notes & Activity Details */}
           <div className="pt-3.5 space-y-2.5">
@@ -1024,579 +1481,948 @@ export default function CrmLeadsPage() {
           </div>
         </div>
 
-        {/* ── SMART AI NEXT-ACTION SUGGESTION BANNER ── */}
-        {(() => {
-          const suggestion = getSmartSuggestion(lead);
-          const toneClasses = {
-            critical: "bg-gradient-to-r from-rose-500/10 via-rose-50 to-white border-rose-200 text-rose-900",
-            urgent: "bg-gradient-to-r from-amber-500/10 via-amber-50 to-white border-amber-200 text-amber-900",
-            high_intent: "bg-gradient-to-r from-violet-500/10 via-violet-50 to-white border-violet-200 text-violet-900",
-            warning: "bg-yellow-50/80 via-white to-white border-yellow-200 text-yellow-900",
-            positive: "bg-gradient-to-r from-emerald-500/10 via-emerald-50 to-white border-emerald-200 text-emerald-900",
-            neutral: "bg-gradient-to-r from-blue-500/10 via-blue-50 to-white border-blue-200 text-blue-900",
-          }[suggestion.tone];
+        {/* ── ORGANIZED TABS NAVIGATION BAR ── */}
+        <div className="flex items-center gap-1.5 p-1 bg-gray-100/80 rounded-2xl border border-gray-200/60 text-xs font-bold">
+          <button
+            type="button"
+            onClick={() => setActiveLeadTab("activity")}
+            className={cn(
+              "flex-1 py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5",
+              activeLeadTab === "activity"
+                ? "bg-white text-gray-900 shadow-xs border border-gray-200/60 font-black"
+                : "text-gray-500 hover:text-gray-900"
+            )}
+          >
+            <Clock className="w-3.5 h-3.5 text-blue-600" />
+            <span>Activity & Follow-ups</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-50 text-blue-700 border border-blue-100 font-bold">
+              {lead.timeline?.length ?? 0}
+            </span>
+          </button>
 
-          const toneBadge = {
-            critical: "bg-rose-100 text-rose-800 border-rose-300",
-            urgent: "bg-amber-100 text-amber-800 border-amber-300",
-            high_intent: "bg-violet-100 text-violet-800 border-violet-300",
-            warning: "bg-yellow-100 text-yellow-800 border-yellow-300",
-            positive: "bg-emerald-100 text-emerald-800 border-emerald-300",
-            neutral: "bg-blue-100 text-blue-800 border-blue-300",
-          }[suggestion.tone];
+          <button
+            type="button"
+            onClick={() => setActiveLeadTab("details")}
+            className={cn(
+              "flex-1 py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5",
+              activeLeadTab === "details"
+                ? "bg-white text-gray-900 shadow-xs border border-gray-200/60 font-black"
+                : "text-gray-500 hover:text-gray-900"
+            )}
+          >
+            <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Madrasa & Contacts</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 font-bold">
+              {lead.contacts?.length ?? 0}
+            </span>
+          </button>
 
-          const toneBtn = {
-            critical: "bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200",
-            urgent: "bg-amber-600 hover:bg-amber-700 text-white shadow-amber-200",
-            high_intent: "bg-violet-600 hover:bg-violet-700 text-white shadow-violet-200",
-            warning: "bg-amber-600 hover:bg-amber-700 text-white shadow-amber-200",
-            positive: "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200",
-            neutral: "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200",
-          }[suggestion.tone];
+          <button
+            type="button"
+            onClick={() => setActiveLeadTab("pipeline")}
+            className={cn(
+              "flex-1 py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5",
+              activeLeadTab === "pipeline"
+                ? "bg-white text-gray-900 shadow-xs border border-gray-200/60 font-black"
+                : "text-gray-500 hover:text-gray-900"
+            )}
+          >
+            <TrendingUp className="w-3.5 h-3.5 text-violet-600" />
+            <span>Pipeline & Setup</span>
+          </button>
+        </div>
 
-          return (
-            <div className={cn("p-4 rounded-3xl border shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-all", toneClasses)}>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="p-1 rounded-lg bg-white shadow-2xs">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                  </span>
-                  <span className="text-[10px] uppercase font-black tracking-wider text-gray-500">
-                    Smart Operational Suggestion
-                  </span>
-                  <span className={cn("text-[9px] font-bold px-2 py-0.5 rounded-full border shadow-2xs", toneBadge)}>
-                    {suggestion.badge}
-                  </span>
-                </div>
-                <h4 className="text-sm font-black text-gray-900">{suggestion.title}</h4>
-                <p className="text-xs text-gray-600 max-w-xl leading-relaxed">{suggestion.description}</p>
-              </div>
+        {/* ══════════════════════════════════════════════════════════════════════ */}
+        {/* TAB 1: ACTIVITY & FOLLOW-UPS                                           */}
+        {/* ══════════════════════════════════════════════════════════════════════ */}
+        {activeLeadTab === "activity" && (
+          <div className="space-y-4">
+            {/* ── SMART AI NEXT-ACTION SUGGESTION BANNER ── */}
+            {(() => {
+              const suggestion = getSmartSuggestion(lead);
+              const toneClasses = {
+                critical: "bg-gradient-to-r from-rose-500/10 via-rose-50 to-white border-rose-200 text-rose-900",
+                urgent: "bg-gradient-to-r from-amber-500/10 via-amber-50 to-white border-amber-200 text-amber-900",
+                high_intent: "bg-gradient-to-r from-violet-500/10 via-violet-50 to-white border-violet-200 text-violet-900",
+                warning: "bg-yellow-50/80 via-white to-white border-yellow-200 text-yellow-900",
+                positive: "bg-gradient-to-r from-emerald-500/10 via-emerald-50 to-white border-emerald-200 text-emerald-900",
+                neutral: "bg-gradient-to-r from-blue-500/10 via-blue-50 to-white border-blue-200 text-blue-900",
+              }[suggestion.tone];
 
-              <button
-                type="button"
-                onClick={suggestion.onAction}
-                className={cn("px-4 py-2.5 rounded-xl text-xs font-bold shrink-0 transition-all shadow-sm active:scale-95 flex items-center gap-1.5", toneBtn)}
-              >
-                <Zap className="w-3.5 h-3.5" />
-                {suggestion.actionLabel}
-              </button>
-            </div>
-          );
-        })()}
+              const toneBadge = {
+                critical: "bg-rose-100 text-rose-800 border-rose-300",
+                urgent: "bg-amber-100 text-amber-800 border-amber-300",
+                high_intent: "bg-violet-100 text-violet-800 border-violet-300",
+                warning: "bg-yellow-100 text-yellow-800 border-yellow-300",
+                positive: "bg-emerald-100 text-emerald-800 border-emerald-300",
+                neutral: "bg-blue-100 text-blue-800 border-blue-300",
+              }[suggestion.tone];
 
-        {/* ── Pipeline Progress Bar ── */}
-        <div className="bg-gray-50/70 rounded-2xl p-4 border border-gray-100">
-          <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
-            {PIPELINE_STEPS.map((step, i) => {
-              const isActive = step.statuses.includes(lead.status);
-              const isDone = i < currentStepIdx || (isWon && step.key === "won");
+              const toneBtn = {
+                critical: "bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200",
+                urgent: "bg-amber-600 hover:bg-amber-700 text-white shadow-amber-200",
+                high_intent: "bg-violet-600 hover:bg-violet-700 text-white shadow-violet-200",
+                warning: "bg-amber-600 hover:bg-amber-700 text-white shadow-amber-200",
+                positive: "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200",
+                neutral: "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200",
+              }[suggestion.tone];
+
               return (
-                <div key={step.key} className="flex items-center gap-1 shrink-0">
+                <div className={cn("p-4 rounded-3xl border shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-all", toneClasses)}>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="p-1 rounded-lg bg-white shadow-2xs">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                      </span>
+                      <span className="text-[10px] uppercase font-black tracking-wider text-gray-500">
+                        Smart Operational Suggestion
+                      </span>
+                      <span className={cn("text-[9px] font-bold px-2 py-0.5 rounded-full border shadow-2xs", toneBadge)}>
+                        {suggestion.badge}
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-black text-gray-900">{suggestion.title}</h4>
+                    <p className="text-xs text-gray-600 max-w-xl leading-relaxed">{suggestion.description}</p>
+                  </div>
+
                   <button
                     type="button"
-                    onClick={() => handleUpdateStage(step.statuses[0])}
-                    className={cn(
-                      "px-3 py-1.5 text-[10px] font-bold rounded-xl transition-all border",
-                      isActive ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" :
-                      isDone ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                      "bg-white text-gray-400 border-gray-100 hover:border-gray-300"
-                    )}
+                    onClick={suggestion.onAction}
+                    className={cn("px-4 py-2.5 rounded-xl text-xs font-bold shrink-0 transition-all shadow-sm active:scale-95 flex items-center gap-1.5", toneBtn)}
                   >
-                    {isDone && !isActive ? <Check className="w-3 h-3 inline mr-1" /> : null}
-                    {step.label}
+                    <Zap className="w-3.5 h-3.5" />
+                    {suggestion.actionLabel}
                   </button>
-                  {i < PIPELINE_STEPS.length - 1 && (
-                    <ChevronRight className="w-3 h-3 text-gray-300 shrink-0" />
-                  )}
                 </div>
               );
-            })}
-          </div>
-          {/* Quick override select */}
-          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
-            <span className="text-[10px] text-gray-400 uppercase font-bold shrink-0">Override Status:</span>
-            <select
-              value={lead.status}
-              onChange={e => handleUpdateStage(e.target.value)}
-              className="bg-white border border-gray-100 text-xs font-semibold py-1 px-2 rounded-lg focus:outline-none focus:border-emerald-600 text-gray-700 flex-1"
-            >
-              {LEAD_STATUSES.map(s => <option key={s} value={s}>{LEAD_STATUS_LABELS[s] ?? s.replace(/_/g, " ")}</option>)}
-            </select>
-          </div>
-        </div>
+            })()}
 
-        {/* ── Quick Actions Bar ── */}
-        <div className="grid grid-cols-3 gap-2">
-          <button
-            type="button"
-            onClick={() => setActiveSection(activeSection === "followup" ? null : "followup")}
-            className={cn(
-              "flex flex-col items-center p-3 rounded-2xl border text-center gap-1.5 transition-all",
-              activeSection === "followup"
-                ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                : "bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100"
-            )}
-          >
-            <Phone className="w-4 h-4" />
-            <span className="text-[10px] font-bold">Log Follow-up</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveSection(activeSection === "demo" ? null : "demo")}
-            disabled={isWon}
-            className={cn(
-              "flex flex-col items-center p-3 rounded-2xl border text-center gap-1.5 transition-all disabled:opacity-40",
-              activeSection === "demo"
-                ? "bg-violet-600 text-white border-violet-600 shadow-sm"
-                : "bg-violet-50 text-violet-700 border-violet-100 hover:bg-violet-100"
-            )}
-          >
-            <Calendar className="w-4 h-4" />
-            <span className="text-[10px] font-bold">Log Demo</span>
-          </button>
-          {!isWon && (
-            <button
-              type="button"
-              onClick={handleProvisionTrial}
-              disabled={actionLoading || lead.status === "TRIAL_CREATED"}
-              className="flex flex-col items-center p-3 rounded-2xl border text-center gap-1.5 transition-all bg-amber-50 text-amber-700 border-amber-100 hover:bg-amber-100 disabled:opacity-40"
-            >
-              <Play className="w-4 h-4" />
-              <span className="text-[10px] font-bold">
-                {lead.status === "TRIAL_CREATED" ? "Trial Active" : "Launch Trial"}
-              </span>
-            </button>
-          )}
-          {isWon && (
-            <div className="flex flex-col items-center p-3 rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-center gap-1.5">
-              <CheckCircle className="w-4 h-4" />
-              <span className="text-[10px] font-bold">Won ✓</span>
+            {/* ── Quick Actions Bar ── */}
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveSection(activeSection === "followup" ? null : "followup")}
+                className={cn(
+                  "flex flex-col items-center p-3 rounded-2xl border text-center gap-1.5 transition-all",
+                  activeSection === "followup"
+                    ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                    : "bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100"
+                )}
+              >
+                <Phone className="w-4 h-4" />
+                <span className="text-[10px] font-bold">Log Follow-up</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveSection(activeSection === "demo" ? null : "demo")}
+                disabled={isWon}
+                className={cn(
+                  "flex flex-col items-center p-3 rounded-2xl border text-center gap-1.5 transition-all disabled:opacity-40",
+                  activeSection === "demo"
+                    ? "bg-violet-600 text-white border-violet-600 shadow-sm"
+                    : "bg-violet-50 text-violet-700 border-violet-100 hover:bg-violet-100"
+                )}
+              >
+                <Calendar className="w-4 h-4" />
+                <span className="text-[10px] font-bold">Log Demo</span>
+              </button>
+              {!isWon && (
+                <button
+                  type="button"
+                  onClick={handleProvisionTrial}
+                  disabled={actionLoading || lead.status === "TRIAL_CREATED"}
+                  className="flex flex-col items-center p-3 rounded-2xl border text-center gap-1.5 transition-all bg-amber-50 text-amber-700 border-amber-100 hover:bg-amber-100 disabled:opacity-40"
+                >
+                  <Play className="w-4 h-4" />
+                  <span className="text-[10px] font-bold">
+                    {lead.status === "TRIAL_CREATED" ? "Trial Active" : "Launch Trial"}
+                  </span>
+                </button>
+              )}
+              {isWon && (
+                <div className="flex flex-col items-center p-3 rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-center gap-1.5">
+                  <CheckCircle className="w-4 h-4" />
+                  <span className="text-[10px] font-bold">Won ✓</span>
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* Convert button — full width, prominent */}
-        {!isWon && (
-          <button
-            type="button"
-            onClick={() => setActiveSection(activeSection === "convert" ? null : "convert")}
-            className={cn(
-              "w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl border font-bold text-sm transition-all",
-              activeSection === "convert"
-                ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-                : "bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-indigo-100"
+            {/* Convert button — full width, prominent */}
+            {!isWon && (
+              <button
+                type="button"
+                onClick={() => setActiveSection(activeSection === "convert" ? null : "convert")}
+                className={cn(
+                  "w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl border font-bold text-sm transition-all",
+                  activeSection === "convert"
+                    ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                    : "bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-indigo-100"
+                )}
+              >
+                <DollarSign className="w-4 h-4" />
+                Convert to Paying Client
+              </button>
             )}
-          >
-            <DollarSign className="w-4 h-4" />
-            Convert to Paying Client
-          </button>
-        )}
 
-        {/* ── Inline: Follow-up Form ── */}
-        <AnimatePresence>
-          {activeSection === "followup" && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
-              <form onSubmit={handleLogActivity} className="bg-blue-50/50 border border-blue-100 rounded-2xl p-4 space-y-3">
-                <h4 className="text-xs font-black text-blue-800">Log Follow-up / Contact</h4>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Type</label>
-                    <select
-                      value={activityForm.type}
-                      onChange={e => setActivityForm(p => ({ ...p, type: e.target.value }))}
-                      className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none focus:border-blue-500"
-                    >
-                      {ACTIVITY_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Schedule Follow-up</label>
-                    <input
-                      type="date"
-                      value={activityForm.followUpDate}
-                      onChange={e => setActivityForm(p => ({ ...p, followUpDate: e.target.value }))}
-                      className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-                <textarea
-                  required
-                  rows={2}
-                  value={activityForm.notes}
-                  onChange={e => setActivityForm(p => ({ ...p, notes: e.target.value }))}
-                  placeholder="What happened? Key discussion points, next steps..."
-                  className="w-full bg-white border border-gray-100 text-xs p-3 rounded-xl focus:outline-none focus:border-blue-500 resize-none"
-                />
-                <div className="flex gap-2">
-                  <button type="submit" disabled={actionLoading}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5">
-                    {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                    Save Follow-up
-                  </button>
-                  <button type="button" onClick={() => setActiveSection(null)}
-                    className="px-4 bg-white border border-gray-100 text-gray-500 text-xs font-bold rounded-xl hover:bg-gray-50">
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* ── Inline: Demo Form ── */}
-        <AnimatePresence>
-          {activeSection === "demo" && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
-              <form onSubmit={handleLogDemo} className="bg-violet-50/50 border border-violet-100 rounded-2xl p-4 space-y-3">
-                <h4 className="text-xs font-black text-violet-800">Log Demo Session</h4>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Demo Date & Time</label>
-                    <input type="datetime-local" required value={demoForm.date}
-                      onChange={e => setDemoForm(p => ({ ...p, date: e.target.value }))}
-                      className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none focus:border-violet-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Mode</label>
-                    <select value={demoForm.type} onChange={e => setDemoForm(p => ({ ...p, type: e.target.value }))}
-                      className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none">
-                      <option value="Online">Online Call</option>
-                      <option value="Site-Visit">Site Visit</option>
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Outcome</label>
-                  <select value={demoForm.outcome} onChange={e => setDemoForm(p => ({ ...p, outcome: e.target.value }))}
-                    className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none focus:border-violet-500 font-semibold">
-                    <option value="INTERESTED">✅ Interested — Moving Forward</option>
-                    <option value="NEED_FOLLOW_UP">🔁 Needs Another Follow-up</option>
-                    <option value="NEED_COMMITTEE_APPROVAL">📋 Needs Committee Approval</option>
-                    <option value="TRIAL_REQUESTED">🧪 Requested Trial</option>
-                    <option value="NOT_INTERESTED">❌ Not Interested</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Attendees (comma-separated)</label>
-                  <input type="text" value={demoForm.attendees}
-                    onChange={e => setDemoForm(p => ({ ...p, attendees: e.target.value }))}
-                    placeholder="Sadr Usthad, Secretary..."
-                    className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none"
-                  />
-                </div>
-                <textarea rows={2} value={demoForm.notes}
-                  onChange={e => setDemoForm(p => ({ ...p, notes: e.target.value }))}
-                  placeholder="Key features shown, objections raised, client feedback..."
-                  className="w-full bg-white border border-gray-100 text-xs p-3 rounded-xl focus:outline-none resize-none"
-                />
-                <div className="flex gap-2">
-                  <button type="submit" disabled={actionLoading}
-                    className="flex-1 bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5">
-                    {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                    Save Demo
-                  </button>
-                  <button type="button" onClick={() => setActiveSection(null)}
-                    className="px-4 bg-white border border-gray-100 text-gray-500 text-xs font-bold rounded-xl hover:bg-gray-50">
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* ── Inline: Convert Form ── */}
-        <AnimatePresence>
-          {activeSection === "convert" && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
-              <form onSubmit={handleConvertLead} className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 space-y-3">
-                <h4 className="text-xs font-black text-indigo-800">Convert to Paying Client</h4>
-                <div>
-                  <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Subdomain Slug</label>
-                  <input required type="text" value={convertForm.subdomain}
-                    onChange={e => setConvertForm(p => ({ ...p, subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "") }))}
-                    className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none font-mono"
-                  />
-                  <p className="text-[9px] text-gray-400 mt-1">
-                    Live URL: <span className="font-mono font-semibold">{convertForm.subdomain}.dashboard.smartmadrasa.app</span>
-                  </p>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Admin Name</label>
-                    <input type="text" value={convertForm.adminName}
-                      onChange={e => setConvertForm(p => ({ ...p, adminName: e.target.value }))}
-                      className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Login (Phone/Email)</label>
-                    <input required type="text" value={convertForm.adminIdentifier}
-                      onChange={e => setConvertForm(p => ({ ...p, adminIdentifier: e.target.value }))}
-                      className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Password</label>
-                    <input required type="text" value={convertForm.adminPassword}
-                      onChange={e => setConvertForm(p => ({ ...p, adminPassword: e.target.value }))}
-                      className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl font-mono focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Amount Paid (₹)</label>
-                    <input required type="number" value={convertForm.amountPaid}
-                      onChange={e => setConvertForm(p => ({ ...p, amountPaid: Number(e.target.value) }))}
-                      className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none"
-                    />
-                  </div>
-                </div>
-                <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 text-xs text-emerald-800">
-                  <p className="font-bold mb-0.5">Commission Summary</p>
-                  <p className="text-[10px]">
-                    {convertForm.commissionPercentage}% of ₹{convertForm.amountPaid.toLocaleString()} = 
-                    <strong> ₹{Math.round((convertForm.amountPaid * convertForm.commissionPercentage) / 100).toLocaleString()}</strong>
-                    {" "}+ flat bonus — split across {lead.contributors.length} contributor(s)
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <button type="submit" disabled={actionLoading}
-                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5">
-                    {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <TrendingUp className="w-3.5 h-3.5" />}
-                    Activate & Split Commission
-                  </button>
-                  <button type="button" onClick={() => setActiveSection(null)}
-                    className="px-4 bg-white border border-gray-100 text-gray-500 text-xs font-bold rounded-xl hover:bg-gray-50">
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* ── Trial Credentials (if trial is active) ── */}
-        {lead.trialMonitoring && (
-          <div className="bg-amber-50/60 border border-amber-100 rounded-2xl p-4 space-y-2">
-            <h3 className="text-[10px] font-black text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
-              <Play className="w-3.5 h-3.5" /> Trial Sandbox
-            </h3>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="bg-white rounded-xl p-2.5">
-                <span className="block text-[9px] text-gray-400 uppercase font-bold">Health</span>
-                <span className="font-black text-gray-800">{lead.trialMonitoring.healthScore}</span>
-              </div>
-              <div className="bg-white rounded-xl p-2.5">
-                <span className="block text-[9px] text-gray-400 uppercase font-bold">Logins (7d)</span>
-                <span className="font-black text-gray-800">{lead.trialMonitoring.loginFrequency}</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── Contacts ── */}
-        <div className="bg-gray-50 rounded-2xl p-4 space-y-2">
-          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-            <Users className="w-3.5 h-3.5" /> Contacts
-          </h3>
-          {lead.contacts && lead.contacts.length > 0 ? (
-            lead.contacts.map((c, idx) => (
-              <div key={c.id || idx} className="flex items-start justify-between gap-2 text-xs py-1.5 border-b border-gray-100 last:border-0">
-                <div className="space-y-0.5">
-                  <p className="font-bold text-gray-800">
-                    {c.name || <span className="text-gray-400 italic">No name specified</span>}
-                    {c.role && (
-                      <span className="ml-1.5 text-[9px] font-normal text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{c.role}</span>
-                    )}
-                    {c.isPrimary && (
-                      <span className="ml-1.5 text-[8px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">Primary</span>
-                    )}
-                  </p>
-                  {c.phone && (() => {
-                    const cleanPhone = c.phone.replace(/[^0-9]/g, "");
-                    const waPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
-                    return (
-                      <div className="flex items-center gap-2 text-gray-600 flex-wrap pt-0.5">
-                        <Phone className="w-3 h-3 text-gray-400" />
-                        <span className="font-semibold">{c.phone}</span>
-                        <div className="flex items-center gap-1">
-                          <a
-                            href={`tel:${c.phone}`}
-                            className="p-1 rounded-md text-blue-600 hover:bg-blue-50 transition-colors"
-                            title="Direct Call"
-                          >
-                            <Phone className="w-3 h-3" />
-                          </a>
-                          <a
-                            href={`https://wa.me/${waPhone}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors"
-                            title="Chat on WhatsApp"
-                          >
-                            <MessageSquare className="w-2.5 h-2.5" />
-                            <span>WhatsApp</span>
-                          </a>
-                          <button
-                            type="button"
-                            onClick={() => copyToClipboard(c.phone!, c.phone!)}
-                            className="p-1 text-gray-400 hover:text-gray-600"
-                            title="Copy phone"
-                          >
-                            {copiedText === c.phone ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                          </button>
-                        </div>
+            {/* ── Inline: Follow-up Form ── */}
+            <AnimatePresence>
+              {activeSection === "followup" && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <form onSubmit={handleLogActivity} className="bg-blue-50/50 border border-blue-100 rounded-2xl p-4 space-y-3">
+                    <h4 className="text-xs font-black text-blue-800">Log Follow-up / Contact</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Type</label>
+                        <select
+                          value={activityForm.type}
+                          onChange={e => setActivityForm(p => ({ ...p, type: e.target.value }))}
+                          className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none focus:border-blue-500"
+                        >
+                          {ACTIVITY_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                        </select>
                       </div>
-                    );
-                  })()}
-                  {c.secondaryPhone && (() => {
-                    const cleanPhone = c.secondaryPhone.replace(/[^0-9]/g, "");
-                    const waPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
-                    return (
-                      <div className="flex items-center gap-2 text-gray-500 text-[11px] flex-wrap pt-0.5">
-                        <span className="text-[9px] text-gray-400 font-medium">Alt:</span>
-                        <span className="font-semibold">{c.secondaryPhone}</span>
-                        <div className="flex items-center gap-1">
-                          <a
-                            href={`tel:${c.secondaryPhone}`}
-                            className="p-1 rounded-md text-blue-600 hover:bg-blue-50 transition-colors"
-                            title="Call Alt Phone"
-                          >
-                            <Phone className="w-3 h-3" />
-                          </a>
-                          <a
-                            href={`https://wa.me/${waPhone}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors"
-                            title="Chat on WhatsApp"
-                          >
-                            <MessageSquare className="w-2.5 h-2.5" />
-                            <span>WhatsApp</span>
-                          </a>
-                          <button
-                            type="button"
-                            onClick={() => copyToClipboard(c.secondaryPhone!, c.secondaryPhone!)}
-                            className="p-1 text-gray-400 hover:text-gray-600"
-                            title="Copy alt phone"
-                          >
-                            {copiedText === c.secondaryPhone ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                          </button>
-                        </div>
+                      <div>
+                        <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Schedule Follow-up</label>
+                        <input
+                          type="date"
+                          value={activityForm.followUpDate}
+                          onChange={e => setActivityForm(p => ({ ...p, followUpDate: e.target.value }))}
+                          className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none focus:border-blue-500"
+                        >
+                        </input>
                       </div>
-                    );
-                  })()}
-                </div>
-              </div>
-            ))
-          ) : (
-            <p className="text-xs text-gray-400 italic py-1">No contact persons added (optional)</p>
-          )}
-        </div>
+                    </div>
+                    <textarea
+                      required
+                      rows={2}
+                      value={activityForm.notes}
+                      onChange={e => setActivityForm(p => ({ ...p, notes: e.target.value }))}
+                      placeholder="What happened? Key discussion points, next steps..."
+                      className="w-full bg-white border border-gray-100 text-xs p-3 rounded-xl focus:outline-none focus:border-blue-500 resize-none"
+                    />
+                    <div className="flex gap-2">
+                      <button type="submit" disabled={actionLoading}
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5">
+                        {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                        Save Follow-up
+                      </button>
+                      <button type="button" onClick={() => setActiveSection(null)}
+                        className="px-4 bg-white border border-gray-100 text-gray-500 text-xs font-bold rounded-xl hover:bg-gray-50">
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-        {/* ── Attribution Split ── */}
-        {lead.contributors.length > 0 && (
-          <div className="bg-emerald-50/40 border border-emerald-100 rounded-2xl p-4 space-y-2">
-            <h3 className="text-[10px] font-black text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
-              <Award className="w-3.5 h-3.5" /> Commission Attribution
-            </h3>
-            <div className="space-y-1">
-              {lead.contributors.map(c => (
-                <div key={c.id} className="flex justify-between items-center text-xs py-1 border-b border-emerald-100/50 last:border-0">
-                  <div>
-                    <span className="font-bold text-gray-800">{c.user?.name ?? "—"}</span>
-                    <span className="ml-1.5 text-[9px] text-gray-400">{c.role.replace(/_/g, " ")}</span>
-                  </div>
-                  <span className="font-black text-emerald-800">{c.percentage}%</span>
+            {/* ── Inline: Demo Form ── */}
+            <AnimatePresence>
+              {activeSection === "demo" && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <form onSubmit={handleLogDemo} className="bg-violet-50/50 border border-violet-100 rounded-2xl p-4 space-y-3">
+                    <h4 className="text-xs font-black text-violet-800">Log Demo Session</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Demo Date & Time</label>
+                        <input type="datetime-local" required value={demoForm.date}
+                          onChange={e => setDemoForm(p => ({ ...p, date: e.target.value }))}
+                          className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none focus:border-violet-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Mode</label>
+                        <select value={demoForm.type} onChange={e => setDemoForm(p => ({ ...p, type: e.target.value }))}
+                          className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none">
+                          <option value="Online">Online Call</option>
+                          <option value="Site-Visit">Site Visit</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Outcome</label>
+                      <select value={demoForm.outcome} onChange={e => setDemoForm(p => ({ ...p, outcome: e.target.value }))}
+                        className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none focus:border-violet-500 font-semibold">
+                        <option value="INTERESTED">✅ Interested — Moving Forward</option>
+                        <option value="NEED_FOLLOW_UP">🔁 Needs Another Follow-up</option>
+                        <option value="NEED_COMMITTEE_APPROVAL">📋 Needs Committee Approval</option>
+                        <option value="TRIAL_REQUESTED">🧪 Requested Trial</option>
+                        <option value="NOT_INTERESTED">❌ Not Interested</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Attendees (comma-separated)</label>
+                      <input type="text" value={demoForm.attendees}
+                        onChange={e => setDemoForm(p => ({ ...p, attendees: e.target.value }))}
+                        placeholder="Sadr Usthad, Secretary..."
+                        className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none"
+                      />
+                    </div>
+                    <textarea rows={2} value={demoForm.notes}
+                      onChange={e => setDemoForm(p => ({ ...p, notes: e.target.value }))}
+                      placeholder="Key features shown, objections raised, client feedback..."
+                      className="w-full bg-white border border-gray-100 text-xs p-3 rounded-xl focus:outline-none resize-none"
+                    />
+                    <div className="flex gap-2">
+                      <button type="submit" disabled={actionLoading}
+                        className="flex-1 bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5">
+                        {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                        Save Demo
+                      </button>
+                      <button type="button" onClick={() => setActiveSection(null)}
+                        className="px-4 bg-white border border-gray-100 text-gray-500 text-xs font-bold rounded-xl hover:bg-gray-50">
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* ── Inline: Convert Form ── */}
+            <AnimatePresence>
+              {activeSection === "convert" && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <form onSubmit={handleConvertLead} className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 space-y-3">
+                    <h4 className="text-xs font-black text-indigo-800">Convert to Paying Client</h4>
+                    <div>
+                      <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Subdomain Slug</label>
+                      <input required type="text" value={convertForm.subdomain}
+                        onChange={e => setConvertForm(p => ({ ...p, subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "") }))}
+                        className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none font-mono"
+                      />
+                      <p className="text-[9px] text-gray-400 mt-1">
+                        Live URL: <span className="font-mono font-semibold">{convertForm.subdomain}.dashboard.smartmadrasa.app</span>
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Admin Name</label>
+                        <input type="text" value={convertForm.adminName}
+                          onChange={e => setConvertForm(p => ({ ...p, adminName: e.target.value }))}
+                          className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Login (Phone/Email)</label>
+                        <input required type="text" value={convertForm.adminIdentifier}
+                          onChange={e => setConvertForm(p => ({ ...p, adminIdentifier: e.target.value }))}
+                          className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Password</label>
+                        <input required type="text" value={convertForm.adminPassword}
+                          onChange={e => setConvertForm(p => ({ ...p, adminPassword: e.target.value }))}
+                          className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl font-mono focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Amount Paid (₹)</label>
+                        <input required type="number" value={convertForm.amountPaid}
+                          onChange={e => setConvertForm(p => ({ ...p, amountPaid: Number(e.target.value) }))}
+                          className="w-full bg-white border border-gray-100 text-xs py-2 px-2.5 rounded-xl focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                    <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 text-xs text-emerald-800">
+                      <p className="font-bold mb-0.5">Commission Summary</p>
+                      <p className="text-[10px]">
+                        {convertForm.commissionPercentage}% of ₹{convertForm.amountPaid.toLocaleString()} = 
+                        <strong> ₹{Math.round((convertForm.amountPaid * convertForm.commissionPercentage) / 100).toLocaleString()}</strong>
+                        {" "}+ flat bonus — split across {lead.contributors.length} contributor(s)
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="submit" disabled={actionLoading}
+                        className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5">
+                        {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <TrendingUp className="w-3.5 h-3.5" />}
+                        Activate & Split Commission
+                      </button>
+                      <button type="button" onClick={() => setActiveSection(null)}
+                        className="px-4 bg-white border border-gray-100 text-gray-500 text-xs font-bold rounded-xl hover:bg-gray-50">
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* ── Activity Timeline (With Edit & Delete Controls) ── */}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between gap-2 border-b border-gray-100 pb-2">
+                <div>
+                  <h3 className="text-xs font-black text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-blue-600" />
+                    Interaction Timeline & Logs
+                  </h3>
+                  <p className="text-[10px] text-gray-400">
+                    Full chronological audit of phone calls, visits, and follow-ups
+                  </p>
                 </div>
-              ))}
-              <p className="text-[9px] text-gray-400 pt-1">Total commission rate: {lead.commissionPercentage ?? 20}%</p>
+                <span className="text-[11px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-lg">
+                  {lead.timeline?.length ?? 0} {lead.timeline?.length === 1 ? "log" : "logs"}
+                </span>
+              </div>
+
+              {(!lead.timeline || lead.timeline.length === 0) && (
+                <div className="p-6 text-center border border-dashed border-gray-200 rounded-2xl bg-gray-50/50">
+                  <Clock className="w-6 h-6 text-gray-300 mx-auto mb-1.5" />
+                  <p className="text-xs text-gray-500 font-bold">No interactions logged yet</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Use the actions above to record calls, visits or set follow-ups.</p>
+                </div>
+              )}
+
+              {lead.timeline?.map(item => {
+                const isEditing = editingTimelineId === item.id;
+
+                return (
+                  <div key={item.id} className="flex gap-3 text-xs group">
+                    <div className="flex flex-col items-center">
+                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 mt-1 shrink-0 ring-4 ring-emerald-50" />
+                      <div className="w-px flex-1 bg-gray-200 mt-1" />
+                    </div>
+
+                    <div className="pb-4 flex-1">
+                      {isEditing ? (
+                        /* Inline Edit Activity Form */
+                        <form
+                          onSubmit={handleSaveEditTimeline}
+                          className="bg-blue-50/50 border border-blue-200 rounded-2xl p-3.5 space-y-3 shadow-xs"
+                        >
+                          <div className="flex items-center justify-between border-b border-blue-100 pb-1.5">
+                            <span className="text-[11px] font-black text-blue-900 flex items-center gap-1">
+                              <Pencil className="w-3 h-3 text-blue-600" /> Edit Activity Entry
+                            </span>
+                            <span className="text-[10px] text-blue-600 font-semibold">
+                              Fix errors or reschedule
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-[9px] uppercase font-bold text-gray-500 mb-1">
+                                Activity Type
+                              </label>
+                              <select
+                                value={editTimelineForm.type}
+                                onChange={(e) => setEditTimelineForm(p => ({ ...p, type: e.target.value }))}
+                                className="w-full bg-white border border-gray-200 text-xs py-1.5 px-2.5 rounded-xl focus:outline-none focus:border-blue-500 font-medium"
+                              >
+                                {ACTIVITY_TYPES.map(t => (
+                                  <option key={t.value} value={t.value}>{t.label}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-[9px] uppercase font-bold text-gray-500 mb-1">
+                                Reschedule Follow-up
+                              </label>
+                              <input
+                                type="date"
+                                value={editTimelineForm.followUpDate}
+                                onChange={(e) => setEditTimelineForm(p => ({ ...p, followUpDate: e.target.value }))}
+                                className="w-full bg-white border border-gray-200 text-xs py-1.5 px-2.5 rounded-xl focus:outline-none focus:border-blue-500 font-medium"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-[9px] uppercase font-bold text-gray-500 mb-1">
+                              Discussion Notes & Details
+                            </label>
+                            <textarea
+                              required
+                              rows={3}
+                              value={editTimelineForm.notes}
+                              onChange={(e) => setEditTimelineForm(p => ({ ...p, notes: e.target.value }))}
+                              placeholder="Update notes or correct typos..."
+                              className="w-full bg-white border border-gray-200 text-xs p-2.5 rounded-xl focus:outline-none focus:border-blue-500 resize-none font-medium text-gray-800"
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-end gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => setEditingTimelineId(null)}
+                              disabled={timelineActionLoading}
+                              className="px-3 py-1.5 bg-white border border-gray-200 text-gray-600 text-xs font-bold rounded-xl hover:bg-gray-50"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="submit"
+                              disabled={timelineActionLoading || !editTimelineForm.notes.trim()}
+                              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-1.5"
+                            >
+                              {timelineActionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                              Save Changes
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        /* Normal Activity Card with Quick Edit / Delete Controls */
+                        <div className="bg-white border border-gray-100 hover:border-gray-200 rounded-2xl p-3 shadow-2xs transition-all">
+                          <div className="flex items-center justify-between gap-2 mb-1.5">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="bg-gray-100 text-gray-700 text-[10px] font-bold px-2 py-0.5 rounded-lg uppercase">
+                                {item.type}
+                              </span>
+                              <span className="text-[10px] text-gray-400">
+                                {new Date(item.createdAt).toLocaleDateString("en-IN", {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit"
+                                })}
+                              </span>
+                            </div>
+
+                            {/* Edit / Delete action buttons */}
+                            <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
+                              <button
+                                type="button"
+                                onClick={() => handleStartEditTimeline(item)}
+                                className="p-1 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                title="Edit this entry / fix typos"
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteTimeline(item.id)}
+                                className="p-1 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                                title="Delete this entry"
+                              >
+                                <Trash className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+
+                          <p className="text-gray-800 leading-relaxed font-medium whitespace-pre-wrap">
+                            {item.notes}
+                          </p>
+
+                          {item.followUpDate && (
+                            <div className="mt-2 pt-2 border-t border-gray-50 flex items-center justify-between text-[10px]">
+                              <span className="font-semibold text-gray-400">Associated Follow-up:</span>
+                              <span className="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100 flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {new Date(item.followUpDate).toLocaleDateString("en-IN", {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric"
+                                })}
+                              </span>
+                            </div>
+                          )}
+
+                          <div className="mt-1.5 flex items-center justify-between text-[10px] text-gray-400">
+                            <span>Logged by <strong className="text-gray-600 font-semibold">{item.user?.name ?? "System"}</strong></span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
 
-        {/* ── Onboarding Checklist ── */}
-        {lead.onboardingProject && (
-          <div className="border border-gray-100 rounded-2xl p-4 space-y-2">
-            <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-wider">
-              Onboarding — {Math.round(lead.onboardingProject.progress)}%
-            </h3>
-            <div className="w-full bg-gray-100 rounded-full h-1.5">
-              <div className="bg-emerald-500 h-1.5 rounded-full transition-all" style={{ width: `${lead.onboardingProject.progress}%` }} />
-            </div>
-            <div className="space-y-1 pt-1">
-              {lead.onboardingProject.checklist.map(item => (
-                <div key={item.id} className="flex items-center gap-2 text-xs py-1">
-                  <div className={cn("w-4 h-4 rounded-full flex items-center justify-center shrink-0",
-                    item.status === "COMPLETED" ? "bg-emerald-500" : "border-2 border-gray-200"
-                  )}>
-                    {item.status === "COMPLETED" && <Check className="w-2.5 h-2.5 text-white" />}
-                  </div>
-                  <span className={cn("flex-1", item.status === "COMPLETED" ? "text-gray-400 line-through" : "text-gray-700")}>
-                    {item.title}
+        {/* ══════════════════════════════════════════════════════════════════════ */}
+        {/* TAB 2: MADRASA & CONTACTS                                              */}
+        {/* ══════════════════════════════════════════════════════════════════════ */}
+        {activeLeadTab === "details" && (
+          <div className="space-y-4">
+            {/* ── Madrasa Information Card ── */}
+            <div className="bg-gray-50/70 border border-gray-100 rounded-3xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-black text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+                  Institution & Profile Details
+                </h3>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100">
+                  {lead.type || "Madrasa"}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+                <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-2xs">
+                  <span className="block text-[9px] uppercase font-bold text-gray-400">Total Students</span>
+                  <span className="font-black text-gray-800 text-sm">{lead.studentCount || "—"}</span>
+                </div>
+                <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-2xs">
+                  <span className="block text-[9px] uppercase font-bold text-gray-400">Total Teachers</span>
+                  <span className="font-black text-gray-800 text-sm">{lead.teacherCount || "—"}</span>
+                </div>
+                <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-2xs">
+                  <span className="block text-[9px] uppercase font-bold text-gray-400">Current Software</span>
+                  <span className="font-black text-gray-800 text-xs truncate block" title={lead.existingSoftware || "None"}>
+                    {lead.existingSoftware || "None (Manual/Registers)"}
                   </span>
                 </div>
-              ))}
+                <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-2xs">
+                  <span className="block text-[9px] uppercase font-bold text-gray-400">District</span>
+                  <span className="font-bold text-gray-800">{lead.district || "—"}</span>
+                </div>
+                <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-2xs">
+                  <span className="block text-[9px] uppercase font-bold text-gray-400">Place / Area</span>
+                  <span className="font-bold text-gray-800">{lead.place || "—"}</span>
+                </div>
+                <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-2xs">
+                  <span className="block text-[9px] uppercase font-bold text-gray-400">Lead Source</span>
+                  <span className="font-bold text-gray-800 uppercase text-[11px]">{lead.source?.replace(/_/g, " ") || "Direct"}</span>
+                </div>
+              </div>
+
+              {lead.address && (
+                <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-2xs">
+                  <span className="block text-[9px] uppercase font-bold text-gray-400 mb-0.5">Full Address</span>
+                  <p className="text-xs text-gray-700 font-medium">{lead.address}</p>
+                </div>
+              )}
             </div>
+
+            {/* ── Key Contacts List ── */}
+            <div className="bg-white border border-gray-100 rounded-3xl p-4 space-y-3 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-black text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-blue-600" />
+                  Key Contacts & Persons
+                </h3>
+                <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-lg">
+                  {lead.contacts?.length ?? 0} {lead.contacts?.length === 1 ? "contact" : "contacts"}
+                </span>
+              </div>
+
+              {lead.contacts && lead.contacts.length > 0 ? (
+                <div className="space-y-2">
+                  {lead.contacts.map((c, idx) => (
+                    <div
+                      key={c.id || idx}
+                      className="p-3 rounded-2xl border border-gray-100 hover:border-gray-200 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-black text-gray-900 text-sm">
+                            {c.name || <span className="text-gray-400 italic">No name provided</span>}
+                          </span>
+                          {c.role && (
+                            <span className="text-[10px] font-bold text-gray-600 bg-gray-200/80 px-2 py-0.5 rounded-full">
+                              {c.role}
+                            </span>
+                          )}
+                          {c.isPrimary && (
+                            <span className="text-[9px] font-black text-emerald-800 bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-full">
+                              Primary Contact
+                            </span>
+                          )}
+                        </div>
+
+                        {c.phone && (() => {
+                          const cleanPhone = c.phone.replace(/[^0-9]/g, "");
+                          const waPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+                          return (
+                            <div className="flex items-center gap-2 text-gray-700 text-xs flex-wrap pt-0.5">
+                              <Phone className="w-3 h-3 text-gray-400" />
+                              <span className="font-mono font-bold">{c.phone}</span>
+                              <div className="flex items-center gap-1">
+                                <a
+                                  href={`tel:${c.phone}`}
+                                  className="p-1 rounded-md text-blue-600 hover:bg-blue-50 transition-colors"
+                                  title="Call Phone"
+                                >
+                                  <Phone className="w-3 h-3" />
+                                </a>
+                                <a
+                                  href={`https://wa.me/${waPhone}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors"
+                                  title="Chat on WhatsApp"
+                                >
+                                  <MessageSquare className="w-2.5 h-2.5" />
+                                  <span>WhatsApp</span>
+                                </a>
+                                <button
+                                  type="button"
+                                  onClick={() => copyToClipboard(c.phone!, c.phone!)}
+                                  className="p-1 text-gray-400 hover:text-gray-600"
+                                  title="Copy phone"
+                                >
+                                  {copiedText === c.phone ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })()}
+
+                        {c.secondaryPhone && (() => {
+                          const cleanPhone = c.secondaryPhone.replace(/[^0-9]/g, "");
+                          const waPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+                          return (
+                            <div className="flex items-center gap-2 text-gray-500 text-xs flex-wrap pt-0.5">
+                              <span className="text-[10px] uppercase font-bold text-gray-400">Alt:</span>
+                              <span className="font-mono font-medium">{c.secondaryPhone}</span>
+                              <div className="flex items-center gap-1">
+                                <a
+                                  href={`tel:${c.secondaryPhone}`}
+                                  className="p-1 rounded-md text-blue-600 hover:bg-blue-50 transition-colors"
+                                  title="Call Alt Phone"
+                                >
+                                  <Phone className="w-3 h-3" />
+                                </a>
+                                <a
+                                  href={`https://wa.me/${waPhone}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors"
+                                  title="Chat on WhatsApp"
+                                >
+                                  <MessageSquare className="w-2.5 h-2.5" />
+                                  <span>WhatsApp</span>
+                                </a>
+                                <button
+                                  type="button"
+                                  onClick={() => copyToClipboard(c.secondaryPhone!, c.secondaryPhone!)}
+                                  className="p-1 text-gray-400 hover:text-gray-600"
+                                  title="Copy alt phone"
+                                >
+                                  {copiedText === c.secondaryPhone ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-5 text-center border border-dashed border-gray-200 rounded-2xl">
+                  <p className="text-xs text-gray-400 italic">No individual contact persons added yet.</p>
+                </div>
+              )}
+            </div>
+
+            {/* ── Attribution Split ── */}
+            {lead.contributors && lead.contributors.length > 0 && (
+              <div className="bg-emerald-50/40 border border-emerald-100 rounded-3xl p-4 space-y-2">
+                <h3 className="text-xs font-black text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <Award className="w-3.5 h-3.5 text-emerald-700" /> Commission Attribution Split
+                </h3>
+                <div className="space-y-1.5 pt-1">
+                  {lead.contributors.map(c => (
+                    <div key={c.id} className="flex justify-between items-center text-xs py-1.5 border-b border-emerald-100/60 last:border-0">
+                      <div>
+                        <span className="font-bold text-gray-800">{c.user?.name ?? "—"}</span>
+                        <span className="ml-2 text-[9px] uppercase font-bold text-emerald-700 bg-emerald-100/60 px-1.5 py-0.5 rounded">
+                          {c.role?.replace(/_/g, " ")}
+                        </span>
+                      </div>
+                      <span className="font-black text-emerald-800 text-sm">{c.percentage}%</span>
+                    </div>
+                  ))}
+                  <p className="text-[10px] text-gray-500 pt-1 font-medium">
+                    Total commission configured for lead: <strong className="text-emerald-800 font-bold">{lead.commissionPercentage ?? 20}%</strong>
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
-        {/* ── Activity Timeline ── */}
-        <div className="space-y-3">
-          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Activity Timeline</h3>
-          {lead.timeline.length === 0 && (
-            <p className="text-xs text-gray-400 text-center py-4">No activity logged yet.</p>
-          )}
-          {lead.timeline.map(item => (
-            <div key={item.id} className="flex gap-3 text-xs">
-              <div className="flex flex-col items-center">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1 shrink-0" />
-                <div className="w-px flex-1 bg-gray-100 mt-1" />
+        {/* ══════════════════════════════════════════════════════════════════════ */}
+        {/* TAB 3: PIPELINE, DEMOS & SETUP                                         */}
+        {/* ══════════════════════════════════════════════════════════════════════ */}
+        {activeLeadTab === "pipeline" && (
+          <div className="space-y-4">
+            {/* ── Pipeline Progress Bar & Override ── */}
+            <div className="bg-gray-50/80 rounded-3xl p-4 border border-gray-100 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-gray-700 uppercase tracking-wider">
+                  Pipeline Stage Progression
+                </span>
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">
+                  {LEAD_STATUS_LABELS[lead.status] ?? lead.status.replace(/_/g, " ")}
+                </span>
               </div>
-              <div className="pb-3 flex-1">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="bg-gray-100 text-gray-600 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase">{item.type}</span>
-                  <span className="text-[9px] text-gray-400">{new Date(item.createdAt).toLocaleDateString("en-US", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
-                </div>
-                <p className="text-gray-700 leading-relaxed">{item.notes}</p>
-                {item.followUpDate && (
-                  <p className="text-[9px] text-amber-600 font-semibold mt-0.5 flex items-center gap-1">
-                    <Clock className="w-3 h-3" /> Follow-up: {new Date(item.followUpDate).toLocaleDateString()}
-                  </p>
-                )}
-                <p className="text-[9px] text-gray-400 mt-0.5">by {item.user?.name ?? "System"}</p>
+
+              <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-1">
+                {PIPELINE_STEPS.map((step, i) => {
+                  const isActive = step.statuses.includes(lead.status);
+                  const isDone = i < currentStepIdx || (isWon && step.key === "won");
+                  return (
+                    <div key={step.key} className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateStage(step.statuses[0])}
+                        className={cn(
+                          "px-3 py-1.5 text-[10px] font-bold rounded-xl transition-all border",
+                          isActive ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" :
+                          isDone ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                          "bg-white text-gray-400 border-gray-100 hover:border-gray-300"
+                        )}
+                      >
+                        {isDone && !isActive ? <Check className="w-3 h-3 inline mr-1" /> : null}
+                        {step.label}
+                      </button>
+                      {i < PIPELINE_STEPS.length - 1 && (
+                        <ChevronRight className="w-3 h-3 text-gray-300 shrink-0" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Quick override select */}
+              <div className="flex items-center gap-2 pt-2 border-t border-gray-200/60">
+                <span className="text-[10px] text-gray-400 uppercase font-bold shrink-0">Override Status:</span>
+                <select
+                  value={lead.status}
+                  onChange={e => handleUpdateStage(e.target.value)}
+                  className="bg-white border border-gray-200 text-xs font-semibold py-1.5 px-2.5 rounded-xl focus:outline-none focus:border-emerald-600 text-gray-700 flex-1"
+                >
+                  {LEAD_STATUSES.map(s => <option key={s} value={s}>{LEAD_STATUS_LABELS[s] ?? s.replace(/_/g, " ")}</option>)}
+                </select>
               </div>
             </div>
-          ))}
-        </div>
 
-        {/* Delete */}
-        {canDelete && (
-          <button
-            type="button"
-            onClick={() => handleDeleteLead(lead.id)}
-            className="w-full py-2.5 text-rose-600 border border-rose-100 rounded-2xl text-xs font-bold hover:bg-rose-50 transition-all flex items-center justify-center gap-1.5"
-          >
-            <Trash className="w-3.5 h-3.5" /> Delete Lead
-          </button>
+            {/* ── Scheduled Demos History ── */}
+            {lead.demos && lead.demos.length > 0 && (
+              <div className="bg-violet-50/40 border border-violet-100 rounded-3xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-black text-violet-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-violet-700" />
+                    Product Demos Logged
+                  </h3>
+                  <span className="text-[10px] font-bold text-violet-700 bg-violet-100/60 px-2 py-0.5 rounded-lg">
+                    {lead.demos.length} {lead.demos.length === 1 ? "demo" : "demos"}
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  {lead.demos.map(demo => (
+                    <div key={demo.id} className="bg-white p-3 rounded-2xl border border-violet-100 shadow-2xs space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-gray-800">
+                          {new Date(demo.date).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit"
+                          })}
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="bg-gray-100 text-gray-600 text-[10px] font-bold px-1.5 py-0.5 rounded">
+                            {demo.type}
+                          </span>
+                          <span className="bg-violet-100 text-violet-800 text-[10px] font-bold px-1.5 py-0.5 rounded">
+                            {demo.outcome}
+                          </span>
+                        </div>
+                      </div>
+                      {demo.notes && (
+                        <p className="text-xs text-gray-600 font-medium">{demo.notes}</p>
+                      )}
+                      {demo.attendees && demo.attendees.length > 0 && (
+                        <p className="text-[10px] text-gray-400">
+                          Attendees: <span className="text-gray-600">{demo.attendees.join(", ")}</span>
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── Trial Credentials (if trial is active) ── */}
+            {lead.trialMonitoring && (
+              <div className="bg-amber-50/60 border border-amber-100 rounded-3xl p-4 space-y-2">
+                <h3 className="text-xs font-black text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <Play className="w-3.5 h-3.5 text-amber-700" /> Trial Sandbox
+                </h3>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="bg-white rounded-2xl p-3 border border-amber-100">
+                    <span className="block text-[9px] text-gray-400 uppercase font-bold">Health Score</span>
+                    <span className="font-black text-gray-800 text-sm">{lead.trialMonitoring.healthScore}</span>
+                  </div>
+                  <div className="bg-white rounded-2xl p-3 border border-amber-100">
+                    <span className="block text-[9px] text-gray-400 uppercase font-bold">Logins (7 Days)</span>
+                    <span className="font-black text-gray-800 text-sm">{lead.trialMonitoring.loginFrequency}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── Onboarding Checklist ── */}
+            {lead.onboardingProject && (
+              <div className="border border-gray-100 rounded-3xl p-4 space-y-2.5 bg-white shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-black text-gray-700 uppercase tracking-wider">
+                    Onboarding Setup
+                  </h3>
+                  <span className="text-xs font-bold text-emerald-700">
+                    {Math.round(lead.onboardingProject.progress)}% Complete
+                  </span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-2">
+                  <div
+                    className="bg-emerald-500 h-2 rounded-full transition-all"
+                    style={{ width: `${lead.onboardingProject.progress}%` }}
+                  />
+                </div>
+                <div className="space-y-1 pt-1">
+                  {lead.onboardingProject.checklist.map(item => (
+                    <div key={item.id} className="flex items-center gap-2 text-xs py-1">
+                      <div className={cn("w-4 h-4 rounded-full flex items-center justify-center shrink-0",
+                        item.status === "COMPLETED" ? "bg-emerald-500" : "border-2 border-gray-200"
+                      )}>
+                        {item.status === "COMPLETED" && <Check className="w-2.5 h-2.5 text-white" />}
+                      </div>
+                      <span className={cn("flex-1", item.status === "COMPLETED" ? "text-gray-400 line-through" : "text-gray-700")}>
+                        {item.title}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── Danger Zone: Delete Lead ── */}
+            {canDelete && (
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => handleDeleteLead(lead.id)}
+                  className="w-full py-2.5 text-rose-600 border border-rose-200 rounded-2xl text-xs font-bold hover:bg-rose-50 transition-all flex items-center justify-center gap-1.5"
+                >
+                  <Trash className="w-3.5 h-3.5" /> Delete Lead Permanently
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
     );
@@ -1898,9 +2724,35 @@ export default function CrmLeadsPage() {
                         · {selectedLead.studentCount} students
                       </p>
                     </div>
-                    <button onClick={closeLead} className="p-1.5 text-gray-400 hover:bg-gray-100 rounded-lg transition-all shrink-0">
-                      <X className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {/* Quick stage selector */}
+                      <select
+                        value={selectedLead.status}
+                        onChange={e => handleUpdateStage(e.target.value)}
+                        disabled={actionLoading}
+                        className="text-xs font-bold bg-white border border-gray-200 text-gray-700 rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-emerald-500 shadow-sm cursor-pointer hover:bg-gray-50 transition-all"
+                        title="Change pipeline stage"
+                      >
+                        {LEAD_STATUSES.map(s => (
+                          <option key={s} value={s}>{LEAD_STATUS_LABELS[s] ?? s.replace(/_/g, " ")}</option>
+                        ))}
+                      </select>
+
+                      {/* Edit Lead Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleStartEditLead(selectedLead)}
+                        className="px-3 py-1.5 text-xs font-bold bg-white border border-gray-200 text-gray-700 hover:text-emerald-700 hover:border-emerald-300 rounded-xl transition-all shadow-sm flex items-center gap-1.5 hover:bg-emerald-50/50"
+                        title="Edit lead details"
+                      >
+                        <Pencil className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Edit</span>
+                      </button>
+
+                      <button onClick={closeLead} className="p-1.5 text-gray-400 hover:bg-gray-100 rounded-lg transition-all shrink-0">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                   <div className="flex-1 overflow-y-auto p-5 scrollbar-thin">
                     {renderDetailContent()}
@@ -1980,9 +2832,20 @@ export default function CrmLeadsPage() {
                           {selectedLead.type} · {selectedLead.place} · {selectedLead.studentCount} students
                         </p>
                       </div>
-                      <button onClick={closeLead} className="p-1.5 text-gray-400 shrink-0">
-                        <X className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleStartEditLead(selectedLead)}
+                          className="px-2.5 py-1 text-xs font-bold bg-white border border-gray-200 text-gray-700 hover:text-emerald-700 rounded-lg flex items-center gap-1 shadow-sm"
+                          title="Edit lead"
+                        >
+                          <Pencil className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Edit</span>
+                        </button>
+                        <button onClick={closeLead} className="p-1.5 text-gray-400 shrink-0">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                     <div className="overflow-y-auto flex-1 p-4">
                       {renderDetailContent()}
@@ -2245,7 +3108,199 @@ export default function CrmLeadsPage() {
           )}
         </AnimatePresence>
 
-        {/* ── Bulk Import Modal ── */}
+        {/* ── Edit Lead Drawer ── */}
+        <AnimatePresence>
+          {showEditDrawer && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 0.4 }} exit={{ opacity: 0 }}
+                onClick={() => setShowEditDrawer(false)}
+                className="fixed inset-0 bg-black z-40"
+              />
+              <motion.div
+                initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
+                transition={{ type: "spring", damping: 28, stiffness: 250 }}
+                className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl z-50 overflow-y-auto"
+              >
+                <div className="p-5 space-y-5">
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+                    <div>
+                      <h3 className="text-lg font-black text-gray-800">Edit Lead</h3>
+                      <p className="text-xs text-gray-400">Update institution profile and primary contact</p>
+                    </div>
+                    <button onClick={() => setShowEditDrawer(false)} className="p-2 text-gray-400 hover:bg-gray-100 rounded-xl">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <form onSubmit={handleSaveEditLead} className="space-y-4">
+                    <div>
+                      <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Madrasa Name *</label>
+                      <input required type="text" value={editLeadForm.name}
+                        onChange={e => setEditLeadForm(p => ({ ...p, name: e.target.value }))}
+                        placeholder="Madrasa Name"
+                        className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-sm focus:outline-none focus:border-emerald-500 font-semibold"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Pipeline Stage</label>
+                        <select value={editLeadForm.status} onChange={e => setEditLeadForm(p => ({ ...p, status: e.target.value }))}
+                          className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-sm focus:outline-none">
+                          {LEAD_STATUSES.map(s => <option key={s} value={s}>{LEAD_STATUS_LABELS[s] ?? s.replace(/_/g, " ")}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Syllabus Type</label>
+                        <select value={editLeadForm.type} onChange={e => setEditLeadForm(p => ({ ...p, type: e.target.value }))}
+                          className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-sm focus:outline-none">
+                          {["Samastha", "AP", "Fadhila", "Other"].map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">District</label>
+                        <select value={editLeadForm.districtId}
+                          onChange={e => {
+                            const d = districts.find(d => d.id === e.target.value);
+                            setEditLeadForm(p => ({ ...p, districtId: e.target.value, district: d?.name ?? "" }));
+                          }}
+                          className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-sm focus:outline-none">
+                          <option value="">Select District</option>
+                          {districts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Place / Town</label>
+                        <input type="text" value={editLeadForm.place}
+                          onChange={e => setEditLeadForm(p => ({ ...p, place: e.target.value }))}
+                          placeholder="Town / Village"
+                          className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-sm focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Full Address</label>
+                      <textarea rows={2} value={editLeadForm.address}
+                        onChange={e => setEditLeadForm(p => ({ ...p, address: e.target.value }))}
+                        placeholder="Complete postal address / landmark"
+                        className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-xs focus:outline-none resize-none"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Lead Source</label>
+                        <select value={editLeadForm.source} onChange={e => setEditLeadForm(p => ({ ...p, source: e.target.value }))}
+                          className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2 text-xs focus:outline-none">
+                          {LEAD_SOURCES.map(s => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Students</label>
+                        <input type="number" value={editLeadForm.studentCount}
+                          onChange={e => setEditLeadForm(p => ({ ...p, studentCount: Number(e.target.value) }))}
+                          className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2 text-xs focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Teachers</label>
+                        <input type="number" value={editLeadForm.teacherCount}
+                          onChange={e => setEditLeadForm(p => ({ ...p, teacherCount: Number(e.target.value) }))}
+                          className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2 text-xs focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Existing Software</label>
+                        <input type="text" value={editLeadForm.existingSoftware}
+                          onChange={e => setEditLeadForm(p => ({ ...p, existingSoftware: e.target.value }))}
+                          placeholder="e.g. Excel, None, Custom"
+                          className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2 text-xs focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] text-gray-400 mb-1 uppercase font-bold">Commission %</label>
+                        <input type="number" min={0} max={100} value={editLeadForm.commissionPercentage}
+                          onChange={e => setEditLeadForm(p => ({ ...p, commissionPercentage: Number(e.target.value) }))}
+                          className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2 text-xs focus:outline-none font-bold"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Primary Contact Person */}
+                    <div className="bg-gray-50 p-4 rounded-2xl space-y-3 border border-gray-100">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-bold text-gray-700">Primary Contact Person</h4>
+                        <span className="text-[10px] text-gray-400 font-medium bg-gray-100 px-2 py-0.5 rounded-full">Key Decision Maker</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[9px] text-gray-400 mb-1">Full Name</label>
+                          <input type="text" value={editLeadForm.contactName}
+                            onChange={e => setEditLeadForm(p => ({ ...p, contactName: e.target.value }))}
+                            placeholder="Contact person's name"
+                            className="w-full bg-white border border-gray-100 rounded-lg p-2 text-xs focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] text-gray-400 mb-1">Primary Phone</label>
+                          <input type="tel" value={editLeadForm.contactPhone}
+                            onChange={e => setEditLeadForm(p => ({ ...p, contactPhone: e.target.value }))}
+                            placeholder="Phone number"
+                            className="w-full bg-white border border-gray-100 rounded-lg p-2 text-xs focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[9px] text-gray-400 mb-1">Secondary / Alt Phone</label>
+                          <input type="tel" value={editLeadForm.contactSecondaryPhone}
+                            onChange={e => setEditLeadForm(p => ({ ...p, contactSecondaryPhone: e.target.value }))}
+                            placeholder="Alternative phone"
+                            className="w-full bg-white border border-gray-100 rounded-lg p-2 text-xs focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] text-gray-400 mb-1">Role / Designation</label>
+                          <select value={editLeadForm.contactRole}
+                            onChange={e => setEditLeadForm(p => ({ ...p, contactRole: e.target.value }))}
+                            className="w-full bg-white border border-gray-100 rounded-lg p-2 text-xs focus:outline-none text-gray-700">
+                            <option value="">Select Role / Designation</option>
+                            {CONTACT_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowEditDrawer(false)}
+                        className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm py-3 rounded-xl transition-all"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={editLeadSaving}
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm py-3 rounded-xl transition-all flex items-center justify-center gap-2"
+                      >
+                        {editLeadSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                        Save Changes
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
         <ImportModal
           show={showImportModal}
           onClose={() => {

@@ -14,9 +14,10 @@ function mutateJson<T>(
   body: unknown,
   token: string,
 ): Promise<T> {
+  const payload = body === null || body === undefined ? {} : body;
   return apiFetch<T>(`${API_BASE}${path}`, token, {
     method,
-    body: JSON.stringify(body),
+    body: JSON.stringify(payload),
   });
 }
 
@@ -303,6 +304,61 @@ export function updateClassSubject(classSubjectId: string, dto: UpdateClassSubje
 
 export function deleteClassSubject(classSubjectId: string, token: string) {
   return deleteJson(`/super-admin/class-subjects/${classSubjectId}`, token);
+}
+
+export function syncEducationSystemSubjects(systemId: string, token: string, isAsync?: boolean) {
+  const query = isAsync !== undefined ? `?async=${isAsync}` : '';
+  return mutateJson<{
+    success: boolean;
+    async?: boolean;
+    jobId?: string;
+    message?: string;
+    systemId?: string;
+    systemName?: string;
+    stats?: {
+      gradeLevelsProcessed?: number;
+      classesUpdated?: number;
+      subjectsAdded?: number;
+      subjectsLinked?: number;
+      totalSubjects?: number;
+    };
+  }>('POST', `/super-admin/education-systems/${systemId}/sync-subjects${query}`, {}, token);
+}
+
+export function syncGradeLevelSubjects(gradeLevelId: string, token: string, isAsync?: boolean) {
+  const query = isAsync !== undefined ? `?async=${isAsync}` : '';
+  return mutateJson<{
+    success: boolean;
+    async?: boolean;
+    jobId?: string;
+    message?: string;
+    gradeLevelId?: string;
+    gradeLevelName?: string;
+    stats?: {
+      subjectsProcessed?: number;
+      classesUpdated?: number;
+      subjectsAdded?: number;
+      subjectsLinked?: number;
+    };
+  }>('POST', `/super-admin/grade-levels/${gradeLevelId}/sync-subjects${query}`, {}, token);
+}
+
+export function getSyncJobStatus(jobId: string, token: string) {
+  return getJson<{
+    id: string;
+    type: 'SYSTEM_SYNC' | 'GRADE_LEVEL_SYNC';
+    targetId: string;
+    targetName: string;
+    status: 'RUNNING' | 'COMPLETED' | 'FAILED';
+    totalSubjects: number;
+    completedSubjects: number;
+    classesUpdated: number;
+    subjectsAdded: number;
+    subjectsLinked: number;
+    startedAt: string;
+    completedAt?: string;
+    error?: string;
+  }>(`/super-admin/sync-jobs/${jobId}`, token);
 }
 
 // ── Platform Report ───────────────────────────────────────────────────────────
