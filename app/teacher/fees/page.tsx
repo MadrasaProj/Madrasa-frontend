@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
@@ -38,9 +39,12 @@ import {
   Loader2,
   Receipt,
   Search,
-  RefreshCw,
   Printer,
   SlidersHorizontal,
+  IndianRupee,
+  Clock3,
+  CircleCheck,
+  CircleX,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -78,6 +82,236 @@ function toLocalDateOnly(value: string): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function FeeSemiCircle({
+  segments,
+  value,
+  label,
+  description,
+}: {
+  segments: { value: number; color: string }[];
+  value: string;
+  label: string;
+  description: string;
+}) {
+  const total = segments.reduce((sum, segment) => sum + segment.value, 0);
+  let position = 0;
+  const point = (fraction: number) => {
+    const angle = Math.PI * (1 - fraction);
+    return [100 + 78 * Math.cos(angle), 94 - 78 * Math.sin(angle)];
+  };
+
+  return (
+    <svg viewBox="0 0 200 108" role="img" aria-label={description} className="mx-auto h-24 w-full max-w-52 sm:h-28">
+      <path d="M 22 94 A 78 78 0 0 1 178 94" fill="none" stroke="#e5e7eb" strokeWidth="17" strokeLinecap="round" />
+      {total > 0 && segments.map((segment, index) => {
+        const start = position;
+        position += segment.value / total;
+        if (segment.value <= 0) return null;
+        const [x1, y1] = point(start);
+        const [x2, y2] = point(position);
+        return (
+          <path
+            key={index}
+            d={`M ${x1} ${y1} A 78 78 0 0 1 ${x2} ${y2}`}
+            fill="none"
+            stroke={segment.color}
+            strokeWidth="17"
+          />
+        );
+      })}
+      <text x="100" y="72" textAnchor="middle" className="fill-gray-950 text-[23px] font-semibold">{value}</text>
+      <text x="100" y="89" textAnchor="middle" className="fill-gray-500 text-[10px] font-medium">{label}</text>
+    </svg>
+  );
+}
+
+function FeeStats({
+  payments,
+  total,
+  feeType,
+  status,
+  search,
+  lang,
+}: {
+  payments: FeePayment[];
+  total: number;
+  feeType: string;
+  status: string;
+  search: string;
+  lang: Lang;
+}) {
+  const amountPaid = (payment: FeePayment) =>
+    Number(payment.paidAmount ?? (payment.status === "PAID" ? payment.dueAmount : 0));
+  const paid = payments.filter((payment) => payment.status === "PAID").length;
+  const overdue = payments.filter((payment) => payment.status === "OVERDUE").length;
+  const waived = payments.filter((payment) => payment.status === "WAIVED").length;
+  const pending = payments.length - paid - overdue - waived;
+  const collected = payments.reduce(
+    (sum, payment) =>
+      payment.status === "WAIVED" ? sum : sum + amountPaid(payment),
+    0,
+  );
+  const paidAmount = payments.reduce(
+    (sum, payment) =>
+      payment.status === "PAID" ? sum + amountPaid(payment) : sum,
+    0,
+  );
+  const outstanding = payments.reduce(
+    (sum, payment) =>
+      payment.status === "WAIVED"
+        ? sum
+        : sum + Math.max(0, Number(payment.dueAmount) - amountPaid(payment)),
+    0,
+  );
+  const overdueAmount = payments.reduce(
+    (sum, payment) =>
+      payment.status === "OVERDUE"
+        ? sum + Math.max(0, Number(payment.dueAmount) - amountPaid(payment))
+        : sum,
+    0,
+  );
+  const waivedAmount = payments.reduce(
+    (sum, payment) =>
+      payment.status === "WAIVED" ? sum + Number(payment.dueAmount) : sum,
+    0,
+  );
+  const pendingAmount = Math.max(0, outstanding - overdueAmount);
+  const collectionRate = collected + outstanding > 0
+    ? Math.round((collected / (collected + outstanding)) * 100)
+    : 0;
+  const formatAmount = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
+  const stats = [
+    {
+      label: t("common", "paid", lang),
+      value: paid,
+      detail: t("teacherPages", "feeStatsPaidAmount", lang).replace("{amount}", formatAmount(paidAmount)),
+      icon: CircleCheck,
+      color: "text-primary-700",
+    },
+    {
+      label: t("teacherPages", "feeStatsOverdue", lang),
+      value: overdue,
+      detail: t("teacherPages", "feeStatsOverdueAmount", lang).replace("{amount}", formatAmount(overdueAmount)),
+      icon: Clock3,
+      color: "text-red-700",
+    },
+    {
+      label: t("teacherPages", "feeStatsWaived", lang),
+      value: waived,
+      detail: t("teacherPages", "feeStatsWaivedAmount", lang).replace("{amount}", formatAmount(waivedAmount)),
+      icon: CircleX,
+      color: "text-gray-600",
+    },
+    {
+      label: t("teacherPages", "feeStatsPending", lang),
+      value: pending,
+      detail: t("teacherPages", "feeStatsPendingAmount", lang).replace("{amount}", formatAmount(pendingAmount)),
+      icon: Clock3,
+      color: "text-amber-700",
+    },
+    {
+      label: t("teacherPages", "feeStatsCollected", lang),
+      value: formatAmount(collected),
+      detail: t("teacherPages", "feeStatsAmount", lang),
+      icon: IndianRupee,
+      color: "text-primary-700",
+    },
+    {
+      label: t("teacherPages", "feeStatsToCollect", lang),
+      value: formatAmount(outstanding),
+      detail: t("teacherPages", "feeStatsAmount", lang),
+      icon: Clock3,
+      color: "text-amber-700",
+    },
+  ];
+
+  return (
+    <section className="mx-3 mb-4  overflow-hidden rounded-2xl bg-gradient-to-br from-white    to-sky-50">
+      <div className="border-b border-gray-100   px-4 py-3 sm:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-xl font-semibold tabular-nums text-gray-950">{total}</span>
+            <span className="text-xs font-medium text-gray-600">
+              {t("teacherPages", "feeResultsTotal", lang)}
+            </span>
+          </div>
+          <span className="rounded-full border border-primary-100 bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
+            <strong className="tabular-nums">{payments.length}</strong>{" "}
+            {t("teacherPages", "feeResultsShown", lang)}
+          </span>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-medium">
+          <span className="max-w-full truncate rounded-full bg-white px-2.5 py-1 text-gray-700 ring-1 ring-gray-200">
+            {t("parentPages", "feeTypeLabel", lang)}: {feeType}
+          </span>
+          <span className="max-w-full truncate rounded-full bg-white px-2.5 py-1 text-gray-700 ring-1 ring-gray-200">
+            {t("common", "status", lang)}: {status}
+          </span>
+          {search.trim() && (
+            <span className="max-w-full truncate rounded-full bg-white px-2.5 py-1 text-gray-700 ring-1 ring-gray-200">
+              {t("teacherPages", "feeResultsSearch", lang)}: {search.trim()}
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-px bg-gray-100">
+        <div className="min-w-0 bg-white/90 p-3 text-center sm:p-4">
+          <h3 className="text-xs font-semibold text-gray-700">{t("teacherPages", "feeStatsCollectionRate", lang)}</h3>
+          <FeeSemiCircle
+            segments={[{ value: collected, color: "#059669" }, { value: outstanding, color: "#f59e0b" }]}
+            value={`${collectionRate}%`}
+            label={t("teacherPages", "feeStatsCollected", lang)}
+            description={`${t("teacherPages", "feeStatsCollectionRate", lang)}: ${collectionRate}%`}
+          />
+          <div className="flex justify-center gap-3 text-[11px] text-gray-600">
+            <span><span className="mr-1 inline-block size-2 rounded-full bg-emerald-600" />{t("teacherPages", "feeStatsCollected", lang)}</span>
+            <span><span className="mr-1 inline-block size-2 rounded-full bg-amber-500" />{t("teacherPages", "feeStatsToCollect", lang)}</span>
+          </div>
+        </div>
+        <div className="min-w-0 bg-white/90 p-3 text-center sm:p-4">
+          <h3 className="text-xs font-semibold text-gray-700">{t("teacherPages", "feeStatsPaymentStatus", lang)}</h3>
+          <FeeSemiCircle
+            segments={[
+              { value: paid, color: "#059669" },
+              { value: overdue, color: "#dc2626" },
+              { value: pending, color: "#f59e0b" },
+              { value: waived, color: "#9ca3af" },
+            ]}
+            value={String(payments.length)}
+            label={t("teacherPages", "feeStatsPayments", lang)}
+            description={t("teacherPages", "feeStatsPaymentStatus", lang)}
+          />
+          <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-[11px] text-gray-600">
+            {[
+              [t("common", "paid", lang), "bg-emerald-600"],
+              [t("teacherPages", "feeStatsOverdue", lang), "bg-red-600"],
+              [t("teacherPages", "feeStatsPending", lang), "bg-amber-500"],
+              [t("teacherPages", "feeStatsWaived", lang), "bg-gray-400"],
+            ].map(([label, color]) => (
+              <span key={label}><span className={cn("mr-1 inline-block size-2 rounded-full", color)} />{label}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-px border-t border-gray-100 bg-gray-100 sm:grid-cols-3">
+        {stats.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <div key={stat.label} className="min-w-0 bg-white/90 p-3 sm:p-4">
+              <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-600">
+                <Icon aria-hidden="true" className={cn("h-3.5 w-3.5 shrink-0", stat.color)} />
+                <span>{stat.label}</span>
+              </div>
+              <div className="mt-2 text-base font-semibold tabular-nums text-gray-950 sm:text-lg">{stat.value}</div>
+              <div className="mt-1 text-[11px] text-gray-500">{stat.detail}</div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
 }
 
 function ReceiptModal({
@@ -199,6 +433,7 @@ export default function TeacherFeesPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const paymentsRequest = useRef<AbortController | null>(null);
 
   const loadTypes = useCallback(async () => {
     if (!cid || !token || !activeClassId) { setFeeTypes([]); setTypesLoading(false); return; }
@@ -221,31 +456,54 @@ export default function TeacherFeesPage() {
   }, [cid, token, loadTypes]);
 
   const loadPayments = useCallback(async () => {
-    if (!cid || !token || !activeClassId) { setPayments([]); setPayLoading(false); return; }
+    paymentsRequest.current?.abort();
+    if (!cid || !token || !activeClassId) {
+      setPayments([]);
+      setPayTotal(0);
+      setPayLoading(false);
+      return;
+    }
+    const controller = new AbortController();
+    paymentsRequest.current = controller;
     setPayments([]);
+    setPayTotal(0);
     setPayLoading(true);
     try {
-      const res = await getPayments(cid, token, {
+      const params = {
         classId: activeClassId,
         feeTypeId: activeTypeId ?? undefined,
         status:
           statusFilter !== "all"
             ? (statusFilter as FeePaymentStatus)
             : undefined,
-        skip: paySkip,
-        take: 30,
-      });
-      setPayments(res.payments);
-      setPayTotal(res.total);
+        take: 200,
+        signal: controller.signal,
+      };
+      const firstPage = await getPayments(cid, token, { ...params, skip: 0 });
+      const allPayments = [...firstPage.payments];
+      while (allPayments.length < firstPage.total) {
+        const nextPage = await getPayments(cid, token, {
+          ...params,
+          skip: allPayments.length,
+        });
+        if (nextPage.payments.length === 0) {
+          throw new Error("Could not load all payment records");
+        }
+        allPayments.push(...nextPage.payments);
+      }
+      if (controller.signal.aborted) return;
+      setPayments(allPayments);
+      setPayTotal(allPayments.length);
     } catch (e) {
-      setError((e as Error).message);
+      if (!controller.signal.aborted) setError((e as Error).message);
     } finally {
-      setPayLoading(false);
+      if (paymentsRequest.current === controller) setPayLoading(false);
     }
-  }, [cid, token, activeClassId, activeTypeId, statusFilter, paySkip]);
+  }, [cid, token, activeClassId, activeTypeId, statusFilter]);
 
   useEffect(() => {
     loadPayments();
+    return () => paymentsRequest.current?.abort();
   }, [loadPayments]);
 
   const selectType = (id: string | null) => {
@@ -257,13 +515,21 @@ export default function TeacherFeesPage() {
 
   const activeType = feeTypes.find((f) => f.id === activeTypeId) ?? null;
 
-  const filtered = search
+  const searchTerm = search.trim().toLowerCase();
+  const filtered = searchTerm
     ? payments.filter(
         (p) =>
-          p.student.name.toLowerCase().includes(search.toLowerCase()) ||
-          p.student.adno.includes(search),
+          p.student.name.toLowerCase().includes(searchTerm) ||
+          p.student.adno.toLowerCase().includes(searchTerm),
       )
     : payments;
+  const visiblePayments = filtered.slice(paySkip, paySkip + 30);
+
+  useEffect(() => {
+    if (!payLoading && paySkip >= filtered.length && paySkip > 0) {
+      setPaySkip(Math.max(0, Math.ceil(filtered.length / 30) - 1) * 30);
+    }
+  }, [filtered.length, payLoading, paySkip]);
 
   const markPaid = async (p: FeePayment) => {
     setSaving(true);
@@ -394,27 +660,35 @@ export default function TeacherFeesPage() {
       <PageHeader title={t("teacherPages", "feesPaymentsTitle", lang)} />
 
       <Drawer open={filtersOpen} onOpenChange={setFiltersOpen} swipeDirection="down">
-      <div className="fixed bottom-22 left-1/2 z-40 flex w-[calc(100%-6rem)] max-w-md -translate-x-1/2 items-center gap-2 rounded-full border border-gray-200 bg-white p-1.5! lg:bottom-6">
-        <div className="relative min-w-0 flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t("teacherPages", "searchStudentName", lang)}
-            className="h-10 border-0 bg-transparent pl-9 pr-2 text-sm shadow-none focus-visible:ring-0"
-          />
+        <div className="px-4! pt-4! pb-2!">
+          <div className="mx-auto flex w-full max-w-md items-center gap-2 p-1.5">
+            <InputGroup className="h-10 flex-1 rounded-lg bg-white">
+              <InputGroupInput
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPaySkip(0);
+                }}
+                placeholder={t("teacherPages", "searchStudentName", lang)}
+                aria-label={t("teacherPages", "searchStudentName", lang)}
+                className="h-full text-sm"
+              />
+              <InputGroupAddon align="inline-start">
+                <Search className="h-4 w-4 text-gray-400" />
+              </InputGroupAddon>
+            </InputGroup>
+            <Button
+              variant="outline"
+              type="button"
+              size="icon-lg"
+              onClick={() => setFiltersOpen(true)}
+              className="h-10 w-10 shrink-0 rounded-xl text-gray-600 hover:bg-gray-100"
+              aria-label="Open filters"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
-        <Button
-          variant="ghost"
-          type="button"
-          size="icon-lg"
-          onClick={() => setFiltersOpen(true)}
-          className="h-10 w-10 shrink-0 rounded-xl text-gray-600 hover:bg-gray-100"
-          aria-label="Open filters"
-        >
-          <SlidersHorizontal className="w-4 h-4" />
-        </Button>
-      </div>
 
       <DrawerContent className="max-h-[85dvh] bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]" aria-label="Fee filters">
               <div className="flex items-center justify-between mb-6">
@@ -490,16 +764,15 @@ export default function TeacherFeesPage() {
             </div>
           ) : (
             <>
-              <div className="">
-                <div className="mb-0 mt-4  flex items-center justify-between gap-3">
-                <h2 className="text-base font-semibold text-foreground">
-                  {activeType
-                    ? activeType.name
-                    : t("teacherPages", "allFeeTypes", lang)}{" "}
-                  <span className="text-sm font-normal text-muted-foreground">· {payTotal} total</span>
-                </h2>
-                
-              </div>
+              <div className="p-0! pt-2!">
+                <FeeStats
+                  payments={filtered}
+                  total={payTotal}
+                  feeType={activeType?.name ?? t("teacherPages", "allFeesBtn", lang)}
+                  status={statusFilter === "all" ? t("common", "all", lang) : (STATUS_META[statusFilter as FeePaymentStatus]?.label ?? statusFilter)}
+                  search={search}
+                  lang={lang}
+                />
               </div>
               <div data-ui-style="classic" className="card mx-3 divide-y p-0! divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-none">
                 {filtered.length === 0 ? (
@@ -507,7 +780,7 @@ export default function TeacherFeesPage() {
                     {t("teacherPages", "noPaymentRecords", lang)}
                   </div>
                 ) : (
-                  filtered.map((payment) => {
+                  visiblePayments.map((payment) => {
                     const meta = STATUS_META[payment.status] ?? STATUS_META.PENDING;
                     const isPaid = payment.status === "PAID";
                     return (
@@ -564,42 +837,9 @@ export default function TeacherFeesPage() {
                     );
                   })
                 )}
-                <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-xs">
-                  <span className="text-muted-foreground">
-                    {t("teacherPages", "paidPendingSummary", lang)
-                      .replace(
-                        "{paid}",
-                        String(payments.filter((payment) => payment.status === "PAID").length),
-                      )
-                      .replace(
-                        "{pending}",
-                        String(payments.filter((payment) => payment.status !== "PAID" && payment.status !== "WAIVED").length),
-                      )}
-                  </span>
-                  <div className="flex gap-3">
-                    <span className="font-medium text-primary-600">
-                      {t("teacherPages", "collectedAmount", lang).replace(
-                        "{amount}",
-                        payments
-                          .filter((payment) => payment.status === "PAID")
-                          .reduce((sum, payment) => sum + Number(payment.paidAmount ?? payment.dueAmount), 0)
-                          .toLocaleString(),
-                      )}
-                    </span>
-                    <span className="font-medium text-amber-600">
-                      {t("teacherPages", "pendingAmount", lang).replace(
-                        "{amount}",
-                        payments
-                          .filter((payment) => payment.status !== "PAID" && payment.status !== "WAIVED")
-                          .reduce((sum, payment) => sum + Number(payment.dueAmount), 0)
-                          .toLocaleString(),
-                      )}
-                    </span>
-                  </div>
-                </div>
               </div>
 
-              {payTotal > 30 && (
+              {filtered.length > 30 && (
                 <div className="flex items-center justify-center gap-3 mt-4">
                   <Button
                     variant="ghost"
@@ -610,12 +850,12 @@ export default function TeacherFeesPage() {
                     {t("teacherPages", "prevBtn", lang)}
                   </Button>
                   <span className="text-sm text-gray-500">
-                    {paySkip + 1}–{Math.min(paySkip + 30, payTotal)} of{" "}
-                    {payTotal}
+                    {paySkip + 1}–{Math.min(paySkip + 30, filtered.length)} of{" "}
+                    {filtered.length}
                   </span>
                   <Button
                     variant="ghost"
-                    disabled={paySkip + 30 >= payTotal}
+                    disabled={paySkip + 30 >= filtered.length}
                     onClick={() => setPaySkip(paySkip + 30)}
                     className="px-4 py-2 rounded-xl border text-sm disabled:opacity-40"
                   >
@@ -627,8 +867,6 @@ export default function TeacherFeesPage() {
           )}
         </>
       )}
-
-      <div className="h-15" aria-hidden="true" />
 
       {receipt && (
         <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
