@@ -18,8 +18,9 @@ import { useActiveClass } from "@/store/activeClass";
 import { useLanguageStore } from "@/store/language";
 import { t, type Lang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { Icon } from "@iconify/react";
 import {
-  Plus, Trash2, Loader2, Check, Pencil, Ellipsis, CircleDashed, Inbox, CircleCheck,
+  Plus, Trash2, Loader2, Check, Pencil, Ellipsis,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
 
@@ -30,6 +31,21 @@ function useStatusConfig(lang: Lang) {
     CHECKED:       { label: t("teacherPages", "checkedStatus", lang) },
   };
 }
+
+const STATUS_BUTTON_COLORS: Record<HomeworkStatus, { active: string; inactive: string }> = {
+  NOT_SUBMITTED: {
+    active: "bg-red-500 text-white hover:bg-red-600",
+    inactive: "text-red-400 hover:text-red-500",
+  },
+  SUBMITTED: {
+    active: "bg-yellow-600 text-white hover:bg-yellow-700",
+    inactive: "text-yellow-500 hover:text-yellow-600",
+  },
+  CHECKED: {
+    active: "bg-primary-600 text-white hover:bg-primary-700",
+    inactive: "text-primary-400 hover:text-primary-500",
+  },
+};
 
 function fmt(d: Date) { return d.toISOString().split("T")[0]; }
 
@@ -49,9 +65,9 @@ export default function TeacherHomeworkPage() {
   const { lang } = useLanguageStore();
   const STATUS_CONFIG = useStatusConfig(lang);
   const STATUS_ICONS = {
-    NOT_SUBMITTED: CircleDashed,
-    SUBMITTED: Inbox,
-    CHECKED: CircleCheck,
+    NOT_SUBMITTED: "mdi:close",
+    SUBMITTED: "mdi:check",
+    CHECKED: "mdi:book-edit-outline",
   };
   const cid          = user?.clientId ?? "";
   const token        = accessToken ?? "";
@@ -140,7 +156,11 @@ export default function TeacherHomeworkPage() {
 
   const saveSubmissions = async (hwId: string) => {
     const statuses = localStatus[hwId];
-    if (!statuses) return;
+    if (!statuses || Object.keys(statuses).length === 0) {
+      setShowAssessDrawer(false);
+      setAssessHw(null);
+      return;
+    }
     setSavingSubs(true);
     try {
       await bulkUpdateSubmissions(cid, token, hwId,
@@ -148,6 +168,8 @@ export default function TeacherHomeworkPage() {
       );
       const data = await getSubmissions(cid, token, hwId);
       setSubmissions((prev) => ({ ...prev, [hwId]: data }));
+      setShowAssessDrawer(false);
+      setAssessHw(null);
     } catch (e) { setError((e as Error).message); }
     finally { setSavingSubs(false); }
   };
@@ -305,7 +327,6 @@ export default function TeacherHomeworkPage() {
                   className="flex shrink-0 items-center text-xs tabular-nums text-gray-500"
                 >
                   {(["NOT_SUBMITTED", "SUBMITTED", "CHECKED"] as HomeworkStatus[]).map((status) => {
-                    const StatusIcon = STATUS_ICONS[status];
                     return (
                       <span
                         key={status}
@@ -313,7 +334,8 @@ export default function TeacherHomeworkPage() {
                         aria-label={`${STATUS_CONFIG[status].label}: ${countByStatus[status]}`}
                         title={STATUS_CONFIG[status].label}
                       >
-                        <StatusIcon
+                        <Icon
+                          icon={STATUS_ICONS[status]}
                           className={cn(
                             "h-3.5 w-3.5",
                             status === "NOT_SUBMITTED" && "text-red-500",
@@ -403,13 +425,13 @@ export default function TeacherHomeworkPage() {
                     </div>
                     <ButtonGroup className="shrink-0">
                       {(["NOT_SUBMITTED", "SUBMITTED", "CHECKED"] as HomeworkStatus[]).map((s) => {
-                        const StatusIcon = STATUS_ICONS[s];
                         return (
                           <Button
                             key={s}
                             type="button"
                             size="icon"
                             variant={curStatus === s ? "default" : "outline"}
+                            className={STATUS_BUTTON_COLORS[s][curStatus === s ? "active" : "inactive"]}
                             aria-label={STATUS_CONFIG[s].label}
                             aria-pressed={curStatus === s}
                             title={STATUS_CONFIG[s].label}
@@ -418,7 +440,7 @@ export default function TeacherHomeworkPage() {
                               [assessHw.id]: { ...(prev[assessHw.id] ?? {}), [sub.student!.id]: s },
                             }))}
                           >
-                            <StatusIcon aria-hidden="true" />
+                            <Icon icon={STATUS_ICONS[s]} aria-hidden="true" />
                           </Button>
                         );
                       })}

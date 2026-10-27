@@ -17,14 +17,6 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   getFeeTypes,
   getPayments,
   recordPayment,
@@ -402,14 +394,14 @@ export default function TeacherFeesPage() {
       <PageHeader title={t("teacherPages", "feesPaymentsTitle", lang)} />
 
       <Drawer open={filtersOpen} onOpenChange={setFiltersOpen} swipeDirection="down">
-      <div className="sticky top-12 z-30 -mx-4 mb-4 flex h-12 gap-2 bg-white  px-4   *:my-auto shadow-lg shadow-gray-400/10">
-        <div className="relative flex-1 min-w-0 ">
+      <div className="fixed bottom-22 left-1/2 z-40 flex w-[calc(100%-6rem)] max-w-md -translate-x-1/2 items-center gap-2 rounded-full border border-gray-200 bg-white p-1.5! lg:bottom-6">
+        <div className="relative min-w-0 flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t("teacherPages", "searchStudentName", lang)}
-            className="border-0 bg-transparent pl-9 pr-4 text-sm"
+            className="h-10 border-0 bg-transparent pl-9 pr-2 text-sm shadow-none focus-visible:ring-0"
           />
         </div>
         <Button
@@ -476,21 +468,19 @@ export default function TeacherFeesPage() {
       {error && <ApiErrorBanner message={error} onRetry={loadPayments} />}
 
       {typesLoading ? (
-        <div className="space-y-5">
-          <Skeleton className="h-56 rounded-2xl" />
-          <div className="space-y-0 divide-y divide-gray-50 rounded-2xl border border-gray-100 overflow-hidden">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 px-4 py-3.5">
-                <Skeleton className="w-9 h-9 rounded-xl shrink-0" />
-                <div className="flex-1 space-y-2">
+        <div data-ui-style="classic" className="card p-0! mx-3 divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-none">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="w-2/3 space-y-2">
                   <Skeleton className="h-4 w-2/3" />
                   <Skeleton className="h-3 w-1/2" />
                 </div>
-                <Skeleton className="h-4 w-16 shrink-0" />
-                <Skeleton className="h-6 w-16 rounded-full shrink-0" />
+                <Skeleton className="h-6 w-16 rounded-full" />
               </div>
-            ))}
-          </div>
+              <Skeleton className="mt-4 h-4 w-1/2" />
+            </div>
+          ))}
         </div>
       ) : (
         <>
@@ -500,104 +490,81 @@ export default function TeacherFeesPage() {
             </div>
           ) : (
             <>
-              <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="">
+                <div className="mb-0 mt-4  flex items-center justify-between gap-3">
                 <h2 className="text-base font-semibold text-foreground">
                   {activeType
                     ? activeType.name
                     : t("teacherPages", "allFeeTypes", lang)}{" "}
                   <span className="text-sm font-normal text-muted-foreground">· {payTotal} total</span>
                 </h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={loadPayments}
-                  className="text-muted-foreground"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  {t("teacherPages", "refreshBtn", lang)}
-                </Button>
+                
               </div>
-              <div className="overflow-hidden rounded-xl border bg-background">
-                <Table className="min-w-[760px]">
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead>{t("common", "name", lang)}</TableHead>
-                      <TableHead>{t("parentPages", "feeTypeLabel", lang)}</TableHead>
-                      <TableHead>{t("common", "amount", lang)}</TableHead>
-                      <TableHead>{t("common", "status", lang)}</TableHead>
-                      <TableHead>{t("parentPages", "duePrefix", lang)}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filtered.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="h-28 text-center text-muted-foreground">
-                          {t("teacherPages", "noPaymentRecords", lang)}
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      filtered.map((payment) => {
-                        const meta = STATUS_META[payment.status] ?? STATUS_META.PENDING;
-                        const isPaid = payment.status === "PAID";
-                        return (
-                          <TableRow
-                            key={payment.id}
-                            tabIndex={0}
-                            role="button"
-                            aria-label={`${payment.student.name}, ${payment.feeType.name}, ${meta.label}`}
-                            onClick={() => {
-                              setSelectedPaymentId(payment.id);
-                              setPayMethod(payment.method ?? "CASH");
-                              setPayRef(payment.reference ?? "");
-                              setDonationAmount(
-                                payment.feeType.isDonation && Number(payment.dueAmount) > 0
-                                  ? String(payment.dueAmount)
-                                  : "",
-                              );
-                              setCancelling(null);
-                            }}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter" || event.key === " ") {
-                                event.preventDefault();
-                                event.currentTarget.click();
-                              }
-                            }}
-                            className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-                          >
-                            <TableCell>
-                              <div className="min-w-40">
-                                <p className="font-medium text-foreground">{payment.student.name}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {payment.student.adno}
-                                  {payment.student.class ? ` · ${payment.student.class.name}` : ""}
-                                </p>
-                              </div>
-                            </TableCell>
-                            <TableCell>{payment.feeType.name}</TableCell>
-                            <TableCell className="font-medium">
+              </div>
+              <div data-ui-style="classic" className="card mx-3 divide-y p-0! divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-none">
+                {filtered.length === 0 ? (
+                  <div className="px-4 py-12 text-center text-sm text-muted-foreground">
+                    {t("teacherPages", "noPaymentRecords", lang)}
+                  </div>
+                ) : (
+                  filtered.map((payment) => {
+                    const meta = STATUS_META[payment.status] ?? STATUS_META.PENDING;
+                    const isPaid = payment.status === "PAID";
+                    return (
+                      <button
+                        type="button"
+                        key={payment.id}
+                        aria-label={`${payment.student.name}, ${payment.feeType.name}, ${meta.label}`}
+                        onClick={() => {
+                          setSelectedPaymentId(payment.id);
+                          setPayMethod(payment.method ?? "CASH");
+                          setPayRef(payment.reference ?? "");
+                          setDonationAmount(
+                            payment.feeType.isDonation && Number(payment.dueAmount) > 0
+                              ? String(payment.dueAmount)
+                              : "",
+                          );
+                          setCancelling(null);
+                        }}
+                        className="w-full rounded-none p-4 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500"
+                      >
+                        <span className="flex items-start justify-between gap-3">
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-semibold text-gray-900">{payment.student.name}</span>
+                            <span className="block text-xs text-gray-500">
+                              {payment.student.adno}
+                              {payment.student.class ? ` · ${payment.student.class.name}` : ""}
+                            </span>
+                          </span>
+                          <span className={cn("inline-flex shrink-0 rounded-full px-2.5 py-1 text-xs font-medium", meta.bg, meta.color)}>
+                            {meta.label}
+                          </span>
+                        </span>
+                        <span className="mt-3 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+                          <span className="min-w-0">
+                            <span className="block text-xs text-gray-500">{payment.feeType.name}</span>
+                            <span className="block text-sm font-semibold text-gray-900">
                               {payment.feeType.isDonation
                                 ? "Variable"
                                 : `₹${Number(payment.dueAmount).toLocaleString()}`}
-                            </TableCell>
-                            <TableCell>
-                              <span className={cn("inline-flex rounded-full px-2.5 py-1 text-xs font-medium", meta.bg, meta.color)}>
-                                {meta.label}
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">
+                            </span>
+                          </span>
+                          <span className="text-right text-xs text-gray-500">
+                            <span className="block">{isPaid && payment.paidAt ? t("teacherPages", "paidOnLabel", lang) : t("parentPages", "duePrefix", lang)}</span>
+                            <span className="block">
                               {isPaid && payment.paidAt
                                 ? new Date(payment.paidAt).toLocaleDateString("en-GB")
                                 : payment.dueDate
                                   ? new Date(payment.dueDate).toLocaleDateString("en-GB")
                                   : "—"}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    )}
-                  </TableBody>
-                </Table>
-                <div className="flex flex-wrap items-center justify-between gap-2 border-t bg-muted/30 px-4 py-3 text-xs">
+                            </span>
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })
+                )}
+                <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-xs">
                   <span className="text-muted-foreground">
                     {t("teacherPages", "paidPendingSummary", lang)
                       .replace(
@@ -660,6 +627,8 @@ export default function TeacherFeesPage() {
           )}
         </>
       )}
+
+      <div className="h-15" aria-hidden="true" />
 
       {receipt && (
         <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />

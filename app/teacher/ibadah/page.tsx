@@ -14,6 +14,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
 import {
   getClassIbadah,
   type PrayerStatus,
@@ -39,6 +40,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { jsPDF } from "jspdf";
+import { Bar, BarChart, Cell } from "recharts";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type ViewMode = "daily" | "weekly";
@@ -152,6 +154,141 @@ interface StudentRow {
   hasRecord?: boolean;
 }
 
+const miniChartConfig = {
+  value: { label: "Count" },
+} satisfies ChartConfig;
+
+function MiniBarChart({
+  data,
+}: {
+  data: { value: number; color: string }[];
+}) {
+  return (
+    <ChartContainer
+      config={miniChartConfig}
+      initialDimension={{ width: 32, height: 28 }}
+      className="h-7 w-8 shrink-0 sm:h-8 sm:w-14"
+      aria-hidden="true"
+    >
+      <BarChart data={data} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
+        <Bar dataKey="value" radius={[2, 2, 0, 0]} isAnimationActive={false}>
+          {data.map((item, index) => (
+            <Cell key={index} fill={item.color} />
+          ))}
+        </Bar>
+      </BarChart>
+    </ChartContainer>
+  );
+}
+
+function DailyIbadahStats({
+  rows,
+  activePrayers,
+  config,
+  lang,
+}: {
+  rows: StudentRow[];
+  activePrayers: typeof ALL_PRAYERS;
+  config: IbadahConfig | null;
+  lang: "en" | "ml";
+}) {
+  const submitted = rows.filter((row) => row.hasRecord).length;
+  const pending = rows.length - submitted;
+  const quranEnabled = config?.enableQuranPages !== false;
+  const customCount = config?.customItems.length ?? 0;
+  const activities = activePrayers.length + (quranEnabled ? 1 : 0) + customCount;
+  const prayersLogged = rows.reduce(
+    (total, row) =>
+      total + activePrayers.filter((prayer) => row[prayer.key] !== null).length,
+    0,
+  );
+  const quranPages = quranEnabled
+    ? rows.reduce((total, row) => total + row.quranPages, 0)
+    : 0;
+  const studentsNote = t("teacherPages", "ibadahOfStudents", lang).replace(
+    "{n}",
+    String(rows.length),
+  );
+  const topStats = [
+    {
+      label: t("teacherPages", "ibadahSubmissions", lang),
+      value: submitted,
+      note: studentsNote,
+      bars: [
+        { value: submitted, color: "#059669" },
+        { value: pending, color: "#a7f3d0" },
+      ],
+    },
+    {
+      label: t("teacherPages", "ibadahTotalActivities", lang),
+      value: activities,
+      note: t("teacherPages", "ibadahEnabledForClass", lang),
+      bars: [
+        { value: activePrayers.length, color: "#2563eb" },
+        { value: quranEnabled ? 1 : 0, color: "#60a5fa" },
+        { value: customCount, color: "#bfdbfe" },
+      ],
+    },
+    {
+      label: t("teacherPages", "ibadahPendingStudents", lang),
+      value: pending,
+      note: studentsNote,
+      bars: [
+        { value: pending, color: "#d97706" },
+        { value: submitted, color: "#fcd34d" },
+      ],
+    },
+  ];
+  const bottomStats = [
+    { label: t("teacherPages", "ibadahClassStudents", lang), value: rows.length, icon: Users },
+    { label: t("teacherPages", "ibadahPrayersLogged", lang), value: prayersLogged, icon: Moon },
+    { label: t("teacherPages", "ibadahQuranPages", lang), value: quranPages, icon: BookOpen },
+  ];
+
+  return (
+    <div className="grid grid-cols-3 p-2 overflow-hidden rounded-2xl bg-gradient-to-br from-primary-50/60 via-white to-sky-50/60">
+      {topStats.map((stat, index) => (
+        <div
+          key={stat.label}
+          className={cn(
+            "min-w-0 border-b border-gray-100 p-3 sm:p-4",
+            index < 2 && "border-r",
+          )}
+        >
+          <span className="block text-[11px] font-medium leading-4 text-gray-700">
+            {stat.label}
+          </span>
+          <div className="mt-3 flex items-end justify-between gap-1">
+            <span className="text-lg font-medium leading-none tabular-nums text-gray-950 sm:text-xl">
+              {stat.value}
+            </span>
+            <MiniBarChart data={stat.bars} />
+          </div>
+        </div>
+      ))}
+      {bottomStats.map((stat, index) => {
+        const Icon = stat.icon;
+        return (
+          <div
+            key={stat.label}
+            className={cn("min-w-0 p-3 sm:p-4", index < 2 && "border-r border-gray-100")}
+          >
+           <div className="flex gap-1.5">
+             <Icon aria-hidden="true" className="mb-1.5 h-3.5 w-3.5 text-gray-800" />
+            <span className="block text-[11px] font-medium leading-4 text-gray-700">
+              {stat.label}
+            </span>
+           </div>
+            <span className="mt-2 block text-xl font-medium leading-none tabular-nums text-gray-950">
+              {stat.value}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function isCompletedPrayer(status: PrayerStatus | null): boolean {
   return status !== null && status !== "NOT_PRAYABLE";
 }
@@ -177,27 +314,36 @@ function StudentSummaryCard({
     <button
       type="button"
       onClick={onClick}
-      className="w-full rounded-2xl p-4 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+      className="w-full rounded-none p-4 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500"
     >
-      <span className="block truncate text-sm font-semibold text-gray-900">
-        {student.name}
+      <span className="flex items-start justify-between gap-2">
+        <span className="min-w-0 truncate text-sm font-semibold text-gray-900">
+          {student.name}
+        </span>
+        {student.hasRecord === false && (
+          <span className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+            {t("teacherPages", "notSubmittedStatus", lang)}
+          </span>
+        )}
       </span>
       <span className="block text-xs text-gray-500">{student.adno}</span>
-      <span className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-        {activePrayers.length > 0 && (
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600">
-            <Moon aria-hidden="true" className="h-3.5 w-3.5 text-primary-600" />
-            {completedPrayers}/{activePrayers.length}{" "}
-            {t("teacherPages", "prayerSection", lang)}
-          </span>
-        )}
-        {showQuran && (
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600">
-            <BookOpen aria-hidden="true" className="h-3.5 w-3.5 text-blue-600" />
-            {student.quranPages} {t("parentPages", "pages", lang)}
-          </span>
-        )}
-      </span>
+      {student.hasRecord && (
+        <span className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+          {activePrayers.length > 0 && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600">
+              <Moon aria-hidden="true" className="h-3.5 w-3.5 text-primary-600" />
+              {completedPrayers}/{activePrayers.length}{" "}
+              {t("teacherPages", "prayerSection", lang)}
+            </span>
+          )}
+          {showQuran && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600">
+              <BookOpen aria-hidden="true" className="h-3.5 w-3.5 text-blue-600" />
+              {student.quranPages} {t("parentPages", "pages", lang)}
+            </span>
+          )}
+        </span>
+      )}
     </button>
   );
 }
@@ -233,7 +379,7 @@ function WeeklyStudentSummaryCard({
     <button
       type="button"
       onClick={onClick}
-      className="w-full rounded-2xl p-4 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+      className="w-full rounded-none p-4 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500"
     >
       <span className="block truncate text-sm font-semibold text-gray-900">
         {student.name}
@@ -408,6 +554,23 @@ function getLast7Days(endDate: string): string[] {
   return dates;
 }
 
+async function getAllClassStudents(
+  clientId: string,
+  token: string,
+  classId: string,
+): Promise<StudentRecord[]> {
+  const students: StudentRecord[] = [];
+  const limit = 200;
+  let page = 1;
+  while (true) {
+    const result = await getStudents(clientId, token, { classId, page, limit });
+    students.push(...result.data);
+    if (result.data.length === 0 || students.length >= result.total) break;
+    page += 1;
+  }
+  return students;
+}
+
 function reportPrayerType(status: PrayerStatus | null): string {
   if (!status) return "-";
   if (status === "JAMA") return "Jamaath";
@@ -460,24 +623,31 @@ export default function TeacherIbadahPage({
     setLoadingIbadah(true);
     setError(null);
     try {
-      const data = await getClassIbadah(cid, token, {
-        classId: activeClassId,
-        date,
-      });
-      setConfig(data.config);
+      const [ibadahData, students] = await Promise.all([
+        getClassIbadah(cid, token, { classId: activeClassId, date }),
+        getAllClassStudents(cid, token, activeClassId),
+      ]);
+      const logsByStudent = new Map(
+        ibadahData.logs.map((log) => [log.studentId, log]),
+      );
+      setConfig(ibadahData.config);
       setRows(
-        data.logs.map((r) => ({
-          studentId: r.studentId,
-          name: r.student.name,
-          adno: r.student.adno,
-          fajr: r.fajr,
-          dhuhr: r.dhuhr,
-          asr: r.asr,
-          maghrib: r.maghrib,
-          isha: r.isha,
-          quranPages: r.quranPages,
-          customData: r.customData ?? {},
-        })),
+        students.map((student) => {
+          const log = logsByStudent.get(student.id);
+          return {
+            studentId: student.id,
+            name: student.name,
+            adno: student.adno,
+            fajr: log?.fajr ?? null,
+            dhuhr: log?.dhuhr ?? null,
+            asr: log?.asr ?? null,
+            maghrib: log?.maghrib ?? null,
+            isha: log?.isha ?? null,
+            quranPages: log?.quranPages ?? 0,
+            customData: log?.customData ?? {},
+            hasRecord: Boolean(log),
+          };
+        }),
       );
     } catch (e) {
       setError((e as Error).message);
@@ -495,13 +665,13 @@ export default function TeacherIbadahPage({
     const from = dates[0],
       to = dates[dates.length - 1];
     try {
-      const [ibadahData, studentsData] = await Promise.all([
+      const [ibadahData, students] = await Promise.all([
         getClassIbadah(cid, token, { classId: activeClassId, from, to }),
-        getStudents(cid, token, { classId: activeClassId, limit: 200 }),
+        getAllClassStudents(cid, token, activeClassId),
       ]);
       setConfig(ibadahData.config);
       setWeeklyLogs(ibadahData.logs);
-      setWeeklyStudents(studentsData.data ?? []);
+      setWeeklyStudents(students);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -731,14 +901,7 @@ export default function TeacherIbadahPage({
         </div>
       ) : (
         <>
-          <div
-            className={cn(
-              "border-b border-gray-100   px-4 py-2  ",
-              embedded
-                ? " "
-                : " ",
-            )}
-          >
+          <div className="border-b border-gray-100 px-3 py-2">
             <div className="flex min-w-0 items-center gap-2">
               {viewMode === "daily" ? (
                 <ScrollableDateNavigator
@@ -756,36 +919,6 @@ export default function TeacherIbadahPage({
                 />
               )}
             </div>
-            {viewMode === "weekly" && (
-              <section className="mt-3 rounded-2xl border border-cyan-100 bg-[#e9f7f8] p-4 shadow-sm sm:p-5" aria-labelledby="weekly-report-title">
-                <div className="flex items-center gap-3 sm:gap-5">
-                  <div className="min-w-0 flex-1">
-                    <h2 id="weekly-report-title" className="text-base font-semibold text-gray-900">
-                      Weekly report
-                    </h2>
-                    <p className="mt-1 text-sm leading-5 text-gray-600">
-                      Download an A4 PDF of your class&apos;s ibadah records for the selected week.
-                    </p>
-                  </div>
-                  <img
-                    src="/icons/ibadah/weekly-report.webp"
-                    alt=""
-                    aria-hidden="true"
-                    className="h-24 w-24 shrink-0 object-contain sm:h-32 sm:w-32"
-                  />
-                </div>
-                <Button
-                  type="button"
-                  onClick={downloadWeeklyReport}
-                  disabled={loadingIbadah || weeklyStudents.length === 0}
-                  size="lg"
-                  className="mt-4 h-10 w-full px-4 sm:w-auto"
-                >
-                  <Download aria-hidden="true" className="h-4 w-4" />
-                  Download report
-                </Button>
-              </section>
-            )}
           </div>
 
           <Tabs
@@ -822,11 +955,17 @@ export default function TeacherIbadahPage({
                   {rows.length === 0 ? (
                     <div className="text-center py-12 text-gray-400 text-sm">
                       <Moon className="w-10 h-10 mx-auto mb-3 text-gray-200" />
-                      {t("teacherPages", "noIbadahSubmitted", lang)}
+                      {t("teacherPages", "noStudentsInClass", lang)}
                     </div>
                   ) : (
-                    <div className="px-3">
-                      <div className="rounded-2xl bg-white card">
+                    <div className="space-y-3 px-3">
+                      <DailyIbadahStats
+                        rows={rows}
+                        activePrayers={activePrayers}
+                        config={config}
+                        lang={lang}
+                      />
+                      <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white card">
                         {rows.map((student) => (
                           <StudentSummaryCard
                             key={student.studentId}
@@ -847,14 +986,40 @@ export default function TeacherIbadahPage({
 
               {/* ── WEEKLY VIEW ── */}
               {viewMode === "weekly" && (
-                <div className="px-3">
+                <div className="space-y-3 px-3">
+                  <section className="relative overflow-hidden rounded-2xl border border-teal-100/70 bg-gradient-to-br from-[#fdfefd] via-[#f7fcfa] to-[#eef8f6] px-4 py-3.5 sm:px-5 sm:py-4" aria-labelledby="weekly-report-title">
+                    <div className="relative z-10 min-w-0 pr-24 sm:pr-40">
+                      <h2 id="weekly-report-title" className="text-base font-semibold text-gray-900">
+                        Weekly report
+                      </h2>
+                      <p className="mt-1.5 text-xs leading-4 text-gray-600">
+                        Download an A4 PDF of your class&apos;s ibadah records for the selected week.
+                      </p>
+                      <Button
+                        type="button"
+                        onClick={downloadWeeklyReport}
+                        disabled={weeklyStudents.length === 0}
+                        size="sm"
+                        className="mt-3 h-8 w-auto px-3"
+                      >
+                        <Download aria-hidden="true" className="h-3.5 w-3.5" />
+                        Download report
+                      </Button>
+                    </div>
+                    <img
+                      src="/icons/ibadah/weekly-report.webp"
+                      alt=""
+                      aria-hidden="true"
+                      className="pointer-events-none absolute bottom-0 right-0 h-28 w-28 object-contain object-bottom sm:h-36 sm:w-36"
+                    />
+                  </section>
                   {weeklyStudents.length === 0 ? (
                     <div className="text-center py-12 text-gray-400 text-sm">
                       <Moon className="w-10 h-10 mx-auto mb-3 text-gray-200" />
                       {t("teacherPages", "noStudentsInClass", lang)}
                     </div>
                   ) : (
-                    <div className="rounded-2xl bg-white card">
+                    <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white card">
                       {weeklyStudents.map((student) => {
                         const logs = weekDates
                           .map((day) => logMap.get(student.id)?.get(day))
