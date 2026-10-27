@@ -185,7 +185,7 @@ export function   MarkEntryGrid({
           <Loader2 className="w-6 h-6 animate-spin" />
         </div>
       ) : students.length === 0 ? (
-        <div className="text-center py-20 bg-white border border-gray-100 rounded-3xl p-6">
+        <div className="text-center py-10 bg-white border border-gray-100 rounded-3xl p-6">
           <GraduationCap className="w-12 h-12 text-gray-200 mx-auto mb-3" />
           <p className="text-sm font-semibold text-gray-900">
             No students in this class
@@ -195,7 +195,7 @@ export function   MarkEntryGrid({
           </p>
         </div>
       ) : (
-        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm flex flex-col">
+        <div className="bg-white  rounded-2xl   flex flex-col">
           {/* Desktop Table View */}
           <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-left border-collapse text-sm">

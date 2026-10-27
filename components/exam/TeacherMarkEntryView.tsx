@@ -31,7 +31,7 @@ export function TeacherMarkEntryView({
   const currentSubject = subjects.find((subject) => subject.id === subjectId);
 
   return (
-    <div className="space-y-4 p-4 sm:p-6">
+    <div className="space-y-4 px-2 sm:px-6">
       {showSelectors && <ButtonGroup aria-label="Mark entry class and subject" className="w-full max-w-xl">
         {showClassSelector && <DrawerSelector
           title="Select Class"

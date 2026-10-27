@@ -5,6 +5,15 @@ import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
@@ -82,6 +91,22 @@ function toLocalDateOnly(value: string): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function feePageItems(current: number, total: number): Array<number | "ellipsis"> {
+  const pages = [...new Set([1, total, current - 1, current, current + 1])]
+    .filter((page) => page >= 1 && page <= total)
+    .sort((a, b) => a - b);
+  const items: Array<number | "ellipsis"> = [];
+
+  pages.forEach((page, index) => {
+    const previous = pages[index - 1];
+    if (previous && page - previous === 2) items.push(previous + 1);
+    if (previous && page - previous > 2) items.push("ellipsis");
+    items.push(page);
+  });
+
+  return items;
 }
 
 function FeeSemiCircle({
@@ -228,7 +253,7 @@ function FeeStats({
   ];
 
   return (
-    <section className="mx-3 mb-4  overflow-hidden rounded-2xl bg-gradient-to-br from-white    to-sky-50">
+    <section className="  mb-4  overflow-hidden rounded-2xl bg-gradient-to-br from-white    to-sky-50">
       <div className="border-b border-gray-100   px-4 py-3 sm:px-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-baseline gap-1.5">
@@ -524,6 +549,8 @@ export default function TeacherFeesPage() {
       )
     : payments;
   const visiblePayments = filtered.slice(paySkip, paySkip + 30);
+  const currentPage = Math.floor(paySkip / 30) + 1;
+  const pageCount = Math.ceil(filtered.length / 30);
 
   useEffect(() => {
     if (!payLoading && paySkip >= filtered.length && paySkip > 0) {
@@ -660,7 +687,7 @@ export default function TeacherFeesPage() {
       <PageHeader title={t("teacherPages", "feesPaymentsTitle", lang)} />
 
       <Drawer open={filtersOpen} onOpenChange={setFiltersOpen} swipeDirection="down">
-        <div className="px-4! pt-4! pb-2!">
+        <div className="   pt-4! pb-2!">
           <div className="mx-auto flex w-full max-w-md items-center gap-2 p-1.5">
             <InputGroup className="h-10 flex-1 rounded-lg bg-white">
               <InputGroupInput
@@ -764,7 +791,7 @@ export default function TeacherFeesPage() {
             </div>
           ) : (
             <>
-              <div className="p-0! pt-2!">
+              <div className="p-0! px-4! pt-2!">
                 <FeeStats
                   payments={filtered}
                   total={payTotal}
@@ -840,27 +867,72 @@ export default function TeacherFeesPage() {
               </div>
 
               {filtered.length > 30 && (
-                <div className="flex items-center justify-center gap-3 mt-4">
-                  <Button
-                    variant="ghost"
-                    disabled={paySkip === 0}
-                    onClick={() => setPaySkip(Math.max(0, paySkip - 30))}
-                    className="px-4 py-2 rounded-xl border text-sm disabled:opacity-40"
-                  >
-                    {t("teacherPages", "prevBtn", lang)}
-                  </Button>
-                  <span className="text-sm text-gray-500">
-                    {paySkip + 1}–{Math.min(paySkip + 30, filtered.length)} of{" "}
-                    {filtered.length}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    disabled={paySkip + 30 >= filtered.length}
-                    onClick={() => setPaySkip(paySkip + 30)}
-                    className="px-4 py-2 rounded-xl border text-sm disabled:opacity-40"
-                  >
-                    {t("teacherPages", "nextBtn", lang)}
-                  </Button>
+                <div className="mx-3 mt-4 rounded-2xl border border-gray-100  px-3 py-3">
+                  <p className="text-center text-xs tabular-nums text-gray-500">
+                    {t("teacherPages", "pageOfTotal", lang)
+                      .replace("{start}", String(paySkip + 1))
+                      .replace("{end}", String(Math.min(paySkip + 30, filtered.length)))
+                      .replace("{total}", String(filtered.length))}
+                  </p>
+                  <Pagination className="mt-2" aria-label={t("teacherPages", "feePaginationLabel", lang)}>
+                    <PaginationContent className="gap-1">
+                      <PaginationItem>
+                        <PaginationPrevious
+                          href="#"
+                          text={t("teacherPages", "prevBtn", lang)}
+                          aria-label={t("teacherPages", "feePreviousPage", lang)}
+                          aria-disabled={currentPage === 1}
+                          tabIndex={currentPage === 1 ? -1 : undefined}
+                          className={cn("rounded-lg", currentPage === 1 && "pointer-events-none opacity-40")}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            if (currentPage > 1) setPaySkip((currentPage - 2) * 30);
+                          }}
+                        />
+                      </PaginationItem>
+                      {feePageItems(currentPage, pageCount).map((item, index) => (
+                        <PaginationItem
+                          key={item === "ellipsis" ? `ellipsis-${index}` : item}
+                          className={
+                            item !== "ellipsis" && pageCount > 5 && item !== 1 && item !== currentPage && item !== pageCount
+                              ? "hidden sm:block"
+                              : undefined
+                          }
+                        >
+                          {item === "ellipsis" ? (
+                            <PaginationEllipsis />
+                          ) : (
+                            <PaginationLink
+                              href="#"
+                              isActive={item === currentPage}
+                              aria-label={t("teacherPages", "feeGoToPage", lang).replace("{page}", String(item))}
+                              className={cn("rounded-lg", item === currentPage && "border-primary-200 bg-primary-50 text-primary-700")}
+                              onClick={(event) => {
+                                event.preventDefault();
+                                setPaySkip((item - 1) * 30);
+                              }}
+                            >
+                              {item}
+                            </PaginationLink>
+                          )}
+                        </PaginationItem>
+                      ))}
+                      <PaginationItem>
+                        <PaginationNext
+                          href="#"
+                          text={t("teacherPages", "nextBtn", lang)}
+                          aria-label={t("teacherPages", "feeNextPage", lang)}
+                          aria-disabled={currentPage === pageCount}
+                          tabIndex={currentPage === pageCount ? -1 : undefined}
+                          className={cn("rounded-lg", currentPage === pageCount && "pointer-events-none opacity-40")}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            if (currentPage < pageCount) setPaySkip(currentPage * 30);
+                          }}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
                 </div>
               )}
             </>

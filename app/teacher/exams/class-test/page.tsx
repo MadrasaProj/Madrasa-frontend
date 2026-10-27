@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
-import { DataTable, type SortDir } from "@/components/ui/DataTable";
+import type { SortDir } from "@/components/ui/DataTable";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
   getExams,
@@ -21,29 +21,53 @@ import { useAuthStore } from "@/store/auth";
 import { useActiveClass } from "@/store/activeClass";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
 import {
   Plus,
   Loader2,
   Trash2,
-  X,
-  CheckCircle2,
-  Check,
+  CalendarDays,
+  ClipboardCheck,
+  Clock3,
+  GraduationCap,
   Search,
   School,
-  ChevronRight,
+  SlidersHorizontal,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ExamStatusBadge, getExamStatusInfo, STATUS_LABELS } from "@/components/exam/ExamStatusBadge";
-import { useExamColumns } from "@/components/exam/ExamColumns";
 import { TeacherMarkEntryView } from "@/components/exam/TeacherMarkEntryView";
 import { fmt } from "@/lib/exam-utils";
 import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { DrawerSelector } from "@/components/DrawerSelector";
 import { DatePickerInput } from "@/components/DatePickerInput";
+
+function classTestPageItems(current: number, total: number): Array<number | "ellipsis"> {
+  const pages = [...new Set([1, total, current - 1, current, current + 1])]
+    .filter((page) => page >= 1 && page <= total)
+    .sort((a, b) => a - b);
+  const items: Array<number | "ellipsis"> = [];
+
+  pages.forEach((page, index) => {
+    const previous = pages[index - 1];
+    if (previous && page - previous === 2) items.push(previous + 1);
+    if (previous && page - previous > 2) items.push("ellipsis");
+    items.push(page);
+  });
+
+  return items;
+}
 
 export default function TeacherClassTestsPage() {
   const { user, accessToken, activeClientId } = useAuthStore();
@@ -222,12 +246,6 @@ export default function TeacherClassTestsPage() {
   useEffect(() => {
     if (isMarkEntryView && markEntryExam) void loadMarkEntry(markEntryExam);
   }, [isMarkEntryView, markEntryExam?.id, loadMarkEntry]);
-
-  const columns = useExamColumns({
-    showActions: false,
-    showAllColumns: true,
-    showExamIcon: false,
-  });
 
   const load = useCallback(
     async (clsId?: string) => {
@@ -452,75 +470,224 @@ export default function TeacherClassTestsPage() {
   );
   const isLocked = !markEntryExam || markEntryExam.examStatus !== "MARK_ENTRY" ||
     (!!markEntryExam.markEntryLastDate && new Date() > new Date(markEntryExam.markEntryLastDate));
+  const testSummary = [
+    { label: "Total tests", value: searchFiltered.length, icon: GraduationCap, color: "text-primary-700" },
+    { label: "Mark entry", value: searchFiltered.filter((exam) => exam.examStatus === "MARK_ENTRY").length, icon: ClipboardCheck, color: "text-primary-700" },
+    { label: "Published", value: searchFiltered.filter((exam) => exam.examStatus === "PUBLISHED").length, icon: CalendarDays, color: "text-blue-700" },
+    { label: "Draft", value: searchFiltered.filter((exam) => exam.examStatus === "DRAFT").length, icon: Clock3, color: "text-amber-700" },
+  ];
 
   return (
     <DashboardLayout>
-      <div className="">
+      <div className="p-0! pb-8!">
+        <PageHeader title={t("nav", "classTests", lang)} />
 
-        <PageHeader
-          title={t("nav", "classTests", lang)}
-          action={
-            <Button onClick={openAdd} size="sm">
-              <Plus className="h-4 w-4" />
-              {t("teacherPages", "newClassTestBtn", lang)}
-            </Button>
-          }
-        />
-
-        <div className="sticky top-12 z-30 -mx-4 mb-4 flex h-10 gap-2 bg-white px-4 shadow-lg shadow-gray-400/10 lg:top-[125px] *:my-auto">
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <Input
+        <div className="px-3 pb-2 pt-6">
+          <div className="mx-auto flex w-full max-w-md items-center gap-2">
+            <InputGroup className="h-10 min-w-0 flex-1 rounded-lg bg-white">
+              <InputGroupInput
               type="search"
               aria-label="Search class tests by name"
               placeholder="Search class test by name..."
               value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              className="h-8 border-0 bg-transparent pl-9 pr-2 shadow-none focus-visible:ring-0"
-            />
+              onChange={(event) => setSearchText(event.target.value)}
+              className="h-full text-sm"
+              />
+              <InputGroupAddon align="inline-start">
+                <Search className="h-4 w-4 text-gray-400" />
+              </InputGroupAddon>
+            </InputGroup>
+            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600">
+              <SlidersHorizontal aria-hidden="true" className="h-4 w-4" />
+              <select
+                aria-label="Sort class tests"
+                value={`${sortBy ?? "startDate"}:${sortDir}`}
+                onChange={(event) => {
+                  const [key, direction] = event.target.value.split(":");
+                  setSortBy(key);
+                  setSortDir(direction as SortDir);
+                  setPage(1);
+                }}
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              >
+                <option value="startDate:desc">Newest first</option>
+                <option value="startDate:asc">Oldest first</option>
+                <option value="name:asc">Name A–Z</option>
+                <option value="name:desc">Name Z–A</option>
+                <option value="examStatus:asc">Status A–Z</option>
+                <option value="examStatus:desc">Status Z–A</option>
+                <option value="markEntryLastDate:asc">Mark entry: earliest</option>
+                <option value="markEntryLastDate:desc">Mark entry: latest</option>
+                <option value="publishedDate:asc">Published: earliest</option>
+                <option value="publishedDate:desc">Published: latest</option>
+              </select>
+            </div>
           </div>
-          {searchText && (
-            <Button variant="ghost" size="icon" aria-label={t("common", "clearSearch", lang)} onClick={() => setSearchText("")}>
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-          <span className="flex min-w-0 items-center gap-2 text-sm font-semibold text-gray-700"><School className="h-4 w-4 text-primary-700" />{selectedClassName}</span>
         </div>
-
-
 
         {error && <ApiErrorBanner message={error} onRetry={() => { setError(null); load(filterClassId); }} />}
 
-        {loading || sortedExams.length > 0 ? (
-          <DataTable
-            alwaysTable
-            columns={columns}
-            data={pagedExams}
-            keyExtractor={(exam) => exam.id}
-            onRowClick={(exam) => setSelectedExamId(exam.id)}
-            loading={loading}
-            error={null}
-            onSort={(key, dir) => { setSortBy(key); setSortDir(dir); }}
-            sortKey={sortBy}
-            sortDir={sortDir}
-            pagination={{
-              page,
-              totalPages,
-              total: sortedExams.length,
-              pageSize,
-              pageSizeOptions: [10, 20, 50, 100],
-              onPageChange: setPage,
-              onPageSizeChange: (size) => { setPageSize(size); setPage(1); },
-            }}
-          />
+        {loading ? (
+          <>
+            <div className="mx-3 mb-3 overflow-hidden rounded-2xl bg-white">
+              <Skeleton className="h-20 rounded-none" />
+              <div className="grid grid-cols-2 gap-px bg-gray-100 sm:grid-cols-4">
+                {Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-20 rounded-none" />)}
+              </div>
+            </div>
+            <div className="mx-3 divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="space-y-2 p-3">
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-3 w-3/4" />
+                </div>
+              ))}
+            </div>
+          </>
         ) : (
-          <div className="flex min-h-[calc(100dvh-13rem)] flex-col items-center justify-center py-8 text-center text-gray-400 lg:min-h-[calc(100dvh-20rem)]">
-            <img src="/icons/exams/empty.webp" alt="" className="mx-auto mb-3 h-28 w-28 object-contain" />
-            <p className="font-semibold">
-              {searchText ? t("common", "noResults", lang) : "No class tests found"}
-            </p>
-          </div>
+          <>
+            <section className="mx-3 mb-3 overflow-hidden rounded-2xl bg-gradient-to-br from-white to-sky-50">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-3 py-2.5">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xl font-semibold tabular-nums text-gray-950">{exams.length}</span>
+                  <span className="text-xs font-medium text-gray-600">Total tests</span>
+                </div>
+                <span className="rounded-full border border-primary-100 bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
+                  <strong className="tabular-nums">{sortedExams.length}</strong> shown
+                </span>
+                <span className="flex min-w-0 basis-full items-center gap-1.5 text-xs font-medium text-gray-600">
+                  <School className="h-3.5 w-3.5 shrink-0 text-primary-700" />{selectedClassName}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-px bg-gray-100 sm:grid-cols-4">
+                {testSummary.map((stat) => {
+                  const Icon = stat.icon;
+                  return (
+                    <div key={stat.label} className="min-w-0 bg-white/90 p-2.5 sm:p-3">
+                      <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-600">
+                        <Icon aria-hidden="true" className={`h-3.5 w-3.5 shrink-0 ${stat.color}`} />
+                        <span>{stat.label}</span>
+                      </div>
+                      <div className="mt-1 text-lg font-semibold tabular-nums text-gray-950">{stat.value}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="card mx-3 divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white p-0! shadow-none" data-ui-style="classic" aria-label="Class tests">
+              {pagedExams.length === 0 ? (
+                <div className="flex flex-col items-center px-3 py-8 text-center">
+                  <img src="/icons/exams/empty.webp" alt="" className="mb-3 h-28 w-28 object-contain" />
+                  <p className="text-sm text-gray-500">{searchText ? t("common", "noResults", lang) : "No class tests found"}</p>
+                </div>
+              ) : pagedExams.map((exam) => (
+                <button
+                  key={exam.id}
+                  type="button"
+                  onClick={() => setSelectedExamId(exam.id)}
+                  className="w-full rounded-none p-3 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500"
+                >
+                  <span className="flex items-start justify-between gap-3">
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-semibold text-gray-900">{exam.name}</span>
+                      <span className="mt-1 block truncate text-xs text-gray-500">{exam.subject?.name ?? "—"}</span>
+                    </span>
+                    <ExamStatusBadge exam={exam} className="rounded-full border px-2.5 py-1 text-xs font-medium normal-case tracking-normal" />
+                  </span>
+                </button>
+              ))}
+            </section>
+
+            {sortedExams.length > 0 && (
+              <div className="mx-3 mt-3 rounded-2xl border border-gray-100 px-3 py-3">
+                <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-gray-500">
+                  <span className="tabular-nums">
+                    {t("teacherPages", "pageOfTotal", lang)
+                      .replace("{start}", String((page - 1) * pageSize + 1))
+                      .replace("{end}", String(Math.min(page * pageSize, sortedExams.length)))
+                      .replace("{total}", String(sortedExams.length))}
+                  </span>
+                  <select
+                    aria-label="Class tests per page"
+                    value={pageSize}
+                    onChange={(event) => setPageSize(Number(event.target.value))}
+                    className="h-8 rounded-lg border border-gray-200 bg-white px-2 text-xs text-gray-600"
+                  >
+                    {[10, 20, 50, 100].map((size) => <option key={size} value={size}>{size} per page</option>)}
+                  </select>
+                </div>
+                {totalPages > 1 && (
+                  <Pagination className="mt-2" aria-label="Class test pages">
+                    <PaginationContent className="gap-1">
+                      <PaginationItem>
+                        <PaginationPrevious
+                          href="#"
+                          text={t("teacherPages", "prevBtn", lang)}
+                          aria-label="Go to previous class test page"
+                          aria-disabled={page === 1}
+                          tabIndex={page === 1 ? -1 : undefined}
+                          className={page === 1 ? "pointer-events-none rounded-lg opacity-40" : "rounded-lg"}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            if (page > 1) setPage(page - 1);
+                          }}
+                        />
+                      </PaginationItem>
+                      {classTestPageItems(page, totalPages).map((item, index) => (
+                        <PaginationItem
+                          key={item === "ellipsis" ? `ellipsis-${index}` : item}
+                          className={item !== "ellipsis" && totalPages > 5 && item !== 1 && item !== page && item !== totalPages ? "hidden sm:block" : undefined}
+                        >
+                          {item === "ellipsis" ? (
+                            <PaginationEllipsis />
+                          ) : (
+                            <PaginationLink
+                              href="#"
+                              isActive={item === page}
+                              aria-label={`Go to class test page ${item}`}
+                              className={item === page ? "rounded-lg border-primary-200 bg-primary-50 text-primary-700" : "rounded-lg"}
+                              onClick={(event) => {
+                                event.preventDefault();
+                                setPage(item);
+                              }}
+                            >
+                              {item}
+                            </PaginationLink>
+                          )}
+                        </PaginationItem>
+                      ))}
+                      <PaginationItem>
+                        <PaginationNext
+                          href="#"
+                          text={t("teacherPages", "nextBtn", lang)}
+                          aria-label="Go to next class test page"
+                          aria-disabled={page === totalPages}
+                          tabIndex={page === totalPages ? -1 : undefined}
+                          className={page === totalPages ? "pointer-events-none rounded-lg opacity-40" : "rounded-lg"}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            if (page < totalPages) setPage(page + 1);
+                          }}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                )}
+              </div>
+            )}
+          </>
         )}
+
+        <Button
+          type="button"
+          size="lg"
+          onClick={openAdd}
+          className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-1/2 z-30 max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-full  shadow-lg shadow-primary-900/20 lg:bottom-6 lg:left-[calc(50%+8rem)]"
+        >
+          <Plus className="h-5 w-5" />
+          {t("teacherPages", "newClassTestBtn", lang)}
+        </Button>
 
         <ResponsivePopover
           open={!!selectedExam}
@@ -538,12 +705,12 @@ export default function TeacherClassTestsPage() {
             ) : undefined}
         >
           {selectedExam && (
-            <div className="space-y-5 p-5 pt-0">
-              <div className="space-y-2">
-                <ExamStatusBadge exam={selectedExam} />
-                <p className="mt-1 text-sm text-gray-500">{getExamStatusInfo(selectedExam).description}</p>
+            <div className="space-y-4 p-4 pt-0">
+              <div className="space-y-2 border-b border-gray-100 pb-3">
+                <ExamStatusBadge exam={selectedExam} className="inline-flex rounded-full border px-2.5 py-1 text-xs font-medium normal-case tracking-normal" />
+                <p className="text-sm text-gray-500">{getExamStatusInfo(selectedExam).description}</p>
               </div>
-              <dl className="divide-y divide-gray-100 rounded-xl border border-gray-200 px-4">
+              <dl className="grid grid-cols-2 gap-x-3 gap-y-3 text-sm">
                 {[
                   [t("teacherPages", "examTypeDetail", lang), selectedExam.type?.replace(/_/g, " ") ?? "—"],
                   [t("teacherPages", "academicYearDetail", lang), selectedExam.accademicYear?.name ?? "—"],
@@ -557,9 +724,9 @@ export default function TeacherClassTestsPage() {
                   [t("teacherPages", "passMarksDetail", lang), selectedExam.passMarks?.toString() ?? "—"],
                   ...(selectedExam._count ? [[t("teacherPages", "resultsCountDetail", lang), String(selectedExam._count.results)]] : []),
                 ].map(([label, value]) => (
-                  <div key={label} className="flex items-start justify-between gap-4 py-3 text-sm">
+                  <div key={label} className="min-w-0">
                     <dt className="text-gray-500">{label}</dt>
-                    <dd className="text-right font-medium text-gray-900">{value}</dd>
+                    <dd className="mt-1 break-words font-medium text-gray-900">{value}</dd>
                   </div>
                 ))}
               </dl>
@@ -596,14 +763,14 @@ export default function TeacherClassTestsPage() {
           contentClassName="min-w-0"
           footer={isMarkEntryView && (
             <div className="border-t border-gray-200 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
-              <ButtonGroup className="w-full justify-end">
-                <Button type="button" variant="outline" size="lg" disabled={isLocked || !meSubjectId} onClick={() => setImportOpen(true)}>Import</Button>
-                <Button type="button" variant="outline" size="lg" disabled={meSaving || meStudents.length === 0} onClick={resetScores}>Reset</Button>
-                <Button type="button" variant="outline" size="lg" disabled={meSaving || isLocked || hasInvalidMarks || meStudents.length === 0} onClick={() => handleMeSave(false)}>Save as Draft</Button>
-                <Button type="button" size="lg" disabled={meSaving || isLocked || hasInvalidMarks || meStudents.length === 0} onClick={() => handleMeSave(true)}>
+              <div className="flex w-full flex-wrap justify-end gap-2">
+                <Button type="button" variant="outline" size="lg" className="rounded-xl" disabled={isLocked || !meSubjectId} onClick={() => setImportOpen(true)}>Import</Button>
+                <Button type="button" variant="outline" size="lg" className="rounded-xl" disabled={meSaving || meStudents.length === 0} onClick={resetScores}>Reset</Button>
+                <Button type="button" variant="outline" size="lg" className="rounded-xl" disabled={meSaving || isLocked || hasInvalidMarks || meStudents.length === 0} onClick={() => handleMeSave(false)}>Save as Draft</Button>
+                <Button type="button" size="lg" className="rounded-xl" disabled={meSaving || isLocked || hasInvalidMarks || meStudents.length === 0} onClick={() => handleMeSave(true)}>
                   {meSaving ? "Saving…" : meSaved ? "Saved" : "Save"}
                 </Button>
-              </ButtonGroup>
+              </div>
             </div>
           )}
         >
@@ -655,11 +822,11 @@ export default function TeacherClassTestsPage() {
         className="mx-auto w-full max-w-xl rounded-t-2xl"
         showCloseButton={!saving}
         footer={
-          <div className="flex gap-3 border-t border-gray-100 bg-white px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] w-max ml-auto">
-            <Button type="button" variant="outline" size={"lg"} className="flex-1" disabled={saving} onClick={() => setShowDrawer(false)}>
+          <div className="flex w-full justify-end gap-2 border-t border-gray-100 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <Button type="button" variant="outline" size="lg" className="rounded-xl" disabled={saving} onClick={() => setShowDrawer(false)}>
               {t("common", "cancel", lang)}
             </Button>
-            <Button type="submit" form="class-test-form" size={"lg"} className="flex-1" disabled={saving}>
+            <Button type="submit" form="class-test-form" size="lg" className="rounded-xl" disabled={saving}>
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               {editTarget ? t("teacherPages", "saveChangesBtn", lang) : t("teacherPages", "createTestBtn", lang)}
             </Button>
@@ -668,7 +835,7 @@ export default function TeacherClassTestsPage() {
       >
         <form
           id="class-test-form"
-          className="space-y-4 p-5"
+          className="space-y-3 p-4"
           onSubmit={(event) => {
             event.preventDefault();
             void handleSave();
@@ -795,11 +962,11 @@ export default function TeacherClassTestsPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 bg-white rounded-3xl p-6 max-w-sm mx-auto shadow-2xl pointer-events-auto"
+              className="pointer-events-auto fixed inset-x-4 top-1/2 z-50 mx-auto max-w-sm -translate-y-1/2 rounded-2xl bg-white p-4 shadow-2xl"
             >
-              <div className="text-center space-y-3">
-                <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto animate-bounce">
-                  <Trash2 className="w-7 h-7 text-red-600" />
+              <div className="space-y-2 text-center">
+                <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-red-100">
+                  <Trash2 className="h-5 w-5 text-red-600" />
                 </div>
                 <h3 className="font-bold text-gray-900 text-lg">
                   {t("teacherPages", "deleteClassTestTitle", lang)}
@@ -810,18 +977,18 @@ export default function TeacherClassTestsPage() {
                   this test will be lost.
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-3 mt-6">
+              <div className="mt-4 grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
                   disabled={deleting !== null}
-                  className="py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  className="rounded-xl border border-gray-200 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
                 >
                   {t("common", "cancel", lang)}
                 </button>
                 <button
                   onClick={handleDelete}
                   disabled={deleting !== null}
-                  className="py-3 rounded-2xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors disabled:opacity-60"
+                  className="rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-60"
                 >
                   {deleting !== null ? (
                     <span className="flex items-center justify-center gap-2">

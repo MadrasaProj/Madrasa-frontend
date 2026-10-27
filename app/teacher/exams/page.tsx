@@ -3,7 +3,7 @@ import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
-import { DataTable, type SortDir } from "@/components/ui/DataTable";
+import type { SortDir } from "@/components/ui/DataTable";
 import { getExams, type ExamRecord } from "@/lib/exams-api";
 import {
   getResults,
@@ -18,19 +18,22 @@ import { useActiveClass } from "@/store/activeClass";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardCheck,
+  Clock3,
   GraduationCap,
   Search,
-  X,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Button } from "@/components/ui/button";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { ExamStatusBadge, getExamStatusInfo } from "@/components/exam/ExamStatusBadge";
 import { TeacherMarkEntryView } from "@/components/exam/TeacherMarkEntryView";
-import { useExamColumns } from "@/components/exam/ExamColumns";
-import { fmt } from "@/lib/exam-utils";
-import { ButtonGroup } from "@/components/ui/button-group";
+import { fmt, shortDate } from "@/lib/exam-utils";
 
 export default function TeacherExamsPage() {
   const { user, accessToken } = useAuthStore();
@@ -336,31 +339,40 @@ export default function TeacherExamsPage() {
     setPage(1);
   }, [searchText, pageSize]);
 
-  // ── Columns ────────────────────────────────────────────────────────────────
-
-  const columns = useExamColumns({
-    showActions: false,
-    showAllColumns: true,
-    showExamIcon: false,
-  });
+  const examSummary = [
+    { label: "Total exams", value: searchFiltered.length, icon: GraduationCap, color: "text-primary-700" },
+    { label: "Mark entry", value: searchFiltered.filter((exam) => exam.examStatus === "MARK_ENTRY").length, icon: ClipboardCheck, color: "text-primary-700" },
+    { label: "Published", value: searchFiltered.filter((exam) => exam.examStatus === "PUBLISHED").length, icon: CalendarDays, color: "text-blue-700" },
+    { label: "Draft", value: searchFiltered.filter((exam) => exam.examStatus === "DRAFT").length, icon: Clock3, color: "text-amber-700" },
+  ];
 
   // ── Render Loading ───────────────────────────────────────────────────────────
 
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="  ">
+        <div className="p-0!">
           <PageHeader title={t("teacherPages", "examsLoadingTitle", lang)} />
-          <Skeleton className="h-12 rounded-xl" />
-          <div className="flex gap-1">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-9 w-24 rounded-t-xl" />
-            ))}
+          <div className="px-3 pb-2 pt-2">
+            <Skeleton className="mx-auto h-10 w-full max-w-md rounded-lg" />
           </div>
-          <div className="grid grid-cols-1 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-32 rounded-3xl" />
-            ))}
+          <div className="mx-3 mb-3 overflow-hidden rounded-2xl bg-white">
+            <Skeleton className="h-20 rounded-none" />
+            <div className="grid grid-cols-2 gap-px bg-gray-100 sm:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-20 rounded-none" />
+              ))}
+            </div>
+          </div>
+          <div className="mx-3 overflow-hidden rounded-2xl bg-white">
+            <div className="divide-y divide-gray-100">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="space-y-2 p-3">
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-3 w-3/4" />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </DashboardLayout>
@@ -371,31 +383,50 @@ export default function TeacherExamsPage() {
 
   return (
     <DashboardLayout>
-      <div className="">
+      <div className="p-0! pb-6!">
         <PageHeader title={t("teacherPages", "examsLoadingTitle", lang)} />
 
-        <div className="sticky top-12 z-30 -mx-4 mb-4 flex h-10 gap-2 bg-white  px-4  *:my-auto shadow-lg shadow-gray-400/10">
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <Input
-              type="search"
-              aria-label={t("teacherPages", "searchExamByName", lang)}
-              placeholder={t("teacherPages", "searchExamByName", lang)}
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              className="h-8 border-0 bg-transparent pl-9 pr-2 shadow-none focus-visible:ring-0"
-            />
+        <div className="px-3 pb-2 pt-6">
+          <div className="mx-auto flex w-full max-w-md items-center gap-2">
+            <InputGroup className="h-10 min-w-0 flex-1 rounded-lg bg-white">
+              <InputGroupInput
+                type="search"
+                aria-label={t("teacherPages", "searchExamByName", lang)}
+                placeholder={t("teacherPages", "searchExamByName", lang)}
+                value={searchText}
+                onChange={(event) => setSearchText(event.target.value)}
+                className="h-full text-sm"
+              />
+              <InputGroupAddon align="inline-start">
+                <Search className="h-4 w-4 text-gray-400" />
+              </InputGroupAddon>
+            </InputGroup>
+            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600">
+              <SlidersHorizontal aria-hidden="true" className="h-4 w-4" />
+              <select
+                aria-label="Sort exams"
+                value={`${sortBy ?? "startDate"}:${sortDir}`}
+                onChange={(event) => {
+                  const [key, direction] = event.target.value.split(":");
+                  setSortBy(key);
+                  setSortDir(direction as SortDir);
+                  setPage(1);
+                }}
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              >
+                <option value="startDate:desc">Newest first</option>
+                <option value="startDate:asc">Oldest first</option>
+                <option value="name:asc">Name A–Z</option>
+                <option value="name:desc">Name Z–A</option>
+                <option value="examStatus:asc">Status A–Z</option>
+                <option value="examStatus:desc">Status Z–A</option>
+                <option value="markEntryLastDate:asc">Mark entry: earliest</option>
+                <option value="markEntryLastDate:desc">Mark entry: latest</option>
+                <option value="publishedDate:asc">Published: earliest</option>
+                <option value="publishedDate:desc">Published: latest</option>
+              </select>
+            </div>
           </div>
-          {searchText && (
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t("common", "clearSearch", lang)}
-              onClick={() => setSearchText("")}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
         </div>
 
         {error && (
@@ -408,39 +439,90 @@ export default function TeacherExamsPage() {
           />
         )}
 
-        <DataTable
-          alwaysTable
-          columns={columns}
-          data={pagedExams}
-          keyExtractor={(e) => e.id}
-          onRowClick={(exam) => setSelectedExamId(exam.id)}
-          loading={loading}
-          error={null}
-          emptyImage="/icons/exams/empty.webp"
-          emptyMessage={
-            searchText
-              ? t("common", "noResults", lang)
-              : t("teacherPages", "noTermExams", lang)
-          }
-          onSort={(key, dir) => {
-            setSortBy(key);
-            setSortDir(dir);
-          }}
-          sortKey={sortBy}
-          sortDir={sortDir}
-          pagination={{
-            page,
-            totalPages,
-            total: sortedExams.length,
-            pageSize,
-            pageSizeOptions: [10, 20, 50, 100],
-            onPageChange: setPage,
-            onPageSizeChange: (sz) => {
-              setPageSize(sz);
-              setPage(1);
-            },
-          }}
-        />
+        <section className="mx-3 mb-3 overflow-hidden rounded-2xl bg-gradient-to-br from-white to-sky-50">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-3 py-2.5">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-xl font-semibold tabular-nums text-gray-950">{exams.length}</span>
+              <span className="text-xs font-medium text-gray-600">Total exams</span>
+            </div>
+            <span className="rounded-full border border-primary-100 bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
+              <strong className="tabular-nums">{sortedExams.length}</strong> shown
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-px bg-gray-100 sm:grid-cols-4">
+            {examSummary.map((stat) => {
+              const Icon = stat.icon;
+              return (
+                <div key={stat.label} className="min-w-0 bg-white/90 p-2.5 sm:p-3">
+                  <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-600">
+                    <Icon aria-hidden="true" className={`h-3.5 w-3.5 shrink-0 ${stat.color}`} />
+                    <span>{stat.label}</span>
+                  </div>
+                  <div className="mt-1 text-lg font-semibold tabular-nums text-gray-950">{stat.value}</div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="card mx-3 divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white p-0! shadow-none" data-ui-style="classic" aria-label="Exams">
+          {pagedExams.length === 0 ? (
+            <div className="flex flex-col items-center px-3 py-8 text-center">
+              <img src="/icons/exams/empty.webp" alt="" className="mb-3 h-28 w-28 object-contain" />
+              <p className="text-sm text-gray-500">
+                {searchText ? t("common", "noResults", lang) : t("teacherPages", "noTermExams", lang)}
+              </p>
+            </div>
+          ) : pagedExams.map((exam) => {
+            const status = getExamStatusInfo(exam);
+            return (
+              <button
+                key={exam.id}
+                type="button"
+                onClick={() => setSelectedExamId(exam.id)}
+                className="w-full rounded-none p-3 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500"
+              >
+                <span className="flex items-start justify-between gap-3">
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold text-gray-900">{exam.name}</span>
+                    <span className="mt-0.5 block text-xs text-gray-500">{status.description || "—"}</span>
+                  </span>
+                  <ExamStatusBadge exam={exam} className="rounded-full border px-2.5 py-1 text-xs font-medium normal-case tracking-normal" />
+                </span>
+                <span className="mt-2 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+                  <span className="min-w-0">
+                    <span className="block text-xs text-gray-500">{t("teacherPages", "classDetail", lang)}</span>
+                    <span className="block text-sm font-semibold text-gray-900">{exam.class?.name ?? "—"}</span>
+                  </span>
+                  <span className="text-right text-xs text-gray-500">
+                    <span className="block">{t("teacherPages", "examStartDetail", lang)} – {t("teacherPages", "examEndDetail", lang)}</span>
+                    <span className="block font-medium text-gray-700">{shortDate(exam.startDate)} – {shortDate(exam.endDate)}</span>
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </section>
+
+        {sortedExams.length > 0 && (
+          <div className="mx-3 mt-3 flex flex-wrap items-center justify-center gap-3 text-sm text-gray-500">
+            <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(page - 1)} className="rounded-xl">
+              <ChevronLeft className="h-4 w-4" /> Previous
+            </Button>
+            <span className="tabular-nums">{(page - 1) * pageSize + 1}–{Math.min(page * pageSize, sortedExams.length)} of {sortedExams.length}</span>
+            <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage(page + 1)} className="rounded-xl">
+              Next <ChevronRight className="h-4 w-4" />
+            </Button>
+            <select
+              aria-label="Exams per page"
+              value={pageSize}
+              onChange={(event) => setPageSize(Number(event.target.value))}
+              className="h-8 rounded-lg border border-gray-200 bg-white px-2 text-xs text-gray-600"
+            >
+              {[10, 20, 50, 100].map((size) => <option key={size} value={size}>{size} per page</option>)}
+            </select>
+          </div>
+        )}
 
         <ResponsivePopover
           open={!!selectedExam}
@@ -460,13 +542,13 @@ export default function TeacherExamsPage() {
             ) : undefined}
         >
           {selectedExam && (
-            <div className="space-y-5 p-5 pt-0">
-              <div className="space-y-2">
-                <ExamStatusBadge exam={selectedExam} />
-                <p className="text-sm mt-1 text-gray-500">{getExamStatusInfo(selectedExam).description}</p>
+            <div className="space-y-4 p-4 pt-0">
+              <div className="space-y-2 border-b border-gray-100 pb-3">
+                <ExamStatusBadge exam={selectedExam} className="inline-flex rounded-full border px-2.5 py-1 text-xs font-medium normal-case tracking-normal" />
+                <p className="text-sm text-gray-500">{getExamStatusInfo(selectedExam).description}</p>
               </div>
 
-              <dl className="divide-y divide-gray-100 rounded-xl border border-gray-200 px-4">
+              <dl className="grid grid-cols-2 gap-x-3 gap-y-3 text-sm">
                 {[
                   [t("teacherPages", "examTypeDetail", lang), selectedExam.type?.replace(/_/g, " ") ?? "—"],
                   [t("teacherPages", "academicYearDetail", lang), selectedExam.accademicYear?.name ?? "—"],
@@ -480,9 +562,9 @@ export default function TeacherExamsPage() {
                   [t("teacherPages", "passMarksDetail", lang), selectedExam.passMarks?.toString() ?? "—"],
                   ...(selectedExam._count ? [[t("teacherPages", "resultsCountDetail", lang), String(selectedExam._count.results)]] : []),
                 ].map(([label, value]) => (
-                  <div key={label} className="flex items-start justify-between gap-4 py-3 text-sm">
+                  <div key={label} className="min-w-0">
                     <dt className="text-gray-500">{label}</dt>
-                    <dd className="text-right font-medium text-gray-900">{value}</dd>
+                    <dd className="mt-1 break-words font-medium text-gray-900">{value}</dd>
                   </div>
                 ))}
               </dl>
@@ -511,22 +593,21 @@ export default function TeacherExamsPage() {
           footer={
             isMarkEntryView && (
               <div className="border-t border-gray-200 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
-                   <ButtonGroup className="w-full justify-end">
-
-                  <Button type="button" variant="outline" size="lg" className=" " disabled={!queryExamId || !queryClassId || !querySubjectId} onClick={() => setImportOpen(true)}>
+                <div className="flex w-full flex-wrap justify-end gap-2">
+                  <Button type="button" variant="outline" size="lg" className="rounded-xl" disabled={!queryExamId || !queryClassId || !querySubjectId} onClick={() => setImportOpen(true)}>
                     Import
                   </Button>
-                  <Button type="button" variant="outline" size="lg" className=" " disabled={saving || students.length === 0} onClick={resetScores}>
+                  <Button type="button" variant="outline" size="lg" className="rounded-xl" disabled={saving || students.length === 0} onClick={resetScores}>
                     Reset
                   </Button>
-                  <Button type="button" variant="outline" size="lg" className="" disabled={saving || isLocked || hasInvalidMarks || students.length === 0} onClick={() => handleSave(false)}>
+                  <Button type="button" variant="outline" size="lg" className="rounded-xl" disabled={saving || isLocked || hasInvalidMarks || students.length === 0} onClick={() => handleSave(false)}>
                     Save as Draft
                   </Button>
-                  <Button type="button" size="lg" className=" " disabled={saving || isLocked || hasInvalidMarks || students.length === 0} onClick={() => handleSave(true)}>
+                  <Button type="button" size="lg" className="rounded-xl" disabled={saving || isLocked || hasInvalidMarks || students.length === 0} onClick={() => handleSave(true)}>
                     {saving ? "Saving…" : saved ? "Saved" : "Save"}
                   </Button>
-                  </ButtonGroup>
-               </div>
+                </div>
+              </div>
             )
           }
           className="mx-auto w-full max-w-6xl rounded-t-2xl"
