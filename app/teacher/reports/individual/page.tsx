@@ -3,7 +3,6 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import {
   Pagination,
@@ -34,6 +33,8 @@ import { getStudentHomework, listHomework, type StudentHomeworkItem, type Homewo
 import { getStudentIbadah, type StudentIbadahLog } from "@/lib/ibadah-api";
 import { getStudentAttendance, type AttendanceRecord } from "@/lib/attendance-api";
 import { getAttendanceSummary, type AttendanceSummary } from "@/lib/reports-api";
+import type { DateRange } from "react-day-picker";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import {
   Search,
   SlidersHorizontal,
@@ -51,6 +52,8 @@ import {
   ChevronRight,
   Flame,
   Sparkles,
+  Calendar,
+  X,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -865,6 +868,24 @@ export default function TeacherIndividualReportPage() {
   const [from, setFrom] = useState(initialDates.monthStart);
   const [to, setTo] = useState(initialDates.today);
   const [activeDatePreset, setActiveDatePreset] = useState<"month" | "30days" | "week" | "custom">("month");
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+
+  const pickerRange = useMemo<DateRange | undefined>(() => {
+    return {
+      from: from ? new Date(`${from}T00:00:00`) : undefined,
+      to: to ? new Date(`${to}T23:59:59`) : undefined,
+    };
+  }, [from, to]);
+
+  const handleApplyRange = (range: DateRange | undefined) => {
+    if (range?.from) {
+      const fromStr = toDateString(range.from);
+      const toStr = range.to ? toDateString(range.to) : fromStr;
+      setFrom(fromStr);
+      setTo(toStr);
+      setActiveDatePreset("custom");
+    }
+  };
 
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [studentsLoading, setStudentsLoading] = useState(true);
@@ -1111,76 +1132,81 @@ export default function TeacherIndividualReportPage() {
           </div>
         </div>
 
-        <DrawerContent className="max-h-[85dvh] bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]" aria-label="Report filters">
-          <div className="mb-6 flex items-center justify-between">
+        <DrawerContent className="h-dvh max-h-dvh !h-dvh !max-h-dvh [--drawer-content-height:100dvh] [--drawer-content-max-height:100dvh] bg-white p-5 flex flex-col rounded-t-2xl pb-[max(1.25rem,env(safe-area-inset-bottom))]" aria-label="Report filters">
+          <div className="mb-4 flex items-center justify-between shrink-0">
             <DrawerTitle className="text-lg font-bold text-gray-900">Report Date Range</DrawerTitle>
+            <DrawerClose className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
+              <X className="h-5 w-5" />
+            </DrawerClose>
           </div>
 
-          <section className="mb-6">
-            <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-400">
-              Presets
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { id: "month", name: "This Month" },
-                { id: "30days", name: "Last 30 Days" },
-                { id: "week", name: "This Week" },
-                { id: "custom", name: "Custom Range" },
-              ].map((preset) => (
-                <Button
-                  variant="ghost"
-                  key={preset.id}
-                  onClick={() => applyDatePreset(preset.id as any)}
-                  className={cn(
-                    "h-9 shrink-0 rounded-full border px-4 text-sm font-medium transition-colors",
-                    activeDatePreset === preset.id
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-background text-foreground hover:bg-muted",
-                  )}
-                >
-                  {preset.name}
-                </Button>
-              ))}
-            </div>
-          </section>
-
-          <section className="space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">
-              Custom Dates
-            </h3>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">From Date</label>
-                <Input
-                  type="date"
-                  value={from}
-                  onChange={(e) => {
-                    setFrom(e.target.value);
-                    setActiveDatePreset("custom");
-                  }}
-                  className="w-full text-sm"
-                />
+          <div className="min-h-0 flex-1 overflow-y-auto space-y-6 pr-1">
+            <section>
+              <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-400">
+                Presets
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { id: "month", name: "This Month" },
+                  { id: "30days", name: "Last 30 Days" },
+                  { id: "week", name: "This Week" },
+                  { id: "custom", name: "Custom Range" },
+                ].map((preset) => (
+                  <Button
+                    variant="ghost"
+                    key={preset.id}
+                    onClick={() => {
+                      if (preset.id === "custom") {
+                        setDatePickerOpen(true);
+                      } else {
+                        applyDatePreset(preset.id as any);
+                      }
+                    }}
+                    className={cn(
+                      "h-9 shrink-0 rounded-full border px-4 text-sm font-medium transition-colors",
+                      activeDatePreset === preset.id
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-background text-foreground hover:bg-muted",
+                    )}
+                  >
+                    {preset.name}
+                  </Button>
+                ))}
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">To Date</label>
-                <Input
-                  type="date"
-                  value={to}
-                  onChange={(e) => {
-                    setTo(e.target.value);
-                    setActiveDatePreset("custom");
-                  }}
-                  className="w-full text-sm"
-                />
-              </div>
-            </div>
-          </section>
+            </section>
 
-          <DrawerClose className="mt-8 h-10 w-full rounded-xl bg-primary-600 text-sm font-semibold text-white">
+            <section className="space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                Custom Date Range
+              </h3>
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                onClick={() => setDatePickerOpen(true)}
+                className="h-11 w-full justify-start font-normal"
+                aria-haspopup="dialog"
+                aria-expanded={datePickerOpen}
+              >
+                <Calendar className="text-muted-foreground" />
+                {from} — {to}
+              </Button>
+            </section>
+          </div>
+
+          <DrawerClose className="mt-4 h-11 shrink-0 w-full rounded-xl bg-primary-600 text-sm font-semibold text-white">
             Apply Filters
           </DrawerClose>
         </DrawerContent>
       </Drawer>
+
+      <DateRangePicker
+        open={datePickerOpen}
+        onOpenChange={setDatePickerOpen}
+        value={pickerRange}
+        onApply={handleApplyRange}
+        title="Select Report Date Range"
+      />
 
       {error && <ApiErrorBanner message={error} onRetry={loadStudents} />}
 
@@ -1241,7 +1267,7 @@ export default function TeacherIndividualReportPage() {
                           {student.class ? ` · ${student.class.name}` : ""}
                         </span>
                       </span>
-                       <ChevronRight className="h-4 w-4 my-auto shrink-0 text-gray-200" />
+                       <ChevronRight className="h-4 w-4 my-auto shrink-0 text-gray-300" />
                     </span>
                     {/* <span className="mt-3 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
                       <span className="flex items-center gap-2 text-xs text-gray-500">
@@ -1339,19 +1365,24 @@ export default function TeacherIndividualReportPage() {
         }}
         swipeDirection="down"
       >
-        <DrawerContent className="max-h-[88dvh] bg-background">
+        <DrawerContent className="h-dvh max-h-dvh !h-dvh !max-h-dvh [--drawer-content-height:100dvh] [--drawer-content-max-height:100dvh] bg-background flex flex-col rounded-t-2xl">
           {selectedStudent && (
             <>
-              <div className="shrink-0 border-b px-5 py-4">
-                <DrawerTitle className="text-lg font-semibold">{selectedStudent.name}</DrawerTitle>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {selectedStudent.adno}
-                  {selectedStudent.class ? ` · ${selectedStudent.class.name}` : ""}
-                  {" · "}
-                  <span className="font-medium text-primary-700">
-                    {from} to {to}
-                  </span>
-                </p>
+              <div className="shrink-0 border-b px-5 py-4 flex items-center justify-between">
+                <div>
+                  <DrawerTitle className="text-lg font-semibold">{selectedStudent.name}</DrawerTitle>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {selectedStudent.adno}
+                    {selectedStudent.class ? ` · ${selectedStudent.class.name}` : ""}
+                    {" · "}
+                    <span className="font-medium text-primary-700">
+                      {from} to {to}
+                    </span>
+                  </p>
+                </div>
+                <DrawerClose className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
+                  <X className="h-5 w-5" />
+                </DrawerClose>
               </div>
 
               <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
