@@ -442,9 +442,9 @@ export default function TeacherDashboard() {
             </span>
             <Button
               onClick={() => navigate("/teacher/attendance")}
-              size="sm"
+              size="lg"
               variant={attendanceTaken ? "outline" : "default"}
-              className="gap-1.5 rounded-xl text-xs h-8 px-3"
+              className="gap-1.5 "
             >
               <UserCheck className="size-3.5" />
               {attendanceTaken
@@ -521,10 +521,10 @@ export default function TeacherDashboard() {
             </span>
             <Button
               variant="outline"
-              size="sm"
+              size="lg"
               onClick={() => setIbadahDrawerOpen(true)}
               disabled={!activeClassId}
-              className="gap-1.5 rounded-xl border-primary-200 text-primary-700 hover:bg-primary-50 text-xs h-8 px-3"
+              className="gap-1.5  "
             >
               <MoonStar className="size-3.5" />
               {t("teacherPages", "ibadahRecordsTitle", lang)}
@@ -606,17 +606,17 @@ export default function TeacherDashboard() {
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
-                size="sm"
+                size="lg"
                 onClick={() => navigate("/teacher/homework")}
-                className="gap-1 rounded-xl text-xs h-8 px-2.5"
+                className="gap-1  "
               >
                 <BookOpen className="size-3.5" />
                 {t("teacherPages", "assignHomework", lang)}
               </Button>
               <Button
-                size="sm"
+                size="lg"
                 onClick={() => navigate("/teacher/homework-list")}
-                className="gap-1 rounded-xl text-xs h-8 px-3"
+                className="gap-1   "
               >
                 <ClipboardList className="size-3.5" />
                 {t("teacherPages", "hwListTitle", lang)}
