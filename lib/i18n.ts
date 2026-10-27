@@ -629,6 +629,10 @@ const translations = {
       en: "Analytics and performance data",
       ml: "അനലിറ്റിക്‌സും പ്രകടന ഡാറ്റയും",
     },
+    individualReportTitle: {
+      en: "Individual Student Report",
+      ml: "വ്യക്തിഗത വിദ്യാർത്ഥി റിപ്പോർട്ട്",
+    },
     bestBoyMonth: { en: "Best Boy of Month", ml: "മാസത്തിലെ മികച്ച ആൺകുട്ടി" },
     bestGirlMonth: {
       en: "Best Girl of Month",
@@ -912,6 +916,7 @@ const translations = {
 
   // ── Teacher Sub-pages ─────────────────────────────────────────────────────
   teacherPages: {
+    individualReportTitle: { en: "Individual Student Report", ml: "വ്യക്തിഗത വിദ്യാർത്ഥി റിപ്പോർട്ട്" },
     attendanceTitle: { en: "Mark Attendance", ml: "ഹാജർ രേഖപ്പെടുത്തുക" },
     attendanceSub: {
       en: "Mark today's attendance",
@@ -1460,6 +1465,17 @@ const translations = {
     viewResultsDetail: { en: "View results", ml: "ഫലങ്ങൾ കാണുക" },
     // Performance
     classPerformanceTitle: { en: "Class Performance", ml: "ക്ലാസ് പ്രകടനം" },
+    performanceHighestScore: { en: "Highest score", ml: "ഏറ്റവും ഉയർന്ന സ്കോർ" },
+    performanceScore: { en: "Score", ml: "സ്കോർ" },
+    performanceGrade: { en: "Grade", ml: "ഗ്രേഡ്" },
+    performanceStudent: { en: "Student", ml: "വിദ്യാർത്ഥി" },
+    performanceRanking: { en: "Student ranking", ml: "വിദ്യാർത്ഥി റാങ്കിംഗ്" },
+    performanceScoreOrder: { en: "Highest score first", ml: "ഉയർന്ന സ്കോർ ആദ്യം" },
+    performanceGradeCaption: { en: "Results by grade", ml: "ഗ്രേഡ് അനുസരിച്ചുള്ള ഫലങ്ങൾ" },
+    performanceSelectExam: { en: "Select an exam", ml: "പരീക്ഷ തിരഞ്ഞെടുക്കുക" },
+    performanceDownloadPdf: { en: "Download PDF", ml: "PDF ഡൗൺലോഡ്" },
+    performanceGeneratingPdf: { en: "Generating PDF…", ml: "PDF തയ്യാറാക്കുന്നു…" },
+    performanceGeneratedOn: { en: "Report generated on {date}", ml: "റിപ്പോർട്ട് തയ്യാറാക്കിയ തീയതി: {date}" },
     studentsSummary: { en: "Students", ml: "വിദ്യാർത്ഥികൾ" },
     avgScoreSummary: { en: "Avg Score", ml: "ശരാശരി സ്‌കോർ" },
     hwCompletionSummary: { en: "HW Compl.", ml: "HW പൂർത്തീകരണം" },
