@@ -1143,7 +1143,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
               }
               aria-haspopup="dialog"
               onClick={() => setStudentSwitcherOpen(true)}
-              className="relative z-10 flex h-16 w-16 shrink-0 flex-col items-center justify-end pb-2 text-primary-700 transition-transform active:scale-95 focus-visible:rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+              className="relative z-10 flex h-14 w-16 shrink-0 flex-col items-center justify-end pb-2 text-primary-700 transition-transform active:scale-95 focus-visible:rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
             >
               <span className={switcherOrbClass}>
                 <Avatar size="sm">

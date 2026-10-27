@@ -9,10 +9,23 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth";
-import { AlertCircle, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  AlertCircle,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { Cell, Pie, PieChart } from "recharts";
 
-const DAY_HEADER_KEYS = ["daySun", "dayMon", "dayTue", "dayWed", "dayThu", "dayFri", "daySat"];
+const DAY_HEADER_KEYS = [
+  "daySun",
+  "dayMon",
+  "dayTue",
+  "dayWed",
+  "dayThu",
+  "dayFri",
+  "daySat",
+];
 import type { AttendanceStatus } from "@/lib/attendance-api";
 import { useStudentAttendance } from "@/lib/queries";
 
@@ -20,15 +33,47 @@ const STATUS_CONFIG: Record<
   AttendanceStatus,
   { label: string; labelMl: string; dot: string; bg: string }
 > = {
-  PRESENT:  { label: "Present",  labelMl: "ഹാജർ",     dot: "bg-primary-500", bg: "bg-primary-50"  },
-  ABSENT:   { label: "Absent",   labelMl: "ഗൈർഹാജർ", dot: "bg-red-500",     bg: "bg-red-50"      },
-  LATE:     { label: "Late",     labelMl: "വൈകി",      dot: "bg-amber-500",   bg: "bg-amber-50"    },
-  EXCUSED:  { label: "Excused",  labelMl: "അനുവദിച്ച", dot: "bg-blue-400",   bg: "bg-blue-50"     },
-  LEAVE:    { label: "Leave",    labelMl: "ലീവ്",       dot: "bg-amber-400",  bg: "bg-amber-50"    },
-  SICK:     { label: "Sick",     labelMl: "അസുഖം",     dot: "bg-orange-400", bg: "bg-orange-50"   },
+  PRESENT: {
+    label: "Present",
+    labelMl: "ഹാജർ",
+    dot: "bg-primary-500",
+    bg: "bg-primary-50",
+  },
+  ABSENT: {
+    label: "Absent",
+    labelMl: "ഗൈർഹാജർ",
+    dot: "bg-red-500",
+    bg: "bg-red-50",
+  },
+  LATE: {
+    label: "Late",
+    labelMl: "വൈകി",
+    dot: "bg-amber-500",
+    bg: "bg-amber-50",
+  },
+  EXCUSED: {
+    label: "Excused",
+    labelMl: "അനുവദിച്ച",
+    dot: "bg-blue-400",
+    bg: "bg-blue-50",
+  },
+  LEAVE: {
+    label: "Leave",
+    labelMl: "ലീവ്",
+    dot: "bg-amber-400",
+    bg: "bg-amber-50",
+  },
+  SICK: {
+    label: "Sick",
+    labelMl: "അസുഖം",
+    dot: "bg-orange-400",
+    bg: "bg-orange-50",
+  },
 };
 
-function monthKey(dateStr: string) { return dateStr.slice(0, 7); }
+function monthKey(dateStr: string) {
+  return dateStr.slice(0, 7);
+}
 
 function monthLabel(key: string, locale: string) {
   const [y, m] = key.split("-");
@@ -56,30 +101,45 @@ export default function ParentAttendancePage() {
   const chartId = useId().replace(/:/g, "");
 
   const locale = lang === "ml" ? "ml-IN" : "en-US";
-  const effectiveId = activeStudentId ?? (user?.accessibleStudentIds?.[0] ?? "");
+  const effectiveId = activeStudentId ?? user?.accessibleStudentIds?.[0] ?? "";
 
   const [monthIndex, setMonthIndex] = useState(0);
 
   const { data, isLoading, error, refetch } = useStudentAttendance(
     { clientId: user?.clientId ?? "", token: accessToken ?? "" },
     effectiveId,
-    user?.defaultAcademicYearId ? { academicYearId: user.defaultAcademicYearId } : undefined,
+    user?.defaultAcademicYearId
+      ? { academicYearId: user.defaultAcademicYearId }
+      : undefined,
   );
 
-  const presentCount  = (data?.summary?.PRESENT  ?? 0) + (data?.summary?.EXCUSED ?? 0);
-  const absentCount   = (data?.summary?.ABSENT   ?? 0);
-  const otherCount    = (data?.summary?.LATE     ?? 0) + (data?.summary?.LEAVE  ?? 0) + (data?.summary?.SICK ?? 0);
-  const total         = data?.total ?? 0;
-  const percentage    = total > 0 ? Math.round((presentCount / total) * 100) : 0;
+  const presentCount =
+    (data?.summary?.PRESENT ?? 0) + (data?.summary?.EXCUSED ?? 0);
+  const absentCount = data?.summary?.ABSENT ?? 0;
+  const otherCount =
+    (data?.summary?.LATE ?? 0) +
+    (data?.summary?.LEAVE ?? 0) +
+    (data?.summary?.SICK ?? 0);
+  const total = data?.total ?? 0;
+  const percentage = total > 0 ? Math.round((presentCount / total) * 100) : 0;
   const chartConfig = {
-    present: { label: t("parentPages", "presentLower", lang), color: "var(--primary)" },
+    present: {
+      label: t("parentPages", "presentLower", lang),
+      color: "var(--primary)",
+    },
     absent: { label: t("parentPages", "absentLower", lang), color: "#ef4444" },
     other: { label: t("parentPages", "otherLower", lang), color: "#e5e7eb" },
   } satisfies ChartConfig;
   const chartData = [
     { key: "present", value: presentCount },
     { key: "absent", value: absentCount },
-    { key: "other", value: total > 0 ? Math.max(otherCount, total - presentCount - absentCount) : 1 },
+    {
+      key: "other",
+      value:
+        total > 0
+          ? Math.max(otherCount, total - presentCount - absentCount)
+          : 1,
+    },
   ];
 
   const availableMonths = useMemo(() => {
@@ -93,10 +153,12 @@ export default function ParentAttendancePage() {
   const [cy, cm] = currentMonth ? currentMonth.split("-").map(Number) : [0, 0];
   const calendarDays = currentMonth ? getCalendarDays(cy, cm - 1) : [];
   const dayRecords = useMemo(() => {
-    if (!currentMonth || !data?.records) return new Map<string, AttendanceStatus>();
+    if (!currentMonth || !data?.records)
+      return new Map<string, AttendanceStatus>();
     const map = new Map<string, AttendanceStatus>();
     for (const r of data.records) {
-      if (r.date.startsWith(currentMonth)) map.set(r.date.slice(0, 10), r.status);
+      if (r.date.startsWith(currentMonth))
+        map.set(r.date.slice(0, 10), r.status);
     }
     return map;
   }, [currentMonth, data?.records]);
@@ -110,7 +172,9 @@ export default function ParentAttendancePage() {
         <PageHeader title={t("parentPages", "attendanceTitle", lang)} />
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <AlertCircle className="w-10 h-10 text-gray-300 mb-3" />
-          <p className="text-gray-400 text-sm">Session expired. Please log in again.</p>
+          <p className="text-gray-400 text-sm">
+            Session expired. Please log in again.
+          </p>
         </div>
       </DashboardLayout>
     );
@@ -122,7 +186,9 @@ export default function ParentAttendancePage() {
         <PageHeader title={t("parentPages", "attendanceTitle", lang)} />
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <CalendarDays className="w-10 h-10 text-gray-300 mb-3" />
-          <p className="text-gray-400 text-sm">No students linked to your account.</p>
+          <p className="text-gray-400 text-sm">
+            No students linked to your account.
+          </p>
         </div>
       </DashboardLayout>
     );
@@ -139,11 +205,17 @@ export default function ParentAttendancePage() {
         </div>
       )}
 
-      {errorMessage && <ApiErrorBanner message={errorMessage} onRetry={() => refetch()} />}
+      {errorMessage && (
+        <ApiErrorBanner message={errorMessage} onRetry={() => refetch()} />
+      )}
 
       {!isLoading && !errorMessage && data && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mx-auto max-w-lg space-y-5">
-          <section className="rounded-3xl  bg-white px-5 py-7 text-center sm:px-8">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="mx-auto max-w-lg space-y-5"
+        >
+          <section className="rounded-3xl relative  bg-white px-5 py-7 text-center sm:px-8">
             <ChartContainer
               config={chartConfig}
               className="mx-auto h-[150px] w-[260px] max-w-full"
@@ -152,11 +224,23 @@ export default function ParentAttendancePage() {
             >
               <PieChart accessibilityLayer>
                 <defs>
-                  <linearGradient id={`${chartId}-present`} x1="0%" y1="0%" x2="100%" y2="0%">
+                  <linearGradient
+                    id={`${chartId}-present`}
+                    x1="0%"
+                    y1="0%"
+                    x2="100%"
+                    y2="0%"
+                  >
                     <stop offset="0%" stopColor="#047857" />
                     <stop offset="100%" stopColor="#6ee7b7" />
                   </linearGradient>
-                  <linearGradient id={`${chartId}-absent`} x1="0%" y1="0%" x2="100%" y2="0%">
+                  <linearGradient
+                    id={`${chartId}-absent`}
+                    x1="0%"
+                    y1="0%"
+                    x2="100%"
+                    y2="0%"
+                  >
                     <stop offset="0%" stopColor="#dc2626" />
                     <stop offset="100%" stopColor="#fca5a5" />
                   </linearGradient>
@@ -170,45 +254,76 @@ export default function ParentAttendancePage() {
                   cx="50%"
                   cy="95%"
                   innerRadius={70}
-                  outerRadius={110}
-                  cornerRadius={8}
+                  outerRadius={90}
+                  cornerRadius={3}
                   strokeWidth={0}
                   isAnimationActive={false}
                 >
                   {chartData.map((entry) => (
                     <Cell
                       key={entry.key}
-                      fill={entry.key === "other" ? "var(--color-other)" : `url(#${chartId}-${entry.key})`}
+                      fill={
+                        entry.key === "other"
+                          ? "var(--color-other)"
+                          : `url(#${chartId}-${entry.key})`
+                      }
                     />
                   ))}
                 </Pie>
               </PieChart>
             </ChartContainer>
-            <div  style={{
-              transform: "translate(-50%, -150px)",
-            }} className="  absolute left-1/2 top-1/2  text-center">
-
-            <p className="-mt-2 text-4xl font-bold tracking-tight text-gray-900">{percentage}%</p>
-            <p className="mt-1 text-xs font-medium text-gray-500">{t("parentPages", "attendanceRate", lang)}</p>
+            <div
+              style={{
+                transform: "translate(-50%, -30px)",
+              }}
+              className="  absolute left-1/2 top-1/2  text-center"
+            >
+              <p className="-mt-2 text-4xl font-bold tracking-tight text-gray-900">
+                {percentage}%
+              </p>
+              <p className="mt-1 text-xs font-medium text-gray-500">
+                {t("parentPages", "attendanceRate", lang)}
+              </p>
             </div>
-            <div className={cn("mt-7 grid divide-x divide-gray-200 border-t border-gray-100 pt-5", otherCount > 0 ? "grid-cols-4" : "grid-cols-3")}>
+            <div
+              className={cn(
+                "mt-7 grid divide-x divide-gray-200 border-t border-gray-100 pt-5",
+                otherCount > 0 ? "grid-cols-4" : "grid-cols-3",
+              )}
+            >
               <div className="min-w-0 px-1">
-                <p className="text-xl font-semibold text-gray-900 sm:text-2xl">{presentCount}</p>
-                <p className="mt-0.5 text-xs text-gray-500">{t("parentPages", "presentLower", lang)}</p>
+                <p className="text-xl font-semibold text-gray-900 sm:text-2xl">
+                  {presentCount}
+                </p>
+                <p className="mt-0.5 text-xs text-gray-500">
+                  {t("parentPages", "presentLower", lang)}
+                </p>
               </div>
               <div className="min-w-0 px-1">
-                <p className="text-xl font-semibold text-red-600 sm:text-2xl">{absentCount}</p>
-                <p className="mt-0.5 text-xs text-gray-500">{t("parentPages", "absentLower", lang)}</p>
+                <p className="text-xl font-semibold text-red-600 sm:text-2xl">
+                  {absentCount}
+                </p>
+                <p className="mt-0.5 text-xs text-gray-500">
+                  {t("parentPages", "absentLower", lang)}
+                </p>
               </div>
               {otherCount > 0 && (
                 <div className="min-w-0 px-1">
-                  <p className="text-xl font-semibold text-gray-900 sm:text-2xl">{otherCount}</p>
-                  <p className="mt-0.5 text-xs text-gray-500">{t("parentPages", "otherLower", lang)}</p>
+                  <p className="text-xl font-semibold text-gray-900 sm:text-2xl">
+                    {otherCount}
+                  </p>
+                  <p className="mt-0.5 text-xs text-gray-500">
+                    {t("parentPages", "otherLower", lang)}
+                  </p>
                 </div>
               )}
               <div className="min-w-0 px-1">
-                <p className="text-xl font-semibold text-gray-900 sm:text-2xl">{total}</p>
-                <p className="mt-0.5 text-xs text-gray-500">{t("parentPages", "totalLower", lang)}</p>
+                <p className="text-xl font-semibold text-gray-900 sm:text-2xl">
+                  {total}
+                </p>
+                <p className="mt-0.5 text-xs text-gray-500">
+                  {t("parentPages", "totalLower", lang)}
+                </p>
               </div>
             </div>
           </section>
@@ -236,7 +351,11 @@ export default function ParentAttendancePage() {
                   {currentMonth ? monthLabel(currentMonth, locale) : ""}
                 </h2>
                 <button
-                  onClick={() => setMonthIndex((i) => Math.min(i + 1, availableMonths.length - 1))}
+                  onClick={() =>
+                    setMonthIndex((i) =>
+                      Math.min(i + 1, availableMonths.length - 1),
+                    )
+                  }
                   disabled={monthIndex === availableMonths.length - 1}
                   className="p-2 rounded-xl hover:bg-gray-100 disabled:opacity-30 transition-colors"
                 >
@@ -247,7 +366,10 @@ export default function ParentAttendancePage() {
               {/* Day headers */}
               <div className="grid grid-cols-7 mb-2">
                 {DAY_HEADERS.map((d) => (
-                  <div key={d} className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide py-1">
+                  <div
+                    key={d}
+                    className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide py-1"
+                  >
                     {t("parentPages", d as any, lang)}
                   </div>
                 ))}
@@ -280,18 +402,21 @@ export default function ParentAttendancePage() {
                           cfg?.bg,
                           !status && "bg-gray-50/50",
                           isToday && "ring-2 ring-primary-400 ring-offset-1",
-                        )}>
-                        <span className={cn(
-                          "text-sm font-semibold",
-                          status === "PRESENT" && "text-primary-700",
-                          status === "ABSENT" && "text-red-700",
-                          status === "LATE" && "text-amber-700",
-                          status === "EXCUSED" && "text-blue-700",
-                          status === "LEAVE" && "text-amber-700",
-                          status === "SICK" && "text-orange-700",
-                          !status && "text-gray-300",
-                          isToday && !status && "text-primary-600",
-                        )}>
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "text-sm font-semibold",
+                            status === "PRESENT" && "text-primary-700",
+                            status === "ABSENT" && "text-red-700",
+                            status === "LATE" && "text-amber-700",
+                            status === "EXCUSED" && "text-blue-700",
+                            status === "LEAVE" && "text-amber-700",
+                            status === "SICK" && "text-orange-700",
+                            !status && "text-gray-300",
+                            isToday && !status && "text-primary-600",
+                          )}
+                        >
                           {day}
                         </span>
                       </div>
@@ -302,12 +427,23 @@ export default function ParentAttendancePage() {
 
               {/* Legend */}
               <div className="flex flex-wrap gap-3 mt-5 pt-4 border-t border-gray-100">
-                {(["PRESENT", "ABSENT", "LATE", "EXCUSED", "LEAVE", "SICK"] as AttendanceStatus[]).map((s) => {
+                {(
+                  [
+                    "PRESENT",
+                    "ABSENT",
+                    "LATE",
+                    "EXCUSED",
+                    "LEAVE",
+                    "SICK",
+                  ] as AttendanceStatus[]
+                ).map((s) => {
                   const cfg = STATUS_CONFIG[s];
                   return (
                     <div key={s} className="flex items-center gap-1.5">
                       <div className={cn("w-2 h-2 rounded-full", cfg.dot)} />
-                      <span className="text-[10px] text-gray-500">{cfg[lang === "ml" ? "labelMl" : "label"]}</span>
+                      <span className="text-[10px] text-gray-500">
+                        {cfg[lang === "ml" ? "labelMl" : "label"]}
+                      </span>
                     </div>
                   );
                 })}

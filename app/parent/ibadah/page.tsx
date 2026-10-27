@@ -9,13 +9,16 @@ import { Icon } from "@iconify/react";
 import {
   Moon, Loader2, AlertCircle,
   Flame, BookOpen, ChevronDown, ChevronUp,
-  CheckCircle2, Save, ChevronLeft, ChevronRight, Hash, ToggleLeft,
-  Check, Sun, X, Users,
+  Save, Hash, ToggleLeft,
+  Check, Sun, X, Users, Plus,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { IbadahCounter } from "@/components/ui/IbadahCounter";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
+import { ScrollableDateNavigator } from "@/components/ScrollableDateNavigator";
+import { Button } from "@/components/ui/button";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 
@@ -40,7 +43,9 @@ function getEmptyForm(): FormState {
   };
 }
 
-function fmt(d: Date) { return d.toISOString().split("T")[0]; }
+function fmt(d: Date) {
+  return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), String(d.getDate()).padStart(2, "0")].join("-");
+}
 
 function logToForm(log: StudentIbadahLog): FormState {
   return {
@@ -61,11 +66,10 @@ export default function ParentIbadahPage() {
 
   const [date, setDate] = useState(fmt(new Date()));
   const [form, setForm] = useState<FormState>(getEmptyForm());
-  const [saved, setSaved] = useState(false);
   const [drawerPrayer, setDrawerPrayer] = useState<Prayer | null>(null);
   const [drawerCustomEnum, setDrawerCustomEnum] = useState<string | null>(null);
   const [dirtyPrayers, setDirtyPrayers] = useState<Set<Prayer>>(new Set());
-  const [view, setView] = useState<"form" | "history">("form");
+  const [recordOpen, setRecordOpen] = useState(false);
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
 
   const { lang } = useLanguageStore();
@@ -93,9 +97,7 @@ export default function ParentIbadahPage() {
   );
   const saveMutation = useUpsertStudentIbadah({ clientId: cid, token }, activeId);
 
-  // Reset save state when date changes
   useEffect(() => {
-    setSaved(false);
     setDirtyPrayers(new Set());
   }, [date]);
 
@@ -115,23 +117,28 @@ export default function ParentIbadahPage() {
 
   const customItems = config?.customItems ?? [];
 
-  const prevDay = () => {
-    const d = new Date(date);
-    d.setDate(d.getDate() - 1);
-    setDate(fmt(d));
+  const openRecord = (recordDate: string) => {
+    const log = ibadah?.logs.find((entry) => entry.date.split("T")[0] === recordDate);
+    setDate(recordDate);
+    setForm(log ? logToForm(log) : getEmptyForm());
+    setDirtyPrayers(new Set());
+    setDrawerPrayer(null);
+    setDrawerCustomEnum(null);
+    saveMutation.reset();
+    setRecordOpen(true);
   };
 
-  const nextDay = () => {
-    const d = new Date(date);
-    d.setDate(d.getDate() + 1);
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    if (d <= today) setDate(fmt(d));
+  const onRecordOpenChange = (open: boolean) => {
+    setRecordOpen(open);
+    if (!open) {
+      setDrawerPrayer(null);
+      setDrawerCustomEnum(null);
+    }
   };
 
   const setPrayer = (p: Prayer, value: PrayerStatus | null) => {
     setForm((prev) => ({ ...prev, [p]: value }));
     setDirtyPrayers((prev) => new Set(prev).add(p));
-    setSaved(false);
   };
 
   const markAll = () => {
@@ -140,7 +147,6 @@ export default function ParentIbadahPage() {
       return { ...prev, ...updates };
     });
     setDirtyPrayers((prev) => new Set([...prev, ...activePrayers]));
-    setSaved(false);
   };
 
   const toggleCustomBoolean = (key: string) => {
@@ -149,7 +155,6 @@ export default function ParentIbadahPage() {
       next[key] = !prev.customData[key];
       return { ...prev, customData: next };
     });
-    setSaved(false);
   };
 
   const setCustomNumber = (key: string, val: number, min = 0, max = Number.MAX_SAFE_INTEGER) => {
@@ -158,7 +163,6 @@ export default function ParentIbadahPage() {
       next[key] = Math.min(max ?? Number.MAX_SAFE_INTEGER, Math.max(min, val));
       return { ...prev, customData: next };
     });
-    setSaved(false);
   };
 
   const setCustomEnum = (key: string, val: string | null) => {
@@ -168,7 +172,6 @@ export default function ParentIbadahPage() {
       else delete next[key];
       return { ...prev, customData: next };
     });
-    setSaved(false);
   };
 
   const handleSave = async () => {
@@ -186,8 +189,7 @@ export default function ParentIbadahPage() {
         notes: form.notes || undefined,
         academicYearId: user?.defaultAcademicYearId ?? undefined,
       });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      setRecordOpen(false);
     } catch (e) {
       // surfaced via mutation state
     }
@@ -205,14 +207,9 @@ export default function ParentIbadahPage() {
       <div className="px-4">
         {isLoading ? (
         <div className="space-y-4">
-          <Skeleton className="h-16 rounded-2xl" />
-          <Skeleton className="h-28 rounded-2xl" />
-          <div className="flex gap-1">
-            {[1, 2].map((i) => (
-              <Skeleton key={i} className="h-10 flex-1 rounded-xl" />
-            ))}
-          </div>
-          <Skeleton className="h-64 rounded-2xl" />
+          <Skeleton className="h-56 rounded-2xl" />
+          <Skeleton className="h-10 rounded-xl" />
+          <Skeleton className="h-52 rounded-2xl" />
         </div>
       ) : !activeId ? (
         <div className="text-center py-16 text-gray-400 text-sm">{t("parentPages", "noChildren", lang)}</div>
@@ -222,32 +219,20 @@ export default function ParentIbadahPage() {
         </div>
       ) : ibadah ? (
         <>
-        {/* Student card */}
-        {/* <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-600 to-primary-700 p-5 mb-5">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
-          <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-1/3 -translate-x-1/4" />
-          <div className="relative flex items-center gap-3">
-            <div className="w-12 h-12 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-inner">
-              {ibadah.student.name.slice(0, 2).toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-white truncate drop-shadow-sm">{ibadah.student.name}</p>
-              <p className="text-xs text-primary-100/80">
-                {ibadah.student.class?.name ?? ""}{ibadah.student.class ? " · " : ""}{ibadah.student.adno}
-              </p>
-            </div>
-
-          </div>
-        </div> */}
-
         {/* Weekly summary */}
-        <div className="bg-white rounded-2xl border border-primary-100/50 p-5 mb-5 space-y-6">
-          <div className="inline-flex items-center gap-2 mx-auto bg-orange-50 rounded-full px-4 py-2">
-            <Flame className="w-5 h-5 text-orange-500" />
-            <span className="text-sm font-bold text-orange-700">{ibadah.streak} {t("parentPages", "dayStreak", lang)}</span>
+        <section className="mb-4 overflow-hidden rounded-2xl bg-gradient-to-br from-white to-sky-50">
+          <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3 sm:px-5">
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-gray-950">{t("parentPages", "prayersThisWeek", lang)}</h2>
+              <p className="truncate text-xs text-gray-500">{ibadah.student.name}</p>
+            </div>
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-orange-100 bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-700">
+              <Flame className="size-3.5 text-orange-500" />
+              {ibadah.streak} {t("parentPages", "dayStreak", lang)}
+            </span>
           </div>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t("parentPages", "prayersThisWeek", lang)}</p>
-          <div className="flex gap-2" style={{ height: 100 }}>
+          <div className="p-4 sm:p-5">
+          <div className="flex gap-2" style={{ height: 112 }}>
             {activePrayers.map((p) => {
               const count = ibadah.weekly[p];
               const pct = count / 7;
@@ -268,71 +253,61 @@ export default function ParentIbadahPage() {
                       {count}
                     </div>
                   </div>
-                  <span className="text-[11px] font-semibold text-gray-400">{prayerMeta[p].label.slice(0, 3)}</span>
+                  <span className="text-[11px] font-semibold text-gray-600">{prayerMeta[p].label.slice(0, 3)}</span>
                 </div>
               );
             })}
           </div>
 
           {config?.enableQuranPages !== false && (
-            <div className="flex flex-col items-center pt-4 border-t border-gray-100">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="mt-6 flex items-center justify-between gap-3 border-t border-gray-100 pt-4">
+              <div className="flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-primary-600" />
-                <p className="text-xs font-semibold text-primary-700 uppercase tracking-wide">{t("parentPages", "quranPages", lang)}</p>
+                <div>
+                  <p className="text-xs font-semibold text-gray-800">{t("parentPages", "quranPages", lang)}</p>
+                  <p className="text-[11px] text-gray-500">{t("parentPages", "pagesReadThisWeek", lang)}</p>
+                </div>
               </div>
-              <span className="bg-gradient-to-r from-primary-700 via-primary to-primary-300 bg-clip-text text-7xl font-black text-transparent">{ibadah.weekly.quranPages}</span>
-              <span className="text-xs text-gray-400 mt-1">{t("parentPages", "pagesReadThisWeek", lang)}</span>
+              <span className="text-2xl font-bold tabular-nums text-primary-700">{ibadah.weekly.quranPages}</span>
             </div>
           )}
-        </div>
-
-        {/* Tab toggle */}
-        <div className="flex gap-1 mb-5 bg-gray-50 rounded-xl p-1">
-          <button
-            onClick={() => setView("form")}
-            className={cn(
-              "flex-1 py-2 rounded-lg text-sm font-medium transition-all",
-              view === "form" ? "bg-white text-primary-700 shadow-sm" : "text-gray-400 hover:text-gray-600",
-            )}
-          >
-            {t("parentPages", "record", lang)}
-          </button>
-          <button
-            onClick={() => setView("history")}
-            className={cn(
-              "flex-1 py-2 rounded-lg text-sm font-medium transition-all",
-              view === "history" ? "bg-white text-primary-700 shadow-sm" : "text-gray-400 hover:text-gray-600",
-            )}
-          >
-            {t("parentPages", "historyLabel", lang)}
-          </button>
-        </div>
-
-        {/* RECORD VIEW */}
-        {view === "form" && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 pb-28">
-        {/* Date nav */}
-        <div className="flex items-center gap-3">
-          <button onClick={prevDay} className="p-2 rounded-xl bg-white border border-primary-100 text-primary-600 hover:bg-primary-50 transition-colors">
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <div className="flex-1 text-center">
-            <input
-              type="date"
-              value={date}
-              max={fmt(new Date())}
-              onChange={(e) => setDate(e.target.value)}
-              className="text-sm font-semibold text-primary-700 focus:outline-none bg-transparent text-center"
-            />
           </div>
-          <button
-            onClick={nextDay}
-            disabled={date >= fmt(new Date())}
-            className="p-2 rounded-xl bg-white border border-primary-100 text-primary-600 hover:bg-primary-50 transition-colors disabled:opacity-40"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
+        </section>
+
+        <div className="mb-3">
+          <h2 className="text-sm font-semibold text-gray-950">{t("parentPages", "historyLabel", lang)}</h2>
         </div>
+
+        <div className="fixed bottom-24 right-4 z-40 lg:bottom-6">
+          <Button type="button" size="lg" onClick={() => openRecord(fmt(new Date()))}>
+            <Plus /> {t("parentPages", "record", lang)}
+          </Button>
+        </div>
+
+        <ResponsivePopover
+          open={recordOpen}
+          onOpenChange={onRecordOpenChange}
+          className="h-dvh! max-h-dvh! w-screen! rounded-none!"
+          title={t("parentPages", "record", lang)}
+          description={ibadah.student.name}
+          contentClassName="px-4 pb-6"
+          footer={
+            <div className="border-t border-gray-100 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              {saveError && <p role="alert" className="mb-2 flex items-center gap-2 text-sm text-red-600"><AlertCircle className="size-4 shrink-0" />{saveError}</p>}
+              <Button type="button" size="lg" onClick={handleSave} disabled={saveMutation.isPending}>
+                {saveMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+                {t("parentPages", "saveFor", lang)} {dateLabel}
+              </Button>
+            </div>
+          }
+        >
+        <div className="mx-auto max-w-2xl space-y-4 pt-2">
+          <ScrollableDateNavigator
+            date={date}
+            onDateChange={setDate}
+            pickerTitle={t("parentPages", "record", lang)}
+            hideCalendarButton
+          />
 
         {/* Prayers */}
         {activePrayers.length > 0 && (
@@ -475,175 +450,14 @@ export default function ParentIbadahPage() {
         <div className="bg-white rounded-xl border border-primary-100/50 px-4 py-3">
           <textarea
             value={form.notes}
-            onChange={(e) => { setForm((f) => ({ ...f, notes: e.target.value })); setSaved(false); }}
+            onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
             placeholder={t("parentPages", "addNote", lang)}
             rows={1}
             className="w-full text-sm text-gray-500 resize-none focus:outline-none placeholder-gray-300 bg-transparent"
           />
         </div>
 
-        {/* Save error */}
-        {saveError && (
-        <div className="text-red-500 text-sm flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0" /> {saveError}
         </div>
-        )}
-
-        {/* Sticky save */}
-        <div className="sticky bottom-20 lg:bottom-6">
-          <button
-            onClick={handleSave}
-            disabled={saveMutation.isPending}
-            className={cn(
-              "w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-semibold transition-all shadow-lg",
-              saved
-              ? "bg-gradient-to-r from-primary-100 to-primary-50 text-primary-600"
-              : "bg-gradient-to-r from-primary-600 to-primary-700 text-white hover:from-primary-700 hover:to-primary-800 disabled:opacity-50",
-            )}
-          >
-            {saveMutation.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : saved ? (
-              <><CheckCircle2 className="w-4 h-4" /> {t("parentPages", "saved", lang)}</>
-            ) : (
-              <><Save className="w-4 h-4" /> {t("parentPages", "saveFor", lang)} {dateLabel}</>
-            )}
-          </button>
-        </div>
-        </motion.div>
-        )}
-
-        {/* HISTORY VIEW */}
-        {view === "history" && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2 pb-20">
-          {ibadah.logs.length === 0 ? (
-            <div className="text-center py-16">
-              <Moon className="w-10 h-10 mx-auto mb-3 text-primary-200" />
-              <p className="text-sm text-gray-400">{t("parentPages", "noHistory", lang)}</p>
-            </div>
-          ) : (
-            ibadah.logs.map((log, i) => {
-              const prayersDone = activePrayers.filter((p) => log[p] != null).length;
-              const isExpanded = expandedLog === log.id;
-              const logDate = new Date(log.date).toLocaleDateString(lang === "ml" ? "ml-IN" : "en-GB", {
-                weekday: "short", day: "numeric", month: "short",
-              });
-
-              return (
-                <motion.div
-                  key={log.id}
-                  initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
-                  className={cn(
-                    "bg-white rounded-xl border border-primary-100/50 overflow-hidden transition-shadow",
-                    isExpanded && "shadow-sm",
-                  )}
-                >
-                  <div
-                    className="flex items-center gap-3 px-4 py-3 cursor-pointer"
-                    onClick={() => setExpandedLog(isExpanded ? null : log.id)}
-                  >
-                    <div className={cn(
-                      "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-[11px] font-bold",
-                      prayersDone === activePrayers.length
-                      ? "bg-primary-100 text-primary-700"
-                      : "bg-gray-100 text-gray-500",
-                    )}>
-                      {prayersDone}/{activePrayers.length}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">{logDate}</p>
-                      <p className="text-xs text-gray-400">
-                        {prayersDone === activePrayers.length ? t("parentPages", "allPrayers", lang) : `${prayersDone} ${t("parentPages", "xPrayers", lang)}`}
-                        {log.quranPages > 0 ? ` · ${log.quranPages} ${t("parentPages", "pages", lang)}` : ""}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      {activePrayers.map((p) => (
-                        <div
-                          key={p}
-                          className={cn(
-                            "w-1.5 h-1.5 rounded-full",
-                            log[p] != null ? "bg-primary-500" : "bg-gray-200",
-                          )}
-                        />
-                      ))}
-                    </div>
-                    {isExpanded
-                    ? <ChevronUp className="w-3.5 h-3.5 text-gray-300 shrink-0" />
-                    : <ChevronDown className="w-3.5 h-3.5 text-gray-300 shrink-0" />}
-                  </div>
-
-                  <AnimatePresence>
-                    {isExpanded && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }} className="overflow-hidden"
-                      >
-                        <div className="border-t border-primary-50 px-4 py-3 space-y-3">
-                          <div className="flex gap-1.5">
-                            {activePrayers.map((p) => (
-                              <div
-                                key={p}
-                                className={cn(
-                                  "flex-1 rounded-lg py-2 text-center text-[10px] font-semibold",
-                                  log[p] != null ? "bg-primary-50 text-primary-700" : "bg-gray-50 text-gray-400",
-                                )}
-                              >
-                                <div>{prayerOptions.find((o) => o.value === log[p])?.label ?? "—"}</div>
-                                <div className="mt-0.5 opacity-70">{prayerMeta[p].label}</div>
-                              </div>
-                            ))}
-                          </div>
-                          {log.quranPages > 0 && (
-                            <div className="flex items-center gap-1.5 text-xs text-primary-600">
-                              <BookOpen className="w-3 h-3" /> {log.quranPages} {t("parentPages", "pages", lang)}
-                            </div>
-                          )}
-                          {customItems.length > 0 && log.customData && (
-                            <div className="space-y-1">
-                              {customItems.map((item) => {
-                                const val = log.customData?.[item.key];
-                                if (val === undefined || val === null) return null;
-                                const enumOpt = item.type === "enum" ? item.options?.find((o) => o.label === val) : null;
-                                return (
-                                  <div key={item.key} className="flex items-center gap-1.5 text-xs text-gray-500">
-                                    {item.type === "boolean" ? (
-                                      <ToggleLeft className="w-3 h-3 shrink-0" />
-                                    ) : item.type === "enum" && enumOpt ? (
-                                      <Icon icon={enumOpt.icon} className="w-3 h-3 shrink-0" />
-                                    ) : (
-                                      <Hash className="w-3 h-3 shrink-0" />
-                                    )}
-                                    <span>{item.label}:</span>{" "}
-                                    <span>{item.type === "boolean" ? (val ? t("parentPages", "yesLabel", lang) : t("parentPages", "noLabel", lang)) : String(val)}</span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                          {log.notes && (
-                            <p className="text-xs text-gray-400 italic">{log.notes}</p>
-                          )}
-                          <button
-                            onClick={() => { setDate(fmt(new Date(log.date))); setView("form"); }}
-                            className="text-xs font-medium text-primary-600 hover:text-primary-800 transition-colors"
-                          >
-                            {t("parentPages", "editRecord", lang)} →
-                          </button>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
-              );
-            })
-          )}
-        </motion.div>
-        )}
-        </>
-      ) : null}
-
-      </div>
       {/* Prayer status drawer */}
       <AnimatePresence>
         {drawerPrayer && (
@@ -812,6 +626,136 @@ export default function ParentIbadahPage() {
           );
         })()}
       </AnimatePresence>
+        </ResponsivePopover>
+
+        {/* History */}
+        <section data-ui-style="classic" className="card mx-0 mb-20 divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white p-0! shadow-none">
+          {ibadah.logs.length === 0 ? (
+            <div className="text-center py-16">
+              <Moon className="w-10 h-10 mx-auto mb-3 text-primary-200" />
+              <p className="text-sm text-gray-400">{t("parentPages", "noHistory", lang)}</p>
+            </div>
+          ) : (
+            ibadah.logs.map((log, i) => {
+              const prayersDone = activePrayers.filter((p) => log[p] != null).length;
+              const isExpanded = expandedLog === log.id;
+              const logDate = new Date(log.date).toLocaleDateString(lang === "ml" ? "ml-IN" : "en-GB", {
+                weekday: "short", day: "numeric", month: "short",
+              });
+
+              return (
+                <motion.div
+                  key={log.id}
+                  initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
+                  className="bg-white"
+                >
+                  <button
+                    type="button"
+                    aria-expanded={isExpanded}
+                    className="flex w-full items-center gap-3 px-4 py-4 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500"
+                    onClick={() => setExpandedLog(isExpanded ? null : log.id)}
+                  >
+                    <div className={cn(
+                      "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-[11px] font-bold",
+                      prayersDone === activePrayers.length
+                      ? "bg-primary-100 text-primary-700"
+                      : "bg-gray-100 text-gray-500",
+                    )}>
+                      {prayersDone}/{activePrayers.length}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900">{logDate}</p>
+                      <p className="text-xs text-gray-500">
+                        {prayersDone === activePrayers.length ? t("parentPages", "allPrayers", lang) : `${prayersDone} ${t("parentPages", "xPrayers", lang)}`}
+                        {log.quranPages > 0 ? ` · ${log.quranPages} ${t("parentPages", "pages", lang)}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {activePrayers.map((p) => (
+                        <div
+                          key={p}
+                          className={cn(
+                            "w-1.5 h-1.5 rounded-full",
+                            log[p] != null ? "bg-primary-500" : "bg-gray-200",
+                          )}
+                        />
+                      ))}
+                    </div>
+                    {isExpanded
+                    ? <ChevronUp className="w-3.5 h-3.5 text-gray-300 shrink-0" />
+                    : <ChevronDown className="w-3.5 h-3.5 text-gray-300 shrink-0" />}
+                  </button>
+
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }} className="overflow-hidden"
+                      >
+                        <div className="space-y-3 border-t border-gray-100 bg-gray-50/40 px-4 py-4">
+                          <div className="flex gap-1.5">
+                            {activePrayers.map((p) => (
+                              <div
+                                key={p}
+                                className={cn(
+                                  "flex-1 rounded-lg py-2 text-center text-[10px] font-semibold",
+                                  log[p] != null ? "bg-primary-50 text-primary-700" : "bg-gray-50 text-gray-400",
+                                )}
+                              >
+                                <div>{prayerOptions.find((o) => o.value === log[p])?.label ?? "—"}</div>
+                                <div className="mt-0.5 opacity-70">{prayerMeta[p].label}</div>
+                              </div>
+                            ))}
+                          </div>
+                          {log.quranPages > 0 && (
+                            <div className="flex items-center gap-1.5 text-xs text-primary-600">
+                              <BookOpen className="w-3 h-3" /> {log.quranPages} {t("parentPages", "pages", lang)}
+                            </div>
+                          )}
+                          {customItems.length > 0 && log.customData && (
+                            <div className="space-y-1">
+                              {customItems.map((item) => {
+                                const val = log.customData?.[item.key];
+                                if (val === undefined || val === null) return null;
+                                const enumOpt = item.type === "enum" ? item.options?.find((o) => o.label === val) : null;
+                                return (
+                                  <div key={item.key} className="flex items-center gap-1.5 text-xs text-gray-500">
+                                    {item.type === "boolean" ? (
+                                      <ToggleLeft className="w-3 h-3 shrink-0" />
+                                    ) : item.type === "enum" && enumOpt ? (
+                                      <Icon icon={enumOpt.icon} className="w-3 h-3 shrink-0" />
+                                    ) : (
+                                      <Hash className="w-3 h-3 shrink-0" />
+                                    )}
+                                    <span>{item.label}:</span>{" "}
+                                    <span>{item.type === "boolean" ? (val ? t("parentPages", "yesLabel", lang) : t("parentPages", "noLabel", lang)) : String(val)}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                          {log.notes && (
+                            <p className="text-xs text-gray-400 italic">{log.notes}</p>
+                          )}
+                          <button
+                            onClick={() => openRecord(log.date.split("T")[0])}
+                            className="text-xs font-medium text-primary-600 hover:text-primary-800 transition-colors"
+                          >
+                            {t("parentPages", "editRecord", lang)} →
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              );
+            })
+          )}
+        </section>
+        </>
+      ) : null}
+
+      </div>
     </DashboardLayout>
   );
 }
