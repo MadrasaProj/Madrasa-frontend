@@ -35,6 +35,8 @@ export interface AttendanceEntry {
 export interface StudentAttendanceResponse {
   studentId: string;
   total: number;
+  workingDays?: number;
+  workingDates?: string[];
   skip: number;
   take: number;
   summary: Partial<Record<AttendanceStatus, number>>;
@@ -151,10 +153,11 @@ export function getStudentAttendance(
   clientId: string,
   token: string,
   studentId: string,
-  params?: { academicYearId?: string; from?: string; to?: string; skip?: number; take?: number },
+  params?: { classId?: string; academicYearId?: string; from?: string; to?: string; skip?: number; take?: number },
   signal?: AbortSignal,
 ): Promise<StudentAttendanceResponse> {
   const q = new URLSearchParams();
+  if (params?.classId) q.set("classId", params.classId);
   if (params?.academicYearId) q.set("academicYearId", params.academicYearId);
   if (params?.from) q.set("from", params.from);
   if (params?.to) q.set("to", params.to);

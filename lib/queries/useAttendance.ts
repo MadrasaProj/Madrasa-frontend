@@ -6,7 +6,7 @@ import type { AuthCtx } from "./useNotifications";
 export function useStudentAttendance(
   ctx: AuthCtx,
   studentId: string,
-  params?: { academicYearId?: string; from?: string; to?: string; take?: number },
+  params?: { classId?: string; academicYearId?: string; from?: string; to?: string; take?: number },
   options?: Omit<UseQueryOptions<StudentAttendanceResponse, Error>, "queryKey" | "queryFn">,
 ) {
   return useQuery<StudentAttendanceResponse, Error>({

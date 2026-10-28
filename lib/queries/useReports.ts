@@ -4,10 +4,12 @@ import {
   getStudentStats,
   getFeeSummary,
   getAttendanceSummary,
+  getClassAttendanceSummary,
   getHomeworkSummary,
   type StudentStats,
   type FeeSummary,
   type AttendanceSummary,
+  type ClassAttendanceSummary,
   type HomeworkSummary,
 } from "@/lib/reports-api";
 import type { AuthCtx } from "./useNotifications";
@@ -48,6 +50,20 @@ export function useAttendanceSummary(
     queryKey: queryKeys.reports.attendanceSummary(ctx.clientId, params?.from, params?.to),
     queryFn: () => getAttendanceSummary(ctx.clientId, ctx.token, params?.from, params?.to),
     enabled: !!ctx.clientId && !!ctx.token,
+    staleTime: 5 * 60_000,
+    ...options,
+  });
+}
+
+export function useClassAttendanceSummary(
+  ctx: AuthCtx,
+  classId: string,
+  options?: Omit<UseQueryOptions<ClassAttendanceSummary, Error>, "queryKey" | "queryFn">,
+) {
+  return useQuery<ClassAttendanceSummary, Error>({
+    queryKey: queryKeys.reports.classAttendanceSummary(ctx.clientId, classId),
+    queryFn: () => getClassAttendanceSummary(ctx.clientId, ctx.token, classId),
+    enabled: !!ctx.clientId && !!ctx.token && !!classId,
     staleTime: 5 * 60_000,
     ...options,
   });

@@ -13,7 +13,8 @@ import {
 } from "@/lib/attendance-api";
 import { useAuthStore } from "@/store/auth";
 import { useActiveClass } from "@/store/activeClass";
-import { useAttendanceSummary, useClasses } from "@/lib/queries";
+import { useClassAttendanceSummary, useClasses } from "@/lib/queries";
+import type { ClassAttendanceSummary } from "@/lib/reports-api";
 import { queryKeys } from "@/lib/queryKeys";
 import { AlertTriangle, CheckCircle2, School, UserCheck, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -23,7 +24,7 @@ import { ScrollableDateNavigator } from "@/components/ScrollableDateNavigator";
 import { DrawerSelector } from "@/components/DrawerSelector";
 import { Button } from "@/components/ui/button";
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
-import { Cell, Pie, PieChart } from "recharts";
+import { Cell, Pie, PieChart, PolarAngleAxis, RadialBar, RadialBarChart } from "recharts";
 import {
   Drawer,
   DrawerClose,
@@ -35,6 +36,7 @@ import {
   AttendanceEditorContent,
   type ActiveStatus,
 } from "@/components/teacher/AttendanceEditorContent";
+import { StudentAttendanceDrawer } from "@/components/teacher/StudentAttendanceDrawer";
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -99,6 +101,41 @@ function AttendanceSemiCircle({
       </ChartContainer>
       <span className="pointer-events-none absolute inset-x-0 top-14 text-2xl font-semibold tabular-nums text-gray-950">{value}</span>
       <span className="-mt-7 block text-base font-medium text-gray-500">{label}</span>
+    </div>
+  );
+}
+
+const studentProgressChartConfig = {
+  attendance: { color: "#059669" },
+} satisfies ChartConfig;
+
+function StudentAttendanceRadial({ rate, description }: { rate: number | null; description: string }) {
+  const value = rate === null ? 0 : Math.max(0, Math.min(100, rate));
+
+  return (
+    <div className="relative h-9 w-14 shrink-0" role="img" aria-label={description}>
+      <ChartContainer
+        config={studentProgressChartConfig}
+        initialDimension={{ width: 56, height: 36 }}
+        className="!aspect-auto h-9 w-14"
+        aria-hidden="true"
+      >
+        <RadialBarChart
+          data={[{ value, fill: rate !== null && rate < 75 ? "#dc2626" : "#059669" }]}
+          startAngle={180}
+          endAngle={0}
+          cx="50%"
+          cy="95%"
+          innerRadius={19}
+          outerRadius={24}
+        >
+          <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
+          <RadialBar dataKey="value" background={{ fill: "#e5e7eb" }} cornerRadius={4} isAnimationActive={false} />
+        </RadialBarChart>
+      </ChartContainer>
+      <span className="pointer-events-none absolute inset-x-0 bottom-0 text-center text-xs font-semibold tabular-nums text-gray-900">
+        {rate === null ? "—" : `${rate}%`}
+      </span>
     </div>
   );
 }
@@ -178,6 +215,10 @@ export default function TeacherAttendancePage() {
   const [confirmSave, setConfirmSave] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<{
+    classId: string;
+    student: ClassAttendanceSummary["students"][number];
+  } | null>(null);
 
   const saveSuccessTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
@@ -189,16 +230,6 @@ export default function TeacherAttendancePage() {
 
   const { activeClass: defaultClass, isLoading: activeClassLoading } = useActiveClass();
   const classesQuery = useClasses({ clientId: cid, token });
-  const overallAttendance = useAttendanceSummary(
-    { clientId: cid, token },
-    undefined,
-    { refetchOnMount: "always" },
-  );
-  const overall = overallAttendance.data;
-  const overallAbsent =
-    overall?.byStatus.find((entry) => entry.status === "ABSENT")?._count.id ?? 0;
-  const overallRate = Math.max(0, Math.min(100, overall?.rate ?? 0));
-  const overallOther = Math.max(0, (overall?.total ?? 0) - (overall?.present ?? 0) - overallAbsent);
   const classes = classesQuery.data ?? [];
   const classesLoading = classesQuery.isLoading || activeClassLoading;
   const activeClass = classes.find((cls) => cls.id === selectedClassId)
@@ -206,6 +237,16 @@ export default function TeacherAttendancePage() {
     ?? classes[0]
     ?? null;
   const activeClassId = activeClass?.id ?? "";
+  const overallAttendance = useClassAttendanceSummary(
+    { clientId: cid, token },
+    activeClassId,
+    { refetchOnMount: "always" },
+  );
+  const overall = overallAttendance.data;
+  const overallAbsent =
+    overall?.byStatus.find((entry) => entry.status === "ABSENT")?._count.id ?? 0;
+  const overallRate = Math.max(0, Math.min(100, overall?.rate ?? 0));
+  const overallOther = Math.max(0, (overall?.total ?? 0) - (overall?.present ?? 0) - overallAbsent);
 
   // Load students + existing attendance whenever class or date changes
   const loadAttendance = useCallback(
@@ -328,6 +369,8 @@ export default function TeacherAttendancePage() {
       await Promise.all([
         loadAttendance(activeClassId, date),
         queryClient.invalidateQueries({ queryKey: queryKeys.reports.attendanceSummary(cid) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.reports.classAttendanceSummary(cid, activeClassId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all }),
       ]);
     } catch (e) {
       setSaveError((e as Error).message);
@@ -421,6 +464,8 @@ export default function TeacherAttendancePage() {
       await Promise.all([
         loadAttendance(activeClassId, date),
         queryClient.invalidateQueries({ queryKey: queryKeys.reports.attendanceSummary(cid) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.reports.classAttendanceSummary(cid, activeClassId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all }),
       ]);
     } catch (e) {
       setSaveError((e as Error).message);
@@ -471,7 +516,7 @@ export default function TeacherAttendancePage() {
           <h2 id="attendance-snapshot-title" className="border-b border-gray-100 px-4 py-3 text-base font-semibold text-gray-900 sm:px-5">
             {t("teacherPages", "attendanceSnapshot", lang)}
           </h2>
-          {overallAttendance.isLoading ? (
+          {classesLoading || overallAttendance.isLoading ? (
             <div className="space-y-4 bg-white/90 p-5" aria-busy="true">
               <Skeleton className="mx-auto h-24 w-full max-w-52 rounded-t-full sm:h-28 sm:max-w-56" />
               <Skeleton className="mx-auto h-3 w-48" />
@@ -480,6 +525,12 @@ export default function TeacherAttendancePage() {
                 <Skeleton className="h-10 w-full" />
               </div>
             </div>
+          ) : classesQuery.isError ? (
+            <div className="p-4">
+              <ApiErrorBanner message={classesQuery.error.message} onRetry={() => { void classesQuery.refetch(); }} largeText />
+            </div>
+          ) : !activeClassId ? (
+            <p className="p-5 text-base text-gray-600">{t("teacherPages", "selectClassView", lang)}</p>
           ) : overallAttendance.isError ? (
             <div className="p-4">
               <ApiErrorBanner message={overallAttendance.error.message} onRetry={() => { void overallAttendance.refetch(); }} largeText />
@@ -497,7 +548,7 @@ export default function TeacherAttendancePage() {
                   label={t("teacherPages", "totalRecords", lang)}
                   description={`${t("teacherPages", "attendanceSnapshot", lang)}: ${overall?.total ?? 0} ${t("teacherPages", "totalRecords", lang)}, ${overall?.present ?? 0} ${t("common", "present", lang)}, ${overallAbsent} ${t("common", "absent", lang)}, ${overallOther} ${t("teacherPages", "otherAttendance", lang)}`}
                 />
-                <div className="flex flex-wrap mt-4 justify-center gap-x-4 gap-y-1 text-base text-gray-600">
+                <div className="flex flex-wrap mt-2 justify-center gap-x-4 gap-y-1 text-base text-gray-600">
                   <span><span className="mr-1 inline-block size-2 rounded-full bg-emerald-600" />{t("common", "present", lang)}</span>
                   <span><span className="mr-1 inline-block size-2 rounded-full bg-red-600" />{t("common", "absent", lang)}</span>
                   <span><span className="mr-1 inline-block size-2 rounded-full bg-amber-500" />{t("teacherPages", "otherAttendance", lang)}</span>
@@ -506,20 +557,93 @@ export default function TeacherAttendancePage() {
               <div className="grid grid-cols-2 gap-px border-t border-gray-100 bg-gray-100">
                 <div className="bg-white/90 p-3 sm:p-4">
                   <p className="text-base font-medium text-gray-600">{t("teacherPages", "attendanceTotalDays", lang)}</p>
-                  <strong className="mt-1 block text-xl font-semibold tabular-nums text-gray-950">{overall?.totalDays ?? "—"}</strong>
+                  <strong className="mt-0 block text-2xl font-semibold tabular-nums text-gray-950">{overall?.totalDays ?? "—"}</strong>
                 </div>
                 <div className="bg-white/90 p-3 sm:p-4">
                   <p className="text-base font-medium text-gray-600">{t("teacherPages", "attendanceAverage", lang)}</p>
-                  <strong className="mt-1 block text-xl font-semibold tabular-nums text-gray-950">{overallRate}%</strong>
+                  <strong className="mt-0 block text-2xl font-semibold tabular-nums text-gray-950">{overallRate}%</strong>
                 </div>
               </div>
             </div>
           )}
         </section>
+
+        <section aria-labelledby="student-attendance-title" className="mt-4 overflow-hidden rounded-2xl bg-white">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-3 sm:px-5">
+            <h2 id="student-attendance-title" className="text-base font-semibold text-gray-900">
+              {t("teacherPages", "studentAttendanceTitle", lang)}
+            </h2>
+             
+          </div>
+          {classesLoading || overallAttendance.isLoading ? (
+            <div className="divide-y divide-gray-100" aria-busy="true">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="flex items-center gap-3 px-4 py-3 sm:px-5">
+                  <Skeleton className="h-5 min-w-0 max-w-40 flex-1" />
+                  <Skeleton className="h-5 w-14" />
+                  <Skeleton className="h-9 w-14 rounded-t-full" />
+                </div>
+              ))}
+            </div>
+          ) : classesQuery.isError ? (
+            <div className="p-4">
+              <ApiErrorBanner message={classesQuery.error.message} onRetry={() => { void classesQuery.refetch(); }} largeText />
+            </div>
+          ) : !activeClassId ? (
+            <p className="p-5 text-base text-gray-600">{t("teacherPages", "selectClassView", lang)}</p>
+          ) : overallAttendance.isError ? (
+            <div className="p-4">
+              <ApiErrorBanner message={overallAttendance.error.message} onRetry={() => { void overallAttendance.refetch(); }} largeText />
+            </div>
+          ) : overall?.students.length === 0 ? (
+            <p className="p-5 text-base text-gray-600">{t("teacherPages", "noActiveStudents", lang)}</p>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {overall?.students.map((student) => (
+                <button
+                  key={student.id}
+                  type="button"
+                  onClick={() => setSelectedStudent({ classId: activeClassId, student })}
+                  className="flex w-full min-w-0 items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-600 sm:px-5"
+                >
+                  <p className="min-w-0 flex-1 truncate text-base font-semibold text-gray-900" title={`${student.name} · ${student.adno}`}>
+                    {student.name} <span className="font-normal text-gray-500">· {student.adno}</span>
+                  </p>
+                  <span
+                    className="shrink-0 text-base font-medium tabular-nums text-gray-600"
+                    aria-label={student.totalDays > 0
+                      ? t("teacherPages", "attendanceDaysCount", lang)
+                        .replace("{present}", String(student.presentDays))
+                        .replace("{total}", String(student.totalDays))
+                      : t("teacherPages", "noAttendanceRecords", lang)}
+                  >
+                    {student.presentDays}/{student.totalDays}
+                    <span className="hidden sm:inline"> {t("teacherPages", "daysLabel", lang)}</span>
+                  </span>
+                  <StudentAttendanceRadial
+                    rate={student.rate}
+                    description={`${student.name}: ${student.rate === null ? t("teacherPages", "noAttendanceRecords", lang) : `${student.rate}%`}`}
+                  />
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
 
+      {selectedStudent?.classId === activeClassId && (
+        <StudentAttendanceDrawer
+          key={`${selectedStudent.classId}-${selectedStudent.student.id}`}
+          student={selectedStudent.student}
+          classId={selectedStudent.classId}
+          clientId={cid}
+          token={token}
+          onClose={() => setSelectedStudent(null)}
+        />
+      )}
+
       {!drawerOpen && (
-        <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-[calc(100%-2rem)] max-w-sm   p-0! lg:bottom-6 lg:left-[calc(50%+8rem)] lg:w-auto">
+        <div className="fixed bottom-[92px] left-1/2 z-40 w-[calc(100%-2rem)] max-w-sm   p-0! lg:bottom-6 lg:left-[calc(50%+8rem)] lg:w-auto">
           <Button type="button" size="lg" className="w-max gap-2 rounded-full text-base shadow-lg shadow-primary-900/20" onClick={() => setDrawerOpen(true)}>
             <UserCheck aria-hidden="true" className="size-4" />
             {t("teacherPages", "markAttendanceDesc", lang)}
@@ -535,7 +659,7 @@ export default function TeacherAttendancePage() {
             "--drawer-content-max-height": "100dvh",
           } as React.CSSProperties}
         >
-          <DrawerHeader className="flex-row items-center justify-between border-b border-gray-100 p-1 px-2 text-left">
+          <DrawerHeader className="flex-row items-center justify-between border-b border-gray-100 px-5 py-3 text-left sm:px-6">
             <DrawerTitle className="font-bold">
               {t("teacherPages", "markAttendanceDesc", lang)}
             </DrawerTitle>
@@ -546,7 +670,7 @@ export default function TeacherAttendancePage() {
               <X aria-hidden="true" className="size-5" />
             </DrawerClose>
           </DrawerHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-6 sm:px-6">
             <div className="mx-auto max-w-2xl">
               {error && (
                 <ApiErrorBanner
@@ -558,8 +682,8 @@ export default function TeacherAttendancePage() {
                 />
               )}
 
-              <div className="mb-4 space-y-2">
-                <div className="flex min-w-0 items-center gap-2">
+              <div className="mb-6 space-y-3">
+                <div className="flex min-w-0 items-center gap-3">
                   <ScrollableDateNavigator
                     date={date}
                     onDateChange={setDate}

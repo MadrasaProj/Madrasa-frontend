@@ -24,6 +24,23 @@ export interface AttendanceSummary {
   rate:     number;
 }
 
+export interface ClassAttendanceSummary {
+  classId: string;
+  byStatus: { status: string; _count: { id: number } }[];
+  total: number;
+  totalDays: number;
+  present: number;
+  rate: number;
+  students: {
+    id: string;
+    name: string;
+    adno: string;
+    presentDays: number;
+    totalDays: number;
+    rate: number | null;
+  }[];
+}
+
 export interface HomeworkSummary {
   byStatus: { status: string; _count: { id: number } }[];
   totalAssignments: number;
@@ -43,6 +60,11 @@ export const getAttendanceSummary = (cid: string, token: string, from?: string, 
   if (to)   q.set("to",   to);
   const qs = q.toString();
   return apiFetch<AttendanceSummary>(`${API_BASE}/${cid}/reports/attendance-summary${qs ? `?${qs}` : ""}`, token);
+};
+
+export const getClassAttendanceSummary = (cid: string, token: string, classId: string) => {
+  const query = new URLSearchParams({ classId });
+  return apiFetch<ClassAttendanceSummary>(`${API_BASE}/${cid}/reports/class-attendance-summary?${query}`, token);
 };
 
 export const getHomeworkSummary   = (cid: string, token: string) =>

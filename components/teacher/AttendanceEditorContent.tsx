@@ -2,7 +2,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertCircle,
   AlertTriangle,
+  CircleCheck,
+  CircleHelp,
+  CircleX,
+  Clock3,
+  HeartPulse,
   Loader2,
+  Percent,
   Save,
   Trash2,
   Users,
@@ -126,56 +132,26 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
       )}
 
       {activeClassId && records.size > 0 && (
-        <>
-          <div className="mb-4 grid grid-cols-2 overflow-hidden rounded-2xl border border-gray-100 bg-white divide-x divide-y divide-gray-100 sm:grid-cols-3">
-            {[
-              {
-                key: "PRESENT",
-                label: t("teacherPages", "present", lang),
-                cls: "text-primary-600",
-              },
-              {
-                key: "ABSENT",
-                label: t("teacherPages", "absent", lang),
-                cls: "text-red-500",
-              },
-              {
-                key: "LEAVE",
-                label: t("teacherPages", "leaveLabel", lang),
-                cls: "text-amber-600",
-              },
-              {
-                key: "SICK",
-                label: t("teacherPages", "sickLabel", lang),
-                cls: "text-blue-600",
-              },
-              {
-                key: "UNMARKED",
-                label: t("teacherPages", "unmarkedLabel", lang),
-                cls: "text-gray-400",
-              },
-            ].map(({ key, label, cls }) => (
-              <div key={key} className="min-w-0 p-3 sm:p-3.5">
-                <p className="min-h-10 text-base font-semibold leading-snug text-gray-500">
-                  {label}
-                </p>
-                <p
-                  className={cn("mt-1 text-2xl font-bold tracking-tight", cls)}
-                >
-                  {summary[key] ?? 0}
-                </p>
+        <div className="mb-6 grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-gray-100 bg-gray-100">
+          {[
+            { key: "PRESENT", label: t("teacherPages", "present", lang), value: summary.PRESENT ?? 0, icon: CircleCheck },
+            { key: "ABSENT", label: t("teacherPages", "absent", lang), value: summary.ABSENT ?? 0, icon: CircleX },
+            { key: "LEAVE", label: t("teacherPages", "leaveLabel", lang), value: summary.LEAVE ?? 0, icon: Clock3 },
+            { key: "SICK", label: t("teacherPages", "sickLabel", lang), value: summary.SICK ?? 0, icon: HeartPulse },
+            { key: "UNMARKED", label: t("teacherPages", "unmarkedLabel", lang), value: summary.UNMARKED ?? 0, icon: CircleHelp },
+            { key: "RATE", label: t("teacherPages", "attendanceRateLabel", lang), value: `${pct}%`, icon: Percent },
+          ].map(({ key, label, value, icon: Icon }) => (
+            <div key={key} className="min-w-0 bg-white/90 p-2 sm:p-3">
+              <div className="flex items-center gap-1 text-[11px] font-medium leading-tight text-gray-600">
+                <Icon aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-primary-700" />
+                <span>{label}</span>
               </div>
-            ))}
-            <div className="min-w-0 p-3 sm:p-3.5">
-              <p className="min-h-10 text-base font-semibold leading-snug text-gray-500">
-                {t("teacherPages", "attendanceRateLabel", lang)}
-              </p>
-              <p className="mt-1 text-2xl font-bold tracking-tight text-primary-600">
-                {pct}%
+              <p className="mt-1 text-base font-semibold tabular-nums text-gray-950">
+                {value}
               </p>
             </div>
-          </div>
-        </>
+          ))}
+        </div>
       )}
 
       <AnimatePresence>
@@ -226,11 +202,11 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
       </AnimatePresence>
 
       {activeClassId && records.size > 0 && (
-        <div className="mb-4 space-y-2">
+        <div className="mb-6 space-y-3">
           <p className="text-base font-semibold text-gray-500">
             {t("teacherPages", "markAllLabel", lang)}
           </p>
-          <ButtonGroup className="grid w-full grid-cols-2 gap-1 sm:grid-cols-4">
+          <ButtonGroup className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4">
             {ACTIVE_STATUSES.map((status) => (
               <Button
                 key={status}
@@ -304,7 +280,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
             </p>
           </div>
         ) : (
-          <div className="space-y-2 pb-4">
+          <div className="pb-6">
             {students.map((student) => {
               const record = records.get(student.id);
               const status = record?.status ?? null;
@@ -317,7 +293,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
                     record?.dirty && (config ? config.text : "text-amber-700"),
                   )}
                 >
-                  <div className="p-3.5 flex items-center gap-3">
+                  <div className="flex items-center gap-3 px-3.5 py-5">
                     <div
                       className={cn(
                         "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-base shrink-0",
@@ -364,7 +340,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
                     </ButtonGroup>
                   </div>
                   {status && status !== "PRESENT" && (
-                    <div className="px-3.5 pb-3">
+                    <div className="px-3.5 pb-4">
                       <input
                         type="text"
                         placeholder={t("teacherPages", "addNoteOptional", lang)}
@@ -383,8 +359,8 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
         ))}
 
       {activeClassId && (hasDirty || hasExisting) && (
-        <div className="sticky bottom-0 z-20   py-3  w-max">
-          <div className="pointer-events-auto w-full max-w-2xl mx-auto flex gap-2">
+        <div className="sticky bottom-0 z-20 w-max py-4">
+          <div className="pointer-events-auto mx-auto flex w-full max-w-2xl gap-3">
             {hasExisting && (
               <Button
                 type="button"

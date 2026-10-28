@@ -114,6 +114,7 @@ export const queryKeys = {
     studentStats: (cid: string) => ["reports", "studentStats", cid] as const,
     feeSummary: (cid: string, ay?: string) => ["reports", "feeSummary", cid, ay ?? ""] as const,
     attendanceSummary: (cid: string, from?: string, to?: string) => ["reports", "attendanceSummary", cid, from ?? "", to ?? ""] as const,
+    classAttendanceSummary: (cid: string, classId: string) => ["reports", "classAttendanceSummary", cid, classId] as const,
     homeworkSummary: (cid: string) => ["reports", "homeworkSummary", cid] as const,
   },
 
