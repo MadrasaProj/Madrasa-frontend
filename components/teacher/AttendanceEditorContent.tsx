@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertCircle,
@@ -12,10 +13,15 @@ import {
   Save,
   Trash2,
   Users,
+  MoreHorizontal,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { ResponsivePopover, TimePicker } from "@/components/ui/responsivePopover";
 import { cn } from "@/lib/utils";
 import { type AttendanceStatus } from "@/lib/attendance-api";
 import { useLanguageStore } from "@/store/language";
@@ -58,6 +64,8 @@ interface AttendanceEditorRecord {
   attendanceId?: string;
   status: AttendanceStatus | null;
   notes: string;
+  lateComing: boolean;
+  lateComingTime: string;
   dirty: boolean;
 }
 
@@ -81,6 +89,7 @@ interface AttendanceEditorContentProps {
   students: { id: string; name: string; adno: string; gender?: string }[];
   setStatus: (studentId: string, status: ActiveStatus) => void;
   setNotes: (studentId: string, notes: string) => void;
+  setLateComing: (studentId: string, lateComing: boolean, lateComingTime?: string) => void;
   hasDirty: boolean;
   hasExisting: boolean;
   handleSave: () => void;
@@ -88,6 +97,7 @@ interface AttendanceEditorContentProps {
 
 export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
   const { lang } = useLanguageStore();
+  const [detailsStudentId, setDetailsStudentId] = useState<string | null>(null);
   const {
     isOwnClass,
     activeClassId,
@@ -108,15 +118,19 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
     students,
     setStatus,
     setNotes,
+    setLateComing,
     hasDirty,
     hasExisting,
     handleSave,
   } = props;
+  const detailsStudent = students.find((student) => student.id === detailsStudentId);
+  const detailsRecord = detailsStudentId ? records.get(detailsStudentId) : undefined;
+  const detailsStatus = detailsRecord?.status ?? null;
 
   return (
     <>
       {!isOwnClass && activeClassId && (
-        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 mb-4 text-amber-700 text-base font-semibold">
+        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 mb-4 text-amber-700 text-sm font-semibold">
           <AlertTriangle className="w-4 h-4 shrink-0" />
           {t("teacherPages", "markingOtherDesc", lang)}
         </div>
@@ -131,28 +145,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
         </div>
       )}
 
-      {activeClassId && records.size > 0 && (
-        <div className="mb-6 grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-gray-100 bg-gray-100">
-          {[
-            { key: "PRESENT", label: t("teacherPages", "present", lang), value: summary.PRESENT ?? 0, icon: CircleCheck },
-            { key: "ABSENT", label: t("teacherPages", "absent", lang), value: summary.ABSENT ?? 0, icon: CircleX },
-            { key: "LEAVE", label: t("teacherPages", "leaveLabel", lang), value: summary.LEAVE ?? 0, icon: Clock3 },
-            { key: "SICK", label: t("teacherPages", "sickLabel", lang), value: summary.SICK ?? 0, icon: HeartPulse },
-            { key: "UNMARKED", label: t("teacherPages", "unmarkedLabel", lang), value: summary.UNMARKED ?? 0, icon: CircleHelp },
-            { key: "RATE", label: t("teacherPages", "attendanceRateLabel", lang), value: `${pct}%`, icon: Percent },
-          ].map(({ key, label, value, icon: Icon }) => (
-            <div key={key} className="min-w-0 bg-white/90 p-2 sm:p-3">
-              <div className="flex items-center gap-1 text-[11px] font-medium leading-tight text-gray-600">
-                <Icon aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-primary-700" />
-                <span>{label}</span>
-              </div>
-              <p className="mt-1 text-base font-semibold tabular-nums text-gray-950">
-                {value}
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
+
 
       <AnimatePresence>
         {confirmClear && (
@@ -171,25 +164,25 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
                   <p className="font-bold text-gray-900">
                     {t("teacherPages", "clearAttendanceTitle", lang)}
                   </p>
-                  <p className="text-base text-gray-500 mt-0.5">
+                  <p className="text-sm text-gray-500 mt-0.5">
                     {activeClassName} · {date}
                   </p>
                 </div>
               </div>
-              <p className="text-base text-gray-600 mb-5">
+              <p className="text-sm text-gray-600 mb-5">
                 {t("teacherPages", "clearAttendanceDesc", lang)}
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setConfirmClear(false)}
-                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-base font-semibold text-gray-600 hover:bg-gray-50"
+                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50"
                 >
                   {t("common", "cancel", lang)}
                 </button>
                 <button
                   onClick={clearAll}
                   disabled={saving}
-                  className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-base font-semibold hover:bg-red-600 disabled:opacity-60"
+                  className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-60"
                 >
                   {saving
                     ? t("teacherPages", "clearingLabel", lang)
@@ -201,46 +194,10 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
         )}
       </AnimatePresence>
 
-      {activeClassId && records.size > 0 && (
-        <div className="mb-6 space-y-3">
-          <p className="text-base font-semibold text-gray-500">
-            {t("teacherPages", "markAllLabel", lang)}
-          </p>
-          <ButtonGroup className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4">
-            {ACTIVE_STATUSES.map((status) => (
-              <Button
-                key={status}
-                type="button"
-                size="lg"
-                variant="ghost"
-                onClick={() => markAll(status)}
-                className={cn(
-                  "min-w-0 border-0 bg-gray-50 text-base",
-                  status === "PRESENT" &&
-                    "text-primary-600 hover:bg-primary-50 hover:text-primary-700",
-                  status === "ABSENT" &&
-                    "text-red-600 hover:bg-red-50 hover:text-red-700",
-                  status === "LEAVE" &&
-                    "text-amber-600 hover:bg-amber-50 hover:text-amber-700",
-                  status === "SICK" &&
-                    "text-blue-600 hover:bg-blue-50 hover:text-blue-700",
-                )}
-              >
-                {status === "PRESENT"
-                  ? t("teacherPages", "present", lang)
-                  : status === "ABSENT"
-                    ? t("teacherPages", "absent", lang)
-                    : status === "LEAVE"
-                      ? t("teacherPages", "leaveLabel", lang)
-                      : t("teacherPages", "sickLabel", lang)}
-              </Button>
-            ))}
-          </ButtonGroup>
-        </div>
-      )}
+
 
       {saveError && (
-        <div className="bg-red-50 text-red-600 text-base px-4 py-3 rounded-xl mb-4 flex items-center gap-2">
+        <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl mb-4 flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
           {saveError}
         </div>
@@ -259,16 +216,13 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
                   <Skeleton className="h-4 w-2/5" />
                   <Skeleton className="h-3 w-1/4" />
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  {ACTIVE_STATUSES.map((status) => (
-                    <Skeleton key={status} className="w-7 h-7 rounded-lg" />
-                  ))}
-                </div>
+                <Skeleton className="h-6 w-11 rounded-full" />
+                <Skeleton className="size-8 rounded-lg" />
               </div>
             ))}
           </div>
         ) : error ? (
-          <div className="bg-red-50 text-red-600 text-base px-4 py-3 rounded-2xl flex items-center gap-2">
+          <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             {error}
           </div>
@@ -289,7 +243,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
                 <div
                   key={student.id}
                   className={cn(
-                    "border-b border-gray-100 last:border-b-0 transition-all",
+                    "relative border-b border-gray-100 last:border-b-0 transition-all",
                     record?.dirty && (config ? config.text : "text-amber-700"),
                   )}
                 >
@@ -305,58 +259,94 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
                       {student.name.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-gray-900 text-base truncate">
+                      <p className="font-semibold text-gray-900 text-sm truncate">
                         {student.name}
                       </p>
-                      <p className="text-base text-gray-400">{student.adno}</p>
+                      <p className="text-xs text-gray-400">{student.adno}</p>
                     </div>
-                    <ButtonGroup className="gap-1 shrink-0">
-                      {ACTIVE_STATUSES.map((nextStatus) => (
-                        <button
-                          key={nextStatus}
-                           
-                           onClick={() => setStatus(student.id, nextStatus)}
-                           
-                          className={cn(
-                            "inline-flex size-8 items-center justify-center rounded-full border border-gray-100 text-base font-bold",
-                            status === nextStatus
-                              ? [
-                                  "border-transparent text-white hover:text-white",
-                                  nextStatus === "PRESENT" &&
-                                    "bg-primary-600 hover:bg-primary-700",
-                                  nextStatus === "ABSENT" &&
-                                    "bg-red-600 hover:bg-red-700",
-                                  nextStatus === "LEAVE" &&
-                                    "bg-amber-600 hover:bg-amber-700",
-                                  nextStatus === "SICK" &&
-                                    "bg-blue-600 hover:bg-blue-700",
-                                ]
-                              : "border-gray-200 bg-gray-50 text-gray-400 hover:bg-gray-100",
-                          )}
-                        >
-                          {STATUS_CONFIG[nextStatus].short}
-                        </button>
-                      ))}
-                    </ButtonGroup>
-                  </div>
-                  {status && status !== "PRESENT" && (
-                    <div className="px-3.5 pb-4">
-                      <input
-                        type="text"
-                        placeholder={t("teacherPages", "addNoteOptional", lang)}
-                        value={record?.notes ?? ""}
-                        onChange={(event) =>
-                          setNotes(student.id, event.target.value)
-                        }
-                        className="w-full px-3 py-2 rounded-xl bg-white border border-gray-200 text-base text-gray-700 focus:outline-none focus:border-primary-400"
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Switch
+                        checked={status === "PRESENT"}
+                        onCheckedChange={(checked) => setStatus(student.id, checked ? "PRESENT" : "ABSENT")}
+                        aria-label={`${student.name}: ${t("teacherPages", "present", lang)}`}
                       />
+                      <Button type="button" variant="ghost" size="icon" aria-label={`${student.name}: ${t("teacherPages", "attendanceMore", lang)}`} onClick={() => setDetailsStudentId(student.id)}>
+                        <MoreHorizontal className="size-5" />
+                      </Button>
                     </div>
-                  )}
+                  </div>
+                  {status === "PRESENT" && record?.lateComing && <p className="absolute bottom-1 left-16 right-14 truncate text-xs text-amber-700">{t("teacherPages", "lateComing", lang)}{record.lateComingTime ? ` · ${record.lateComingTime}` : ""}</p>}
+                  {status && status !== "PRESENT" && <p className="absolute bottom-1 left-16 right-14 truncate text-xs text-gray-500">{status === "LEAVE" ? t("teacherPages", "approvedLeave", lang) : status === "SICK" ? t("teacherPages", "sickLeave", lang) : t("teacherPages", "unapprovedAbsence", lang)}{record?.notes ? ` · ${record.notes}` : ""}</p>}
                 </div>
               );
             })}
           </div>
         ))}
+
+      <ResponsivePopover
+        open={!!detailsStudent}
+        onOpenChange={(open) => { if (!open) setDetailsStudentId(null); }}
+        title={detailsStudent?.name ?? ""}
+        description={detailsStudent?.adno}
+        compact
+        footer={
+          <div className="border-t border-gray-100 px-4 pb-4 pt-3">
+            <Button type="button" size="lg" className="w-full" onClick={() => setDetailsStudentId(null)}>
+              {t("teacherPages", "attendanceDetailsDone", lang)}
+            </Button>
+          </div>
+        }
+      >
+        {detailsStudent && detailsStudentId && (
+          <div className="space-y-3 px-4 pb-4 pt-1">
+            <div className="flex items-center justify-between rounded-xl bg-gray-50 p-3">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">{t("teacherPages", "present", lang)}</p>
+                <p className="text-xs text-gray-500">{detailsStatus === "PRESENT" ? t("teacherPages", "markedPresent", lang) : detailsStatus === null ? t("teacherPages", "attendanceUnmarkedDay", lang) : t("teacherPages", "markedAbsent", lang)}</p>
+              </div>
+              <Switch checked={detailsStatus === "PRESENT"} onCheckedChange={(checked) => setStatus(detailsStudentId, checked ? "PRESENT" : "ABSENT")} aria-label={`${detailsStudent.name}: ${t("teacherPages", "present", lang)}`} />
+            </div>
+            {detailsStatus === "PRESENT" ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between rounded-xl border border-gray-100 p-3">
+                  <label htmlFor="late-coming-switch" className="text-sm font-medium text-gray-900">{t("teacherPages", "lateComing", lang)}</label>
+                  <Switch id="late-coming-switch" checked={detailsRecord?.lateComing ?? false} onCheckedChange={(checked) => setLateComing(detailsStudentId, checked)} />
+                </div>
+                {detailsRecord?.lateComing && (
+                  <TimePicker
+                    id="late-coming-time"
+                    value={detailsRecord.lateComingTime}
+                    onChange={(value) => setLateComing(detailsStudentId, true, value)}
+                    label={t("teacherPages", "arrivalTime", lang)}
+                    placeholder={t("teacherPages", "selectArrivalTime", lang)}
+                    hourLabel={t("teacherPages", "attendanceHour", lang)}
+                    minuteLabel={t("teacherPages", "attendanceMinute", lang)}
+                    clearLabel={t("teacherPages", "clearArrivalTime", lang)}
+                    doneLabel={t("teacherPages", "arrivalTimeDone", lang)}
+                  />
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <p className="mb-2 text-xs font-semibold text-gray-500">{t("teacherPages", "absenceType", lang)}</p>
+                  <Tabs value={detailsStatus === null ? "" : detailsStatus === "LEAVE" || detailsStatus === "SICK" ? detailsStatus : "ABSENT"} onValueChange={(value) => setStatus(detailsStudentId, value as ActiveStatus)}>
+                    <TabsList className="grid w-full grid-cols-3 bg-gray-100/80 p-1">
+                      <TabsTrigger value="ABSENT" className="min-w-0 px-2 text-xs sm:text-sm">{t("teacherPages", "unapprovedAbsence", lang)}</TabsTrigger>
+                      <TabsTrigger value="LEAVE" className="min-w-0 px-2 text-xs sm:text-sm">{t("teacherPages", "approvedLeave", lang)}</TabsTrigger>
+                      <TabsTrigger value="SICK" className="min-w-0 px-2 text-xs sm:text-sm">{t("teacherPages", "sickLeave", lang)}</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="attendance-note" className="text-xs font-semibold text-gray-500">{t("teacherPages", "attendanceNote", lang)}</label>
+                  <Textarea id="attendance-note" maxLength={500} value={detailsRecord?.notes ?? ""} onChange={(event) => setNotes(detailsStudentId, event.target.value)} placeholder={t("teacherPages", "addNoteOptional", lang)} className="min-h-24 bg-white" />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </ResponsivePopover>
 
       {activeClassId && (hasDirty || hasExisting) && (
         <div className="sticky bottom-0 z-20 w-max py-4">
@@ -367,7 +357,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
                 variant="destructive"
                 onClick={() => setConfirmClear(true)}
                 size="lg"
-                className="bg-red-500 text-base text-white hover:bg-red-600"
+                className="bg-red-500 text-white hover:bg-red-600"
               >
                 <Trash2 className="w-5 h-5" />{" "}
                 {t("teacherPages", "clearAllBtn", lang)}
@@ -380,7 +370,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
                 onClick={handleSave}
                 disabled={saving}
                 size="lg"
-                className="bg-primary-600 text-base text-white hover:bg-primary-700"
+                className="bg-primary-600 text-white hover:bg-primary-700"
               >
                 {saving ? (
                   <>

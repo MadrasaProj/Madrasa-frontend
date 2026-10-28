@@ -88,7 +88,7 @@ export function StudentAttendanceDrawer({
       onOpenChange={(open) => { if (!open) onClose(); }}
       drawerOnDesktop
       title={student.name}
-      description={<span className="text-base">{t("teacherPages", "studentAttendanceDetails", lang)} · {student.adno}</span>}
+      description={<span className="text-sm">{t("teacherPages", "studentAttendanceDetails", lang)} · {student.adno}</span>}
       contentClassName="px-4 pb-6 sm:px-5"
     >
  
@@ -100,20 +100,20 @@ export function StudentAttendanceDrawer({
           <Skeleton className="h-64 w-full rounded-xl" />
         </div>
       ) : attendance.isError ? (
-        <ApiErrorBanner message={attendance.error.message} onRetry={() => { void attendance.refetch(); }} largeText />
+        <ApiErrorBanner message={attendance.error.message} onRetry={() => { void attendance.refetch(); }} />
       ) : (
         <>
           <section className="mb-4 overflow-hidden rounded-2xl bg-gradient-to-br from-white to-sky-50">
  
             <div className="grid grid-cols-2 gap-px bg-gray-100">
               <div className="min-w-0 bg-white/90 p-3 sm:p-4">
-                <p className="text-base font-medium text-gray-600">{t("teacherPages", "attendanceWorkingDays", lang)}</p>
+                <p className="text-sm font-medium text-gray-600">{t("teacherPages", "attendanceWorkingDays", lang)}</p>
                 <strong className="mt-2 block text-2xl font-semibold tabular-nums text-gray-950">{overallWorkingDays}</strong>
               </div>
               <div className="min-w-0 bg-white/90 p-3 sm:p-4">
-                <p className="text-base font-medium text-gray-600">{t("teacherPages", "attendanceRateLabel", lang)}</p>
+                <p className="text-sm font-medium text-gray-600">{t("teacherPages", "attendanceRateLabel", lang)}</p>
                 <strong className="mt-2 block text-2xl font-semibold tabular-nums text-gray-950">{overallPercentage}%</strong>
-                <p className="mt-1 text-base tabular-nums text-gray-500">
+                <p className="mt-1 text-xs tabular-nums text-gray-500">
                   {t("teacherPages", "attendanceDaysCount", lang)
                     .replace("{present}", String(overallPresentDays))
                     .replace("{total}", String(overallWorkingDays))}
@@ -133,7 +133,7 @@ export function StudentAttendanceDrawer({
               return (
                 <section key={monthKey} className="py-5">
                   <h3 className="text-base font-semibold text-gray-900">{monthLabel}</h3>
-                  <p className="mb-4 text-base text-gray-600">
+                  <p className="mb-4 text-sm text-gray-600">
                     {t("teacherPages", "attendanceWorkingDays", lang)}: <span className="font-medium tabular-nums text-gray-900">{workingDays}</span>
                     {" · "}
                     {t("teacherPages", "attendanceThisMonth", lang)}: <span className="font-medium tabular-nums text-gray-900">{presentDays}/{workingDays} ({percentage}%)</span>
@@ -142,7 +142,7 @@ export function StudentAttendanceDrawer({
                     {weekdays.map((weekday) => (
                       <span
                         key={weekday}
-                        className="py-1 text-center text-base font-medium text-gray-500"
+                        className="py-1 text-center text-xs font-medium text-gray-500"
                         aria-label={new Date(2023, 0, 1 + weekday).toLocaleDateString(locale, { weekday: "long" })}
                       >
                         {new Date(2023, 0, 1 + weekday).toLocaleDateString(locale, { weekday: "narrow" })}
@@ -163,7 +163,7 @@ export function StudentAttendanceDrawer({
                           aria-label={`${dateLabel}: ${status ? statusLabel(status) : t("teacherPages", "attendanceUnmarkedDay", lang)}`}
                           aria-pressed={selectedDate === dateKey}
                           className={cn(
-                            "aspect-square rounded-lg text-base font-semibold tabular-nums transition-colors",
+                            "aspect-square rounded-lg text-sm font-semibold tabular-nums transition-colors",
                             status ? `${statusStyles[status].cell} ${statusStyles[status].text}` : "bg-gray-50 text-gray-500",
                             selectedDate === dateKey && "ring-2 ring-gray-900 ring-offset-1",
                           )}
@@ -175,18 +175,18 @@ export function StudentAttendanceDrawer({
                   </div>
 
                   {workingDays === 0 && (
-                    <p className="mt-3 text-base text-gray-600">{t("teacherPages", "attendanceMonthEmpty", lang)}</p>
+                    <p className="mt-3 text-sm text-gray-600">{t("teacherPages", "attendanceMonthEmpty", lang)}</p>
                   )}
 
                   {selectedDate?.startsWith(monthKey) && (
                     <div className="mt-4 border-l-2 border-gray-200 pl-3">
-                      <p className="text-base font-semibold text-gray-900">
+                      <p className="text-sm font-semibold text-gray-900">
                         {new Date(`${selectedDate}T12:00:00`).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" })}
                       </p>
-                      <p className="text-base text-gray-600">
+                      <p className="text-sm text-gray-600">
                         {selectedRecord ? statusLabel(selectedRecord.status) : t("teacherPages", "attendanceUnmarkedDay", lang)}
                       </p>
-                      {selectedRecord?.notes && <p className="mt-1 text-base text-gray-600">{selectedRecord.notes}</p>}
+                      {selectedRecord?.notes && <p className="mt-1 text-sm text-gray-600">{selectedRecord.notes}</p>}
                     </div>
                   )}
                 </section>
@@ -196,7 +196,7 @@ export function StudentAttendanceDrawer({
 
           <div className="flex flex-wrap gap-x-4 gap-y-2 border-t border-gray-200 py-4">
             {statuses.map((status) => (
-              <span key={status} className="inline-flex items-center gap-2 text-base text-gray-600">
+              <span key={status} className="inline-flex items-center gap-2 text-xs text-gray-600">
                 <span className={cn("size-2.5 rounded-full", statusStyles[status].dot)} aria-hidden="true" />
                 {statusLabel(status)}
               </span>

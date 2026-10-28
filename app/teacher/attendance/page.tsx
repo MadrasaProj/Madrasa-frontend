@@ -49,6 +49,8 @@ interface LocalRecord {
   attendanceId?: string;
   status: AttendanceStatus | null;
   notes: string;
+  lateComing: boolean;
+  lateComingTime: string;
   dirty: boolean;
 }
 
@@ -100,7 +102,7 @@ function AttendanceSemiCircle({
         </PieChart>
       </ChartContainer>
       <span className="pointer-events-none absolute inset-x-0 top-14 text-2xl font-semibold tabular-nums text-gray-950">{value}</span>
-      <span className="-mt-7 block text-base font-medium text-gray-500">{label}</span>
+      <span className="-mt-7 block text-sm font-medium text-gray-500">{label}</span>
     </div>
   );
 }
@@ -167,22 +169,22 @@ function OtherClassConfirmModal({
             <p className="font-bold text-gray-900">
               {t("teacherPages", "markingOtherClass", lang)}
             </p>
-            <p className="text-base text-gray-500 mt-0.5">{className}</p>
+            <p className="text-sm text-gray-500 mt-0.5">{className}</p>
           </div>
         </div>
-        <p className="text-base text-gray-600 mb-5">
+        <p className="text-sm text-gray-600 mb-5">
           {t("teacherPages", "markingOtherDesc", lang)}
         </p>
         <div className="flex gap-3">
           <button
             onClick={onCancel}
-            className="flex-1 py-2.5 rounded-xl border border-gray-200 text-base font-semibold text-gray-600 hover:bg-gray-50"
+            className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50"
           >
             {t("common", "cancel", lang)}
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 py-2.5 rounded-xl bg-amber-500 text-white text-base font-semibold hover:bg-amber-600"
+            className="flex-1 py-2.5 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600"
           >
             {t("teacherPages", "yesSaveBtn", lang)}
           </button>
@@ -288,6 +290,8 @@ export default function TeacherAttendancePage() {
           map.set(s.id, {
             status: hasExistingRecords ? null : "PRESENT",
             notes: "",
+            lateComing: false,
+            lateComingTime: "",
             dirty: !hasExistingRecords,
           });
         }
@@ -296,6 +300,8 @@ export default function TeacherAttendancePage() {
             attendanceId: rec.id,
             status: rec.status,
             notes: rec.notes ?? "",
+            lateComing: rec.lateComing ?? false,
+            lateComingTime: rec.lateComingTime ?? "",
             dirty: false,
           });
         }
@@ -339,9 +345,11 @@ export default function TeacherAttendancePage() {
       const existing = next.get(studentId) ?? {
         status: null,
         notes: "",
+        lateComing: false,
+        lateComingTime: "",
         dirty: false,
       };
-      next.set(studentId, { ...existing, status, dirty: true });
+      next.set(studentId, { ...existing, status, notes: status === "PRESENT" ? "" : existing.notes, lateComing: status === "PRESENT" ? existing.lateComing : false, lateComingTime: status === "PRESENT" ? existing.lateComingTime : "", dirty: true });
       return next;
     });
     setSaveSuccess(false);
@@ -353,9 +361,21 @@ export default function TeacherAttendancePage() {
       const existing = next.get(studentId) ?? {
         status: null,
         notes: "",
+        lateComing: false,
+        lateComingTime: "",
         dirty: false,
       };
       next.set(studentId, { ...existing, notes, dirty: true });
+      return next;
+    });
+    setSaveSuccess(false);
+  };
+
+  const setLateComing = (studentId: string, lateComing: boolean, lateComingTime?: string) => {
+    setRecords((prev) => {
+      const next = new Map(prev);
+      const record = next.get(studentId);
+      if (record) next.set(studentId, { ...record, lateComing, lateComingTime: lateComing ? (lateComingTime ?? record.lateComingTime) : "", dirty: true });
       return next;
     });
     setSaveSuccess(false);
@@ -384,7 +404,7 @@ export default function TeacherAttendancePage() {
     setRecords((prev) => {
       const next = new Map(prev);
       for (const [sid] of next)
-        next.set(sid, { ...next.get(sid)!, status, dirty: true });
+        next.set(sid, { ...next.get(sid)!, status, notes: status === "PRESENT" ? "" : next.get(sid)!.notes, lateComing: false, lateComingTime: "", dirty: true });
       return next;
     });
     setSaveSuccess(false);
@@ -429,13 +449,17 @@ export default function TeacherAttendancePage() {
         studentId: string;
         status: AttendanceStatus;
         notes?: string;
+        lateComing: boolean;
+        lateComingTime: string | null;
       }[] = [];
       for (const [sid, rec] of records) {
         if (rec.status !== null) {
           entries.push({
             studentId: sid,
             status: rec.status,
-            ...(rec.notes ? { notes: rec.notes } : {}),
+            notes: rec.notes,
+            lateComing: rec.status === "PRESENT" && rec.lateComing,
+            lateComingTime: rec.status === "PRESENT" && rec.lateComing ? rec.lateComingTime || null : null,
           });
         }
       }
@@ -479,6 +503,7 @@ export default function TeacherAttendancePage() {
     date,
     records,
     user?.defaultAcademicYearId,
+    lang,
     loadAttendance,
     queryClient,
   ]);
@@ -527,13 +552,13 @@ export default function TeacherAttendancePage() {
             </div>
           ) : classesQuery.isError ? (
             <div className="p-4">
-              <ApiErrorBanner message={classesQuery.error.message} onRetry={() => { void classesQuery.refetch(); }} largeText />
+              <ApiErrorBanner message={classesQuery.error.message} onRetry={() => { void classesQuery.refetch(); }} />
             </div>
           ) : !activeClassId ? (
-            <p className="p-5 text-base text-gray-600">{t("teacherPages", "selectClassView", lang)}</p>
+            <p className="p-5 text-sm text-gray-600">{t("teacherPages", "selectClassView", lang)}</p>
           ) : overallAttendance.isError ? (
             <div className="p-4">
-              <ApiErrorBanner message={overallAttendance.error.message} onRetry={() => { void overallAttendance.refetch(); }} largeText />
+              <ApiErrorBanner message={overallAttendance.error.message} onRetry={() => { void overallAttendance.refetch(); }} />
             </div>
           ) : (
             <div className="bg-white/90">
@@ -548,7 +573,7 @@ export default function TeacherAttendancePage() {
                   label={t("teacherPages", "totalRecords", lang)}
                   description={`${t("teacherPages", "attendanceSnapshot", lang)}: ${overall?.total ?? 0} ${t("teacherPages", "totalRecords", lang)}, ${overall?.present ?? 0} ${t("common", "present", lang)}, ${overallAbsent} ${t("common", "absent", lang)}, ${overallOther} ${t("teacherPages", "otherAttendance", lang)}`}
                 />
-                <div className="flex flex-wrap mt-2 justify-center gap-x-4 gap-y-1 text-base text-gray-600">
+                <div className="flex flex-wrap mt-2 justify-center gap-x-4 gap-y-1 text-xs text-gray-600">
                   <span><span className="mr-1 inline-block size-2 rounded-full bg-emerald-600" />{t("common", "present", lang)}</span>
                   <span><span className="mr-1 inline-block size-2 rounded-full bg-red-600" />{t("common", "absent", lang)}</span>
                   <span><span className="mr-1 inline-block size-2 rounded-full bg-amber-500" />{t("teacherPages", "otherAttendance", lang)}</span>
@@ -556,11 +581,11 @@ export default function TeacherAttendancePage() {
               </div>
               <div className="grid grid-cols-2 gap-px border-t border-gray-100 bg-gray-100">
                 <div className="bg-white/90 p-3 sm:p-4">
-                  <p className="text-base font-medium text-gray-600">{t("teacherPages", "attendanceTotalDays", lang)}</p>
+                  <p className="text-sm font-medium text-gray-600">{t("teacherPages", "attendanceTotalDays", lang)}</p>
                   <strong className="mt-0 block text-2xl font-semibold tabular-nums text-gray-950">{overall?.totalDays ?? "—"}</strong>
                 </div>
                 <div className="bg-white/90 p-3 sm:p-4">
-                  <p className="text-base font-medium text-gray-600">{t("teacherPages", "attendanceAverage", lang)}</p>
+                  <p className="text-sm font-medium text-gray-600">{t("teacherPages", "attendanceAverage", lang)}</p>
                   <strong className="mt-0 block text-2xl font-semibold tabular-nums text-gray-950">{overallRate}%</strong>
                 </div>
               </div>
@@ -587,16 +612,16 @@ export default function TeacherAttendancePage() {
             </div>
           ) : classesQuery.isError ? (
             <div className="p-4">
-              <ApiErrorBanner message={classesQuery.error.message} onRetry={() => { void classesQuery.refetch(); }} largeText />
+              <ApiErrorBanner message={classesQuery.error.message} onRetry={() => { void classesQuery.refetch(); }} />
             </div>
           ) : !activeClassId ? (
-            <p className="p-5 text-base text-gray-600">{t("teacherPages", "selectClassView", lang)}</p>
+            <p className="p-5 text-sm text-gray-600">{t("teacherPages", "selectClassView", lang)}</p>
           ) : overallAttendance.isError ? (
             <div className="p-4">
-              <ApiErrorBanner message={overallAttendance.error.message} onRetry={() => { void overallAttendance.refetch(); }} largeText />
+              <ApiErrorBanner message={overallAttendance.error.message} onRetry={() => { void overallAttendance.refetch(); }} />
             </div>
           ) : overall?.students.length === 0 ? (
-            <p className="p-5 text-base text-gray-600">{t("teacherPages", "noActiveStudents", lang)}</p>
+            <p className="p-5 text-sm text-gray-600">{t("teacherPages", "noActiveStudents", lang)}</p>
           ) : (
             <div className="divide-y divide-gray-100">
               {overall?.students.map((student) => (
@@ -606,11 +631,11 @@ export default function TeacherAttendancePage() {
                   onClick={() => setSelectedStudent({ classId: activeClassId, student })}
                   className="flex w-full min-w-0 items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-600 sm:px-5"
                 >
-                  <p className="min-w-0 flex-1 truncate text-base font-semibold text-gray-900" title={`${student.name} · ${student.adno}`}>
-                    {student.name} <span className="font-normal text-gray-500">· {student.adno}</span>
+                  <p className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-900" title={`${student.name} · ${student.adno}`}>
+                    {student.name} <span className="text-xs font-normal text-gray-500">· {student.adno}</span>
                   </p>
                   <span
-                    className="shrink-0 text-base font-medium tabular-nums text-gray-600"
+                    className="shrink-0 text-sm font-medium tabular-nums text-gray-600"
                     aria-label={student.totalDays > 0
                       ? t("teacherPages", "attendanceDaysCount", lang)
                         .replace("{present}", String(student.presentDays))
@@ -644,7 +669,7 @@ export default function TeacherAttendancePage() {
 
       {!drawerOpen && (
         <div className="fixed bottom-[92px] left-1/2 z-40 w-[calc(100%-2rem)] max-w-sm   p-0! lg:bottom-6 lg:left-[calc(50%+8rem)] lg:w-auto">
-          <Button type="button" size="lg" className="w-max gap-2 rounded-full text-base shadow-lg shadow-primary-900/20" onClick={() => setDrawerOpen(true)}>
+          <Button type="button" size="lg" className="w-max gap-2 rounded-full shadow-lg shadow-primary-900/20" onClick={() => setDrawerOpen(true)}>
             <UserCheck aria-hidden="true" className="size-4" />
             {t("teacherPages", "markAttendanceDesc", lang)}
           </Button>
@@ -660,7 +685,7 @@ export default function TeacherAttendancePage() {
           } as React.CSSProperties}
         >
           <DrawerHeader className="flex-row items-center justify-between border-b border-gray-100 px-5 py-3 text-left sm:px-6">
-            <DrawerTitle className="font-bold">
+              <DrawerTitle className="text-base font-bold">
               {t("teacherPages", "markAttendanceDesc", lang)}
             </DrawerTitle>
             <DrawerClose
@@ -675,7 +700,6 @@ export default function TeacherAttendancePage() {
               {error && (
                 <ApiErrorBanner
                   message={error}
-                  largeText
                   onRetry={() =>
                     activeClassId ? loadAttendance(activeClassId, date) : undefined
                   }
@@ -690,7 +714,6 @@ export default function TeacherAttendancePage() {
                     pickerTitle="Choose attendance date"
                     disabled={saving}
                     hideCalendarButton
-                    largeText
                   />
                   <DrawerSelector
                     title={t("teacherPages", "selectClassOpt", lang)}
@@ -702,7 +725,7 @@ export default function TeacherAttendancePage() {
                     }))}
                     placeholder={classesLoading ? t("common", "loading", lang) : t("teacherPages", "noClassesFound", lang)}
                     disabled={saving || classesLoading}
-                    optionClassName="text-base"
+                    optionClassName="text-sm"
                     triggerItem={
                       <Button
                         variant="outline"
@@ -713,7 +736,7 @@ export default function TeacherAttendancePage() {
                     }
                   />
                 </div>
-                <div className="flex items-center justify-between gap-3 text-base font-medium text-gray-500">
+                <div className="flex items-center justify-between gap-3 text-sm font-medium text-gray-500">
                   <span>{new Date(`${date}T00:00:00`).toLocaleDateString(lang === "ml" ? "ml-IN" : "en-GB", { day: "numeric", month: "long", year: "numeric" })}</span>
                   <span className="truncate text-right">{activeClass?.name ?? t("teacherPages", "noClassesFound", lang)}</span>
                 </div>
@@ -722,13 +745,12 @@ export default function TeacherAttendancePage() {
               {classesQuery.error && (
                 <ApiErrorBanner
                   message={classesQuery.error.message}
-                  largeText
                   onRetry={() => { void classesQuery.refetch(); }}
                 />
               )}
 
               {saveSuccess && (
-                <p role="status" className="mb-4 flex items-center gap-1 text-base font-semibold text-primary-600">
+                <p role="status" className="mb-4 flex items-center gap-1 text-sm font-semibold text-primary-600">
                   <CheckCircle2 className="h-4 w-4" />
                   {t("teacherPages", "saved", lang)}
                 </p>
@@ -755,6 +777,7 @@ export default function TeacherAttendancePage() {
                   students={students}
                   setStatus={setStatus}
                   setNotes={setNotes}
+                  setLateComing={setLateComing}
                   hasDirty={hasDirty}
                   hasExisting={hasExisting}
                   handleSave={handleSave}

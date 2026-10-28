@@ -2,26 +2,16 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
-import { Skeleton } from "@/components/ui/Skeleton";
 import { Input } from "@/components/ui/input";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { PaymentMethodPicker } from "@/components/teacher/PaymentMethodPicker";
+import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Drawer,
-  DrawerClose,
   DrawerContent,
   DrawerFooter,
   DrawerTitle,
@@ -39,6 +29,7 @@ import {
   type ReceiptData,
   type FeePaymentStatus,
 } from "@/lib/fees-api";
+import { getStudents, type StudentRecord } from "@/lib/students-api";
 import { useAuthStore } from "@/store/auth";
 import { useActiveClass } from "@/store/activeClass";
 import { useLanguageStore } from "@/store/language";
@@ -47,15 +38,97 @@ import { cn } from "@/lib/utils";
 import {
   Loader2,
   Receipt,
-  Search,
   Printer,
-  SlidersHorizontal,
   IndianRupee,
   Clock3,
   CircleCheck,
   CircleX,
+  AlertCircle,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { PolarAngleAxis, RadialBar, RadialBarChart } from "recharts";
+
+const feeProgressChartConfig = {
+  collected: { color: "#059669" },
+} satisfies ChartConfig;
+
+const formatCurrency = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
+
+async function getAllClassStudents(clientId: string, token: string, classId: string, signal: AbortSignal) {
+  const students: StudentRecord[] = [];
+  const limit = 200;
+  let page = 1;
+  while (true) {
+    const result = await getStudents(clientId, token, { classId, page, limit, signal });
+    students.push(...result.data);
+    if (result.data.length === 0 || students.length >= result.total) return students;
+    page += 1;
+  }
+}
+
+function FeeTypeProgress({ collected, total }: { collected: number; total: number }) {
+  const percentage = total > 0 ? Math.min(100, Math.max(0, (collected / total) * 100)) : 0;
+
+  return (
+    <div
+      className="size-[30px] shrink-0"
+      role="img"
+      aria-label={total > 0 ? `${Math.round(percentage)}% collected` : "No amount recorded"}
+    >
+      <ChartContainer
+        config={feeProgressChartConfig}
+        initialDimension={{ width: 30, height: 30 }}
+        className="!aspect-auto size-[30px]"
+        aria-hidden="true"
+      >
+        <RadialBarChart
+          data={[{ value: percentage, fill: "#059669" }]}
+          startAngle={90}
+          endAngle={-270}
+          innerRadius={10}
+          outerRadius={14}
+        >
+          <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
+          <RadialBar
+            dataKey="value"
+            background={{ fill: "#e5e7eb" }}
+            cornerRadius={3}
+            isAnimationActive={false}
+          />
+        </RadialBarChart>
+      </ChartContainer>
+    </div>
+  );
+}
+
+function PeriodProgress({ paid, total }: { paid: number; total: number }) {
+  const percentage = total > 0 ? (paid / total) * 100 : 0;
+
+  return (
+    <div className="relative size-24 shrink-0" role="img" aria-label={`${paid} of ${total} periods paid`}>
+      <ChartContainer
+        config={feeProgressChartConfig}
+        initialDimension={{ width: 96, height: 96 }}
+        className="!aspect-auto size-24"
+        aria-hidden="true"
+      >
+        <RadialBarChart
+          data={[{ value: percentage, fill: "#059669" }]}
+          startAngle={90}
+          endAngle={-270}
+          innerRadius={35}
+          outerRadius={44}
+        >
+          <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
+          <RadialBar dataKey="value" background={{ fill: "#e5e7eb" }} cornerRadius={5} isAnimationActive={false} />
+        </RadialBarChart>
+      </ChartContainer>
+      <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-bold tabular-nums text-gray-900">
+        {paid}/{total}
+      </span>
+    </div>
+  );
+}
 
 function getStatusMeta(
   lang: Lang,
@@ -91,22 +164,6 @@ function toLocalDateOnly(value: string): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
-}
-
-function feePageItems(current: number, total: number): Array<number | "ellipsis"> {
-  const pages = [...new Set([1, total, current - 1, current, current + 1])]
-    .filter((page) => page >= 1 && page <= total)
-    .sort((a, b) => a - b);
-  const items: Array<number | "ellipsis"> = [];
-
-  pages.forEach((page, index) => {
-    const previous = pages[index - 1];
-    if (previous && page - previous === 2) items.push(previous + 1);
-    if (previous && page - previous > 2) items.push("ellipsis");
-    items.push(page);
-  });
-
-  return items;
 }
 
 function FeeSemiCircle({
@@ -147,24 +204,16 @@ function FeeSemiCircle({
         );
       })}
       <text x="100" y="72" textAnchor="middle" className="fill-gray-950 text-[23px] font-semibold">{value}</text>
-      <text x="100" y="89" textAnchor="middle" className="fill-gray-500 text-[10px] font-medium">{label}</text>
+      <text x="100" y="89" textAnchor="middle" className="fill-gray-500 text-[13px] font-medium">{label}</text>
     </svg>
   );
 }
 
 function FeeStats({
   payments,
-  total,
-  feeType,
-  status,
-  search,
   lang,
 }: {
   payments: FeePayment[];
-  total: number;
-  feeType: string;
-  status: string;
-  search: string;
   lang: Lang;
 }) {
   const amountPaid = (payment: FeePayment) =>
@@ -178,11 +227,6 @@ function FeeStats({
       payment.status === "WAIVED" ? sum : sum + amountPaid(payment),
     0,
   );
-  const paidAmount = payments.reduce(
-    (sum, payment) =>
-      payment.status === "PAID" ? sum + amountPaid(payment) : sum,
-    0,
-  );
   const outstanding = payments.reduce(
     (sum, payment) =>
       payment.status === "WAIVED"
@@ -190,52 +234,8 @@ function FeeStats({
         : sum + Math.max(0, Number(payment.dueAmount) - amountPaid(payment)),
     0,
   );
-  const overdueAmount = payments.reduce(
-    (sum, payment) =>
-      payment.status === "OVERDUE"
-        ? sum + Math.max(0, Number(payment.dueAmount) - amountPaid(payment))
-        : sum,
-    0,
-  );
-  const waivedAmount = payments.reduce(
-    (sum, payment) =>
-      payment.status === "WAIVED" ? sum + Number(payment.dueAmount) : sum,
-    0,
-  );
-  const pendingAmount = Math.max(0, outstanding - overdueAmount);
-  const collectionRate = collected + outstanding > 0
-    ? Math.round((collected / (collected + outstanding)) * 100)
-    : 0;
   const formatAmount = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
   const stats = [
-    {
-      label: t("common", "paid", lang),
-      value: paid,
-      detail: t("teacherPages", "feeStatsPaidAmount", lang).replace("{amount}", formatAmount(paidAmount)),
-      icon: CircleCheck,
-      color: "text-primary-700",
-    },
-    {
-      label: t("teacherPages", "feeStatsOverdue", lang),
-      value: overdue,
-      detail: t("teacherPages", "feeStatsOverdueAmount", lang).replace("{amount}", formatAmount(overdueAmount)),
-      icon: Clock3,
-      color: "text-red-700",
-    },
-    {
-      label: t("teacherPages", "feeStatsWaived", lang),
-      value: waived,
-      detail: t("teacherPages", "feeStatsWaivedAmount", lang).replace("{amount}", formatAmount(waivedAmount)),
-      icon: CircleX,
-      color: "text-gray-600",
-    },
-    {
-      label: t("teacherPages", "feeStatsPending", lang),
-      value: pending,
-      detail: t("teacherPages", "feeStatsPendingAmount", lang).replace("{amount}", formatAmount(pendingAmount)),
-      icon: Clock3,
-      color: "text-amber-700",
-    },
     {
       label: t("teacherPages", "feeStatsCollected", lang),
       value: formatAmount(collected),
@@ -253,85 +253,42 @@ function FeeStats({
   ];
 
   return (
-    <section className="  mb-4  overflow-hidden rounded-2xl bg-gradient-to-br from-white    to-sky-50">
-      <div className="border-b border-gray-100   px-4 py-3 sm:px-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-xl font-semibold tabular-nums text-gray-950">{total}</span>
-            <span className="text-xs font-medium text-gray-600">
-              {t("teacherPages", "feeResultsTotal", lang)}
-            </span>
-          </div>
-          <span className="rounded-full border border-primary-100 bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
-            <strong className="tabular-nums">{payments.length}</strong>{" "}
-            {t("teacherPages", "feeResultsShown", lang)}
-          </span>
-        </div>
-        <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-medium">
-          <span className="max-w-full truncate rounded-full bg-white px-2.5 py-1 text-gray-700 ring-1 ring-gray-200">
-            {t("parentPages", "feeTypeLabel", lang)}: {feeType}
-          </span>
-          <span className="max-w-full truncate rounded-full bg-white px-2.5 py-1 text-gray-700 ring-1 ring-gray-200">
-            {t("common", "status", lang)}: {status}
-          </span>
-          {search.trim() && (
-            <span className="max-w-full truncate rounded-full bg-white px-2.5 py-1 text-gray-700 ring-1 ring-gray-200">
-              {t("teacherPages", "feeResultsSearch", lang)}: {search.trim()}
-            </span>
-          )}
+    <section className="mb-4 overflow-hidden rounded-2xl bg-gradient-to-br from-white to-sky-50">
+      <div className="bg-white/90 p-3 text-center sm:p-4">
+        <h3 className="text-sm font-semibold text-gray-700">{t("teacherPages", "feeStatsPaymentStatus", lang)}</h3>
+        <FeeSemiCircle
+          segments={[
+            { value: paid, color: "#059669" },
+            { value: overdue, color: "#dc2626" },
+            { value: pending, color: "#f59e0b" },
+            { value: waived, color: "#9ca3af" },
+          ]}
+          value={String(payments.length)}
+          label={t("teacherPages", "feeStatsPayments", lang)}
+          description={t("teacherPages", "feeStatsPaymentStatus", lang)}
+        />
+        <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-xs text-gray-600">
+          {[
+            [t("common", "paid", lang), "bg-emerald-600"],
+            [t("teacherPages", "feeStatsOverdue", lang), "bg-red-600"],
+            [t("teacherPages", "feeStatsPending", lang), "bg-amber-500"],
+            [t("teacherPages", "feeStatsWaived", lang), "bg-gray-400"],
+          ].map(([label, color]) => (
+            <span key={label}><span className={cn("mr-1 inline-block size-2 rounded-full", color)} />{label}</span>
+          ))}
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-px bg-gray-100">
-        <div className="min-w-0 bg-white/90 p-3 text-center sm:p-4">
-          <h3 className="text-xs font-semibold text-gray-700">{t("teacherPages", "feeStatsCollectionRate", lang)}</h3>
-          <FeeSemiCircle
-            segments={[{ value: collected, color: "#059669" }, { value: outstanding, color: "#f59e0b" }]}
-            value={`${collectionRate}%`}
-            label={t("teacherPages", "feeStatsCollected", lang)}
-            description={`${t("teacherPages", "feeStatsCollectionRate", lang)}: ${collectionRate}%`}
-          />
-          <div className="flex justify-center gap-3 text-[11px] text-gray-600">
-            <span><span className="mr-1 inline-block size-2 rounded-full bg-emerald-600" />{t("teacherPages", "feeStatsCollected", lang)}</span>
-            <span><span className="mr-1 inline-block size-2 rounded-full bg-amber-500" />{t("teacherPages", "feeStatsToCollect", lang)}</span>
-          </div>
-        </div>
-        <div className="min-w-0 bg-white/90 p-3 text-center sm:p-4">
-          <h3 className="text-xs font-semibold text-gray-700">{t("teacherPages", "feeStatsPaymentStatus", lang)}</h3>
-          <FeeSemiCircle
-            segments={[
-              { value: paid, color: "#059669" },
-              { value: overdue, color: "#dc2626" },
-              { value: pending, color: "#f59e0b" },
-              { value: waived, color: "#9ca3af" },
-            ]}
-            value={String(payments.length)}
-            label={t("teacherPages", "feeStatsPayments", lang)}
-            description={t("teacherPages", "feeStatsPaymentStatus", lang)}
-          />
-          <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-[11px] text-gray-600">
-            {[
-              [t("common", "paid", lang), "bg-emerald-600"],
-              [t("teacherPages", "feeStatsOverdue", lang), "bg-red-600"],
-              [t("teacherPages", "feeStatsPending", lang), "bg-amber-500"],
-              [t("teacherPages", "feeStatsWaived", lang), "bg-gray-400"],
-            ].map(([label, color]) => (
-              <span key={label}><span className={cn("mr-1 inline-block size-2 rounded-full", color)} />{label}</span>
-            ))}
-          </div>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-px border-t border-gray-100 bg-gray-100 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-px border-t border-gray-100 bg-gray-100">
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
             <div key={stat.label} className="min-w-0 bg-white/90 p-3 sm:p-4">
-              <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-600">
-                <Icon aria-hidden="true" className={cn("h-3.5 w-3.5 shrink-0", stat.color)} />
+              <div className="flex items-center gap-1.5 text-sm font-medium text-gray-600">
+                <Icon aria-hidden="true" className={cn("h-4 w-4 shrink-0", stat.color)} />
                 <span>{stat.label}</span>
               </div>
-              <div className="mt-2 text-base font-semibold tabular-nums text-gray-950 sm:text-lg">{stat.value}</div>
-              <div className="mt-1 text-[11px] text-gray-500">{stat.detail}</div>
-            </div>
+              <div className="mt-2 text-xl font-bold tabular-nums text-gray-950 sm:text-2xl">{stat.value}</div>
+             </div>
           );
         })}
       </div>
@@ -348,7 +305,7 @@ function ReceiptModal({
 }) {
   const { lang } = useLanguageStore();
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
@@ -433,17 +390,14 @@ export default function TeacherFeesPage() {
   const { activeClassId } = useActiveClass();
 
   const [feeTypes, setFeeTypes] = useState<FeeType[]>([]);
-  const [activeTypeId, setActiveTypeId] = useState<string | null>(null);
-  const [typesLoading, setTypesLoading] = useState(true);
-
   const [payments, setPayments] = useState<FeePayment[]>([]);
-  const [payTotal, setPayTotal] = useState(0);
-  const [payLoading, setPayLoading] = useState(false);
-  const [paySkip, setPaySkip] = useState(0);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [students, setStudents] = useState<StudentRecord[]>([]);
+  const [payLoading, setPayLoading] = useState(true);
+  const [expandedFeeTypeId, setExpandedFeeTypeId] = useState<string | null>(null);
+  const [studentFilter, setStudentFilter] = useState<"all" | "paid" | "unpaid">("all");
+  const [recurringStudentId, setRecurringStudentId] = useState<string | null>(null);
 
-  const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState<FeePayment | null>(null);
   const [payMethod, setPayMethod] = useState("CASH");
   const [payRef, setPayRef] = useState("");
   const [donationAmount, setDonationAmount] = useState("");
@@ -457,54 +411,32 @@ export default function TeacherFeesPage() {
   const [cancellingSave, setCancellingSave] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const paymentsRequest = useRef<AbortController | null>(null);
-
-  const loadTypes = useCallback(async () => {
-    if (!cid || !token || !activeClassId) { setFeeTypes([]); setTypesLoading(false); return; }
-    setFeeTypes([]);
-    setTypesLoading(true);
-    setError(null);
-    try {
-      setFeeTypes(
-        (await getFeeTypes(cid, token, user?.defaultAcademicYearId ?? undefined)).filter((type) => type.targetClassIds.length === 0 || type.targetClassIds.includes(activeClassId)),
-      );
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setTypesLoading(false);
-    }
-  }, [cid, token, user?.defaultAcademicYearId, activeClassId]);
-
-  useEffect(() => {
-    if (cid && token) loadTypes();
-  }, [cid, token, loadTypes]);
 
   const loadPayments = useCallback(async () => {
     paymentsRequest.current?.abort();
     if (!cid || !token || !activeClassId) {
+      setFeeTypes([]);
       setPayments([]);
-      setPayTotal(0);
+      setStudents([]);
       setPayLoading(false);
       return;
     }
     const controller = new AbortController();
     paymentsRequest.current = controller;
-    setPayments([]);
-    setPayTotal(0);
     setPayLoading(true);
+    setError(null);
     try {
       const params = {
         classId: activeClassId,
-        feeTypeId: activeTypeId ?? undefined,
-        status:
-          statusFilter !== "all"
-            ? (statusFilter as FeePaymentStatus)
-            : undefined,
         take: 200,
         signal: controller.signal,
       };
-      const firstPage = await getPayments(cid, token, { ...params, skip: 0 });
+      const [types, firstPage, classStudents] = await Promise.all([
+        getFeeTypes(cid, token, user?.defaultAcademicYearId ?? undefined, controller.signal),
+        getPayments(cid, token, { ...params, skip: 0 }),
+        getAllClassStudents(cid, token, activeClassId, controller.signal),
+      ]);
       const allPayments = [...firstPage.payments];
       while (allPayments.length < firstPage.total) {
         const nextPage = await getPayments(cid, token, {
@@ -517,46 +449,106 @@ export default function TeacherFeesPage() {
         allPayments.push(...nextPage.payments);
       }
       if (controller.signal.aborted) return;
+      setFeeTypes(types.filter((type) => type.targetClassIds.length === 0 || type.targetClassIds.includes(activeClassId)));
       setPayments(allPayments);
-      setPayTotal(allPayments.length);
+      setStudents(classStudents);
     } catch (e) {
       if (!controller.signal.aborted) setError((e as Error).message);
     } finally {
       if (paymentsRequest.current === controller) setPayLoading(false);
     }
-  }, [cid, token, activeClassId, activeTypeId, statusFilter]);
+  }, [cid, token, activeClassId, user?.defaultAcademicYearId]);
 
   useEffect(() => {
     loadPayments();
     return () => paymentsRequest.current?.abort();
   }, [loadPayments]);
 
-  const selectType = (id: string | null) => {
-    setActiveTypeId(id);
-    setPaySkip(0);
-    setStatusFilter("all");
-    setSearch("");
+  const selectedFeeType = feeTypes.find((type) => type.id === expandedFeeTypeId) ?? null;
+  const feeTypeSummaries = feeTypes.map((feeType) => {
+    const feePayments = payments.filter((payment) => payment.feeType.id === feeType.id);
+    const activePayments = feePayments.filter((payment) => payment.status !== "WAIVED");
+    const collected = activePayments.reduce(
+      (sum, payment) => sum + Number(payment.paidAmount ?? (payment.status === "PAID" ? payment.dueAmount : 0)),
+      0,
+    );
+    const total = activePayments.reduce(
+      (sum, payment) => sum + Math.max(Number(payment.dueAmount), Number(payment.paidAmount ?? 0)),
+      0,
+    );
+    return { feeType, collected, total };
+  });
+  const selectedTypePayments = selectedFeeType
+    ? payments.filter((payment) => payment.feeType.id === selectedFeeType.id)
+    : [];
+  const studentRows = students.map((student) => {
+    const periods = selectedTypePayments
+      .filter((payment) => payment.student.id === student.id)
+      .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+    const paidPeriods = periods.filter((payment) => payment.status === "PAID").length;
+    const collected = periods.reduce(
+      (sum, payment) => payment.status === "WAIVED" ? sum : sum + Number(payment.paidAmount ?? (payment.status === "PAID" ? payment.dueAmount : 0)),
+      0,
+    );
+    const total = periods.reduce(
+      (sum, payment) => payment.status === "WAIVED" ? sum : sum + Math.max(Number(payment.dueAmount), Number(payment.paidAmount ?? 0)),
+      0,
+    );
+    const isPaid = selectedFeeType?.kind === "ONE_TIME"
+      ? paidPeriods > 0
+      : periods.length > 0 && paidPeriods === periods.length;
+    return { student, periods, paidPeriods, collected, total, isPaid };
+  }).sort((a, b) => a.student.name.localeCompare(b.student.name));
+  const paidStudentCount = studentRows.filter((row) => row.isPaid).length;
+  const visibleStudentRows = studentRows.filter((row) =>
+    studentFilter === "all" || (studentFilter === "paid" ? row.isPaid : !row.isPaid),
+  );
+  const recurringStudent = studentRows.find((row) => row.student.id === recurringStudentId) ?? null;
+  const selectedFeeTypeSummary = feeTypeSummaries.find((summary) => summary.feeType.id === expandedFeeTypeId);
+
+  const openPayment = (payment: FeePayment) => {
+    setError(null);
+    setSelectedPayment(payment);
+    setPayMethod(payment.method ?? "CASH");
+    setPayRef(payment.reference ?? "");
+    setDonationAmount(
+      payment.feeType.isDonation && Number(payment.dueAmount) > 0
+        ? String(payment.dueAmount)
+        : "",
+    );
+    setCancelling(null);
   };
 
-  const activeType = feeTypes.find((f) => f.id === activeTypeId) ?? null;
-
-  const searchTerm = search.trim().toLowerCase();
-  const filtered = searchTerm
-    ? payments.filter(
-        (p) =>
-          p.student.name.toLowerCase().includes(searchTerm) ||
-          p.student.adno.toLowerCase().includes(searchTerm),
-      )
-    : payments;
-  const visiblePayments = filtered.slice(paySkip, paySkip + 30);
-  const currentPage = Math.floor(paySkip / 30) + 1;
-  const pageCount = Math.ceil(filtered.length / 30);
-
-  useEffect(() => {
-    if (!payLoading && paySkip >= filtered.length && paySkip > 0) {
-      setPaySkip(Math.max(0, Math.ceil(filtered.length / 30) - 1) * 30);
+  const openOneTimePayment = (row: (typeof studentRows)[number]) => {
+    if (!selectedFeeType) return;
+    const existing = row.periods.find((payment) => payment.status === "PAID") ?? row.periods[0];
+    if (existing) {
+      openPayment(existing);
+      return;
     }
-  }, [filtered.length, payLoading, paySkip]);
+    const today = new Date().toISOString();
+    openPayment({
+      id: `virtual-${selectedFeeType.id}-${row.student.id}`,
+      virtual: true,
+      dueAmount: selectedFeeType.amount,
+      paidAmount: null,
+      dueDate: selectedFeeType.startDate ?? today,
+      paidAt: null,
+      method: null,
+      reference: null,
+      notes: null,
+      status: "PENDING",
+      academicYearId: selectedFeeType.academicYearId,
+      createdAt: today,
+      student: { id: row.student.id, name: row.student.name, adno: row.student.adno, class: row.student.class },
+      feeType: {
+        id: selectedFeeType.id,
+        name: selectedFeeType.name,
+        kind: selectedFeeType.kind,
+        isDonation: selectedFeeType.isDonation,
+      },
+    });
+  };
 
   const markPaid = async (p: FeePayment) => {
     setSaving(true);
@@ -590,7 +582,7 @@ export default function TeacherFeesPage() {
           paidAt: new Date().toISOString(),
         });
       }
-      setSelectedPaymentId(null);
+      setSelectedPayment(null);
       setPayRef("");
       setDonationAmount("");
       loadPayments();
@@ -642,7 +634,7 @@ export default function TeacherFeesPage() {
       }
       setCancelling(null);
       setCancellingNote("");
-      setSelectedPaymentId(null);
+      setSelectedPayment(null);
       await loadPayments();
       const dateKey = toLocalDateOnly;
       setPayments((current) =>
@@ -669,7 +661,7 @@ export default function TeacherFeesPage() {
     setCancellingSave(true);
     try {
       await undoCancelPaymentApi(cid, token, p.id);
-      setSelectedPaymentId(null);
+      setSelectedPayment(null);
       loadPayments();
     } catch (e) {
       setError((e as Error).message);
@@ -678,267 +670,247 @@ export default function TeacherFeesPage() {
     }
   };
 
-  const selectedPayment = selectedPaymentId
-    ? (payments.find((p) => p.id === selectedPaymentId) ?? null)
-    : null;
-
   return (
     <DashboardLayout>
       <PageHeader title={t("teacherPages", "feesPaymentsTitle", lang)} />
 
-      <Drawer open={filtersOpen} onOpenChange={setFiltersOpen} swipeDirection="down">
-        <div className="   pt-4! pb-2!">
-          <div className="mx-auto flex w-full max-w-md items-center gap-2 p-1.5">
-            <InputGroup className="h-10 flex-1 rounded-lg bg-white">
-              <InputGroupInput
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPaySkip(0);
-                }}
-                placeholder={t("teacherPages", "searchStudentName", lang)}
-                aria-label={t("teacherPages", "searchStudentName", lang)}
-                className="h-full text-sm"
-              />
-              <InputGroupAddon align="inline-start">
-                <Search className="h-4 w-4 text-gray-400" />
-              </InputGroupAddon>
-            </InputGroup>
-            <Button
-              variant="outline"
-              type="button"
-              size="icon-lg"
-              onClick={() => setFiltersOpen(true)}
-              className="h-10 w-10 shrink-0 rounded-xl text-gray-600 hover:bg-gray-100"
-              aria-label="Open filters"
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-
-      <DrawerContent className="max-h-[85dvh] bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]" aria-label="Fee filters">
-              <div className="flex items-center justify-between mb-6">
-                <DrawerTitle className="text-lg font-bold text-gray-900">Filters</DrawerTitle>
-              </div>
-              <section className="mb-6">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">{t("teacherPages", "allFeeTypes", lang)}</h3>
-                <div className="-mx-5 overflow-x-auto px-5">
-                  <div className="flex w-max gap-2">
-                    {[{ id: null, name: t("teacherPages", "allFeesBtn", lang) }, ...feeTypes.map((ft) => ({ id: ft.id, name: ft.name }))].map((type) => (
-                      <Button
-                        variant="ghost"
-                        key={type.id ?? "all"}
-                        onClick={() => selectType(type.id)}
-                        className={cn(
-                          "h-9 shrink-0 rounded-full border px-4 text-sm font-medium transition-colors",
-                          activeTypeId === type.id
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border bg-background text-foreground hover:bg-muted",
-                        )}
-                      >
-                        {type.name}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              </section>
-              <section>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">{t("common", "status", lang)}</h3>
-                <Tabs
-                  value={statusFilter}
-                  onValueChange={(value) => {
-                    setStatusFilter(value);
-                    setPaySkip(0);
-                  }}
-                  className="w-full"
-                >
-                  <TabsList className="grid h-auto w-full grid-cols-4">
-                    {(["all", "PAID", "PENDING", "OVERDUE"] as const).map((s) => (
-                      <TabsTrigger key={s} value={s} className="px-2 py-2 text-xs">
-                        {s === "all" ? t("common", "all", lang) : STATUS_META[s as FeePaymentStatus].label}
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                </Tabs>
-              </section>
-              <DrawerClose className="mt-8 w-full h-10 rounded-xl bg-primary-600 text-white text-sm font-semibold">Done</DrawerClose>
-      </DrawerContent>
-      </Drawer>
-
       {error && <ApiErrorBanner message={error} onRetry={loadPayments} />}
 
-      {typesLoading ? (
-        <div data-ui-style="classic" className="card p-0! mx-3 divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-none">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="w-2/3 space-y-2">
-                  <Skeleton className="h-4 w-2/3" />
-                  <Skeleton className="h-3 w-1/2" />
-                </div>
-                <Skeleton className="h-6 w-16 rounded-full" />
-              </div>
-              <Skeleton className="mt-4 h-4 w-1/2" />
-            </div>
-          ))}
-        </div>
-      ) : (
-        <>
-          {payLoading ? (
+      {payLoading ? (
             <div className="flex items-center justify-center py-10 text-gray-400">
               <Loader2 className="w-4 h-4 animate-spin" />
             </div>
           ) : (
             <>
-              <div className="p-0! px-4! pt-2!">
+              <div className="p-0! px-4! pt-4!  ">
                 <FeeStats
-                  payments={filtered}
-                  total={payTotal}
-                  feeType={activeType?.name ?? t("teacherPages", "allFeesBtn", lang)}
-                  status={statusFilter === "all" ? t("common", "all", lang) : (STATUS_META[statusFilter as FeePaymentStatus]?.label ?? statusFilter)}
-                  search={search}
+                  payments={payments}
                   lang={lang}
                 />
               </div>
-              <div data-ui-style="classic" className="card mx-3 divide-y p-0! divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-none">
-                {filtered.length === 0 ? (
-                  <div className="px-4 py-12 text-center text-sm text-muted-foreground">
-                    {t("teacherPages", "noPaymentRecords", lang)}
-                  </div>
-                ) : (
-                  visiblePayments.map((payment) => {
-                    const meta = STATUS_META[payment.status] ?? STATUS_META.PENDING;
-                    const isPaid = payment.status === "PAID";
+              <section className=" ">
+                <h2 className="mb-2 px-1 text-sm font-semibold text-gray-700">
+                  {t("teacherPages", "allFeeTypes", lang)}
+                </h2>
+                <div data-ui-style="classic" className="card divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white p-0! shadow-none">
+                  {feeTypeSummaries.length === 0 ? (
+                    <p className="px-4 py-10 text-center text-sm text-muted-foreground">
+                      {t("teacherPages", "noFeeTypes", lang)}
+                    </p>
+                  ) : feeTypeSummaries.map(({ feeType, collected, total }) => {
+                    const kind = feeType.kind === "ONE_TIME"
+                      ? t("parentPages", "frequencyOneTime", lang)
+                      : t("teacherPages", "feeTypeRecurring", lang);
+                    const frequency = feeType.kind === "RECURRING"
+                      ? feeType.frequency === "MONTHLY"
+                        ? t("parentPages", "frequencyMonthly", lang)
+                        : feeType.frequency === "YEARLY"
+                          ? t("parentPages", "frequencyYearly", lang)
+                          : feeType.frequency
+                      : null;
+                    const expanded = expandedFeeTypeId === feeType.id;
+
                     return (
                       <button
+                        key={feeType.id}
                         type="button"
-                        key={payment.id}
-                        aria-label={`${payment.student.name}, ${payment.feeType.name}, ${meta.label}`}
+                        aria-haspopup="dialog"
                         onClick={() => {
-                          setSelectedPaymentId(payment.id);
-                          setPayMethod(payment.method ?? "CASH");
-                          setPayRef(payment.reference ?? "");
-                          setDonationAmount(
-                            payment.feeType.isDonation && Number(payment.dueAmount) > 0
-                              ? String(payment.dueAmount)
-                              : "",
-                          );
-                          setCancelling(null);
+                          setExpandedFeeTypeId(feeType.id);
+                          setStudentFilter("all");
+                          setRecurringStudentId(null);
                         }}
-                        className="w-full rounded-none p-4 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500"
+                        className={cn(
+                          "flex w-full items-center gap-2 px-4 py-4 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500 sm:gap-4",
+                          expanded && "bg-primary-50/50",
+                        )}
                       >
-                        <span className="flex items-start justify-between gap-3">
-                          <span className="min-w-0">
-                            <span className="block truncate text-sm font-semibold text-gray-900">{payment.student.name}</span>
-                            <span className="block text-xs text-gray-500">
-                              {payment.student.adno}
-                              {payment.student.class ? ` · ${payment.student.class.name}` : ""}
-                            </span>
-                          </span>
-                          <span className={cn("inline-flex shrink-0 rounded-full px-2.5 py-1 text-xs font-medium", meta.bg, meta.color)}>
-                            {meta.label}
-                          </span>
-                        </span>
-                        <span className="mt-3 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
-                          <span className="min-w-0">
-                            <span className="block text-xs text-gray-500">{payment.feeType.name}</span>
-                            <span className="block text-sm font-semibold text-gray-900">
-                              {payment.feeType.isDonation
-                                ? "Variable"
-                                : `₹${Number(payment.dueAmount).toLocaleString()}`}
-                            </span>
-                          </span>
-                          <span className="text-right text-xs text-gray-500">
-                            <span className="block">{isPaid && payment.paidAt ? t("teacherPages", "paidOnLabel", lang) : t("parentPages", "duePrefix", lang)}</span>
-                            <span className="block">
-                              {isPaid && payment.paidAt
-                                ? new Date(payment.paidAt).toLocaleDateString("en-GB")
-                                : payment.dueDate
-                                  ? new Date(payment.dueDate).toLocaleDateString("en-GB")
-                                  : "—"}
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold text-gray-950 sm:text-base">{feeType.name}</span>
+                          <span className="mt-1 block text-xs text-gray-500">
+                            {kind}{frequency ? ` · ${frequency}` : ""} ·{" "}
+                            <span className="font-semibold tabular-nums text-gray-800">
+                              {feeType.isDonation
+                                ? t("teacherPages", "feeTypeDonation", lang)
+                                : `₹${Number(feeType.amount).toLocaleString("en-IN")}`}
                             </span>
                           </span>
                         </span>
+                        <span className="shrink-0 text-right text-xl font-semibold leading-tight tabular-nums sm:text-2xl">
+                          <span className="block text-emerald-700">₹{collected.toLocaleString("en-IN")}</span>
+                          <span className="block text-gray-500">/ ₹{total.toLocaleString("en-IN")}</span>
+                        </span>
+                        <FeeTypeProgress collected={collected} total={total} />
                       </button>
                     );
-                  })
-                )}
-              </div>
-
-              {filtered.length > 30 && (
-                <div className="mx-3 mt-4 rounded-2xl border border-gray-100  px-3 py-3">
-                  <p className="text-center text-xs tabular-nums text-gray-500">
-                    {t("teacherPages", "pageOfTotal", lang)
-                      .replace("{start}", String(paySkip + 1))
-                      .replace("{end}", String(Math.min(paySkip + 30, filtered.length)))
-                      .replace("{total}", String(filtered.length))}
-                  </p>
-                  <Pagination className="mt-2" aria-label={t("teacherPages", "feePaginationLabel", lang)}>
-                    <PaginationContent className="gap-1">
-                      <PaginationItem>
-                        <PaginationPrevious
-                          href="#"
-                          text={t("teacherPages", "prevBtn", lang)}
-                          aria-label={t("teacherPages", "feePreviousPage", lang)}
-                          aria-disabled={currentPage === 1}
-                          tabIndex={currentPage === 1 ? -1 : undefined}
-                          className={cn("rounded-lg", currentPage === 1 && "pointer-events-none opacity-40")}
-                          onClick={(event) => {
-                            event.preventDefault();
-                            if (currentPage > 1) setPaySkip((currentPage - 2) * 30);
-                          }}
-                        />
-                      </PaginationItem>
-                      {feePageItems(currentPage, pageCount).map((item, index) => (
-                        <PaginationItem
-                          key={item === "ellipsis" ? `ellipsis-${index}` : item}
-                          className={
-                            item !== "ellipsis" && pageCount > 5 && item !== 1 && item !== currentPage && item !== pageCount
-                              ? "hidden sm:block"
-                              : undefined
-                          }
-                        >
-                          {item === "ellipsis" ? (
-                            <PaginationEllipsis />
-                          ) : (
-                            <PaginationLink
-                              href="#"
-                              isActive={item === currentPage}
-                              aria-label={t("teacherPages", "feeGoToPage", lang).replace("{page}", String(item))}
-                              className={cn("rounded-lg", item === currentPage && "border-primary-200 bg-primary-50 text-primary-700")}
-                              onClick={(event) => {
-                                event.preventDefault();
-                                setPaySkip((item - 1) * 30);
-                              }}
-                            >
-                              {item}
-                            </PaginationLink>
-                          )}
-                        </PaginationItem>
-                      ))}
-                      <PaginationItem>
-                        <PaginationNext
-                          href="#"
-                          text={t("teacherPages", "nextBtn", lang)}
-                          aria-label={t("teacherPages", "feeNextPage", lang)}
-                          aria-disabled={currentPage === pageCount}
-                          tabIndex={currentPage === pageCount ? -1 : undefined}
-                          className={cn("rounded-lg", currentPage === pageCount && "pointer-events-none opacity-40")}
-                          onClick={(event) => {
-                            event.preventDefault();
-                            if (currentPage < pageCount) setPaySkip(currentPage * 30);
-                          }}
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
+                  })}
                 </div>
-              )}
+              </section>
+
             </>
           )}
-        </>
-      )}
+
+      <ResponsivePopover
+        open={selectedFeeType !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setExpandedFeeTypeId(null);
+            setRecurringStudentId(null);
+            setSelectedPayment(null);
+          }
+        }}
+        title={selectedFeeType?.name}
+        description={selectedFeeType?.kind === "RECURRING"
+          ? t("teacherPages", "feeTypeRecurring", lang)
+          : t("parentPages", "frequencyOneTime", lang)}
+        className="h-dvh max-h-dvh data-[swipe-axis=y]:[--drawer-content-max-height:100dvh]"
+      >
+        {selectedFeeType && (
+          <div className="mx-auto w-full max-w-3xl space-y-5 px-4 pb-8 pt-2 sm:px-6">
+            <div className="rounded-2xl border border-gray-100 bg-emerald-50/60 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
+                {t("teacherPages", "feeStatsCollected", lang)} / {t("teacherPages", "feeTotalAmount", lang)}
+              </p>
+              <p className="mt-1 text-2xl font-bold tabular-nums">
+                <span className="text-emerald-700">{formatCurrency(selectedFeeTypeSummary?.collected ?? 0)}</span>
+                <span className="text-gray-400"> / </span>
+                <span className="text-gray-900">{formatCurrency(selectedFeeTypeSummary?.total ?? 0)}</span>
+              </p>
+              <p className="mt-1 text-xs text-gray-500">
+                {studentRows.length} {t("teacherPages", "feeStudentsCount", lang)}
+              </p>
+            </div>
+
+            {selectedFeeType.kind === "ONE_TIME" && (
+              <Tabs value={studentFilter} onValueChange={(value) => setStudentFilter(value as typeof studentFilter)}>
+                <TabsList className="grid h-auto w-full grid-cols-3">
+                  <TabsTrigger value="all" className="px-2 py-2 text-xs sm:text-sm">
+                    {t("common", "all", lang)} ({studentRows.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="paid" className="px-2 py-2 text-xs sm:text-sm">
+                    {t("common", "paid", lang)} ({paidStudentCount})
+                  </TabsTrigger>
+                  <TabsTrigger value="unpaid" className="px-2 py-2 text-xs sm:text-sm">
+                    {t("teacherPages", "feeUnpaid", lang)} ({studentRows.length - paidStudentCount})
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
+
+            <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100 bg-white">
+              {visibleStudentRows.length === 0 ? (
+                <p className="px-4 py-10 text-center text-sm text-gray-500">
+                  {t("teacherPages", "feeNoStudents", lang)}
+                </p>
+              ) : visibleStudentRows.map((row) => {
+                const oneTimePayment = row.periods.find((payment) => payment.status === "PAID") ?? row.periods[0];
+                const status = oneTimePayment?.status ?? "PENDING";
+                const meta = STATUS_META[status];
+                const StatusIcon = status === "PAID" ? CircleCheck
+                  : status === "OVERDUE" ? AlertCircle
+                    : status === "WAIVED" ? CircleX : Clock3;
+                return (
+                  <button
+                    key={row.student.id}
+                    type="button"
+                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500"
+                    onClick={() => selectedFeeType.kind === "ONE_TIME"
+                      ? openOneTimePayment(row)
+                      : setRecurringStudentId(row.student.id)}
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-semibold text-gray-900">{row.student.name}</span>
+                      <span className="block text-xs text-gray-500">{row.student.adno}</span>
+                      {selectedFeeType.kind === "RECURRING" && (
+                        <span className="mt-1 block text-xs tabular-nums text-gray-600">
+                          {row.paidPeriods}/{row.periods.length} {t("teacherPages", "feePeriods", lang)}
+                          {" · "}{formatCurrency(row.collected)} / {formatCurrency(row.total)}
+                        </span>
+                      )}
+                    </span>
+                    {selectedFeeType.kind === "ONE_TIME" ? (
+                      <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-full", meta.bg, meta.color)} title={meta.label}>
+                        <StatusIcon aria-hidden="true" className="size-4" />
+                        <span className="sr-only">{meta.label}</span>
+                      </span>
+                    ) : (
+                      <span className={cn("shrink-0 text-xs font-semibold tabular-nums", row.isPaid ? "text-emerald-700" : "text-amber-700")}>
+                        {row.paidPeriods}/{row.periods.length}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      <ResponsivePopover
+        open={recurringStudent !== null && selectedFeeType?.kind === "RECURRING"}
+        onOpenChange={(open) => { if (!open) setRecurringStudentId(null); }}
+        title={recurringStudent?.student.name}
+        description={selectedFeeType?.name}
+        className="h-dvh max-h-dvh data-[swipe-axis=y]:[--drawer-content-max-height:100dvh]"
+      >
+        {recurringStudent && selectedFeeType && (
+          <div className="mx-auto w-full max-w-2xl space-y-5 px-4 pb-8 pt-2 sm:px-6">
+            <div className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-gray-50 p-4">
+              <PeriodProgress paid={recurringStudent.paidPeriods} total={recurringStudent.periods.length} />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-gray-900">
+                  {recurringStudent.paidPeriods}/{recurringStudent.periods.length} {t("teacherPages", "feePeriodsPaid", lang)}
+                </p>
+                <p className="mt-1 text-xs tabular-nums text-gray-600">
+                  <span className="font-semibold text-emerald-700">{formatCurrency(recurringStudent.collected)}</span>
+                  {" / "}{formatCurrency(recurringStudent.total)}
+                </p>
+              </div>
+            </div>
+            <section>
+              <h3 className="mb-2 text-sm font-semibold text-gray-700">
+                {t("teacherPages", "feePeriodBreakdown", lang)}
+              </h3>
+              <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100 bg-white">
+                {recurringStudent.periods.length === 0 ? (
+                  <p className="px-4 py-10 text-center text-sm text-gray-500">
+                    {t("teacherPages", "feeNoPeriods", lang)}
+                  </p>
+                ) : recurringStudent.periods.map((payment) => {
+                  const meta = STATUS_META[payment.status];
+                  const date = new Date(payment.dueDate);
+                  const periodLabel = Number.isNaN(date.getTime())
+                    ? payment.dueDate
+                    : date.toLocaleDateString(lang === "ml" ? "ml-IN" : "en-IN", {
+                      month: selectedFeeType.frequency === "YEARLY" ? undefined : "long",
+                      year: "numeric",
+                    });
+                  return (
+                    <div key={payment.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-gray-900">{periodLabel}</p>
+                        <p className={cn("mt-0.5 text-xs font-medium", meta.color)}>{meta.label}</p>
+                        <p className="mt-0.5 text-xs tabular-nums text-gray-500">
+                          {formatCurrency(Number(payment.paidAmount ?? 0))} / {formatCurrency(Number(payment.dueAmount))}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={payment.status === "PAID" || payment.status === "WAIVED" ? "outline" : "default"}
+                        onClick={() => openPayment(payment)}
+                      >
+                        {payment.status === "PAID" || payment.status === "WAIVED"
+                          ? t("teacherPages", "feeView", lang)
+                          : t("teacherPages", "feePay", lang)}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          </div>
+        )}
+      </ResponsivePopover>
+
 
       {receipt && (
         <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
@@ -948,7 +920,7 @@ export default function TeacherFeesPage() {
         open={selectedPayment !== null}
         onOpenChange={(open) => {
           if (!open) {
-            setSelectedPaymentId(null);
+            setSelectedPayment(null);
             setCancelling(null);
             setCancellingNote("");
           }
@@ -1023,6 +995,7 @@ export default function TeacherFeesPage() {
               </div>
 
               <DrawerFooter className="shrink-0 bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                {error && <p role="alert" className="mb-3 text-sm text-red-700">{error}</p>}
                 {selectedPayment.status === "WAIVED" ? (
                   <Button
                     type="button"
@@ -1175,6 +1148,7 @@ export default function TeacherFeesPage() {
           )}
         </DrawerContent>
       </Drawer>
+      </ResponsivePopover>
 
     </DashboardLayout>
   );

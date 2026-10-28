@@ -246,20 +246,20 @@ function DailyIbadahStats({
   ];
 
   return (
-    <div className="grid grid-cols-3 p-2 overflow-hidden rounded-2xl bg-gradient-to-br from-primary-50/60 via-white to-sky-50/60">
+    <div className="grid grid-cols-2 overflow-hidden rounded-2xl bg-gradient-to-br from-primary-50/60 via-white to-sky-50/60">
       {topStats.map((stat, index) => (
         <div
           key={stat.label}
           className={cn(
-            "min-w-0 border-b border-gray-100 p-3 sm:p-4",
-            index < 2 && "border-r",
+            "min-w-0 border-b border-gray-100 p-2.5 sm:p-3",
+            index % 2 === 0 && "border-r",
           )}
         >
-          <span className="block text-[11px] font-medium leading-4 text-gray-700">
+          <span className="block text-sm font-medium leading-4 text-gray-700">
             {stat.label}
           </span>
-          <div className="mt-3 flex items-end justify-between gap-1">
-            <span className="text-lg font-medium leading-none tabular-nums text-gray-950 sm:text-xl">
+          <div className="mt-1.5 flex items-end justify-between gap-1">
+            <span className="text-xl font-medium leading-none tabular-nums text-gray-950 sm:text-[22px]">
               {stat.value}
             </span>
             <MiniBarChart data={stat.bars} />
@@ -271,15 +271,19 @@ function DailyIbadahStats({
         return (
           <div
             key={stat.label}
-            className={cn("min-w-0 p-3 sm:p-4", index < 2 && "border-r border-gray-100")}
+            className={cn(
+              "min-w-0 p-2.5 sm:p-3",
+              index < 2 && "border-b border-gray-100",
+              index === 1 && "border-r border-gray-100",
+            )}
           >
-           <div className="flex gap-1.5">
-             <Icon aria-hidden="true" className="mb-1.5 h-3.5 w-3.5 text-gray-800" />
-            <span className="block text-[11px] font-medium leading-4 text-gray-700">
-              {stat.label}
-            </span>
-           </div>
-            <span className="mt-2 block text-xl font-medium leading-none tabular-nums text-gray-950">
+            <div className="flex gap-1.5">
+              <Icon aria-hidden="true" className="h-3.5 w-3.5 text-gray-800" />
+              <span className="block text-sm font-medium leading-4 text-gray-700">
+                {stat.label}
+              </span>
+            </div>
+            <span className="mt-1.5 block text-[22px] font-medium leading-none tabular-nums text-gray-950">
               {stat.value}
             </span>
           </div>

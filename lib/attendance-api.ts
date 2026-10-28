@@ -12,6 +12,8 @@ export interface AttendanceRecord {
   date: string;
   status: AttendanceStatus;
   notes?: string | null;
+  lateComing?: boolean;
+  lateComingTime?: string | null;
   class?: { id: string; name: string };
   markedBy?: { id: string; name: string };
 }
@@ -21,6 +23,8 @@ export interface ClassAttendanceRecord {
   date: string;
   status: AttendanceStatus;
   notes?: string | null;
+  lateComing?: boolean;
+  lateComingTime?: string | null;
   student: { id: string; name: string; adno: string };
   markedBy?: { id: string; name: string };
   class?: { id: string; name: string };
@@ -30,6 +34,8 @@ export interface AttendanceEntry {
   studentId: string;
   status: AttendanceStatus;
   notes?: string;
+  lateComing?: boolean;
+  lateComingTime?: string | null;
 }
 
 export interface StudentAttendanceResponse {
@@ -108,7 +114,7 @@ export function updateAttendanceRecord(
   clientId: string,
   token: string,
   attendanceId: string,
-  data: { status?: AttendanceStatus; notes?: string },
+  data: { status?: AttendanceStatus; notes?: string; lateComing?: boolean; lateComingTime?: string | null },
   signal?: AbortSignal,
 ): Promise<AttendanceRecord> {
   return apiFetch<AttendanceRecord>(
