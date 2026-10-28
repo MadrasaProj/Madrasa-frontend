@@ -26,6 +26,7 @@ export interface DrawerSelectorProps {
   triggerIcon?: ReactNode;
   disabled?: boolean;
   className?: string;
+  optionClassName?: string;
 }
 
 export function DrawerSelector({
@@ -41,6 +42,7 @@ export function DrawerSelector({
   triggerIcon,
   disabled = false,
   className,
+  optionClassName,
 }: DrawerSelectorProps) {
   const [open, setOpen] = useState(false);
   const selected = options.find((option) => option.value === value);
@@ -121,6 +123,7 @@ export function DrawerSelector({
               }}
               className={cn(
                 "h-auto w-full justify-start gap-3 px-3 py-3.5 text-left",
+                optionClassName,
                 option.value === value && "bg-accent",
               )}
             >

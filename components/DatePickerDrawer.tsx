@@ -3,6 +3,7 @@
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
+import { cn } from "@/lib/utils";
 
 interface DatePickerDrawerProps {
   open: boolean;
@@ -14,6 +15,7 @@ interface DatePickerDrawerProps {
   minDate?: string;
   allowClear?: boolean;
   clearLabel?: string;
+  largeText?: boolean;
 }
 
 function toLocalISO(date: Date) {
@@ -34,6 +36,7 @@ export function DatePickerDrawer({
   minDate,
   allowClear = false,
   clearLabel = "Clear date",
+  largeText = false,
 }: DatePickerDrawerProps) {
   return (
     <ResponsivePopover
@@ -43,7 +46,7 @@ export function DatePickerDrawer({
       title={title}
       footer={allowClear && date ? (
         <div className="border-t border-gray-100 p-4">
-          <Button type="button" variant="outline" className="w-full" onClick={() => {
+          <Button type="button" variant="outline" className={cn("w-full", largeText && "text-base")} onClick={() => {
             onDateChange("");
             onOpenChange(false);
           }}>
@@ -64,7 +67,7 @@ export function DatePickerDrawer({
           ...(minDate ? [{ before: new Date(`${minDate}T00:00:00`) }] : []),
           ...(disableFuture ? [{ after: new Date() }] : []),
         ]}
-        className="p-4 w-full"
+        className={cn("p-4 w-full", largeText && "[&_*]:text-base!")}
       />
     </ResponsivePopover>
   );

@@ -1512,6 +1512,8 @@ const translations = {
     chartUnavailable: { en: "Could not load this chart", ml: "ഈ ചാർട്ട് ലോഡ് ചെയ്യാനായില്ല" },
     // Attendance page
     attendancePageTitle: { en: "Attendance", ml: "ഹാജർ" },
+    attendanceTotalDays: { en: "Total days", ml: "ആകെ ദിവസങ്ങൾ" },
+    attendanceAverage: { en: "Average attendance", ml: "ശരാശരി ഹാജർ" },
     markingOtherClass: { en: "Marking other class", ml: "മറ്റൊരു ക്ലാസിന്റെ ഹാജർ" },
     markingOtherDesc: { en: "You are marking attendance for a class not assigned to you. Confirm to save.", ml: "നിങ്ങൾക്ക് അസൈൻ ചെയ്യാത്ത ഒരു ക്ലാസിന്റെ ഹാജരാണ് രേഖപ്പെടുത്തുന്നത്. സേവ് ചെയ്യാൻ സ്ഥിരീകരിക്കുക." },
     saveAttendanceBtn: { en: "Save Attendance", ml: "ഹാജർ സേവ് ചെയ്യുക" },

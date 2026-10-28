@@ -110,7 +110,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
   return (
     <>
       {!isOwnClass && activeClassId && (
-        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 mb-4 text-amber-700 text-xs font-semibold">
+        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 mb-4 text-amber-700 text-base font-semibold">
           <AlertTriangle className="w-4 h-4 shrink-0" />
           {t("teacherPages", "markingOtherDesc", lang)}
         </div>
@@ -127,7 +127,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
 
       {activeClassId && records.size > 0 && (
         <>
-          <div className="grid grid-cols-3 mb-4 overflow-hidden rounded-2xl border border-gray-100 bg-white divide-x divide-y divide-gray-100">
+          <div className="mb-4 grid grid-cols-2 overflow-hidden rounded-2xl border border-gray-100 bg-white divide-x divide-y divide-gray-100 sm:grid-cols-3">
             {[
               {
                 key: "PRESENT",
@@ -156,7 +156,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
               },
             ].map(({ key, label, cls }) => (
               <div key={key} className="min-w-0 p-3 sm:p-3.5">
-                <p className="text-[10px] font-semibold text-gray-500 truncate">
+                <p className="min-h-10 text-base font-semibold leading-snug text-gray-500">
                   {label}
                 </p>
                 <p
@@ -167,7 +167,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
               </div>
             ))}
             <div className="min-w-0 p-3 sm:p-3.5">
-              <p className="text-[10px] font-semibold text-gray-500 truncate">
+              <p className="min-h-10 text-base font-semibold leading-snug text-gray-500">
                 {t("teacherPages", "attendanceRateLabel", lang)}
               </p>
               <p className="mt-1 text-2xl font-bold tracking-tight text-primary-600">
@@ -195,25 +195,25 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
                   <p className="font-bold text-gray-900">
                     {t("teacherPages", "clearAttendanceTitle", lang)}
                   </p>
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className="text-base text-gray-500 mt-0.5">
                     {activeClassName} · {date}
                   </p>
                 </div>
               </div>
-              <p className="text-sm text-gray-600 mb-5">
+              <p className="text-base text-gray-600 mb-5">
                 {t("teacherPages", "clearAttendanceDesc", lang)}
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setConfirmClear(false)}
-                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-base font-semibold text-gray-600 hover:bg-gray-50"
                 >
                   {t("common", "cancel", lang)}
                 </button>
                 <button
                   onClick={clearAll}
                   disabled={saving}
-                  className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-60"
+                  className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-base font-semibold hover:bg-red-600 disabled:opacity-60"
                 >
                   {saving
                     ? t("teacherPages", "clearingLabel", lang)
@@ -227,10 +227,10 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
 
       {activeClassId && records.size > 0 && (
         <div className="mb-4 space-y-2">
-          <p className="text-xs font-semibold text-gray-500">
+          <p className="text-base font-semibold text-gray-500">
             {t("teacherPages", "markAllLabel", lang)}
           </p>
-          <ButtonGroup className="w-full gap-1">
+          <ButtonGroup className="grid w-full grid-cols-2 gap-1 sm:grid-cols-4">
             {ACTIVE_STATUSES.map((status) => (
               <Button
                 key={status}
@@ -239,7 +239,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
                 variant="ghost"
                 onClick={() => markAll(status)}
                 className={cn(
-                  "flex-1 border-0 bg-gray-50",
+                  "min-w-0 border-0 bg-gray-50 text-base",
                   status === "PRESENT" &&
                     "text-primary-600 hover:bg-primary-50 hover:text-primary-700",
                   status === "ABSENT" &&
@@ -264,7 +264,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
       )}
 
       {saveError && (
-        <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl mb-4 flex items-center gap-2">
+        <div className="bg-red-50 text-red-600 text-base px-4 py-3 rounded-xl mb-4 flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
           {saveError}
         </div>
@@ -292,7 +292,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
             ))}
           </div>
         ) : error ? (
-          <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">
+          <div className="bg-red-50 text-red-600 text-base px-4 py-3 rounded-2xl flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             {error}
           </div>
@@ -320,7 +320,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
                   <div className="p-3.5 flex items-center gap-3">
                     <div
                       className={cn(
-                        "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0",
+                        "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-base shrink-0",
                         student.gender === "FEMALE"
                           ? "bg-pink-100 text-pink-700"
                           : "bg-primary-100 text-primary-700",
@@ -329,10 +329,10 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
                       {student.name.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-gray-900 text-sm truncate">
+                      <p className="font-semibold text-gray-900 text-base truncate">
                         {student.name}
                       </p>
-                      <p className="text-xs text-gray-400">{student.adno}</p>
+                      <p className="text-base text-gray-400">{student.adno}</p>
                     </div>
                     <ButtonGroup className="gap-1 shrink-0">
                       {ACTIVE_STATUSES.map((nextStatus) => (
@@ -342,7 +342,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
                            onClick={() => setStatus(student.id, nextStatus)}
                            
                           className={cn(
-                            "  rounded-full border border-gray-100  font-bold w-6 h-6 leading-1.5 inline-flex items-center justify-center",
+                            "inline-flex size-8 items-center justify-center rounded-full border border-gray-100 text-base font-bold",
                             status === nextStatus
                               ? [
                                   "border-transparent text-white hover:text-white",
@@ -372,7 +372,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
                         onChange={(event) =>
                           setNotes(student.id, event.target.value)
                         }
-                        className="w-full px-3 py-2 rounded-xl bg-white border border-gray-200 text-xs text-gray-700 focus:outline-none focus:border-primary-400"
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-gray-200 text-base text-gray-700 focus:outline-none focus:border-primary-400"
                       />
                     </div>
                   )}
@@ -391,7 +391,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
                 variant="destructive"
                 onClick={() => setConfirmClear(true)}
                 size="lg"
-                className="  bg-red-500 text-white hover:bg-red-600"
+                className="bg-red-500 text-base text-white hover:bg-red-600"
               >
                 <Trash2 className="w-5 h-5" />{" "}
                 {t("teacherPages", "clearAllBtn", lang)}
@@ -404,7 +404,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
                 onClick={handleSave}
                 disabled={saving}
                 size="lg"
-                className="  bg-primary-600 text-white hover:bg-primary-700"
+                className="bg-primary-600 text-base text-white hover:bg-primary-700"
               >
                 {saving ? (
                   <>

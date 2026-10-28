@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { getStudents } from "@/lib/students-api";
 import {
   getClassAttendance,
@@ -14,7 +15,7 @@ import { useAuthStore } from "@/store/auth";
 import { useActiveClass } from "@/store/activeClass";
 import { useAttendanceSummary, useClasses } from "@/lib/queries";
 import { queryKeys } from "@/lib/queryKeys";
-import { AlertTriangle, CheckCircle2, School, UserCheck, UserX, UsersRound, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, School, UserCheck, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
@@ -22,7 +23,7 @@ import { ScrollableDateNavigator } from "@/components/ScrollableDateNavigator";
 import { DrawerSelector } from "@/components/DrawerSelector";
 import { Button } from "@/components/ui/button";
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
-import { PolarRadiusAxis, RadialBar, RadialBarChart } from "recharts";
+import { Cell, Pie, PieChart } from "recharts";
 import {
   Drawer,
   DrawerClose,
@@ -50,8 +51,57 @@ interface LocalRecord {
 }
 
 const attendanceChartConfig = {
-  rate: { label: "Attendance rate", color: "var(--primary)" },
+  present: { color: "#059669" },
+  absent: { color: "#dc2626" },
+  other: { color: "#f59e0b" },
 } satisfies ChartConfig;
+
+function AttendanceSemiCircle({
+  segments,
+  value,
+  label,
+  description,
+}: {
+  segments: { key: keyof typeof attendanceChartConfig; value: number }[];
+  value: string;
+  label: string;
+  description: string;
+}) {
+  const total = segments.reduce((sum, segment) => sum + segment.value, 0);
+  const chartData = total > 0 ? segments : [{ key: "empty" as const, value: 1 }];
+
+  return (
+    <div role="img" aria-label={description} className="relative mx-auto w-full max-w-56">
+      <ChartContainer config={attendanceChartConfig} className="!aspect-auto h-28 w-full" aria-hidden="true">
+        <PieChart>
+          <Pie
+            data={chartData}
+            dataKey="value"
+            nameKey="key"
+            startAngle={180}
+            endAngle={0}
+            cx="50%"
+            cy="95%"
+            innerRadius={68}
+            outerRadius={88}
+            cornerRadius={3}
+            strokeWidth={0}
+            isAnimationActive={false}
+          >
+            {chartData.map((entry) => (
+              <Cell
+                key={entry.key}
+                fill={entry.key === "empty" ? "#e5e7eb" : `var(--color-${entry.key})`}
+              />
+            ))}
+          </Pie>
+        </PieChart>
+      </ChartContainer>
+      <span className="pointer-events-none absolute inset-x-0 top-14 text-2xl font-semibold tabular-nums text-gray-950">{value}</span>
+      <span className="-mt-7 block text-base font-medium text-gray-500">{label}</span>
+    </div>
+  );
+}
 
 // ── Other-class confirmation modal ─────────────────────────────────────────
 
@@ -80,22 +130,22 @@ function OtherClassConfirmModal({
             <p className="font-bold text-gray-900">
               {t("teacherPages", "markingOtherClass", lang)}
             </p>
-            <p className="text-xs text-gray-500 mt-0.5">{className}</p>
+            <p className="text-base text-gray-500 mt-0.5">{className}</p>
           </div>
         </div>
-        <p className="text-sm text-gray-600 mb-5">
+        <p className="text-base text-gray-600 mb-5">
           {t("teacherPages", "markingOtherDesc", lang)}
         </p>
         <div className="flex gap-3">
           <button
             onClick={onCancel}
-            className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+            className="flex-1 py-2.5 rounded-xl border border-gray-200 text-base font-semibold text-gray-600 hover:bg-gray-50"
           >
             {t("common", "cancel", lang)}
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 py-2.5 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600"
+            className="flex-1 py-2.5 rounded-xl bg-amber-500 text-white text-base font-semibold hover:bg-amber-600"
           >
             {t("teacherPages", "yesSaveBtn", lang)}
           </button>
@@ -148,6 +198,7 @@ export default function TeacherAttendancePage() {
   const overallAbsent =
     overall?.byStatus.find((entry) => entry.status === "ABSENT")?._count.id ?? 0;
   const overallRate = Math.max(0, Math.min(100, overall?.rate ?? 0));
+  const overallOther = Math.max(0, (overall?.total ?? 0) - (overall?.present ?? 0) - overallAbsent);
   const classes = classesQuery.data ?? [];
   const classesLoading = classesQuery.isLoading || activeClassLoading;
   const activeClass = classes.find((cls) => cls.id === selectedClassId)
@@ -415,102 +466,66 @@ export default function TeacherAttendancePage() {
         title={t("teacherPages", "attendancePageTitle", lang)}
       />
 
-      <section aria-labelledby="attendance-overview-title" className="mb-6">
-        {/* <h2 id="attendance-overview-title" className="mb-4 text-lg font-bold text-gray-950">
-          {t("teacherPages", "overallAttendance", lang)}
-        </h2> */}
-        <div className="grid gap-1 lg:grid-cols-2">
-          <div className="aspect-video overflow-hidden mt-4 rounded-t-2xl bg-cyan-50 p-3 sm:p-5 lg:aspect-auto lg:min-h-72">
-            <img
-              src="/imgs/attendance/attendance-checklist.png"
-              alt="Illustration of an attendance checklist and pencil"
-              className="h-full w-full object-contain"
-              decoding="async"
-            />
-          </div>
-          <div className="min-w-0">
-            {overallAttendance.isLoading ? (
-              <p className="text-sm text-gray-500">{t("common", "loading", lang)}</p>
-            ) : overallAttendance.isError ? (
-              <ApiErrorBanner
-                message={overallAttendance.error.message}
-                onRetry={() => { void overallAttendance.refetch(); }}
-              />
-            ) : (
-              <div className="grid h-full auto-rows-fr grid-cols-2 gap-0.5 overflow-hidden rounded-b-2xl bg-white">
-                {[
-                  {
-                    label: t("common", "present", lang),
-                    value: overall?.present ?? 0,
-                    icon: UserCheck,
-                    surface: "bg-violet-50",
-                    iconSurface: "bg-violet-200 text-violet-700",
-                  },
-                  {
-                    label: t("common", "absent", lang),
-                    value: overallAbsent,
-                    icon: UserX,
-                    surface: "bg-amber-50",
-                    iconSurface: "bg-amber-200 text-amber-800",
-                  },
-                ].map((stat) => (
-                  <div key={stat.label} className={`flex min-h-18 items-center justify-between gap-1 p-3 ${stat.surface}`}>
-                    <div className="min-w-0">
-                      <strong className="block text-2xl font-semibold tabular-nums text-gray-950">{stat.value}</strong>
-                      <p className="text-sm font-bold text-gray-700">{stat.label}</p>
-                    </div>
-                    <span className={`flex size-9 shrink-0 items-center justify-center ${stat.iconSurface}`}>
-                      <stat.icon aria-hidden="true" className="size-5" />
-                    </span>
-                  </div>
-                ))}
-                <div className="flex min-h-18 items-center justify-between gap-1 bg-emerald-50 p-3">
-                  <div className="min-w-0">
-                    <strong className="block text-2xl font-semibold tabular-nums text-gray-950">{overallRate}%</strong>
-                    <p className="text-sm font-bold leading-tight text-gray-700">
-                      {t("teacherPages", "attendanceRateLabel", lang)}
-                    </p>
-                  </div>
-                  <div className="size-11 shrink-0">
-                    <ChartContainer
-                      config={attendanceChartConfig}
-                      className="size-full"
-                      role="img"
-                      aria-label={t("teacherPages", "attendanceRateLabel", lang)}
-                    >
-                      <RadialBarChart
-                        data={[{ rate: overallRate, fill: "var(--primary)" }]}
-                        startAngle={90}
-                        endAngle={-270}
-                        innerRadius="72%"
-                        outerRadius="100%"
-                      >
-                        <PolarRadiusAxis type="number" domain={[0, 100]} tick={false} axisLine={false} />
-                        <RadialBar dataKey="rate" background cornerRadius={8} />
-                      </RadialBarChart>
-                    </ChartContainer>
-                  </div>
-                </div>
-                <div className="flex min-h-18 items-center justify-between gap-1 bg-green-50 p-3">
-                  <div className="min-w-0">
-                    <strong className="block text-2xl font-semibold tabular-nums text-gray-950">{overall?.total ?? 0}</strong>
-                    <p className="text-sm font-bold text-gray-700">
-                      {t("teacherPages", "totalRecords", lang)}
-                    </p>
-                  </div>
-                  <span className="flex size-9 shrink-0 items-center justify-center bg-green-200 text-green-700">
-                    <UsersRound aria-hidden="true" className="size-5" />
-                  </span>
+      <div className="px-4! pt-4! pb-28! lg:pb-24!">
+        <section aria-labelledby="attendance-snapshot-title" className="overflow-hidden rounded-2xl bg-gradient-to-br from-white to-sky-50">
+          <h2 id="attendance-snapshot-title" className="border-b border-gray-100 px-4 py-3 text-base font-semibold text-gray-900 sm:px-5">
+            {t("teacherPages", "attendanceSnapshot", lang)}
+          </h2>
+          {overallAttendance.isLoading ? (
+            <div className="space-y-4 bg-white/90 p-5" aria-busy="true">
+              <Skeleton className="mx-auto h-24 w-full max-w-52 rounded-t-full sm:h-28 sm:max-w-56" />
+              <Skeleton className="mx-auto h-3 w-48" />
+              <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            </div>
+          ) : overallAttendance.isError ? (
+            <div className="p-4">
+              <ApiErrorBanner message={overallAttendance.error.message} onRetry={() => { void overallAttendance.refetch(); }} largeText />
+            </div>
+          ) : (
+            <div className="bg-white/90">
+              <div className="px-4 py-4 text-center sm:py-5">
+                <AttendanceSemiCircle
+                  segments={[
+                    { key: "present", value: overall?.present ?? 0 },
+                    { key: "absent", value: overallAbsent },
+                    { key: "other", value: overallOther },
+                  ]}
+                  value={String(overall?.total ?? 0)}
+                  label={t("teacherPages", "totalRecords", lang)}
+                  description={`${t("teacherPages", "attendanceSnapshot", lang)}: ${overall?.total ?? 0} ${t("teacherPages", "totalRecords", lang)}, ${overall?.present ?? 0} ${t("common", "present", lang)}, ${overallAbsent} ${t("common", "absent", lang)}, ${overallOther} ${t("teacherPages", "otherAttendance", lang)}`}
+                />
+                <div className="flex flex-wrap mt-4 justify-center gap-x-4 gap-y-1 text-base text-gray-600">
+                  <span><span className="mr-1 inline-block size-2 rounded-full bg-emerald-600" />{t("common", "present", lang)}</span>
+                  <span><span className="mr-1 inline-block size-2 rounded-full bg-red-600" />{t("common", "absent", lang)}</span>
+                  <span><span className="mr-1 inline-block size-2 rounded-full bg-amber-500" />{t("teacherPages", "otherAttendance", lang)}</span>
                 </div>
               </div>
-            )}
-          </div>
-        </div>
-      <Button size="lg" className="w-full mt-4" onClick={() => setDrawerOpen(true)}>
-        {t("teacherPages", "markAttendanceDesc", lang)}
-      </Button>
-      </section>
+              <div className="grid grid-cols-2 gap-px border-t border-gray-100 bg-gray-100">
+                <div className="bg-white/90 p-3 sm:p-4">
+                  <p className="text-base font-medium text-gray-600">{t("teacherPages", "attendanceTotalDays", lang)}</p>
+                  <strong className="mt-1 block text-xl font-semibold tabular-nums text-gray-950">{overall?.totalDays ?? "—"}</strong>
+                </div>
+                <div className="bg-white/90 p-3 sm:p-4">
+                  <p className="text-base font-medium text-gray-600">{t("teacherPages", "attendanceAverage", lang)}</p>
+                  <strong className="mt-1 block text-xl font-semibold tabular-nums text-gray-950">{overallRate}%</strong>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+      </div>
 
+      {!drawerOpen && (
+        <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-[calc(100%-2rem)] max-w-sm   p-0! lg:bottom-6 lg:left-[calc(50%+8rem)] lg:w-auto">
+          <Button type="button" size="lg" className="w-max gap-2 rounded-full text-base shadow-lg shadow-primary-900/20" onClick={() => setDrawerOpen(true)}>
+            <UserCheck aria-hidden="true" className="size-4" />
+            {t("teacherPages", "markAttendanceDesc", lang)}
+          </Button>
+        </div>
+      )}
 
       <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
         <DrawerContent
@@ -536,6 +551,7 @@ export default function TeacherAttendancePage() {
               {error && (
                 <ApiErrorBanner
                   message={error}
+                  largeText
                   onRetry={() =>
                     activeClassId ? loadAttendance(activeClassId, date) : undefined
                   }
@@ -550,6 +566,7 @@ export default function TeacherAttendancePage() {
                     pickerTitle="Choose attendance date"
                     disabled={saving}
                     hideCalendarButton
+                    largeText
                   />
                   <DrawerSelector
                     title={t("teacherPages", "selectClassOpt", lang)}
@@ -561,6 +578,7 @@ export default function TeacherAttendancePage() {
                     }))}
                     placeholder={classesLoading ? t("common", "loading", lang) : t("teacherPages", "noClassesFound", lang)}
                     disabled={saving || classesLoading}
+                    optionClassName="text-base"
                     triggerItem={
                       <Button
                         variant="outline"
@@ -571,7 +589,7 @@ export default function TeacherAttendancePage() {
                     }
                   />
                 </div>
-                <div className="flex items-center justify-between gap-3 text-xs font-medium text-gray-500">
+                <div className="flex items-center justify-between gap-3 text-base font-medium text-gray-500">
                   <span>{new Date(`${date}T00:00:00`).toLocaleDateString(lang === "ml" ? "ml-IN" : "en-GB", { day: "numeric", month: "long", year: "numeric" })}</span>
                   <span className="truncate text-right">{activeClass?.name ?? t("teacherPages", "noClassesFound", lang)}</span>
                 </div>
@@ -580,12 +598,13 @@ export default function TeacherAttendancePage() {
               {classesQuery.error && (
                 <ApiErrorBanner
                   message={classesQuery.error.message}
+                  largeText
                   onRetry={() => { void classesQuery.refetch(); }}
                 />
               )}
 
               {saveSuccess && (
-                <p role="status" className="mb-4 flex items-center gap-1 text-sm font-semibold text-primary-600">
+                <p role="status" className="mb-4 flex items-center gap-1 text-base font-semibold text-primary-600">
                   <CheckCircle2 className="h-4 w-4" />
                   {t("teacherPages", "saved", lang)}
                 </p>

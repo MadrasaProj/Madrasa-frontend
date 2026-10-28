@@ -5,9 +5,10 @@ interface Props {
   message: string;
   onRetry?: () => void;
   className?: string;
+  largeText?: boolean;
 }
 
-export function ApiErrorBanner({ message, onRetry, className }: Props) {
+export function ApiErrorBanner({ message, onRetry, className, largeText = false }: Props) {
   const isNetwork = message === NETWORK_ERROR || message.toLowerCase().includes("cannot reach");
   const isTimeout = message === TIMEOUT_ERROR  || message.toLowerCase().includes("timed out");
 
@@ -24,13 +25,13 @@ export function ApiErrorBanner({ message, onRetry, className }: Props) {
         <Icon className="w-6 h-6 text-red-400" />
       </div>
       <div>
-        <p className="font-semibold text-gray-800 text-sm">{title}</p>
-        <p className="text-xs text-gray-400 mt-1 max-w-xs">{message}</p>
+        <p className={`font-semibold text-gray-800 ${largeText ? "text-base" : "text-sm"}`}>{title}</p>
+        <p className={`${largeText ? "text-base" : "text-xs"} text-gray-400 mt-1 max-w-xs`}>{message}</p>
       </div>
       {onRetry && (
         <button
           onClick={onRetry}
-          className="flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white rounded-xl text-sm font-semibold hover:bg-gray-700 transition-colors"
+          className={`flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white rounded-xl font-semibold hover:bg-gray-700 transition-colors ${largeText ? "text-base" : "text-sm"}`}
         >
           <RefreshCw className="w-3.5 h-3.5" /> Try again
         </button>

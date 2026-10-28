@@ -19,6 +19,7 @@ export interface AttendanceSummary {
   byStatus: { status: string; _count: { id: number } }[];
   byClass:  { classId: string; _count: { id: number } }[];
   total:    number;
+  totalDays?: number;
   present:  number;
   rate:     number;
 }

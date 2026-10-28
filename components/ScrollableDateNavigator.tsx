@@ -15,6 +15,7 @@ interface ScrollableDateNavigatorProps {
   disabled?: boolean;
   hideCalendarButton?: boolean;
   visibleDates?: string[];
+  largeText?: boolean;
 }
 
 export function ScrollableDateNavigator({
@@ -24,6 +25,7 @@ export function ScrollableDateNavigator({
   disabled = false,
   hideCalendarButton = false,
   visibleDates,
+  largeText = false,
 }: ScrollableDateNavigatorProps) {
   const { lang } = useLanguageStore();
   const locale = lang === "ml" ? "ml-IN" : "en-GB";
@@ -97,12 +99,13 @@ export function ScrollableDateNavigator({
                 disabled={disabled || value > today}
                 onClick={() => onDateChange(value)}
                 className={cn(
-                  "relative flex h-14 w-12 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg border py-1 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:cursor-not-allowed disabled:opacity-35",
+                  "relative flex h-14 w-12 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg border py-1 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:cursor-not-allowed disabled:opacity-35",
+                  largeText ? "text-base" : "text-sm",
                   selected ? "border-gray-950 bg-gray-950 text-white" : "border-gray-300 bg-white text-gray-900 hover:bg-gray-50",
                 )}
               >
                 <span aria-hidden="true" className={cn("absolute right-1 top-1 h-1.5 w-1.5 rounded-full", selected ? "bg-white" : isToday ? "bg-gray-900" : "bg-transparent")} />
-                <span className={cn("text-xs font-medium", selected ? "text-gray-200" : "text-gray-500")}>
+                <span className={cn(largeText ? "text-base" : "text-xs", "font-medium", selected ? "text-gray-200" : "text-gray-500")}>
                   {day.toLocaleDateString(locale, { weekday: "short" })}
                 </span>
                 <span className="font-bold">{day.getDate()}</span>
@@ -117,6 +120,7 @@ export function ScrollableDateNavigator({
         date={date}
         onDateChange={(nextDate) => { if (!disabled) onDateChange(nextDate); }}
         title={pickerTitle}
+        largeText={largeText}
       />
     </>
   );
