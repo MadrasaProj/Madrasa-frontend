@@ -117,6 +117,9 @@ export const queryKeys = {
     feeSummary: (cid: string, ay?: string, from?: string, to?: string) => ["reports", "feeSummary", cid, ay ?? "", from ?? "", to ?? ""] as const,
     attendanceSummary: (cid: string, from?: string, to?: string) => ["reports", "attendanceSummary", cid, from ?? "", to ?? ""] as const,
     homeworkSummary: (cid: string, from?: string, to?: string) => ["reports", "homeworkSummary", cid, from ?? "", to ?? ""] as const,
+    operationalActivity: (cid: string, from?: string, to?: string) => ["reports", "operationalActivity", cid, from ?? "", to ?? ""] as const,
+    parentAdoption: (cid: string, params?: object) => ["reports", "parentAdoption", cid, params ?? {}] as const,
+    activityLogs: (cid: string, params?: object) => ["reports", "activityLogs", cid, params ?? {}] as const,
   },
 
   config: {

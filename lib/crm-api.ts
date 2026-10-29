@@ -287,11 +287,11 @@ export function deleteActivity(leadId: string, timelineId: string, token: string
   );
 }
 
-export function updateFollowUpDate(leadId: string, followUpDate: string | null, token: string) {
+export function updateFollowUpDate(leadId: string, followUpDate: string | null, token: string, remarks?: string) {
   return mutateJson<{ success: boolean; nextFollowUpDate?: string | null }>(
     "PATCH",
     `/crm/leads/${leadId}/follow-up`,
-    { followUpDate },
+    { followUpDate, remarks },
     token,
   );
 }

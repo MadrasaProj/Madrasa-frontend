@@ -5,10 +5,16 @@ import {
   getFeeSummary,
   getAttendanceSummary,
   getHomeworkSummary,
+  getOperationalActivity,
+  getActivityLogs,
+  getParentAdoption,
   type StudentStats,
   type FeeSummary,
   type AttendanceSummary,
   type HomeworkSummary,
+  type OperationalActivitySummary,
+  type ActivityLogListResponse,
+  type ParentAdoptionReport,
 } from "@/lib/reports-api";
 import type { AuthCtx } from "./useNotifications";
 
@@ -64,6 +70,64 @@ export function useHomeworkSummary(
     queryFn: () => getHomeworkSummary(ctx.clientId, ctx.token, params?.from, params?.to),
     enabled: !!ctx.clientId && !!ctx.token,
     staleTime: 5 * 60_000,
+    ...options,
+  });
+}
+
+export function useOperationalActivity(
+  ctx: AuthCtx,
+  params?: { from?: string; to?: string },
+  options?: Omit<UseQueryOptions<OperationalActivitySummary, Error>, "queryKey" | "queryFn">,
+) {
+  return useQuery<OperationalActivitySummary, Error>({
+    queryKey: queryKeys.reports.operationalActivity(ctx.clientId, params?.from, params?.to),
+    queryFn: () => getOperationalActivity(ctx.clientId, ctx.token, params?.from, params?.to),
+    enabled: !!ctx.clientId && !!ctx.token,
+    staleTime: 2 * 60_000, // 2 minutes staleTime
+    ...options,
+  });
+}
+
+export function useActivityLogs(
+  ctx: AuthCtx,
+  params?: {
+    actorType?: string;
+    action?: string;
+    from?: string;
+    to?: string;
+    q?: string;
+    take?: number;
+    skip?: number;
+  },
+  options?: Omit<UseQueryOptions<ActivityLogListResponse, Error>, "queryKey" | "queryFn">,
+) {
+  return useQuery<ActivityLogListResponse, Error>({
+    queryKey: queryKeys.reports.activityLogs(ctx.clientId, params),
+    queryFn: () => getActivityLogs(ctx.clientId, ctx.token, params),
+    enabled: !!ctx.clientId && !!ctx.token,
+    staleTime: 60_000,
+    ...options,
+  });
+}
+
+export function useParentAdoption(
+  ctx: AuthCtx,
+  params?: {
+    from?: string;
+    to?: string;
+    classId?: string;
+    status?: "ALL" | "LOGGED_IN" | "NOT_LOGGED_IN" | "ACCESSED" | "NOT_ACCESSED";
+    q?: string;
+    page?: number;
+    limit?: number;
+  },
+  options?: Omit<UseQueryOptions<ParentAdoptionReport, Error>, "queryKey" | "queryFn">,
+) {
+  return useQuery<ParentAdoptionReport, Error>({
+    queryKey: queryKeys.reports.parentAdoption(ctx.clientId, params),
+    queryFn: () => getParentAdoption(ctx.clientId, ctx.token, params),
+    enabled: !!ctx.clientId && !!ctx.token,
+    staleTime: 60_000,
     ...options,
   });
 }

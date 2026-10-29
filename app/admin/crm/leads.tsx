@@ -105,16 +105,16 @@ export const LEAD_STATUSES = [
 export type LeadStatus = (typeof LEAD_STATUSES)[number];
 
 const PIPELINE_STEPS = [
-  { key: "intake", label: "Contact & Follow-up", statuses: ["NEW", "CONTACTED", "INTERESTED", "FOLLOW_UP"] },
+  { key: "intake", label: "Follow-up", statuses: ["NEW", "CONTACTED", "INTERESTED", "FOLLOW_UP"] },
   { key: "qualified", label: "Quality Lead", statuses: ["QUALITY_LEAD"] },
-  { key: "trial", label: "Trial Shared", statuses: ["TRIAL_SHARED", "TRIAL_CREATED"] },
+  { key: "trial", label: "Trial", statuses: ["TRIAL_SHARED", "TRIAL_CREATED"] },
   {
     key: "demo",
-    label: "Demo Session",
+    label: "Demo",
     statuses: ["OFFLINE_DEMO_SCHEDULED", "OFFLINE_DEMO_COMPLETED", "DEMO_SCHEDULED", "DEMO_COMPLETED"],
   },
-  { key: "closing", label: "Negotiation & Data", statuses: ["NEGOTIATION", "DATA_COLLECTION", "PAYMENT_PENDING"] },
-  { key: "won", label: "Closed Won", statuses: ["WON"] },
+  { key: "closing", label: "Negotiation", statuses: ["NEGOTIATION", "DATA_COLLECTION", "PAYMENT_PENDING"] },
+  { key: "won", label: "Won", statuses: ["WON"] },
 ];
 
 const ACTIVITY_TYPES = [
@@ -272,15 +272,17 @@ export default function CrmLeadsPage() {
   // Follow-up quick picker
   const [showFollowUpPicker, setShowFollowUpPicker] = useState(false);
   const [quickFollowUpDate, setQuickFollowUpDate] = useState("");
+  const [quickFollowUpRemarks, setQuickFollowUpRemarks] = useState("");
   const [followUpSaving, setFollowUpSaving] = useState(false);
   const [cardFollowUpPickerId, setCardFollowUpPickerId] = useState<string | null>(null);
   const [cardStatusPickerId, setCardStatusPickerId] = useState<string | null>(null);
   const [cardCustomDate, setCardCustomDate] = useState("");
+  const [cardRemarks, setCardRemarks] = useState("");
 
   // Detail tab
   const [activeLeadTab, setActiveLeadTab] = useState<"activity" | "details" | "pipeline">("activity");
 
-  // Close card popovers on click outside, focusout, scroll, or Escape
+  // Close card popovers on click outside or Escape (no aggressive focusin listener so date/remarks inputs remain stable)
   useEffect(() => {
     if (!cardStatusPickerId && !cardFollowUpPickerId) return;
 
@@ -299,32 +301,14 @@ export default function CrmLeadsPage() {
       }
     };
 
-    const handleFocusIn = (e: FocusEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (!target?.closest("[data-popover-container]")) {
-        setCardStatusPickerId(null);
-        setCardFollowUpPickerId(null);
-      }
-    };
-
-    const handleWindowScroll = () => {
-      if (cardStatusPickerId) {
-        setCardStatusPickerId(null);
-      }
-    };
-
     window.addEventListener("keydown", handleKeyDown);
     document.addEventListener("mousedown", handlePointerDown);
     document.addEventListener("touchstart", handlePointerDown);
-    document.addEventListener("focusin", handleFocusIn);
-    window.addEventListener("scroll", handleWindowScroll, { passive: true });
 
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("mousedown", handlePointerDown);
       document.removeEventListener("touchstart", handlePointerDown);
-      document.removeEventListener("focusin", handleFocusIn);
-      window.removeEventListener("scroll", handleWindowScroll);
     };
   }, [cardStatusPickerId, cardFollowUpPickerId]);
 
@@ -492,19 +476,26 @@ export default function CrmLeadsPage() {
     }
   };
 
-  const handleQuickUpdateFollowUp = async (newDate: string | null, targetLeadId?: string) => {
+  const handleQuickUpdateFollowUp = async (
+    newDate: string | null,
+    targetLeadId?: string,
+    remarks?: string
+  ) => {
     const targetId = targetLeadId || selectedLead?.id;
     if (!targetId || !accessToken) return;
     setFollowUpSaving(true);
     try {
-      await updateFollowUpDate(targetId, newDate, accessToken);
+      await updateFollowUpDate(targetId, newDate, accessToken, remarks);
       toast(
         newDate
-          ? `Next follow-up set for ${new Date(newDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`
+          ? `Next follow-up set for ${new Date(newDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}${remarks ? " with notes" : ""}`
           : "Follow-up schedule cleared"
       );
       setShowFollowUpPicker(false);
       setCardFollowUpPickerId(null);
+      setCardCustomDate("");
+      setCardRemarks("");
+      setQuickFollowUpRemarks("");
       if (selectedLead?.id === targetId) {
         await loadLeadDetail(targetId);
       }
@@ -1060,6 +1051,14 @@ export default function CrmLeadsPage() {
       });
   }, [leads, activeStage, selectedDistrict, smartPreset, sortBy]);
 
+  // Auto-select first lead on desktop / tablet (>= 768px) if none is currently selected
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.innerWidth >= 768 && !selectedLeadId && filteredLeads.length > 0) {
+      setSelectedLeadId(filteredLeads[0].id);
+    }
+  }, [filteredLeads, selectedLeadId]);
+
   const getSmartSuggestion = (lead: LeadDetail) => {
     const isWon = lead.status === "WON";
     const isLost = lead.status === "LOST";
@@ -1296,7 +1295,7 @@ export default function CrmLeadsPage() {
             <span className="text-xs uppercase font-bold text-gray-500 tracking-wider">
               Pipeline Stage:
             </span>
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1">
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-thin py-1">
               {PIPELINE_STEPS.map((step, i) => {
                 const isActive = step.statuses.includes(lead.status);
                 const isDone = i < currentStepIdx || (isWon && step.key === "won");
@@ -1306,16 +1305,16 @@ export default function CrmLeadsPage() {
                       type="button"
                       onClick={() => handleUpdateStage(step.statuses[0])}
                       className={cn(
-                        "min-h-[40px] px-3.5 py-2 text-xs font-bold rounded-xl transition-all border shrink-0 flex items-center gap-1.5",
+                        "min-h-[36px] px-3 py-1.5 text-xs font-bold rounded-xl transition-all border shrink-0 flex items-center gap-1.5 active:scale-95",
                         isActive
-                          ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs"
+                          ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs font-black"
                           : isDone
                           ? "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
                           : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
                       )}
                     >
-                      {isDone && !isActive && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                      {step.label}
+                      {isDone && !isActive && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                      <span>{step.label}</span>
                     </button>
                     {i < PIPELINE_STEPS.length - 1 && (
                       <ChevronRight className="w-3.5 h-3.5 text-gray-300 shrink-0" />
@@ -1324,200 +1323,176 @@ export default function CrmLeadsPage() {
                 );
               })}
             </div>
+          </div>
 
-            {/* Quick Stage Override Selector */}
-            <div className="flex items-center gap-2 pt-2 border-t border-gray-100 flex-wrap">
-              <span className="text-xs uppercase font-bold text-gray-500 tracking-wider shrink-0">
-                Direct Stage:
-              </span>
-              <select
-                value={lead.status}
-                onChange={(e) => handleUpdateStage(e.target.value, lead.id)}
-                disabled={actionLoading}
-                className="min-h-[40px] text-xs sm:text-sm font-semibold bg-white border border-gray-200 text-gray-800 rounded-xl px-3 py-1.5 focus:outline-none focus:border-emerald-500 shadow-2xs cursor-pointer hover:bg-gray-50 transition-all"
-                title="Change pipeline stage directly"
-              >
-                {LEAD_STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {LEAD_STATUS_LABELS[s] ?? s.replace(/_/g, " ")}
-                  </option>
-                ))}
-              </select>
+          {/* Institutional Overview Stats Strip */}
+          <div className="bg-gray-50/80 p-3 rounded-2xl border border-gray-200/80 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+            <div className="bg-white p-2.5 rounded-xl border border-gray-200/70 shadow-2xs">
+              <span className="block text-[11px] uppercase font-bold text-gray-400">Students</span>
+              <span className="text-sm sm:text-base font-black text-gray-900">{lead.studentCount || "—"}</span>
+            </div>
+            <div className="bg-white p-2.5 rounded-xl border border-gray-200/70 shadow-2xs">
+              <span className="block text-[11px] uppercase font-bold text-gray-400">Teachers</span>
+              <span className="text-sm sm:text-base font-black text-gray-900">{lead.teacherCount || "—"}</span>
+            </div>
+            <div className="bg-white p-2.5 rounded-xl border border-gray-200/70 shadow-2xs">
+              <span className="block text-[11px] uppercase font-bold text-gray-400">Curriculum</span>
+              <span className="text-sm sm:text-base font-bold text-gray-800 truncate block">{lead.type || "Madrasa"}</span>
+            </div>
+            <div className="bg-white p-2.5 rounded-xl border border-gray-200/70 shadow-2xs">
+              <span className="block text-[11px] uppercase font-bold text-gray-400">Software</span>
+              <span className="text-sm sm:text-base font-bold text-gray-800 truncate block">{lead.existingSoftware || "None"}</span>
             </div>
           </div>
 
-          {/* Quick Action Strip for Contact Person */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-2">
+          {/* Primary Contact & Follow-up Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
             {/* Box 1: Primary Contact */}
-            <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200/80 space-y-2">
-              <span className="text-xs uppercase font-bold text-gray-500 flex items-center gap-1.5">
-                <Users className="w-3.5 h-3.5 text-blue-600" /> Primary Contact
-              </span>
-              {primaryContact ? (
-                <div>
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-bold text-gray-900 truncate">
-                      {primaryContact.name || "Name not specified"}
-                    </p>
-                    {primaryContact.role && (
-                      <span className="text-xs font-semibold text-gray-600 bg-gray-200 px-2 py-0.5 rounded">
-                        {primaryContact.role}
-                      </span>
-                    )}
-                  </div>
-
-                  {primaryContact.phone ? (
-                    <div className="mt-2 flex items-center justify-between gap-2">
-                      <span className="font-mono font-bold text-xs sm:text-sm text-gray-900">
-                        {primaryContact.phone}
-                      </span>
-                      <div className="flex items-center gap-1.5">
-                        <a
-                          href={`tel:${primaryContact.phone}`}
-                          className="min-h-[38px] px-2.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1 shadow-2xs transition-all active:scale-95"
-                          title="Call Phone"
-                        >
-                          <Phone className="w-3.5 h-3.5" />
-                          <span>Call</span>
-                        </a>
-                        <a
-                          href={`https://wa.me/${waPrimaryPhone}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="min-h-[38px] px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 shadow-2xs transition-all active:scale-95"
-                          title="Chat on WhatsApp"
-                        >
-                          <MessageSquare className="w-3.5 h-3.5" />
-                          <span>WA</span>
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(primaryContact.phone!, primaryContact.phone!)}
-                          className="p-2 text-gray-400 hover:text-gray-700"
-                          title="Copy phone"
-                        >
-                          {copiedText === primaryContact.phone ? (
-                            <Check className="w-4 h-4 text-emerald-600" />
-                          ) : (
-                            <Copy className="w-4 h-4" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-400 italic mt-1">No primary phone recorded</p>
-                  )}
-
-                  {primaryContact.secondaryPhone && (
-                    <div className="mt-2 pt-2 border-t border-dashed border-gray-200 flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <span className="text-[10px] uppercase font-bold text-gray-400 block">Alt Phone:</span>
-                        <span className="font-mono font-bold text-xs sm:text-sm text-gray-800">
-                          {primaryContact.secondaryPhone}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <a
-                          href={`tel:${primaryContact.secondaryPhone}`}
-                          className="min-h-[36px] px-2.5 py-1 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs flex items-center gap-1 border border-blue-200 transition-all active:scale-95"
-                          title="Call Alt Phone"
-                        >
-                          <Phone className="w-3.5 h-3.5" />
-                          <span>Call</span>
-                        </a>
-                        <a
-                          href={`https://wa.me/${waAltPhone}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="min-h-[36px] px-2.5 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center gap-1 border border-emerald-200 transition-all active:scale-95"
-                          title="WhatsApp Alt Phone"
-                        >
-                          <MessageSquare className="w-3.5 h-3.5" />
-                          <span>WA</span>
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(primaryContact.secondaryPhone!, primaryContact.secondaryPhone!)}
-                          className="p-1.5 text-gray-400 hover:text-gray-700"
-                          title="Copy alt phone"
-                        >
-                          {copiedText === primaryContact.secondaryPhone ? (
-                            <Check className="w-4 h-4 text-emerald-600" />
-                          ) : (
-                            <Copy className="w-4 h-4" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
+            <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200/80 space-y-2.5 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between pb-1.5 border-b border-gray-200/60">
+                  <span className="text-xs uppercase font-bold text-gray-500 flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-blue-600" /> Primary Contact
+                  </span>
+                  {primaryContact?.role && (
+                    <span className="text-[11px] font-bold text-gray-700 bg-gray-200/80 px-2 py-0.5 rounded-md">
+                      {primaryContact.role}
+                    </span>
                   )}
                 </div>
-              ) : (
-                <p className="text-xs text-gray-400 italic">No contacts added yet</p>
-              )}
+
+                <p className="text-sm font-black text-gray-900 truncate mt-2">
+                  {primaryContact?.name || "Name not specified"}
+                </p>
+
+                {primaryContact?.phone ? (
+                  <div className="mt-2 pt-2 border-t border-dashed border-gray-200 flex items-center justify-between gap-2 flex-wrap">
+                    <span className="font-mono font-bold text-xs sm:text-sm text-gray-900">
+                      {primaryContact.phone}
+                    </span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <a
+                        href={`tel:${primaryContact.phone}`}
+                        className="min-h-[36px] px-2.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1 shadow-2xs transition-all active:scale-95"
+                        title="Call Phone"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                        <span>Call</span>
+                      </a>
+                      <a
+                        href={`https://wa.me/${waPrimaryPhone}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="min-h-[36px] px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 shadow-2xs transition-all active:scale-95"
+                        title="Chat on WhatsApp"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>WhatsApp</span>
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(primaryContact.phone!, primaryContact.phone!)}
+                        className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100"
+                        title="Copy phone"
+                      >
+                        {copiedText === primaryContact.phone ? (
+                          <Check className="w-4 h-4 text-emerald-600" />
+                        ) : (
+                          <Copy className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 italic mt-1">No primary phone recorded</p>
+                )}
+
+                {primaryContact?.secondaryPhone && (
+                  <div className="mt-2 pt-2 border-t border-dashed border-gray-200 flex items-center justify-between gap-2 flex-wrap">
+                    <div className="min-w-0">
+                      <span className="text-[10px] uppercase font-bold text-gray-400 block">Alt Phone:</span>
+                      <span className="font-mono font-bold text-xs sm:text-sm text-gray-800">
+                        {primaryContact.secondaryPhone}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <a
+                        href={`tel:${primaryContact.secondaryPhone}`}
+                        className="min-h-[32px] px-2 py-1 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs flex items-center gap-1 border border-blue-200 transition-all active:scale-95"
+                        title="Call Alt Phone"
+                      >
+                        <Phone className="w-3 h-3" />
+                        <span>Call</span>
+                      </a>
+                      <a
+                        href={`https://wa.me/${waAltPhone}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="min-h-[32px] px-2 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center gap-1 border border-emerald-200 transition-all active:scale-95"
+                        title="WhatsApp Alt Phone"
+                      >
+                        <MessageSquare className="w-3 h-3" />
+                        <span>WA</span>
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(primaryContact.secondaryPhone!, primaryContact.secondaryPhone!)}
+                        className="p-1 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100"
+                        title="Copy alt phone"
+                      >
+                        {copiedText === primaryContact.secondaryPhone ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Box 2: Institutional Size */}
-            <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200/80 space-y-2">
-              <span className="text-xs uppercase font-bold text-gray-500 flex items-center gap-1.5">
-                <Building2 className="w-3.5 h-3.5 text-emerald-600" /> Institution Profile
-              </span>
-              <div className="grid grid-cols-3 gap-2 text-center pt-0.5">
-                <div className="bg-white rounded-xl p-2 border border-gray-200/80">
-                  <span className="block text-xs uppercase font-bold text-gray-400">Students</span>
-                  <span className="text-sm font-black text-gray-900">{lead.studentCount || "—"}</span>
+            {/* Box 2: Next Follow-up Schedule */}
+            <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200/80 space-y-2.5 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between pb-1.5 border-b border-gray-200/60">
+                  <span className="text-xs uppercase font-bold text-gray-500 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-amber-600" /> Next Follow-up
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowFollowUpPicker(!showFollowUpPicker);
+                      setQuickFollowUpDate(
+                        lead.nextFollowUpDate ? lead.nextFollowUpDate.split("T")[0] : ""
+                      );
+                    }}
+                    className="min-h-[32px] px-2.5 py-1 text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl flex items-center gap-1 transition-all active:scale-95"
+                  >
+                    <CalendarClock className="w-3.5 h-3.5" />
+                    <span>{lead.nextFollowUpDate ? "Change Date" : "+ Set Date"}</span>
+                  </button>
                 </div>
-                <div className="bg-white rounded-xl p-2 border border-gray-200/80">
-                  <span className="block text-xs uppercase font-bold text-gray-400">Teachers</span>
-                  <span className="text-sm font-black text-gray-900">{lead.teacherCount || "—"}</span>
-                </div>
-                <div className="bg-white rounded-xl p-2 border border-gray-200/80 truncate">
-                  <span className="block text-xs uppercase font-bold text-gray-400">Software</span>
-                  <span className="text-xs font-bold text-gray-700 truncate block">
-                    {lead.existingSoftware ? lead.existingSoftware.substring(0, 8) : "None"}
+
+                <div className="mt-3">
+                  <span
+                    className={cn(
+                      "text-xs px-3.5 py-2 rounded-xl border inline-flex items-center gap-2 w-full justify-between font-bold shadow-2xs",
+                      followUpStatus.badgeClass
+                    )}
+                  >
+                    <span className="truncate">{followUpStatus.label}</span>
+                    {followUpStatus.urgency === "overdue" && (
+                      <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                    )}
+                    {followUpStatus.urgency === "today" && (
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping shrink-0" />
+                    )}
+                    {followUpStatus.urgency === "upcoming" && (
+                      <Clock className="w-4 h-4 text-emerald-600 shrink-0" />
+                    )}
                   </span>
                 </div>
-              </div>
-            </div>
-
-            {/* Box 3: Next Follow-up Schedule */}
-            <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200/80 space-y-2 sm:col-span-2 lg:col-span-1">
-              <div className="flex items-center justify-between">
-                <span className="text-xs uppercase font-bold text-gray-500 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-amber-600" /> Next Follow-up
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowFollowUpPicker(!showFollowUpPicker);
-                    setQuickFollowUpDate(
-                      lead.nextFollowUpDate ? lead.nextFollowUpDate.split("T")[0] : ""
-                    );
-                  }}
-                  className="min-h-[36px] text-xs font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1"
-                >
-                  <CalendarClock className="w-3.5 h-3.5" />
-                  <span>{lead.nextFollowUpDate ? "Change Date" : "+ Set Date"}</span>
-                </button>
-              </div>
-
-              <div>
-                <span
-                  className={cn(
-                    "text-xs px-3 py-1.5 rounded-xl border inline-flex items-center gap-2 w-full justify-between font-bold",
-                    followUpStatus.badgeClass
-                  )}
-                >
-                  <span className="truncate">{followUpStatus.label}</span>
-                  {followUpStatus.urgency === "overdue" && (
-                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
-                  )}
-                  {followUpStatus.urgency === "today" && (
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping shrink-0" />
-                  )}
-                  {followUpStatus.urgency === "upcoming" && (
-                    <Clock className="w-4 h-4 text-emerald-600 shrink-0" />
-                  )}
-                </span>
               </div>
             </div>
           </div>
@@ -1564,7 +1539,7 @@ export default function CrmLeadsPage() {
                           disabled={followUpSaving}
                           onClick={() => {
                             setQuickFollowUpDate(isoDate);
-                            handleQuickUpdateFollowUp(isoDate);
+                            handleQuickUpdateFollowUp(isoDate, lead.id, quickFollowUpRemarks);
                           }}
                           className={cn(
                             "min-h-[38px] px-3.5 py-1.5 text-xs font-bold rounded-xl border transition-all active:scale-95 disabled:opacity-50",
@@ -1581,13 +1556,24 @@ export default function CrmLeadsPage() {
                     {lead.nextFollowUpDate && (
                       <button
                         type="button"
-                        onClick={() => handleQuickUpdateFollowUp(null)}
+                        onClick={() => handleQuickUpdateFollowUp(null, lead.id)}
                         disabled={followUpSaving}
                         className="min-h-[38px] px-3 py-1 text-xs font-bold rounded-xl border border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100 transition-all ml-auto"
                       >
                         Clear Schedule
                       </button>
                     )}
+                  </div>
+
+                  {/* Optional Follow-up Remarks */}
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Remarks / discussion note for this follow-up (optional)..."
+                      value={quickFollowUpRemarks}
+                      onChange={(e) => setQuickFollowUpRemarks(e.target.value)}
+                      className="w-full bg-white border border-gray-200 text-xs sm:text-sm py-2 px-3 rounded-xl focus:outline-none focus:border-emerald-600 font-medium text-gray-800 placeholder:text-gray-400"
+                    />
                   </div>
 
                   {/* Custom Date Input & Submit */}
@@ -1600,8 +1586,8 @@ export default function CrmLeadsPage() {
                     />
                     <button
                       type="button"
-                      disabled={followUpSaving || !quickFollowUpDate}
-                      onClick={() => handleQuickUpdateFollowUp(quickFollowUpDate)}
+                      disabled={followUpSaving || (!quickFollowUpDate && !quickFollowUpRemarks.trim())}
+                      onClick={() => handleQuickUpdateFollowUp(quickFollowUpDate || lead.nextFollowUpDate || null, lead.id, quickFollowUpRemarks)}
                       className="min-h-[44px] px-5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-all flex items-center gap-2"
                     >
                       {followUpSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
@@ -2626,19 +2612,11 @@ export default function CrmLeadsPage() {
   return (
     <DashboardLayout>
       <div>
-        {/* Desktop invisible backdrop overlay to dismiss status dropdown on ANY outside click */}
-        {cardStatusPickerId && (
-          <div
-            className="fixed inset-0 z-30 hidden lg:block"
-            onClick={() => setCardStatusPickerId(null)}
-          />
-        )}
-
         {/* Mobile/Tablet Native Action Sheet for Stage Change (True native mobile app feel) */}
         <AnimatePresence>
           {cardStatusPickerId && (
             <div
-              className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/60 backdrop-blur-xs lg:hidden"
+              className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/60 backdrop-blur-xs md:hidden"
               onClick={() => setCardStatusPickerId(null)}
             >
               <motion.div
@@ -2967,12 +2945,12 @@ export default function CrmLeadsPage() {
 
         {/* ── Split Workspace (List + Detail) ── */}
         {!loading && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
             {/* Left Column: Lead List Cards */}
             <div
               className={cn(
-                "lg:col-span-5 xl:col-span-4 flex flex-col bg-white border border-gray-200/90 rounded-3xl shadow-xs overflow-hidden",
-                "lg:sticky lg:top-20 lg:max-h-[calc(100vh-100px)]"
+                "md:col-span-5 lg:col-span-5 xl:col-span-4 flex flex-col bg-white border border-gray-200/90 rounded-3xl shadow-xs overflow-hidden",
+                "md:sticky md:top-20 md:h-[calc(100vh-100px)] md:min-h-[580px]"
               )}
             >
               <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 flex items-center justify-between shrink-0">
@@ -2988,7 +2966,7 @@ export default function CrmLeadsPage() {
                 </span>
               </div>
 
-              <div className="p-3.5 space-y-3 lg:overflow-y-auto lg:scrollbar-thin">
+              <div className="flex-1 min-h-0 overflow-y-auto p-3.5 space-y-3 scrollbar-thin">
                 {filteredLeads.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-20 gap-2 text-center px-4">
                     <p className="text-sm text-gray-500 font-medium">No leads match current filters.</p>
@@ -3113,77 +3091,64 @@ export default function CrmLeadsPage() {
                         </div>
                       )}
 
+                      {/* Latest Activity Remark / Discussion Note */}
+                      {l.timeline && l.timeline.length > 0 && l.timeline[0]?.notes && (
+                        <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-2.5 flex items-start gap-2 text-xs">
+                          <MessageSquare className="w-3.5 h-3.5 text-amber-700 shrink-0 mt-0.5" />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-1 text-[10px] text-amber-900/80 font-bold mb-0.5">
+                              <span className="truncate">
+                                Latest Note {l.timeline[0].user?.name ? `(${l.timeline[0].user.name})` : ""}
+                              </span>
+                              <span className="shrink-0 text-amber-800/70">
+                                {new Date(l.timeline[0].createdAt).toLocaleDateString("en-IN", {
+                                  day: "numeric",
+                                  month: "short",
+                                })}
+                              </span>
+                            </div>
+                            <p className="text-gray-800 font-medium line-clamp-2 leading-relaxed">
+                              {l.timeline[0].notes}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Footer Row: Status, Next Follow-up & Quick Schedule Trigger */}
                       <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2 flex-wrap">
                         {/* Interactive 1-Tap Status Switcher (Without opening main drawer!) */}
                         <div
-                          className="relative shrink-0"
-                          data-popover-container="status"
+                          className="relative shrink-0 inline-flex items-center"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <button
-                            type="button"
-                            onClick={(e) => {
+                          <select
+                            value={l.status}
+                            onChange={async (e) => {
                               e.stopPropagation();
-                              setCardFollowUpPickerId(null);
-                              setCardStatusPickerId(cardStatusPickerId === l.id ? null : l.id);
+                              await handleUpdateStage(e.target.value, l.id);
                             }}
                             className={cn(
-                              "min-h-[34px] px-2.5 py-1 rounded-xl border text-xs font-bold inline-flex items-center gap-1.5 transition-all active:scale-95 shadow-2xs hover:ring-2 hover:ring-emerald-500/20",
+                              "min-h-[34px] appearance-none pl-2.5 pr-6 py-1 rounded-xl border text-xs font-bold transition-all shadow-2xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/30 hover:ring-2 hover:ring-emerald-500/20 active:scale-95",
                               STATUS_COLORS[l.status] || "bg-gray-100 text-gray-700 border-gray-200"
                             )}
-                            title="Tap to change pipeline stage without opening drawer"
+                            title="Change pipeline stage directly without opening drawer"
                           >
-                            <span className="truncate max-w-[125px]">
-                              {LEAD_STATUS_LABELS[l.status] ?? l.status.replace(/_/g, " ")}
-                            </span>
-                            <ChevronDown className="w-3.5 h-3.5 opacity-60 shrink-0" />
-                          </button>
-
-                          {/* Desktop Quick Stage Picker Popover (Mobile uses Native Action Sheet) */}
-                          {cardStatusPickerId === l.id && (
-                            <div
-                              onClick={(e) => e.stopPropagation()}
-                              className="hidden lg:block absolute left-0 bottom-full mb-1.5 w-56 bg-white rounded-2xl shadow-xl border border-gray-200 p-1.5 z-40 max-h-64 overflow-y-auto"
-                            >
-                              <div className="text-[10px] font-bold text-gray-400 uppercase px-2 py-1 flex items-center justify-between">
-                                <span>Change Stage</span>
-                                <button
-                                  type="button"
-                                  onClick={() => setCardStatusPickerId(null)}
-                                  className="text-gray-400 hover:text-gray-600 p-0.5"
-                                >
-                                  <X className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                              {LEAD_STATUSES.map((st) => (
-                                <button
-                                  key={st}
-                                  type="button"
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-                                    setCardStatusPickerId(null);
-                                    await handleUpdateStage(st, l.id);
-                                  }}
-                                  className={cn(
-                                    "w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors",
-                                    l.status === st
-                                      ? "bg-emerald-50 text-emerald-800 font-bold"
-                                      : "hover:bg-gray-50 text-gray-700"
-                                  )}
-                                >
-                                  <span>{LEAD_STATUS_LABELS[st] ?? st}</span>
-                                  {l.status === st && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                                </button>
-                              ))}
-                            </div>
-                          )}
+                            {LEAD_STATUSES.map((st) => (
+                              <option key={st} value={st} className="bg-white text-gray-900 font-semibold py-1">
+                                {LEAD_STATUS_LABELS[st] ?? st}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown className="w-3.5 h-3.5 opacity-60 absolute right-1.5 pointer-events-none text-current" />
                         </div>
 
+                        {/* Follow-up Status Badge & Schedule Trigger */}
                         <div
                           className="flex items-center gap-1.5 shrink-0"
                           data-popover-container="followup"
                           onClick={(e) => e.stopPropagation()}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onTouchStart={(e) => e.stopPropagation()}
                         >
                           {l.nextFollowUpDate ? (
                             <span
@@ -3209,7 +3174,13 @@ export default function CrmLeadsPage() {
                             onClick={(e) => {
                               e.stopPropagation();
                               setCardStatusPickerId(null);
-                              setCardFollowUpPickerId(cardFollowUpPickerId === l.id ? null : l.id);
+                              if (cardFollowUpPickerId === l.id) {
+                                setCardFollowUpPickerId(null);
+                              } else {
+                                setCardFollowUpPickerId(l.id);
+                                setCardCustomDate(l.nextFollowUpDate ? l.nextFollowUpDate.split("T")[0] : "");
+                                setCardRemarks("");
+                              }
                             }}
                             className="min-h-[32px] px-2.5 py-1 text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg flex items-center gap-1 transition-all active:scale-95"
                             title="Schedule next follow-up directly"
@@ -3227,10 +3198,13 @@ export default function CrmLeadsPage() {
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: "auto" }}
                             exit={{ opacity: 0, height: 0 }}
+                            data-popover-container="followup"
                             onClick={(e) => e.stopPropagation()}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onTouchStart={(e) => e.stopPropagation()}
                             className="overflow-hidden"
                           >
-                            <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl space-y-2.5 mt-1">
+                            <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl space-y-2.5 mt-1 shadow-xs">
                               <div className="flex items-center justify-between text-xs font-bold text-emerald-900">
                                 <span className="flex items-center gap-1">
                                   <Clock className="w-3.5 h-3.5 text-emerald-600" />
@@ -3262,7 +3236,7 @@ export default function CrmLeadsPage() {
                                       disabled={followUpSaving}
                                       onClick={async (e) => {
                                         e.stopPropagation();
-                                        await handleQuickUpdateFollowUp(isoDate, l.id);
+                                        await handleQuickUpdateFollowUp(isoDate, l.id, cardRemarks);
                                       }}
                                       className="px-2.5 py-1 text-xs font-bold rounded-lg bg-white hover:bg-emerald-600 hover:text-white text-gray-700 border border-gray-200 transition-all shadow-2xs active:scale-95 disabled:opacity-50"
                                     >
@@ -3286,30 +3260,50 @@ export default function CrmLeadsPage() {
                                 )}
                               </div>
 
-                              {/* Custom Calendar Date Input */}
+                              {/* Remarks / Discussion Note for this Follow-up */}
+                              <div>
+                                <input
+                                  type="text"
+                                  placeholder="Add remarks or notes (optional)..."
+                                  value={cardRemarks}
+                                  onChange={(e) => setCardRemarks(e.target.value)}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" && (cardCustomDate || l.nextFollowUpDate)) {
+                                      e.preventDefault();
+                                      handleQuickUpdateFollowUp(cardCustomDate || l.nextFollowUpDate || null, l.id, cardRemarks);
+                                    }
+                                  }}
+                                  className="w-full min-h-[34px] bg-white border border-gray-200 text-xs py-1.5 px-2.5 rounded-lg focus:outline-none focus:border-emerald-600 font-medium text-gray-800 placeholder:text-gray-400"
+                                />
+                              </div>
+
+                              {/* Custom Calendar Date Input & Save Button */}
                               <div className="flex items-center gap-1.5 pt-1 border-t border-emerald-100">
                                 <input
                                   type="date"
                                   value={cardCustomDate}
                                   onChange={(e) => setCardCustomDate(e.target.value)}
-                                  className="min-h-[34px] flex-1 bg-white border border-gray-200 text-xs py-1 px-2.5 rounded-lg focus:outline-none focus:border-emerald-600 font-semibold"
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="min-h-[34px] flex-1 bg-white border border-gray-200 text-xs py-1 px-2.5 rounded-lg focus:outline-none focus:border-emerald-600 font-semibold text-gray-800"
                                 />
                                 <button
                                   type="button"
-                                  disabled={followUpSaving || !cardCustomDate}
+                                  disabled={followUpSaving || (!cardCustomDate && !cardRemarks.trim())}
                                   onClick={async (e) => {
                                     e.stopPropagation();
-                                    await handleQuickUpdateFollowUp(cardCustomDate, l.id);
-                                    setCardCustomDate("");
+                                    await handleQuickUpdateFollowUp(cardCustomDate || l.nextFollowUpDate || null, l.id, cardRemarks);
                                   }}
-                                  className="min-h-[34px] px-3 py-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg shadow-xs transition-all flex items-center gap-1"
+                                  className="min-h-[34px] px-3 py-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg shadow-xs transition-all flex items-center gap-1 shrink-0 active:scale-95"
                                 >
                                   {followUpSaving ? (
                                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                                   ) : (
                                     <Check className="w-3.5 h-3.5" />
                                   )}
-                                  Set
+                                  Save
                                 </button>
                               </div>
                             </div>
@@ -3322,11 +3316,11 @@ export default function CrmLeadsPage() {
               </div>
             </div>
 
-            {/* Right Column: Lead Detail (Desktop Only) */}
+            {/* Right Column: Lead Detail (Desktop & Tablet Split View) */}
             <div
               className={cn(
-                "hidden lg:flex lg:col-span-7 xl:col-span-8 bg-white border border-gray-200/90 rounded-3xl shadow-xs",
-                "flex-col overflow-hidden lg:sticky lg:top-20 lg:h-[calc(100vh-100px)] lg:min-h-[500px]"
+                "hidden md:flex md:col-span-7 lg:col-span-7 xl:col-span-8 flex-col bg-white border border-gray-200/90 rounded-3xl shadow-xs overflow-hidden",
+                "md:sticky md:top-20 md:h-[calc(100vh-100px)] md:min-h-[580px]"
               )}
             >
               {selectedLeadId && detailLoading && (
@@ -3337,7 +3331,7 @@ export default function CrmLeadsPage() {
               )}
 
               {selectedLeadId && !detailLoading && selectedLead && (
-                <div className="overflow-y-auto flex-1 p-6 scrollbar-thin">
+                <div className="overflow-y-auto flex-1 p-5 sm:p-6 scrollbar-thin">
                   {renderDetailContent()}
                 </div>
               )}
@@ -3358,7 +3352,7 @@ export default function CrmLeadsPage() {
         {/* ── Mobile Full-Screen Detail Sheet (Mobile-First Experience!) ── */}
         <AnimatePresence>
           {showMobileDetail && selectedLeadId && (
-            <div className="fixed inset-0 z-50 lg:hidden flex flex-col bg-slate-900/60 backdrop-blur-xs">
+            <div className="fixed inset-0 z-50 md:hidden flex flex-col bg-slate-900/60 backdrop-blur-xs">
               <motion.div
                 initial={{ y: "100%" }}
                 animate={{ y: 0 }}
