@@ -45,12 +45,10 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
-import { ParentStudentProfileContent } from "@/components/ParentStudentProfileContent";
 import OnboardingDrawer from "@/components/twa/OnboardingDrawer";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import PwaInstallButton from "@/components/PwaInstallButton";
 import { useAuthStore } from "@/store/auth";
-import { useActiveClass } from "@/store/activeClass";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { useState, useEffect, useRef } from "react";
@@ -981,25 +979,13 @@ export function Sidebar({
   );
 }
 
-const switcherOrbClass =
-  "absolute -top-5 shadow-lg shadow-primary-700/10 left-1/2 flex size-12 -translate-x-1/2 items-center justify-center rounded-full border-[3px] border-white bg-linear-to-br from-primary-500 via-primary-600 to-primary-800 text-primary-foreground   ";
-
 export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { user, activeClientId, accessToken, logout, activeStudentId } =
+  const { user, activeClientId, accessToken, logout } =
     useAuthStore();
   const { lang } = useLanguageStore();
   const [moreOpen, setMoreOpen] = useState(false);
-  const [studentSwitcherOpen, setStudentSwitcherOpen] = useState(false);
-  const [classSwitcherOpen, setClassSwitcherOpen] = useState(false);
-  const {
-    classes: teacherClasses,
-    activeClass,
-    activeClassId,
-    setActiveClassId,
-    isLoading: classesLoading,
-  } = useActiveClass();
   const [profileOptionsOpen, setProfileOptionsOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [onboardingRole, setOnboardingRole] = useState<
@@ -1022,13 +1008,6 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
 
   const isSuperAdmin = user.actorType === "SUPER_ADMIN";
   const hasActiveClient = !!activeClientId;
-  const isParent = user.actorType === "PARENT";
-  const studentIds = isParent ? (user.accessibleStudentIds ?? []) : [];
-  const students = isParent ? (user.accessibleStudents ?? []) : [];
-  const currentStudentId = activeStudentId ?? studentIds[0] ?? null;
-  const currentStudent = students.find(
-    (student) => student.id === currentStudentId,
-  );
 
   let allLinks = getLinksByRole(user.role, user.actorType, hasActiveClient);
   allLinks = insertArtsfestLink(allLinks, user.role, user.actorType);
@@ -1114,53 +1093,6 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
     <>
       <nav className="lg:hidden fixed bottom-0 left-1/2 py-1 pb-4  w-full rounded-t-2xl -translate-x-1/2 z-30   border border-white/60 bg-white/85 shadow-[0_8px_30px_rgba(15,67,45,0.12)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/70 pb-safe">
         <div className="flex items-stretch justify-center gap-2 px-0">
-          {user.role === "teacher" && (
-            <button
-              type="button"
-              aria-label={
-                lang === "ml" ? "ക്ലാസ് മാറ്റുക" : "Switch active class"
-              }
-              aria-haspopup="dialog"
-              onClick={() => setClassSwitcherOpen(true)}
-              className="relative z-10 flex h-14 w-16 shrink-0 flex-col items-center justify-end pb-2 text-primary-700 transition-transform active:scale-95 focus-visible:rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-            >
-              <span className={switcherOrbClass}>
-                <School className="size-5" aria-hidden="true" />
-              </span>
-              <span className="max-w-16 truncate text-center text-[11px] font-medium leading-none">
-                {activeClass?.name ?? "Class"}
-              </span>
-            </button>
-          )}
-
-          {isParent && studentIds.length > 0 && (
-            <button
-              type="button"
-              aria-label={
-                lang === "ml"
-                  ? "വിദ്യാർത്ഥിയെ തിരഞ്ഞെടുക്കുക"
-                  : "Switch student"
-              }
-              aria-haspopup="dialog"
-              onClick={() => setStudentSwitcherOpen(true)}
-              className="relative z-10 flex h-14 w-16 shrink-0 flex-col items-center justify-end pb-2 text-primary-700 transition-transform active:scale-95 focus-visible:rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-            >
-              <span className={switcherOrbClass}>
-                <Avatar size="sm">
-                  <AvatarImage src={currentStudent?.photoUrl ?? undefined} />
-                  <AvatarFallback className="bg-transparent text-white">
-                    {(currentStudent?.name ?? "Student")
-                      .charAt(0)
-                      .toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-              </span>
-              <span className="max-w-16 truncate text-center text-[11px] font-medium leading-none">
-                {(currentStudent?.name ?? "Student").substring(0, 5)}
-              </span>
-            </button>
-          )}
-
           {links.map((l) => {
             const fullHref = l.isExternal
               ? l.href
@@ -1258,50 +1190,6 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
           )}
         </div>
       </nav>
-      {user.role === "teacher" && (
-        <ResponsivePopover
-          open={classSwitcherOpen}
-          onOpenChange={setClassSwitcherOpen}
-          side="bottom"
-          title={lang === "ml" ? "സജീവ ക്ലാസ്" : "Active class"}
-          contentClassName="p-4"
-        >
-          {classesLoading ? (
-            <p className="py-4 text-sm text-gray-500">
-              {lang === "ml" ? "ക്ലാസുകൾ ലോഡ് ചെയ്യുന്നു…" : "Loading classes…"}
-            </p>
-          ) : teacherClasses.length === 0 ? (
-            <p className="py-4 text-sm text-gray-500">
-              {lang === "ml" ? "ക്ലാസുകൾ നൽകിയിട്ടില്ല" : "No classes assigned"}
-            </p>
-          ) : (
-            <div className="divide-y divide-gray-100">
-              {teacherClasses.map((cls) => (
-                <button
-                  key={cls.id}
-                  type="button"
-                  aria-pressed={activeClassId === cls.id}
-                  onClick={() => {
-                    setActiveClassId(cls.id);
-                    setClassSwitcherOpen(false);
-                  }}
-                  className={cn(
-                    "flex w-full items-center justify-between gap-3 py-3 text-left text-sm",
-                    activeClassId === cls.id
-                      ? "font-semibold text-primary-700"
-                      : "text-gray-700",
-                  )}
-                >
-                  <span>{cls.name}</span>
-                  {activeClassId === cls.id && (
-                    <BadgeCheck className="size-5 shrink-0" />
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-        </ResponsivePopover>
-      )}
       <ResponsivePopover
         showCloseButton={false}
         open={moreOpen}
@@ -1365,18 +1253,6 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
           </div>
         </>
       </ResponsivePopover>
-      {isParent && studentIds.length > 0 && (
-        <ResponsivePopover
-          open={studentSwitcherOpen}
-          onOpenChange={setStudentSwitcherOpen}
-          side="bottom"
-          contentClassName="p-4"
-        >
-          <ParentStudentProfileContent
-            onBack={() => setStudentSwitcherOpen(false)}
-          />
-        </ResponsivePopover>
-      )}
       <ResponsivePopover
         showCloseButton={false}
         open={profileOptionsOpen}

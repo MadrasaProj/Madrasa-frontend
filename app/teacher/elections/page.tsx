@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { PageHeaderSwitchers } from "@/components/ui/PageHeader";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguageStore } from "@/store/language";
 import { useActiveClass } from "@/store/activeClass";
@@ -119,7 +120,7 @@ export default function TeacherElectionsPage() {
     <DashboardLayout>
       {/* ── Header ── */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-4 lg:mb-6">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-3">
           <div className="w-10 h-10 bg-teal-100 rounded-2xl flex items-center justify-center">
             <Vote className="w-5 h-5 text-teal-700" />
           </div>
@@ -131,6 +132,7 @@ export default function TeacherElectionsPage() {
               {t("elections", "teacherSubtitle", lang)}
             </p>
           </div>
+          <PageHeaderSwitchers />
         </div>
       </motion.div>
 

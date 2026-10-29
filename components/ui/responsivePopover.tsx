@@ -1,4 +1,5 @@
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { ChevronLeft, Clock3, X } from "lucide-react";
 import {
   Drawer as BaseDrawer,
@@ -48,7 +49,7 @@ function useIsDesktop() {
   return isDesktop;
 }
 
-/** A controlled drawer: wide from the right on desktop, responsive on mobile. */
+/** A controlled drawer: wide from the right on desktop, responsive on mobile. When fullHeight=true, renders a fixed full-screen div without drawer motion. */
 export function ResponsivePopover({
   open,
   onOpenChange,
@@ -72,29 +73,118 @@ export function ResponsivePopover({
   const swipeDirection = compact ? "down" : wideDesktopDrawer ? "right" : side === "bottom" || (side === "responsive" && !isDesktop) ? "down" : "right";
   const isBottom = swipeDirection === "down";
 
+  const renderClose = !showBackButton && showCloseButton;
+
+  React.useEffect(() => {
+    if (!fullHeight || !open) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (onBack) onBack();
+        else onOpenChange(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [fullHeight, open, onBack, onOpenChange]);
+
+  if (fullHeight) {
+    if (!open) return null;
+
+    const fullHeightContent = (
+      <div
+        role="dialog"
+        aria-modal="true"
+        className={cn(
+          "fixed inset-0 z-50 flex h-dvh max-h-dvh w-screen flex-col bg-white text-gray-900 shadow-2xl",
+          className,
+        )}
+      >
+        {(title || description || headerAction || renderClose || showBackButton) && (
+          <header
+            className={cn(
+              "relative shrink-0 border-b border-gray-100 px-5 pb-4 pt-4",
+              (showBackButton || renderClose) && "min-h-14",
+            )}
+          >
+            {(title || description || headerAction) && (
+              <div
+                className={cn(
+                  "min-w-0 space-y-0.5 text-left",
+                  showBackButton && "pl-8",
+                  renderClose && "pr-11",
+                )}
+              >
+                <div className="flex min-w-0 items-center justify-between gap-3">
+                  {title && (
+                    <h2 className="min-w-0 break-words text-base font-extrabold tracking-tight">
+                      {title}
+                    </h2>
+                  )}
+                  {headerAction && <div className="shrink-0">{headerAction}</div>}
+                </div>
+                {description && (
+                  <p className="text-xs text-gray-500">{description}</p>
+                )}
+              </div>
+            )}
+            {showBackButton && (
+              <button
+                type="button"
+                aria-label="Back"
+                onClick={onBack ?? (() => onOpenChange(false))}
+                className="absolute left-2 top-4 flex size-11 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 md:size-9"
+              >
+                <ChevronLeft className="size-6 md:size-5" />
+              </button>
+            )}
+            {renderClose && (
+              <button
+                type="button"
+                aria-label="Close"
+                onClick={() => onOpenChange(false)}
+                className="absolute right-2 top-2 flex size-11 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 md:size-9"
+              >
+                <X className="size-6 md:size-5" />
+              </button>
+            )}
+          </header>
+        )}
+        <div
+          className={cn(
+            "min-h-0 flex-1 overflow-y-auto overscroll-contain",
+            contentClassName,
+          )}
+        >
+          {children}
+        </div>
+        {footer && <div className="shrink-0">{footer}</div>}
+      </div>
+    );
+
+    return typeof document !== "undefined"
+      ? createPortal(fullHeightContent, document.body)
+      : fullHeightContent;
+  }
+
   return (
-    <BaseDrawer open={open} onOpenChange={onOpenChange} swipeDirection={swipeDirection} showSwipeHandle={false} disableAnimation={fullHeight}>
+    <BaseDrawer open={open} onOpenChange={onOpenChange} swipeDirection={swipeDirection} showSwipeHandle={false}>
       <DrawerContent
         className={cn(
           "bg-white text-gray-900 shadow-2xl",
-          fullHeight
-            ? "h-dvh max-h-dvh"
-            : compact ? "mx-auto w-full max-w-md max-h-[92dvh]" : isBottom ? "max-h-[92dvh]" : wideDesktopDrawer ? "h-full max-h-dvh max-w-none" : "h-full max-h-dvh w-full sm:max-w-md",
+          compact ? "mx-auto w-full max-w-md max-h-[92dvh]" : isBottom ? "max-h-[92dvh]" : wideDesktopDrawer ? "h-full max-h-dvh max-w-none" : "h-full max-h-dvh w-full sm:max-w-md",
           className,
         )}
-        style={{
-          ...(wideDesktopDrawer && { "--drawer-content-width": "90vw" }),
-          ...(fullHeight && {
-            "--drawer-content-height": "100dvh",
-            "--drawer-content-max-height": "100dvh",
-            borderRadius: 0,
-          }),
-        } as React.CSSProperties}
+        style={wideDesktopDrawer ? { "--drawer-content-width": "90vw" } as React.CSSProperties : undefined}
       >
         {(title || description || headerAction || showCloseButton || showBackButton) && (
           <DrawerHeader className={cn("relative shrink-0", compact ? "px-4 pb-2 pt-3" : isBottom ? "px-5 pb-3.5 pt-5" : "px-5 pb-4 pt-4", (showBackButton || showCloseButton) && "min-h-14")}>
             {(title || description || headerAction) && (
-              <div className={cn("min-w-0 space-y-0.5 text-left", showBackButton && "pl-9", showCloseButton && "pr-11")}>
+              <div className={cn("min-w-0 space-y-0.5 text-left", showBackButton && "pl-8", renderClose && "pr-11")}>
                 <div className="flex min-w-0 items-center justify-between gap-3">
                   {title && <DrawerTitle className="min-w-0 break-words text-base font-extrabold tracking-tight">{title}</DrawerTitle>}
                   {headerAction && <div className="shrink-0">{headerAction}</div>}
@@ -102,8 +192,8 @@ export function ResponsivePopover({
                 {description && <DrawerDescription className="text-xs">{description}</DrawerDescription>}
               </div>
             )}
-            {showBackButton && <button type="button" aria-label="Back" onClick={onBack ?? (() => onOpenChange(false))} className="absolute left-2 top-2 flex size-11 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 md:size-9"><ChevronLeft className="size-6 md:size-5" /></button>}
-            {showCloseButton && <DrawerClose aria-label="Close" className="absolute right-2 top-2 flex size-11 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 md:size-9"><X className="size-6 md:size-5" /></DrawerClose>}
+            {showBackButton && <button type="button" aria-label="Back" onClick={onBack ?? (() => onOpenChange(false))} className="absolute left-2 top-4 flex size-11 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 md:size-9"><ChevronLeft className="size-6 md:size-5" /></button>}
+            {renderClose && <DrawerClose aria-label="Close" className="absolute right-2 top-2 flex size-11 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 md:size-9"><X className="size-6 md:size-5" /></DrawerClose>}
           </DrawerHeader>
         )}
         <div className={cn("min-h-0 overflow-y-auto overscroll-contain", compact ? "flex-auto" : "flex-1", contentClassName)}>{children}</div>

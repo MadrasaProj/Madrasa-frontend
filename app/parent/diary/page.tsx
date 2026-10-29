@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { PageHeaderSwitchers } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import type { DiaryEntry, DiaryComment } from "@/lib/diary-api";
 import type { DiaryEventNotification, NotificationType } from "@/lib/notifications-api";
@@ -262,17 +263,20 @@ export default function ParentDiaryPage() {
   return (
     <DashboardLayout>
       <div className="max-w-2xl mx-auto pb-28">
-        <div className="flex items-center justify-between gap-4 mb-8 px-4 pt-2">
-          <h1 className="text-3xl font-bold text-gray-900 leading-none tracking-tight">
+        <div className="flex items-center justify-between gap-2 mb-8 px-4 pt-2">
+          <h1 className="min-w-0 truncate text-2xl sm:text-3xl font-bold text-gray-900 leading-none tracking-tight">
             {t("parentPages", "heyGreeting", lang)} {parentFirstName}!
           </h1>
-          <button
-            onClick={() => setSearchOpen((v) => !v)}
-            className="p-3 rounded-full bg-white border border-gray-200 hover:bg-gray-50 active:scale-95 transition shrink-0 shadow-sm"
-            aria-label="Search"
-          >
-            <Search className="w-5 h-5 text-gray-600" />
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <PageHeaderSwitchers />
+            <button
+              onClick={() => setSearchOpen((v) => !v)}
+              className="p-3 rounded-full bg-white border border-gray-200 hover:bg-gray-50 active:scale-95 transition shrink-0 shadow-sm"
+              aria-label="Search"
+            >
+              <Search className="w-5 h-5 text-gray-600" />
+            </button>
+          </div>
         </div>
 
         {error && <div className="px-4"><ApiErrorBanner message={error} onRetry={() => {}} /></div>}

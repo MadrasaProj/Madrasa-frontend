@@ -1,9 +1,9 @@
 import { useState, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { PageHeaderSwitchers } from "@/components/ui/PageHeader";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { DrawerSelector } from "@/components/DrawerSelector";
 import { TeacherAttendanceDrawer } from "@/components/teacher/TeacherAttendanceDrawer";
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
 import {
@@ -33,7 +33,6 @@ import {
 import {
   Bell,
   BookOpen,
-  ChevronDown,
   ChevronRight,
   ClipboardList,
   Clock3,
@@ -72,10 +71,8 @@ export default function TeacherDashboard() {
   const [ibadahDrawerOpen, setIbadahDrawerOpen] = useState(false);
   const [attendanceDrawerOpen, setAttendanceDrawerOpen] = useState(false);
   const {
-    classes: teacherClasses,
     activeClass,
     activeClassId,
-    setActiveClassId,
     isLoading: loadingClass,
   } = useActiveClass();
   const clientId = user?.clientId ?? "";
@@ -320,30 +317,7 @@ export default function TeacherDashboard() {
               </span>
             </div>
           </div>
-          <DrawerSelector
-            title={lang === "ml" ? "സജീവ ക്ലാസ്" : "Active class"}
-            options={teacherClasses.map((cls) => ({
-              value: cls.id,
-              label: cls.name,
-            }))}
-            value={activeClassId}
-            onChange={setActiveClassId}
-            placeholder={t("teacherPages", "selectClassOpt", lang)}
-            disabled={loadingClass}
-            triggerItem={
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 rounded-full   gap-1.5     px-3 "
-              >
-                {/* <School className="size-4" aria-hidden="true" /> */}
-                <span className="min-w-0 truncate text-xs">
-                  {activeClass?.name ?? t("common", "class", lang)}
-                </span>
-                <ChevronDown />
-              </Button>
-            }
-          />
+          <PageHeaderSwitchers />
         </header>
 
         {/* Ibadah Card */}

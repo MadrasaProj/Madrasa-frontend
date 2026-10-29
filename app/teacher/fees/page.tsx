@@ -44,6 +44,7 @@ import {
   CircleCheck,
   CircleX,
   AlertCircle,
+  ChevronRight,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { PolarAngleAxis, RadialBar, RadialBarChart } from "recharts";
@@ -53,6 +54,61 @@ const feeProgressChartConfig = {
 } satisfies ChartConfig;
 
 const formatCurrency = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
+
+function getFrequencyLabel(frequency: string | null, lang: Lang): string | null {
+  if (!frequency) return null;
+  switch (frequency.toUpperCase()) {
+    case "WEEKLY": return t("teacherPages", "feeFrequencyWeekly", lang);
+    case "MONTHLY": return t("parentPages", "frequencyMonthly", lang);
+    case "QUARTERLY": return t("parentPages", "frequencyQuarterly", lang);
+    case "YEARLY": return t("parentPages", "frequencyYearly", lang);
+    default: return frequency.charAt(0).toUpperCase() + frequency.slice(1).toLowerCase();
+  }
+}
+
+function getBillingInterval(dueDate: string, frequency: string | null, lang: Lang) {
+  const date = new Date(dueDate);
+  if (Number.isNaN(date.getTime())) return { key: dueDate, label: dueDate };
+
+  const locale = lang === "ml" ? "ml-IN" : "en-IN";
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const monthKey = String(month + 1).padStart(2, "0");
+  switch (frequency?.toUpperCase()) {
+    case "WEEKLY": {
+      const start = new Date(year, month, date.getDate());
+      start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+      const end = new Date(start);
+      end.setDate(end.getDate() + 6);
+      const format = (value: Date) => value.toLocaleDateString(locale, { day: "numeric", month: "short" });
+      return {
+        key: `W-${toLocalDateOnly(start.toISOString())}`,
+        label: `${format(start)} – ${format(end)} ${end.getFullYear()}`,
+      };
+    }
+    case "MONTHLY":
+      return {
+        key: `${year}-${monthKey}`,
+        label: date.toLocaleDateString(locale, { month: "long", year: "numeric" }),
+      };
+    case "QUARTERLY": {
+      const quarterStart = Math.floor(month / 3) * 3;
+      const first = new Date(year, quarterStart, 1);
+      const last = new Date(year, quarterStart + 2, 1);
+      return {
+        key: `${year}-Q${Math.floor(month / 3) + 1}`,
+        label: `${first.toLocaleDateString(locale, { month: "short" })}–${last.toLocaleDateString(locale, { month: "short" })} ${year}`,
+      };
+    }
+    case "YEARLY":
+      return { key: String(year), label: String(year) };
+    default:
+      return {
+        key: toLocalDateOnly(dueDate),
+        label: date.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" }),
+      };
+  }
+}
 
 async function getAllClassStudents(clientId: string, token: string, classId: string, signal: AbortSignal) {
   const students: StudentRecord[] = [];
@@ -66,14 +122,14 @@ async function getAllClassStudents(clientId: string, token: string, classId: str
   }
 }
 
-function FeeTypeProgress({ collected, total }: { collected: number; total: number }) {
+function FeeTypeProgress({ collected, total, ariaLabel }: { collected: number; total: number; ariaLabel?: string }) {
   const percentage = total > 0 ? Math.min(100, Math.max(0, (collected / total) * 100)) : 0;
 
   return (
     <div
       className="size-[30px] shrink-0"
       role="img"
-      aria-label={total > 0 ? `${Math.round(percentage)}% collected` : "No amount recorded"}
+      aria-label={ariaLabel ?? (total > 0 ? `${Math.round(percentage)}% collected` : "No amount recorded")}
     >
       <ChartContainer
         config={feeProgressChartConfig}
@@ -98,6 +154,33 @@ function FeeTypeProgress({ collected, total }: { collected: number; total: numbe
         </RadialBarChart>
       </ChartContainer>
     </div>
+  );
+}
+
+function CollectionProgress({ collected, total }: { collected: number; total: number }) {
+  const percentage = total > 0 ? Math.min(100, Math.max(0, (collected / total) * 100)) : 0;
+
+  return (
+    <svg
+      viewBox="0 0 40 40"
+      className="size-10 shrink-0"
+      role="img"
+      aria-label={total > 0 ? `${Math.round(percentage)}% collected` : "No amount recorded"}
+    >
+      <circle cx="20" cy="20" r="15" fill="none" stroke="rgba(0, 0, 0, 0.35)" strokeWidth="6" />
+      <circle
+        cx="20"
+        cy="20"
+        r="15"
+        fill="none"
+        stroke="white"
+        strokeWidth="6"
+        strokeLinecap="round"
+        pathLength="100"
+        strokeDasharray={`${percentage} 100`}
+        transform="rotate(-90 20 20)"
+      />
+    </svg>
   );
 }
 
@@ -396,6 +479,8 @@ export default function TeacherFeesPage() {
   const [expandedFeeTypeId, setExpandedFeeTypeId] = useState<string | null>(null);
   const [studentFilter, setStudentFilter] = useState<"all" | "paid" | "unpaid">("all");
   const [recurringStudentId, setRecurringStudentId] = useState<string | null>(null);
+  const [recurringView, setRecurringView] = useState<"students" | "intervals">("students");
+  const [selectedIntervalKey, setSelectedIntervalKey] = useState<string | null>(null);
 
   const [selectedPayment, setSelectedPayment] = useState<FeePayment | null>(null);
   const [payMethod, setPayMethod] = useState("CASH");
@@ -481,6 +566,22 @@ export default function TeacherFeesPage() {
   const selectedTypePayments = selectedFeeType
     ? payments.filter((payment) => payment.feeType.id === selectedFeeType.id)
     : [];
+  const billingIntervals = new Map<string, { key: string; label: string; dueDate: string; payments: FeePayment[] }>();
+  if (selectedFeeType?.kind === "RECURRING") {
+    selectedTypePayments.forEach((payment) => {
+      const { key, label } = getBillingInterval(payment.dueDate, selectedFeeType.frequency, lang);
+      const interval = billingIntervals.get(key);
+      if (interval) {
+        interval.payments.push(payment);
+        if (payment.dueDate < interval.dueDate) interval.dueDate = payment.dueDate;
+      } else {
+        billingIntervals.set(key, { key, label, dueDate: payment.dueDate, payments: [payment] });
+      }
+    });
+  }
+  const today = toLocalDateOnly(new Date().toISOString());
+  const elapsedPeriodCount = Array.from(billingIntervals.values())
+    .filter((interval) => toLocalDateOnly(interval.dueDate) <= today).length;
   const studentRows = students.map((student) => {
     const periods = selectedTypePayments
       .filter((payment) => payment.student.id === student.id)
@@ -494,16 +595,40 @@ export default function TeacherFeesPage() {
       (sum, payment) => payment.status === "WAIVED" ? sum : sum + Math.max(Number(payment.dueAmount), Number(payment.paidAmount ?? 0)),
       0,
     );
+    const pendingAmount = Math.max(0, Math.round((total - collected) * 100) / 100);
     const isPaid = selectedFeeType?.kind === "ONE_TIME"
       ? paidPeriods > 0
       : periods.length > 0 && paidPeriods === periods.length;
-    return { student, periods, paidPeriods, collected, total, isPaid };
+    return { student, periods, paidPeriods, collected, total, pendingAmount, isPaid };
   }).sort((a, b) => a.student.name.localeCompare(b.student.name));
   const paidStudentCount = studentRows.filter((row) => row.isPaid).length;
   const visibleStudentRows = studentRows.filter((row) =>
     studentFilter === "all" || (studentFilter === "paid" ? row.isPaid : !row.isPaid),
   );
   const recurringStudent = studentRows.find((row) => row.student.id === recurringStudentId) ?? null;
+  const intervalSummaries = Array.from(billingIntervals.values()).map((interval) => {
+    const rows = studentRows.map(({ student }) => {
+      const payment = interval.payments.find((item) => item.student.id === student.id);
+      const status: FeePaymentStatus = payment?.status ?? "PENDING";
+      const dueAmount = Number(payment?.dueAmount ?? selectedFeeType?.amount ?? 0);
+      const paidAmount = status === "WAIVED"
+        ? 0
+        : Number(payment?.paidAmount ?? (status === "PAID" ? payment?.dueAmount : 0));
+      const remaining = status === "WAIVED"
+        ? 0
+        : Math.max(0, Math.round((dueAmount - paidAmount) * 100) / 100);
+      return { student, status, dueAmount, paidAmount, remaining };
+    });
+    return {
+      ...interval,
+      rows,
+      paidStudents: rows.filter((row) => row.status === "PAID").length,
+      pendingStudents: rows.filter((row) => row.status === "PENDING" || row.status === "PARTIAL" || row.status === "OVERDUE").length,
+      collected: rows.reduce((sum, row) => sum + row.paidAmount, 0),
+      toCollect: rows.reduce((sum, row) => sum + row.remaining, 0),
+    };
+  }).sort((a, b) => b.key.localeCompare(a.key));
+  const selectedInterval = intervalSummaries.find((interval) => interval.key === selectedIntervalKey) ?? null;
   const selectedFeeTypeSummary = feeTypeSummaries.find((summary) => summary.feeType.id === expandedFeeTypeId);
 
   const openPayment = (payment: FeePayment) => {
@@ -702,11 +827,7 @@ export default function TeacherFeesPage() {
                       ? t("parentPages", "frequencyOneTime", lang)
                       : t("teacherPages", "feeTypeRecurring", lang);
                     const frequency = feeType.kind === "RECURRING"
-                      ? feeType.frequency === "MONTHLY"
-                        ? t("parentPages", "frequencyMonthly", lang)
-                        : feeType.frequency === "YEARLY"
-                          ? t("parentPages", "frequencyYearly", lang)
-                          : feeType.frequency
+                      ? getFrequencyLabel(feeType.frequency, lang)
                       : null;
                     const expanded = expandedFeeTypeId === feeType.id;
 
@@ -719,6 +840,8 @@ export default function TeacherFeesPage() {
                           setExpandedFeeTypeId(feeType.id);
                           setStudentFilter("all");
                           setRecurringStudentId(null);
+                          setRecurringView("students");
+                          setSelectedIntervalKey(null);
                         }}
                         className={cn(
                           "flex w-full items-center gap-2 px-4 py-4 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500 sm:gap-4",
@@ -736,11 +859,12 @@ export default function TeacherFeesPage() {
                             </span>
                           </span>
                         </span>
-                        <span className="shrink-0 text-right text-xl font-semibold leading-tight tabular-nums sm:text-2xl">
-                          <span className="block text-emerald-700">₹{collected.toLocaleString("en-IN")}</span>
+                        <span className="  text-right text-xs font-semibold leading-tight   sm:text-2xl">
+                          <span className="block text-primary-700">₹{collected.toLocaleString("en-IN")}</span>
                           <span className="block text-gray-500">/ ₹{total.toLocaleString("en-IN")}</span>
                         </span>
                         <FeeTypeProgress collected={collected} total={total} />
+                        <ChevronRight className="ml-1 text-gray-400" />
                       </button>
                     );
                   })}
@@ -756,6 +880,7 @@ export default function TeacherFeesPage() {
           if (!open) {
             setExpandedFeeTypeId(null);
             setRecurringStudentId(null);
+            setSelectedIntervalKey(null);
             setSelectedPayment(null);
           }
         }}
@@ -767,23 +892,74 @@ export default function TeacherFeesPage() {
       >
         {selectedFeeType && (
           <div className="mx-auto w-full max-w-3xl space-y-5 px-4 pb-8 pt-2 sm:px-6">
-            <div className="rounded-2xl border border-gray-100 bg-emerald-50/60 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
-                {t("teacherPages", "feeStatsCollected", lang)} / {t("teacherPages", "feeTotalAmount", lang)}
-              </p>
-              <p className="mt-1 text-2xl font-bold tabular-nums">
-                <span className="text-emerald-700">{formatCurrency(selectedFeeTypeSummary?.collected ?? 0)}</span>
-                <span className="text-gray-400"> / </span>
-                <span className="text-gray-900">{formatCurrency(selectedFeeTypeSummary?.total ?? 0)}</span>
-              </p>
-              <p className="mt-1 text-xs text-gray-500">
-                {studentRows.length} {t("teacherPages", "feeStudentsCount", lang)}
-              </p>
+            <div className="rounded-2xl border-2 border-white shadow-xs bg-linear-120 from-primary-400 to-primary-700 *:text-gray-100  p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide">
+                    {t("teacherPages", "feeStatsCollected", lang)} / {t("teacherPages", "feeTotalAmount", lang)}
+                  </p>
+                  <p className="mt-1 text-xl font-bold tabular-nums sm:text-2xl">
+                    <span className="text-primary-100">{formatCurrency(selectedFeeTypeSummary?.collected ?? 0)}</span>
+                    <span className="text-gray-100"> / </span>
+                    <span className="text-primary-900">{formatCurrency(selectedFeeTypeSummary?.total ?? 0)}</span>
+                  </p>
+                </div>
+                <CollectionProgress
+                  collected={selectedFeeTypeSummary?.collected ?? 0}
+                  total={selectedFeeTypeSummary?.total ?? 0}
+                />
+              </div>
+
+              <dl className="mt-2 grid grid-cols-2   *:bg-linear-120 *:from-white/20  *:p-2 gap-0.5 *:shadow-xs *:rounded pt-0 text-sm">
+                <div>
+                  <dt className="text-xs text-gray-200">{t("teacherPages", "feeAmount", lang)}</dt>
+                  <dd className="mt-1 font-semibold tabular-nums text-gray-100">
+                    {selectedFeeType.isDonation
+                      ? t("teacherPages", "feeTypeDonation", lang)
+                      : formatCurrency(Number(selectedFeeType.amount))}
+                  </dd>
+                </div>
+                {selectedFeeType.kind === "RECURRING" && (
+                  <>
+                    <div>
+                      <dt className="text-xs text-gray-200">{t("teacherPages", "feeInterval", lang)}</dt>
+                      <dd className="mt-1 font-semibold text-gray-100">
+                        {getFrequencyLabel(selectedFeeType.frequency, lang) ?? "—"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-gray-200">{t("teacherPages", "feePeriodsElapsed", lang)}</dt>
+                      <dd className="mt-1 font-semibold tabular-nums text-gray-100">{elapsedPeriodCount}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-gray-200">{t("teacherPages", "feeTotalPerStudent", lang)}</dt>
+                      <dd className="mt-1 font-semibold tabular-nums text-gray-100">
+                        {selectedFeeType.isDonation
+                          ? "—"
+                          : formatCurrency(Number(selectedFeeType.amount) * elapsedPeriodCount)}
+                      </dd>
+                    </div>
+                  </>
+                )}
+              </dl>
             </div>
+
+            {selectedFeeType.kind === "RECURRING" && (
+              <Tabs
+                value={recurringView}
+                onValueChange={(value) => setRecurringView(value as typeof recurringView)}
+                className="sticky top-2 z-10 -mx-4 px-4 sm:-mx-6 sm:px-6"
+              >
+                <TabsList className="grid w-max grid-cols-2   ">
+                  <TabsTrigger value="students">{t("common", "students", lang)}</TabsTrigger>
+                  <TabsTrigger value="intervals">{t("teacherPages", "feeIntervalsTab", lang)}</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
 
             {selectedFeeType.kind === "ONE_TIME" && (
               <Tabs value={studentFilter} onValueChange={(value) => setStudentFilter(value as typeof studentFilter)}>
-                <TabsList className="grid h-auto w-full grid-cols-3">
+                <TabsList className="grid h-auto w-max grid-cols-3">
                   <TabsTrigger value="all" className="px-2 py-2 text-xs sm:text-sm">
                     {t("common", "all", lang)} ({studentRows.length})
                   </TabsTrigger>
@@ -797,6 +973,7 @@ export default function TeacherFeesPage() {
               </Tabs>
             )}
 
+            {(selectedFeeType.kind === "ONE_TIME" || recurringView === "students") && (
             <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100 bg-white">
               {visibleStudentRows.length === 0 ? (
                 <p className="px-4 py-10 text-center text-sm text-gray-500">
@@ -813,42 +990,87 @@ export default function TeacherFeesPage() {
                   <button
                     key={row.student.id}
                     type="button"
-                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500"
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500"
                     onClick={() => selectedFeeType.kind === "ONE_TIME"
                       ? openOneTimePayment(row)
                       : setRecurringStudentId(row.student.id)}
                   >
-                    <span className="min-w-0">
+                    <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-semibold text-gray-900">{row.student.name}</span>
                       <span className="block text-xs text-gray-500">{row.student.adno}</span>
-                      {selectedFeeType.kind === "RECURRING" && (
+                      {/* {selectedFeeType.kind === "RECURRING" && (
                         <span className="mt-1 block text-xs tabular-nums text-gray-600">
                           {row.paidPeriods}/{row.periods.length} {t("teacherPages", "feePeriods", lang)}
                           {" · "}{formatCurrency(row.collected)} / {formatCurrency(row.total)}
                         </span>
-                      )}
+                      )} */}
                     </span>
                     {selectedFeeType.kind === "ONE_TIME" ? (
-                      <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-full", meta.bg, meta.color)} title={meta.label}>
+                      <span className={cn("flex h-6 px-1 shrink-0 gap-1 text-xs items-center justify-center rounded-lg", meta.bg, meta.color)} title={meta.label}>
                         <StatusIcon aria-hidden="true" className="size-4" />
-                        <span className="sr-only">{meta.label}</span>
+                        {meta.label}
                       </span>
                     ) : (
-                      <span className={cn("shrink-0 text-xs font-semibold tabular-nums", row.isPaid ? "text-emerald-700" : "text-amber-700")}>
-                        {row.paidPeriods}/{row.periods.length}
-                      </span>
+                      row.pendingAmount > 0 && (
+                        <span className="shrink-0 text-right text-xs font-semibold tabular-nums text-amber-700">
+                          <span className="block">{formatCurrency(row.pendingAmount)}</span>
+                          <span className="block">{t("common", "pending", lang)}</span>
+                        </span>
+                      )
                     )}
+                    <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-gray-400" />
                   </button>
                 );
               })}
             </div>
+            )}
+
+            {selectedFeeType.kind === "RECURRING" && recurringView === "intervals" && (
+              <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100 bg-white">
+                {intervalSummaries.length === 0 ? (
+                  <p className="px-4 py-10 text-center text-sm text-gray-500">
+                    {t("teacherPages", "feeNoIntervals", lang)}
+                  </p>
+                ) : intervalSummaries.map((interval) => (
+                  <button
+                    key={interval.key}
+                    type="button"
+                    aria-haspopup="dialog"
+                    onClick={() => setSelectedIntervalKey(interval.key)}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-900">
+                      {interval.label}
+                    </span>
+                    <FeeTypeProgress
+                      collected={interval.paidStudents}
+                      total={interval.rows.length}
+                      ariaLabel={`${interval.paidStudents}/${interval.rows.length} ${t("teacherPages", "feePaidStudents", lang)}`}
+                    />
+                    <span className="shrink-0 text-right text-xs font-semibold tabular-nums text-amber-700">
+                      <span className="block">{formatCurrency(interval.toCollect)}</span>
+                      <span className="block">{t("common", "pending", lang)}</span>
+                    </span>
+                    <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-gray-400" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       <ResponsivePopover
         open={recurringStudent !== null && selectedFeeType?.kind === "RECURRING"}
         onOpenChange={(open) => { if (!open) setRecurringStudentId(null); }}
         title={recurringStudent?.student.name}
-        description={selectedFeeType?.name}
+        description={selectedFeeType
+          ? [
+              selectedFeeType.name,
+              getFrequencyLabel(selectedFeeType.frequency, lang),
+              selectedFeeType.isDonation
+                ? t("teacherPages", "feeTypeDonation", lang)
+                : formatCurrency(Number(selectedFeeType.amount)),
+            ].filter(Boolean).join(" · ")
+          : undefined}
         fullHeight
       >
         {recurringStudent && selectedFeeType && (
@@ -911,6 +1133,63 @@ export default function TeacherFeesPage() {
         )}
       </ResponsivePopover>
 
+      <ResponsivePopover
+        open={selectedInterval !== null && selectedFeeType?.kind === "RECURRING"}
+        onOpenChange={(open) => { if (!open) setSelectedIntervalKey(null); }}
+        title={selectedInterval?.label}
+        description={selectedFeeType?.name}
+        fullHeight
+      >
+        {selectedInterval && (
+          <div className="mx-auto w-full max-w-2xl space-y-5 px-4 pb-8 pt-2 sm:px-6">
+            <dl className="grid grid-cols-2 gap-3 rounded-2xl border border-gray-100 bg-gray-50 p-4 text-sm">
+              <div>
+                <dt className="text-xs text-gray-500">{t("teacherPages", "feePaidStudents", lang)}</dt>
+                <dd className="mt-1 font-semibold tabular-nums text-emerald-700">{selectedInterval.paidStudents}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-gray-500">{t("teacherPages", "feePendingStudents", lang)}</dt>
+                <dd className="mt-1 font-semibold tabular-nums text-amber-700">{selectedInterval.pendingStudents}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-gray-500">{t("teacherPages", "feeStatsCollected", lang)}</dt>
+                <dd className="mt-1 font-semibold tabular-nums text-emerald-700">{formatCurrency(selectedInterval.collected)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-gray-500">{t("teacherPages", "feeStatsToCollect", lang)}</dt>
+                <dd className="mt-1 font-semibold tabular-nums text-amber-700">{formatCurrency(selectedInterval.toCollect)}</dd>
+              </div>
+            </dl>
+            <section>
+              <h3 className="mb-2 text-sm font-semibold text-gray-700">{t("common", "students", lang)}</h3>
+              <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100 bg-white">
+                {selectedInterval.rows.length === 0 ? (
+                  <p className="px-4 py-10 text-center text-sm text-gray-500">
+                    {t("teacherPages", "feeNoStudents", lang)}
+                  </p>
+                ) : selectedInterval.rows.map((row) => {
+                  const meta = STATUS_META[row.status];
+                  return (
+                    <div key={row.student.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-gray-900">{row.student.name}</p>
+                        <p className="text-xs text-gray-500">{row.student.adno}</p>
+                        <p className="mt-1 text-xs tabular-nums text-gray-500">
+                          {formatCurrency(row.paidAmount)} / {formatCurrency(row.dueAmount)}
+                        </p>
+                      </div>
+                      <span className={cn("shrink-0 rounded-full px-2.5 py-1 text-xs font-medium", meta.bg, meta.color)}>
+                        {meta.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          </div>
+        )}
+      </ResponsivePopover>
+
 
       {receipt && (
         <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
@@ -962,6 +1241,14 @@ export default function TeacherFeesPage() {
                       ₹{Number(selectedPayment.dueAmount).toLocaleString()}
                     </dd>
                   </div>
+                  {selectedFeeType?.kind === "RECURRING" && (
+                    <div>
+                      <dt className="text-muted-foreground">{t("teacherPages", "feeInterval", lang)}</dt>
+                      <dd className="mt-1 font-medium">
+                        {getFrequencyLabel(selectedFeeType.frequency, lang) ?? "—"}
+                      </dd>
+                    </div>
+                  )}
                   <div>
                     <dt className="text-muted-foreground">{t("teacherPages", "amountPaidLabel", lang)}</dt>
                     <dd className="mt-1 font-medium">
