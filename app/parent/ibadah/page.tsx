@@ -287,7 +287,8 @@ export default function ParentIbadahPage() {
         <ResponsivePopover
           open={recordOpen}
           onOpenChange={onRecordOpenChange}
-          className="h-dvh! max-h-dvh! w-screen! rounded-none!"
+          fullHeight
+          className="w-screen!"
           title={t("parentPages", "record", lang)}
           description={ibadah.student.name}
           contentClassName="px-4 pb-6"

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Clock3, X } from "lucide-react";
+import { ChevronLeft, Clock3, X } from "lucide-react";
 import {
   Drawer as BaseDrawer,
   DrawerClose,
@@ -21,6 +21,7 @@ export interface ResponsivePopoverProps {
   side?: Side;
   drawerOnDesktop?: boolean;
   compact?: boolean;
+  fullHeight?: boolean;
   title?: React.ReactNode;
   headerAction?: React.ReactNode;
   footer?: React.ReactNode;
@@ -29,6 +30,8 @@ export interface ResponsivePopoverProps {
   className?: string;
   contentClassName?: string;
   showCloseButton?: boolean;
+  showBackButton?: boolean;
+  onBack?: () => void;
 }
 
 function useIsDesktop() {
@@ -52,6 +55,7 @@ export function ResponsivePopover({
   side = "responsive",
   drawerOnDesktop = false,
   compact = false,
+  fullHeight = false,
   title,
   headerAction,
   footer,
@@ -60,6 +64,8 @@ export function ResponsivePopover({
   className,
   contentClassName,
   showCloseButton = true,
+  showBackButton = fullHeight,
+  onBack,
 }: ResponsivePopoverProps) {
   const isDesktop = useIsDesktop();
   const wideDesktopDrawer = !compact && isDesktop && !drawerOnDesktop;
@@ -67,19 +73,28 @@ export function ResponsivePopover({
   const isBottom = swipeDirection === "down";
 
   return (
-    <BaseDrawer open={open} onOpenChange={onOpenChange} swipeDirection={swipeDirection} showSwipeHandle={false}>
+    <BaseDrawer open={open} onOpenChange={onOpenChange} swipeDirection={swipeDirection} showSwipeHandle={false} disableAnimation={fullHeight}>
       <DrawerContent
         className={cn(
           "bg-white text-gray-900 shadow-2xl",
-          compact ? "mx-auto w-full max-w-md max-h-[92dvh]" : isBottom ? "max-h-[92dvh]" : wideDesktopDrawer ? "h-full max-h-dvh max-w-none" : "h-full max-h-dvh w-full sm:max-w-md",
+          fullHeight
+            ? "h-dvh max-h-dvh"
+            : compact ? "mx-auto w-full max-w-md max-h-[92dvh]" : isBottom ? "max-h-[92dvh]" : wideDesktopDrawer ? "h-full max-h-dvh max-w-none" : "h-full max-h-dvh w-full sm:max-w-md",
           className,
         )}
-        style={wideDesktopDrawer ? { "--drawer-content-width": "90vw" } as React.CSSProperties : undefined}
+        style={{
+          ...(wideDesktopDrawer && { "--drawer-content-width": "90vw" }),
+          ...(fullHeight && {
+            "--drawer-content-height": "100dvh",
+            "--drawer-content-max-height": "100dvh",
+            borderRadius: 0,
+          }),
+        } as React.CSSProperties}
       >
-        {(title || description || headerAction || showCloseButton) && (
-          <DrawerHeader className={cn("relative shrink-0", compact ? "px-4 pb-2 pt-3" : isBottom ? "px-5 pb-3.5 pt-5" : "px-5 pb-4 pt-4")}>
+        {(title || description || headerAction || showCloseButton || showBackButton) && (
+          <DrawerHeader className={cn("relative shrink-0", compact ? "px-4 pb-2 pt-3" : isBottom ? "px-5 pb-3.5 pt-5" : "px-5 pb-4 pt-4", (showBackButton || showCloseButton) && "min-h-14")}>
             {(title || description || headerAction) && (
-              <div className={cn("min-w-0 space-y-0.5 text-left", showCloseButton && "pr-9")}>
+              <div className={cn("min-w-0 space-y-0.5 text-left", showBackButton && "pl-9", showCloseButton && "pr-11")}>
                 <div className="flex min-w-0 items-center justify-between gap-3">
                   {title && <DrawerTitle className="min-w-0 break-words text-base font-extrabold tracking-tight">{title}</DrawerTitle>}
                   {headerAction && <div className="shrink-0">{headerAction}</div>}
@@ -87,7 +102,8 @@ export function ResponsivePopover({
                 {description && <DrawerDescription className="text-xs">{description}</DrawerDescription>}
               </div>
             )}
-            {showCloseButton && <DrawerClose aria-label="Close" className="absolute right-2 top-2 rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900"><X className="h-4 w-4" /></DrawerClose>}
+            {showBackButton && <button type="button" aria-label="Back" onClick={onBack ?? (() => onOpenChange(false))} className="absolute left-2 top-2 flex size-11 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 md:size-9"><ChevronLeft className="size-6 md:size-5" /></button>}
+            {showCloseButton && <DrawerClose aria-label="Close" className="absolute right-2 top-2 flex size-11 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 md:size-9"><X className="size-6 md:size-5" /></DrawerClose>}
           </DrawerHeader>
         )}
         <div className={cn("min-h-0 overflow-y-auto overscroll-contain", compact ? "flex-auto" : "flex-1", contentClassName)}>{children}</div>

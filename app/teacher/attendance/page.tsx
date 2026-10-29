@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -198,14 +197,13 @@ function OtherClassConfirmModal({
 // ── Main component ─────────────────────────────────────────────────────────
 
 export default function TeacherAttendancePage() {
-  const [searchParams] = useSearchParams();
   const { user, accessToken } = useAuthStore();
   const { lang } = useLanguageStore();
   const queryClient = useQueryClient();
   const cid = user?.clientId ?? "";
   const token = accessToken ?? "";
 
-  const [drawerOpen, setDrawerOpen] = useState(() => searchParams.get("openDrawer") === "1");
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [date, setDate] = useState(todayISO);
   const [students, setStudents] = useState<
     { id: string; name: string; adno: string; gender?: string }[]

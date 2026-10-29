@@ -763,7 +763,7 @@ export default function TeacherFeesPage() {
         description={selectedFeeType?.kind === "RECURRING"
           ? t("teacherPages", "feeTypeRecurring", lang)
           : t("parentPages", "frequencyOneTime", lang)}
-        className="h-dvh max-h-dvh data-[swipe-axis=y]:[--drawer-content-max-height:100dvh]"
+        fullHeight
       >
         {selectedFeeType && (
           <div className="mx-auto w-full max-w-3xl space-y-5 px-4 pb-8 pt-2 sm:px-6">
@@ -849,7 +849,7 @@ export default function TeacherFeesPage() {
         onOpenChange={(open) => { if (!open) setRecurringStudentId(null); }}
         title={recurringStudent?.student.name}
         description={selectedFeeType?.name}
-        className="h-dvh max-h-dvh data-[swipe-axis=y]:[--drawer-content-max-height:100dvh]"
+        fullHeight
       >
         {recurringStudent && selectedFeeType && (
           <div className="mx-auto w-full max-w-2xl space-y-5 px-4 pb-8 pt-2 sm:px-6">

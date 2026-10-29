@@ -4,6 +4,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { DrawerSelector } from "@/components/DrawerSelector";
+import { TeacherAttendanceDrawer } from "@/components/teacher/TeacherAttendanceDrawer";
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
 import {
   Drawer,
@@ -69,6 +70,7 @@ export default function TeacherDashboard() {
   const { lang } = useLanguageStore();
   const navigate = useNavigate();
   const [ibadahDrawerOpen, setIbadahDrawerOpen] = useState(false);
+  const [attendanceDrawerOpen, setAttendanceDrawerOpen] = useState(false);
   const {
     classes: teacherClasses,
     activeClass,
@@ -199,7 +201,7 @@ export default function TeacherDashboard() {
     loadingClass ||
     (!!activeClassId && (students.isLoading || attendance.isLoading));
   const openAttendanceDrawer = () => {
-    if (activeClassId) navigate("/teacher/attendance?openDrawer=1");
+    if (activeClassId) setAttendanceDrawerOpen(true);
   };
 
   // Ibadah metrics
@@ -688,6 +690,12 @@ export default function TeacherDashboard() {
             ))}
           </ul>
         </section>
+
+        <TeacherAttendanceDrawer
+          open={attendanceDrawerOpen}
+          onOpenChange={setAttendanceDrawerOpen}
+          initialClassId={activeClassId}
+        />
 
         {/* Ibadah Details Drawer */}
         <Drawer

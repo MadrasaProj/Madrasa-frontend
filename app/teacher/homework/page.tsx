@@ -390,7 +390,7 @@ export default function TeacherHomeworkPage() {
       {/* Assess Homework Drawer */}
       <ResponsivePopover
         open={showAssessDrawer}
-        className="h-dvh max-h-dvh data-[swipe-axis=y]:[--drawer-content-max-height:100dvh]"
+        fullHeight
         contentClassName="flex min-h-0 flex-col overflow-hidden"
         onOpenChange={(open) => { if (!open) { setShowAssessDrawer(false); setShowAssessOptions(false); setAssessHw(null); setDeleteTarget(null); } }}
         title={assessHw?.title ?? t("teacherPages", "assessHomeworkTitle", lang)}

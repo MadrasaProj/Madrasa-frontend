@@ -663,7 +663,7 @@ export default function ParentResultsPage() {
           open={detailOpen && !!activeExam}
           onOpenChange={setDetailOpen}
           side="responsive"
-          className="h-dvh max-h-dvh"
+          fullHeight
           title={activeExam?.name ?? "Exam details"}
           description={activeStudent ? `${activeStudent.name} · ${fmt(activeExam?.startDate)}${activeExam?.endDate ? ` – ${fmt(activeExam.endDate)}` : ""}` : undefined}
         >

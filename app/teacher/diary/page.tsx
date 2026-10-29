@@ -24,7 +24,7 @@ import { t, type Lang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
   FileText, Plus, Save, CheckCircle2, Loader2, Trash2, Pencil,
-  Users, GraduationCap, X, Search, ChevronLeft, ChevronRight,
+  Users, GraduationCap, X, Search, ChevronRight,
   Bold, Italic, Underline, List, ListOrdered, Image, Palette, MessageSquare, CalendarDays,
 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -451,17 +451,10 @@ export default function TeacherDiaryPage() {
       <ResponsivePopover
         open={drawerOpen}
         onOpenChange={(open) => { if (!open) { closeDrawer(); setThemeOpen(false); } }}
-        title={
-          <span className="flex items-center gap-3">
-            {step === 2 && !editingEntry && (
-              <Button variant="ghost" size="icon" onClick={() => setStep(1)} aria-label="Back">
-                <ChevronLeft className="w-5 h-5 text-gray-600" />
-              </Button>
-            )}
-            {editingEntry ? t("teacherPages", "editDiaryTitle", lang) : t("teacherPages", "newEntryTitle", lang)}
-          </span>
-        }
-        className={step === 2 || editingEntry ? "h-dvh max-h-dvh data-[swipe-axis=y]:[--drawer-content-max-height:100dvh]" : undefined}
+        title={editingEntry ? t("teacherPages", "editDiaryTitle", lang) : t("teacherPages", "newEntryTitle", lang)}
+        fullHeight={step === 2 || !!editingEntry}
+        showBackButton={step === 2 && !editingEntry}
+        onBack={() => setStep(1)}
         footer={step === 2 || editingEntry ? (
           <div className="border-t border-gray-100 bg-white p-4">
             <Button
