@@ -39,7 +39,7 @@ export function ShareMadrasaLinksModal({
   if (!open || !client) return null;
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const adminUrl = `${origin}/m/${client.slug}/admin/login`;
+  const adminUrl = `${origin}/m/${client.slug}/admin`;
   const teacherUrl = `${origin}/m/${client.slug}/teacher`;
   const parentUrl = `${origin}/m/${client.slug}/parent`;
 
