@@ -69,6 +69,7 @@ export const LEAD_STATUS_LABELS: Record<string, string> = {
   CONTACTED: "Contacted",
   INTERESTED: "Interested",
   FOLLOW_UP: "Follow-up",
+  QUALITY_LEAD: "Quality Lead",
   TRIAL_SHARED: "Trial Shared",
   OFFLINE_DEMO_SCHEDULED: "Demo Scheduled",
   OFFLINE_DEMO_COMPLETED: "Demo Completed",
@@ -89,6 +90,7 @@ export const LEAD_STATUSES = [
   "CONTACTED",
   "INTERESTED",
   "FOLLOW_UP",
+  "QUALITY_LEAD",
   "TRIAL_SHARED",
   "OFFLINE_DEMO_SCHEDULED",
   "OFFLINE_DEMO_COMPLETED",
@@ -103,7 +105,8 @@ export const LEAD_STATUSES = [
 export type LeadStatus = (typeof LEAD_STATUSES)[number];
 
 const PIPELINE_STEPS = [
-  { key: "intake", label: "Contact & Interest", statuses: ["NEW", "CONTACTED", "INTERESTED", "FOLLOW_UP"] },
+  { key: "intake", label: "Contact & Follow-up", statuses: ["NEW", "CONTACTED", "INTERESTED", "FOLLOW_UP"] },
+  { key: "qualified", label: "Quality Lead", statuses: ["QUALITY_LEAD"] },
   { key: "trial", label: "Trial Shared", statuses: ["TRIAL_SHARED", "TRIAL_CREATED"] },
   {
     key: "demo",
@@ -141,6 +144,7 @@ const STATUS_COLORS: Record<string, string> = {
   CONTACTED: "bg-blue-50 text-blue-800 border-blue-200",
   INTERESTED: "bg-emerald-50 text-emerald-800 border-emerald-200",
   FOLLOW_UP: "bg-cyan-50 text-cyan-800 border-cyan-200",
+  QUALITY_LEAD: "bg-teal-50 text-teal-800 border-teal-300",
   TRIAL_SHARED: "bg-amber-50 text-amber-800 border-amber-200",
   OFFLINE_DEMO_SCHEDULED: "bg-violet-50 text-violet-800 border-violet-200",
   OFFLINE_DEMO_COMPLETED: "bg-indigo-50 text-indigo-800 border-indigo-200",
@@ -270,9 +274,59 @@ export default function CrmLeadsPage() {
   const [quickFollowUpDate, setQuickFollowUpDate] = useState("");
   const [followUpSaving, setFollowUpSaving] = useState(false);
   const [cardFollowUpPickerId, setCardFollowUpPickerId] = useState<string | null>(null);
+  const [cardStatusPickerId, setCardStatusPickerId] = useState<string | null>(null);
+  const [cardCustomDate, setCardCustomDate] = useState("");
 
   // Detail tab
   const [activeLeadTab, setActiveLeadTab] = useState<"activity" | "details" | "pipeline">("activity");
+
+  // Close card popovers on click outside, focusout, scroll, or Escape
+  useEffect(() => {
+    if (!cardStatusPickerId && !cardFollowUpPickerId) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setCardStatusPickerId(null);
+        setCardFollowUpPickerId(null);
+      }
+    };
+
+    const handlePointerDown = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target?.closest("[data-popover-container]")) {
+        setCardStatusPickerId(null);
+        setCardFollowUpPickerId(null);
+      }
+    };
+
+    const handleFocusIn = (e: FocusEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target?.closest("[data-popover-container]")) {
+        setCardStatusPickerId(null);
+        setCardFollowUpPickerId(null);
+      }
+    };
+
+    const handleWindowScroll = () => {
+      if (cardStatusPickerId) {
+        setCardStatusPickerId(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+    document.addEventListener("focusin", handleFocusIn);
+    window.addEventListener("scroll", handleWindowScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+      document.removeEventListener("focusin", handleFocusIn);
+      window.removeEventListener("scroll", handleWindowScroll);
+    };
+  }, [cardStatusPickerId, cardFollowUpPickerId]);
 
   const isSuperOrManager = ["SUPER_ADMIN", "SALES_MANAGER"].includes(user?.actorType ?? "");
   const canDelete = ["SUPER_ADMIN", "SALES_MANAGER"].includes(user?.actorType ?? "");
@@ -926,6 +980,21 @@ export default function CrmLeadsPage() {
     };
   }, [leads]);
 
+  const stageCounts = useMemo(() => {
+    const counts: Record<string, number> = { ALL: leads.length };
+    LEAD_STATUSES.forEach((s) => {
+      counts[s] = 0;
+    });
+    leads.forEach((l) => {
+      if (counts[l.status] !== undefined) {
+        counts[l.status]++;
+      } else {
+        counts[l.status] = 1;
+      }
+    });
+    return counts;
+  }, [leads]);
+
   const filteredLeads = useMemo(() => {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
@@ -1046,6 +1115,17 @@ export default function CrmLeadsPage() {
         badge: "Due Today",
         description: "Scheduled discussion planned for today. Complete call and record next steps.",
         onAction: () => setActiveSection("followup"),
+      };
+    }
+
+    if (lead.status === "QUALITY_LEAD") {
+      return {
+        tone: "high_intent" as const,
+        title: "Quality Prospect Identified",
+        actionLabel: "Share Trial / Schedule Demo",
+        badge: "Qualified",
+        description: "Prospect is verified as a Quality Lead. Share sandbox trial access or book a campus demo session.",
+        onAction: () => setActiveSection("demo"),
       };
     }
 
@@ -2545,7 +2625,93 @@ export default function CrmLeadsPage() {
 
   return (
     <DashboardLayout>
-      <div className="pb-24">
+      <div>
+        {/* Desktop invisible backdrop overlay to dismiss status dropdown on ANY outside click */}
+        {cardStatusPickerId && (
+          <div
+            className="fixed inset-0 z-30 hidden lg:block"
+            onClick={() => setCardStatusPickerId(null)}
+          />
+        )}
+
+        {/* Mobile/Tablet Native Action Sheet for Stage Change (True native mobile app feel) */}
+        <AnimatePresence>
+          {cardStatusPickerId && (
+            <div
+              className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/60 backdrop-blur-xs lg:hidden"
+              onClick={() => setCardStatusPickerId(null)}
+            >
+              <motion.div
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", damping: 26, stiffness: 320 }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full bg-white rounded-t-3xl p-5 shadow-2xl max-h-[85vh] flex flex-col"
+              >
+                <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-4" />
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <div>
+                    <h3 className="text-base font-black text-gray-900">Change Pipeline Stage</h3>
+                    <p className="text-xs text-gray-500 font-medium">
+                      {leads.find((x) => x.id === cardStatusPickerId)?.name || "Select stage"}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCardStatusPickerId(null)}
+                    className="p-2 text-gray-400 hover:text-gray-700 rounded-xl"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="overflow-y-auto py-2 space-y-1.5 max-h-[55vh]">
+                  {LEAD_STATUSES.map((st) => {
+                    const activeLead = leads.find((l) => l.id === cardStatusPickerId);
+                    const isCur = activeLead?.status === st;
+                    return (
+                      <button
+                        key={st}
+                        type="button"
+                        onClick={async () => {
+                          const targetId = cardStatusPickerId;
+                          setCardStatusPickerId(null);
+                          await handleUpdateStage(st, targetId);
+                        }}
+                        className={cn(
+                          "w-full min-h-[48px] px-4 py-3 rounded-2xl text-sm font-bold flex items-center justify-between transition-all",
+                          isCur
+                            ? "bg-emerald-50 text-emerald-800 border-2 border-emerald-500 shadow-2xs"
+                            : "hover:bg-gray-50 text-gray-700 border border-gray-100"
+                        )}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span
+                            className={cn(
+                              "text-xs font-bold px-2.5 py-1 rounded-full border uppercase tracking-wider",
+                              STATUS_COLORS[st] || "bg-gray-100 text-gray-700 border-gray-200"
+                            )}
+                          >
+                            {LEAD_STATUS_LABELS[st] ?? st}
+                          </span>
+                        </div>
+                        {isCur && <Check className="w-5 h-5 text-emerald-600 font-black shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCardStatusPickerId(null)}
+                  className="w-full min-h-[48px] mt-2 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm rounded-2xl transition-all"
+                >
+                  Cancel
+                </button>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
         {/* Persistent CRM Sub-Navigation */}
         <CrmSubNav />
 
@@ -2679,7 +2845,12 @@ export default function CrmLeadsPage() {
                 <button
                   key={pill.key}
                   type="button"
-                  onClick={() => setSmartPreset(pill.key as any)}
+                  onClick={() => {
+                    setSmartPreset(pill.key as any);
+                    if (pill.key !== "ALL") {
+                      setActiveStage("ALL");
+                    }
+                  }}
                   className={cn(
                     "min-h-[40px] shrink-0 px-3.5 py-2 text-xs font-bold rounded-xl border transition-all flex items-center gap-2",
                     isSelected
@@ -2715,13 +2886,74 @@ export default function CrmLeadsPage() {
                   setSearch("");
                   setSortBy("URGENT");
                 }}
-                className="min-h-[40px] flex items-center gap-1.5 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all shrink-0 ml-auto"
+                className="min-h-[38px] flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all shrink-0 ml-auto"
                 title="Reset all filters"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span>Reset Filters</span>
+                <span>Reset</span>
               </button>
             )}
+          </div>
+
+          {/* Pipeline Stages Dedicated Filter Bar (Sales Team Primary Pipeline View) */}
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-2.5 border-t border-gray-100">
+            <span className="text-xs uppercase font-black tracking-wider text-gray-400 shrink-0 flex items-center gap-1.5 mr-1">
+              <TrendingUp className="w-3.5 h-3.5 text-emerald-600" /> Stages:
+            </span>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveStage("ALL");
+              }}
+              className={cn(
+                "min-h-[36px] shrink-0 px-3 py-1.5 text-xs font-bold rounded-xl border transition-all flex items-center gap-1.5 active:scale-95",
+                activeStage === "ALL"
+                  ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs"
+                  : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+              )}
+            >
+              <span>All Stages</span>
+              <span
+                className={cn(
+                  "px-1.5 py-0.2 rounded-full text-[11px] font-black",
+                  activeStage === "ALL" ? "bg-white/20 text-white" : "bg-gray-100 text-gray-600"
+                )}
+              >
+                {leads.length}
+              </span>
+            </button>
+
+            {LEAD_STATUSES.map((st) => {
+              const isSelected = activeStage === st;
+              const count = stageCounts[st] ?? 0;
+              return (
+                <button
+                  key={st}
+                  type="button"
+                  onClick={() => {
+                    setActiveStage(st);
+                    setSmartPreset("ALL");
+                  }}
+                  className={cn(
+                    "min-h-[36px] shrink-0 px-3 py-1.5 text-xs font-bold rounded-xl border transition-all flex items-center gap-1.5 active:scale-95",
+                    isSelected
+                      ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs scale-[1.02]"
+                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                  )}
+                >
+                  <span>{LEAD_STATUS_LABELS[st] ?? st}</span>
+                  <span
+                    className={cn(
+                      "px-1.5 py-0.2 rounded-full text-[11px] font-black",
+                      isSelected ? "bg-white/20 text-white" : "bg-gray-100 text-gray-600"
+                    )}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -2735,12 +2967,12 @@ export default function CrmLeadsPage() {
 
         {/* ── Split Workspace (List + Detail) ── */}
         {!loading && (
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
             {/* Left Column: Lead List Cards */}
             <div
               className={cn(
-                "md:col-span-5 lg:col-span-5 flex flex-col bg-white border border-gray-200/90 rounded-3xl overflow-hidden shadow-xs",
-                "h-[calc(100vh-280px)] min-h-[500px]"
+                "lg:col-span-5 xl:col-span-4 flex flex-col bg-white border border-gray-200/90 rounded-3xl shadow-xs overflow-hidden",
+                "lg:sticky lg:top-20 lg:max-h-[calc(100vh-100px)]"
               )}
             >
               <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 flex items-center justify-between shrink-0">
@@ -2756,7 +2988,7 @@ export default function CrmLeadsPage() {
                 </span>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-3.5 space-y-3 scrollbar-thin">
+              <div className="p-3.5 space-y-3 lg:overflow-y-auto lg:scrollbar-thin">
                 {filteredLeads.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-20 gap-2 text-center px-4">
                     <p className="text-sm text-gray-500 font-medium">No leads match current filters.</p>
@@ -2883,9 +3115,76 @@ export default function CrmLeadsPage() {
 
                       {/* Footer Row: Status, Next Follow-up & Quick Schedule Trigger */}
                       <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2 flex-wrap">
-                        {renderStatusBadge(l.status)}
+                        {/* Interactive 1-Tap Status Switcher (Without opening main drawer!) */}
+                        <div
+                          className="relative shrink-0"
+                          data-popover-container="status"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCardFollowUpPickerId(null);
+                              setCardStatusPickerId(cardStatusPickerId === l.id ? null : l.id);
+                            }}
+                            className={cn(
+                              "min-h-[34px] px-2.5 py-1 rounded-xl border text-xs font-bold inline-flex items-center gap-1.5 transition-all active:scale-95 shadow-2xs hover:ring-2 hover:ring-emerald-500/20",
+                              STATUS_COLORS[l.status] || "bg-gray-100 text-gray-700 border-gray-200"
+                            )}
+                            title="Tap to change pipeline stage without opening drawer"
+                          >
+                            <span className="truncate max-w-[125px]">
+                              {LEAD_STATUS_LABELS[l.status] ?? l.status.replace(/_/g, " ")}
+                            </span>
+                            <ChevronDown className="w-3.5 h-3.5 opacity-60 shrink-0" />
+                          </button>
 
-                        <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                          {/* Desktop Quick Stage Picker Popover (Mobile uses Native Action Sheet) */}
+                          {cardStatusPickerId === l.id && (
+                            <div
+                              onClick={(e) => e.stopPropagation()}
+                              className="hidden lg:block absolute left-0 bottom-full mb-1.5 w-56 bg-white rounded-2xl shadow-xl border border-gray-200 p-1.5 z-40 max-h-64 overflow-y-auto"
+                            >
+                              <div className="text-[10px] font-bold text-gray-400 uppercase px-2 py-1 flex items-center justify-between">
+                                <span>Change Stage</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setCardStatusPickerId(null)}
+                                  className="text-gray-400 hover:text-gray-600 p-0.5"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                              {LEAD_STATUSES.map((st) => (
+                                <button
+                                  key={st}
+                                  type="button"
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    setCardStatusPickerId(null);
+                                    await handleUpdateStage(st, l.id);
+                                  }}
+                                  className={cn(
+                                    "w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors",
+                                    l.status === st
+                                      ? "bg-emerald-50 text-emerald-800 font-bold"
+                                      : "hover:bg-gray-50 text-gray-700"
+                                  )}
+                                >
+                                  <span>{LEAD_STATUS_LABELS[st] ?? st}</span>
+                                  {l.status === st && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <div
+                          className="flex items-center gap-1.5 shrink-0"
+                          data-popover-container="followup"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           {l.nextFollowUpDate ? (
                             <span
                               className={cn(
@@ -2907,10 +3206,12 @@ export default function CrmLeadsPage() {
 
                           <button
                             type="button"
-                            onClick={() =>
-                              setCardFollowUpPickerId(cardFollowUpPickerId === l.id ? null : l.id)
-                            }
-                            className="min-h-[32px] px-2 py-1 text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg flex items-center gap-1 transition-all active:scale-95"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCardStatusPickerId(null);
+                              setCardFollowUpPickerId(cardFollowUpPickerId === l.id ? null : l.id);
+                            }}
+                            className="min-h-[32px] px-2.5 py-1 text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg flex items-center gap-1 transition-all active:scale-95"
                             title="Schedule next follow-up directly"
                           >
                             <CalendarClock className="w-3.5 h-3.5" />
@@ -2959,7 +3260,10 @@ export default function CrmLeadsPage() {
                                       key={p.label}
                                       type="button"
                                       disabled={followUpSaving}
-                                      onClick={() => handleQuickUpdateFollowUp(isoDate, l.id)}
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        await handleQuickUpdateFollowUp(isoDate, l.id);
+                                      }}
                                       className="px-2.5 py-1 text-xs font-bold rounded-lg bg-white hover:bg-emerald-600 hover:text-white text-gray-700 border border-gray-200 transition-all shadow-2xs active:scale-95 disabled:opacity-50"
                                     >
                                       {p.label}
@@ -2971,12 +3275,42 @@ export default function CrmLeadsPage() {
                                   <button
                                     type="button"
                                     disabled={followUpSaving}
-                                    onClick={() => handleQuickUpdateFollowUp(null, l.id)}
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      await handleQuickUpdateFollowUp(null, l.id);
+                                    }}
                                     className="px-2.5 py-1 text-xs font-bold rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 ml-auto active:scale-95 disabled:opacity-50"
                                   >
                                     Clear
                                   </button>
                                 )}
+                              </div>
+
+                              {/* Custom Calendar Date Input */}
+                              <div className="flex items-center gap-1.5 pt-1 border-t border-emerald-100">
+                                <input
+                                  type="date"
+                                  value={cardCustomDate}
+                                  onChange={(e) => setCardCustomDate(e.target.value)}
+                                  className="min-h-[34px] flex-1 bg-white border border-gray-200 text-xs py-1 px-2.5 rounded-lg focus:outline-none focus:border-emerald-600 font-semibold"
+                                />
+                                <button
+                                  type="button"
+                                  disabled={followUpSaving || !cardCustomDate}
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    await handleQuickUpdateFollowUp(cardCustomDate, l.id);
+                                    setCardCustomDate("");
+                                  }}
+                                  className="min-h-[34px] px-3 py-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg shadow-xs transition-all flex items-center gap-1"
+                                >
+                                  {followUpSaving ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  ) : (
+                                    <Check className="w-3.5 h-3.5" />
+                                  )}
+                                  Set
+                                </button>
                               </div>
                             </div>
                           </motion.div>
@@ -2991,8 +3325,8 @@ export default function CrmLeadsPage() {
             {/* Right Column: Lead Detail (Desktop Only) */}
             <div
               className={cn(
-                "hidden md:flex md:col-span-7 lg:col-span-7 bg-white border border-gray-200/90 rounded-3xl shadow-xs",
-                "h-[calc(100vh-280px)] min-h-[500px] flex-col overflow-hidden"
+                "hidden lg:flex lg:col-span-7 xl:col-span-8 bg-white border border-gray-200/90 rounded-3xl shadow-xs",
+                "flex-col overflow-hidden lg:sticky lg:top-20 lg:h-[calc(100vh-100px)] lg:min-h-[500px]"
               )}
             >
               {selectedLeadId && detailLoading && (
@@ -3024,7 +3358,7 @@ export default function CrmLeadsPage() {
         {/* ── Mobile Full-Screen Detail Sheet (Mobile-First Experience!) ── */}
         <AnimatePresence>
           {showMobileDetail && selectedLeadId && (
-            <div className="fixed inset-0 z-50 md:hidden flex flex-col bg-slate-900/60 backdrop-blur-xs">
+            <div className="fixed inset-0 z-50 lg:hidden flex flex-col bg-slate-900/60 backdrop-blur-xs">
               <motion.div
                 initial={{ y: "100%" }}
                 animate={{ y: 0 }}
