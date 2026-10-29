@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { DrawerSelector } from "@/components/DrawerSelector";
+import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
 import {
   Drawer,
   DrawerClose,
@@ -14,19 +16,24 @@ import { useAuthStore } from "@/store/auth";
 import { useActiveClass } from "@/store/activeClass";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { getClassIbadah } from "@/lib/ibadah-api";
 import { getClassAttendance } from "@/lib/attendance-api";
 import { getSubmissions, listHomework } from "@/lib/homework-api";
 import { useStudentsList } from "@/lib/queries";
 import {
+  Cell,
+  Pie,
+  PieChart,
+  PolarAngleAxis,
+  RadialBar,
+  RadialBarChart,
+} from "recharts";
+import {
   Bell,
   BookOpen,
-  CalendarCheck2,
+  ChevronDown,
   ChevronRight,
-  CircleCheck,
-  CircleX,
   ClipboardList,
   Clock3,
   GraduationCap,
@@ -42,68 +49,33 @@ import {
 
 const TeacherIbadahPage = lazy(() => import("@/app/teacher/ibadah/page"));
 
-function CompactGauge({
-  value,
-  color = "#059669",
-  label = "Rate",
-}: {
-  value: number;
-  color?: string;
-  label?: string;
-}) {
-  const clamped = Math.max(0, Math.min(100, Math.round(value)));
-  const angle = Math.PI * (1 - clamped / 100);
-  const x = Number((50 + 36 * Math.cos(angle)).toFixed(2));
-  const y = Number((45 - 36 * Math.sin(angle)).toFixed(2));
+const ibadahChartConfig = {
+  completed: { color: "#059669" },
+} satisfies ChartConfig;
 
-  return (
-    <div className="flex flex-col items-center justify-center shrink-0">
-      <svg
-        viewBox="0 0 100 54"
-        className="h-11 w-20 sm:h-12 sm:w-22 overflow-visible"
-        role="img"
-        aria-label={`${label}: ${clamped}%`}
-      >
-        <path
-          d="M 14 45 A 36 36 0 0 1 86 45"
-          fill="none"
-          stroke="#e5e7eb"
-          strokeWidth="8"
-          strokeLinecap="round"
-        />
-        {clamped > 0 && (
-          <path
-            d={`M 14 45 A 36 36 0 0 1 ${x} ${y}`}
-            fill="none"
-            stroke={color}
-            strokeWidth="8"
-            strokeLinecap="round"
-          />
-        )}
-        <text
-          x="50"
-          y="42"
-          textAnchor="middle"
-          className="fill-gray-950 text-[13px] font-bold"
-        >
-          {clamped}%
-        </text>
-      </svg>
-      {label && (
-        <span className="text-[10px] font-medium text-gray-500 mt-0.5">
-          {label}
-        </span>
-      )}
-    </div>
-  );
-}
+const attendanceChartConfig = {
+  present: { color: "var(--primary)" },
+  absent: { color: "#fca5a5" },
+  other: { color: "#94a3b8" },
+} satisfies ChartConfig;
+
+const homeworkChartConfig = {
+  submitted: { color: "var(--primary)" },
+  remaining: { color: "#e5e7eb" },
+} satisfies ChartConfig;
 
 export default function TeacherDashboard() {
   const { user, accessToken } = useAuthStore();
   const { lang } = useLanguageStore();
   const navigate = useNavigate();
   const [ibadahDrawerOpen, setIbadahDrawerOpen] = useState(false);
-  const { activeClass, activeClassId, isLoading: loadingClass } = useActiveClass();
+  const {
+    classes: teacherClasses,
+    activeClass,
+    activeClassId,
+    setActiveClassId,
+    isLoading: loadingClass,
+  } = useActiveClass();
   const clientId = user?.clientId ?? "";
   const token = accessToken ?? "";
 
@@ -209,13 +181,26 @@ export default function TeacherDashboard() {
   const absentCount = attendanceRecords.filter(
     (record) => record.status === "ABSENT",
   ).length;
+  const otherCount = attendanceRecords.length - presentCount - absentCount;
+  const attendancePercent = attendanceRecords.length > 0
+    ? Math.round((presentCount / attendanceRecords.length) * 100)
+    : 0;
   const markedCount = attendance.data?.total ?? 0;
-  const attendancePercent =
-    total > 0 ? Math.min(100, Math.round((presentCount / total) * 100)) : 0;
   const attendanceTaken = markedCount > 0;
+  const attendanceChartData = [
+    { name: "present", value: presentCount },
+    { name: "absent", value: absentCount },
+    { name: "other", value: otherCount },
+  ].filter((segment) => segment.value > 0);
+  if (attendanceChartData.length === 0) {
+    attendanceChartData.push({ name: "empty", value: 1 });
+  }
   const loadingAttendance =
     loadingClass ||
     (!!activeClassId && (students.isLoading || attendance.isLoading));
+  const openAttendanceDrawer = () => {
+    if (activeClassId) navigate("/teacher/attendance?openDrawer=1");
+  };
 
   // Ibadah metrics
   const completed = Math.min(
@@ -243,6 +228,10 @@ export default function TeacherDashboard() {
           ),
         )
       : 0;
+  const homeworkChartData = [
+    { name: "submitted", value: homeworkPercent },
+    { name: "remaining", value: 100 - homeworkPercent },
+  ];
   const loadingHomework =
     loadingClass ||
     (!!activeClassId && (students.isLoading || homework.isLoading));
@@ -311,318 +300,355 @@ export default function TeacherDashboard() {
     <DashboardLayout>
       <div className="space-y-4 sm:space-y-5">
         {/* Welcome Header */}
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <Avatar className="size-13 shrink-0 ring-2 ring-primary-100 sm:size-14">
+        <header className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+            <Avatar className="size-10 shrink-0 ring-2 ring-primary-100 sm:size-11">
               <AvatarImage src={user?.photoUrl ?? undefined} alt="" />
-              <AvatarFallback className="bg-primary-50 text-base font-semibold text-primary-700">
+              <AvatarFallback className="bg-primary-50 text-sm font-semibold text-primary-700">
                 {initials}
               </AvatarFallback>
             </Avatar>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="break-words text-lg font-bold tracking-tight text-gray-950 sm:text-xl">
-                  {user?.name ?? t("common", "teacher", lang)}{" "}
-                  <span aria-hidden="true">👋</span>
-                </h1>
-                <span className="rounded-full border border-primary-100 bg-primary-50 px-2 py-0.5 text-[11px] font-semibold text-primary-700">
-                  {t("common", "teacher", lang)}
-                </span>
-              </div>
-              <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                {activeClass && (
-                  <span className="rounded-full bg-white px-2 py-0.5 font-medium text-gray-700 ring-1 ring-gray-200">
-                    {t("common", "class", lang)}: {activeClass.name}
-                  </span>
-                )}
-                <span className="flex items-center gap-1 font-medium text-gray-500">
-                  <CalendarCheck2 className="size-3.5" />
-                  {today.toLocaleDateString(lang === "ml" ? "ml-IN" : "en-IN", {
-                    weekday: "short",
-                    day: "numeric",
-                    month: "short",
-                  })}
-                </span>
-              </div>
+            <div className="min-w-0 my-auto h-10 ">
+              <h1 className="truncate text-lg font-bold tracking-tight text-gray-950 sm:text-xl">
+                {user?.name ?? t("common", "teacher", lang)}{" "}
+                <span aria-hidden="true">👋</span>
+              </h1>
+              <span className="relative -top-2 inline-flex rounded-full  text-[11px] font-semibold text-primary-700">
+                {t("common", "teacher", lang)}
+              </span>
             </div>
           </div>
-        </header>
-
-        {/* Attendance Card */}
-        <section
-          aria-labelledby="attendance-card-heading"
-          className="overflow-hidden rounded-2xl border border-gray-100 bg-gradient-to-br from-white via-white to-sky-50/70 p-4 sm:p-5 shadow-xs transition-all hover:border-gray-200"
-        >
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <h2
-                id="attendance-card-heading"
-                className="text-sm sm:text-base font-bold text-gray-900 truncate"
+          <DrawerSelector
+            title={lang === "ml" ? "സജീവ ക്ലാസ്" : "Active class"}
+            options={teacherClasses.map((cls) => ({
+              value: cls.id,
+              label: cls.name,
+            }))}
+            value={activeClassId}
+            onChange={setActiveClassId}
+            placeholder={t("teacherPages", "selectClassOpt", lang)}
+            disabled={loadingClass}
+            triggerItem={
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 rounded-full   gap-1.5     px-3 "
               >
-                {t("teacherPages", "attendanceTitle", lang)}
-              </h2>
-              {activeClass && (
-                <span className="hidden sm:inline-block rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-gray-600 ring-1 ring-gray-200">
-                  {activeClass.name}
+                {/* <School className="size-4" aria-hidden="true" /> */}
+                <span className="min-w-0 truncate text-xs">
+                  {activeClass?.name ?? t("common", "class", lang)}
                 </span>
-              )}
-            </div>
-            <span
-              className={cn(
-                "rounded-full px-2.5 py-0.5 text-xs font-semibold shrink-0",
-                attendanceTaken
-                  ? "border border-primary-100 bg-primary-50 text-primary-700"
-                  : "border border-amber-100 bg-amber-50 text-amber-700",
-              )}
-            >
-              {attendanceTaken
-                ? t("teacherPages", "markedStudents", lang)
-                : t("common", "pending", lang)}
-            </span>
-          </div>
-
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-              <img
-                src="/imgs/attendance/attendance-checklist.png"
-                alt=""
-                className="size-15 sm:size-18 shrink-0 object-contain drop-shadow-xs"
-                loading="lazy"
-              />
-              <div className="min-w-0">
-                {loadingAttendance ? (
-                  <div className="flex items-center gap-2 text-gray-400 py-1">
-                    <Loader2 className="size-4 animate-spin" />
-                    <span className="text-xs">{t("common", "loading", lang)}</span>
-                  </div>
-                ) : attendanceTaken ? (
-                  <>
-                    <div className="text-xl sm:text-2xl font-bold tabular-nums text-gray-950">
-                      {presentCount}{" "}
-                      <span className="text-xs font-semibold text-gray-500">
-                        / {total} {t("common", "present", lang)}
-                      </span>
-                    </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-gray-600">
-                      <span className="inline-flex items-center gap-1 text-emerald-700 font-medium">
-                        <CircleCheck className="size-3" /> {presentCount}
-                      </span>
-                      <span>·</span>
-                      <span className="inline-flex items-center gap-1 text-red-600 font-medium">
-                        <CircleX className="size-3" /> {absentCount} {t("common", "absent", lang)}
-                      </span>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="text-base sm:text-lg font-bold text-gray-900 leading-snug">
-                      {t("teacherPages", "takeAttendanceInstruction", lang)}
-                    </div>
-                    <p className="mt-0.5 text-xs text-amber-700 font-medium">
-                      {total} {t("teacherPages", "totalStudents", lang).toLowerCase()}
-                    </p>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <CompactGauge
-              value={attendancePercent}
-              color="#059669"
-              label={t("teacherPages", "attendanceRateLabel", lang)}
-            />
-          </div>
-
-          <div className="mt-3.5 flex items-center justify-between border-t border-gray-100 pt-3">
-            <span className="text-xs text-gray-500">
-              {today.toLocaleDateString(lang === "ml" ? "ml-IN" : "en-IN", {
-                day: "numeric",
-                month: "short",
-              })}
-            </span>
-            <Button
-              onClick={() => navigate("/teacher/attendance")}
-              size="lg"
-              variant={attendanceTaken ? "outline" : "default"}
-              className="gap-1.5 "
-            >
-              <UserCheck className="size-3.5" />
-              {attendanceTaken
-                ? t("teacherPages", "reviewAttendance", lang)
-                : t("teacherPages", "markAttendanceDesc", lang)}
-              <ChevronRight className="size-3.5" />
-            </Button>
-          </div>
-        </section>
+                <ChevronDown />
+              </Button>
+            }
+          />
+        </header>
 
         {/* Ibadah Card */}
         <section
           aria-labelledby="ibadah-card-heading"
-          className="overflow-hidden rounded-2xl border border-gray-100 bg-gradient-to-br from-white via-white to-emerald-50/40 p-4 sm:p-5 shadow-xs transition-all hover:border-gray-200"
+          className="overflow-hidden mt-6 rounded-2xl  p-4 sm:p-5 shadow-xs transition-all hover:border-gray-200"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgb(255 255 255 / 0.6), rgb(255 255 255 / 0.6)), url('/imgs/teacher/dashboard-corner-primary.png')",
+            backgroundPosition: "center, right bottom",
+            backgroundSize: "cover, min(80%, 30rem) auto",
+            backgroundRepeat: "no-repeat",
+          }}
         >
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <h2
-                id="ibadah-card-heading"
-                className="text-sm sm:text-base font-bold text-gray-900 truncate"
+          <div className="text-center">
+            <h2
+              id="ibadah-card-heading"
+              className="text-base font-bold text-gray-900 sm:text-lg"
+            >
+              {t("teacherPages", "ibadahTitle", lang)}
+            </h2>
+            <p className="mt-0.5 text-xs text-gray-500">{dateLabel}</p>
+          </div>
+
+          <div
+            className="relative mx-auto mt-4 size-40"
+            role="img"
+            aria-label={
+              loadingIbadah
+                ? t("common", "loading", lang)
+                : `${ibadahPercent}% ${t("teacherPages", "completion", lang)}`
+            }
+          >
+            <ChartContainer
+              config={ibadahChartConfig}
+              initialDimension={{ width: 160, height: 160 }}
+              className="!aspect-auto size-40"
+              aria-hidden="true"
+            >
+              <RadialBarChart
+                data={[
+                  { value: ibadahPercent, fill: "var(--color-completed)" },
+                ]}
+                startAngle={90}
+                endAngle={-270}
+                innerRadius={60}
+                outerRadius={72}
               >
-                {t("teacherPages", "ibadahTitle", lang)}
-              </h2>
-              <span className="hidden sm:inline-block rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-gray-600 ring-1 ring-gray-200">
-                {dateLabel}
+                <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
+                <RadialBar
+                  dataKey="value"
+                  background={{ fill: "#e5e7eb" }}
+                  cornerRadius={6}
+                  isAnimationActive={false}
+                />
+              </RadialBarChart>
+            </ChartContainer>
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-3xl font-bold tabular-nums text-gray-950">
+                {loadingIbadah ? (
+                  <Loader2 className="size-6 animate-spin" />
+                ) : (
+                  `${ibadahPercent}%`
+                )}
+              </span>
+              <span className="text-xs font-medium text-gray-500">
+                {t("teacherPages", "completion", lang)}
               </span>
             </div>
-            <span className="rounded-full border border-primary-100 bg-primary-50 px-2.5 py-0.5 text-xs font-semibold text-primary-700 shrink-0">
-              {ibadahPercent}% {t("teacherPages", "completion", lang)}
-            </span>
           </div>
-
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-              <img
-                src="/icons/ibadah/weekly-report.webp"
-                alt=""
-                className="size-15 sm:size-18 shrink-0 object-contain drop-shadow-xs"
-                loading="lazy"
-              />
-              <div className="min-w-0">
-                {loadingIbadah ? (
-                  <div className="flex items-center gap-2 text-gray-400 py-1">
-                    <Loader2 className="size-4 animate-spin" />
-                    <span className="text-xs">{t("common", "loading", lang)}</span>
-                  </div>
-                ) : (
-                  <>
-                    <div className="text-xl sm:text-2xl font-bold tabular-nums text-gray-950">
-                      {completed}{" "}
-                      <span className="text-xs font-semibold text-gray-500">
-                        / {total} {t("teacherPages", "completedStudents", lang)}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs text-gray-600">
-                      <span className="text-amber-700 font-medium">{remaining}</span>{" "}
-                      {t("teacherPages", "pendingIbadahStudents", lang).toLowerCase()}
-                    </p>
-                  </>
-                )}
-              </div>
+          <div className="mt-4 flex items-center justify-center gap-6 text-center">
+            <div>
+              <p className="text-xl font-bold tabular-nums text-gray-950 sm:text-2xl">
+                {loadingIbadah ? "—" : `${completed}`}
+              </p>
+              <p className="text-xs text-gray-500">
+                {t("teacherPages", "ibadahTrackingDescription", lang)}
+              </p>
             </div>
-
-            <CompactGauge
-              value={ibadahPercent}
-              color="#059669"
-              label={t("teacherPages", "completion", lang)}
-            />
+            <span className="h-9 w-px bg-gray-200" aria-hidden="true" />
+            <div>
+              <p className="text-xl font-bold tabular-nums text-amber-700 sm:text-2xl">
+                {loadingIbadah ? "—" : remaining}
+              </p>
+              <p className="text-xs text-gray-500">
+                {t("teacherPages", "pendingIbadahStudents", lang)}
+              </p>
+            </div>
           </div>
-
-          <div className="mt-3.5 flex items-center justify-between border-t border-gray-100 pt-3">
-            <span className="text-xs text-gray-500">
-              {t("teacherPages", "previousDayIbadah", lang)}
-            </span>
+          <div className="  pt-3 text-center">
             <Button
-              variant="outline"
+              variant="default"
               size="lg"
               onClick={() => setIbadahDrawerOpen(true)}
               disabled={!activeClassId}
-              className="gap-1.5  "
+              className=" rounded-full mt-2 gap-1.5 sm:w-auto"
             >
-              <MoonStar className="size-3.5" />
+              {/* <MoonStar className="size-3.5" /> */}
               {t("teacherPages", "ibadahRecordsTitle", lang)}
               <ChevronRight className="size-3.5" />
             </Button>
           </div>
         </section>
 
+        {/* Attendance Card */}
+        <section
+          aria-labelledby="attendance-card-heading"
+          role="button"
+          tabIndex={activeClassId ? 0 : -1}
+          aria-disabled={!activeClassId}
+          onClick={openAttendanceDrawer}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              openAttendanceDrawer();
+            }
+          }}
+          className="flex cursor-pointer items-center gap-3 rounded-2xl bg-linear-120 from-white via-primary-50 border-2 border-white to-white p-3 shadow-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:gap-4 sm:p-4"
+        >
+          <img
+            src="/imgs/attendance/attendance-checklist.png"
+            alt=""
+            className="size-14 shrink-0 object-contain sm:size-16"
+            loading="lazy"
+          />
+          <div className="min-w-0 flex-1">
+            <h2
+              id="attendance-card-heading"
+              className="text-sm font-bold text-gray-950 sm:text-base"
+            >
+              {loadingAttendance || attendanceTaken
+                ? t("teacherPages", "todayAttendance", lang)
+                : t("teacherPages", "markAttendanceDesc", lang)}
+            </h2>
+            {loadingAttendance ? (
+              <p className="mt-0.5 text-xs text-gray-600">
+                {t("common", "loading", lang)}
+              </p>
+            ) : attendanceTaken ? (
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] font-medium sm:text-xs">
+                <span className="inline-flex items-center gap-1 text-primary-800">
+                  <span
+                    className="size-1.5 rounded-full bg-primary"
+                    aria-hidden="true"
+                  />
+                  {presentCount} {t("common", "present", lang)}
+                </span>
+                <span className="inline-flex items-center gap-1 text-red-700">
+                  <span
+                    className="size-1.5 rounded-full bg-red-300"
+                    aria-hidden="true"
+                  />
+                  {absentCount} {t("common", "absent", lang)}
+                </span>
+                {otherCount > 0 && (
+                  <span className="inline-flex items-center gap-1 text-slate-600">
+                    <span
+                      className="size-1.5 rounded-full bg-slate-400"
+                      aria-hidden="true"
+                    />
+                    {otherCount} {t("teacherPages", "otherAttendance", lang)}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <p className="mt-0.5 text-xs leading-snug text-gray-600 sm:text-sm">
+                {t("teacherPages", "takeAttendanceInstruction", lang)}
+              </p>
+            )}
+          </div>
+          {loadingAttendance ? (
+            <Loader2
+              className="size-5 shrink-0 animate-spin text-primary-700"
+              aria-hidden="true"
+            />
+          ) : attendanceTaken ? (
+            <div
+              className="relative size-16 shrink-0 rounded-full bg-white/70 p-1"
+              role="img"
+              aria-label={`${attendancePercent}% ${t("common", "present", lang)}, ${presentCount} ${t("common", "present", lang)}, ${absentCount} ${t("common", "absent", lang)}${otherCount > 0 ? `, ${otherCount} ${t("teacherPages", "otherAttendance", lang)}` : ""}`}
+            >
+              <ChartContainer
+                config={attendanceChartConfig}
+                initialDimension={{ width: 56, height: 56 }}
+                className="!aspect-auto size-14"
+                aria-hidden="true"
+              >
+                <PieChart>
+                  <Pie
+                    data={attendanceChartData}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={21}
+                    outerRadius={26}
+                    strokeWidth={0}
+                    isAnimationActive={false}
+                  >
+                    {attendanceChartData.map((segment) => (
+                      <Cell
+                        key={segment.name}
+                        fill={
+                          segment.name === "empty"
+                            ? "#d1d5db"
+                            : `var(--color-${segment.name})`
+                        }
+                      />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ChartContainer>
+              <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs font-bold tabular-nums text-gray-950">
+                {attendancePercent}%
+              </span>
+            </div>
+          ) : (
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white shadow-sm" aria-hidden="true">
+              <ChevronRight className="size-5" />
+            </span>
+          )}
+        </section>
+
         {/* Homework Card */}
         <section
           aria-labelledby="homework-card-heading"
-          className="overflow-hidden rounded-2xl border border-gray-100 bg-gradient-to-br from-white via-white to-amber-50/30 p-4 sm:p-5 shadow-xs transition-all hover:border-gray-200"
+          className="relative rounded-2xl border   bg-linear-to-br from-primary-50 to-white  p-4 shadow-xs sm:p-5"
         >
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <h2
-                id="homework-card-heading"
-                className="text-sm sm:text-base font-bold text-gray-900 truncate"
-              >
-                {t("teacherPages", "classHomework", lang)}
-              </h2>
-              {activeClass && (
-                <span className="hidden sm:inline-block rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-gray-600 ring-1 ring-gray-200">
-                  {activeClass.name}
-                </span>
-              )}
-            </div>
-            <span className="rounded-full border border-primary-100 bg-primary-50 px-2.5 py-0.5 text-xs font-semibold text-primary-700 shrink-0">
-              {homeworkPercent}% {t("teacherPages", "submittedStatus", lang)}
-            </span>
-          </div>
+          <img
+            src="/icons/homework/completed-notebook.webp"
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none  absolute -right-2 -bottom-12 z-10 size-50 -rotate-6 object-contain drop-shadow-[0_14px_12px_rgba(47,91,22,0.22)] sm:-right-4 sm:-top-9 sm:size-52"
+            loading="lazy"
+          />
+            <h2
+              id="homework-card-heading"
+              className="text-base font-bold text-gray-900 sm:text-lg"
+            >
+              {t("teacherPages", "homeworkTitle", lang)}
+            </h2>
+          <div className="relative z-0 w-[55%] min-w-0">
 
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-              <img
-                src="/imgs/homework/1.webp"
-                alt=""
-                className="size-15 sm:size-18 shrink-0 object-contain drop-shadow-xs"
-                loading="lazy"
-              />
-              <div className="min-w-0">
-                {loadingHomework ? (
-                  <div className="flex items-center gap-2 text-gray-400 py-1">
-                    <Loader2 className="size-4 animate-spin" />
-                    <span className="text-xs">{t("common", "loading", lang)}</span>
-                  </div>
-                ) : (homework.data?.assignments ?? 0) === 0 ? (
-                  <div className="text-sm font-medium text-gray-600">
-                    {t("teacherPages", "noAssignmentsYet", lang)}
-                  </div>
-                ) : (
-                  <>
-                    <div className="text-xl sm:text-2xl font-bold tabular-nums text-gray-950">
-                      {homework.data?.assignments ?? 0}{" "}
-                      <span className="text-xs font-semibold text-gray-500">
-                        {t("teacherPages", "homeworkTitle", lang)}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs text-gray-600">
-                      <span className="font-medium text-gray-900">{homeworkCompleted}</span>{" "}
-                      / {total} {t("teacherPages", "completedStudents", lang).toLowerCase()}
-                    </p>
-                  </>
-                )}
+            {loadingHomework ? (
+              <div className="mt-2 flex min-h-20 items-center gap-2 text-sm text-gray-600">
+                <Loader2 className="size-4 animate-spin" />
+                {t("common", "loading", lang)}
               </div>
-            </div>
+            ) : (homework.data?.assignments ?? 0) === 0 ? (
+              <p className="mt-2 text-sm text-gray-600">
+                {t("teacherPages", "noAssignmentsYet", lang)}
+              </p>
+            ) : (
+              <div className="mt-2 flex flex-col items-left justify-start divide-y divide-primary-100 text-center">
+                <div className="flex min-w-0 flex-1       px-1 py-1">
+                  <p className="text-base font-semibold tabular-nums text-gray-950 sm:text-xl">
+                    {homework.data?.assignments ?? 0}
+                    <span className="text-sm font-medium text-gray-500 ml-2">
+                      {t("teacherPages", "chartAssignments", lang)}
+                    </span>
+                  </p>
+                </div>
+                {/* <div className="flex min-w-0 flex-1      px-1 py-1">
+                  <p className="text-base font-semibold tabular-nums text-gray-950 sm:text-xl">
+                    {homeworkCompleted}
+                    <span className="text-sm font-medium text-gray-500">
+                      /{total}
+                    </span>
+                    <span className="text-sm font-medium text-gray-500 ml-2">
+                      {t("teacherPages", "completedStudents", lang)}
+                    </span>
+                  </p>
+                  <p className="mt-0.5 text-[10px] leading-tight text-gray-600 sm:text-xs"></p>
+                </div> */}
+                <div className="flex min-w-0 flex-1     px-1 py-1">
+                  
 
-            <CompactGauge
-              value={homeworkPercent}
-              color="#059669"
-              label={t("teacherPages", "completion", lang)}
-            />
-          </div>
-
-          <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3">
-            <span className="text-xs text-gray-500">
-              {homework.data?.submittedCount ?? 0} {t("teacherPages", "studentSubmissions", lang).toLowerCase()}
-            </span>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => navigate("/teacher/homework")}
-                className="gap-1  "
-              >
-                <BookOpen className="size-3.5" />
-                {t("teacherPages", "assignHomework", lang)}
-              </Button>
-              <Button
-                size="lg"
-                onClick={() => navigate("/teacher/homework-list")}
-                className="gap-1   "
-              >
-                <ClipboardList className="size-3.5" />
-                {t("teacherPages", "hwListTitle", lang)}
-                <ChevronRight className="size-3.5" />
-              </Button>
-            </div>
+                    <p className="text-base font-semibold tabular-nums text-gray-950 sm:text-xl">
+                    {homeworkPercent}%
+                    <span className="text-sm font-medium text-gray-500 ml-2">
+                     {t(
+                      "teacherPages",
+                      "studentSubmissions",
+                      lang,
+                    ).toLowerCase()}
+                    </span>
+                  </p>
+                  {/* <p className="mt-1 text-[10px] leading-tight text-gray-600 sm:text-xs">
+                   
+                   
+                   
+                    {homework.data?.submittedCount ?? 0}{" "}
+                    {t(
+                      "teacherPages",
+                      "studentSubmissions",
+                      lang,
+                    ).toLowerCase()}
+                  </p> */}
+                </div>
+              </div>
+            )}
+            <Button
+              size="sm"
+              onClick={() => navigate("/teacher/homework-list")}
+              className="mt-4 h-9 rounded-full px-4"
+            >
+              {t("teacherPages", "hwListTitle", lang)}
+              <ChevronRight className="size-4" />
+            </Button>
           </div>
         </section>
 
@@ -706,5 +732,3 @@ export default function TeacherDashboard() {
     </DashboardLayout>
   );
 }
-
-

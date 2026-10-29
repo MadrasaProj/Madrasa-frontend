@@ -1042,7 +1042,7 @@ const translations = {
     pendingCount: { en: "pending", ml: "ബാക്കി" },
     missingCount: { en: "missing", ml: "ലഭ്യമല്ല" },
     studentSubmissions: {
-      en: "Student Submissions",
+      en: "Submissions",
       ml: "വിദ്യാർത്ഥി സമർപ്പണങ്ങൾ",
     },
     remindAllMissing: {
@@ -1490,7 +1490,7 @@ const translations = {
     quickActions: { en: "Quick Actions", ml: "ദ്രുത പ്രവർത്തനങ്ങൾ" },
     previousDayIbadah: { en: "Previous day’s Ibadah", ml: "ഇന്നലത്തെ ഇബാദത്ത്" },
     ibadahUnavailable: { en: "Ibadah data unavailable", ml: "ഇബാദത്ത് വിവരങ്ങൾ ലഭ്യമല്ല" },
-    ibadahTrackingDescription: { en: "Ibadah submissions", ml: "ഇബാദത്ത് സമർപ്പണങ്ങൾ" },
+    ibadahTrackingDescription: { en: "submissions", ml: "ഇബാദത്ത് സമർപ്പണങ്ങൾ" },
     totalStudents: { en: "Students", ml: "വിദ്യാർത്ഥികൾ" },
     completedStudents: { en: "Completed", ml: "പൂർത്തിയാക്കി" },
     pendingIbadahStudents: { en: "Pending", ml: "ബാക്കിയുള്ളവർ" },
