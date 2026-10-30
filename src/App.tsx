@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import PwaRegister from "../components/PwaRegister";
+import PwaInstallBanner from "../components/PwaInstallBanner";
 import { initPersistentStorage, saveTenantSlug } from "@/lib/slug-storage";
 import { getTenantSlugFromPath, getRoleFromPath } from "@/lib/tenant-routing";
 
@@ -128,6 +129,7 @@ export default function App() {
   return (
     <>
       <PwaRegister />
+      <PwaInstallBanner />
       <Routes>
         {/* TWA Landing */}
         <Route path="/" element={<TwaLandingPage />} />

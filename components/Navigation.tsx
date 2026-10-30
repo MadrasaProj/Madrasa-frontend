@@ -845,6 +845,7 @@ export function Sidebar({
                   <div key={cat.id} className="space-y-1">
                     <Button
                       onClick={() => toggleCategory(cat.id)}
+                      variant={"ghost"}
                       className={cn(
                         "flex items-center justify-between w-full px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors",
                         hasActiveLink

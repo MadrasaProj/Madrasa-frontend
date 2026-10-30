@@ -25,6 +25,7 @@ export interface ResponsivePopoverProps {
   fullHeight?: boolean;
   title?: React.ReactNode;
   headerAction?: React.ReactNode;
+  beforeHeader?: React.ReactNode;
   footer?: React.ReactNode;
   description?: React.ReactNode;
   children: React.ReactNode;
@@ -59,6 +60,7 @@ export function ResponsivePopover({
   fullHeight = false,
   title,
   headerAction,
+  beforeHeader,
   footer,
   description,
   children,
@@ -181,6 +183,7 @@ export function ResponsivePopover({
         )}
         style={wideDesktopDrawer ? { "--drawer-content-width": "90vw" } as React.CSSProperties : undefined}
       >
+        {beforeHeader}
         {(title || description || headerAction || showCloseButton || showBackButton) && (
           <DrawerHeader className={cn("relative shrink-0", compact ? "px-4 pb-2 pt-3" : isBottom ? "px-5 pb-3.5 pt-5" : "px-5   pt-4", (showBackButton || showCloseButton) && "min-h-14")}>
             {(title || description || headerAction) && (
