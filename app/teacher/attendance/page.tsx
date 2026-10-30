@@ -206,7 +206,7 @@ export default function TeacherAttendancePage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [date, setDate] = useState(todayISO);
   const [students, setStudents] = useState<
-    { id: string; name: string; adno: string; gender?: string }[]
+    { id: string; name: string; adno: string; gender?: string; photoUrl?: string | null }[]
   >([]);
   const [records, setRecords] = useState<Map<string, LocalRecord>>(new Map());
   const [loading, setLoading] = useState(false);
@@ -221,6 +221,7 @@ export default function TeacherAttendancePage() {
     classId: string;
     student: ClassAttendanceSummary["students"][number];
   } | null>(null);
+  const [studentDrawerOpen, setStudentDrawerOpen] = useState(false);
 
   const saveSuccessTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
@@ -311,6 +312,7 @@ export default function TeacherAttendancePage() {
             name: s.name,
             adno: s.adno,
             gender: s.gender ?? undefined,
+            photoUrl: s.photoUrl ?? s.photo,
           })),
         );
         setRecords(map);
@@ -628,7 +630,10 @@ export default function TeacherAttendancePage() {
                 <button
                   key={student.id}
                   type="button"
-                  onClick={() => setSelectedStudent({ classId: activeClassId, student })}
+                  onClick={() => {
+                    setSelectedStudent({ classId: activeClassId, student });
+                    setStudentDrawerOpen(true);
+                  }}
                   className="flex w-full min-w-0 items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-600 sm:px-5"
                 >
                   <p className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-900" title={`${student.name} · ${student.adno}`}>
@@ -660,15 +665,16 @@ export default function TeacherAttendancePage() {
         <StudentAttendanceDrawer
           key={`${selectedStudent.classId}-${selectedStudent.student.id}`}
           student={selectedStudent.student}
+          open={studentDrawerOpen}
           classId={selectedStudent.classId}
           clientId={cid}
           token={token}
-          onClose={() => setSelectedStudent(null)}
+          onClose={() => setStudentDrawerOpen(false)}
         />
       )}
 
       {!drawerOpen && (
-        <div className="fixed bottom-[92px] left-1/2 z-40 w-[calc(100%-2rem)] max-w-sm   p-0! lg:bottom-6 lg:left-[calc(50%+8rem)] lg:w-auto">
+        <div className="fixed bottom-[92px] left-1/2 z-40 w-max -translate-x-1/2 p-0! lg:bottom-6">
           <Button type="button" size="lg" className="w-max gap-2 rounded-full shadow-lg shadow-primary-900/20" onClick={() => setDrawerOpen(true)}>
             <UserCheck aria-hidden="true" className="size-4" />
             {t("teacherPages", "markAttendanceDesc", lang)}
@@ -754,6 +760,18 @@ export default function TeacherAttendancePage() {
                   <CheckCircle2 className="h-4 w-4" />
                   {t("teacherPages", "saved", lang)}
                 </p>
+              )}
+
+              {activeClassId && !loading && students.length > 0 && (
+                <div className="mb-3 rounded-lg    bg-linear-120 from-primary-50/50 to-secondary/50 px-4 py-3 text-sm">
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-1 font-semibold">
+                    <span className="text-emerald-700">{t("teacherPages", "present", lang)}: {summary.PRESENT}</span>
+                    <span className="text-red-700">{t("teacherPages", "absent", lang)}: {summary.ABSENT + summary.LEAVE + summary.SICK}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {t("teacherPages", "unapprovedAbsence", lang)} {summary.ABSENT} · {t("teacherPages", "approvedLeave", lang)} {summary.LEAVE} · {t("teacherPages", "sickLeave", lang)} {summary.SICK}
+                  </p>
+                </div>
               )}
 
               <div aria-busy={loading || classesLoading}>

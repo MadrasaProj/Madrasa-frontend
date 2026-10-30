@@ -24,12 +24,14 @@ type Student = { id: string; name: string; adno: string };
 
 export function StudentAttendanceDrawer({
   student,
+  open,
   classId,
   clientId,
   token,
   onClose,
 }: {
   student: Student;
+  open: boolean;
   classId: string;
   clientId: string;
   token: string;
@@ -84,7 +86,7 @@ export function StudentAttendanceDrawer({
 
   return (
     <ResponsivePopover
-      open
+      open={open}
       onOpenChange={(open) => { if (!open) onClose(); }}
       drawerOnDesktop
       title={student.name}

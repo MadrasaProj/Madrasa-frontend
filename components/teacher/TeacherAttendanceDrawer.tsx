@@ -73,7 +73,7 @@ export function TeacherAttendanceDrawer({
 
   const [date, setDate] = useState(todayISO);
   const [students, setStudents] = useState<
-    { id: string; name: string; adno: string; gender?: string }[]
+    { id: string; name: string; adno: string; gender?: string; photoUrl?: string | null }[]
   >([]);
   const [records, setRecords] = useState<Map<string, AttendanceRecord>>(new Map());
   const [loading, setLoading] = useState(false);
@@ -140,6 +140,7 @@ export function TeacherAttendanceDrawer({
         name: student.name,
         adno: student.adno,
         gender: student.gender ?? undefined,
+        photoUrl: student.photoUrl ?? student.photo,
       })));
       setRecords(map);
     } catch (cause) {

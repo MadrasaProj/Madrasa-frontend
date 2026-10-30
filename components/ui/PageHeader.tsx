@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { LucideIcon, ChevronLeft, ChevronDown, School } from "lucide-react";
+import { LucideIcon, ChevronLeft, ChevronDown, School, Check } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useAuthStore } from "@/store/auth";
@@ -111,7 +111,7 @@ export function PageHeaderSwitchers() {
                   )}
                 >
                   <span>{cls.name}</span>
-                  {activeClassId === cls.id && <span aria-hidden="true">✓</span>}
+                  {activeClassId === cls.id &&<Check/>}
                 </button>
               ))}
             </div>
@@ -144,7 +144,7 @@ export function PageHeader({
   const navigate = useNavigate();
   return (
     <div className="relative !p-0 ">
-      <div className="mb-[52px]"></div>
+      <div className="mb-[62px]"></div>
       <div className=" fixed   inset-x-0 top-0 z-40 flex flex-col gap-2 border-b border-gray-100 bg-white/95 px-4 py-3 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3 lg:left-64 lg:top-[0px] lg:px-8">
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
           {back && (

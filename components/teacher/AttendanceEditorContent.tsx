@@ -16,12 +16,16 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { StudentAvatar } from "@/components/teacher/StudentAvatar";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { ResponsivePopover, TimePicker } from "@/components/ui/responsivePopover";
+import {
+  ResponsivePopover,
+  TimePicker,
+} from "@/components/ui/responsivePopover";
 import { cn } from "@/lib/utils";
 import { type AttendanceStatus } from "@/lib/attendance-api";
 import { useLanguageStore } from "@/store/language";
@@ -86,10 +90,14 @@ interface AttendanceEditorContentProps {
   saveError: string | null;
   loading: boolean;
   error: string | null;
-  students: { id: string; name: string; adno: string; gender?: string }[];
+  students: { id: string; name: string; adno: string; gender?: string; photoUrl?: string | null }[];
   setStatus: (studentId: string, status: ActiveStatus) => void;
   setNotes: (studentId: string, notes: string) => void;
-  setLateComing: (studentId: string, lateComing: boolean, lateComingTime?: string) => void;
+  setLateComing: (
+    studentId: string,
+    lateComing: boolean,
+    lateComingTime?: string,
+  ) => void;
   hasDirty: boolean;
   hasExisting: boolean;
   handleSave: () => void;
@@ -123,8 +131,12 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
     hasExisting,
     handleSave,
   } = props;
-  const detailsStudent = students.find((student) => student.id === detailsStudentId);
-  const detailsRecord = detailsStudentId ? records.get(detailsStudentId) : undefined;
+  const detailsStudent = students.find(
+    (student) => student.id === detailsStudentId,
+  );
+  const detailsRecord = detailsStudentId
+    ? records.get(detailsStudentId)
+    : undefined;
   const detailsStatus = detailsRecord?.status ?? null;
 
   return (
@@ -144,8 +156,6 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
           </p>
         </div>
       )}
-
-
 
       <AnimatePresence>
         {confirmClear && (
@@ -194,8 +204,6 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
         )}
       </AnimatePresence>
 
-
-
       {saveError && (
         <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl mb-4 flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
@@ -234,7 +242,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
             </p>
           </div>
         ) : (
-          <div className="pb-6">
+          <div className="pb-3">
             {students.map((student) => {
               const record = records.get(student.id);
               const status = record?.status ?? null;
@@ -247,36 +255,54 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
                     record?.dirty && (config ? config.text : "text-amber-700"),
                   )}
                 >
-                  <div className="flex items-center gap-3 px-3.5 py-5">
-                    <div
-                      className={cn(
-                        "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-base shrink-0",
-                        student.gender === "FEMALE"
-                          ? "bg-pink-100 text-pink-700"
-                          : "bg-primary-100 text-primary-700",
-                      )}
-                    >
-                      {student.name.charAt(0)}
-                    </div>
+                  <div className="flex items-center gap-3   py-3">
+                    <StudentAvatar name={student.name} gender={student.gender} photoUrl={student.photoUrl} />
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-gray-900 text-sm truncate">
                         {student.name}
                       </p>
                       <p className="text-xs text-gray-400">{student.adno}</p>
+
+                      <div>
+                        {status === "PRESENT" && record?.lateComing && (
+                          <p className="  bottom-1 left-16 right-14 truncate text-xs text-amber-700">
+                            {t("teacherPages", "lateComing", lang)}
+                            {record.lateComingTime
+                              ? ` · ${record.lateComingTime}`
+                              : ""}
+                          </p>
+                        )}
+                        {status && status !== "PRESENT" && (
+                          <p className="  bottom-1 left-16 right-14 truncate text-xs text-gray-500">
+                            {status === "LEAVE"
+                              ? t("teacherPages", "approvedLeave", lang)
+                              : status === "SICK"
+                                ? t("teacherPages", "sickLeave", lang)
+                                : t("teacherPages", "unapprovedAbsence", lang)}
+                            {record?.notes ? ` · ${record.notes}` : ""}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       <Switch
                         checked={status === "PRESENT"}
-                        onCheckedChange={(checked) => setStatus(student.id, checked ? "PRESENT" : "ABSENT")}
+                        onCheckedChange={(checked) =>
+                          setStatus(student.id, checked ? "PRESENT" : "ABSENT")
+                        }
                         aria-label={`${student.name}: ${t("teacherPages", "present", lang)}`}
                       />
-                      <Button type="button" variant="ghost" size="icon" aria-label={`${student.name}: ${t("teacherPages", "attendanceMore", lang)}`} onClick={() => setDetailsStudentId(student.id)}>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`${student.name}: ${t("teacherPages", "attendanceMore", lang)}`}
+                        onClick={() => setDetailsStudentId(student.id)}
+                      >
                         <MoreHorizontal className="size-5" />
                       </Button>
                     </div>
                   </div>
-                  {status === "PRESENT" && record?.lateComing && <p className="absolute bottom-1 left-16 right-14 truncate text-xs text-amber-700">{t("teacherPages", "lateComing", lang)}{record.lateComingTime ? ` · ${record.lateComingTime}` : ""}</p>}
-                  {status && status !== "PRESENT" && <p className="absolute bottom-1 left-16 right-14 truncate text-xs text-gray-500">{status === "LEAVE" ? t("teacherPages", "approvedLeave", lang) : status === "SICK" ? t("teacherPages", "sickLeave", lang) : t("teacherPages", "unapprovedAbsence", lang)}{record?.notes ? ` · ${record.notes}` : ""}</p>}
                 </div>
               );
             })}
@@ -285,13 +311,20 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
 
       <ResponsivePopover
         open={!!detailsStudent}
-        onOpenChange={(open) => { if (!open) setDetailsStudentId(null); }}
+        onOpenChange={(open) => {
+          if (!open) setDetailsStudentId(null);
+        }}
         title={detailsStudent?.name ?? ""}
         description={detailsStudent?.adno}
         compact
         footer={
           <div className="border-t border-gray-100 px-4 pb-4 pt-3">
-            <Button type="button" size="lg" className="w-full" onClick={() => setDetailsStudentId(null)}>
+            <Button
+              type="button"
+              size="lg"
+              className="w-full"
+              onClick={() => setDetailsStudentId(null)}
+            >
               {t("teacherPages", "attendanceDetailsDone", lang)}
             </Button>
           </div>
@@ -301,22 +334,49 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
           <div className="space-y-3 px-4 pb-4 pt-1">
             <div className="flex items-center justify-between rounded-xl bg-gray-50 p-3">
               <div>
-                <p className="text-sm font-semibold text-gray-900">{t("teacherPages", "present", lang)}</p>
-                <p className="text-xs text-gray-500">{detailsStatus === "PRESENT" ? t("teacherPages", "markedPresent", lang) : detailsStatus === null ? t("teacherPages", "attendanceUnmarkedDay", lang) : t("teacherPages", "markedAbsent", lang)}</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {t("teacherPages", "present", lang)}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {detailsStatus === "PRESENT"
+                    ? t("teacherPages", "markedPresent", lang)
+                    : detailsStatus === null
+                      ? t("teacherPages", "attendanceUnmarkedDay", lang)
+                      : t("teacherPages", "markedAbsent", lang)}
+                </p>
               </div>
-              <Switch checked={detailsStatus === "PRESENT"} onCheckedChange={(checked) => setStatus(detailsStudentId, checked ? "PRESENT" : "ABSENT")} aria-label={`${detailsStudent.name}: ${t("teacherPages", "present", lang)}`} />
+              <Switch
+                checked={detailsStatus === "PRESENT"}
+                onCheckedChange={(checked) =>
+                  setStatus(detailsStudentId, checked ? "PRESENT" : "ABSENT")
+                }
+                aria-label={`${detailsStudent.name}: ${t("teacherPages", "present", lang)}`}
+              />
             </div>
             {detailsStatus === "PRESENT" ? (
               <div className="space-y-3">
                 <div className="flex items-center justify-between rounded-xl border border-gray-100 p-3">
-                  <label htmlFor="late-coming-switch" className="text-sm font-medium text-gray-900">{t("teacherPages", "lateComing", lang)}</label>
-                  <Switch id="late-coming-switch" checked={detailsRecord?.lateComing ?? false} onCheckedChange={(checked) => setLateComing(detailsStudentId, checked)} />
+                  <label
+                    htmlFor="late-coming-switch"
+                    className="text-sm font-medium text-gray-900"
+                  >
+                    {t("teacherPages", "lateComing", lang)}
+                  </label>
+                  <Switch
+                    id="late-coming-switch"
+                    checked={detailsRecord?.lateComing ?? false}
+                    onCheckedChange={(checked) =>
+                      setLateComing(detailsStudentId, checked)
+                    }
+                  />
                 </div>
                 {detailsRecord?.lateComing && (
                   <TimePicker
                     id="late-coming-time"
                     value={detailsRecord.lateComingTime}
-                    onChange={(value) => setLateComing(detailsStudentId, true, value)}
+                    onChange={(value) =>
+                      setLateComing(detailsStudentId, true, value)
+                    }
                     label={t("teacherPages", "arrivalTime", lang)}
                     placeholder={t("teacherPages", "selectArrivalTime", lang)}
                     hourLabel={t("teacherPages", "attendanceHour", lang)}
@@ -329,18 +389,60 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
             ) : (
               <div className="space-y-3">
                 <div>
-                  <p className="mb-2 text-xs font-semibold text-gray-500">{t("teacherPages", "absenceType", lang)}</p>
-                  <Tabs value={detailsStatus === null ? "" : detailsStatus === "LEAVE" || detailsStatus === "SICK" ? detailsStatus : "ABSENT"} onValueChange={(value) => setStatus(detailsStudentId, value as ActiveStatus)}>
+                  <p className="mb-2 text-xs font-semibold text-gray-500">
+                    {t("teacherPages", "absenceType", lang)}
+                  </p>
+                  <Tabs
+                    value={
+                      detailsStatus === null
+                        ? ""
+                        : detailsStatus === "LEAVE" || detailsStatus === "SICK"
+                          ? detailsStatus
+                          : "ABSENT"
+                    }
+                    onValueChange={(value) =>
+                      setStatus(detailsStudentId, value as ActiveStatus)
+                    }
+                  >
                     <TabsList className="grid w-full grid-cols-3 bg-gray-100/80 p-1">
-                      <TabsTrigger value="ABSENT" className="min-w-0 px-2 text-xs sm:text-sm">{t("teacherPages", "unapprovedAbsence", lang)}</TabsTrigger>
-                      <TabsTrigger value="LEAVE" className="min-w-0 px-2 text-xs sm:text-sm">{t("teacherPages", "approvedLeave", lang)}</TabsTrigger>
-                      <TabsTrigger value="SICK" className="min-w-0 px-2 text-xs sm:text-sm">{t("teacherPages", "sickLeave", lang)}</TabsTrigger>
+                      <TabsTrigger
+                        value="ABSENT"
+                        className="min-w-0 px-2 text-xs sm:text-sm"
+                      >
+                        {t("teacherPages", "unapprovedAbsence", lang)}
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="LEAVE"
+                        className="min-w-0 px-2 text-xs sm:text-sm"
+                      >
+                        {t("teacherPages", "approvedLeave", lang)}
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="SICK"
+                        className="min-w-0 px-2 text-xs sm:text-sm"
+                      >
+                        {t("teacherPages", "sickLeave", lang)}
+                      </TabsTrigger>
                     </TabsList>
                   </Tabs>
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="attendance-note" className="text-xs font-semibold text-gray-500">{t("teacherPages", "attendanceNote", lang)}</label>
-                  <Textarea id="attendance-note" maxLength={500} value={detailsRecord?.notes ?? ""} onChange={(event) => setNotes(detailsStudentId, event.target.value)} placeholder={t("teacherPages", "addNoteOptional", lang)} className="min-h-24 bg-white" />
+                  <label
+                    htmlFor="attendance-note"
+                    className="text-xs font-semibold text-gray-500"
+                  >
+                    {t("teacherPages", "attendanceNote", lang)}
+                  </label>
+                  <Textarea
+                    id="attendance-note"
+                    maxLength={500}
+                    value={detailsRecord?.notes ?? ""}
+                    onChange={(event) =>
+                      setNotes(detailsStudentId, event.target.value)
+                    }
+                    placeholder={t("teacherPages", "addNoteOptional", lang)}
+                    className="min-h-24 bg-white"
+                  />
                 </div>
               </div>
             )}
@@ -363,7 +465,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
                 {t("teacherPages", "clearAllBtn", lang)}
               </Button>
             )}
-            
+
             {hasDirty && (
               <Button
                 type="button"
@@ -378,13 +480,10 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
                     {t("teacherPages", "savingEllipsis", lang)}
                   </>
                 ) : (
-                  <>
-                    {t("teacherPages", "saveAttendanceCount", lang)}  
-                  </>
+                  <>{t("teacherPages", "saveAttendanceCount", lang)}</>
                 )}
               </Button>
             )}
-            
           </div>
         </div>
       )}

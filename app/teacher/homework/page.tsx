@@ -304,7 +304,24 @@ export default function TeacherHomeworkPage() {
         </div>
       ) : (
         <div className="mt-5">
-          <div className="divide-y card bg-background  !p-2 rounded-2xl divide-gray-100     ">
+          <div className="divide-y card bg-background  !p-0  rounded-2xl overflow-hidden divide-gray-100     ">
+          <div className=" p-2 px-4 bg-linear-120 from-sky-100/50 via-primary-50/50 to-white/25 flex flex-wrap items-center gap-x-4 gap-y-2   text-xs text-gray-600">
+            {(["NOT_SUBMITTED", "SUBMITTED", "CHECKED"] as HomeworkStatus[]).map((status) => (
+              <span key={status} className="inline-flex items-center gap-1.5">
+                <Icon
+                  icon={STATUS_ICONS[status]}
+                  className={cn(
+                    "size-4",
+                    status === "NOT_SUBMITTED" && "text-red-500",
+                    status === "SUBMITTED" && "text-yellow-600",
+                    status === "CHECKED" && "text-primary-600",
+                  )}
+                  aria-hidden="true"
+                />
+                {STATUS_CONFIG[status].label}
+              </span>
+            ))}
+          </div>
           {homework.map((hw) => {
             const rows = submissions[hw.id]?.submissions ?? [];
             const countByStatus = {
@@ -344,7 +361,6 @@ export default function TeacherHomeworkPage() {
                           )}
                           aria-hidden="true"
                         />
-                        {/* {STATUS_CONFIG[status].label} */}
                         <span className="font-semibold">{countByStatus[status]}</span>
                       </span>
                     );
@@ -407,6 +423,23 @@ export default function TeacherHomeworkPage() {
               <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
                 {t("teacherPages", "submissionsCount", lang).replace("{n}", String(submissions[assessHw.id]?.submissions.length ?? 0))}
               </p>
+            </div>
+            <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-600">
+              {(["NOT_SUBMITTED", "SUBMITTED", "CHECKED"] as HomeworkStatus[]).map((status) => (
+                <span key={status} className="inline-flex items-center gap-1.5">
+                  <Icon
+                    icon={STATUS_ICONS[status]}
+                    className={cn(
+                      "size-4",
+                      status === "NOT_SUBMITTED" && "text-red-500",
+                      status === "SUBMITTED" && "text-yellow-600",
+                      status === "CHECKED" && "text-primary-600",
+                    )}
+                    aria-hidden="true"
+                  />
+                  {STATUS_CONFIG[status].label}
+                </span>
+              ))}
             </div>
             </div>
             {loadingSubs === assessHw.id && !submissions[assessHw.id] ? (
@@ -483,8 +516,8 @@ export default function TeacherHomeworkPage() {
         onOpenChange={setShowAssessOptions}
         side="bottom"
         drawerOnDesktop
+        showCloseButton={false}
         className="mx-auto w-full max-w-md rounded-t-2xl"
-        title={t("common", "actions", lang)}
       >
         <div className="p-2">
           <Item

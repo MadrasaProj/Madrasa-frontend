@@ -104,32 +104,29 @@ export function ResponsivePopover({
           className,
         )}
       >
-        {(title || description || headerAction || renderClose || showBackButton) && (
+        {(title || headerAction || renderClose || showBackButton) && (
           <header
             className={cn(
               "relative shrink-0 border-b border-gray-100 px-5 pb-4 pt-4",
               (showBackButton || renderClose) && "min-h-14",
             )}
           >
-            {(title || description || headerAction) && (
+            {(title || headerAction) && (
               <div
                 className={cn(
                   "min-w-0 space-y-0.5 text-left",
-                  showBackButton && "pl-8",
+                  showBackButton && "pl-0",
                   renderClose && "pr-11",
                 )}
               >
                 <div className="flex min-w-0 items-center justify-between gap-3">
                   {title && (
-                    <h2 className="min-w-0 break-words text-base font-extrabold tracking-tight">
+                    <h2 className={cn(" wrap-break-words w-full    text-base font-extrabold tracking-tight",showBackButton?"text-center":"")}>
                       {title}
                     </h2>
                   )}
                   {headerAction && <div className="shrink-0">{headerAction}</div>}
                 </div>
-                {description && (
-                  <p className="text-xs text-gray-500">{description}</p>
-                )}
               </div>
             )}
             {showBackButton && (
@@ -137,7 +134,7 @@ export function ResponsivePopover({
                 type="button"
                 aria-label="Back"
                 onClick={onBack ?? (() => onOpenChange(false))}
-                className="absolute left-2 top-4 flex size-11 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 md:size-9"
+                className="absolute left-4 top-4 flex   items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 md:size-9"
               >
                 <ChevronLeft className="size-6 md:size-5" />
               </button>
@@ -160,6 +157,9 @@ export function ResponsivePopover({
             contentClassName,
           )}
         >
+          {description && (
+            <p className="px-5 pt-4 text-xs text-gray-500">{description}</p>
+          )}
           {children}
         </div>
         {footer && <div className="shrink-0">{footer}</div>}
@@ -196,7 +196,7 @@ export function ResponsivePopover({
             {renderClose && <DrawerClose aria-label="Close" className="absolute right-2 top-2 flex size-11 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 md:size-9"><X className="size-6 md:size-5" /></DrawerClose>}
           </DrawerHeader>
         )}
-        <div className={cn("min-h-0 overflow-y-auto overscroll-contain", compact ? "flex-auto" : "flex-1", contentClassName)}>{children}</div>
+        <div className={cn("min-h-0 overflow-y-auto overscroll-contain pb-[10px] md:pb-0", compact ? "flex-auto" : "flex-1", contentClassName)}>{children}</div>
         {footer && <div className="shrink-0">{footer}</div>}
       </DrawerContent>
     </BaseDrawer>

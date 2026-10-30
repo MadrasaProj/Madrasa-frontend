@@ -188,19 +188,19 @@ function PeriodProgress({ paid, total }: { paid: number; total: number }) {
   const percentage = total > 0 ? (paid / total) * 100 : 0;
 
   return (
-    <div className="relative size-24 shrink-0" role="img" aria-label={`${paid} of ${total} periods paid`}>
+    <div className="relative size-[50px] bg-white rounded-full shrink-0" role="img" aria-label={`${paid} of ${total} periods paid`}>
       <ChartContainer
         config={feeProgressChartConfig}
-        initialDimension={{ width: 96, height: 96 }}
-        className="!aspect-auto size-24"
+        initialDimension={{ width: 50, height: 50 }}
+        className="!aspect-auto size-[50px]"
         aria-hidden="true"
       >
         <RadialBarChart
           data={[{ value: percentage, fill: "#059669" }]}
           startAngle={90}
           endAngle={-270}
-          innerRadius={35}
-          outerRadius={44}
+          innerRadius={18}
+          outerRadius={23}
         >
           <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
           <RadialBar dataKey="value" background={{ fill: "#e5e7eb" }} cornerRadius={5} isAnimationActive={false} />
@@ -1075,7 +1075,8 @@ export default function TeacherFeesPage() {
       >
         {recurringStudent && selectedFeeType && (
           <div className="mx-auto w-full max-w-2xl space-y-5 px-4 pb-8 pt-2 sm:px-6">
-            <div className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-gray-50 p-4">
+            <div className="flex items-center gap-3 rounded-xl     bg-primary-50/50 p-2.5 ">
+             
               <PeriodProgress paid={recurringStudent.paidPeriods} total={recurringStudent.periods.length} />
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-gray-900">

@@ -106,6 +106,9 @@ export default function TeacherCheckinPage() {
   }, [cid, token]); // eslint-disable-line
 
   const fetchLocation = useCallback(async () => {
+    setLocLoading(true);
+    setLocError(null);
+
     // Secure context required for geolocation in production (HTTPS)
     if (typeof window !== "undefined" && !window.isSecureContext) {
       setLocError(
@@ -119,6 +122,7 @@ export default function TeacherCheckinPage() {
       setLocError(
         "Geolocation is not supported by your browser. Try Chrome on Android or Safari on iPhone.",
       );
+      setLocLoading(false);
       return;
     }
 
@@ -146,9 +150,6 @@ export default function TeacherCheckinPage() {
         // Firefox throws on unknown permission name when gated
       }
     }
-
-    setLocLoading(true);
-    setLocError(null);
 
     const requestPosition = (
       opts: PositionOptions,
@@ -399,7 +400,12 @@ export default function TeacherCheckinPage() {
                 !activeSession && todaySessions.length === 0 && "hidden",
               )}
             >
-              {location ? (
+              {locLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {t("teacherPages", "gettingLocation", lang)}
+                </>
+              ) : location ? (
                 <>
                   <Icon icon="solar:login-2-linear" className="h-4 w-4" />
                   {t("teacherPages", "checkInBtn", lang)}
@@ -507,8 +513,18 @@ export default function TeacherCheckinPage() {
                         !location && "bg-red-600 text-white hover:bg-red-700",
                       )}
                     >
-                      {location ? <Icon icon="solar:login-2-linear" className="h-4 w-4" /> : <AlertTriangle className="h-5 w-5" />}
-                      {location ? t("teacherPages", "checkInBtn", lang) : t("teacherPages", "locationRequired", lang)}
+                      {locLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : location ? (
+                        <Icon icon="solar:login-2-linear" className="h-4 w-4" />
+                      ) : (
+                        <AlertTriangle className="h-5 w-5" />
+                      )}
+                      {locLoading
+                        ? t("teacherPages", "gettingLocation", lang)
+                        : location
+                          ? t("teacherPages", "checkInBtn", lang)
+                          : t("teacherPages", "locationRequired", lang)}
                     </Button>
                   </div>
                 </div>

@@ -29,7 +29,6 @@ import { t } from "@/lib/i18n";
 import {
   Moon,
   BookOpen,
-  Loader2,
   Users,
   Check,
   Sun,
@@ -948,8 +947,53 @@ export default function TeacherIbadahPage({
           </Tabs>
 
           {loadingIbadah ? (
-            <div className="flex items-center justify-center gap-2 py-10 text-gray-400">
-              <Loader2 className="w-4 h-4 animate-spin" />
+            <div className="space-y-3 px-3" aria-label="Loading ibadah records" aria-busy="true">
+              {viewMode === "daily" && (
+                <>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="rounded-2xl border border-gray-100 bg-white p-4">
+                        <Skeleton className="h-3 w-24 rounded-md" />
+                        <Skeleton className="mt-3 h-7 w-12 rounded-md" />
+                        <Skeleton className="mt-2 h-3 w-28 rounded-md" />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white card">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className="flex items-center gap-3 px-4 py-4">
+                        <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <Skeleton className="h-4 w-32 rounded-md" />
+                          <Skeleton className="h-3 w-20 rounded-md" />
+                        </div>
+                        <div className="flex gap-1">
+                          {Array.from({ length: 5 }).map((_, j) => (
+                            <Skeleton key={j} className="h-5 w-5 rounded-md" />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+              {viewMode === "weekly" && (
+                <>
+                  <Skeleton className="h-36 rounded-2xl" />
+                  <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white card">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className="flex items-center gap-3 px-4 py-4">
+                        <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <Skeleton className="h-4 w-32 rounded-md" />
+                          <Skeleton className="h-3 w-20 rounded-md" />
+                        </div>
+                        <Skeleton className="h-8 w-20 rounded-lg" />
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           ) : (
             <>

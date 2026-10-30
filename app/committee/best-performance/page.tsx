@@ -255,10 +255,6 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
       <DashboardLayout>
         <PageHeader
           title={lang === "ml" ? "മികച്ച ഇബാദത്ത്" : "Best Ibadah Performance"}
-          action={data.length > 0 && <Button size="sm" variant="outline" onClick={handleDownloadPDF} disabled={downloadingPdf}>
-            {downloadingPdf ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
-            <span className="hidden sm:inline">{downloadingPdf ? "Exporting..." : "Download PDF"}</span><span className="sm:hidden">PDF</span>
-          </Button>}
         />
         <div ref={printRef} className="min-w-0 overflow-hidden pb-28 lg:pb-20">
           <section className="pt-13 text-center" aria-label={lang === "ml" ? "പ്രകടന സ്ഥിതിവിവരക്കണക്കുകൾ" : "Performance statistics"}>
@@ -289,6 +285,12 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
                 <span className="text-[11px] font-medium leading-tight text-gray-600 sm:text-xs">{label}</span>
               </div>)}
             </div>
+            {data.length > 0 && <div className="mt-5 flex justify-center">
+              <Button size="sm" variant="outline" onClick={handleDownloadPDF} disabled={downloadingPdf}>
+                {downloadingPdf ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+                <span>{downloadingPdf ? "Exporting..." : "Download PDF"}</span>
+              </Button>
+            </div>}
           </section>
           {loading && <div className="mx-auto mt-8 max-w-xl space-y-3">{Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} className="h-64 rounded-3xl" />)}</div>}
           {error && <div role="alert" className="mx-auto mt-8 max-w-xl rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm font-medium text-gray-700">{error}</div>}

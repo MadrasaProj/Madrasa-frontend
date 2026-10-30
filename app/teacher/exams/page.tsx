@@ -379,6 +379,31 @@ export default function TeacherExamsPage() {
     );
   }
 
+  if (exams.length === 0) {
+    return (
+      <DashboardLayout>
+        <div className="p-0! pb-6!">
+          <PageHeader title={t("teacherPages", "examsLoadingTitle", lang)} />
+          <div className="flex min-h-[70vh] flex-col items-center justify-center gap-3 px-4 text-center">
+          <img
+            src="/icons/exams/empty-islamic.webp"
+            alt=""
+            className="h-64 w-64 max-w-[80vw] object-contain"
+          />
+          <div className="max-w-sm space-y-1">
+            <h2 className="text-lg font-semibold text-gray-900">
+              {t("teacherPages", "noTermExamsHeading", lang)}
+            </h2>
+            <p className="text-sm leading-6 text-gray-500">
+              {t("teacherPages", "noTermExamsDescription", lang)}
+            </p>
+          </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   // ── Render Dashboard Exams List View ─────────────────────────────────────────
 
   return (

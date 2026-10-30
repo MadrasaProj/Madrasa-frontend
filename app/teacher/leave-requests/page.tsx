@@ -150,7 +150,7 @@ export default function TeacherLeaveRequestsPage() {
             <p className="text-sm">{t("teacherPages", "noLeaveRequests", lang)}</p>
           </div>
         ) : (
-          <div className="p-4 bg-background rounded-2xl card">
+          <div className="p-0 *:px-4 py-1 bg-background rounded-2xl card">
             {filtered.map((r) => {
               const rc = REASON_CONFIG[r.reasonType];
               return (

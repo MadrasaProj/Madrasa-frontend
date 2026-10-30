@@ -267,7 +267,7 @@ const teacherLinks = [
 
 const parentLinks = [
   { href: "/parent", icon: Home, key: "home" as NavKey },
-  // { href: "/parent/students", icon: User, key: "students" as NavKey },
+  { href: "/parent/students", icon: User, key: "students" as NavKey },
   {
     href: "/parent/attendance",
     icon: ClipboardList,
