@@ -107,19 +107,19 @@ export function ResponsivePopover({
         {(title || headerAction || renderClose || showBackButton) && (
           <header
             className={cn(
-              "relative shrink-0 border-b border-gray-100 px-5 pb-4 pt-4",
-              (showBackButton || renderClose) && "min-h-14",
+              "relative shrink-0 border-b border-gray-100 px-5 ",
+              (showBackButton || renderClose) && "min-h-14 flex ",
             )}
           >
             {(title || headerAction) && (
               <div
                 className={cn(
-                  "min-w-0 space-y-0.5 text-left",
+                  "min-w-0 space-y-0.5 text-left w-full my-auto",
                   showBackButton && "pl-0",
                   renderClose && "pr-11",
                 )}
               >
-                <div className="flex min-w-0 items-center justify-between gap-3">
+                <div className="flex  min-w-0 my-auto items-center justify-between gap-3">
                   {title && (
                     <h2 className={cn(" wrap-break-words w-full    text-base font-extrabold tracking-tight",showBackButton?"text-center":"")}>
                       {title}
@@ -182,7 +182,7 @@ export function ResponsivePopover({
         style={wideDesktopDrawer ? { "--drawer-content-width": "90vw" } as React.CSSProperties : undefined}
       >
         {(title || description || headerAction || showCloseButton || showBackButton) && (
-          <DrawerHeader className={cn("relative shrink-0", compact ? "px-4 pb-2 pt-3" : isBottom ? "px-5 pb-3.5 pt-5" : "px-5 pb-4 pt-4", (showBackButton || showCloseButton) && "min-h-14")}>
+          <DrawerHeader className={cn("relative shrink-0", compact ? "px-4 pb-2 pt-3" : isBottom ? "px-5 pb-3.5 pt-5" : "px-5   pt-4", (showBackButton || showCloseButton) && "min-h-14")}>
             {(title || description || headerAction) && (
               <div className={cn("min-w-0 space-y-0.5 text-left", showBackButton && "pl-8", renderClose && "pr-11")}>
                 <div className="flex min-w-0 items-center justify-between gap-3">

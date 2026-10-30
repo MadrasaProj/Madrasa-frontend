@@ -14,6 +14,7 @@ import { getRoleFromPath, getTenantSlugFromPath } from "@/lib/tenant-routing";
 import RoleLoginPage from "@/components/auth/RoleLoginPage";
 import { useClientConfig } from "@/lib/queries";
 import { cn } from "@/lib/utils";
+import { DrawerSelector } from "@/components/DrawerSelector";
 
 // ── Super Admin Viewing Banner ─────────────────────────────────────────────────
 
@@ -194,59 +195,23 @@ function UserMenu({
       {/* Student switcher (parents only) */}
       {showStudentSwitcher && (
         <div className="border-b border-gray-100">
-          <p className="px-4 pt-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">
-            Switch Student
-          </p>
-          <div className="max-h-56 overflow-y-auto pb-1">
-            {studentIds.map((id) => {
-              const info = students.find((s) => s.id === id);
-              const name = info?.name ?? "Student";
-              const sub = info?.className ?? info?.adno ?? "";
-              const isActive = currentStudentId === id;
-              return (
-                <button
-                  key={id}
-                  onClick={() => handleSelectStudent(id)}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors",
-                    isActive
-                      ? "bg-primary-50"
-                      : "hover:bg-gray-50 active:bg-gray-100",
-                  )}
-                  role="menuitem"
-                >
-                  {info?.photoUrl ? (
-                    <img
-                      src={info.photoUrl}
-                      alt=""
-                      className="w-8 h-8 rounded-lg object-cover ring-1 ring-white shrink-0"
-                    />
-                  ) : (
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-100 to-teal-100 text-primary-700 flex items-center justify-center font-bold text-xs shrink-0">
-                      {name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p
-                      className={cn(
-                        "text-sm font-semibold leading-tight truncate",
-                        isActive ? "text-primary-700" : "text-gray-900",
-                      )}
-                    >
-                      {name}
-                    </p>
-                    {sub && (
-                      <p className="text-xs text-gray-400 leading-tight mt-0.5 truncate">
-                        {sub}
-                      </p>
-                    )}
-                  </div>
-                  {isActive && (
-                    <Check className="w-4 h-4 text-primary-600 shrink-0" />
-                  )}
-                </button>
-              );
-            })}
+          <div className="px-4 py-3">
+            <DrawerSelector
+              title="Switch Student"
+              options={studentIds.map((id) => {
+                const student = students.find((item) => item.id === id);
+                const sub = student?.className ?? student?.adno;
+                return {
+                  value: id,
+                  label: sub ? `${student?.name ?? "Student"} · ${sub}` : student?.name ?? "Student",
+                  image: student?.photoUrl ?? undefined,
+                };
+              })}
+              value={currentStudentId ?? ""}
+              onChange={handleSelectStudent}
+              triggerLabel="Switch Student"
+              triggerVariant="ghost"
+            />
           </div>
         </div>
       )}

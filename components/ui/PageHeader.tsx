@@ -1,20 +1,16 @@
 import { cn } from "@/lib/utils";
-import { LucideIcon, ChevronLeft, ChevronDown, School, Check } from "lucide-react";
+import { LucideIcon, ChevronLeft, ChevronDown, School } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useState } from "react";
 import { useAuthStore } from "@/store/auth";
 import { useActiveClass } from "@/store/activeClass";
 import { useLanguageStore } from "@/store/language";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ResponsivePopover } from "@/components/ui/responsivePopover";
-import { ParentStudentSwitcher } from "@/components/ParentStudentSwitcher";
+import { DrawerSelector } from "@/components/DrawerSelector";
 
 export function PageHeaderSwitchers() {
   const { pathname } = useLocation();
   const { user, activeStudentId, setActiveStudent } = useAuthStore();
   const { lang } = useLanguageStore();
-  const [studentOpen, setStudentOpen] = useState(false);
-  const [classOpen, setClassOpen] = useState(false);
   const { classes, activeClass, activeClassId, setActiveClassId, isLoading } =
     useActiveClass();
 
@@ -27,97 +23,52 @@ export function PageHeaderSwitchers() {
 
   if (isParentRoute && user?.actorType === "PARENT" && studentIds.length > 0) {
     return (
-      <>
-        <button
-          type="button"
-          aria-label={lang === "ml" ? "വിദ്യാർത്ഥിയെ തിരഞ്ഞെടുക്കുക" : "Switch student"}
-          aria-haspopup="dialog"
-          onClick={() => setStudentOpen(true)}
-          className="inline-flex max-w-40 shrink-0 items-center gap-2 rounded-full border border-gray-200 bg-white px-2 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-        >
-          <Avatar size="sm">
-            <AvatarImage src={currentStudent?.photoUrl ?? undefined} />
-            <AvatarFallback>{(currentStudent?.name ?? "S").charAt(0)}</AvatarFallback>
-          </Avatar>
-          <span className="truncate">{currentStudent?.name ?? "Student"}</span>
-          <ChevronDown className="size-4 shrink-0" />
-        </button>
-        <ResponsivePopover
-          open={studentOpen}
-          onOpenChange={setStudentOpen}
-          side="bottom"
-          title={lang === "ml" ? "വിദ്യാർത്ഥിയെ തിരഞ്ഞെടുക്കുക" : "Switch student"}
-          contentClassName="p-4"
-        >
-          <ParentStudentSwitcher
-            studentIds={studentIds}
-            students={students}
-            activeStudentId={currentId}
-            onSelectStudent={(id) => {
-              setActiveStudent(id);
-              setStudentOpen(false);
-            }}
-          />
-        </ResponsivePopover>
-      </>
+      <DrawerSelector
+        title={lang === "ml" ? "വിദ്യാർത്ഥിയെ തിരഞ്ഞെടുക്കുക" : "Switch student"}
+        options={studentIds.map((id) => {
+          const student = students.find((item) => item.id === id);
+          return { value: id, label: student?.name ?? "Student", image: student?.photoUrl ?? undefined };
+        })}
+        value={currentId ?? ""}
+        onChange={setActiveStudent}
+        placeholder="Student"
+        triggerItem={
+          <button
+            type="button"
+            className="inline-flex max-w-40 shrink-0 items-center gap-2 rounded-full border border-gray-200 bg-white px-2 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+          >
+            <Avatar size="sm">
+              <AvatarImage src={currentStudent?.photoUrl ?? undefined} />
+              <AvatarFallback>{(currentStudent?.name ?? "S").charAt(0)}</AvatarFallback>
+            </Avatar>
+            <span className="truncate">{currentStudent?.name ?? "Student"}</span>
+            <ChevronDown className="size-4 shrink-0" />
+          </button>
+        }
+      />
     );
   }
 
   if (isTeacherRoute && user?.role === "teacher") {
     return (
-      <>
-        <button
-          type="button"
-          aria-label={lang === "ml" ? "ക്ലാസ് മാറ്റുക" : "Switch active class"}
-          aria-haspopup="dialog"
-          onClick={() => setClassOpen(true)}
-          className="inline-flex max-w-40 shrink-0 items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-        >
-          <School className="size-4 shrink-0 text-primary-600" />
-          <span className="truncate">{activeClass?.name ?? "Class"}</span>
-          <ChevronDown className="size-4 shrink-0" />
-        </button>
-        <ResponsivePopover
-          open={classOpen}
-          onOpenChange={setClassOpen}
-          side="bottom"
-          title={lang === "ml" ? "സജീവ ക്ലാസ്" : "Active class"}
-          contentClassName="p-4"
-        >
-          {isLoading ? (
-            <p className="py-4 text-sm text-gray-500">
-              {lang === "ml" ? "ക്ലാസുകൾ ലോഡ് ചെയ്യുന്നു…" : "Loading classes…"}
-            </p>
-          ) : classes.length === 0 ? (
-            <p className="py-4 text-sm text-gray-500">
-              {lang === "ml" ? "ക്ലാസുകൾ നൽകിയിട്ടില്ല" : "No classes assigned"}
-            </p>
-          ) : (
-            <div className="divide-y divide-gray-100">
-              {classes.map((cls) => (
-                <button
-                  key={cls.id}
-                  type="button"
-                  aria-pressed={activeClassId === cls.id}
-                  onClick={() => {
-                    setActiveClassId(cls.id);
-                    setClassOpen(false);
-                  }}
-                  className={cn(
-                    "flex w-full items-center justify-between gap-3 py-3 text-left text-sm",
-                    activeClassId === cls.id
-                      ? "font-semibold text-primary-700"
-                      : "text-gray-700",
-                  )}
-                >
-                  <span>{cls.name}</span>
-                  {activeClassId === cls.id &&<Check/>}
-                </button>
-              ))}
-            </div>
-          )}
-        </ResponsivePopover>
-      </>
+      <DrawerSelector
+        title={lang === "ml" ? "സജീവ ക്ലാസ്" : "Active class"}
+        options={classes.map((cls) => ({ value: cls.id, label: cls.name, disabled: isLoading }))}
+        value={activeClassId ?? ""}
+        onChange={setActiveClassId}
+        placeholder={isLoading ? (lang === "ml" ? "ക്ലാസുകൾ ലോഡ് ചെയ്യുന്നു…" : "Loading classes…") : "Class"}
+        disabled={isLoading}
+        triggerItem={
+          <button
+            type="button"
+            className="inline-flex max-w-40 shrink-0 items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+          >
+            <School className="size-4 shrink-0 text-primary-600" />
+            <span className="truncate">{activeClass?.name ?? "Class"}</span>
+            <ChevronDown className="size-4 shrink-0" />
+          </button>
+        }
+      />
     );
   }
 

@@ -430,13 +430,26 @@ export default function TeacherDiaryPage() {
           {[1, 2, 3].map((i) => <Skeleton key={i} className="h-32 rounded-2xl" />)}
         </div>
       ) : (
-        <JournalList
-          entries={entries}
-          openEdit={openEdit}
-          handleDelete={handleDelete}
-          deletingId={deletingId}
-          lang={lang}
-        />
+        entries.length === 0 ? (
+          <div className="flex min-h-[55vh] flex-col items-center justify-center px-6 pb-24 text-center">
+            <img
+              src="/images/teacher/diary-empty.webp"
+              alt=""
+              aria-hidden="true"
+              className="mb-5 w-full max-w-[280px]"
+            />
+            <h2 className="text-lg font-semibold text-gray-800">No diary entries yet</h2>
+            <p className="mt-1 max-w-xs text-sm text-gray-500">Add a class update or a note for a student to get started.</p>
+          </div>
+        ) : (
+          <JournalList
+            entries={entries}
+            openEdit={openEdit}
+            handleDelete={handleDelete}
+            deletingId={deletingId}
+            lang={lang}
+          />
+        )
       )}
 
       <Button
