@@ -26,7 +26,7 @@ export function computePresetRange(preset: DatePreset): { from: string; to: stri
   const today = fmt(now);
 
   if (preset === "ALL") {
-    return { from: "", to: "" };
+    return { from: "ALL", to: "ALL" };
   }
   if (preset === "TODAY") {
     return { from: today, to: today };
@@ -58,8 +58,8 @@ export function DateRangeFilter({
   compact = false,
 }: DateRangeFilterProps) {
   const [activePreset, setActivePreset] = useState<DatePreset>(initialPreset);
-  const [customFrom, setCustomFrom] = useState(from || fmt(new Date()));
-  const [customTo, setCustomTo] = useState(to || fmt(new Date()));
+  const [customFrom, setCustomFrom] = useState(from && from !== "ALL" ? from : fmt(new Date()));
+  const [customTo, setCustomTo] = useState(to && to !== "ALL" ? to : fmt(new Date()));
 
   const presets: { id: DatePreset; label: string }[] = [
     ...(allowAllTime ? [{ id: "ALL" as DatePreset, label: "All Time" }] : []),
@@ -76,8 +76,10 @@ export function DateRangeFilter({
       onChange({ from: customFrom, to: customTo, preset: "CUSTOM" });
     } else {
       const range = computePresetRange(p);
-      setCustomFrom(range.from || fmt(new Date()));
-      setCustomTo(range.to || fmt(new Date()));
+      if (p !== "ALL") {
+        setCustomFrom(range.from || fmt(new Date()));
+        setCustomTo(range.to || fmt(new Date()));
+      }
       onChange({ ...range, preset: p });
     }
   };

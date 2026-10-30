@@ -61,6 +61,8 @@ export interface TeacherListItem {
 
 export interface OperationalActivitySummary {
   dateRange: { from?: string; to?: string };
+  madrasaName?: string | null;
+  client?: { id: string; name: string | null; slug?: string | null; logo?: string | null } | null;
   parents: {
     uniqueAccessed?: number;
     uniqueLoggedIn?: number;
@@ -149,8 +151,8 @@ export const getStudentStats      = (cid: string, token: string) =>
 export const getFeeSummary        = (cid: string, token: string, ay?: string, from?: string, to?: string) => {
   const q = new URLSearchParams();
   if (ay)   q.set("academicYearId", ay);
-  if (from) q.set("from", from);
-  if (to)   q.set("to",   to);
+  if (from && from !== "ALL" && from !== "all") q.set("from", from);
+  if (to && to !== "ALL" && to !== "all")   q.set("to",   to);
   q.set("tzOffset", String(new Date().getTimezoneOffset()));
   const qs = q.toString();
   return apiFetch<FeeSummary>(`${API_BASE}/${cid}/reports/fee-summary${qs ? `?${qs}` : ""}`, token);
@@ -158,8 +160,8 @@ export const getFeeSummary        = (cid: string, token: string, ay?: string, fr
 
 export const getAttendanceSummary = (cid: string, token: string, from?: string, to?: string) => {
   const q = new URLSearchParams();
-  if (from) q.set("from", from);
-  if (to)   q.set("to",   to);
+  if (from && from !== "ALL" && from !== "all") q.set("from", from);
+  if (to && to !== "ALL" && to !== "all")   q.set("to",   to);
   q.set("tzOffset", String(new Date().getTimezoneOffset()));
   const qs = q.toString();
   return apiFetch<AttendanceSummary>(`${API_BASE}/${cid}/reports/attendance-summary${qs ? `?${qs}` : ""}`, token);
@@ -167,8 +169,8 @@ export const getAttendanceSummary = (cid: string, token: string, from?: string, 
 
 export const getHomeworkSummary   = (cid: string, token: string, from?: string, to?: string) => {
   const q = new URLSearchParams();
-  if (from) q.set("from", from);
-  if (to)   q.set("to",   to);
+  if (from && from !== "ALL" && from !== "all") q.set("from", from);
+  if (to && to !== "ALL" && to !== "all")   q.set("to",   to);
   q.set("tzOffset", String(new Date().getTimezoneOffset()));
   const qs = q.toString();
   return apiFetch<HomeworkSummary>(`${API_BASE}/${cid}/reports/homework-summary${qs ? `?${qs}` : ""}`, token);
@@ -209,6 +211,12 @@ export const getActivityLogs = (
 };
 
 export interface ParentAdoptionItem {
+  studentId?: string;
+  studentName?: string;
+  name?: string;
+  adno?: string;
+  classId?: string | null;
+  className?: string;
   parentPhone: string;
   guardianName: string | null;
   children: {
@@ -242,14 +250,20 @@ export interface ClassAdoptionItem {
 }
 
 export interface ParentAdoptionReport {
-  dateRange: { from: string; to: string };
+  dateRange: { from: string; to: string; isAllTime?: boolean };
+  madrasaName?: string | null;
+  client?: { id: string; name: string | null; slug?: string | null; logo?: string | null } | null;
   summary: {
+    totalStudents?: number;
     totalFamilies: number;
     accessedCount?: number;
     loggedInCount: number;
     notAccessedCount?: number;
     notLoggedInCount: number;
     adoptionRate: number;
+    overallTotal?: number;
+    overallAccessed?: number;
+    overallNotAccessed?: number;
   };
   classBreakdown: ClassAdoptionItem[];
   parents: ParentAdoptionItem[];
