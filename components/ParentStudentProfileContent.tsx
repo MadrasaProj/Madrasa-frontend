@@ -169,21 +169,21 @@ export function ParentStudentProfileContent({
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col items-center rounded-b-[2rem] px-4 pb-9 pt-9 text-center md:pt-12"
+        className="flex flex-col items-center px-4 pb-5 pt-5 text-center md:pt-7"
       >
-        <div className="aspect-square w-[60vw] max-w-[120px] overflow-hidden rounded-full bg-linear-120 from-primary-200 to-primary-850">
+        <div className="size-20 shrink-0 overflow-hidden rounded-full bg-linear-120 from-primary-200 to-primary-850 md:size-24">
           {student.photoUrl ? (
             <img src={student.photoUrl} alt={student.name} className="h-full w-full object-cover" />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-[clamp(4rem,18vw,7rem)] font-semibold text-white">
+            <div className="flex h-full w-full items-center justify-center text-4xl font-semibold text-white md:text-5xl">
               {student.name.charAt(0)}
             </div>
           )}
         </div>
-        <h2 className="mt-6 max-w-full   text-3xl font-bold leading-tight  md:text-4xl">
+        <h2 className="mt-3 max-w-full break-words text-xl font-bold leading-tight md:text-2xl">
           {studentName}
         </h2>
-        <p className="mt-2 text-sm font-medium text-gray-600">
+        <p className="mt-1 text-xs font-medium text-gray-600 md:text-sm">
           {student.class?.name ?? t("parentPages", "classInfoLabel", lang)}
           <span className="mx-2 text-gray-400">·</span>
           {t("parentPages", "admissionNoLabel", lang)} {student.adno}
@@ -191,16 +191,16 @@ export function ParentStudentProfileContent({
         <Button
           type="button"
           onClick={openEdit}
-          size={"lg"}
+          size="lg"
           variant="default"
-          className="mt-6  rounded-full "
+          className="mt-4 rounded-full"
         >
           {t("parentPages", "editStudentBtn", lang)}
         </Button>
       </motion.div>
 
       {/* Student switcher */}
-      <section className="mb-8 border-b border-gray-100 px-1 pb-6 pt-2 text-gray-900">
+      <section className="mb-5 border-b border-gray-100 px-1 pb-4 pt-1 text-gray-900">
         <ParentStudentSwitcher
           studentIds={ids}
           students={students}
@@ -211,7 +211,7 @@ export function ParentStudentProfileContent({
       </section>
 
       {/* Student details */}
-      <section className="mb-8 px-1">
+      <section className="mb-5 px-1">
         <h3 className="mb-3 text-lg font-semibold text-gray-900">{t("parentPages", "studentDetailsLabel", lang)}</h3>
         <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2">
           {[
@@ -303,9 +303,9 @@ export function ParentStudentProfileContent({
           ].map(({ icon, label, value }) => (
             <div
               key={label}
-              className="flex min-w-0 items-start gap-4 border-b border-gray-100 py-4 last:border-b-0"
+              className="flex min-w-0 items-start gap-3 border-b border-gray-100 py-3 last:border-b-0"
             >
-              <Icon icon={icon}  className="mt-0.5 *:stroke-[1.2px] size-7 shrink-0 text-primary-400" aria-hidden="true" />
+              <Icon icon={icon} className="mt-0.5 size-6 shrink-0 text-primary-400 *:stroke-[1.2px]" aria-hidden="true" />
               <div className="min-w-0">
                 <p className="text-xs font-medium text-gray-500">{label}</p>
                 <p className="mt-0.5 break-words text-sm font-semibold text-gray-900">

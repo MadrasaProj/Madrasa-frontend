@@ -200,7 +200,7 @@ export default function ParentLeaveRequestsPage() {
             </p>
           </div>
         ) : (
-          <div className="card rounded-2xl bg-background p-4">
+          <div className="card rounded-2xl bg-background *:px-4 ">
             {filtered.map((request) => {
               const reason = REASON_CONFIG[request.reasonType];
               const status = STATUS_CONFIG[request.status];
@@ -210,7 +210,7 @@ export default function ParentLeaveRequestsPage() {
                   key={request.id}
                   type="button"
                   onClick={() => setSelectedRequest(request)}
-                  className="flex h-auto w-full flex-wrap items-center justify-start gap-2 border-b border-gray-200 p-2 text-left transition-colors last:border-b-0 hover:bg-gray-50 focus-visible:rounded-lg focus-visible:outline-2 focus-visible:outline-primary-500 sm:gap-3"
+                  className="flex h-auto w-full flex-wrap items-center justify-start gap-2 border-b border-gray-200 py-3 text-left transition-colors last:border-b-0 hover:bg-gray-50 focus-visible:rounded-lg focus-visible:outline-2 focus-visible:outline-primary-500 sm:gap-3"
                 >
                   <span className="min-w-0 flex-1 basis-full sm:basis-0">
                     <span className="block truncate text-sm font-semibold text-gray-900">{request.student.name}</span>
@@ -239,7 +239,7 @@ export default function ParentLeaveRequestsPage() {
         type="button"
         size="lg"
         onClick={() => setShowForm(true)}
-        className="fixed bottom-24 right-4 z-40 h-12 rounded-full px-5 shadow-lg lg:bottom-6 lg:right-8"
+        className="fixed bottom-24 left-1/2 z-40 -translate-x-1/2  rounded-full   shadow-lg lg:bottom-6 lg:right-8"
       >
         <Plus className="size-4" />
         {t("parentPages", "newRequest", lang)}

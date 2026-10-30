@@ -8,8 +8,8 @@ import { useStudentIbadah, useUpsertStudentIbadah } from "@/lib/queries";
 import { Icon } from "@iconify/react";
 import {
   Moon, Loader2, AlertCircle,
-  Flame, BookOpen, ChevronDown, ChevronUp,
-  Save, Hash, ToggleLeft,
+  Flame, BookOpen, ChevronDown,
+  Save, Hash,
   Check, Sun, X, Users, Plus,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -70,7 +70,7 @@ export default function ParentIbadahPage() {
   const [drawerCustomEnum, setDrawerCustomEnum] = useState<string | null>(null);
   const [dirtyPrayers, setDirtyPrayers] = useState<Set<Prayer>>(new Set());
   const [recordOpen, setRecordOpen] = useState(false);
-  const [expandedLog, setExpandedLog] = useState<string | null>(null);
+  const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
 
   const { lang } = useLanguageStore();
 
@@ -116,6 +116,7 @@ export default function ParentIbadahPage() {
   );
 
   const customItems = config?.customItems ?? [];
+  const selectedLog = ibadah?.logs.find((log) => log.id === selectedLogId);
 
   const openRecord = (recordDate: string) => {
     const log = ibadah?.logs.find((entry) => entry.date.split("T")[0] === recordDate);
@@ -278,8 +279,8 @@ export default function ParentIbadahPage() {
           <h2 className="text-sm font-semibold text-gray-950">{t("parentPages", "historyLabel", lang)}</h2>
         </div>
 
-        <div className="fixed bottom-24 right-4 z-40 lg:bottom-6">
-          <Button type="button" size="lg" onClick={() => openRecord(fmt(new Date()))}>
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 lg:bottom-6">
+          <Button className={"rounded-full"} type="button" size="lg" onClick={() => openRecord(fmt(new Date()))}>
             <Plus /> {t("parentPages", "record", lang)}
           </Button>
         </div>
@@ -629,6 +630,87 @@ export default function ParentIbadahPage() {
       </AnimatePresence>
         </ResponsivePopover>
 
+        <ResponsivePopover
+          open={selectedLogId !== null}
+          onOpenChange={(open) => { if (!open) setSelectedLogId(null); }}
+          title={ibadah.student.name}
+          description={selectedLog ? `${ibadah.student.adno} · ${new Date(`${selectedLog.date.split("T")[0]}T00:00:00`).toLocaleDateString(lang === "ml" ? "ml-IN" : "en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}` : undefined}
+          drawerOnDesktop
+          contentClassName="px-4 pb-6"
+          footer={selectedLog && (
+            <div className="border-t border-gray-100 bg-white px-4 py-3">
+              <Button type="button" className="w-full" onClick={() => {
+                const recordDate = selectedLog.date.split("T")[0];
+                setSelectedLogId(null);
+                openRecord(recordDate);
+              }}>
+                {t("parentPages", "editRecord", lang)}
+              </Button>
+            </div>
+          )}
+        >
+          {selectedLog && (
+            <div className="mx-auto max-w-2xl space-y-5 pt-4">
+              {activePrayers.length > 0 && (
+                <section>
+                  <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">{t("teacherPages", "prayerSection", lang)}</h3>
+                  <div className="divide-y divide-gray-100 rounded-xl border border-gray-100 bg-white">
+                    {activePrayers.map((prayer) => {
+                      const status = selectedLog[prayer];
+                      const option = prayerOptions.find((item) => item.value === status);
+                      return (
+                        <div key={prayer} className="flex items-center justify-between gap-3 px-3 py-3">
+                          <span className="text-sm font-medium text-gray-800">{prayerMeta[prayer].label}</span>
+                          <span className={cn("flex items-center gap-2 text-xs font-medium", status === "QALA" ? "text-amber-600" : status === "JAMA" ? "text-blue-600" : status ? "text-primary-600" : "text-gray-500")}>
+                            {option && <option.icon className="size-4" aria-hidden="true" />}
+                            {option?.label ?? t("parentPages", "missedLabel", lang)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
+              {config?.enableQuranPages !== false && (
+                <section>
+                  <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">{t("teacherPages", "quranPagesHeader", lang)}</h3>
+                  <div className="flex items-center gap-2 rounded-xl border border-gray-100 px-3 py-3 text-sm text-gray-800">
+                    <BookOpen className="size-4 text-blue-600" aria-hidden="true" />
+                    <span className="font-semibold">{selectedLog.quranPages}</span> {t("parentPages", "pages", lang)}
+                  </div>
+                </section>
+              )}
+              {customItems.length > 0 && (
+                <section>
+                  <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">{t("teacherPages", "customSection", lang)}</h3>
+                  <div className="divide-y divide-gray-100 rounded-xl border border-gray-100 bg-white">
+                    {customItems.map((item) => {
+                      const value = selectedLog.customData?.[item.key];
+                      const displayValue = value === undefined || value === null || value === ""
+                        ? t("teacherPages", "notRecordedLabel", lang)
+                        : item.type === "boolean"
+                          ? t("parentPages", value ? "yesLabel" : "noLabel", lang)
+                          : String(value);
+                      return (
+                        <div key={item.key} className="flex items-center justify-between gap-3 px-3 py-3 text-sm">
+                          <span className="text-gray-600">{item.label}</span>
+                          <span className="text-right font-semibold text-gray-900">{displayValue}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
+              {selectedLog.notes && (
+                <section>
+                  <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">{t("parentPages", "remarks", lang)}</h3>
+                  <p className="whitespace-pre-wrap rounded-xl border border-gray-100 px-3 py-3 text-sm text-gray-700">{selectedLog.notes}</p>
+                </section>
+              )}
+            </div>
+          )}
+        </ResponsivePopover>
+
         {/* History */}
         <section data-ui-style="classic" className="card mx-0 mb-20 divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white p-0! shadow-none">
           {ibadah.logs.length === 0 ? (
@@ -639,7 +721,6 @@ export default function ParentIbadahPage() {
           ) : (
             ibadah.logs.map((log, i) => {
               const prayersDone = activePrayers.filter((p) => log[p] != null).length;
-              const isExpanded = expandedLog === log.id;
               const logDate = new Date(log.date).toLocaleDateString(lang === "ml" ? "ml-IN" : "en-GB", {
                 weekday: "short", day: "numeric", month: "short",
               });
@@ -652,9 +733,8 @@ export default function ParentIbadahPage() {
                 >
                   <button
                     type="button"
-                    aria-expanded={isExpanded}
                     className="flex w-full items-center gap-3 px-4 py-4 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500"
-                    onClick={() => setExpandedLog(isExpanded ? null : log.id)}
+                    onClick={() => setSelectedLogId(log.id)}
                   >
                     <div className={cn(
                       "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-[11px] font-bold",
@@ -682,72 +762,8 @@ export default function ParentIbadahPage() {
                         />
                       ))}
                     </div>
-                    {isExpanded
-                    ? <ChevronUp className="w-3.5 h-3.5 text-gray-300 shrink-0" />
-                    : <ChevronDown className="w-3.5 h-3.5 text-gray-300 shrink-0" />}
+                    <ChevronDown className="w-3.5 h-3.5 text-gray-300 shrink-0" />
                   </button>
-
-                  <AnimatePresence>
-                    {isExpanded && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }} className="overflow-hidden"
-                      >
-                        <div className="space-y-3 border-t border-gray-100 bg-gray-50/40 px-4 py-4">
-                          <div className="flex gap-1.5">
-                            {activePrayers.map((p) => (
-                              <div
-                                key={p}
-                                className={cn(
-                                  "flex-1 rounded-lg py-2 text-center text-[10px] font-semibold",
-                                  log[p] != null ? "bg-primary-50 text-primary-700" : "bg-gray-50 text-gray-400",
-                                )}
-                              >
-                                <div>{prayerOptions.find((o) => o.value === log[p])?.label ?? "—"}</div>
-                                <div className="mt-0.5 opacity-70">{prayerMeta[p].label}</div>
-                              </div>
-                            ))}
-                          </div>
-                          {log.quranPages > 0 && (
-                            <div className="flex items-center gap-1.5 text-xs text-primary-600">
-                              <BookOpen className="w-3 h-3" /> {log.quranPages} {t("parentPages", "pages", lang)}
-                            </div>
-                          )}
-                          {customItems.length > 0 && log.customData && (
-                            <div className="space-y-1">
-                              {customItems.map((item) => {
-                                const val = log.customData?.[item.key];
-                                if (val === undefined || val === null) return null;
-                                const enumOpt = item.type === "enum" ? item.options?.find((o) => o.label === val) : null;
-                                return (
-                                  <div key={item.key} className="flex items-center gap-1.5 text-xs text-gray-500">
-                                    {item.type === "boolean" ? (
-                                      <ToggleLeft className="w-3 h-3 shrink-0" />
-                                    ) : item.type === "enum" && enumOpt ? (
-                                      <Icon icon={enumOpt.icon} className="w-3 h-3 shrink-0" />
-                                    ) : (
-                                      <Hash className="w-3 h-3 shrink-0" />
-                                    )}
-                                    <span>{item.label}:</span>{" "}
-                                    <span>{item.type === "boolean" ? (val ? t("parentPages", "yesLabel", lang) : t("parentPages", "noLabel", lang)) : String(val)}</span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                          {log.notes && (
-                            <p className="text-xs text-gray-400 italic">{log.notes}</p>
-                          )}
-                          <button
-                            onClick={() => openRecord(log.date.split("T")[0])}
-                            className="text-xs font-medium text-primary-600 hover:text-primary-800 transition-colors"
-                          >
-                            {t("parentPages", "editRecord", lang)} →
-                          </button>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
                 </motion.div>
               );
             })

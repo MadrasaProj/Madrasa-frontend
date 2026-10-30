@@ -523,7 +523,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-    <div className="min-h-[100svh] bg-primary-50/50 overflow-visible">
+    <div className="min-h-[100svh] bg-primary-50/25 overflow-visible">
       <Sidebar isOpen={isMobileSidebarOpen} onClose={() => setIsMobileSidebarOpen(false)} />
       <div className="lg:ml-64">
         <SuperAdminViewingBanner />

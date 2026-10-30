@@ -379,6 +379,7 @@ export default function App() {
         <Route path="/parent" element={<ParentDashboard />} />
         <Route path="/parent/students" element={<ParentStudentProfile />} />
         <Route path="/parent/attendance" element={<ParentAttendancePage />} />
+        <Route path="/parent/leave-requests" element={<ParentLeaveRequestsPage />} />
         <Route path="/parent/fees" element={<ParentFeesPage />} />
         <Route path="/parent/id-cards" element={<ParentIdCardsPage />} />
         <Route path="/parent/homework" element={<ParentHomeworkPage />} />
