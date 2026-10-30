@@ -1,13 +1,13 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeaderSwitchers } from "@/components/ui/PageHeader";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { BestPerformerCard } from "@/components/parent/BestPerformerCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { useNavigate } from "react-router-dom";
 import { t } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
 import { useRefreshParentStudents } from "@/lib/hooks/useRefreshParentStudents";
 import {
   useBestPerformers,
@@ -17,17 +17,16 @@ import {
   useStudentIbadah,
 } from "@/lib/queries";
 import { periodDates } from "@/lib/best-performance-period";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Pagination } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/pagination";
 import {
-  Award,
   Bell,
   BookOpen,
-  CalendarCheck2,
   ChevronRight,
-  CircleCheck,
-  CircleX,
   ClipboardList,
   Clock3,
-  Flame,
   GraduationCap,
   IndianRupee,
   Loader2,
@@ -36,62 +35,6 @@ import {
   TrendingUp,
   User,
 } from "lucide-react";
-
-function CompactGauge({
-  value,
-  color = "#059669",
-  label = "Rate",
-}: {
-  value: number;
-  color?: string;
-  label?: string;
-}) {
-  const clamped = Math.max(0, Math.min(100, Math.round(value)));
-  const angle = Math.PI * (1 - clamped / 100);
-  const x = Number((50 + 36 * Math.cos(angle)).toFixed(2));
-  const y = Number((45 - 36 * Math.sin(angle)).toFixed(2));
-
-  return (
-    <div className="flex flex-col items-center justify-center shrink-0">
-      <svg
-        viewBox="0 0 100 54"
-        className="h-11 w-20 sm:h-12 sm:w-22 overflow-visible"
-        role="img"
-        aria-label={`${label}: ${clamped}%`}
-      >
-        <path
-          d="M 14 45 A 36 36 0 0 1 86 45"
-          fill="none"
-          stroke="#e5e7eb"
-          strokeWidth="8"
-          strokeLinecap="round"
-        />
-        {clamped > 0 && (
-          <path
-            d={`M 14 45 A 36 36 0 0 1 ${x} ${y}`}
-            fill="none"
-            stroke={color}
-            strokeWidth="8"
-            strokeLinecap="round"
-          />
-        )}
-        <text
-          x="50"
-          y="42"
-          textAnchor="middle"
-          className="fill-gray-950 text-[13px] font-bold"
-        >
-          {clamped}%
-        </text>
-      </svg>
-      {label && (
-        <span className="text-[10px] font-medium text-gray-500 mt-0.5">
-          {label}
-        </span>
-      )}
-    </div>
-  );
-}
 
 export default function ParentDashboard() {
   const { user, accessToken, activeStudentId } = useAuthStore();
@@ -104,7 +47,6 @@ export default function ParentDashboard() {
 
   const accessibleStudentIds = user?.accessibleStudentIds ?? [];
   const accessibleStudents = user?.accessibleStudents ?? [];
-  const childCount = accessibleStudentIds.length;
   const activeId = activeStudentId ?? accessibleStudentIds[0] ?? "";
   const activeStudent = accessibleStudents.find((student) => student.id === activeId);
 
@@ -128,10 +70,6 @@ export default function ParentDashboard() {
     { enabled: !!cid && !!token && !!activeId },
   );
   const performers = performance?.performers ?? [];
-  const activePerformer = performers.find((performer) => performer.studentId === activeId);
-  const activeRank = activePerformer
-    ? performers.findIndex((performer) => performer.studentId === activeId) + 1
-    : 0;
 
   // Student Attendance query
   const { data: attendance, isLoading: loadingAttendance } = useStudentAttendance(
@@ -150,8 +88,6 @@ export default function ParentDashboard() {
 
   const today = new Date();
   const todayDateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-  const todayRecord = attendance?.records?.find((r) => r.date.startsWith(todayDateStr));
-  const todayStatus = todayRecord?.status;
 
   // Student Ibadah query
   const { data: ibadah, isLoading: loadingIbadah } = useStudentIbadah(
@@ -167,7 +103,6 @@ export default function ParentDashboard() {
     : 0;
   const remainingPrayers = Math.max(0, 5 - completedPrayers);
   const ibadahPercent = Math.min(100, Math.round((completedPrayers / 5) * 100));
-  const ibadahCompleted = completedPrayers === 5;
 
   // Student Homework query
   const { data: homework, isLoading: loadingHomework } = useStudentHomework(
@@ -252,438 +187,147 @@ export default function ParentDashboard() {
     <DashboardLayout>
       <div className="space-y-4 sm:space-y-5">
         {/* Welcome Header */}
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <Avatar className="size-13 shrink-0 ring-2 ring-primary-100 sm:size-14">
+        <header className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+            <Avatar className="size-10 shrink-0 ring-2 ring-primary-100 sm:size-11">
               <AvatarImage src={user?.photoUrl ?? undefined} alt="" />
-              <AvatarFallback className="bg-primary-50 text-base font-semibold text-primary-700">
+              <AvatarFallback className="bg-primary-50 text-sm font-semibold text-primary-700">
                 {initials}
               </AvatarFallback>
             </Avatar>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="break-words text-lg font-bold tracking-tight text-gray-950 sm:text-xl">
-                  {user?.name ?? t("common", "parent", lang)}{" "}
-                  <span aria-hidden="true">👋</span>
-                </h1>
-                <span className="rounded-full border border-primary-100 bg-primary-50 px-2 py-0.5 text-[11px] font-semibold text-primary-700">
-                  {t("common", "parent", lang)}
-                </span>
-              </div>
-              <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                {activeStudent && (
-                  <span className="rounded-full bg-white px-2 py-0.5 font-medium text-gray-700 ring-1 ring-gray-200">
-                    {activeStudent.name}
-                    {activeStudent.className ? ` · ${activeStudent.className}` : ""}
-                  </span>
-                )}
-                <span className="flex items-center gap-1 font-medium text-gray-500">
-                  <CalendarCheck2 className="size-3.5" />
-                  {today.toLocaleDateString(lang === "ml" ? "ml-IN" : "en-IN", {
-                    weekday: "short",
-                    day: "numeric",
-                    month: "short",
-                  })}
-                </span>
-              </div>
+            <div className="min-w-0 my-auto h-10">
+              <h1 className="truncate text-lg font-bold tracking-tight text-gray-950 sm:text-xl">
+                {user?.name ?? t("common", "parent", lang)}{" "}
+                <span aria-hidden="true">👋</span>
+              </h1>
+              <span className="relative -top-2 inline-flex rounded-full text-[11px] font-semibold text-primary-700">
+                {t("common", "parent", lang)}
+              </span>
             </div>
           </div>
           <PageHeaderSwitchers />
         </header>
 
-        {/* Attendance Card */}
-        <section
-          aria-labelledby="parent-attendance-heading"
-          className="overflow-hidden rounded-2xl border border-gray-100 bg-gradient-to-br from-white via-white to-sky-50/70 p-4 sm:p-5 shadow-xs transition-all hover:border-gray-200"
-        >
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <h2
-                id="parent-attendance-heading"
-                className="text-sm sm:text-base font-bold text-gray-900 truncate"
-              >
-                {t("parentPages", "attendanceTitle", lang)}
-              </h2>
-              {activeStudent?.className && (
-                <span className="hidden sm:inline-block rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-gray-600 ring-1 ring-gray-200">
-                  {activeStudent.className}
-                </span>
-              )}
-            </div>
-            <span
-              className={cn(
-                "rounded-full px-2.5 py-0.5 text-xs font-semibold shrink-0",
-                todayStatus === "PRESENT"
-                  ? "border border-emerald-100 bg-emerald-50 text-emerald-700"
-                  : todayStatus === "ABSENT"
-                  ? "border border-red-100 bg-red-50 text-red-700"
-                  : todayStatus
-                  ? "border border-blue-100 bg-blue-50 text-blue-700"
-                  : "border border-amber-100 bg-amber-50 text-amber-700",
-              )}
-            >
-              {todayStatus === "PRESENT"
-                ? t("common", "present", lang)
-                : todayStatus === "ABSENT"
-                ? t("common", "absent", lang)
-                : todayStatus
-                ? todayStatus
-                : t("common", "pending", lang)}
-            </span>
-          </div>
-
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-              <img
-                src="/imgs/attendance/attendance-checklist.png"
-                alt=""
-                className="size-15 sm:size-18 shrink-0 object-contain drop-shadow-xs"
-                loading="lazy"
-              />
-              <div className="min-w-0">
-                {loadingAttendance ? (
-                  <div className="flex items-center gap-2 text-gray-400 py-1">
-                    <Loader2 className="size-4 animate-spin" />
-                    <span className="text-xs">{t("common", "loading", lang)}</span>
-                  </div>
-                ) : (
-                  <>
-                    <div className="text-xl sm:text-2xl font-bold tabular-nums text-gray-950">
-                      {attPresent}{" "}
-                      <span className="text-xs font-semibold text-gray-500">
-                        / {attTotal} {t("parentPages", "presentDays", lang)}
-                      </span>
-                    </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-gray-600">
-                      <span className="inline-flex items-center gap-1 text-emerald-700 font-medium">
-                        <CircleCheck className="size-3" /> {attPresent} {t("common", "present", lang).toLowerCase()}
-                      </span>
-                      <span>·</span>
-                      <span className="inline-flex items-center gap-1 text-red-600 font-medium">
-                        <CircleX className="size-3" /> {attAbsent} {t("common", "absent", lang).toLowerCase()}
-                      </span>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <CompactGauge
-              value={attendancePercent}
-              color="#059669"
-              label={t("teacherPages", "attendanceRateLabel", lang)}
-            />
-          </div>
-
-          <div className="mt-3.5 flex items-center justify-between border-t border-gray-100 pt-3">
-            <span className="text-xs text-gray-500">
-              {today.toLocaleDateString(lang === "ml" ? "ml-IN" : "en-IN", {
-                day: "numeric",
-                month: "short",
-              })}
-            </span>
-            <Button
-              onClick={() => navigate("/parent/attendance")}
-              size="lg"
-              variant="outline"
-              className="gap-1.5"
-            >
-              <ClipboardList className="size-3.5" />
-              {t("common", "view", lang)} {t("nav", "attendance", lang)}
-              <ChevronRight className="size-3.5" />
-            </Button>
-          </div>
-        </section>
-
-        {/* Ibadah Card */}
+        {/* Ibadah report and best performers */}
         <section
           aria-labelledby="parent-ibadah-heading"
-          className="overflow-hidden rounded-2xl border border-gray-100 bg-gradient-to-br from-white via-white to-emerald-50/40 p-4 sm:p-5 shadow-xs transition-all hover:border-gray-200"
+          className="overflow-hidden rounded-2xl p-4 shadow-xs sm:p-5"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgb(255 255 255 / 0.6), rgb(255 255 255 / 0.6)), url('/imgs/teacher/dashboard-corner-primary.png')",
+            backgroundPosition: "center, right bottom",
+            backgroundSize: "cover, min(80%, 30rem) auto",
+            backgroundRepeat: "no-repeat",
+          }}
         >
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <h2
-                id="parent-ibadah-heading"
-                className="text-sm sm:text-base font-bold text-gray-900 truncate"
-              >
-                {t("parentPages", "ibadahTitle", lang)}
-              </h2>
-              <span className="hidden sm:inline-block rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-gray-600 ring-1 ring-gray-200">
-                {today.toLocaleDateString(lang === "ml" ? "ml-IN" : "en-IN", {
-                  weekday: "short",
-                  day: "numeric",
-                  month: "short",
-                })}
-              </span>
-            </div>
-            <span className="rounded-full border border-primary-100 bg-primary-50 px-2.5 py-0.5 text-xs font-semibold text-primary-700 shrink-0">
-              {ibadahPercent}% {t("teacherPages", "completion", lang)}
-            </span>
+          <div className="text-center">
+            <h2 id="parent-ibadah-heading" className="text-base font-bold text-gray-900 sm:text-lg">
+              {t("parentPages", "ibadahTitle", lang)}
+            </h2>
+            <p className="mt-0.5 text-xs text-gray-500">{t("parentPages", "bestIbadahPerf", lang)}</p>
           </div>
-
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-              <img
-                src="/icons/ibadah/weekly-report.webp"
-                alt=""
-                className="size-15 sm:size-18 shrink-0 object-contain drop-shadow-xs"
-                loading="lazy"
-              />
-              <div className="min-w-0">
-                {loadingIbadah ? (
-                  <div className="flex items-center gap-2 text-gray-400 py-1">
-                    <Loader2 className="size-4 animate-spin" />
-                    <span className="text-xs">{t("common", "loading", lang)}</span>
-                  </div>
-                ) : (
-                  <>
-                    <div className="text-xl sm:text-2xl font-bold tabular-nums text-gray-950">
-                      {completedPrayers}{" "}
-                      <span className="text-xs font-semibold text-gray-500">
-                        / 5 {t("parentPages", "fiveDailyPrayers", lang)}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs text-gray-600">
-                      {ibadahCompleted ? (
-                        <span className="text-emerald-700 font-medium">
-                          {t("parentPages", "allFard", lang)}
-                        </span>
-                      ) : (
-                        <>
-                          <span className="text-amber-700 font-medium">{remainingPrayers}</span>{" "}
-                          {t("parentPages", "pendingAction", lang).toLowerCase()}
-                        </>
-                      )}
-                    </p>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <CompactGauge
-              value={ibadahPercent}
-              color="#059669"
-              label={t("teacherPages", "completion", lang)}
-            />
-          </div>
-
-          <div className="mt-3.5 flex items-center justify-between border-t border-gray-100 pt-3">
-            <span className="text-xs text-gray-500">
-              {t("parentPages", "todayChecklist", lang)}
-            </span>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => navigate("/parent/ibadah")}
-                className="gap-1.5"
+          {activeId ? (
+            loadingPerformance ? (
+              <Skeleton className="mx-auto mt-6 h-72 max-w-md rounded-[26px]" />
+            ) : performanceError ? (
+              <p className="mt-6 text-center text-sm text-red-600">{performanceError.message}</p>
+            ) : performers.length === 0 ? (
+              <p className="mt-6 text-center text-sm text-gray-500">{t("parentPages", "noIbadahData", lang)}</p>
+            ) : (
+              <Swiper
+                key={`${performance?.period.from}-${performance?.period.to}-${activeId}`}
+                modules={[Pagination]}
+                slidesPerView={1}
+                spaceBetween={16}
+                grabCursor
+                pagination={{ clickable: true, dynamicBullets: true }}
+                className="mx-auto mt-5 w-full max-w-lg [&_.swiper-pagination-bullet]:!size-2.5 [&_.swiper-pagination-bullet-active]:!bg-primary"
+                aria-label={t("parentPages", "bestPerformers", lang)}
               >
-                <MoonStar className="size-3.5" />
-                {t("parentPages", "record", lang)}
-                <ChevronRight className="size-3.5" />
-              </Button>
+                {performers.map((performer, index) => (
+                  <SwiperSlide key={performer.studentId} className="!h-auto">
+                    <BestPerformerCard
+                      performer={performer}
+                      rank={index + 1}
+                      isMyChild={accessibleStudentIds.includes(performer.studentId)}
+                      customItems={performance?.customItems ?? []}
+                      lang={lang}
+                    />
+                  </SwiperSlide>
+                ))}
+              </Swiper>
+            )
+          ) : (
+            <p className="mt-6 text-center text-sm text-gray-500">{t("parentPages", "noChildren", lang)}</p>
+          )}
+          <div className="mt-4 grid grid-cols-3 divide-x divide-gray-200 border-t border-gray-100 pt-4 text-center">
+            <div className="px-1">
+              <p className="text-xl font-bold tabular-nums text-gray-950 sm:text-2xl">{loadingIbadah ? "—" : completedPrayers}</p>
+              <p className="text-[11px] text-gray-500">{t("parentPages", "fiveDailyPrayers", lang)}</p>
+            </div>
+            <div className="px-1">
+              <p className="text-xl font-bold tabular-nums text-primary-700 sm:text-2xl">{loadingIbadah ? "—" : `${ibadahPercent}%`}</p>
+              <p className="text-[11px] text-gray-500">{t("teacherPages", "completion", lang)}</p>
+            </div>
+            <div className="px-1">
+              <p className="text-xl font-bold tabular-nums text-amber-700 sm:text-2xl">{loadingIbadah ? "—" : remainingPrayers}</p>
+              <p className="text-[11px] text-gray-500">{t("parentPages", "pendingAction", lang)}</p>
             </div>
           </div>
         </section>
 
-        {/* Homework Card */}
-        <section
-          aria-labelledby="parent-homework-heading"
-          className="overflow-hidden rounded-2xl border border-gray-100 bg-gradient-to-br from-white via-white to-amber-50/30 p-4 sm:p-5 shadow-xs transition-all hover:border-gray-200"
+        {/* Attendance Card */}
+        <button
+          type="button"
+          onClick={() => navigate("/parent/attendance")}
+          aria-labelledby="parent-attendance-heading"
+          className="flex w-full items-center gap-3 rounded-2xl border-2 border-white bg-linear-120 from-white via-primary-50 to-white p-3 text-left shadow-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:gap-4 sm:p-4"
         >
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <h2
-                id="parent-homework-heading"
-                className="text-sm sm:text-base font-bold text-gray-900 truncate"
-              >
-                {t("parentPages", "homeworkTitle", lang)}
-              </h2>
-              {activeStudent && (
-                <span className="hidden sm:inline-block rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-gray-600 ring-1 ring-gray-200">
-                  {activeStudent.name}
-                </span>
-              )}
-            </div>
-            <span className="rounded-full border border-primary-100 bg-primary-50 px-2.5 py-0.5 text-xs font-semibold text-primary-700 shrink-0">
-              {homeworkPercent}% {t("teacherPages", "submittedStatus", lang)}
-            </span>
-          </div>
-
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-              <img
-                src="/imgs/homework/1.webp"
-                alt=""
-                className="size-15 sm:size-18 shrink-0 object-contain drop-shadow-xs"
-                loading="lazy"
-              />
-              <div className="min-w-0">
-                {loadingHomework ? (
-                  <div className="flex items-center gap-2 text-gray-400 py-1">
-                    <Loader2 className="size-4 animate-spin" />
-                    <span className="text-xs">{t("common", "loading", lang)}</span>
-                  </div>
-                ) : hwTotal === 0 ? (
-                  <div className="text-sm font-medium text-gray-600">
-                    {t("teacherPages", "noAssignmentsYet", lang)}
-                  </div>
-                ) : (
-                  <>
-                    <div className="text-xl sm:text-2xl font-bold tabular-nums text-gray-950">
-                      {hwTotal}{" "}
-                      <span className="text-xs font-semibold text-gray-500">
-                        {t("parentPages", "homeworkTitle", lang)}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs text-gray-600">
-                      <span className="font-medium text-gray-900">{hwSubmitted}</span>{" "}
-                      / {hwTotal} {t("teacherPages", "submittedStatus", lang).toLowerCase()}
-                      {hwPending > 0 && (
-                        <span className="ml-1.5 text-amber-700 font-medium">
-                          ({hwPending} {t("common", "pending", lang).toLowerCase()})
-                        </span>
-                      )}
-                    </p>
-                  </>
-                )}
+          <img src="/imgs/attendance/attendance-checklist.png" alt="" className="size-14 shrink-0 object-contain sm:size-16" loading="lazy" />
+          <div className="min-w-0 flex-1">
+            <h2 id="parent-attendance-heading" className="text-sm font-bold text-gray-950 sm:text-base">
+              {t("parentPages", "attendanceTitle", lang)}
+            </h2>
+            {loadingAttendance ? (
+              <p className="mt-0.5 text-xs text-gray-600">{t("common", "loading", lang)}</p>
+            ) : (
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] font-medium sm:text-xs">
+                <span className="inline-flex items-center gap-1 text-primary-800"><span className="size-1.5 rounded-full bg-primary" />{attPresent} {t("common", "present", lang)}</span>
+                <span className="inline-flex items-center gap-1 text-red-700"><span className="size-1.5 rounded-full bg-red-300" />{attAbsent} {t("common", "absent", lang)}</span>
+                <span className="text-gray-500">{attTotal} {t("parentPages", "presentDays", lang)}</span>
               </div>
-            </div>
-
-            <CompactGauge
-              value={homeworkPercent}
-              color="#059669"
-              label={t("teacherPages", "completion", lang)}
-            />
+            )}
           </div>
+          {loadingAttendance ? <Loader2 className="size-5 shrink-0 animate-spin text-primary-700" /> : (
+            <div className="relative flex size-16 shrink-0 items-center justify-center rounded-full" style={{ background: `conic-gradient(#059669 ${attendancePercent}%, #e5e7eb 0)` }} role="img" aria-label={`${attendancePercent}% ${t("teacherPages", "attendanceRateLabel", lang)}`}>
+              <span className="flex size-12 items-center justify-center rounded-full bg-white text-xs font-bold tabular-nums text-gray-950">{attendancePercent}%</span>
+            </div>
+          )}
+        </button>
 
-          <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3">
-            <span className="text-xs text-gray-500">
-              {hwSubmitted} / {hwTotal} {t("teacherPages", "submittedStatus", lang).toLowerCase()}
-            </span>
-            <Button
-              size="lg"
-              onClick={() => navigate("/parent/homework")}
-              className="gap-1"
-            >
-              <BookOpen className="size-3.5" />
-              {t("parentPages", "hwList", lang)}
-              <ChevronRight className="size-3.5" />
+        {/* Homework Card */}
+        <section aria-labelledby="parent-homework-heading" className="relative overflow-hidden rounded-2xl border bg-linear-to-br from-primary-50 to-white p-4 shadow-xs sm:p-5">
+          <img src="/icons/homework/completed-notebook.webp" alt="" className="pointer-events-none absolute -right-2 -bottom-12 size-50 -rotate-6 object-contain drop-shadow-[0_14px_12px_rgba(47,91,22,0.22)] sm:-right-4 sm:-top-9 sm:size-52" loading="lazy" />
+          <h2 id="parent-homework-heading" className="text-base font-bold text-gray-900 sm:text-lg">
+            {t("parentPages", "homeworkTitle", lang)}
+          </h2>
+          <div className="relative w-[55%] min-w-0">
+            {loadingHomework ? (
+              <div className="mt-2 flex min-h-20 items-center gap-2 text-sm text-gray-600"><Loader2 className="size-4 animate-spin" />{t("common", "loading", lang)}</div>
+            ) : hwTotal === 0 ? (
+              <p className="mt-2 text-sm text-gray-600">{t("teacherPages", "noAssignmentsYet", lang)}</p>
+            ) : (
+              <div className="mt-2 divide-y divide-primary-100">
+                <p className="py-1 text-base font-semibold tabular-nums text-gray-950 sm:text-xl">{hwTotal} <span className="ml-1 text-sm font-medium text-gray-500">{t("parentPages", "homeworkTitle", lang)}</span></p>
+                <p className="py-1 text-base font-semibold tabular-nums text-gray-950 sm:text-xl">{homeworkPercent}% <span className="ml-1 text-sm font-medium text-gray-500">{t("teacherPages", "submittedStatus", lang)}</span></p>
+                <p className="py-1 text-xs font-medium text-amber-700">{hwPending} {t("common", "pending", lang)}</p>
+              </div>
+            )}
+            <Button size="sm" onClick={() => navigate("/parent/homework")} className="mt-4 h-9 rounded-full px-4">
+              {t("parentPages", "hwList", lang)} <ChevronRight className="size-4" />
             </Button>
           </div>
         </section>
-
-        {/* Ibadah Performance Section */}
-        {activeId && (
-          <section
-            aria-labelledby="parent-best-performance-heading"
-            className="overflow-hidden rounded-2xl border border-gray-100 bg-gradient-to-br from-white via-white to-purple-50/40 p-4 sm:p-5 shadow-xs transition-all hover:border-gray-200"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <h2
-                  id="parent-best-performance-heading"
-                  className="text-sm sm:text-base font-bold text-gray-900 truncate"
-                >
-                  {t("parentPages", "bestIbadahPerf", lang)}
-                </h2>
-                {activeStudent && (
-                  <span className="hidden sm:inline-block rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-gray-600 ring-1 ring-gray-200">
-                    {activeStudent.name}
-                  </span>
-                )}
-              </div>
-              <span className="rounded-full border border-purple-100 bg-purple-50 px-2.5 py-0.5 text-xs font-semibold text-purple-700 shrink-0">
-                {activeRank > 0
-                  ? `${t("parentPages", "rankLabel", lang)} #${activeRank}`
-                  : activePerformer
-                  ? `${activePerformer.score} ${t("parentPages", "scoreLabel", lang)}`
-                  : t("common", "overview", lang)}
-              </span>
-            </div>
-
-            <div className="mt-3 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                <img
-                  src="/icons/best-performance/streak-v2.webp"
-                  alt=""
-                  className="size-15 sm:size-18 shrink-0 object-contain drop-shadow-xs"
-                  loading="lazy"
-                />
-                <div className="min-w-0">
-                  {loadingPerformance ? (
-                    <div className="flex items-center gap-2 text-gray-400 py-1">
-                      <Loader2 className="size-4 animate-spin" />
-                      <span className="text-xs">{t("common", "loading", lang)}</span>
-                    </div>
-                  ) : performanceError ? (
-                    <p className="text-xs text-red-600">{performanceError.message}</p>
-                  ) : activePerformer ? (
-                    <>
-                      <div className="text-xl sm:text-2xl font-bold tabular-nums text-gray-950">
-                        {activePerformer.score}{" "}
-                        <span className="text-xs font-semibold text-gray-500">
-                          {t("parentPages", "scoreLabel", lang)}
-                        </span>
-                      </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-gray-600">
-                        {activeRank > 0 && (
-                          <>
-                            <span className="inline-flex items-center gap-1 font-semibold text-purple-700">
-                              <Award className="size-3" /> {t("parentPages", "rankLabel", lang)} #{activeRank}
-                            </span>
-                            <span>·</span>
-                          </>
-                        )}
-                        <span className="inline-flex items-center gap-1 font-medium text-amber-700">
-                          <Flame className="size-3 text-amber-500" /> {activePerformer.streak}d {t("parentPages", "streakLabel", lang).toLowerCase()}
-                        </span>
-                        <span>·</span>
-                        <span className="text-gray-500">
-                          {activePerformer.totalPrayers} {t("parentPages", "prayersLabel", lang).toLowerCase()}
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="text-sm sm:text-base font-bold text-gray-900 leading-snug">
-                        {t("parentPages", "noIbadahData", lang)}
-                      </div>
-                      <p className="mt-0.5 text-xs text-gray-500">
-                        {t("parentPages", "myChildPerformance", lang)}
-                      </p>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              <CompactGauge
-                value={activePerformer?.consistency ?? 0}
-                color="#7c3aed"
-                label={t("parentPages", "consistencyLabel", lang)}
-              />
-            </div>
-
-            <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3">
-              <span className="text-xs text-gray-500 capitalize">
-                {new Date().toLocaleDateString(lang === "ml" ? "ml-IN" : "en-IN", {
-                  month: "long",
-                  year: "numeric",
-                })}
-              </span>
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => navigate("/parent/best-performance")}
-                className="gap-1.5"
-              >
-                <TrendingUp className="size-3.5" />
-                {t("common", "view", lang)} {t("parentPages", "bestIbadahPerf", lang)}
-                <ChevronRight className="size-3.5" />
-              </Button>
-            </div>
-          </section>
-        )}
 
         {/* Quick Actions Grid */}
         <section

@@ -200,11 +200,17 @@ function UserMenu({
               title="Switch Student"
               options={studentIds.map((id) => {
                 const student = students.find((item) => item.id === id);
-                const sub = student?.className ?? student?.adno;
+                const name = student?.name ?? "Student";
                 return {
                   value: id,
-                  label: sub ? `${student?.name ?? "Student"} · ${sub}` : student?.name ?? "Student",
-                  image: student?.photoUrl ?? undefined,
+                  label: name,
+                  icon: student?.photoUrl ? (
+                    <img src={student.photoUrl} alt="" className="h-10 w-10 rounded-full object-cover" />
+                  ) : (
+                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100 font-semibold text-primary-900">
+                      {name.charAt(0).toUpperCase()}
+                    </span>
+                  ),
                 };
               })}
               value={currentStudentId ?? ""}

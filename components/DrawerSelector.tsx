@@ -86,7 +86,7 @@ export function DrawerSelector({
           ) : (
             <>
               <span className="flex min-w-0 items-center gap-3">
-                {triggerImage && <img src={triggerImage} alt="" className="h-10 w-10 shrink-0 object-contain" />}
+                {selected?.icon ? <span aria-hidden="true" className="shrink-0">{selected.icon}</span> : triggerImage && <img src={triggerImage} alt="" className="h-10 w-10 shrink-0 object-contain" />}
                 <span className="flex min-w-0 flex-col items-start">
                   {triggerLabel && <span className="text-xs font-normal text-muted-foreground">{triggerLabel}</span>}
                   <span className={cn("w-full truncate font-medium", !selected && "text-muted-foreground")}>

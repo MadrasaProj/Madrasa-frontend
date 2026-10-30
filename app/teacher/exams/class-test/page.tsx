@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { IllustratedEmptyState } from "@/components/ui/IllustratedEmptyState";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import type { SortDir } from "@/components/ui/DataTable";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -477,35 +478,25 @@ export default function TeacherClassTestsPage() {
     { label: "Draft", value: searchFiltered.filter((exam) => exam.examStatus === "DRAFT").length, icon: Clock3, color: "text-amber-700" },
   ];
 
-  if (!loading && exams.length === 0) {
-    return (
-      <DashboardLayout>
-        <div className="p-0! pb-6!">
-          <PageHeader title={t("nav", "classTests", lang)} />
-          <div className="flex min-h-[70vh] flex-col items-center justify-center gap-3 px-4 text-center">
-            <img
-              src="/icons/exams/empty-islamic.webp"
-              alt=""
-              className="h-64 w-64 max-w-[80vw] object-contain"
-            />
-            <div className="max-w-sm space-y-1">
-              <h2 className="text-lg font-semibold text-gray-900">
-                {t("teacherPages", "noClassTestsHeading", lang)}
-              </h2>
-              <p className="text-sm leading-6 text-gray-500">
-                {t("teacherPages", "noClassTestsDescription", lang)}
-              </p>
-            </div>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
   return (
     <DashboardLayout>
       <div className="p-0! pb-8!">
         <PageHeader title={t("nav", "classTests", lang)} />
+
+        {!loading && exams.length === 0 && !error ? (
+          <IllustratedEmptyState
+            image="/images/teacher/class-test-empty.webp"
+            title={t("teacherPages", "noClassTestsHeading", lang)}
+            description={t("teacherPages", "noClassTestsDescription", lang)}
+            action={
+              <Button type="button" size="lg" onClick={openAdd} className="rounded-full">
+                <Plus className="h-5 w-5" />
+                {t("teacherPages", "createTestBtn", lang)}
+              </Button>
+            }
+          />
+        ) : (
+          <>
 
         <div className="px-3 pb-2 pt-6">
           <div className="mx-auto flex w-full max-w-md items-center gap-2">
@@ -713,6 +704,8 @@ export default function TeacherClassTestsPage() {
           <Plus className="h-5 w-5" />
           {t("teacherPages", "newClassTestBtn", lang)}
         </Button>
+          </>
+        )}
 
         <ResponsivePopover
           open={!!selectedExam}
