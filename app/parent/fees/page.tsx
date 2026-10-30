@@ -270,7 +270,7 @@ function OneTimePaymentDrawer({
 }) {
   return (
       <Drawer
-        open={payment?.id !== null}
+        open={payment !== null}
         onOpenChange={(open) => {
           if (!open) onClose();
         }}
@@ -473,9 +473,9 @@ export default function ParentFeesPage() {
       : 0;
   const ringCircumference = 2 * Math.PI * 54;
   const selectedPayment: ParentPayment | null =
-    activeSummary?.payments.find(
+    selectedPaymentId?(activeSummary?.payments.find(
       (payment) => payment.id === selectedPaymentId,
-    ) ?? null;
+    ) ?? null):null;
 
   return (
     <DashboardLayout>

@@ -175,8 +175,8 @@ export default function ParentHomeworkPage() {
                     type="button"
                     onClick={() => setSelected(item)}
                     className={cn(
-                      "flex w-full flex-wrap items-center gap-2 border-b border-border/70 bg-gradient-to-r p-4 text-left transition-colors last:border-b-0 hover:brightness-[0.98] focus-visible:relative focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-primary-500 sm:gap-3",
-                      statusGradients[item.submission.status],
+                      "flex w-full flex-wrap relative items-center gap-2 border-b border-border/70 bg-gradient-to-r p-2 px-4 first:pt-4 last:pb-4! text-left transition-colors last:border-b-0 hover:brightness-[0.98] focus-visible:relative focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-primary-500 sm:gap-3",
+                       
                     )}
                   >
                     <span className="min-w-0 flex-1 basis-full sm:basis-0">
@@ -189,7 +189,7 @@ export default function ParentHomeworkPage() {
                         </span>
                       </span>
                     </span>
-                    <span className={cn("shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ring-1", statusStyles[item.submission.status])}>
+                    <span className={cn("shrink-0 rounded-full absolute top-3 right-3 px-2.5 py-1 text-xs font-semibold ring-1", statusStyles[item.submission.status])}>
                       {t("parentPages", statusLabelKeys[item.submission.status], lang)}
                     </span>
                   </button>
