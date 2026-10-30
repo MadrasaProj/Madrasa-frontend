@@ -436,7 +436,7 @@ export default function TeacherDiaryPage() {
               src="/images/teacher/diary-empty.webp"
               alt=""
               aria-hidden="true"
-              className="mb-5 w-full max-w-[280px]"
+              className="mb-5 w-full max-w-[180px]"
             />
             <h2 className="text-lg font-semibold text-gray-800">No diary entries yet</h2>
             <p className="mt-1 max-w-xs text-sm text-gray-500">Add a class update or a note for a student to get started.</p>

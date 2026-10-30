@@ -14,6 +14,7 @@ interface OnboardingDrawerProps {
   role: LandingRole | null;
   setRole: (role: LandingRole) => void;
   slug: string;
+  activeSlug?: string;
   setSlug: (slug: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onClearSlug: () => void;
@@ -32,11 +33,13 @@ export default function OnboardingDrawer({
   role,
   setRole,
   slug,
+  activeSlug,
   setSlug,
   onSubmit,
   onClearSlug,
   sessionsContent,
 }: OnboardingDrawerProps) {
+  const effectiveSlug = activeSlug?.trim() || slug;
   return (
     <ResponsivePopover open={open} onOpenChange={onOpenChange} side="bottom" showCloseButton contentClassName="bg-[#f8fbf7]" className="rounded-t-[2rem] bg-[#f8fbf7] px-4 pb-8 pt-3 shadow-[0_-18px_50px_rgba(15,67,45,0.18)]">
        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="mx-auto w-full max-w-md">
@@ -60,11 +63,11 @@ export default function OnboardingDrawer({
           </div>
           {role && <motion.div initial={{ opacity: 0, height: 0 }} className="px-1" animate={{ opacity: 1, height: "auto" }} transition={{ duration: 0.2 }}>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">Madrasa Slug</label>
-            <Input type="text" value={slug} onChange={(event) => setSlug(event.target.value)} placeholder="e.g. noorul-islam" className="h-auto rounded-xl px-4 py-3" autoFocus required />
+            <Input type="text" value={effectiveSlug} onChange={(event) => setSlug(event.target.value)} disabled={!!activeSlug?.trim()} placeholder="e.g. noorul-islam" className="h-auto rounded-xl px-4 py-3" autoFocus={!activeSlug} required />
             {/* <div className="mt-1.5 flex items-center justify-between"><p className="text-xs text-gray-400">Enter your madrasa's slug to proceed to login</p>{slug && <button type="button" onClick={onClearSlug} className="text-xs font-medium text-primary-600 hover:underline">Change</button>}</div> */}
           </motion.div>}
           {role && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <Button type="submit" disabled={!slug.trim()} className="h-auto w-full rounded-xl bg-primary-600 py-3.5 text-sm font-semibold text-white hover:bg-primary-700">
+            <Button type="submit" disabled={!effectiveSlug.trim()} className="h-auto w-full rounded-xl bg-primary-600 py-3.5 text-sm font-semibold text-white hover:bg-primary-700">
               Continue to Login
              </Button>
           </motion.div>}

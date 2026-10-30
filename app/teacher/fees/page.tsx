@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { IllustratedEmptyState } from "@/components/ui/IllustratedEmptyState";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -805,6 +806,12 @@ export default function TeacherFeesPage() {
             <div className="flex items-center justify-center py-10 text-gray-400">
               <Loader2 className="w-4 h-4 animate-spin" />
             </div>
+          ) : feeTypes.length === 0 && payments.length === 0 && !error ? (
+            <IllustratedEmptyState
+              image="/images/teacher/fees-empty.webp"
+              title={t("teacherPages", "noFeeTypes", lang)}
+              description={t("teacherPages", "feesEmptyDescription", lang)}
+            />
           ) : (
             <>
               <div className="p-0! px-4! pt-4!  ">

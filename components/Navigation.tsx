@@ -35,7 +35,6 @@ import {
   Menu,
   X,
   ChevronDown,
-  ChevronLeft,
   ChevronRight,
   Settings2,
   Languages,
@@ -45,6 +44,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
+import { DrawerSelector } from "@/components/DrawerSelector";
 import OnboardingDrawer from "@/components/twa/OnboardingDrawer";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import PwaInstallButton from "@/components/PwaInstallButton";
@@ -57,73 +57,6 @@ import { useClientConfig } from "@/lib/queries";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
 import { ButtonGroup } from "./ui/button-group";
-
-function ProfileOptions({
-  lang,
-  sessionCount,
-  onBack,
-  onSwitchSession,
-  onAddSession,
-  onSignOut,
-}: {
-  lang: string;
-  sessionCount: number;
-  onBack: () => void;
-  onSwitchSession: () => void;
-  onAddSession: () => void;
-  onSignOut: () => void;
-}) {
-  return (
-    <div className="w-full">
-      <div className="flex items-center gap-2 pb-3">
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={lang === "ml" ? "തിരികെ" : "Back"}
-          onClick={onBack}
-        >
-          <ChevronLeft className="h-5 w-5" />
-        </Button>
-        <span className="text-sm font-bold text-gray-900">
-          {lang === "ml" ? "പ്രൊഫൈൽ ഓപ്ഷനുകൾ" : "Profile options"}
-        </span>
-      </div>
-      <div className="flex w-full flex-col">
-        {sessionCount > 1 && (
-          <Button
-            variant="ghost"
-            size="lg"
-            className="justify-start gap-3 rounded-none border-0 border-b border-gray-100 px-3 last:border-b-0"
-            onClick={onSwitchSession}
-          >
-            <Users className="h-5 w-5 text-gray-500" />
-            {lang === "ml" ? "സെഷൻ മാറ്റുക" : "Switch session"}
-          </Button>
-        )}
-        <Button
-          size="lg"
-          variant="ghost"
-          className="justify-start gap-3 rounded-none border-0 border-b border-gray-100 px-3 last:border-b-0"
-          onClick={onAddSession}
-        >
-          <span className="flex h-5 w-5 items-center justify-center text-lg text-gray-500">
-            +
-          </span>
-          {lang === "ml" ? "സെഷൻ ചേർക്കുക" : "Add session"}
-        </Button>
-        <Button
-          size="lg"
-          variant="ghost"
-          className="justify-start gap-3 rounded-none border-0 border-b border-gray-100 px-3 last:border-b-0 text-red-500 hover:text-red-600"
-          onClick={onSignOut}
-        >
-          <LogOut className="h-5 w-5" />
-          {lang === "ml" ? "പുറത്തുകടക്കുക" : "Sign out"}
-        </Button>
-      </div>
-    </div>
-  );
-}
 
 type NavKey =
   | "dashboard"
@@ -986,7 +919,6 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
     useAuthStore();
   const { lang } = useLanguageStore();
   const [moreOpen, setMoreOpen] = useState(false);
-  const [profileOptionsOpen, setProfileOptionsOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [onboardingRole, setOnboardingRole] = useState<
     "parent" | "teacher" | "admin" | null
@@ -1233,18 +1165,29 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
                 </span>
               </Link>
               <LanguageSwitcher />
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={
-                  lang === "ml" ? "പ്രൊഫൈൽ ഓപ്ഷനുകൾ" : "Profile options"
-                }
-                onClick={() => {
-                  setProfileOptionsOpen(true);
+              <DrawerSelector
+                title={lang === "ml" ? "പ്രൊഫൈൽ ഓപ്ഷനുകൾ" : "Profile options"}
+                options={[
+                  ...(sessionCount > 1
+                    ? [{ value: "switch", label: lang === "ml" ? "സെഷൻ മാറ്റുക" : "Switch session", icon: <Users className="h-4 w-4 text-gray-500" /> }]
+                    : []),
+                  { value: "add", label: lang === "ml" ? "സെഷൻ ചേർക്കുക" : "Add session", icon: <span className="flex h-4 w-4 items-center justify-center text-lg text-gray-500">+</span> },
+                  { value: "signout", label: lang === "ml" ? "പുറത്തുകടക്കുക" : "Sign out", icon: <LogOut className="h-4 w-4" /> },
+                ]}
+                value=""
+                optionClassName="!h-8 !min-h-0 !py-0"
+                onChange={(value) => {
+                  setMoreOpen(false);
+                  if (value === "switch") navigate("/");
+                  if (value === "add") openNewSession();
+                  if (value === "signout") logout();
                 }}
-              >
-                <Settings2 className="h-5 w-5 shrink-0 text-gray-600" />
-              </Button>
+                triggerItem={
+                  <Button variant="ghost" size="icon" aria-label={lang === "ml" ? "പ്രൊഫൈൽ ഓപ്ഷനുകൾ" : "Profile options"}>
+                    <Settings2 className="h-5 w-5 shrink-0 text-gray-600" />
+                  </Button>
+                }
+              />
             </div>
           </ButtonGroup>
 
@@ -1253,37 +1196,13 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
           </div>
         </>
       </ResponsivePopover>
-      <ResponsivePopover
-        showCloseButton={false}
-        open={profileOptionsOpen}
-        onOpenChange={setProfileOptionsOpen}
-        data-swipe-direction="bottom"
-        contentClassName="p-3"
-      >
-        <ProfileOptions
-          lang={lang}
-          sessionCount={sessionCount}
-          onBack={() => setProfileOptionsOpen(false)}
-          onSwitchSession={() => {
-            setProfileOptionsOpen(false);
-            navigate("/");
-          }}
-          onAddSession={() => {
-            setProfileOptionsOpen(false);
-            openNewSession();
-          }}
-          onSignOut={() => {
-            setProfileOptionsOpen(false);
-            logout();
-          }}
-        />
-      </ResponsivePopover>
       <OnboardingDrawer
         open={onboardingOpen}
         onOpenChange={setOnboardingOpen}
         role={onboardingRole}
         setRole={setOnboardingRole}
         slug={onboardingSlug}
+        activeSlug={user.tenantSlug}
         setSlug={setOnboardingSlug}
         onClearSlug={() => {
           setOnboardingSlug("");
@@ -1291,10 +1210,11 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
         }}
         onSubmit={(event) => {
           event.preventDefault();
-          if (onboardingRole && onboardingSlug.trim()) {
+          const selectedSlug = user.tenantSlug || onboardingSlug;
+          if (onboardingRole && selectedSlug.trim()) {
             setOnboardingOpen(false);
             navigate(
-              `/m/${onboardingSlug.trim().toLowerCase()}/${onboardingRole}/login`,
+              `/m/${selectedSlug.trim().toLowerCase()}/${onboardingRole}/login`,
             );
           }
         }}

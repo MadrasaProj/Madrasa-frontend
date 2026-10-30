@@ -3,10 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { Swiper, SwiperSlide } from "swiper/react";
 import type { Swiper as SwiperInstance } from "swiper";
 import "swiper/css";
-import { Building2, ChevronRight, GraduationCap, Plus, Shield, Users } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import OnboardingDrawer from "@/components/twa/OnboardingDrawer";
 import GridPattern from "@/components/patterns/GridPattern";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { roleHomePath } from "@/lib/tenant-routing";
 import { clearTenantSlug, getTenantSlugAsync, getTenantSlugSync, saveTenantSlug } from "@/lib/slug-storage";
 import { getStoredSessionsSync, useAuthStore, type UserRole } from "@/store/auth";
@@ -19,11 +20,11 @@ const onboardingSlides = [
   { title: "Exams made simple", description: "Create exams, manage results, and understand progress clearly so teachers can help every student grow.", image: "/imgs/onboarding/3.webp", alt: "Exam papers and pencil" },
 ] as const;
 
-const roleMeta: Record<UserRole, { label: string; icon: typeof Shield; color: string }> = {
-  admin: { label: "Admin", icon: Shield, color: "text-primary-700 bg-primary-50" },
-  teacher: { label: "Teacher", icon: GraduationCap, color: "text-teal-700 bg-teal-50" },
-  parent: { label: "Parent", icon: Users, color: "text-blue-700 bg-blue-50" },
-  committee: { label: "Committee", icon: Building2, color: "text-amber-700 bg-amber-50" },
+const roleMeta: Record<UserRole, { label: string; color: string }> = {
+  admin: { label: "Admin", color: "text-primary-700 bg-primary-50" },
+  teacher: { label: "Teacher", color: "text-teal-700 bg-teal-50" },
+  parent: { label: "Parent", color: "text-blue-700 bg-blue-50" },
+  committee: { label: "Committee", color: "text-amber-700 bg-amber-50" },
 };
 
 function SessionsList() {
@@ -32,11 +33,12 @@ function SessionsList() {
   const stored = hasHydrated ? getStoredSessionsSync() : [];
 
   const items = stored.map(({ role, payload }) => {
-    const fullUser = (sessions as Record<string, unknown>)[role] as { name?: string; tenantSlug?: string; actorType?: string } | undefined;
+    const fullUser = (sessions as Record<string, unknown>)[role] as { name?: string; tenantSlug?: string; actorType?: string; photoUrl?: string | null } | undefined;
     const client = payload?.client as { slug?: string; subdomain?: string } | undefined;
     return {
       role,
       name: fullUser?.name ?? payload?.name ?? roleMeta[role]?.label ?? role,
+      photoUrl: fullUser?.photoUrl ?? payload?.photoUrl ?? undefined,
       slug: fullUser?.tenantSlug ?? client?.slug ?? client?.subdomain ?? "",
       actor: fullUser?.actorType ?? (payload?.actorType as string) ?? (payload?.role as string) ?? "",
     };
@@ -48,12 +50,14 @@ function SessionsList() {
 
   return (
     <div className="w-full">
-      {items.map(({ role, name, slug, actor }) => {
+      {items.map(({ role, name, photoUrl, slug, actor }) => {
         const meta = roleMeta[role] ?? roleMeta.admin;
-        const Icon = meta.icon;
         return (
           <button key={role} type="button" onClick={() => openSession(role, slug, actor)} className="flex h-14 w-full items-center gap-3 border-b border-primary-950/5 px-1 text-left transition-colors hover:bg-primary-50/50">
-            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${meta.color}`}><Icon className="h-4 w-4" /></span>
+            <Avatar className="size-9">
+              <AvatarImage src={photoUrl} alt="" />
+              <AvatarFallback className={`font-semibold ${meta.color}`}>{name.trim().charAt(0).toUpperCase()}</AvatarFallback>
+            </Avatar>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-semibold text-slate-900">{name}</span>
               <span className="block truncate text-xs capitalize text-slate-500">{meta.label}{slug ? ` · ${slug}` : actor === "SUPER_ADMIN" ? " · Platform" : ""}</span>
@@ -71,6 +75,7 @@ export default function TwaLandingPage() {
   const { hasHydrated, sessions } = useAuthStore();
   const [role, setRole] = useState<LandingRole | null>(null);
   const [slug, setSlug] = useState("");
+  const [activeSlug, setActiveSlug] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [onboardingSwiper, setOnboardingSwiper] = useState<SwiperInstance | null>(null);
@@ -110,30 +115,38 @@ export default function TwaLandingPage() {
     }
 
     const syncPrefs = getTenantSlugSync();
-    if (syncPrefs.slug) setSlug(syncPrefs.slug);
+    if (syncPrefs.slug) {
+      setActiveSlug(syncPrefs.slug);
+      setSlug(syncPrefs.slug);
+    }
     if (syncPrefs.role === "parent" || syncPrefs.role === "teacher" || syncPrefs.role === "admin") setRole(syncPrefs.role);
 
     void getTenantSlugAsync().then((prefs) => {
-      if (prefs.slug) setSlug((current) => current || prefs.slug);
+      if (prefs.slug) {
+        setActiveSlug(prefs.slug);
+        setSlug((current) => current || prefs.slug);
+      }
       if (prefs.role === "parent" || prefs.role === "teacher" || prefs.role === "admin") setRole((current) => current ?? prefs.role as LandingRole);
     });
   }, [hasHydrated, sessions]);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!role || !slug.trim()) return;
-    const normalizedSlug = slug.trim().toLowerCase();
+    const selectedSlug = activeSlug || slug;
+    if (!role || !selectedSlug.trim()) return;
+    const normalizedSlug = selectedSlug.trim().toLowerCase();
     saveTenantSlug(normalizedSlug, role);
     navigate(`/m/${normalizedSlug}/${role}/login`);
   };
 
   const handleClearSlug = () => {
     clearTenantSlug();
+    setActiveSlug("");
     setSlug("");
     setRole(null);
   };
 
-  const drawer = <OnboardingDrawer open={drawerOpen} onOpenChange={setDrawerOpen} role={role} setRole={setRole} slug={slug} setSlug={setSlug} onSubmit={handleSubmit} onClearSlug={handleClearSlug} />;
+  const drawer = <OnboardingDrawer open={drawerOpen} onOpenChange={setDrawerOpen} role={role} setRole={setRole} slug={slug} activeSlug={activeSlug} setSlug={setSlug} onSubmit={handleSubmit} onClearSlug={handleClearSlug} />;
 
   if (!hasHydrated) {
     return <main className="flex min-h-[100dvh] items-center justify-center bg-[#f8fbf7]"><span className="h-7 w-7 animate-spin rounded-full border-2 border-primary-200 border-t-primary-600" /></main>;

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 export interface DrawerSelectorOption {
   value: string;
   label: string;
+  icon?: ReactNode;
   image?: string;
   disabled?: boolean;
 }
@@ -106,7 +107,7 @@ export function DrawerSelector({
         drawerOnDesktop
         title={title}
         className="mx-auto w-full max-w-lg rounded-t-2xl"
-        contentClassName="p-2"
+        contentClassName="p-2 pb-5"
       >
         <div className="grid gap-1">
           {options.map((option) => (
@@ -127,6 +128,7 @@ export function DrawerSelector({
                 option.value === value && "bg-accent",
               )}
             >
+              {option.icon && <span aria-hidden="true" className="shrink-0">{option.icon}</span>}
               {option.image && <img src={option.image} alt="" className="h-10 w-10 shrink-0 object-contain" />}
               <span className="min-w-0 flex-1 truncate font-medium">{option.label}</span>
               {option.value === value && <Check className="h-4 w-4 shrink-0 text-primary" />}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { IllustratedEmptyState } from "@/components/ui/IllustratedEmptyState";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
@@ -140,15 +141,11 @@ export default function TeacherLeaveRequestsPage() {
         {loading ? (
           <SkeletonList count={4} />
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center py-12 text-center text-gray-400">
-            <img
-              src="/imgs/leave-request/1.png"
-              alt=""
-              aria-hidden="true"
-              className="mb-4 h-40 w-44 object-contain"
-            />
-            <p className="text-sm">{t("teacherPages", "noLeaveRequests", lang)}</p>
-          </div>
+          <IllustratedEmptyState
+            image="/images/teacher/leave-requests-empty.webp"
+            title={t("teacherPages", "noLeaveRequests", lang)}
+            description={t("teacherPages", "leaveRequestsEmptyDescription", lang)}
+          />
         ) : (
           <div className="p-0 *:px-4 py-1 bg-background rounded-2xl card">
             {filtered.map((r) => {

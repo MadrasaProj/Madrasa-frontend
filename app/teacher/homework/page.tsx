@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { HomeworkAssignmentDrawer } from "@/components/teacher/HomeworkAssignmentDrawer";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { IllustratedEmptyState } from "@/components/ui/IllustratedEmptyState";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Item, ItemContent, ItemMedia, ItemSeparator, ItemTitle } from "@/components/ui/item";
@@ -291,17 +292,12 @@ export default function TeacherHomeworkPage() {
           ))}
         </div>
       ) : homework.length === 0 ? (
-        <div className="-mx-4 flex min-h-[calc(100dvh-11rem)] w-[calc(100%+2rem)] items-center justify-center px-6 py-8 text-center lg:-mx-8 lg:w-[calc(100%+4rem)]">
-          <div className="w-full max-w-sm">
-            <img src="/imgs/homework/1.png" alt="" className="mx-auto mb-4 h-auto w-56 max-w-full object-contain" />
-            <h3 className="mt-3 text-base font-bold text-gray-900">
-              {t("teacherPages", "noAssignmentsYet", lang)}
-            </h3>
-            <p className="mx-auto mt-1 max-w-xs text-sm text-gray-500">
-              {t("teacherPages", "createFirstHw", lang)}
-            </p>
-          </div>
-        </div>
+        <IllustratedEmptyState
+          image="/images/teacher/homework-empty.webp"
+          title={t("teacherPages", "noAssignmentsYet", lang)}
+          description={t("teacherPages", "createFirstHw", lang)}
+          action={<Button size="lg" onClick={openCreate} className="rounded-full"><Plus className="h-4 w-4" />{t("teacherPages", "newHwBtn", lang)}</Button>}
+        />
       ) : (
         <div className="mt-5">
           <div className="divide-y card bg-background  !p-0  rounded-2xl overflow-hidden divide-gray-100     ">
@@ -373,14 +369,14 @@ export default function TeacherHomeworkPage() {
         </div>
       )}
 
-      <Button
+      {homework.length > 0 && <Button
         size="lg"
         onClick={openCreate}
         className="fixed bottom-22 left-1/2 z-30 -translate-x-1/2 rounded-full shadow-lg lg:bottom-6"
       >
         <Plus className="h-4 w-4" />
         {t("teacherPages", "newHwBtn", lang)}
-      </Button>
+      </Button>}
 
       <HomeworkAssignmentDrawer
         open={showHomeworkDrawer}
