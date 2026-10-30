@@ -4,8 +4,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/auth";
 import { useActiveClass } from "@/store/activeClass";
 import { useLanguageStore } from "@/store/language";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DrawerSelector } from "@/components/DrawerSelector";
+import { StudentAvatar } from "@/components/teacher/StudentAvatar";
 
 export function PageHeaderSwitchers() {
   const { pathname } = useLocation();
@@ -27,8 +27,17 @@ export function PageHeaderSwitchers() {
         title={lang === "ml" ? "വിദ്യാർത്ഥിയെ തിരഞ്ഞെടുക്കുക" : "Switch student"}
         options={studentIds.map((id) => {
           const student = students.find((item) => item.id === id);
-          return { value: id, label: student?.name ?? "Student", image: student?.photoUrl ?? undefined };
+          return { value: id, label: student?.name ?? "Student" };
         })}
+        renderOption={(option) => {
+          const student = students.find((item) => item.id === option.value);
+          return (
+            <>
+              <StudentAvatar name={option.label} gender={student?.gender} photoUrl={student?.photoUrl} size="sm" />
+              <span className="min-w-0 flex-1 truncate font-medium">{option.label}</span>
+            </>
+          );
+        }}
         value={currentId ?? ""}
         onChange={setActiveStudent}
         placeholder="Student"
@@ -37,10 +46,7 @@ export function PageHeaderSwitchers() {
             type="button"
             className="inline-flex max-w-40 shrink-0 items-center gap-2 rounded-full border border-gray-200 bg-white px-2 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
           >
-            <Avatar size="sm">
-              <AvatarImage src={currentStudent?.photoUrl ?? undefined} />
-              <AvatarFallback>{(currentStudent?.name ?? "S").charAt(0)}</AvatarFallback>
-            </Avatar>
+            <StudentAvatar name={currentStudent?.name ?? "Student"} gender={currentStudent?.gender} photoUrl={currentStudent?.photoUrl} size="sm" />
             <span className="truncate">{currentStudent?.name ?? "Student"}</span>
             <ChevronDown className="size-4 shrink-0" />
           </button>

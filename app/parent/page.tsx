@@ -306,7 +306,7 @@ export default function ParentDashboard() {
         </button>
 
         {/* Homework Card */}
-        <section aria-labelledby="parent-homework-heading" className="relative overflow-hidden rounded-2xl border bg-linear-to-br from-primary-50 to-white p-4 shadow-xs sm:p-5">
+        <section aria-labelledby="parent-homework-heading" className="relative overflow-hidden rounded-2xl border-2 border-white bg-linear-to-br from-primary-50 to-white p-4 shadow-xs sm:p-5">
           <img src="/icons/homework/completed-notebook.webp" alt="" className="pointer-events-none absolute -right-2 -bottom-12 size-50 -rotate-6 object-contain drop-shadow-[0_14px_12px_rgba(47,91,22,0.22)] sm:-right-4 sm:-top-9 sm:size-52" loading="lazy" />
           <h2 id="parent-homework-heading" className="text-base font-bold text-gray-900 sm:text-lg">
             {t("parentPages", "homeworkTitle", lang)}

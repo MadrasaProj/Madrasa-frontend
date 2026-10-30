@@ -6,6 +6,7 @@ import type { StudentInfo } from "@/lib/auth-api";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { useLanguageStore } from "@/store/language";
+import { StudentAvatar } from "@/components/teacher/StudentAvatar";
 
 type ParentStudentSwitcherProps = {
   studentIds: string[];
@@ -53,9 +54,7 @@ export function ParentStudentSwitcher({
                   : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900",
               )}
             >
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-100 text-xs font-semibold text-primary-900">
-                {photo ? <img src={photo} alt="" className="h-full w-full object-cover" /> : name.charAt(0)}
-              </span>
+              <StudentAvatar name={name} gender={info?.gender} photoUrl={photo} className="size-7 text-xs" />
               <span className="truncate">{name}</span>
             </button>
           </SwiperSlide>

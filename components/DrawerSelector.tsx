@@ -28,6 +28,8 @@ export interface DrawerSelectorProps {
   disabled?: boolean;
   className?: string;
   optionClassName?: string;
+  /** Custom content for each option; the selector keeps selection and keyboard behavior. */
+  renderOption?: (option: DrawerSelectorOption, selected: boolean) => ReactNode;
 }
 
 export function DrawerSelector({
@@ -44,6 +46,7 @@ export function DrawerSelector({
   disabled = false,
   className,
   optionClassName,
+  renderOption,
 }: DrawerSelectorProps) {
   const [open, setOpen] = useState(false);
   const selected = options.find((option) => option.value === value);
@@ -128,9 +131,15 @@ export function DrawerSelector({
                 option.value === value && "bg-accent",
               )}
             >
-              {option.icon && <span aria-hidden="true" className="shrink-0">{option.icon}</span>}
-              {option.image && <img src={option.image} alt="" className="h-10 w-10 shrink-0 object-contain" />}
-              <span className="min-w-0 flex-1 truncate font-medium">{option.label}</span>
+              {renderOption ? (
+                <span className="flex min-w-0 flex-1 items-center gap-3">{renderOption(option, option.value === value)}</span>
+              ) : (
+                <>
+                  {option.icon && <span aria-hidden="true" className="shrink-0">{option.icon}</span>}
+                  {option.image && <img src={option.image} alt="" className="h-10 w-10 shrink-0 object-contain" />}
+                  <span className="min-w-0 flex-1 truncate font-medium">{option.label}</span>
+                </>
+              )}
               {option.value === value && <Check className="h-4 w-4 shrink-0 text-primary" />}
             </Button>
           ))}

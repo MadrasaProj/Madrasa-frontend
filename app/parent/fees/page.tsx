@@ -209,6 +209,33 @@ function getFrequencyLabel(
   return null;
 }
 
+function getBillingInterval(dueDate: string, frequency: string | null, lang: "en" | "ml") {
+  const date = new Date(dueDate);
+  if (Number.isNaN(date.getTime())) return { key: dueDate, label: dueDate };
+  const locale = lang === "ml" ? "ml-IN" : "en-IN";
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  switch (frequency?.toUpperCase()) {
+    case "WEEKLY": {
+      const start = new Date(year, month, date.getDate());
+      start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+      const end = new Date(start);
+      end.setDate(end.getDate() + 6);
+      const format = (value: Date) => value.toLocaleDateString(locale, { day: "numeric", month: "short" });
+      return { key: `W-${start.getFullYear()}-${start.getMonth()}-${start.getDate()}`, label: `${format(start)} – ${format(end)} ${end.getFullYear()}` };
+    }
+    case "MONTHLY": return { key: `${year}-${month}`, label: date.toLocaleDateString(locale, { month: "long", year: "numeric" }) };
+    case "QUARTERLY": {
+      const firstMonth = Math.floor(month / 3) * 3;
+      const first = new Date(year, firstMonth, 1);
+      const last = new Date(year, firstMonth + 2, 1);
+      return { key: `${year}-Q${Math.floor(month / 3) + 1}`, label: `${first.toLocaleDateString(locale, { month: "short" })}–${last.toLocaleDateString(locale, { month: "short" })} ${year}` };
+    }
+    case "YEARLY": return { key: String(year), label: String(year) };
+    default: return { key: dueDate, label: formatDate(dueDate) };
+  }
+}
+
 function feeStatus(payments: ParentPayment[]): FeePaymentStatus {
   if (payments.some((payment) => payment.status === "OVERDUE")) return "OVERDUE";
   if (payments.some((payment) => payment.status === "PARTIAL")) return "PARTIAL";
@@ -227,6 +254,161 @@ function feeTotals(payments: ParentPayment[]) {
       };
     },
     { due: 0, paid: 0 },
+  );
+}
+
+function OneTimePaymentDrawer({
+  payment, student, lang, receiptPending, receiptPaymentId, onClose, onReceipt,
+}: {
+  payment: ParentPayment | null;
+  student?: { name: string; className?: string | null };
+  lang: "en" | "ml";
+  receiptPending: boolean;
+  receiptPaymentId?: string;
+  onClose: () => void;
+  onReceipt: (id: string) => void;
+}) {
+  return (
+      <Drawer
+        open={payment?.id !== null}
+        onOpenChange={(open) => {
+          if (!open) onClose();
+        }}
+        swipeDirection="down"
+      >
+        <DrawerContent className="max-h-[88dvh] bg-background">
+          {payment && (
+            <>
+              <div className="shrink-0 border-b px-5 py-4">
+                <DrawerTitle className="text-lg font-semibold text-gray-950">
+                  {payment.feeType.name}
+                </DrawerTitle>
+                {student && (
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {student.name}
+                    {student.className ? " · " + student.className : ""}
+                  </p>
+                )}
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto p-5">
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-5 text-sm">
+                  <div>
+                    <dt className="text-muted-foreground">
+                      {t("common", "status", lang)}
+                    </dt>
+                    <dd className="mt-1">
+                      <StatusBadge
+                        status={payment.status}
+                        lang={lang}
+                      />
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">
+                      {t("parentPages", "amountCol", lang)}
+                    </dt>
+                    <dd className="mt-1 font-semibold tabular-nums">
+                      {payment.feeType.isDonation
+                        ? "Variable"
+                        : formatAmount(Number(payment.dueAmount))}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">
+                      {t("parentPages", "amountPaidLabel", lang)}
+                    </dt>
+                    <dd className="mt-1 font-semibold tabular-nums">
+                      {formatAmount(Number(payment.paidAmount ?? 0))}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">
+                      {t("parentPages", "dueDateCol", lang)}
+                    </dt>
+                    <dd className="mt-1 font-medium">
+                      {formatDate(payment.dueDate)}
+                    </dd>
+                  </div>
+                  {payment.paidAt && (
+                    <div>
+                      <dt className="text-muted-foreground">
+                        {t("parentPages", "paidOnCol", lang)}
+                      </dt>
+                      <dd className="mt-1 font-medium">
+                        {formatDate(payment.paidAt)}
+                      </dd>
+                    </div>
+                  )}
+                  {payment.method && (
+                    <div>
+                      <dt className="text-muted-foreground">
+                        {t("parentPages", "methodCol", lang)}
+                      </dt>
+                      <dd className="mt-1 font-medium">
+                        {t(
+                          "parentPages",
+                          METHOD_LABEL_KEYS[payment.method] as any,
+                          lang,
+                        )}
+                      </dd>
+                    </div>
+                  )}
+                  {payment.reference && (
+                    <div className="col-span-2">
+                      <dt className="text-muted-foreground">
+                        {t("parentPages", "referenceCol", lang)}
+                      </dt>
+                      <dd className="mt-1 break-all font-medium">
+                        {payment.reference}
+                      </dd>
+                    </div>
+                  )}
+                  {payment.notes && (
+                    <div className="col-span-2">
+                      <dt className="text-muted-foreground">
+                        {t("parentPages", "noteLabel", lang)}
+                      </dt>
+                      <dd className="mt-1 whitespace-pre-wrap font-medium">
+                        {payment.notes}
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+              </div>
+              <DrawerFooter className="shrink-0 border-t bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                {payment.status === "PAID" && (
+                  <Button
+                    type="button"
+                    size="lg"
+                    disabled={
+                      receiptPending &&
+                      receiptPaymentId === payment.id
+                    }
+                    onClick={() => {
+                      const paymentId = payment.id;
+                      onClose();
+                      onReceipt(paymentId);
+                    }}
+                    className="w-full"
+                  >
+                    {receiptPending &&
+                    receiptPaymentId === payment.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Receipt className="h-4 w-4" />
+                    )}
+                    {t("parentPages", "viewReceiptBtn", lang)}
+                  </Button>
+                )}
+                <DrawerClose className="h-10 w-full rounded-xl border bg-white text-sm font-semibold text-gray-700">
+                  {t("parentPages", "closeBtn", lang)}
+                </DrawerClose>
+              </DrawerFooter>
+            </>
+          )}
+        </DrawerContent>
+      </Drawer>
+
   );
 }
 
@@ -471,7 +653,7 @@ export default function ParentFeesPage() {
               <h2 className="mb-3 px-1 text-sm font-semibold text-gray-950">
                 {t("teacherPages", "allFeeTypes", lang)}
               </h2>
-              <div data-ui-style="classic" className="card py-2 divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white  shadow-none">
+              <div data-ui-style="classic" className="card  divide-y  divide-gray-100 overflow-hidden rounded-2xl bg-white   border-2 border-white ">
                 {activeSummary.feeTypes.length === 0 ? (
                   <div className="px-4 py-12 text-center text-sm text-gray-500">
                     {t("teacherPages", "noFeeTypes", lang)}
@@ -486,12 +668,16 @@ export default function ParentFeesPage() {
                       key={feeType.id}
                       type="button"
                       aria-haspopup="dialog"
-                      onClick={() => setSelectedTypeId(feeType.id)}
+                      onClick={() => {
+                        if (feeType.kind === "ONE_TIME") {
+                          const payment = payments[0];
+                          if (payment) { setSelectedPaymentId(payment.id); return; }
+                        }
+                        setSelectedTypeId(feeType.id);
+                      }}
                       className={cn(
-                        "w-full bg-gradient-to-r from-white px-4 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500",
-                        status === "OVERDUE" ? "to-red-50/50 hover:to-red-50" :
-                        status === "PAID" || status === "WAIVED" ? "to-green-50/50 hover:to-green-50" :
-                        "to-amber-50/50 hover:to-amber-50",
+                        "w-full bg-white first:pt-4 last:pb-4   px-4 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500",
+                       
                       )}
                     >
                       <span className="flex items-start   gap-3">
@@ -502,7 +688,7 @@ export default function ParentFeesPage() {
                             {" · "}{feeType.isDonation ? t("teacherPages", "feeTypeDonation", lang) : formatAmount(Number(feeType.amount))}
                           </span>
                         </span>
-                        <span className={cn("shrink-0 ml-auto text-right text-xs font-semibold tabular-nums", STATUS_META[status].text)}>
+                        <span className={cn("shrink-0 my-auto ml-auto text-right text-xs font-semibold tabular-nums", STATUS_META[status].text)}>
                           {status !== "WAIVED" && (
                             <span className="block">{formatAmount(status === "PAID" ? totals.paid : payments.length === 0 ? Number(feeType.amount) : Math.max(0, totals.due - totals.paid))}</span>
                           )}
@@ -548,13 +734,12 @@ export default function ParentFeesPage() {
         {selectedFeeType && (() => {
           const totals = feeTotals(selectedTypePayments);
           const status = feeStatus(selectedTypePayments);
-          const groups = new Map<string, ParentPayment[]>();
+          const groups = new Map<string, { label: string; payments: ParentPayment[] }>();
           selectedTypePayments.forEach((payment) => {
-            const date = new Date(payment.dueDate);
-            const key = selectedFeeType.frequency === "MONTHLY" && !Number.isNaN(date.getTime())
-              ? date.toLocaleDateString(lang === "ml" ? "ml-IN" : "en-IN", { month: "long", year: "numeric" })
-              : t("parentPages", "paymentHistory", lang);
-            groups.set(key, [...(groups.get(key) ?? []), payment]);
+            const { key, label } = getBillingInterval(payment.dueDate, selectedFeeType.frequency, lang);
+            const group = groups.get(key);
+            if (group) group.payments.push(payment);
+            else groups.set(key, { label, payments: [payment] });
           });
           return (
             <div className="mx-auto max-w-2xl space-y-5 pt-4">
@@ -578,179 +763,54 @@ export default function ParentFeesPage() {
                   <div><dt className="text-xs text-gray-500">{t("parentPages", "pendingStatusLabel", lang)}</dt><dd className="mt-1 font-semibold tabular-nums text-amber-700">{formatAmount(Math.max(0, totals.due - totals.paid))}</dd></div>
                 </dl>
               </div>
-              <section>
-                <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">{t("parentPages", "paymentHistory", lang)}</h3>
+              {selectedFeeType.kind === "RECURRING" && <section>
+                <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">{t("teacherPages", "feePeriodBreakdown", lang)}</h3>
                 {groups.size === 0 ? (
                   <p className="rounded-xl border border-gray-100 px-4 py-8 text-center text-sm text-gray-500">{t("parentPages", "noPaymentRecords", lang)}</p>
-                ) : Array.from(groups, ([label, payments]) => {
+                ) :
+
+                <div className="border border-gray-100 py-1 rounded-2xl divide-y divide-gray-100 ">
+{ Array.from(groups, ([key, { label, payments }]) => {
                   const periodTotals = feeTotals(payments);
+                  const periodStatus = feeStatus(payments);
                   return (
-                    <div key={label} className="mb-4 overflow-hidden rounded-xl border border-gray-100 bg-white">
-                      {selectedFeeType.frequency === "MONTHLY" && (
-                        <div className="flex items-center justify-between gap-3 bg-gray-50 px-3 py-2.5 text-sm">
-                          <span className="font-semibold text-gray-900">{label}</span>
-                          <span className="text-xs tabular-nums text-gray-600">{formatAmount(periodTotals.paid)} / {formatAmount(periodTotals.due)}</span>
-                        </div>
-                      )}
-                      <div className="divide-y divide-gray-100">
-                        {payments.map((payment) => (
-                          <button key={payment.id} type="button" onClick={() => { setSelectedTypeId(null); setSelectedPaymentId(payment.id); }} className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left hover:bg-gray-50">
-                            <span className="min-w-0">
-                              <span className="block text-xs text-gray-500">{t("parentPages", "duePrefix", lang)} {formatDate(payment.dueDate)}</span>
-                              <span className="mt-0.5 block text-sm font-semibold text-gray-900">{formatAmount(Number(payment.paidAmount ?? 0))} / {formatAmount(Number(payment.dueAmount))}</span>
-                            </span>
-                            <StatusBadge status={payment.status} lang={lang} />
-                          </button>
-                        ))}
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => {
+                        setSelectedTypeId(null);
+                        setSelectedPaymentId(payments[0].id);
+                      }}
+                      className="flex w-full items-center justify-between gap-3 bg-white px-4 py-2 text-left hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-primary-500"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-900">{label}</p>
+                        <p className="mt-1 text-xs tabular-nums text-gray-500">
+                          {formatAmount(periodTotals.paid)} / {formatAmount(periodTotals.due)}
+                        </p>
                       </div>
-                    </div>
+                      <StatusBadge status={periodStatus} lang={lang} />
+                    </button>
                   );
                 })}
-              </section>
+                </div>
+               }
+
+              </section>}
             </div>
           );
         })()}
       </ResponsivePopover>
 
-      <Drawer
-        open={!!selectedPayment?.id}
-        onOpenChange={(open) => {
-          if (!open) setSelectedPaymentId(null);
-        }}
-        swipeDirection="down"
-      >
-        <DrawerContent className="max-h-[88dvh] bg-background">
-          {selectedPayment && (
-            <>
-              <div className="shrink-0 border-b px-5 py-4">
-                <DrawerTitle className="text-lg font-semibold text-gray-950">
-                  {selectedPayment.feeType.name}
-                </DrawerTitle>
-                {activeInfo && (
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {activeInfo.name}
-                    {activeInfo.className ? " · " + activeInfo.className : ""}
-                  </p>
-                )}
-              </div>
-              <div className="min-h-0 flex-1 overflow-y-auto p-5">
-                <dl className="grid grid-cols-2 gap-x-4 gap-y-5 text-sm">
-                  <div>
-                    <dt className="text-muted-foreground">
-                      {t("common", "status", lang)}
-                    </dt>
-                    <dd className="mt-1">
-                      <StatusBadge
-                        status={selectedPayment.status}
-                        lang={lang}
-                      />
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">
-                      {t("parentPages", "amountCol", lang)}
-                    </dt>
-                    <dd className="mt-1 font-semibold tabular-nums">
-                      {selectedPayment.feeType.isDonation
-                        ? "Variable"
-                        : formatAmount(Number(selectedPayment.dueAmount))}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">
-                      {t("parentPages", "amountPaidLabel", lang)}
-                    </dt>
-                    <dd className="mt-1 font-semibold tabular-nums">
-                      {formatAmount(Number(selectedPayment.paidAmount ?? 0))}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">
-                      {t("parentPages", "dueDateCol", lang)}
-                    </dt>
-                    <dd className="mt-1 font-medium">
-                      {formatDate(selectedPayment.dueDate)}
-                    </dd>
-                  </div>
-                  {selectedPayment.paidAt && (
-                    <div>
-                      <dt className="text-muted-foreground">
-                        {t("parentPages", "paidOnCol", lang)}
-                      </dt>
-                      <dd className="mt-1 font-medium">
-                        {formatDate(selectedPayment.paidAt)}
-                      </dd>
-                    </div>
-                  )}
-                  {selectedPayment.method && (
-                    <div>
-                      <dt className="text-muted-foreground">
-                        {t("parentPages", "methodCol", lang)}
-                      </dt>
-                      <dd className="mt-1 font-medium">
-                        {t(
-                          "parentPages",
-                          METHOD_LABEL_KEYS[selectedPayment.method] as any,
-                          lang,
-                        )}
-                      </dd>
-                    </div>
-                  )}
-                  {selectedPayment.reference && (
-                    <div className="col-span-2">
-                      <dt className="text-muted-foreground">
-                        {t("parentPages", "referenceCol", lang)}
-                      </dt>
-                      <dd className="mt-1 break-all font-medium">
-                        {selectedPayment.reference}
-                      </dd>
-                    </div>
-                  )}
-                  {selectedPayment.notes && (
-                    <div className="col-span-2">
-                      <dt className="text-muted-foreground">
-                        {t("parentPages", "noteLabel", lang)}
-                      </dt>
-                      <dd className="mt-1 whitespace-pre-wrap font-medium">
-                        {selectedPayment.notes}
-                      </dd>
-                    </div>
-                  )}
-                </dl>
-              </div>
-              <DrawerFooter className="shrink-0 border-t bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-                {selectedPayment.status === "PAID" && (
-                  <Button
-                    type="button"
-                    size="lg"
-                    disabled={
-                      receiptMutation.isPending &&
-                      receiptMutation.variables === selectedPayment.id
-                    }
-                    onClick={() => {
-                      const paymentId = selectedPayment.id;
-                      setSelectedPaymentId(null);
-                      void showReceipt(paymentId);
-                    }}
-                    className="w-full"
-                  >
-                    {receiptMutation.isPending &&
-                    receiptMutation.variables === selectedPayment.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Receipt className="h-4 w-4" />
-                    )}
-                    {t("parentPages", "viewReceiptBtn", lang)}
-                  </Button>
-                )}
-                <DrawerClose className="h-10 w-full rounded-xl border bg-white text-sm font-semibold text-gray-700">
-                  {t("parentPages", "closeBtn", lang)}
-                </DrawerClose>
-              </DrawerFooter>
-            </>
-          )}
-        </DrawerContent>
-      </Drawer>
+      <OneTimePaymentDrawer
+        payment={selectedPayment}
+        student={activeInfo}
+        lang={lang}
+        receiptPending={receiptMutation.isPending}
+        receiptPaymentId={receiptMutation.variables}
+        onClose={() => setSelectedPaymentId(null)}
+        onReceipt={(id) => { void showReceipt(id); }}
+      />
 
       {receipt && (
         <ReceiptModal

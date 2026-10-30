@@ -5,15 +5,17 @@ export function StudentAvatar({
   name,
   gender,
   photoUrl,
+  size = "lg",
   className,
 }: {
   name: string;
   gender?: string;
   photoUrl?: string | null;
+  size?: "sm" | "md" | "lg";
   className?: string;
 }) {
   return (
-    <Avatar className={cn("size-10 shrink-0", className)}>
+    <Avatar size={size === "md" ? "default" : size} className={className}>
       <AvatarImage src={photoUrl ?? undefined} alt="" />
       <AvatarFallback
         className={cn(

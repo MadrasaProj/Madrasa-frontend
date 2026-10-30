@@ -15,6 +15,7 @@ import RoleLoginPage from "@/components/auth/RoleLoginPage";
 import { useClientConfig } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import { DrawerSelector } from "@/components/DrawerSelector";
+import { StudentAvatar } from "@/components/teacher/StudentAvatar";
 
 // ── Super Admin Viewing Banner ─────────────────────────────────────────────────
 
@@ -204,13 +205,7 @@ function UserMenu({
                 return {
                   value: id,
                   label: name,
-                  icon: student?.photoUrl ? (
-                    <img src={student.photoUrl} alt="" className="h-10 w-10 rounded-full object-cover" />
-                  ) : (
-                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100 font-semibold text-primary-900">
-                      {name.charAt(0).toUpperCase()}
-                    </span>
-                  ),
+                  icon: <StudentAvatar name={name} gender={student?.gender} photoUrl={student?.photoUrl} />,
                 };
               })}
               value={currentStudentId ?? ""}
@@ -523,7 +518,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-    <div className="min-h-[100svh] bg-primary-50/25 overflow-visible">
+    <div className="min-h-[100svh] bg-primary-50/50 overflow-visible">
       <Sidebar isOpen={isMobileSidebarOpen} onClose={() => setIsMobileSidebarOpen(false)} />
       <div className="lg:ml-64">
         <SuperAdminViewingBanner />
