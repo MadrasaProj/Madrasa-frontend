@@ -11,15 +11,29 @@ import {
   bulkDeleteAttendance,
   type AttendanceStatus,
 } from "@/lib/attendance-api";
-import { useAuthStore } from "@/store/auth";
+import { getPendingLeaveRequests, type LeaveRequest } from "@/lib/leave-requests-api";
 import { useActiveClass } from "@/store/activeClass";
+import { useAuthStore } from "@/store/auth";
 import { useClassAttendanceSummary, useClasses } from "@/lib/queries";
 import type { ClassAttendanceSummary } from "@/lib/reports-api";
 import { queryKeys } from "@/lib/queryKeys";
-import { AlertTriangle, CheckCircle2, School, UserCheck, X } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  School,
+  UserCheck,
+  X,
+  FilePen,
+  FileSpreadsheet,
+  ClipboardList,
+  Save,
+  Loader2,
+  Trash2,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
+import { toast } from "sonner";
 import { ScrollableDateNavigator } from "@/components/ScrollableDateNavigator";
 import { DrawerSelector } from "@/components/DrawerSelector";
 import { Button } from "@/components/ui/button";
@@ -37,6 +51,7 @@ import {
   type ActiveStatus,
 } from "@/components/teacher/AttendanceEditorContent";
 import { StudentAttendanceDrawer } from "@/components/teacher/StudentAttendanceDrawer";
+import { AttendanceImportModal } from "@/components/attendance/AttendanceImportModal";
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -204,11 +219,12 @@ export default function TeacherAttendancePage() {
   const token = accessToken ?? "";
 
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [date, setDate] = useState(todayISO);
+  const [date, setDate] = useState(todayISO());
   const [students, setStudents] = useState<
     { id: string; name: string; adno: string; gender?: string; photoUrl?: string | null }[]
   >([]);
   const [records, setRecords] = useState<Map<string, LocalRecord>>(new Map());
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -216,6 +232,7 @@ export default function TeacherAttendancePage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [confirmSave, setConfirmSave] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<{
     classId: string;
@@ -260,7 +277,7 @@ export default function TeacherAttendancePage() {
       setStudents([]);
       setRecords(new Map());
       try {
-        const [attendanceRes, studentsRes] = await Promise.all([
+        const [attendanceRes, studentsRes, leaveRes] = await Promise.all([
           getClassAttendance(
             cid,
             token,
@@ -280,17 +297,38 @@ export default function TeacherAttendancePage() {
             limit: 500,
             signal,
           }),
+          getPendingLeaveRequests(
+            cid,
+            token,
+            { classId, date: dateStr, status: "ALL", take: 100 },
+            signal,
+          ).catch(() => ({ requests: [] })),
         ]);
 
         if (signal?.aborted) return;
 
+        setLeaveRequests(leaveRes?.requests ?? []);
+
+        const leaveByStudent = new Map(
+          (leaveRes?.requests ?? []).map((lr) => [lr.student.id, lr]),
+        );
         const map = new Map<string, LocalRecord>();
         const hasExistingRecords =
           attendanceRes.records && attendanceRes.records.length > 0;
         for (const s of studentsRes.data) {
+          const studentLeave = leaveByStudent.get(s.id);
+          const autoStatus: ActiveStatus | null = hasExistingRecords
+            ? null
+            : studentLeave?.status === "APPROVED"
+              ? studentLeave.reasonType === "SICK"
+                ? "SICK"
+                : "LEAVE"
+              : "PRESENT";
+
           map.set(s.id, {
-            status: hasExistingRecords ? null : "PRESENT",
-            notes: "",
+            status: autoStatus,
+            notes:
+              !hasExistingRecords && studentLeave ? studentLeave.description : "",
             lateComing: false,
             lateComingTime: "",
             dirty: !hasExistingRecords,
@@ -388,6 +426,7 @@ export default function TeacherAttendancePage() {
     setSaving(true);
     try {
       await bulkDeleteAttendance(cid, token, { date, classId: activeClassId });
+      toast.success("Attendance cleared successfully");
       await Promise.all([
         loadAttendance(activeClassId, date),
         queryClient.invalidateQueries({ queryKey: queryKeys.reports.attendanceSummary(cid) }),
@@ -396,6 +435,7 @@ export default function TeacherAttendancePage() {
       ]);
     } catch (e) {
       setSaveError((e as Error).message);
+      toast.error((e as Error).message || "Failed to clear attendance");
     } finally {
       setSaving(false);
       setConfirmClear(false);
@@ -485,6 +525,7 @@ export default function TeacherAttendancePage() {
         return next;
       });
       setSaveSuccess(true);
+      toast.success("Attendance saved successfully");
       if (saveSuccessTimer.current) clearTimeout(saveSuccessTimer.current);
       saveSuccessTimer.current = setTimeout(() => setSaveSuccess(false), 3000);
       await Promise.all([
@@ -495,6 +536,7 @@ export default function TeacherAttendancePage() {
       ]);
     } catch (e) {
       setSaveError((e as Error).message);
+      toast.error((e as Error).message || "Failed to save attendance");
     } finally {
       setSaving(false);
     }
@@ -536,6 +578,52 @@ export default function TeacherAttendancePage() {
 
       <PageHeader
         title={t("teacherPages", "attendancePageTitle", lang)}
+        subtitle={activeClassId ? `${activeClass?.name ?? ""} · ${records.size} ${t("teacherPages", "studentsLabel", lang)}` : t("teacherPages", "selectClassView", lang)}
+        icon={ClipboardList}
+        back
+        backHref="/teacher"
+        showActionOnMobile
+        action={
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setShowImport(true)}
+              className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors shadow-xs cursor-pointer"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-primary-600" />
+              <span>{lang === "ml" ? "മുൻമാസ ഹാജർ ഇമ്പോർട്ട്" : "Import Previous Month"}</span>
+            </button>
+            {hasDirty ? (
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex items-center gap-1.5 bg-primary-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-700 disabled:opacity-60 transition-colors"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> {t("teacherPages", "savingEllipsis", lang)}
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" /> {t("common", "save", lang)}
+                  </>
+                )}
+              </button>
+            ) : saveSuccess ? (
+              <span className="flex items-center gap-1 text-primary-600 text-sm font-semibold">
+                <CheckCircle2 className="w-4 h-4" /> {t("teacherPages", "saved", lang)}
+              </span>
+            ) : null}
+            {hasExisting && (
+              <button
+                onClick={() => setConfirmClear(true)}
+                className="flex items-center gap-1.5 bg-red-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-600 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" /> {t("teacherPages", "clearAllBtn", lang)}
+              </button>
+            )}
+          </div>
+        }
       />
 
       <div className="px-4! pt-4! pb-28! lg:pb-24!">
@@ -774,6 +862,23 @@ export default function TeacherAttendancePage() {
                 </div>
               )}
 
+              {leaveRequests.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 mb-3 flex items-center justify-between gap-3 shadow-xs">
+                  <div className="flex items-center gap-2 text-xs text-amber-900 font-semibold">
+                    <FilePen className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>
+                      {leaveRequests.length} {lang === "ml" ? "വിദ്യാർത്ഥികൾക്ക് ഈ തീയതിയിൽ ലീവ് അപേക്ഷയുണ്ട്" : "student(s) have leave requests for this date."}
+                    </span>
+                  </div>
+                  <a
+                    href="/teacher/leave-requests"
+                    className="text-xs font-bold text-amber-700 hover:text-amber-800 underline shrink-0"
+                  >
+                    {lang === "ml" ? "അവലോകനം ചെയ്യുക" : "Review"} &rarr;
+                  </a>
+                </div>
+              )}
+
               <div aria-busy={loading || classesLoading}>
                 <AttendanceEditorContent
                   isOwnClass={isOwnClass}
@@ -805,6 +910,19 @@ export default function TeacherAttendancePage() {
           </div>
         </DrawerContent>
       </Drawer>
+      {showImport && (
+        <AttendanceImportModal
+          clientId={cid}
+          token={token}
+          academicYearId={user?.defaultAcademicYearId}
+          classes={classes}
+          initialClassId={activeClassId}
+          onClose={() => setShowImport(false)}
+          onSuccess={() => {
+            if (activeClassId) loadAttendance(activeClassId, date);
+          }}
+        />
+      )}
     </DashboardLayout>
   );
 }

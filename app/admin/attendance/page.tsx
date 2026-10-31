@@ -24,9 +24,12 @@ import {
   CheckCircle2,
   Trash2,
   AlertCircle,
+  FileSpreadsheet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SkeletonList } from "@/components/ui/Skeleton";
+import { toast } from "sonner";
+import { AttendanceImportModal } from "@/components/attendance/AttendanceImportModal";
 
 const STATUS_CONFIG: Record<
   string,
@@ -84,6 +87,7 @@ export default function AdminAttendancePage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   // Load classes using cached query hook
   const { data: classesData, isLoading: classesLoading } = useClasses({
@@ -187,9 +191,11 @@ export default function AdminAttendancePage() {
     setSaving(true);
     try {
       await bulkDeleteAttendance(cid, token, { date, classId: activeClassId });
+      toast.success("Attendance cleared successfully");
       await loadAttendance(activeClassId, date);
     } catch (e) {
       setSaveError((e as Error).message);
+      toast.error((e as Error).message || "Failed to clear attendance");
     } finally {
       setSaving(false);
       setConfirmClear(false);
@@ -236,10 +242,12 @@ export default function AdminAttendancePage() {
         return next;
       });
       setSaveSuccess(true);
+      toast.success("Attendance saved successfully");
       setTimeout(() => setSaveSuccess(false), 3000);
       await loadAttendance(activeClassId, date);
     } catch (e) {
       setSaveError((e as Error).message);
+      toast.error((e as Error).message || "Failed to save attendance");
     } finally {
       setSaving(false);
     }
@@ -278,39 +286,48 @@ export default function AdminAttendancePage() {
             : "Select a class"
         }
         icon={ClipboardList}
-        // action={
-        //   <div className="flex items-center gap-2">
-        //     {hasDirty ? (
-        //       <button
-        //         onClick={saveAll}
-        //         disabled={saving}
-        //         className="flex items-center gap-1.5 bg-primary-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-700 disabled:opacity-60 transition-colors"
-        //       >
-        //         {saving ? (
-        //           <>
-        //             <Loader2 className="w-4 h-4 animate-spin" /> Saving…
-        //           </>
-        //         ) : (
-        //           <>
-        //             <Save className="w-4 h-4" /> Save
-        //           </>
-        //         )}
-        //       </button>
-        //     ) : saveSuccess ? (
-        //       <span className="flex items-center gap-1 text-primary-600 text-sm font-semibold">
-        //         <CheckCircle2 className="w-4 h-4" /> Saved
-        //       </span>
-        //     ) : null}
-        //     {hasExisting && (
-        //       <button
-        //         onClick={() => setConfirmClear(true)}
-        //         className="flex items-center gap-1.5 bg-red-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-600 transition-colors"
-        //       >ss
-        //         <Trash2 className="w-4 h-4" /> Clear All
-        //       </button>
-        //     )}
-        //   </div>
-        // }
+        showActionOnMobile
+        action={
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setShowImport(true)}
+              className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors shadow-xs cursor-pointer"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-primary-600" />
+              <span>Import Previous Month</span>
+            </button>
+            {hasDirty ? (
+              <button
+                onClick={saveAll}
+                disabled={saving}
+                className="flex items-center gap-1.5 bg-primary-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-700 disabled:opacity-60 transition-colors"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Saving…
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" /> Save
+                  </>
+                )}
+              </button>
+            ) : saveSuccess ? (
+              <span className="flex items-center gap-1 text-primary-600 text-sm font-semibold">
+                <CheckCircle2 className="w-4 h-4" /> Saved
+              </span>
+            ) : null}
+            {hasExisting && (
+              <button
+                onClick={() => setConfirmClear(true)}
+                className="flex items-center gap-1.5 bg-red-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-600 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" /> Clear All
+              </button>
+            )}
+          </div>
+        }
       />
 
       {error && (
@@ -568,6 +585,19 @@ export default function AdminAttendancePage() {
             })}
           </div>
         ))}
+      {showImport && (
+        <AttendanceImportModal
+          clientId={cid}
+          token={token}
+          academicYearId={user?.defaultAcademicYearId}
+          classes={classes}
+          initialClassId={activeClassId}
+          onClose={() => setShowImport(false)}
+          onSuccess={() => {
+            if (activeClassId) loadAttendance(activeClassId, date);
+          }}
+        />
+      )}
     </DashboardLayout>
   );
 }

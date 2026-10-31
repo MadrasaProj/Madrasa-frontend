@@ -27,6 +27,7 @@ import {
   ChevronRight,
   AlertTriangle,
 } from "lucide-react";
+import { toast } from "sonner";
 
 function fmtTime(d: string) {
   return new Date(d).toLocaleTimeString("en-IN", {
@@ -309,8 +310,10 @@ export default function TeacherCheckinPage() {
     try {
       const s = await checkIn(cid, token, coords!);
       setTodaySessions((prev) => [s, ...prev]);
+      toast.success("Checked in successfully");
     } catch (e) {
       setError((e as Error).message);
+      toast.error((e as Error).message || "Check-in failed");
     } finally {
       setActionLoading(false);
     }
@@ -324,8 +327,10 @@ export default function TeacherCheckinPage() {
       setTodaySessions((prev) =>
         prev.map((sess) => (sess.id === s.id ? s : sess)),
       );
+      toast.success("Checked out successfully");
     } catch (e) {
       setError((e as Error).message);
+      toast.error((e as Error).message || "Check-out failed");
     } finally {
       setActionLoading(false);
     }

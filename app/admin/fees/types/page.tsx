@@ -16,6 +16,7 @@ import {
   CreditCard, Plus, Loader2, Zap, X, RefreshCw, ArrowLeft, Pencil, Trash2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 
 export default function AdminFeeTypesPage() {
   const { user, accessToken, activeClientId } = useAuthStore();
@@ -75,11 +76,13 @@ export default function AdminFeeTypesPage() {
     setCreateError(null);
     try {
       await createFeeType(cid, token, newFee as CreateFeeTypePayload);
+      toast.success("Fee type created successfully");
       setShowCreate(false);
       setNewFee({ kind: "ONE_TIME", amount: 0, isDonation: false });
       load();
     } catch (e) {
       setCreateError((e as Error).message);
+      toast.error((e as Error).message || "Failed to create fee type");
     } finally {
       setCreating(false);
     }
@@ -108,11 +111,13 @@ export default function AdminFeeTypesPage() {
     setEditError(null);
     try {
       await updateFeeType(cid, token, editingFee.id, editFee);
+      toast.success("Fee type updated successfully");
       setShowEdit(false);
       setEditingFee(null);
       load();
     } catch (e) {
       setEditError((e as Error).message);
+      toast.error((e as Error).message || "Failed to update fee type");
     } finally {
       setUpdating(false);
     }
@@ -126,9 +131,10 @@ export default function AdminFeeTypesPage() {
         feeTypeId: ft.id,
         academicYearId: user?.defaultAcademicYearId ?? undefined,
       });
-      alert(`Generated ${res.generated} payment records${res.message ? ` — ${res.message}` : ""}`);
+      toast.success(`Generated ${res.generated} payment records${res.message ? ` — ${res.message}` : ""}`);
     } catch (e) {
       setError((e as Error).message);
+      toast.error((e as Error).message || "Failed to generate payments");
     } finally {
       setGenerating(null);
     }
@@ -141,9 +147,11 @@ export default function AdminFeeTypesPage() {
     try {
       await deleteFeeType(cid, token, deleteTarget.id);
       setFeeTypes((current) => current.filter((ft) => ft.id !== deleteTarget.id));
+      toast.success("Fee type deleted successfully");
       setDeleteTarget(null);
     } catch (e) {
       setDeleteError((e as Error).message);
+      toast.error((e as Error).message || "Failed to delete fee type");
     } finally {
       setDeleting(false);
     }

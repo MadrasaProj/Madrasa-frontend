@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 const DIVISION_OPTIONS = ["A", "B", "C", "D"];
 
@@ -131,6 +132,7 @@ export default function AdminClassesPage() {
           classTeacherId: form.classTeacherId || null,
           status: form.status,
         } as UpdateClassPayload);
+        toast.success("Class updated successfully");
       } else {
         await createClass(cid, token, {
           name: form.name.trim(),
@@ -139,11 +141,13 @@ export default function AdminClassesPage() {
           classTeacherId: form.classTeacherId || null,
           accademicYearId: user?.defaultAcademicYearId ?? undefined,
         } as CreateClassPayload);
+        toast.success("Class created successfully");
       }
       qc.invalidateQueries({ queryKey: queryKeys.classes.all });
       setShowDrawer(false);
     } catch (e) {
       setSaveError((e as Error).message);
+      toast.error((e as Error).message || "Failed to save class");
     } finally {
       setSaving(false);
     }
@@ -155,10 +159,12 @@ export default function AdminClassesPage() {
     setActionError(null);
     try {
       await deleteClass(cid, token, deleteTarget.id);
+      toast.success("Class deleted successfully");
       qc.invalidateQueries({ queryKey: queryKeys.classes.all });
       setShowDeleteConfirm(false);
     } catch (e) {
       setActionError((e as Error).message);
+      toast.error((e as Error).message || "Failed to delete class");
       setShowDeleteConfirm(false);
     } finally {
       setDeleting(null);

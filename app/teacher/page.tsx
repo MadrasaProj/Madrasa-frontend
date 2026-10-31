@@ -45,12 +45,28 @@ import {
   UserCheck,
   UserX,
   X,
+  FilePen,
+  Trophy,
+  CheckCircle2,
+  XCircle,
+  FileText,
+  Star,
+  Moon,
+  Users,
 } from "lucide-react";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import {
+  usePendingLeaveRequests,
+  useReviewLeaveRequest,
+} from "@/lib/queries";
+import PwaInstallButton from "@/components/PwaInstallButton";
 
 const TeacherIbadahPage = lazy(() => import("@/app/teacher/ibadah/page"));
 
 const ibadahChartConfig = {
-  completed: { color: "#059669" },
+  completed: { color: "var(--primary)" },
 } satisfies ChartConfig;
 
 const attendanceChartConfig = {
@@ -201,6 +217,13 @@ export default function TeacherDashboard() {
     if (activeClassId) setAttendanceDrawerOpen(true);
   };
 
+  const { data: leaveData } = usePendingLeaveRequests({ clientId, token }, { status: "PENDING" });
+  const reviewMutation = useReviewLeaveRequest({ clientId, token });
+
+  const stats = {
+    pendingLeaves: leaveData?.total ?? 0,
+  };
+
   // Ibadah metrics
   const completed = Math.min(
     total,
@@ -242,7 +265,31 @@ export default function TeacherDashboard() {
     .join("")
     .toUpperCase();
 
+  const handleQuickReview = async (id: string, status: "APPROVED" | "REJECTED", e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await reviewMutation.mutateAsync({ id, payload: { status } });
+      toast.success(
+        status === "APPROVED"
+          ? (lang === "ml" ? "ലീവ് അപേക്ഷ അംഗീകരിച്ചു" : "Leave request approved")
+          : (lang === "ml" ? "ലീവ് അപേക്ഷ നിരസിച്ചു" : "Leave request rejected")
+      );
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update leave request");
+    }
+  };
+
   const actions = [
+    {
+      title: t("teacherPages", "leaveRequests", lang),
+      href: "/teacher/leave-requests",
+      icon: FilePen,
+    },
+    {
+      title: lang === "ml" ? "റാങ്ക് ലിസ്റ്റ്" : "Class Rankings",
+      href: "/teacher/best-performance?category=ibadah",
+      icon: Trophy,
+    },
     {
       title: t("common", "present", lang),
       href: "/teacher/present",
@@ -312,7 +359,7 @@ export default function TeacherDashboard() {
                 {user?.name ?? t("common", "teacher", lang)}{" "}
                 <span aria-hidden="true">👋</span>
               </h1>
-              <span className="relative -top-2 inline-flex rounded-full  text-[11px] font-semibold text-primary-700">
+              <span className="relative -top-2 inline-flex rounded-full text-[11px] font-semibold text-primary-700">
                 {t("common", "teacher", lang)}
               </span>
             </div>
@@ -320,6 +367,114 @@ export default function TeacherDashboard() {
           <PageHeaderSwitchers />
         </header>
 
+        {/* PWA Install Banner */}
+        <PwaInstallButton variant="banner" className="mb-2" />
+
+        {/* Pending Leave Requests Banner */}
+        {stats.pendingLeaves > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-2.5"
+          >
+            <div
+              onClick={() => navigate("/teacher/leave-requests")}
+              className="flex items-center justify-between p-3.5 bg-amber-50 border border-amber-200 rounded-2xl cursor-pointer hover:bg-amber-100/70 transition-all shadow-xs"
+            >
+              <div className="flex items-center gap-2.5 text-amber-800 text-sm font-semibold">
+                <FilePen className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>
+                  {stats.pendingLeaves}{" "}
+                  {lang === "ml"
+                    ? "ലീവ് അപേക്ഷകൾ അവലോകനത്തിനായി കാത്തിരിക്കുന്നു"
+                    : "pending leave request(s) waiting for your review"}
+                </span>
+              </div>
+              <span className="text-xs font-bold text-amber-700 underline shrink-0 ml-2">
+                {lang === "ml" ? "എല്ലാം കാണുക" : "View All"} &rarr;
+              </span>
+            </div>
+
+            {/* Quick review list for recent pending leaves */}
+            {leaveData?.requests && leaveData.requests.length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 p-3 shadow-xs space-y-2">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider px-1">
+                  {lang === "ml" ? "പുതിയ അപേക്ഷകൾ" : "Recent Requests"}
+                </p>
+                {leaveData.requests.slice(0, 3).map((r) => {
+                  const isSick = r.reasonType === "SICK";
+                  const dateDisplay =
+                    r.endDate && r.endDate !== r.startDate
+                      ? `${r.startDate.slice(0, 10)} - ${r.endDate.slice(0, 10)}`
+                      : r.startDate.slice(0, 10);
+                  return (
+                    <div
+                      key={r.id}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-2.5 rounded-xl bg-gray-50/70 border border-gray-100 hover:border-gray-200 transition-all"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs text-gray-900 truncate">
+                            {r.student.name}
+                          </span>
+                          <span className="text-[10px] text-gray-400">
+                            ({r.student.adno})
+                          </span>
+                          {r.student.class?.name && (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-gray-100 text-gray-600">
+                              {r.student.class.name}
+                            </span>
+                          )}
+                          <span
+                            className={cn(
+                              "text-[10px] font-bold px-1.5 py-0.5 rounded-md",
+                              isSick
+                                ? "bg-orange-100 text-orange-700"
+                                : "bg-amber-100 text-amber-700",
+                            )}
+                          >
+                            {isSick
+                              ? lang === "ml"
+                                ? "അസുഖം"
+                                : "Sick"
+                              : lang === "ml"
+                              ? "ലീവ്"
+                              : "Leave"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5 truncate">
+                          <span className="font-medium text-gray-700">
+                            {dateDisplay}
+                          </span>
+                          {r.description ? ` · "${r.description}"` : ""}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                        <button
+                          type="button"
+                          onClick={(e) => handleQuickReview(r.id, "APPROVED", e)}
+                          className="flex items-center gap-1 text-[11px] font-bold bg-primary-50 hover:bg-primary-100 text-primary-700 px-2.5 py-1 rounded-lg border border-primary-200 transition-colors cursor-pointer"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>{lang === "ml" ? "അംഗീകരിക്കുക" : "Approve"}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => handleQuickReview(r.id, "REJECTED", e)}
+                          className="flex items-center gap-1 text-[11px] font-bold bg-red-50 hover:bg-red-100 text-red-700 px-2.5 py-1 rounded-lg border border-red-200 transition-colors cursor-pointer"
+                        >
+                          <XCircle className="w-3.5 h-3.5" />
+                          <span>{lang === "ml" ? "നിരസിക്കുക" : "Reject"}</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </motion.div>
+        )}
         {/* Ibadah Card */}
         <section
           aria-labelledby="ibadah-card-heading"

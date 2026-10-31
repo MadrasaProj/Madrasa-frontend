@@ -15,6 +15,7 @@ import type { ClassRecord } from "@/lib/classes-api";
 import { useAuthStore } from "@/store/auth";
 import { t } from "@/lib/i18n";
 import { useLanguageStore } from "@/store/language";
+import { toast } from "sonner";
 
 interface FormState {
   name: string; uid: string; adno: string; classId: string; gender: "MALE" | "FEMALE";
@@ -320,6 +321,7 @@ export default function StudentEditDrawer({
         ? await getStudentProfileV2(activeClientId, accessToken, student.id)
         : result;
 
+      toast.success(isEditing ? "Student updated successfully" : "Student created successfully");
       onSaved(fullProfile);
       closeDrawer();
     } catch (e) {
@@ -329,6 +331,7 @@ export default function StudentEditDrawer({
       } else {
         setSubmitError(apiErr.message);
         if (apiErr.fieldErrors) setFieldErrors(apiErr.fieldErrors);
+        toast.error(apiErr.message || "Failed to save student");
       }
     } finally {
       setSubmitting(false);
@@ -361,8 +364,10 @@ export default function StudentEditDrawer({
       const result = await uploadStudentPhoto(activeClientId, accessToken, student.id, file);
       setAvatarPreview(null);
       setUploadedPhotoUrl(result.photoUrl);
+      toast.success("Photo uploaded successfully");
     } catch (e) {
       setSubmitError((e as Error).message);
+      toast.error((e as Error).message || "Failed to upload photo");
     } finally {
       setUploadingPhoto(false);
     }

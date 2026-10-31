@@ -35,6 +35,7 @@ import {
   TrendingUp,
   User,
 } from "lucide-react";
+import PwaInstallButton from "@/components/PwaInstallButton";
 
 export default function ParentDashboard() {
   const { user, accessToken, activeStudentId } = useAuthStore();
@@ -205,8 +206,13 @@ export default function ParentDashboard() {
               </span>
             </div>
           </div>
-          <PageHeaderSwitchers />
+          <div className="flex items-center gap-2">
+            <PwaInstallButton className="hidden sm:inline-flex" />
+            <PageHeaderSwitchers />
+          </div>
         </header>
+
+        <PwaInstallButton variant="banner" className="sm:hidden" />
 
         {/* Ibadah report and best performers */}
         <section

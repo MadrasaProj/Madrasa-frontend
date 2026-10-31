@@ -56,10 +56,17 @@ export const getMyLeaveRequests = (clientId: string, token: string, params?: { s
   return apiFetch<LeaveRequestsListResponse>(`${DEFAULT_API_BASE}/${clientId}/leave-requests/my${qs ? `?${qs}` : ""}`, token, { signal });
 };
 
-export const getPendingLeaveRequests = (clientId: string, token: string, params?: { status?: string; studentId?: string; skip?: number; take?: number }, signal?: AbortSignal) => {
+export const getPendingLeaveRequests = (
+  clientId: string,
+  token: string,
+  params?: { status?: string; studentId?: string; classId?: string; date?: string; skip?: number; take?: number },
+  signal?: AbortSignal,
+) => {
   const q = new URLSearchParams();
   if (params?.status) q.set("status", params.status);
   if (params?.studentId) q.set("studentId", params.studentId);
+  if (params?.classId) q.set("classId", params.classId);
+  if (params?.date) q.set("date", params.date);
   if (params?.skip) q.set("skip", String(params.skip));
   if (params?.take) q.set("take", String(params.take));
   const qs = q.toString();

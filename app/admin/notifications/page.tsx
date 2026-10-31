@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SkeletonList } from "@/components/ui/Skeleton";
+import { toast } from "sonner";
 
 const TYPE_CONFIG: Record<NotificationType, { label: string; icon: React.ElementType; color: string; bg: string }> = {
   ANNOUNCEMENT:       { label: "Announcement",    icon: Bell,          color: "text-indigo-700", bg: "bg-indigo-100" },
@@ -106,6 +107,7 @@ export default function AdminNotificationsPage() {
           targetClassIds: cClassIds.length ? cClassIds : undefined,
           eventDate: cEventDate || undefined,
         });
+        toast.success("Notification updated successfully");
       } else {
         await createNotification(cid, token, {
           title: cTitle, body: cBody, type: cType,
@@ -113,19 +115,29 @@ export default function AdminNotificationsPage() {
           targetClassIds: cClassIds.length ? cClassIds : undefined,
           eventDate: cEventDate || undefined,
         });
+        toast.success("Notification sent successfully");
       }
       setShowCompose(false);
       setEditTarget(null);
       setCTitle(""); setCBody(""); setCRoles(["PARENT"]); setCClassIds([]); setCEventDate("");
       loadSent();
-    } catch (e) { setSendError((e as Error).message); }
+    } catch (e) {
+      setSendError((e as Error).message);
+      toast.error((e as Error).message || "Failed to send notification");
+    }
     finally { setSending(false); }
   };
 
   const handleDelete = async (id: string) => {
     setDeletingId(id);
-    try { await deleteNotification(cid, token, id); loadSent(); }
-    catch (e) { alert((e as Error).message); }
+    try {
+      await deleteNotification(cid, token, id);
+      toast.success("Notification deleted successfully");
+      loadSent();
+    }
+    catch (e) {
+      toast.error((e as Error).message || "Failed to delete notification");
+    }
     finally { setDeletingId(null); }
   };
 
@@ -134,21 +146,33 @@ export default function AdminNotificationsPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Notifications" />
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <p className="text-sm text-gray-500">{total} sent</p>
-        <button onClick={handleComposeClick}
-          className="flex items-center gap-1.5 px-3 py-2 bg-primary-600 text-white rounded-xl text-sm font-semibold">
-          <Plus className="w-4 h-4" /> Compose
-        </button>
-      </div>
+      <PageHeader
+        title="Notifications"
+        subtitle={`${total} sent`}
+        icon={Bell}
+        showActionOnMobile
+        action={
+          <button onClick={handleComposeClick}
+            className="flex items-center gap-1.5 px-3 py-2 bg-primary-600 hover:bg-primary-700 active:scale-95 text-white rounded-xl text-sm font-semibold transition-all shadow-sm">
+            <Plus className="w-4 h-4" /> Compose
+          </button>
+        }
+      />
 
       {error && <ApiErrorBanner message={error} onRetry={loadSent} />}
 
       {loading ? (
         <SkeletonList count={4} />
       ) : sent.length === 0 ? (
-        <div className="text-center py-16 text-gray-400 text-sm">No notifications sent yet</div>
+        <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 p-8 shadow-sm max-w-md mx-auto">
+          <Bell className="w-12 h-12 mx-auto mb-3 text-primary-200" />
+          <p className="text-base font-bold text-gray-800">No notifications sent yet</p>
+          <p className="text-xs text-gray-500 mt-1 mb-5">Broadcast announcements, fee reminders, and alerts to parents and teachers.</p>
+          <button onClick={handleComposeClick}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600 hover:bg-primary-700 active:scale-95 text-white rounded-xl text-sm font-semibold shadow-md shadow-primary-600/20 transition-all">
+            <Plus className="w-4 h-4" /> Create Notification
+          </button>
+        </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white mb-20">
           <Table className="min-w-[760px]">
@@ -206,6 +230,18 @@ export default function AdminNotificationsPage() {
           </Table>
         </div>
       )}
+
+      {/* Mobile Floating Action Button (FAB) */}
+      <div className="fixed bottom-20 right-4 z-30 md:hidden">
+        <button
+          onClick={handleComposeClick}
+          className="flex items-center gap-2 px-4 py-3 bg-primary-600 hover:bg-primary-700 active:scale-95 text-white rounded-full shadow-lg shadow-primary-600/40 font-semibold text-sm transition-all"
+          aria-label="Create Notification"
+        >
+          <Plus className="w-5 h-5" />
+          <span>Compose</span>
+        </button>
+      </div>
 
       {/* Compose modal */}
       <AnimatePresence>

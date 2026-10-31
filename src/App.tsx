@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import PwaRegister from "../components/PwaRegister";
 import PwaInstallBanner from "../components/PwaInstallBanner";
 import { initPersistentStorage, saveTenantSlug } from "@/lib/slug-storage";
+import { Toaster } from "sonner";
 import { getTenantSlugFromPath, getRoleFromPath } from "@/lib/tenant-routing";
 
 // ── TWA Landing ───────────────────────────────────────────────────────────────
@@ -128,6 +129,7 @@ export default function App() {
 
   return (
     <>
+      <Toaster position="top-right" richColors closeButton />
       <PwaRegister />
       <PwaInstallBanner />
       <Routes>
@@ -208,6 +210,8 @@ export default function App() {
           path="/admin/global-class-subjects"
           element={<AdminGlobalClassSubjectsPage />}
         />
+        <Route path="/admin/crm" element={<OperationsDashboard />} />
+        <Route path="/admin/crm/operations" element={<OperationsDashboard />} />
         <Route path="/admin/crm/leads" element={<CrmLeadsPage />} />
         <Route path="/admin/crm/support" element={<SupportDashboard />} />
         <Route

@@ -21,7 +21,7 @@ export function proxy(request: NextRequest) {
   const tenantLogin = pathname.match(/^\/m\/([^/]+)\/login\/?$/i);
   if (tenantLogin) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = `/m/${tenantLogin[1].toLowerCase()}/admin/login`;
+    redirectUrl.pathname = `/m/${tenantLogin[1].toLowerCase()}/admin`;
     return NextResponse.redirect(redirectUrl);
   }
 
@@ -49,7 +49,10 @@ export function proxy(request: NextRequest) {
   if (host === "madrasa.feztify.com") {
     tenantFromHost = null;
   } else if (host.endsWith(".madrasa.feztify.com")) {
-    const prefix = host.substring(0, host.length - ".madrasa.feztify.com".length);
+    const prefix = host.substring(
+      0,
+      host.length - ".madrasa.feztify.com".length,
+    );
     const parts = prefix.split(".");
     tenantFromHost = parts[parts.length - 1];
   } else {
@@ -62,7 +65,7 @@ export function proxy(request: NextRequest) {
     pathname === "/"
   ) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = `/m/${tenantFromHost}/admin/login`;
+    redirectUrl.pathname = `/m/${tenantFromHost}/admin`;
     return NextResponse.redirect(redirectUrl);
   }
 

@@ -90,6 +90,7 @@ interface PageHeaderProps {
   back?: boolean;
   backHref?: string;
   action?: React.ReactNode;
+  showActionOnMobile?: boolean;
 }
 
 export function PageHeader({
@@ -99,12 +100,13 @@ export function PageHeader({
   back,
   backHref,
   action,
+  showActionOnMobile,
 }: PageHeaderProps) {
   const navigate = useNavigate();
   return (
     <div className="relative !p-0 ">
       <div className="mb-[62px]"></div>
-      <div className=" fixed   inset-x-0 top-0 z-40 flex flex-col gap-2 border-b border-gray-100 bg-white/95 px-4 py-3 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3 lg:left-64 lg:top-[0px] lg:px-8">
+      <div className=" fixed inset-x-0 top-0 z-40 flex flex-col gap-2 border-b border-gray-100 bg-white/95 px-4 py-3 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3 lg:left-64 lg:top-[0px] lg:px-8">
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
           {back && (
             <button
@@ -129,7 +131,9 @@ export function PageHeader({
               </p>
             )}
             {action && (
-              <div className="shrink-0 ml-auto sm:block">{action}</div>
+              <div className={cn("shrink-0 ml-auto", showActionOnMobile ? "block" : "hidden sm:block")}>
+                {action}
+              </div>
             )}
           </div>
           <PageHeaderSwitchers />

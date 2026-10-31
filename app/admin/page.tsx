@@ -14,9 +14,11 @@ import {
   Users, CreditCard, BookOpen, BarChart3, Settings, GraduationCap,
   BookMarked, ClipboardList, Loader2, Building2, ShieldCheck,
   UserCircle2, LogIn, CheckCircle, XCircle, ChevronRight,
+  Briefcase, Target, LifeBuoy,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import PwaInstallButton from "@/components/PwaInstallButton";
 
 function PlatformOverview() {
   const { user, accessToken } = useAuthStore();
@@ -39,10 +41,13 @@ function PlatformOverview() {
   ];
 
   const quickActions = [
-    { title: "Madrasas",         icon: Building2,   href: "/admin/madrasas",         desc: "Manage all madrasas" },
-    { title: "Admin Users",      icon: ShieldCheck, href: "/admin/super-users",      desc: "Platform administrators" },
-    { title: "Platform Reports", icon: BarChart3,   href: "/admin/platform-reports", desc: "Analytics & stats" },
-    { title: "Profile",          icon: UserCircle2, href: "/admin/profile",          desc: "Your account settings" },
+    { title: "Madrasas",         icon: Building2,   href: "/admin/madrasas",              desc: "Manage all registered madrasas" },
+    { title: "Platform Reports", icon: BarChart3,   href: "/admin/platform-reports",      desc: "Global platform analytics & health" },
+    { title: "CRM Operations",   icon: Briefcase,   href: "/admin/crm/operations",        desc: "SaaS operations & daily checklist" },
+    { title: "Leads Pipeline",   icon: Target,      href: "/admin/crm/leads",             desc: "Sales leads & demo conversions" },
+    { title: "Support Desk",     icon: LifeBuoy,    href: "/admin/crm/support",           desc: "Support tickets & SLA monitoring" },
+    { title: "Admin Users",      icon: ShieldCheck, href: "/admin/super-users",           desc: "Platform administrator accounts" },
+    { title: "Global Syllabus",  icon: BookOpen,    href: "/admin/global-class-subjects", desc: "Curriculum, classes & subjects" },
   ];
 
   return (
@@ -70,6 +75,9 @@ function PlatformOverview() {
           </div>
         </motion.div>
       </div>
+
+      {/* PWA Install Banner */}
+      <PwaInstallButton variant="banner" className="mb-5" />
 
       {/* Quick actions */}
       <SectionHeader title="Quick Actions" className="mb-3" />
@@ -182,6 +190,10 @@ function MadrasaAdminDashboard() {
         ))}
       </div>
 
+      {/* PWA Install Banner */}
+      <PwaInstallButton variant="banner" className="mb-5" />
+
+      {/* Staff & Parent Portal Links Card */}
       <PortalLinksCard
         slug={slugMatch ? slugMatch[1] : (activeTenantSlug ?? user?.tenantSlug ?? "")}
         madrasaName={user?.madrasaName}
@@ -194,19 +206,25 @@ function MadrasaAdminDashboard() {
 
 export default function AdminDashboard() {
   const { user, activeClientId } = useAuthStore();
-  const isPlatformUser = [
-    "SUPER_ADMIN",
+  const isSuperAdminPlatform = user?.actorType === "SUPER_ADMIN" && !activeClientId;
+  const isCrmStaff = [
     "SALES_EXECUTIVE",
     "SALES_MANAGER",
     "IMPLEMENTATION_SPECIALIST",
     "SUPPORT_EXECUTIVE",
     "CUSTOMER_SUCCESS_MANAGER",
-    "FINANCE_EXECUTIVE"
+    "FINANCE_EXECUTIVE",
+    "MARKETING_MANAGER",
+    "TECHNICAL_MANAGER",
   ].includes(user?.actorType ?? "") && !activeClientId;
+
+  if (isCrmStaff) {
+    return <OperationsDashboard />;
+  }
 
   return (
     <DashboardLayout>
-      {isPlatformUser ? <OperationsDashboard /> : <MadrasaAdminDashboard />}
+      {isSuperAdminPlatform ? <PlatformOverview /> : <MadrasaAdminDashboard />}
     </DashboardLayout>
   );
 }

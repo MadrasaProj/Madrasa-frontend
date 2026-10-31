@@ -40,6 +40,7 @@ export interface DailyOperations {
     place: string;
     status: string;
     nextFollowUpDate?: string;
+    timeline?: Array<{ notes: string; type: string; createdAt: string; user?: { name: string } }>;
   }>;
   missedFollowUps: Array<{
     id: string;
@@ -47,6 +48,7 @@ export interface DailyOperations {
     place: string;
     status: string;
     nextFollowUpDate?: string;
+    timeline?: Array<{ notes: string; type: string; createdAt: string; user?: { name: string } }>;
   }>;
   tasksToday: Array<{
     id: string;
@@ -91,11 +93,12 @@ export function getDailyOperations(token: string) {
 
 export interface LeadContact {
   id?: string;
-  name: string;
-  phone: string;
+  name?: string;
+  phone?: string;
+  secondaryPhone?: string;
   whatsapp?: string;
   email?: string;
-  role: string;
+  role?: string;
   isPrimary?: boolean;
 }
 
@@ -126,6 +129,14 @@ export interface LeadListItem {
   commissionPercentage?: number;
   contacts: LeadContact[];
   contributors: LeadContributor[];
+  timeline?: Array<{
+    id?: string;
+    type: string;
+    notes: string;
+    createdAt: string;
+    followUpDate?: string;
+    user?: { name: string };
+  }>;
   createdAt: string;
 }
 
@@ -216,6 +227,35 @@ export function updateLead(id: string, dto: Partial<LeadListItem>, token: string
   return mutateJson<LeadListItem>("PATCH", `/crm/leads/${id}`, dto, token);
 }
 
+export interface BulkImportLeadItem {
+  name?: string;
+  type?: string;
+  district: string;
+  place?: string;
+  address?: string;
+  contactName?: string;
+  contactPhone?: string;
+  secondaryPhone?: string;
+  contactRole?: string;
+  contactEmail?: string;
+  contactWhatsapp?: string;
+  status?: string;
+  source?: string;
+  studentCount?: number;
+  teacherCount?: number;
+  commissionPercentage?: number;
+}
+
+export function bulkImportLeads(
+  leads: BulkImportLeadItem[],
+  token: string,
+) {
+  return mutateJson<{
+    imported: Array<{ rowIndex: number; action: "created" | "updated" }>;
+    failed: Array<{ rowIndex: number; message: string }>;
+  }>("POST", "/crm/leads/bulk-import", { leads }, token);
+}
+
 export function deleteLead(id: string, token: string) {
   return mutateJson<{ success: boolean }>("DELETE", `/crm/leads/${id}`, null, token);
 }
@@ -224,6 +264,36 @@ export function deleteLead(id: string, token: string) {
 
 export function logActivity(leadId: string, dto: { type: string; notes: string; followUpDate?: string }, token: string) {
   return mutateJson<any>("POST", `/crm/leads/${leadId}/activity`, dto, token);
+}
+
+export function updateActivity(
+  leadId: string,
+  timelineId: string,
+  dto: { type?: string; notes?: string; followUpDate?: string | null },
+  token: string,
+) {
+  return mutateJson<{
+    timeline: { id: string; type: string; notes: string; createdAt: string; followUpDate?: string; user?: { name: string } };
+    nextFollowUpDate?: string | null;
+  }>("PATCH", `/crm/leads/${leadId}/activity/${timelineId}`, dto, token);
+}
+
+export function deleteActivity(leadId: string, timelineId: string, token: string) {
+  return mutateJson<{ success: boolean; nextFollowUpDate?: string | null }>(
+    "DELETE",
+    `/crm/leads/${leadId}/activity/${timelineId}`,
+    null,
+    token,
+  );
+}
+
+export function updateFollowUpDate(leadId: string, followUpDate: string | null, token: string, remarks?: string) {
+  return mutateJson<{ success: boolean; nextFollowUpDate?: string | null }>(
+    "PATCH",
+    `/crm/leads/${leadId}/follow-up`,
+    { followUpDate, remarks },
+    token,
+  );
 }
 
 export function scheduleDemo(leadId: string, dto: { date: string; type: string; attendees: string[]; notes?: string; outcome: string; recordingUrl?: string }, token: string) {

@@ -30,16 +30,17 @@ export class PostersApiError extends Error {
 }
 
 export function getPosters(
-  clientId: string,
+  clientId?: string,
   params?: { page?: number; limit?: number; signal?: AbortSignal },
 ): Promise<PosterListResponse> {
   const { page = 1, limit = 20, signal } = params ?? {};
   const q = new URLSearchParams({ page: String(page), limit: String(limit) });
-  return fetch(`${BASE}/${clientId}/posters?${q}`, { signal }).then((r) => r.json());
+  const url = clientId ? `${BASE}/${clientId}/posters?${q}` : `${BASE}/posters?${q}`;
+  return fetch(url, { signal }).then((r) => r.json());
 }
 
 export function uploadPoster(
-  clientId: string,
+  clientId: string | undefined,
   token: string,
   title: string,
   file: File,
@@ -47,24 +48,30 @@ export function uploadPoster(
   const formData = new FormData();
   formData.append("title", title);
   formData.append("file", file);
-  return apiFetch<PosterRecord>(`${BASE}/${clientId}/posters`, token, {
+  const url = clientId ? `${BASE}/${clientId}/posters` : `${BASE}/posters`;
+  return apiFetch<PosterRecord>(url, token, {
     method: "POST",
     body: formData,
   });
 }
 
 export function deletePoster(
-  clientId: string,
+  clientId: string | undefined,
   token: string,
   posterId: string,
 ): Promise<{ message: string }> {
+  const url = clientId
+    ? `${BASE}/${clientId}/posters/${posterId}`
+    : `${BASE}/posters/${posterId}`;
   return apiFetch<{ message: string }>(
-    `${BASE}/${clientId}/posters/${posterId}`,
+    url,
     token,
     { method: "DELETE" },
   );
 }
 
-export function getPosterDownloadUrl(clientId: string, posterId: string): string {
-  return `${BASE}/${clientId}/posters/${posterId}/download`;
+export function getPosterDownloadUrl(clientId: string | undefined, posterId: string): string {
+  return clientId
+    ? `${BASE}/${clientId}/posters/${posterId}/download`
+    : `${BASE}/posters/${posterId}/download`;
 }

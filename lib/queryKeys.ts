@@ -50,6 +50,8 @@ export const queryKeys = {
     all: ["leaveRequests"] as const,
     my: (cid: string, params?: object) =>
       ["leaveRequests", "my", cid, params ?? {}] as const,
+    pending: (cid: string, params?: object) =>
+      ["leaveRequests", "pending", cid, params ?? {}] as const,
   },
 
   diary: {
@@ -112,10 +114,13 @@ export const queryKeys = {
   reports: {
     all: ["reports"] as const,
     studentStats: (cid: string) => ["reports", "studentStats", cid] as const,
-    feeSummary: (cid: string, ay?: string) => ["reports", "feeSummary", cid, ay ?? ""] as const,
+    feeSummary: (cid: string, ay?: string, from?: string, to?: string) => ["reports", "feeSummary", cid, ay ?? "", from ?? "", to ?? ""] as const,
     attendanceSummary: (cid: string, from?: string, to?: string) => ["reports", "attendanceSummary", cid, from ?? "", to ?? ""] as const,
     classAttendanceSummary: (cid: string, classId: string) => ["reports", "classAttendanceSummary", cid, classId] as const,
-    homeworkSummary: (cid: string) => ["reports", "homeworkSummary", cid] as const,
+    homeworkSummary: (cid: string, from?: string, to?: string) => ["reports", "homeworkSummary", cid, from ?? "", to ?? ""] as const,
+    operationalActivity: (cid: string, from?: string, to?: string) => ["reports", "operationalActivity", cid, from ?? "", to ?? ""] as const,
+    parentAdoption: (cid: string, params?: object) => ["reports", "parentAdoption", cid, params ?? {}] as const,
+    activityLogs: (cid: string, params?: object) => ["reports", "activityLogs", cid, params ?? {}] as const,
   },
 
   config: {

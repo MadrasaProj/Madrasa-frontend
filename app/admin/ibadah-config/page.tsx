@@ -30,6 +30,9 @@ import {
   Sun,
   Sparkles,
   Calculator,
+  Bell,
+  ArrowRight,
+  Building2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -53,6 +56,24 @@ const PRAYER_FIELDS: {
     desc: "Daily Quran reading tracker",
   },
 ];
+
+const DEFAULT_TOGGLES: Partial<Record<keyof IbadahConfig, boolean>> = {
+  enableFajr: true,
+  enableDhuhr: true,
+  enableAsr: true,
+  enableMaghrib: true,
+  enableIsha: true,
+  enableQuranPages: true,
+};
+
+const DEFAULT_SCORING: IbadahScoringConfig = {
+  jamaPoints: 10,
+  adaPoints: 7,
+  excusedPoints: 7,
+  qalaPoints: 3,
+  quranPointsPerPage: 2,
+  maxQuranPagesPerDay: 20,
+};
 
 const EMPTY_ITEM: Omit<CustomItem, "key"> & { key: string } = {
   key: "",
@@ -80,32 +101,25 @@ function validateKey(key: string): string | null {
 }
 
 export default function IbadahConfigPage() {
-  const { accessToken, user, activeClientId } = useAuthStore();
+  const { accessToken, user, activeClientId, hasHydrated } = useAuthStore();
   const token = accessToken ?? "";
-  const cid = activeClientId ?? user?.clientId ?? "";
   const isSuperAdmin = user?.actorType === "SUPER_ADMIN";
   const isAdmin =
     isSuperAdmin ||
     user?.actorType === "CLIENT_ADMIN" ||
     user?.role === "admin";
 
+  const clientId = activeClientId || user?.clientId || "";
+
   const [config, setConfig] = useState<IbadahConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [toggles, setToggles] = useState<
-    Partial<Record<keyof IbadahConfig, boolean>>
-  >({});
+  const [toggles, setToggles] =
+    useState<Partial<Record<keyof IbadahConfig, boolean>>>(DEFAULT_TOGGLES);
   const [customItems, setCustomItems] = useState<CustomItem[]>([]);
-  const [scoring, setScoring] = useState<IbadahScoringConfig>({
-    jamaPoints: 10,
-    adaPoints: 7,
-    excusedPoints: 7,
-    qalaPoints: 3,
-    quranPointsPerPage: 2,
-    maxQuranPagesPerDay: 20,
-  });
+  const [scoring, setScoring] = useState<IbadahScoringConfig>(DEFAULT_SCORING);
 
   const [addingItem, setAddingItem] = useState(false);
   const [newItem, setNewItem] = useState<CustomItem>({ ...EMPTY_ITEM });
@@ -114,45 +128,78 @@ export default function IbadahConfigPage() {
   const [editItem, setEditItem] = useState<CustomItem>({ ...EMPTY_ITEM });
   const [editItemError, setEditItemError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    if (!token) return;
+  const loadConfig = useCallback(async (targetCid?: string) => {
+    const cidToLoad = targetCid || clientId;
+
+    if (!token || !cidToLoad) {
+      if (hasHydrated) {
+        setLoading(false);
+      }
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
-      const cfg = await getIbadahConfig(token, cid || undefined);
+      const cfg = await getIbadahConfig(token, cidToLoad);
       setConfig(cfg);
       setToggles({
-        enableFajr: cfg.enableFajr,
-        enableDhuhr: cfg.enableDhuhr,
-        enableAsr: cfg.enableAsr,
-        enableMaghrib: cfg.enableMaghrib,
-        enableIsha: cfg.enableIsha,
-        enableQuranPages: cfg.enableQuranPages,
+        enableFajr: cfg?.enableFajr ?? true,
+        enableDhuhr: cfg?.enableDhuhr ?? true,
+        enableAsr: cfg?.enableAsr ?? true,
+        enableMaghrib: cfg?.enableMaghrib ?? true,
+        enableIsha: cfg?.enableIsha ?? true,
+        enableQuranPages: cfg?.enableQuranPages ?? true,
       });
-      setCustomItems(Array.isArray(cfg.customItems) ? cfg.customItems : []);
-      if (cfg.scoringConfig) {
-        setScoring({
-          jamaPoints: cfg.scoringConfig.jamaPoints ?? 10,
-          adaPoints: cfg.scoringConfig.adaPoints ?? 7,
-          excusedPoints: cfg.scoringConfig.excusedPoints ?? 7,
-          qalaPoints: cfg.scoringConfig.qalaPoints ?? 3,
-          quranPointsPerPage: cfg.scoringConfig.quranPointsPerPage ?? 2,
-          maxQuranPagesPerDay: cfg.scoringConfig.maxQuranPagesPerDay ?? 20,
-        });
+
+      let parsedCustomItems: CustomItem[] = [];
+      if (Array.isArray(cfg?.customItems)) {
+        parsedCustomItems = cfg.customItems;
+      } else if (typeof cfg?.customItems === "string") {
+        try {
+          const p = JSON.parse(cfg.customItems);
+          if (Array.isArray(p)) parsedCustomItems = p;
+        } catch {}
       }
+      setCustomItems(parsedCustomItems);
+
+      const sc = cfg?.scoringConfig;
+      setScoring({
+        jamaPoints: sc?.jamaPoints ?? DEFAULT_SCORING.jamaPoints,
+        adaPoints: sc?.adaPoints ?? DEFAULT_SCORING.adaPoints,
+        excusedPoints: sc?.excusedPoints ?? DEFAULT_SCORING.excusedPoints,
+        qalaPoints: sc?.qalaPoints ?? DEFAULT_SCORING.qalaPoints,
+        quranPointsPerPage:
+          sc?.quranPointsPerPage ?? DEFAULT_SCORING.quranPointsPerPage,
+        maxQuranPagesPerDay:
+          sc?.maxQuranPagesPerDay ?? DEFAULT_SCORING.maxQuranPagesPerDay,
+      });
     } catch (e) {
       setError((e as Error).message);
+      // Fallback gracefully to defaults so UI never gets permanently blocked
+      setToggles(DEFAULT_TOGGLES);
+      setCustomItems([]);
+      setScoring(DEFAULT_SCORING);
     } finally {
       setLoading(false);
     }
-  }, [token, cid]);
+  }, [token, clientId, hasHydrated]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!hasHydrated) return;
+    if (clientId) {
+      loadConfig(clientId);
+    } else {
+      setLoading(false);
+    }
+  }, [hasHydrated, clientId, loadConfig]);
 
   const handleSave = async () => {
-    if (!token) return;
+    const targetCid = clientId;
+    if (!token || !targetCid) {
+      setError("Madrasa client context not found. Please select a madrasa.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -168,9 +215,10 @@ export default function IbadahConfigPage() {
           customItems,
           scoringConfig: scoring,
         },
-        cid || undefined,
+        targetCid,
       );
       setConfig(updated);
+      setCustomItems(Array.isArray(updated.customItems) ? updated.customItems : []);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (e) {
@@ -191,7 +239,7 @@ export default function IbadahConfigPage() {
       return;
     }
     if (customItems.some((i) => i.key === newItem.key)) {
-      setNewItemError("Key already exists");
+      setNewItemError("An item with this key already exists for this madrasa");
       return;
     }
     const item: CustomItem = {
@@ -260,7 +308,7 @@ export default function IbadahConfigPage() {
     setEditItemError(null);
   };
 
-  if (!isAdmin) {
+  if (hasHydrated && !isAdmin) {
     return (
       <DashboardLayout>
         <PageHeader
@@ -303,11 +351,33 @@ export default function IbadahConfigPage() {
         subtitle="Tracking settings and performance scoring rules"
         icon={Moon}
         back
-        backHref="/admin/ibadah"
+        backHref={isSuperAdmin ? "/admin" : "/admin/ibadah"}
       />
 
       {loading ? (
         <PageSkeleton />
+      ) : !clientId ? (
+        <div className="bg-white border border-gray-100 rounded-3xl p-8 text-center max-w-lg mx-auto space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto">
+            <Building2 className="w-6 h-6" />
+          </div>
+          <h3 className="text-base font-bold text-gray-900">No Madrasa Selected</h3>
+          <p className="text-xs text-gray-500">
+            {isSuperAdmin
+              ? "Please enter a madrasa from the Madrasas list to configure its ibadah tracking settings."
+              : "No madrasa client was found for your account. Please log in through your madrasa portal."}
+          </p>
+          {isSuperAdmin && (
+            <div className="pt-2">
+              <a
+                href="/admin/madrasas"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
+              >
+                Go to Madrasas
+              </a>
+            </div>
+          )}
+        </div>
       ) : (
         <div className="space-y-6 pb-28">
           {error && (
@@ -315,6 +385,30 @@ export default function IbadahConfigPage() {
               <AlertCircle className="w-4 h-4 shrink-0" /> {error}
             </div>
           )}
+
+          {/* Ibadah Night Notification Settings Banner */}
+          <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-100/80 rounded-3xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <Bell className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-gray-900">
+                  Night Alert Notification for Ibadah Tracking
+                </h3>
+                <p className="text-xs text-gray-600 mt-0.5 max-w-xl">
+                  Configure automated nightly push notifications sent to parents to remind them to log their child&apos;s daily prayers and good deeds.
+                </p>
+              </div>
+            </div>
+            <a
+              href="/admin/config?tab=ibadah"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors shrink-0 shadow-xs self-start sm:self-auto"
+            >
+              <span>Configure Alert</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </a>
+          </div>
 
           {/* ──────────────────────────────────────────────────────── */}
           {/* SECTION 1: Performance Scoring Configuration            */}

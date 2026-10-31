@@ -18,6 +18,7 @@ import { getSubjects, type SubjectRecord } from "@/lib/subjects-api";
 import { getStudents } from "@/lib/students-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   Plus,
   Loader2,
@@ -257,18 +258,21 @@ export default function AdminExamsPage() {
       if (drawerMode === "create") {
         const res = await createExam(cid, token, payload);
         setExams((prev) => [res, ...prev]);
+        toast.success("Exam created successfully");
       } else {
         if (!editTargetId) return;
         const res = await updateExam(cid, token, editTargetId, payload);
         setExams((prev) =>
           prev.map((ex) => (ex.id === editTargetId ? { ...ex, ...res } : ex)),
         );
+        toast.success("Exam updated successfully");
       }
       setDrawerOpen(false);
       setForm(EMPTY_FORM);
       setEditTargetId(null);
     } catch (e: any) {
       setPageError(e.message ?? "Action failed");
+      toast.error(e.message ?? "Action failed");
     } finally {
       setSubmitting(false);
     }
@@ -285,10 +289,11 @@ export default function AdminExamsPage() {
     try {
       await deleteExam(cid, token, deleteExamTarget.id);
       setExams((prev) => prev.filter((e) => e.id !== deleteExamTarget.id));
+      toast.success("Exam deleted successfully");
       setShowDeleteExamConfirm(false);
       setDeleteExamTarget(null);
     } catch (e: any) {
-      alert(e.message ?? "Delete failed");
+      toast.error(e.message ?? "Delete failed");
     } finally {
       setDeletingId(null);
     }
@@ -479,9 +484,11 @@ export default function AdminExamsPage() {
       });
 
       setMarkEntry((p) => ({ ...p, saving: false, saved: true }));
+      toast.success("Marks saved successfully");
       setTimeout(() => setMarkEntry((p) => ({ ...p, saved: false })), 2000);
     } catch (e: any) {
       setMarkEntry((p) => ({ ...p, saving: false, error: e.message }));
+      toast.error(e.message ?? "Failed to save marks");
     }
   };
 

@@ -10,10 +10,11 @@ import {
 } from "@/lib/posters-api";
 import { SkeletonGrid } from "@/components/ui/Skeleton";
 import { Plus, Trash2, Download, Loader2, Upload } from "lucide-react";
+import { toast } from "sonner";
 
 export default function AdminPostersPage() {
-  const { user, accessToken } = useAuthStore();
-  const clientId = user?.clientId ?? "";
+  const { user, accessToken, activeClientId, hasHydrated } = useAuthStore();
+  const clientId = activeClientId ?? user?.clientId ?? "";
   const token = accessToken ?? "";
   const isSuperAdmin = user?.actorType === "SUPER_ADMIN";
 
@@ -25,11 +26,10 @@ export default function AdminPostersPage() {
   const [file, setFile] = useState<File | null>(null);
 
   const loadPosters = useCallback(async () => {
-    if (!clientId) return;
     setLoading(true);
     try {
-      const res = await getPosters(clientId, { limit: 100 });
-      setPosters(res.data);
+      const res = await getPosters(clientId || undefined, { limit: 100 });
+      setPosters(Array.isArray(res?.data) ? res.data : []);
     } catch {
       setPosters([]);
     } finally {
@@ -45,13 +45,14 @@ export default function AdminPostersPage() {
     if (!title.trim() || !file) return;
     setUploading(true);
     try {
-      await uploadPoster(clientId, token, title, file);
+      await uploadPoster(clientId || undefined, token, title, file);
+      toast.success("Poster uploaded successfully");
       setTitle("");
       setFile(null);
       setShowUpload(false);
       loadPosters();
     } catch {
-      alert("Failed to upload poster");
+      toast.error("Failed to upload poster");
     } finally {
       setUploading(false);
     }
@@ -60,10 +61,11 @@ export default function AdminPostersPage() {
   const handleDelete = async (poster: PosterRecord) => {
     if (!confirm(`Delete "${poster.title}"?`)) return;
     try {
-      await deletePoster(clientId, token, poster.id);
+      await deletePoster(clientId || undefined, token, poster.id);
       setPosters((prev) => prev.filter((p) => p.id !== poster.id));
+      toast.success("Poster deleted successfully");
     } catch {
-      alert("Failed to delete poster");
+      toast.error("Failed to delete poster");
     }
   };
 

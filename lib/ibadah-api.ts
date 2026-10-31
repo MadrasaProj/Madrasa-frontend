@@ -37,6 +37,7 @@ export interface IbadahScoringConfig {
 
 export interface IbadahConfig {
   id: string;
+  clientId: string;
   enableFajr: boolean;
   enableDhuhr: boolean;
   enableAsr: boolean;
@@ -184,10 +185,13 @@ export const getStudentIbadah = (
 
 /** Get ibadah config for madrasa admin or super admin */
 export const getIbadahConfig = (token: string, clientId?: string) => {
-  if (clientId) {
+  if (clientId && clientId !== "default") {
     return apiFetch<IbadahConfig>(`${API_BASE}/${clientId}/ibadah/config`, token);
   }
-  return apiFetch<IbadahConfig>(`${API_BASE}/super-admin/ibadah-config`, token);
+  return apiFetch<IbadahConfig>(
+    `${API_BASE}/super-admin/ibadah-config${clientId ? `?clientId=${clientId}` : ""}`,
+    token,
+  );
 };
 
 /** Update ibadah config & scoring for madrasa admin or super admin */
@@ -196,9 +200,10 @@ export const updateIbadahConfig = (
   dto: UpdateIbadahConfigPayload,
   clientId?: string,
 ) => {
-  const url = clientId
-    ? `${API_BASE}/${clientId}/ibadah/config`
-    : `${API_BASE}/super-admin/ibadah-config`;
+  const url =
+    clientId && clientId !== "default"
+      ? `${API_BASE}/${clientId}/ibadah/config`
+      : `${API_BASE}/super-admin/ibadah-config${clientId ? `?clientId=${clientId}` : ""}`;
   return apiFetch<IbadahConfig>(url, token, {
     method: "PATCH",
     body: JSON.stringify(dto),
@@ -210,4 +215,23 @@ export const getSuperAdminIbadahConfig = (token: string) =>
 
 export const updateSuperAdminIbadahConfig = (token: string, dto: UpdateIbadahConfigPayload) =>
   updateIbadahConfig(token, dto);
+
+export const triggerIbadahReminder = (
+  clientId: string,
+  token: string,
+  options?: { notifyAll?: boolean; dryRun?: boolean },
+) => {
+  const q = new URLSearchParams();
+  if (options?.notifyAll) q.set("notifyAll", "true");
+  if (options?.dryRun) q.set("dryRun", "true");
+  const qs = q.toString();
+  return apiFetch<{
+    clientsProcessed: number;
+    totalParentsNotified: number;
+    clientsSkipped: number;
+    today: string;
+  }>(`${API_BASE}/${clientId}/ibadah/reminder/trigger${qs ? `?${qs}` : ""}`, token, {
+    method: "POST",
+  });
+};
 
