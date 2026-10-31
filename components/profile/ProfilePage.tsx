@@ -363,7 +363,6 @@ export default function ProfilePage({ config, layout }: ProfilePageProps) {
   const parentInfoRows = [
     { label: t("common", "displayName", lang), value: user?.name || "—", icon: User },
     { label: t("common", "role", lang), value: config.roleLabel, icon: IdCard },
-    { label: t("common", "userId", lang), value: user?.id || "—", icon: Hash, mono: true },
     { label: t("common", "tenant", lang), value: user?.madrasaName || user?.tenantSlug || "—", icon: Building2 },
     { label: t("common", "primaryPhone", lang), value: parentPhone || t("common", "notSet", lang), icon: Phone },
     { label: t("common", "email", lang), value: user?.email || t("common", "notSet", lang), icon: Mail },
@@ -471,7 +470,7 @@ export default function ProfilePage({ config, layout }: ProfilePageProps) {
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-50 text-gray-500"><Icon className="h-4 w-4" /></div>
                     <div className="min-w-0 flex-1">
                       <p className="text-xs text-muted-foreground">{row.label}</p>
-                      <p className={cn("text-sm font-semibold text-gray-900", row.mono && "font-mono", row.wrap ? "whitespace-pre-wrap break-words" : "truncate")} title={row.wrap ? undefined : row.value}>{row.value}</p>
+                      <p className={cn("text-sm font-semibold text-gray-900", row.wrap ? "whitespace-pre-wrap break-words" : "truncate")} title={row.wrap ? undefined : row.value}>{row.value}</p>
                     </div>
                   </div>
                 );
