@@ -116,8 +116,8 @@ export default function ParentHomeworkPage() {
         ) : (
           <>
             {pendingCount > 0 && !isLoading && (
-              <Alert className="border-primary/15 bg-primary/5">
-                <AlertTitle className="flex items-center gap-2 text-primary">
+              <Alert className="border-amber-200 bg-amber-50">
+                <AlertTitle className="flex items-center gap-2 text-amber-800">
                   <AlertCircle className="size-4" />
                   {pendingCount} {t("parentPages", "pendingHomeworks", lang)}
                 </AlertTitle>
@@ -168,7 +168,7 @@ export default function ParentHomeworkPage() {
                 </p>
               </div>
             ) : (
-              <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
+              <div className="overflow-hidden rounded-2xl   bg-card  ">
                 {filtered.map((item) => (
                   <button
                     key={item.id}
@@ -183,13 +183,14 @@ export default function ParentHomeworkPage() {
                       <span className="block truncate text-sm font-semibold text-gray-900">{item.title}</span>
                       <span className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
                         <span>{item.subject?.name ?? "—"}</span>
+                        <br/>
                         <span className="inline-flex items-center gap-1.5">
                           <CalendarDays className="size-3.5" />
                           {t("parentPages", "dueDateCol", lang)}: {formatDate(item.dueDate)}
                         </span>
                       </span>
                     </span>
-                    <span className={cn("shrink-0 rounded-full absolute top-3 right-3 px-2.5 py-1 text-xs font-semibold ring-1", statusStyles[item.submission.status])}>
+                    <span className={cn("shrink-0 rounded-full absolute top-3 right-3 p-0.5 px-2 text-[10px] font-semibold ring-1", statusStyles[item.submission.status])}>
                       {t("parentPages", statusLabelKeys[item.submission.status], lang)}
                     </span>
                   </button>

@@ -42,6 +42,7 @@ import {
   Receipt,
   Download,
   ChevronUp,
+  Shapes,
 } from "lucide-react";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { DrawerSelector } from "@/components/DrawerSelector";
@@ -1098,12 +1099,12 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
             <div
               onClick={() => setMoreOpen(true)}
               className={cn(
-                "flex flex-col w-12 items-center  justify-center gap-1 p-2 relative transition-all active:scale-95  text-gray-400",
+                "flex flex-col w-12 items-center  justify-center gap-2 p-2 relative transition-all active:scale-95  text-gray-400",
               )}
             >
-              <ChevronUp className="w-5 h-5 shrink-0 *:stroke-[1.5px]" />
+              <Shapes className="w-5 h-5 shrink-0 *:stroke-[1.5px]" />
               <span className="text-[11px]  leading-none">
-                {lang === "ml" ? "കൂടുതൽ" : "More"}
+                {lang === "ml" ? "കൂടുതൽ" : "Menu"}
               </span>
             </div>
           )}

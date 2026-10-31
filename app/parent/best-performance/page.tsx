@@ -29,8 +29,7 @@ export default function ParentBestPerformancePage() {
   } | null>(null);
   const [rangeStep, setRangeStep] = useState<"from" | "to" | null>(null);
   const [rangeStart, setRangeStart] = useState("");
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
-  const reduceMotion = useReducedMotion();
+   const reduceMotion = useReducedMotion();
   const printRef = useRef<HTMLDivElement>(null);
   const advancingRangeRef = useRef(false);
 
@@ -124,65 +123,13 @@ export default function ParentBestPerformancePage() {
       setRangeStep(null);
     }
   };
-  const handleDownloadPDF = async () => {
-    if (!printRef.current) return;
-    setDownloadingPdf(true);
-    try {
-      const [html2canvas, { jsPDF }] = await Promise.all([
-        import("html2canvas-pro").then((module) => module.default),
-        import("jspdf"),
-      ]);
-      const canvas = await html2canvas(printRef.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-      });
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
-      const width = pdf.internal.pageSize.getWidth() - 20;
-      const pageHeight = pdf.internal.pageSize.getHeight() - 20;
-      const imageHeight = (canvas.height * width) / canvas.width;
-      const image = canvas.toDataURL("image/png");
-      for (let offset = 0; offset < imageHeight; offset += pageHeight) {
-        if (offset) pdf.addPage();
-        pdf.addImage(image, "PNG", 10, 10 - offset, width, imageHeight);
-      }
-      pdf.save("Best_Ibadah_Performance_Report.pdf");
-    } catch (downloadError) {
-      console.error("Failed to generate PDF", downloadError);
-    } finally {
-      setDownloadingPdf(false);
-    }
-  };
+  
 
   return (
     <DashboardLayout>
       <PageHeader
         title={t("parentPages", "bestIbadahPerf", lang)}
-        action={
-          performers.length > 0 && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleDownloadPDF}
-              disabled={downloadingPdf}
-            >
-              {downloadingPdf ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Download className="size-4" />
-              )}
-              <span className="hidden sm:inline">
-                {downloadingPdf ? "Exporting..." : "Download PDF"}
-              </span>
-              <span className="sm:hidden">PDF</span>
-            </Button>
-          )
-        }
+         
       />
       <div
         ref={printRef}

@@ -48,14 +48,19 @@ export function ParentStudentSwitcher({
               onClick={() => onSelectStudent(id)}
               aria-pressed={isActive}
               className={cn(
-                "inline-flex h-11 max-w-44 items-center gap-2 rounded-xl border-2 px-2 pr-3.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2",
+                "inline-flex  max-w-44 items-center gap-2 rounded-full p-1 border-2  pr-3.5  text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2",
                 isActive
                   ? "border-primary-600 bg-primary-50 text-primary-900"
                   : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900",
               )}
             >
               <StudentAvatar name={name} gender={info?.gender} photoUrl={photo} className="size-7 text-xs" />
+              <div className="text-left">
               <span className="truncate">{name}</span>
+              <div className="text-[10px] text-gray-400">{info?.adno}</div>
+
+              </div>
+
             </button>
           </SwiperSlide>
         );

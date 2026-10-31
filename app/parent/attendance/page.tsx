@@ -278,7 +278,7 @@ export default function ParentAttendancePage() {
               }}
               className="  absolute left-1/2 top-1/2  text-center"
             >
-              <p className="-mt-2 text-4xl font-bold tracking-tight text-gray-900">
+              <p className="-mt-2 text-3xl font-bold tracking-tight text-gray-900">
                 {percentage}%
               </p>
               <p className="mt-1 text-xs font-medium text-gray-500">

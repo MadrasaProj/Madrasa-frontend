@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { LucideIcon, ChevronLeft, ChevronDown, School } from "lucide-react";
+import { LucideIcon, ChevronLeft, ChevronDown, School, ChevronRight } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/auth";
 import { useActiveClass } from "@/store/activeClass";
@@ -47,8 +47,8 @@ export function PageHeaderSwitchers() {
             className="inline-flex max-w-40 shrink-0 items-center gap-2 rounded-full border border-gray-200 bg-white px-2 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
           >
             <StudentAvatar name={currentStudent?.name ?? "Student"} gender={currentStudent?.gender} photoUrl={currentStudent?.photoUrl} size="sm" />
-            <span className="truncate">{currentStudent?.name ?? "Student"}</span>
-            <ChevronDown className="size-4 shrink-0" />
+            <span className="line-clamp-1 max-w-[60px] break-all">{currentStudent?.name ?? "Student"}</span>
+            <ChevronRight className="size-4 shrink-0" />
           </button>
         }
       />
@@ -59,7 +59,9 @@ export function PageHeaderSwitchers() {
     return (
       <DrawerSelector
         title={lang === "ml" ? "സജീവ ക്ലാസ്" : "Active class"}
-        options={classes.map((cls) => ({ value: cls.id, label: cls.name, disabled: isLoading }))}
+        options={[...classes]
+          .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }))
+          .map((cls) => ({ value: cls.id, label: cls.name, disabled: isLoading }))}
         value={activeClassId ?? ""}
         onChange={setActiveClassId}
         placeholder={isLoading ? (lang === "ml" ? "ക്ലാസുകൾ ലോഡ് ചെയ്യുന്നു…" : "Loading classes…") : "Class"}
