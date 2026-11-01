@@ -43,6 +43,7 @@ import {
   Download,
   ChevronUp,
   Shapes,
+  Bot,
 } from "lucide-react";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { DrawerSelector } from "@/components/DrawerSelector";
@@ -100,7 +101,8 @@ type NavKey =
   | "settings"
   | "bestPerformance"
   | "feeTypes"
-  | "globalClassSubjects";
+  | "globalClassSubjects"
+  | "agent";
 
 const adminLinks = [
   { href: "/admin", icon: LayoutDashboard, key: "dashboard" as NavKey },
@@ -154,6 +156,7 @@ const adminLinks = [
 
 const teacherLinks = [
   { href: "/teacher", icon: LayoutDashboard, key: "dashboard" as NavKey },
+  { href: "/teacher/agent", icon: Bot, key: "agent" as NavKey },
   { href: "/teacher/checkin", icon: Clock, key: "checkin" as NavKey },
   {
     href: "/teacher/attendance",

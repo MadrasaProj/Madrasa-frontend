@@ -226,6 +226,7 @@ const translations = {
   // ── Navigation Labels ─────────────────────────────────────────────────────
   nav: {
     dashboard: { en: "Dashboard", ml: "ഡാഷ്‌ബോർഡ്" },
+    agent: { en: "Agent", ml: "ഏജന്റ്" },
     students: { en: "Students", ml: "വിദ്യാർത്ഥികൾ" },
     fees: { en: "Fees", ml: "ഫീസ്" },
     otherPayments: { en: "Other Payments", ml: "മറ്റു പേയ്‌മെന്റുകൾ" },

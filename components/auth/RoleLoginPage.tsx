@@ -353,6 +353,11 @@ export default function RoleLoginPage({
         return;
       }
 
+      const returnTo = searchParams.get("returnTo");
+      if (normalized.user.role === "teacher" && returnTo && /^\/m\/[^/]+\/teacher\/agent\/authorize\?/.test(returnTo)) {
+        navigate(returnTo);
+        return;
+      }
       navigate(
         roleHomePath({
           role: normalized.user.role,

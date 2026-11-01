@@ -42,6 +42,8 @@ import SuperAdminLoginPage from "../app/super-admin/login/page";
 import CommitteeProfilePage from "../app/committee/profile/page";
 import ParentProfilePage from "../app/parent/profile/page";
 import TeacherProfilePage from "../app/teacher/profile/page";
+import TeacherAgentPage from "../app/teacher/agent/page";
+import TeacherAgentAuthorizePage from "../app/teacher/agent/authorize";
 import ParentStudentProfile from "../app/parent/students/page";
 import AdminReportsPage from "../app/admin/reports/page";
 import AdminStudentDetailPage from "../app/admin/students/[id]/page";
@@ -311,6 +313,8 @@ export default function App() {
 
         {/* Teacher */}
         <Route path="/teacher" element={<TeacherDashboard />} />
+        <Route path="/teacher/agent" element={<TeacherAgentPage />} />
+        <Route path="/teacher/agent/authorize" element={<TeacherAgentAuthorizePage />} />
         <Route path="/teacher/checkin" element={<TeacherCheckinPage />} />
         <Route path="/teacher/attendance" element={<TeacherAttendancePage />} />
         <Route
@@ -339,6 +343,8 @@ export default function App() {
 
         {/* Teacher — slug-prefixed */}
         <Route path="/m/:slug/teacher" element={<TeacherDashboard />} />
+        <Route path="/m/:slug/teacher/agent" element={<TeacherAgentPage />} />
+        <Route path="/m/:slug/teacher/agent/authorize" element={<TeacherAgentAuthorizePage />} />
         <Route
           path="/m/:slug/teacher/checkin"
           element={<TeacherCheckinPage />}
