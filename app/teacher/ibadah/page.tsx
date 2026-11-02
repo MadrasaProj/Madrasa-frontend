@@ -1,3 +1,4 @@
+import { ScrollableRangeNavigator, commonRangePreset } from "@/components/ScrollableRangeNavigator";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -635,36 +636,9 @@ export default function TeacherIbadahPage({
     return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
   });
   const [customTo, setCustomTo] = useState(() => new Date().toISOString().slice(0, 10));
-  const [customPreset, setCustomPreset] = useState<"THIS_WEEK" | "THIS_MONTH" | "LAST_MONTH" | "LAST_30" | "CUSTOM">("THIS_MONTH");
   const [customLogs, setCustomLogs] = useState<IbadahRecord[]>([]);
   const [customStudents, setCustomStudents] = useState<StudentRecord[]>([]);
   const [expandedCustomStudentId, setExpandedCustomStudentId] = useState<string | null>(null);
-
-  const applyCustomPreset = (p: typeof customPreset) => {
-    setCustomPreset(p);
-    const now = new Date();
-    const todayStr = fmt(now);
-    if (p === "THIS_WEEK") {
-      const d = new Date(now);
-      d.setDate(d.getDate() - 6);
-      setCustomFrom(fmt(d));
-      setCustomTo(todayStr);
-    } else if (p === "THIS_MONTH") {
-      const d = new Date(now.getFullYear(), now.getMonth(), 1);
-      setCustomFrom(fmt(d));
-      setCustomTo(todayStr);
-    } else if (p === "LAST_MONTH") {
-      const first = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const last = new Date(now.getFullYear(), now.getMonth(), 0);
-      setCustomFrom(fmt(first));
-      setCustomTo(fmt(last));
-    } else if (p === "LAST_30") {
-      const d = new Date(now);
-      d.setDate(d.getDate() - 30);
-      setCustomFrom(fmt(d));
-      setCustomTo(todayStr);
-    }
-  };
 
   const [loadingIbadah, setLoadingIbadah] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1161,76 +1135,22 @@ export default function TeacherIbadahPage({
               </div>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-5 mx-3 shadow-sm space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  <Calendar className="w-4 h-4 text-primary-600" />
-                  <span>Custom Date Range</span>
-                  <span className="text-[11px] font-normal normal-case text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">
-                    {customFrom} to {customTo}
-                  </span>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="flex flex-wrap gap-1.5">
-                    {(
-                      [
-                        { id: "THIS_WEEK", label: "This Week" },
-                        { id: "THIS_MONTH", label: "This Month" },
-                        { id: "LAST_MONTH", label: "Last Month" },
-                        { id: "LAST_30", label: "Last 30 Days" },
-                        { id: "CUSTOM", label: "Custom" },
-                      ] as { id: typeof customPreset; label: string }[]
-                    ).map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => applyCustomPreset(p.id)}
-                        className={cn(
-                          "px-2.5 py-1 rounded-xl text-xs font-medium transition-all cursor-pointer",
-                          customPreset === p.id
-                            ? "bg-primary-600 text-white font-semibold shadow-sm"
-                            : "bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100",
-                        )}
-                      >
-                        {p.label}
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    onClick={downloadCustomReport}
-                    disabled={customStudentMetrics.length === 0}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold shadow-sm disabled:opacity-40 cursor-pointer ml-auto"
-                  >
-                    <Download className="w-3.5 h-3.5" /> Download Report
-                  </button>
-                </div>
-              </div>
-
-              {customPreset === "CUSTOM" && (
-                <div className="pt-2 border-t border-gray-100 flex flex-wrap items-center gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500 font-medium">From:</span>
-                    <input
-                      type="date"
-                      value={customFrom}
-                      onChange={(e) => setCustomFrom(e.target.value)}
-                      className="text-xs px-3 py-1.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:border-primary-500"
-                    />
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-gray-400 hidden sm:block" />
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500 font-medium">To:</span>
-                    <input
-                      type="date"
-                      value={customTo}
-                      max={fmt(new Date())}
-                      onChange={(e) => setCustomTo(e.target.value)}
-                      className="text-xs px-3 py-1.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:border-primary-500"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
+            <ScrollableRangeNavigator
+              from={customFrom}
+              to={customTo}
+              presets={[
+                ...commonRangePreset().slice(0, 3).map((preset, index) => ({ ...preset, label: index === 0 ? "This Week" : preset.label })),
+                { label: "Last 30 Days", from: new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() - 30), to: new Date() },
+              ]}
+              onChange={({ from, to }) => { setCustomFrom(from); setCustomTo(to); }}
+              className="mx-3 mb-5"
+              actions={
+                <button onClick={downloadCustomReport} disabled={customStudentMetrics.length === 0}
+                  className="flex shrink-0 items-center gap-1.5 rounded-xl bg-primary-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40">
+                  <Download className="h-3.5 w-3.5" /> Download Report
+                </button>
+              }
+            />
           )}
 
           <Tabs

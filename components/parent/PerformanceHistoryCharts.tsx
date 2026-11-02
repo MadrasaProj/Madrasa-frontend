@@ -105,19 +105,19 @@ export function PerformanceHistoryCharts({ clientId, token, studentId, lang, per
     : (lang === "ml" ? "കഴിഞ്ഞ 6 മാസങ്ങൾ" : "Last 6 months");
   const tooltip = <ChartTooltipContent className="shadow-none" labelFormatter={(_, payload) => String(payload[0]?.payload?.range ?? "")} />;
 
-  return <section className="mt-16 border-t border-gray-200 pt-10" aria-label={lang === "ml" ? "വിദ്യാർത്ഥിയുടെ പ്രകടന ചരിത്രം" : "Student performance history"}>
-    <div className="text-center">
-      <h2 className="text-2xl font-semibold tracking-tight text-gray-950">{lang === "ml" ? "പ്രകടന ചരിത്രം" : "Performance history"}</h2>
-      <p className="mt-2 text-sm text-gray-500">{periodLabel}</p>
+  return <section className="border-t border-gray-200 pt-4" aria-label={lang === "ml" ? "വിദ്യാർത്ഥിയുടെ പ്രകടന ചരിത്രം" : "Student performance history"}>
+    <div className="text-left">
+      <h2 className="text-sm font-semibold text-gray-900">{lang === "ml" ? "പ്രകടന ചരിത്രം" : "Performance history"}</h2>
+      <p className="mt-0.5 text-xs text-gray-500">{periodLabel}</p>
     </div>
 
-    {loading ? <div className="mt-7 grid gap-8 md:grid-cols-2">{Array.from({ length: 3 }, (_, index) => <Skeleton key={index} className="h-64 rounded-xl" />)}</div>
-      : failed ? <p role="alert" className="mt-7 border-t border-gray-200 pt-6 text-sm text-gray-600">{lang === "ml" ? "പ്രകടന ചരിത്രം ലോഡ് ചെയ്യാനായില്ല." : "Could not load performance history."}</p>
-      : !hasHistory ? <p className="mt-7 border-t border-gray-200 pt-6 text-sm text-gray-600">{lang === "ml" ? "ഈ കാലയളവിൽ പ്രവർത്തന രേഖകളില്ല." : "No activity recorded in these periods."}</p>
-      : <div className="mt-8 grid gap-x-8 gap-y-10 md:grid-cols-2">
-        <div className="min-w-0 border-t border-gray-200 pt-5">
-          <h3 className="text-center text-sm font-bold text-gray-900">{lang === "ml" ? "സ്കോർ" : "Score by period"}</h3>
-          <ChartContainer config={scoreConfig} className="mt-4 h-64 w-full" role="img" aria-label={lang === "ml" ? "ഓരോ കാലയളവിലെയും സ്കോർ" : "Score for each period"}>
+    {loading ? <div className="mt-3 grid gap-3 sm:grid-cols-2">{Array.from({ length: 3 }, (_, index) => <Skeleton key={index} className="h-44 rounded-xl" />)}</div>
+      : failed ? <p role="alert" className="mt-3 text-sm text-gray-600">{lang === "ml" ? "പ്രകടന ചരിത്രം ലോഡ് ചെയ്യാനായില്ല." : "Could not load performance history."}</p>
+      : !hasHistory ? <p className="mt-3 text-sm text-gray-600">{lang === "ml" ? "ഈ കാലയളവിൽ പ്രവർത്തന രേഖകളില്ല." : "No activity recorded in these periods."}</p>
+      : <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div className="min-w-0 rounded-xl border border-gray-100 bg-white p-3">
+          <h3 className="text-xs font-semibold text-gray-700">{lang === "ml" ? "സ്കോർ" : "Score by period"}</h3>
+          <ChartContainer config={scoreConfig} className="mt-2 h-40 w-full" role="img" aria-label={lang === "ml" ? "ഓരോ കാലയളവിലെയും സ്കോർ" : "Score for each period"}>
             <LineChart accessibilityLayer data={points} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={10} />
@@ -127,9 +127,9 @@ export function PerformanceHistoryCharts({ clientId, token, studentId, lang, per
             </LineChart>
           </ChartContainer>
         </div>
-        <div className="min-w-0 border-t border-gray-200 pt-5">
-          <h3 className="text-center text-sm font-bold text-gray-900">{lang === "ml" ? "നമസ്കാരങ്ങൾ" : "Prayers by period"}</h3>
-          <ChartContainer config={prayerConfig} className="mt-4 h-64 w-full" role="img" aria-label={lang === "ml" ? "ഓരോ കാലയളവിലെയും നമസ്കാരങ്ങൾ" : "Prayers for each period"}>
+        <div className="min-w-0 rounded-xl border border-gray-100 bg-white p-3">
+          <h3 className="text-xs font-semibold text-gray-700">{lang === "ml" ? "നമസ്കാരങ്ങൾ" : "Prayers by period"}</h3>
+          <ChartContainer config={prayerConfig} className="mt-2 h-40 w-full" role="img" aria-label={lang === "ml" ? "ഓരോ കാലയളവിലെയും നമസ്കാരങ്ങൾ" : "Prayers for each period"}>
             <BarChart accessibilityLayer data={points} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={10} />
@@ -139,9 +139,9 @@ export function PerformanceHistoryCharts({ clientId, token, studentId, lang, per
             </BarChart>
           </ChartContainer>
         </div>
-        <div className="min-w-0 border-t border-gray-200 pt-5">
-          <h3 className="text-center text-sm font-bold text-gray-900">{lang === "ml" ? "ഖുർആൻ പേജുകൾ" : "Qur’an pages by period"}</h3>
-          <ChartContainer config={pagesConfig} className="mt-4 h-64 w-full" role="img" aria-label={lang === "ml" ? "ഓരോ കാലയളവിലെയും ഖുർആൻ പേജുകൾ" : "Qur’an pages for each period"}>
+        <div className="min-w-0 rounded-xl border border-gray-100 bg-white p-3">
+          <h3 className="text-xs font-semibold text-gray-700">{lang === "ml" ? "ഖുർആൻ പേജുകൾ" : "Qur’an pages by period"}</h3>
+          <ChartContainer config={pagesConfig} className="mt-2 h-40 w-full" role="img" aria-label={lang === "ml" ? "ഓരോ കാലയളവിലെയും ഖുർആൻ പേജുകൾ" : "Qur’an pages for each period"}>
             <AreaChart accessibilityLayer data={points} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={10} />
@@ -151,9 +151,9 @@ export function PerformanceHistoryCharts({ clientId, token, studentId, lang, per
             </AreaChart>
           </ChartContainer>
         </div>
-        {hasCustomActivity && <div className="min-w-0 border-t border-gray-200 pt-5">
-          <h3 className="text-center text-sm font-bold text-gray-900">{lang === "ml" ? "മറ്റ് പ്രവർത്തനങ്ങൾ" : "Other activities by period"}</h3>
-          <ChartContainer config={customConfig} className="mt-4 h-64 w-full" role="img" aria-label={lang === "ml" ? "ഓരോ കാലയളവിലെയും മറ്റ് പ്രവർത്തനങ്ങൾ" : "Other activities for each period"}>
+        {hasCustomActivity && <div className="min-w-0 rounded-xl border border-gray-100 bg-white p-3">
+          <h3 className="text-xs font-semibold text-gray-700">{lang === "ml" ? "മറ്റ് പ്രവർത്തനങ്ങൾ" : "Other activities by period"}</h3>
+          <ChartContainer config={customConfig} className="mt-2 h-40 w-full" role="img" aria-label={lang === "ml" ? "ഓരോ കാലയളവിലെയും മറ്റ് പ്രവർത്തനങ്ങൾ" : "Other activities for each period"}>
             <BarChart accessibilityLayer data={points} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={10} />

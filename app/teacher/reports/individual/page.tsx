@@ -963,7 +963,7 @@ export default function TeacherIndividualReportPage() {
       try {
         const [hwRes, ibRes, attRes] = await Promise.all([
           getStudentHomework(cid, token, studentId),
-          getStudentIbadah(cid, token, studentId, { from, to, limit: 500 }),
+          getStudentIbadah(cid, token, studentId, { from, to, limit: 90 }),
           getStudentAttendance(cid, token, studentId, { from, to, take: 500 }),
         ]);
         const filteredHw = hwRes.homework.filter(

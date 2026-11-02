@@ -1,3 +1,4 @@
+import { ScrollableRangeNavigator, commonRangePreset } from "@/components/ScrollableRangeNavigator";
 import { useState, useEffect, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -92,43 +93,16 @@ export default function ParentIbadahPage() {
     isha: { label: t("parentPages", "ishaName", lang), time: t("parentPages", "night", lang), configKey: "enableIsha" },
   };
 
-  const [historyPreset, setHistoryPreset] = useState<"LAST_7" | "THIS_MONTH" | "LAST_MONTH" | "LAST_90" | "CUSTOM">("THIS_MONTH");
   const [historyFrom, setHistoryFrom] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
   });
   const [historyTo, setHistoryTo] = useState(() => new Date().toISOString().slice(0, 10));
 
-  const applyHistoryPreset = (p: typeof historyPreset) => {
-    setHistoryPreset(p);
-    const now = new Date();
-    const todayStr = fmt(now);
-    if (p === "LAST_7") {
-      const d = new Date(now);
-      d.setDate(d.getDate() - 6);
-      setHistoryFrom(fmt(d));
-      setHistoryTo(todayStr);
-    } else if (p === "THIS_MONTH") {
-      const d = new Date(now.getFullYear(), now.getMonth(), 1);
-      setHistoryFrom(fmt(d));
-      setHistoryTo(todayStr);
-    } else if (p === "LAST_MONTH") {
-      const first = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const last = new Date(now.getFullYear(), now.getMonth(), 0);
-      setHistoryFrom(fmt(first));
-      setHistoryTo(fmt(last));
-    } else if (p === "LAST_90") {
-      const d = new Date(now);
-      d.setDate(d.getDate() - 90);
-      setHistoryFrom(fmt(d));
-      setHistoryTo(todayStr);
-    }
-  };
-
   const { data: ibadah, isLoading, error } = useStudentIbadah(
     { clientId: cid, token },
     activeId,
-    { limit: 365 },
+    { limit: 90 },
   );
   const saveMutation = useUpsertStudentIbadah({ clientId: cid, token }, activeId);
 
@@ -846,89 +820,36 @@ export default function ParentIbadahPage() {
           )}
         </ResponsivePopover>
 
-        {/* History Date Filter Bar */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-xs space-y-3 mb-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-              <Calendar className="w-4 h-4 text-primary-600" />
-              <span>Date Range</span>
-              <span className="text-[11px] font-normal normal-case text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">
-                {historyFrom} to {historyTo}
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {(
-                [
-                  { id: "LAST_7", label: "Last 7 Days" },
-                  { id: "THIS_MONTH", label: "This Month" },
-                  { id: "LAST_MONTH", label: "Last Month" },
-                  { id: "LAST_90", label: "Last 90 Days" },
-                  { id: "CUSTOM", label: "Custom" },
-                ] as { id: typeof historyPreset; label: string }[]
-              ).map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => applyHistoryPreset(p.id)}
-                  className={cn(
-                    "px-2.5 py-1 rounded-xl text-xs font-medium transition-all",
-                    historyPreset === p.id
-                      ? "bg-primary-600 text-white font-semibold shadow-xs"
-                      : "bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100",
-                  )}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {historyPreset === "CUSTOM" && (
-            <div className="pt-2 border-t border-gray-100 flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500 font-medium">From:</span>
-                <input
-                  type="date"
-                  value={historyFrom}
-                  onChange={(e) => setHistoryFrom(e.target.value)}
-                  className="text-xs px-3 py-1.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:border-primary-500"
-                />
-              </div>
-              <ChevronRight className="w-3.5 h-3.5 text-gray-400 hidden sm:block" />
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500 font-medium">To:</span>
-                <input
-                  type="date"
-                  value={historyTo}
-                  max={fmt(new Date())}
-                  onChange={(e) => setHistoryTo(e.target.value)}
-                  className="text-xs px-3 py-1.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:border-primary-500"
-                />
-              </div>
-            </div>
-          )}
-        </div>
+        <ScrollableRangeNavigator
+          from={historyFrom}
+          to={historyTo}
+          onChange={({ from, to }) => { setHistoryFrom(from); setHistoryTo(to); }}
+          className="mb-3"
+        />
 
         {/* Period Summary Stats Card */}
         {filteredHistoryLogs.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-3">
-            <div className="bg-primary-50/70 border border-primary-100 rounded-xl p-3">
-              <p className="text-[11px] font-semibold text-primary-800 uppercase tracking-wide">Days Logged</p>
-              <p className="text-xl font-bold text-primary-700 mt-0.5">{historyStats.totalRecorded}</p>
+          <section className="mb-3 overflow-hidden rounded-2xl bg-gradient-to-br from-white to-sky-50">
+            <div className="grid grid-cols-2 gap-px bg-gray-100 sm:grid-cols-4">
+              {[
+                { label: "Days Logged", value: historyStats.totalRecorded, icon: Calendar, color: "text-primary-700" },
+                { label: "Jama'a Prayers", value: historyStats.jama, icon: Users, color: "text-blue-700" },
+                { label: "Ada' Prayers", value: historyStats.ada, icon: Check, color: "text-primary-700" },
+                { label: "Quran Pages", value: historyStats.quran, icon: BookOpen, color: "text-amber-700" },
+              ].map((stat) => {
+                const Icon = stat.icon;
+                return (
+                  <div key={stat.label} className="min-w-0 bg-white/90 p-3 sm:p-4">
+                    <div className="flex items-center gap-1.5 text-sm font-medium text-gray-600">
+                      <Icon aria-hidden="true" className={cn("h-4 w-4 shrink-0", stat.color)} />
+                      <span>{stat.label}</span>
+                    </div>
+                    <div className="mt-2 text-xl font-bold tabular-nums text-gray-950 sm:text-2xl">{stat.value}</div>
+                  </div>
+                );
+              })}
             </div>
-            <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-3">
-              <p className="text-[11px] font-semibold text-blue-800 uppercase tracking-wide">Jama'a Prayers</p>
-              <p className="text-xl font-bold text-blue-700 mt-0.5">{historyStats.jama}</p>
-            </div>
-            <div className="bg-primary-50/70 border border-primary-100 rounded-xl p-3">
-              <p className="text-[11px] font-semibold text-primary-800 uppercase tracking-wide">Ada' Prayers</p>
-              <p className="text-xl font-bold text-primary-700 mt-0.5">{historyStats.ada}</p>
-            </div>
-            <div className="bg-amber-50/70 border border-amber-100 rounded-xl p-3">
-              <p className="text-[11px] font-semibold text-amber-800 uppercase tracking-wide">Quran Pages</p>
-              <p className="text-xl font-bold text-amber-700 mt-0.5">{historyStats.quran}</p>
-            </div>
-          </div>
+          </section>
         )}
 
         {/* History */}

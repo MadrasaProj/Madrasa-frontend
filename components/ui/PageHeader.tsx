@@ -7,7 +7,7 @@ import { useLanguageStore } from "@/store/language";
 import { DrawerSelector } from "@/components/DrawerSelector";
 import { StudentAvatar } from "@/components/teacher/StudentAvatar";
 
-export function PageHeaderSwitchers() {
+export function PageHeaderSwitchers({ hideChevron = false }: { hideChevron?: boolean }) {
   const { pathname } = useLocation();
   const { user, activeStudentId, setActiveStudent } = useAuthStore();
   const { lang } = useLanguageStore();
@@ -48,7 +48,7 @@ export function PageHeaderSwitchers() {
           >
             <StudentAvatar name={currentStudent?.name ?? "Student"} gender={currentStudent?.gender} photoUrl={currentStudent?.photoUrl} size="sm" />
             <span className="line-clamp-1 max-w-[60px] break-all">{currentStudent?.name ?? "Student"}</span>
-            <ChevronRight className="size-4 shrink-0" />
+            {!hideChevron && <ChevronRight className="size-4 shrink-0" />}
           </button>
         }
       />
@@ -91,6 +91,7 @@ interface PageHeaderProps {
   backHref?: string;
   action?: React.ReactNode;
   showActionOnMobile?: boolean;
+  hideSwitcherChevron?: boolean;
 }
 
 export function PageHeader({
@@ -101,6 +102,7 @@ export function PageHeader({
   backHref,
   action,
   showActionOnMobile,
+  hideSwitcherChevron,
 }: PageHeaderProps) {
   const navigate = useNavigate();
   return (
@@ -136,7 +138,7 @@ export function PageHeader({
               </div>
             )}
           </div>
-          <PageHeaderSwitchers />
+          <PageHeaderSwitchers hideChevron={hideSwitcherChevron} />
         </div>
       </div>
     </div>

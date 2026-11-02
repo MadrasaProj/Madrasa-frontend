@@ -1,3 +1,4 @@
+import { ScrollableRangeNavigator, commonRangePreset } from "@/components/ScrollableRangeNavigator";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { useAuthStore } from "@/store/auth";
@@ -6,13 +7,11 @@ import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
 import { getStudentHomework, type StudentHomeworkItem } from "@/lib/homework-api";
 import { getStudentIbadah, type StudentIbadahLog } from "@/lib/ibadah-api";
 import { getStudentAttendance, type AttendanceRecord } from "@/lib/attendance-api";
-import { Download, Loader2, FileText, Calendar, ChevronRight } from "lucide-react";
+import { Download, Loader2, FileText, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const today = new Date().toISOString().slice(0, 10);
 const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
-
-type DatePreset = "THIS_WEEK" | "THIS_MONTH" | "LAST_MONTH" | "LAST_90_DAYS" | "CUSTOM";
 
 export default function IndividualStudentReportPage({ classId }: { classId?: string } = {}) {
   const { user, accessToken, activeClientId } = useAuthStore();
@@ -24,7 +23,6 @@ export default function IndividualStudentReportPage({ classId }: { classId?: str
   const [studentId, setStudentId] = useState("");
   const [from, setFrom] = useState(monthStart);
   const [to, setTo] = useState(today);
-  const [preset, setPreset] = useState<DatePreset>("THIS_MONTH");
   const [homework, setHomework] = useState<StudentHomeworkItem[]>([]);
   const [ibadah, setIbadah] = useState<StudentIbadahLog[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
@@ -71,7 +69,7 @@ export default function IndividualStudentReportPage({ classId }: { classId?: str
     setLoading(true);
     Promise.all([
       getStudentHomework(cid, token, studentId),
-      getStudentIbadah(cid, token, studentId, { from, to, limit: 500 }),
+      getStudentIbadah(cid, token, studentId, { from, to, limit: 90 }),
       getStudentAttendance(cid, token, studentId, { from, to, take: 500 }),
     ])
       .then(([hw, ib, att]) => {
@@ -86,32 +84,6 @@ export default function IndividualStudentReportPage({ classId }: { classId?: str
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
   }, [cid, token, studentId, from, to]);
-
-  const applyPreset = (p: DatePreset) => {
-    setPreset(p);
-    const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
-    if (p === "THIS_WEEK") {
-      const d = new Date(now);
-      d.setDate(d.getDate() - 6);
-      setFrom(d.toISOString().slice(0, 10));
-      setTo(todayStr);
-    } else if (p === "THIS_MONTH") {
-      const d = new Date(now.getFullYear(), now.getMonth(), 1);
-      setFrom(d.toISOString().slice(0, 10));
-      setTo(todayStr);
-    } else if (p === "LAST_MONTH") {
-      const first = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const last = new Date(now.getFullYear(), now.getMonth(), 0);
-      setFrom(first.toISOString().slice(0, 10));
-      setTo(last.toISOString().slice(0, 10));
-    } else if (p === "LAST_90_DAYS") {
-      const d = new Date(now);
-      d.setDate(d.getDate() - 90);
-      setFrom(d.toISOString().slice(0, 10));
-      setTo(todayStr);
-    }
-  };
 
   const student = useMemo(() => students.find((s) => s.id === studentId), [students, studentId]);
 
@@ -174,66 +146,20 @@ export default function IndividualStudentReportPage({ classId }: { classId?: str
               </select>
             </label>
 
-            <div className="sm:col-span-1 lg:col-span-2 flex flex-col justify-end">
-              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider block mb-1">
-                Date Range Presets
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {(
-                  [
-                    { id: "THIS_WEEK", label: "This Week" },
-                    { id: "THIS_MONTH", label: "This Month" },
-                    { id: "LAST_MONTH", label: "Last Month" },
-                    { id: "LAST_90_DAYS", label: "Last 90 Days" },
-                    { id: "CUSTOM", label: "Custom Range" },
-                  ] as { id: DatePreset; label: string }[]
-                ).map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => applyPreset(p.id)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-xl text-xs font-medium transition-all",
-                      preset === p.id
-                        ? "bg-primary-600 text-white font-semibold shadow-sm"
-                        : "bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100",
-                    )}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
+            <div className="sm:col-span-1 lg:col-span-2">
+              <ScrollableRangeNavigator
+                from={from}
+                to={to}
+                presets={[
+                  { ...commonRangePreset()[0], label: "This Week" },
+                  ...commonRangePreset().slice(1, 3),
+                  commonRangePreset()[3],
+                ]}
+                onChange={({ from: nextFrom, to: nextTo }) => { setFrom(nextFrom); setTo(nextTo); }}
+              />
             </div>
           </div>
 
-          {/* Date Range Inputs */}
-          <div className="pt-3 border-t border-gray-100 flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500 font-medium">From:</span>
-              <input
-                type="date"
-                value={from}
-                onChange={(e) => {
-                  setFrom(e.target.value);
-                  setPreset("CUSTOM");
-                }}
-                className="text-xs px-3 py-1.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:border-primary-500"
-              />
-            </div>
-            <ChevronRight className="w-3.5 h-3.5 text-gray-400 hidden sm:block" />
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500 font-medium">To:</span>
-              <input
-                type="date"
-                value={to}
-                onChange={(e) => {
-                  setTo(e.target.value);
-                  setPreset("CUSTOM");
-                }}
-                className="text-xs px-3 py-1.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:border-primary-500"
-              />
-            </div>
-          </div>
         </div>
 
         {student && (
