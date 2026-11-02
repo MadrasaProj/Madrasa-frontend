@@ -211,13 +211,13 @@ export default function ParentDashboard() {
             <PageHeaderSwitchers />
           </div>
         </header>
-
+<div className=" mt-10"></div>
         <PwaInstallButton variant="banner" className="sm:hidden" />
 
         {/* Ibadah report and best performers */}
         <section
           aria-labelledby="parent-ibadah-heading"
-          className="overflow-hidden rounded-2xl p-4 mt-10 shadow-xs sm:p-5"
+          className="overflow-hidden rounded-2xl p-4 shadow-xs sm:p-5"
           style={{
             backgroundImage:
               "linear-gradient(rgb(255 255 255 / 0.6), rgb(255 255 255 / 0.6)), url('/imgs/teacher/dashboard-corner-primary.png')",

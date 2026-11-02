@@ -71,8 +71,7 @@ export default function OnboardingDrawer({
               Continue to Login
              </Button>
           </motion.div>}
-        </form>
-        <div className="mt-4"><PwaInstallButton /></div>
+        </form> 
       </motion.div>
     </ResponsivePopover>
   );

@@ -36,7 +36,6 @@ import {
   X,
   ChevronDown,
   ChevronRight,
-  Settings2,
   Languages,
   MapPin,
   Receipt,
@@ -49,7 +48,6 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
-import { DrawerSelector } from "@/components/DrawerSelector";
 import OnboardingDrawer from "@/components/twa/OnboardingDrawer";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import PwaInstallButton from "@/components/PwaInstallButton";
@@ -1246,30 +1244,32 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
                 </span>
               </Link>
               <LanguageSwitcher />
-              <DrawerSelector
-                title={lang === "ml" ? "പ്രൊഫൈൽ ഓപ്ഷനുകൾ" : "Profile options"}
-                options={[
-                  ...(sessionCount > 1
-                    ? [{ value: "switch", label: lang === "ml" ? "സെഷൻ മാറ്റുക" : "Switch session", icon: <Users className="h-4 w-4 text-gray-500" /> }]
-                    : []),
-                  { value: "add", label: lang === "ml" ? "സെഷൻ ചേർക്കുക" : "Add session", icon: <span className="flex h-4 w-4 items-center justify-center text-lg text-gray-500">+</span> },
-                  { value: "signout", label: lang === "ml" ? "പുറത്തുകടക്കുക" : "Sign out", icon: <LogOut className="h-4 w-4" /> },
-                ]}
-                value=""
-                optionClassName="!h-8 !min-h-0 !py-0"
-                onChange={(value) => {
-                  setMoreOpen(false);
-                  if (value === "switch") navigate("/");
-                  if (value === "add") openNewSession();
-                  if (value === "signout") logout();
-                }}
-                triggerItem={
-                  <Button variant="ghost" size="icon" aria-label={lang === "ml" ? "പ്രൊഫൈൽ ഓപ്ഷനുകൾ" : "Profile options"}>
-                    <Settings2 className="h-5 w-5 shrink-0 text-gray-600" />
-                  </Button>
-                }
-              />
             </div>
+            <ButtonGroup className="w-full mt-2 p-1">
+              {sessionCount > 1 && (
+                <Button size="lg"  variant="outline" className="rounded-t-0! min-w-0 flex-1 text-xs" onClick={() => {
+                  setMoreOpen(false);
+                  navigate("/");
+                }}>
+                  <Users className="h-4 w-4 shrink-0" />
+                  {lang === "ml" ? "സെഷൻ മാറ്റുക" : "Switch"}
+                </Button>
+              )}
+              <Button  size="lg" variant="outline" className="rounded-t-0! min-w-0 flex-1 text-xs" onClick={() => {
+                setMoreOpen(false);
+                openNewSession();
+              }}>
+                <span className="text-lg leading-none">+</span>
+                {lang === "ml" ? "സെഷൻ ചേർക്കുക" : "New"}
+              </Button>
+              <Button size="lg"  variant="outline" className="rounded-t-0! min-w-0 flex-1 text-xs" onClick={() => {
+                setMoreOpen(false);
+                logout();
+              }}>
+                <LogOut className="h-4 w-4 shrink-0" />
+                {lang === "ml" ? "പുറത്തുകടക്കുക" : "Sign out"}
+              </Button>
+            </ButtonGroup>
           </ButtonGroup>
 
           <div className="grid grid-cols-1 gap-2 py-3 sm:grid-cols-1 max-h-[80dvh] overflow-auto">

@@ -56,7 +56,7 @@ export function ParentStudentSwitcher({
             >
               <StudentAvatar name={name} gender={info?.gender} photoUrl={photo} className="size-7 text-xs" />
               <div className="text-left">
-              <span className="truncate">{name}</span>
+              <span className="line-clamp-1">{name}</span>
               <div className="text-[10px] text-gray-400">{info?.adno}</div>
 
               </div>
