@@ -63,6 +63,7 @@ export default function PwaInstallButton({
   const [isInstalled, setIsInstalled] = useState<boolean>(() =>
     checkIsInstalled(),
   );
+  const [dismissed, setDismissed] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
   const { lang } = useLanguageStore();
 
@@ -72,7 +73,7 @@ export default function PwaInstallButton({
         globalDeferredPrompt ||
         ((window as any).__pwaInstallPrompt as BeforeInstallPromptEvent) ||
         null;
-      if (p) setDeferredPrompt(p);
+      setDeferredPrompt(p);
       setIsInstalled(checkIsInstalled());
     };
 
@@ -85,12 +86,14 @@ export default function PwaInstallButton({
     };
 
     window.addEventListener("pwa-prompt-available", onPromptAvailable);
+    window.addEventListener("pwa-prompt-consumed", onPromptAvailable);
     window.addEventListener("beforeinstallprompt", onPromptAvailable);
     window.addEventListener("pwa-installed", onInstalled);
     window.addEventListener("appinstalled", onInstalled);
 
     return () => {
       window.removeEventListener("pwa-prompt-available", onPromptAvailable);
+      window.removeEventListener("pwa-prompt-consumed", onPromptAvailable);
       window.removeEventListener("beforeinstallprompt", onPromptAvailable);
       window.removeEventListener("pwa-installed", onInstalled);
       window.removeEventListener("appinstalled", onInstalled);
@@ -103,26 +106,27 @@ export default function PwaInstallButton({
     !(window as any).MSStream;
 
   const handleInstall = async () => {
-    if (deferredPrompt) {
-      try {
-        await deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === "accepted") {
-          setIsInstalled(true);
-          (window as any).__pwaInstalled = true;
-          setDeferredPrompt(null);
-        }
-      } catch (err) {
-        console.warn("PWA prompt error, showing manual guide:", err);
-        setShowGuideModal(true);
-      }
-    } else {
+    if (!deferredPrompt) {
+      setShowGuideModal(true);
+      return;
+    }
+
+    try {
+      await deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      globalDeferredPrompt = null;
+      (window as any).__pwaInstallPrompt = null;
+      setDeferredPrompt(null);
+      window.dispatchEvent(new Event("pwa-prompt-consumed"));
+      setDismissed(true);
+    } catch (err) {
+      console.warn("PWA prompt error, showing manual guide:", err);
       setShowGuideModal(true);
     }
   };
 
   // If already running in standalone PWA mode, don't show prompt
-  if (isInstalled) return null;
+  if (isInstalled || dismissed) return null;
 
   return (
     <>
