@@ -1429,6 +1429,7 @@ const translations = {
     noClassesAssigned: { en: "No classes assigned to you", ml: "നിങ്ങൾക്ക് ക്ലാസുകൾ അസൈൻ ചെയ്‌തിട്ടില്ല" },
     dailyView: { en: "Daily", ml: "ദിനം" },
     weeklyView: { en: "Weekly", ml: "ആഴ്‌ച" },
+    monthlyView: { en: "Monthly", ml: "മാസം" },
     ibadahSubmissions: { en: "Submissions", ml: "സമർപ്പണങ്ങൾ" },
     ibadahTotalActivities: { en: "Total activities", ml: "ആകെ പ്രവർത്തനങ്ങൾ" },
     ibadahPendingStudents: { en: "Pending students", ml: "സമർപ്പിക്കാത്ത വിദ്യാർത്ഥികൾ" },

@@ -1,9 +1,10 @@
 import { ScrollableRangeNavigator, commonRangePreset } from "@/components/ScrollableRangeNavigator";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ScrollableDateNavigator } from "@/components/ScrollableDateNavigator";
 import { ScrollableWeekNavigator } from "@/components/ScrollableWeekNavigator";
+import { ScrollableMonthlyNavigator } from "@/components/ScrollableMonthlyNavigator";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,7 +54,7 @@ import { Bar, BarChart, Cell } from "recharts";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type Section = "prayers" | "quran" | "custom";
-type ViewMode = "daily" | "weekly" | "custom";
+type ViewMode = "daily" | "weekly" | "monthly" | "custom";
 
 export const PRAYER_STATUS_META: Record<
   PrayerStatus,
@@ -362,13 +363,13 @@ function StudentSummaryCard({
   );
 }
 
-function WeeklyStudentSummaryCard({
+function PeriodStudentSummaryCard({
   student,
   logs,
   activePrayers,
   showQuran,
   customItems,
-  daysInWeek,
+  daysInPeriod,
   lang,
   onClick,
 }: {
@@ -377,7 +378,7 @@ function WeeklyStudentSummaryCard({
   activePrayers: typeof ALL_PRAYERS;
   showQuran: boolean;
   customItems: IbadahConfig["customItems"];
-  daysInWeek: number;
+  daysInPeriod: number;
   lang: "en" | "ml";
   onClick: () => void;
 }) {
@@ -403,7 +404,7 @@ function WeeklyStudentSummaryCard({
         {activePrayers.length > 0 && (
           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600">
             <Moon aria-hidden="true" className="h-3.5 w-3.5 text-primary-600" />
-            {completedPrayers}/{activePrayers.length * daysInWeek}{" "}
+            {completedPrayers}/{activePrayers.length * daysInPeriod}{" "}
             {t("teacherPages", "prayerSection", lang)}
           </span>
         )}
@@ -434,12 +435,78 @@ function WeeklyStudentSummaryCard({
             >
               <Hash aria-hidden="true" className="h-3.5 w-3.5 text-violet-600" />
               {item.label}: {count}
-              {item.type !== "number" && `/${daysInWeek}`}
+              {item.type !== "number" && `/${daysInPeriod}`}
             </span>
           );
         })}
       </span>
     </button>
+  );
+}
+
+function PeriodIbadahView({
+  viewMode,
+  students,
+  dates,
+  logMap,
+  activePrayers,
+  config,
+  lang,
+  onDownload,
+  onStudentClick,
+}: {
+  viewMode: Exclude<ViewMode, "daily">;
+  students: StudentRecord[];
+  dates: string[];
+  logMap: Map<string, Map<string, IbadahRecord>>;
+  activePrayers: typeof ALL_PRAYERS;
+  config: IbadahConfig | null;
+  lang: "en" | "ml";
+  onDownload: () => void;
+  onStudentClick: (studentId: string) => void;
+}) {
+  const label = viewMode === "weekly" ? "Weekly" : viewMode === "monthly" ? "Monthly" : "Custom";
+  return (
+    <div className="space-y-3 px-3">
+      <section className="relative overflow-hidden rounded-2xl border border-teal-100/70 bg-gradient-to-br from-[#fdfefd] via-[#f7fcfa] to-[#eef8f6] px-4 py-3.5 sm:px-5 sm:py-4" aria-labelledby="period-report-title">
+        <div className="relative z-10 min-w-0 pr-24 sm:pr-40">
+          <h2 id="period-report-title" className="text-base font-semibold text-gray-900">{label} report</h2>
+          <p className="mt-1.5 text-xs leading-4 text-gray-600">
+            Download a PDF of your class&apos;s ibadah records for the selected period.
+          </p>
+          <Button type="button" onClick={onDownload} disabled={students.length === 0} size="sm" className="mt-3 h-8 w-auto px-3">
+            <Download aria-hidden="true" className="h-3.5 w-3.5" />
+            Download report
+          </Button>
+        </div>
+        <img src="/icons/ibadah/weekly-report.webp" alt="" aria-hidden="true" className="pointer-events-none absolute bottom-0 right-0 h-28 w-28 object-contain object-bottom sm:h-36 sm:w-36" />
+      </section>
+      {students.length === 0 ? (
+        <div className="text-center py-12 text-gray-400 text-sm">
+          <Moon className="w-10 h-10 mx-auto mb-3 text-gray-200" />
+          {t("teacherPages", "noStudentsInClass", lang)}
+        </div>
+      ) : (
+        <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white card">
+          {students.map((student) => {
+            const logs = dates.map((day) => logMap.get(student.id)?.get(day)).filter((log): log is IbadahRecord => log !== undefined);
+            return (
+              <PeriodStudentSummaryCard
+                key={student.id}
+                student={student}
+                logs={logs}
+                activePrayers={activePrayers}
+                showQuran={config?.enableQuranPages !== false}
+                customItems={config?.customItems ?? []}
+                daysInPeriod={dates.length}
+                lang={lang}
+                onClick={() => onStudentClick(student.id)}
+              />
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -568,6 +635,17 @@ function getLast7Days(endDate: string): string[] {
   return dates;
 }
 
+function getPeriodDates(from: string, to: string): string[] {
+  const result: string[] = [];
+  const cursor = new Date(`${from}T00:00:00`);
+  const end = new Date(`${to}T00:00:00`);
+  while (cursor <= end) {
+    result.push(fmt(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return result;
+}
+
 async function getAllClassStudents(
   clientId: string,
   token: string,
@@ -607,7 +685,6 @@ export default function TeacherIbadahPage({
     activeClassId,
     activeClass,
     classes,
-    setActiveClassId,
     isLoading: loadingClasses,
   } = useActiveClass();
   const [date, setDate] = useState(initialDate ?? fmt(new Date()));
@@ -620,32 +697,31 @@ export default function TeacherIbadahPage({
   const [rows, setRows] = useState<StudentRow[]>([]);
   const [config, setConfig] = useState<IbadahConfig | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
-  const [selectedWeekDayIndex, setSelectedWeekDayIndex] = useState(6);
-  useEffect(() => {
-    setSelectedStudentId(null);
-    setSelectedWeekDayIndex(6);
-  }, [date, activeClassId]);
+  const [selectedPeriodDay, setSelectedPeriodDay] = useState<string | null>(null);
 
-  // Weekly view state
-  const [weeklyLogs, setWeeklyLogs] = useState<IbadahRecord[]>([]);
-  const [weeklyStudents, setWeeklyStudents] = useState<StudentRecord[]>([]);
+  // Period views share the same records and student list.
+  const [periodLogs, setPeriodLogs] = useState<IbadahRecord[]>([]);
+  const [periodStudents, setPeriodStudents] = useState<StudentRecord[]>([]);
 
   // Custom view state
   const [customFrom, setCustomFrom] = useState(() => {
     const d = new Date();
-    return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+    return fmt(new Date(d.getFullYear(), d.getMonth(), 1));
   });
-  const [customTo, setCustomTo] = useState(() => new Date().toISOString().slice(0, 10));
-  const [customLogs, setCustomLogs] = useState<IbadahRecord[]>([]);
-  const [customStudents, setCustomStudents] = useState<StudentRecord[]>([]);
-  const [expandedCustomStudentId, setExpandedCustomStudentId] = useState<string | null>(null);
+  const [customTo, setCustomTo] = useState(() => fmt(new Date()));
+  useEffect(() => {
+    setSelectedStudentId(null);
+    setSelectedPeriodDay(null);
+  }, [date, customFrom, customTo, activeClassId]);
 
   const [loadingIbadah, setLoadingIbadah] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
 
   // Daily load
   const loadDailyIbadah = useCallback(async () => {
     if (!cid || !token || !activeClassId) return;
+    const requestId = ++requestIdRef.current;
     setLoadingIbadah(true);
     setError(null);
     try {
@@ -656,6 +732,7 @@ export default function TeacherIbadahPage({
       const logsByStudent = new Map(
         ibadahData.logs.map((log) => [log.studentId, log]),
       );
+      if (requestId !== requestIdRef.current) return;
       setConfig(ibadahData.config);
       setRows(
         students.map((student) => {
@@ -676,56 +753,45 @@ export default function TeacherIbadahPage({
         }),
       );
     } catch (e) {
-      setError((e as Error).message);
+      if (requestId === requestIdRef.current) setError((e as Error).message);
     } finally {
-      setLoadingIbadah(false);
+      if (requestId === requestIdRef.current) setLoadingIbadah(false);
     }
   }, [cid, token, activeClassId, date]);
 
-  // Weekly load
-  const loadWeeklyIbadah = useCallback(async () => {
-    if (!cid || !token || !activeClassId) return;
+  const weekDates = useMemo(() => getLast7Days(date), [date]);
+  const [monthYear, monthNumber] = date.slice(0, 7).split("-").map(Number);
+  const monthlyFrom = fmt(new Date(monthYear, monthNumber - 1, 1));
+  const monthlyTo = [fmt(new Date(monthYear, monthNumber, 0)), fmt(new Date())].sort()[0];
+  const periodFrom = viewMode === "weekly" ? weekDates[0] : viewMode === "monthly" ? monthlyFrom : customFrom;
+  const periodTo = viewMode === "weekly" ? weekDates[6] : viewMode === "monthly" ? monthlyTo : customTo;
+  const periodDates = useMemo(() => getPeriodDates(periodFrom, periodTo), [periodFrom, periodTo]);
+
+  const loadPeriodIbadah = useCallback(async () => {
+    if (!cid || !token || !activeClassId || !periodFrom || !periodTo || periodFrom > periodTo) return;
+    const requestId = ++requestIdRef.current;
     setLoadingIbadah(true);
     setError(null);
-    const dates = getLast7Days(date);
-    const from = dates[0],
-      to = dates[dates.length - 1];
     try {
       const [ibadahData, students] = await Promise.all([
-        getClassIbadah(cid, token, { classId: activeClassId, from, to }),
+        getClassIbadah(cid, token, { classId: activeClassId, from: periodFrom, to: periodTo }),
         getAllClassStudents(cid, token, activeClassId),
       ]);
+      if (requestId !== requestIdRef.current) return;
       setConfig(ibadahData.config);
-      setWeeklyLogs(ibadahData.logs);
-      setWeeklyStudents(students);
+      setPeriodLogs(ibadahData.logs);
+      setPeriodStudents(students);
     } catch (e) {
-      setError((e as Error).message);
+      if (requestId === requestIdRef.current) setError((e as Error).message);
     } finally {
-      setLoadingIbadah(false);
+      if (requestId === requestIdRef.current) setLoadingIbadah(false);
     }
-  }, [cid, token, activeClassId, date]);
-
-  // Custom load
-  const loadCustomIbadah = useCallback(async () => {
-    if (!cid || !token || !activeClassId || !customFrom || !customTo || customFrom > customTo) return;
-    setLoadingIbadah(true); setError(null);
-    try {
-      const [ibadahData, studentsData] = await Promise.all([
-        getClassIbadah(cid, token, { classId: activeClassId, from: customFrom, to: customTo }),
-        getStudents(cid, token, { classId: activeClassId, limit: 300 }),
-      ]);
-      setConfig(ibadahData.config);
-      setCustomLogs(ibadahData.logs);
-      setCustomStudents(studentsData.data ?? []);
-    } catch (e) { setError((e as Error).message); }
-    finally { setLoadingIbadah(false); }
-  }, [cid, token, activeClassId, customFrom, customTo]);
+  }, [cid, token, activeClassId, periodFrom, periodTo]);
 
   useEffect(() => {
     if (viewMode === "daily") loadDailyIbadah();
-    else if (viewMode === "weekly") loadWeeklyIbadah();
-    else loadCustomIbadah();
-  }, [viewMode, loadDailyIbadah, loadWeeklyIbadah, loadCustomIbadah]);
+    else loadPeriodIbadah();
+  }, [viewMode, loadDailyIbadah, loadPeriodIbadah]);
 
   const activePrayers = useMemo(
     () =>
@@ -736,24 +802,25 @@ export default function TeacherIbadahPage({
   );
   const customItems = config?.customItems ?? [];
 
-  const weekDates = useMemo(() => getLast7Days(date), [date]);
-  const selectedWeekDay = weekDates[selectedWeekDayIndex] ?? weekDates[6];
+  const selectedDay = selectedPeriodDay && periodDates.includes(selectedPeriodDay)
+    ? selectedPeriodDay
+    : periodDates[periodDates.length - 1] ?? date;
 
-  // Build log map for weekly view: studentId → date → log
+  // Build log map for all period views: studentId → date → log
   const logMap = useMemo(() => {
     const map = new Map<string, Map<string, IbadahRecord>>();
-    for (const log of weeklyLogs) {
+    for (const log of periodLogs) {
       const dateKey = log.date.split("T")[0];
       if (!map.has(log.studentId)) map.set(log.studentId, new Map());
       map.get(log.studentId)!.set(dateKey, log);
     }
     return map;
-  }, [weeklyLogs]);
+  }, [periodLogs]);
 
-  const weeklyDayRows = useMemo(
+  const periodDayRows = useMemo(
     () =>
-      weeklyStudents.map((student): StudentRow => {
-        const log = logMap.get(student.id)?.get(selectedWeekDay);
+      periodStudents.map((student): StudentRow => {
+        const log = logMap.get(student.id)?.get(selectedDay);
         return {
           studentId: student.id,
           name: student.name,
@@ -768,16 +835,16 @@ export default function TeacherIbadahPage({
           hasRecord: Boolean(log),
         };
       }),
-    [weeklyStudents, logMap, selectedWeekDay],
+    [periodStudents, logMap, selectedDay],
   );
   const selectedStudent =
-    (viewMode === "daily" ? rows : weeklyDayRows).find(
+    (viewMode === "daily" ? rows : periodDayRows).find(
       (row) => row.studentId === selectedStudentId,
     ) ?? null;
-  const detailDate = viewMode === "daily" ? date : selectedWeekDay;
+  const detailDate = viewMode === "daily" ? date : selectedDay;
 
   const downloadWeeklyReport = useCallback(() => {
-    if (!activeClass || weeklyStudents.length === 0) return;
+    if (!activeClass || periodStudents.length === 0) return;
 
     const pdf = new jsPDF({
       orientation: "portrait",
@@ -848,7 +915,7 @@ export default function TeacherIbadahPage({
     drawHeader();
     pdf.setFontSize(7.5);
     pdf.setFont("helvetica", "normal");
-    for (const student of weeklyStudents) {
+    for (const student of periodStudents) {
       const studentLogs = logMap.get(student.id);
       for (const day of weekDates) {
         if (y > pageHeight - 18) {
@@ -903,10 +970,10 @@ export default function TeacherIbadahPage({
     config?.enableQuranPages,
     logMap,
     weekDates,
-    weeklyStudents,
+    periodStudents,
   ]);
 
-  const customStudentMetrics = useMemo(() => {
+  const periodStudentMetrics = useMemo(() => {
     const map = new Map<string, {
       student: StudentRecord;
       daysLogged: number;
@@ -918,7 +985,7 @@ export default function TeacherIbadahPage({
       logs: IbadahRecord[];
     }>();
 
-    for (const s of customStudents) {
+    for (const s of periodStudents) {
       map.set(s.id, {
         student: s,
         daysLogged: 0,
@@ -931,7 +998,7 @@ export default function TeacherIbadahPage({
       });
     }
 
-    for (const log of customLogs) {
+    for (const log of periodLogs) {
       let m = map.get(log.studentId);
       if (!m) {
         m = {
@@ -959,10 +1026,10 @@ export default function TeacherIbadahPage({
     }
 
     return Array.from(map.values()).sort((a, b) => a.student.name.localeCompare(b.student.name));
-  }, [customStudents, customLogs, activePrayers]);
+  }, [periodStudents, periodLogs, activePrayers]);
 
-  const downloadCustomReport = useCallback(() => {
-    if (!activeClass || customStudentMetrics.length === 0) return;
+  const downloadPeriodSummaryReport = useCallback(() => {
+    if (!activeClass || periodStudentMetrics.length === 0) return;
 
     const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     const margin = 10;
@@ -978,11 +1045,11 @@ export default function TeacherIbadahPage({
     const drawHeader = () => {
       pdf.setFontSize(15);
       pdf.setFont("helvetica", "bold");
-      pdf.text("Custom Ibadah Performance Report", startX, y);
+      pdf.text(`${viewMode === "monthly" ? "Monthly" : "Custom"} Ibadah Performance Report`, startX, y);
       y += 7;
       pdf.setFontSize(9);
       pdf.setFont("helvetica", "normal");
-      pdf.text(`${activeClass.name}  •  ${customFrom} to ${customTo}`, startX, y);
+      pdf.text(`${activeClass.name}  •  ${periodFrom} to ${periodTo}`, startX, y);
       y += 7;
       let x = startX;
       pdf.setFillColor(16, 185, 129);
@@ -1000,7 +1067,7 @@ export default function TeacherIbadahPage({
     drawHeader();
     pdf.setFontSize(8);
     pdf.setFont("helvetica", "normal");
-    for (const item of customStudentMetrics) {
+    for (const item of periodStudentMetrics) {
       if (y > pageHeight - 15) {
         pdf.addPage();
         y = 10;
@@ -1032,33 +1099,31 @@ export default function TeacherIbadahPage({
       });
       y += rowHeight;
     }
-    pdf.save(`ibadah-report-${activeClass.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-${customFrom}-to-${customTo}.pdf`);
-  }, [activeClass, customFrom, customTo, customStudentMetrics]);
+    pdf.save(`ibadah-${viewMode}-${activeClass.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-${periodFrom}-to-${periodTo}.pdf`);
+  }, [activeClass, viewMode, periodFrom, periodTo, periodStudentMetrics]);
 
   const content = (
     <>
       {!embedded && (
         <PageHeader
           title={t("teacherPages", "ibadahRecordsTitle", lang)}
-          subtitle={activeClass?.name ?? t("teacherPages", "prayerTracking", lang)}
-          icon={Moon}
-          back
-          backHref="/teacher"
+           backHref="/teacher"
           action={
-            <button
-              type="button"
-              onClick={() =>
-                navigate(
-                  `/teacher/best-performance?category=ibadah${
-                    activeClassId ? `&classId=${activeClassId}` : ""
-                  }`
-                )
-              }
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer"
-            >
-              <Trophy className="w-3.5 h-3.5" />
-              <span>{lang === "ml" ? "റാങ്ക് ലിസ്റ്റ്" : "Class Rankings"}</span>
-            </button>
+            // <button
+            //   type="button"
+            //   onClick={() =>
+            //     navigate(
+            //       `/teacher/best-performance?category=ibadah${
+            //         activeClassId ? `&classId=${activeClassId}` : ""
+            //       }`
+            //     )
+            //   }
+            //   className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer"
+            // >
+            //   <Trophy className="w-3.5 h-3.5" />
+            //   <span>{lang === "ml" ? "റാങ്ക് ലിസ്റ്റ്" : "Class Rankings"}</span>
+            // </button>
+            <></>
           }
         />
       )}
@@ -1067,17 +1132,12 @@ export default function TeacherIbadahPage({
       {error && (
         <ApiErrorBanner
           message={error}
-          onRetry={viewMode === "daily" ? loadDailyIbadah : loadWeeklyIbadah}
+          onRetry={viewMode === "daily" ? loadDailyIbadah : loadPeriodIbadah}
         />
       )}
 
       {loadingClasses ? (
         <div className="space-y-4">
-          <div className="flex gap-2 flex-wrap">
-            {Array.from({ length: 2 }).map((_, i) => (
-              <Skeleton key={i} className="h-10 w-24 rounded-xl" />
-            ))}
-          </div>
           <div className="flex items-center gap-3">
             <Skeleton className="h-9 w-20 rounded-xl" />
             <Skeleton className="h-9 w-20 rounded-xl" />
@@ -1095,46 +1155,32 @@ export default function TeacherIbadahPage({
         </div>
       ) : (
         <>
-          {classes.length > 1 && (
-            <div className="flex gap-2 flex-wrap mb-3 px-3">
-              {classes.map((cls) => (
-                <button
-                  key={cls.id}
-                  onClick={() => setActiveClassId(cls.id)}
-                  className={cn(
-                    "px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer",
-                    activeClassId === cls.id
-                      ? "bg-primary-600 text-white"
-                      : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50",
-                  )}
-                >
-                  {cls.name}
-                </button>
-              ))}
-            </div>
-          )}
+          <Tabs
+            value={viewMode}
+            onValueChange={(value) => {
+              setSelectedStudentId(null);
+              setSelectedPeriodDay(null);
+              setViewMode(value as ViewMode);
+            }}
+            className="px-0 pb-1"
+          >
+            <TabsList aria-label="Ibadah view" className="w-full bg-gray-100">
+              <TabsTrigger value="daily" className="flex-1 px-2 py-2 text-sm">
+                {t("teacherPages", "dailyView", lang)}
+              </TabsTrigger>
+              <TabsTrigger value="weekly" className="flex-1 px-2 py-2 text-sm">
+                {t("teacherPages", "weeklyView", lang)}
+              </TabsTrigger>
+              <TabsTrigger value="monthly" className="flex-1 px-2 py-2 text-sm">
+                {t("teacherPages", "monthlyView", lang)}
+              </TabsTrigger>
+              <TabsTrigger value="custom" className="flex-1 px-2 py-2 text-sm">
+                {t("teacherPages", "customSection", lang)}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
 
-          {viewMode !== "custom" ? (
-            <div className="border-b border-gray-100 px-3 py-2">
-              <div className="flex min-w-0 items-center gap-2">
-                {viewMode === "daily" ? (
-                  <ScrollableDateNavigator
-                    hideCalendarButton
-                    date={date}
-                    onDateChange={setDate}
-                    pickerTitle="Choose ibadah date"
-                  />
-                ) : (
-                  <ScrollableWeekNavigator
-                    date={date}
-                    hideCalendarButton
-                    onDateChange={setDate}
-                    pickerTitle="Choose ibadah week"
-                  />
-                )}
-              </div>
-            </div>
-          ) : (
+          {viewMode === "custom" ? (
             <ScrollableRangeNavigator
               from={customFrom}
               to={customTo}
@@ -1143,40 +1189,21 @@ export default function TeacherIbadahPage({
                 { label: "Last 30 Days", from: new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() - 30), to: new Date() },
               ]}
               onChange={({ from, to }) => { setCustomFrom(from); setCustomTo(to); }}
-              className="mx-3 mb-5"
-              actions={
-                <button onClick={downloadCustomReport} disabled={customStudentMetrics.length === 0}
-                  className="flex shrink-0 items-center gap-1.5 rounded-xl bg-primary-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40">
-                  <Download className="h-3.5 w-3.5" /> Download Report
-                </button>
-              }
+              className=" mb-0"
             />
+          ) : (
+            <div className="border-b border-gray-100 px-3 py-2">
+              <div className="flex min-w-0 items-center gap-2">
+                {viewMode === "daily" ? (
+                  <ScrollableDateNavigator date={date} hideCalendarButton onDateChange={setDate} pickerTitle="Choose ibadah date" />
+                ) : viewMode === "weekly" ? (
+                  <ScrollableWeekNavigator date={date} hideCalendarButton onDateChange={setDate} pickerTitle="Choose ibadah week" />
+                ) : (
+                  <ScrollableMonthlyNavigator date={date} hideCalendarButton onDateChange={setDate} pickerTitle="Choose ibadah month" />
+                )}
+              </div>
+            </div>
           )}
-
-          <Tabs
-            value={viewMode}
-
-            onValueChange={(value) => {
-              setSelectedStudentId(null);
-              setViewMode(value as ViewMode);
-            }}
-            className={cn(
-              "fixed left-1/2  z-40 -translate-x-1/2 rounded-lg    ",
-              embedded ? "bottom-[calc(10dvh+1rem)]" : "bottom-22 lg:bottom-6",
-            )}
-          >
-            <TabsList aria-label="Ibadah view" className="bg-gray-100">
-              <TabsTrigger value="daily" className="px-5 py-2 text-sm">
-                {t("teacherPages", "dailyView", lang)}
-              </TabsTrigger>
-              <TabsTrigger value="weekly" className="px-5 py-2 text-sm">
-                {t("teacherPages", "weeklyView", lang)}
-              </TabsTrigger>
-              <TabsTrigger value="custom" className="px-5 py-2 text-sm">
-                Custom Range
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
 
           {loadingIbadah ? (
             <div className="space-y-3 px-3" aria-label="Loading ibadah records" aria-busy="true">
@@ -1209,7 +1236,7 @@ export default function TeacherIbadahPage({
                   </div>
                 </>
               )}
-              {viewMode === "weekly" && (
+              {viewMode !== "daily" && (
                 <>
                   <Skeleton className="h-36 rounded-2xl" />
                   <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white card">
@@ -1264,163 +1291,22 @@ export default function TeacherIbadahPage({
                 </>
               )}
 
-              {/* ── WEEKLY VIEW ── */}
-              {viewMode === "weekly" && (
-                <div className="space-y-3 px-3">
-                  <section className="relative overflow-hidden rounded-2xl border border-teal-100/70 bg-gradient-to-br from-[#fdfefd] via-[#f7fcfa] to-[#eef8f6] px-4 py-3.5 sm:px-5 sm:py-4" aria-labelledby="weekly-report-title">
-                    <div className="relative z-10 min-w-0 pr-24 sm:pr-40">
-                      <h2 id="weekly-report-title" className="text-base font-semibold text-gray-900">
-                        Weekly report
-                      </h2>
-                      <p className="mt-1.5 text-xs leading-4 text-gray-600">
-                        Download an A4 PDF of your class&apos;s ibadah records for the selected week.
-                      </p>
-                      <Button
-                        type="button"
-                        onClick={downloadWeeklyReport}
-                        disabled={weeklyStudents.length === 0}
-                        size="sm"
-                        className="mt-3 h-8 w-auto px-3"
-                      >
-                        <Download aria-hidden="true" className="h-3.5 w-3.5" />
-                        Download report
-                      </Button>
-                    </div>
-                    <img
-                      src="/icons/ibadah/weekly-report.webp"
-                      alt=""
-                      aria-hidden="true"
-                      className="pointer-events-none absolute bottom-0 right-0 h-28 w-28 object-contain object-bottom sm:h-36 sm:w-36"
-                    />
-                  </section>
-                  {weeklyStudents.length === 0 ? (
-                    <div className="text-center py-12 text-gray-400 text-sm">
-                      <Moon className="w-10 h-10 mx-auto mb-3 text-gray-200" />
-                      {t("teacherPages", "noStudentsInClass", lang)}
-                    </div>
-                  ) : (
-                    <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white card">
-                      {weeklyStudents.map((student) => {
-                        const logs = weekDates
-                          .map((day) => logMap.get(student.id)?.get(day))
-                          .filter((log): log is IbadahRecord => log !== undefined);
-                        return (
-                          <WeeklyStudentSummaryCard
-                            key={student.id}
-                            student={student}
-                            logs={logs}
-                            activePrayers={activePrayers}
-                            showQuran={config?.enableQuranPages !== false}
-                            customItems={customItems}
-                            daysInWeek={weekDates.length}
-                            lang={lang}
-                            onClick={() => {
-                              const latestRecordedDay = weekDates.reduce(
-                                (latest, day, index) =>
-                                  logMap.get(student.id)?.has(day)
-                                    ? index
-                                    : latest,
-                                6,
-                              );
-                              setSelectedWeekDayIndex(latestRecordedDay);
-                              setSelectedStudentId(student.id);
-                            }}
-                          />
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* ── CUSTOM RANGE VIEW ── */}
-              {viewMode === "custom" && (
-                customStudentMetrics.length === 0 ? (
-                  <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
-                    <Moon className="w-10 h-10 mx-auto mb-3 text-emerald-200" />
-                    <p className="text-sm text-gray-500 font-medium">No records found for selected period</p>
-                    <p className="text-xs text-gray-400 mt-1">{customFrom} to {customTo}</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {/* Summary Cards */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
-                        <p className="text-[11px] font-semibold text-gray-500 uppercase">Students Tracked</p>
-                        <p className="text-2xl font-bold text-gray-900 mt-1">{customStudentMetrics.length}</p>
-                      </div>
-                      <div className="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-4 shadow-sm">
-                        <p className="text-[11px] font-semibold text-emerald-800 uppercase">Jama'a Prayers</p>
-                        <p className="text-2xl font-bold text-emerald-700 mt-1">
-                          {customStudentMetrics.reduce((s, m) => s + m.jama, 0)}
-                        </p>
-                      </div>
-                      <div className="bg-blue-50/70 border border-blue-100 rounded-2xl p-4 shadow-sm">
-                        <p className="text-[11px] font-semibold text-blue-800 uppercase">Ada' Prayers</p>
-                        <p className="text-2xl font-bold text-blue-700 mt-1">
-                          {customStudentMetrics.reduce((s, m) => s + m.ada, 0)}
-                        </p>
-                      </div>
-                      <div className="bg-amber-50/70 border border-amber-100 rounded-2xl p-4 shadow-sm">
-                        <p className="text-[11px] font-semibold text-amber-800 uppercase">Quran Pages</p>
-                        <p className="text-2xl font-bold text-amber-700 mt-1">
-                          {customStudentMetrics.reduce((s, m) => s + m.quran, 0)}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Table */}
-                    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs border-collapse">
-                          <thead>
-                            <tr className="bg-gray-50 border-b border-gray-100 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                              <th className="px-4 py-3">Student</th>
-                              <th className="px-3 py-3">Admission No.</th>
-                              <th className="px-3 py-3 text-center">Days Logged</th>
-                              <th className="px-3 py-3 text-center">Jama'a</th>
-                              <th className="px-3 py-3 text-center">Ada'</th>
-                              <th className="px-3 py-3 text-center">Qada'</th>
-                              <th className="px-3 py-3 text-center">Excused</th>
-                              <th className="px-3 py-3 text-center">Quran Pages</th>
-                              <th className="px-3 py-3 text-center">Action</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100">
-                            {customStudentMetrics.map((item) => {
-                              const isExpanded = expandedCustomStudentId === item.student.id;
-                              return (
-                                <tr key={item.student.id} className="hover:bg-gray-50/60 transition-colors">
-                                  <td className="px-4 py-3 font-semibold text-gray-900">{item.student.name}</td>
-                                  <td className="px-3 py-3 text-gray-500">{item.student.adno}</td>
-                                  <td className="px-3 py-3 text-center">
-                                    <span className="px-2 py-0.5 rounded-full bg-gray-100 font-semibold text-gray-700">
-                                      {item.daysLogged}
-                                    </span>
-                                  </td>
-                                  <td className="px-3 py-3 text-center font-semibold text-blue-700">{item.jama}</td>
-                                  <td className="px-3 py-3 text-center font-semibold text-emerald-700">{item.ada}</td>
-                                  <td className="px-3 py-3 text-center font-semibold text-amber-700">{item.qala}</td>
-                                  <td className="px-3 py-3 text-center font-semibold text-emerald-600">{item.excused}</td>
-                                  <td className="px-3 py-3 text-center font-semibold text-amber-700">{item.quran}p</td>
-                                  <td className="px-3 py-3 text-center">
-                                    <button
-                                      type="button"
-                                      onClick={() => setExpandedCustomStudentId(isExpanded ? null : item.student.id)}
-                                      className="text-emerald-600 hover:text-emerald-700 font-medium cursor-pointer"
-                                    >
-                                      {isExpanded ? "Hide" : "Details"}
-                                    </button>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
-                )
+              {viewMode !== "daily" && (
+                <PeriodIbadahView
+                  viewMode={viewMode}
+                  students={periodStudents}
+                  dates={periodDates}
+                  logMap={logMap}
+                  activePrayers={activePrayers}
+                  config={config}
+                  lang={lang}
+                  onDownload={viewMode === "weekly" ? downloadWeeklyReport : downloadPeriodSummaryReport}
+                  onStudentClick={(studentId) => {
+                    const latestRecordedDay = [...periodDates].reverse().find((day) => logMap.get(studentId)?.has(day));
+                    setSelectedPeriodDay(latestRecordedDay ?? periodDates[periodDates.length - 1] ?? null);
+                    setSelectedStudentId(studentId);
+                  }}
+                />
               )}
             </>
           )}
@@ -1449,17 +1335,16 @@ export default function TeacherIbadahPage({
               </DrawerHeader>
               {selectedStudent && (
                 <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-                  {viewMode === "weekly" ? (
+                  {viewMode !== "daily" ? (
                     <div>
                       <div className="flex min-w-0">
                         <ScrollableDateNavigator
-                          date={selectedWeekDay}
-                          visibleDates={weekDates}
+                          date={selectedDay}
+                          visibleDates={periodDates}
                           hideCalendarButton
                           pickerTitle="Ibadah day"
                           onDateChange={(value) => {
-                            const index = weekDates.indexOf(value);
-                            if (index >= 0) setSelectedWeekDayIndex(index);
+                            if (periodDates.includes(value)) setSelectedPeriodDay(value);
                           }}
                         />
                       </div>

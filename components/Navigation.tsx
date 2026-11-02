@@ -1247,7 +1247,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
             </div>
             <ButtonGroup className="w-full mt-2 p-1">
               {sessionCount > 1 && (
-                <Button size="lg"  variant="outline" className="rounded-t-0! min-w-0 flex-1 text-xs" onClick={() => {
+                <Button size="lg"  variant="outline" className="border-gray-200 rounded-t-0! min-w-0 flex-1 text-xs" onClick={() => {
                   setMoreOpen(false);
                   navigate("/");
                 }}>
@@ -1255,14 +1255,14 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
                   {lang === "ml" ? "സെഷൻ മാറ്റുക" : "Switch"}
                 </Button>
               )}
-              <Button  size="lg" variant="outline" className="rounded-t-0! min-w-0 flex-1 text-xs" onClick={() => {
+              <Button  size="lg" variant="outline" className="border-gray-200 rounded-t-0! min-w-0 flex-1 text-xs" onClick={() => {
                 setMoreOpen(false);
                 openNewSession();
               }}>
                 <span className="text-lg leading-none">+</span>
                 {lang === "ml" ? "സെഷൻ ചേർക്കുക" : "New"}
               </Button>
-              <Button size="lg"  variant="outline" className="rounded-t-0! min-w-0 flex-1 text-xs" onClick={() => {
+              <Button size="lg"  variant="outline" className="border-gray-200 rounded-t-0! min-w-0 flex-1 text-xs" onClick={() => {
                 setMoreOpen(false);
                 logout();
               }}>
@@ -1272,7 +1272,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
             </ButtonGroup>
           </ButtonGroup>
 
-          <div className="grid grid-cols-1 gap-2 py-3 sm:grid-cols-1 max-h-[80dvh] overflow-auto">
+          <div className="grid grid-cols-1 gap-2 py-3 sm:grid-cols-1 max-h-[70dvh] overflow-auto">
             {moreLinks.map(renderMoreLink)}
           </div>
         </>

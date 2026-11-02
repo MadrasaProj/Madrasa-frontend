@@ -495,6 +495,7 @@ export default function AdminIbadahPage() {
             </div>
           ) : (
             /* Custom range filter bar */
+            
             <ScrollableRangeNavigator
               from={customFrom}
               to={customTo}

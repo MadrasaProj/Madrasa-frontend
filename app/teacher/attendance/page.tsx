@@ -578,51 +578,11 @@ export default function TeacherAttendancePage() {
 
       <PageHeader
         title={t("teacherPages", "attendancePageTitle", lang)}
-        subtitle={activeClassId ? `${activeClass?.name ?? ""} · ${records.size} ${t("teacherPages", "studentsLabel", lang)}` : t("teacherPages", "selectClassView", lang)}
-        icon={ClipboardList}
-        back
+           
         backHref="/teacher"
         showActionOnMobile
         action={
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() => setShowImport(true)}
-              className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors shadow-xs cursor-pointer"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-primary-600" />
-              <span>{lang === "ml" ? "മുൻമാസ ഹാജർ ഇമ്പോർട്ട്" : "Import Previous Month"}</span>
-            </button>
-            {hasDirty ? (
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex items-center gap-1.5 bg-primary-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-700 disabled:opacity-60 transition-colors"
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" /> {t("teacherPages", "savingEllipsis", lang)}
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" /> {t("common", "save", lang)}
-                  </>
-                )}
-              </button>
-            ) : saveSuccess ? (
-              <span className="flex items-center gap-1 text-primary-600 text-sm font-semibold">
-                <CheckCircle2 className="w-4 h-4" /> {t("teacherPages", "saved", lang)}
-              </span>
-            ) : null}
-            {hasExisting && (
-              <button
-                onClick={() => setConfirmClear(true)}
-                className="flex items-center gap-1.5 bg-red-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-600 transition-colors"
-              >
-                <Trash2 className="w-4 h-4" /> {t("teacherPages", "clearAllBtn", lang)}
-              </button>
-            )}
-          </div>
+          <></>
         }
       />
 
