@@ -1155,14 +1155,15 @@ export default function TeacherIbadahPage({
         </div>
       ) : (
         <>
-          <Tabs
+         <div className="p-4!">
+           <Tabs
             value={viewMode}
             onValueChange={(value) => {
               setSelectedStudentId(null);
               setSelectedPeriodDay(null);
               setViewMode(value as ViewMode);
             }}
-            className="px-0 pb-1"
+            className="px-0 pb-2"
           >
             <TabsList aria-label="Ibadah view" className="w-full bg-gray-100">
               <TabsTrigger value="daily" className="flex-1 px-2 py-2 text-sm">
@@ -1205,6 +1206,7 @@ export default function TeacherIbadahPage({
             </div>
           )}
 
+         </div>
           {loadingIbadah ? (
             <div className="space-y-3 px-3" aria-label="Loading ibadah records" aria-busy="true">
               {viewMode === "daily" && (
