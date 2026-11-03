@@ -73,5 +73,6 @@ export default defineConfig({
   },
   server: {
     port: 1234,
+    allowedHosts: ["port1234.fayis.site"],
   },
 });
