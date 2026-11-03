@@ -7,6 +7,12 @@
   "display": "standalone",
   "orientation": "portrait",
   "start_url": "/",
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "/manifest.webmanifest"
+    }
+  ],
   "icons": [
     {
       "src": "/icons/icon-192.png",

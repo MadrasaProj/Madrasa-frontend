@@ -17,28 +17,6 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-// Global window prompt reference
-let globalDeferredPrompt: BeforeInstallPromptEvent | null =
-  typeof window !== "undefined"
-    ? ((window as any).__pwaInstallPrompt as BeforeInstallPromptEvent) || null
-    : null;
-
-if (typeof window !== "undefined") {
-  window.addEventListener("beforeinstallprompt", (e: Event) => {
-    e.preventDefault();
-    globalDeferredPrompt = e as BeforeInstallPromptEvent;
-    (window as any).__pwaInstallPrompt = e;
-    window.dispatchEvent(new Event("pwa-prompt-available"));
-  });
-
-  window.addEventListener("appinstalled", () => {
-    globalDeferredPrompt = null;
-    (window as any).__pwaInstallPrompt = null;
-    (window as any).__pwaInstalled = true;
-    window.dispatchEvent(new Event("pwa-installed"));
-  });
-}
-
 const checkIsInstalled = (): boolean => {
   if (typeof window === "undefined") return false;
   if ((window as any).__pwaInstalled) return true;
@@ -59,7 +37,7 @@ export default function PwaInstallButton({
   className,
 }: PwaInstallButtonProps) {
   const [deferredPrompt, setDeferredPrompt] =
-    useState<BeforeInstallPromptEvent | null>(() => globalDeferredPrompt);
+    useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState<boolean>(() =>
     checkIsInstalled(),
   );
@@ -68,35 +46,33 @@ export default function PwaInstallButton({
   const { lang } = useLanguageStore();
 
   useEffect(() => {
-    const syncPrompt = () => {
-      const p =
-        globalDeferredPrompt ||
-        ((window as any).__pwaInstallPrompt as BeforeInstallPromptEvent) ||
-        null;
-      setDeferredPrompt(p);
+    const standalone = window.matchMedia("(display-mode: standalone)");
+    const syncInstalled = () => {
       setIsInstalled(checkIsInstalled());
     };
 
-    syncPrompt();
+    syncInstalled();
 
-    const onPromptAvailable = () => syncPrompt();
+    const onPromptAvailable = (event: Event) => {
+      event.preventDefault();
+      setDeferredPrompt(event as BeforeInstallPromptEvent);
+      syncInstalled();
+    };
     const onInstalled = () => {
       setDeferredPrompt(null);
       setIsInstalled(true);
     };
 
-    window.addEventListener("pwa-prompt-available", onPromptAvailable);
-    window.addEventListener("pwa-prompt-consumed", onPromptAvailable);
     window.addEventListener("beforeinstallprompt", onPromptAvailable);
     window.addEventListener("pwa-installed", onInstalled);
     window.addEventListener("appinstalled", onInstalled);
+    standalone.addEventListener("change", syncInstalled);
 
     return () => {
-      window.removeEventListener("pwa-prompt-available", onPromptAvailable);
-      window.removeEventListener("pwa-prompt-consumed", onPromptAvailable);
       window.removeEventListener("beforeinstallprompt", onPromptAvailable);
       window.removeEventListener("pwa-installed", onInstalled);
       window.removeEventListener("appinstalled", onInstalled);
+      standalone.removeEventListener("change", syncInstalled);
     };
   }, []);
 
@@ -114,10 +90,8 @@ export default function PwaInstallButton({
     try {
       await deferredPrompt.prompt();
       await deferredPrompt.userChoice;
-      globalDeferredPrompt = null;
       (window as any).__pwaInstallPrompt = null;
       setDeferredPrompt(null);
-      window.dispatchEvent(new Event("pwa-prompt-consumed"));
       setDismissed(true);
     } catch (err) {
       console.warn("PWA prompt error, showing manual guide:", err);
@@ -125,8 +99,12 @@ export default function PwaInstallButton({
     }
   };
 
-  // If already running in standalone PWA mode, don't show prompt
-  if (isInstalled || dismissed) return null;
+  // Match PwaInstallBanner: only show Chromium install UI for a live prompt.
+  if (
+    isInstalled ||
+    dismissed ||
+    (!deferredPrompt && !isIos)
+  ) return null;
 
   return (
     <>

@@ -1,5 +1,6 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { StudentAvatar } from "@/components/teacher/StudentAvatar";
 import { DatePickerDrawer } from "@/components/DatePickerDrawer";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { EffectCards } from "swiper/modules";
@@ -22,7 +23,6 @@ import {
   type OverallBestPerformer,
   type OverallBestPerformanceResponse,
 } from "@/lib/best-performance-api";
-import { getStudents } from "@/lib/students-api";
 import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
 import {
   Trophy,
@@ -95,7 +95,6 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
   const [customRange, setCustomRange] = useState<{ from: string; to: string } | null>(null);
   const [rangeStep, setRangeStep] = useState<"from" | "to" | null>(null);
   const [rangeStart, setRangeStart] = useState("");
-  const [studentPhotos, setStudentPhotos] = useState<Record<string, string>>({});
   const [availableClasses, setAvailableClasses] = useState<ClassRecord[]>([]);
   const [classRankingsMap, setClassRankingsMap] = useState<Record<string, BestPerformer[]>>({});
   const [overallClassRankingsMap, setOverallClassRankingsMap] = useState<Record<string, OverallBestPerformer[]>>({});
@@ -403,6 +402,28 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
         setRangeStep(null);
       }
     };
+    const teacherCategoryTabs = (
+      <div className="sticky top-[62px] z-30 flex justify-center border-b border-gray-100 bg-white/95 !px-4 !py-2 backdrop-blur-sm">
+        <Tabs value={rankingCategory} onValueChange={(value) => handleSelectCategory(value as "total" | "ibadah")}>
+          <TabsList aria-label={lang === "ml" ? "റാങ്കിംഗ് വിഭാഗം" : "Ranking category"}>
+            <TabsTrigger value="total">{lang === "ml" ? "ആകെ സ്കോർ" : "Overall"}</TabsTrigger>
+            <TabsTrigger value="ibadah">{lang === "ml" ? "ഇബാദത്ത്" : "Ibadah"}</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+    );
+    const teacherPeriodControls = (
+      <div className="fixed inset-x-0 bottom-20 z-40 flex justify-center px-4 lg:bottom-6 lg:left-64">
+        <div className="flex items-center gap-1 rounded-full border border-gray-200 bg-white/95 p-1.5 shadow-lg shadow-gray-900/10 backdrop-blur">
+          <button type="button" onClick={() => selectPeriod("month")} aria-pressed={!customRange && periodType === "month"} className={cn("rounded-full px-5 py-2.5 text-sm font-semibold transition-colors", !customRange && periodType === "month" ? "bg-primary text-primary-foreground" : "text-primary hover:bg-primary/5")}>{lang === "ml" ? "മാസം" : "Month"}</button>
+          <button type="button" onClick={() => selectPeriod("week")} aria-pressed={!customRange && periodType === "week"} className={cn("rounded-full px-5 py-2.5 text-sm font-semibold transition-colors", !customRange && periodType === "week" ? "bg-primary text-primary-foreground" : "text-primary hover:bg-primary/5")}>{lang === "ml" ? "ആഴ്ച" : "Weekly"}</button>
+          <button type="button" onClick={() => setRangeStep("from")} aria-label={lang === "ml" ? "തീയതി പരിധി തിരഞ്ഞെടുക്കുക" : "Choose date range"} aria-pressed={!!customRange} className={cn("flex size-10 items-center justify-center rounded-full transition-colors", customRange ? "bg-primary text-primary-foreground" : "text-primary hover:bg-primary/5")}><Calendar className="size-5" /></button>
+        </div>
+      </div>
+    );
+    const teacherDatePicker = (
+      <DatePickerDrawer open={rangeStep !== null} onOpenChange={(open) => { if (!open) { if (advancingRangeRef.current) advancingRangeRef.current = false; else setRangeStep(null); } }} date={rangeStep === "to" ? rangeStart : (customRange?.from ?? "")} onDateChange={selectRangeDate} title={rangeStep === "to" ? (lang === "ml" ? "അവസാന തീയതി" : "Choose end date") : (lang === "ml" ? "ആരംഭ തീയതി" : "Choose start date")} />
+    );
     const carousel = (performers: BestPerformer[], key: string) => (
       <Swiper
         key={key}
@@ -419,13 +440,7 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
 
             <article className="relative isolate h-full  bg-linear-to-br from-white via-primary/5 to-primary/15 px-5 pb-5 pt-6 text-center text-gray-950 shadow-xl shadow-primary/10 before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:rounded-[inherit] before:bg-white/40">
               <div className="relative mx-auto size-24">
-                {studentPhotos[performer.studentId] ? (
-                  <img src={studentPhotos[performer.studentId]} alt={performer.name} className="size-full rounded-full object-cover ring-4 ring-primary/15" />
-                ) : (
-                  <div className="flex size-full items-center justify-center rounded-full bg-primary/10 text-3xl font-bold text-primary ring-4 ring-primary/15" aria-label={performer.name}>
-                    {performer.name.trim().charAt(0).toUpperCase()}
-                  </div>
-                )}
+                <StudentAvatar name={performer.name} photoUrl={performer.photoUrl} size="lg" className="size-full ring-4 ring-primary/15 [&>[data-slot=avatar-fallback]]:text-3xl" />
                 {index < 3 && (
                   <span className="absolute -bottom-1 -right-1 flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm shadow-gray-900/10 ring-4 ring-white" aria-label={`Rank ${index + 1}`}>
                     <Icon icon="lucide:badge" className="absolute size-7" aria-hidden="true" />
@@ -463,11 +478,50 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
       </Swiper>
     );
 
+    if (rankingCategory === "total") return (
+      <DashboardLayout>
+        <PageHeader title={lang === "ml" ? "ആകെ മികച്ച വിദ്യാർത്ഥി റാങ്കിംഗ്" : "Overall Best Student Ranking"} />
+        {teacherCategoryTabs}
+        <div className="mx-auto max-w-4xl space-y-5 px-4 pb-28 pt-6">
+          {period && <p className="text-xs text-gray-500">{formatDateRange()}</p>}
+          {loading && <SkeletonList count={4} className="py-3" />}
+          {overallError && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{overallError}</p>}
+          {!loading && !overallError && overallData.length === 0 && <p className="rounded-2xl border border-gray-100 bg-white p-8 text-center text-sm text-gray-500">{lang === "ml" ? "ഈ കാലയളവിൽ പ്രകടന വിവരങ്ങൾ ലഭ്യമല്ല" : "No performance records found for this period"}</p>}
+          {!loading && !overallError && overallData.map((performer) => (
+            <article key={performer.studentId} className="rounded-2xl border border-gray-100 bg-white p-4 shadow-xs sm:p-5">
+              <div className="flex items-center gap-3">
+                <span className="w-9 shrink-0 text-center text-xl font-bold">{performer.rank <= 3 ? medalEmoji[performer.rank - 1] : `#${performer.rank}`}</span>
+                <StudentAvatar name={performer.name} photoUrl={data.find((student) => student.studentId === performer.studentId)?.photoUrl} size="lg" className="size-10" />
+                <div className="min-w-0 flex-1"><h2 className="truncate text-sm font-bold text-gray-900">{performer.name}</h2><p className="text-xs text-gray-500">{performer.adno}</p></div>
+                <strong className="shrink-0 text-xl tabular-nums text-primary-700">{performer.totalScore}<span className="text-xs font-medium text-gray-500">/100</span></strong>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {[
+                  { label: lang === "ml" ? "ഹാജർ" : "Attendance", pillar: performer.attendance, color: "bg-emerald-50 text-emerald-800" },
+                  { label: lang === "ml" ? "ഹോംവർക്ക്" : "Homework", pillar: performer.homework, color: "bg-blue-50 text-blue-800" },
+                  { label: lang === "ml" ? "പരീക്ഷ" : "Exams", pillar: performer.exam, color: "bg-purple-50 text-purple-800" },
+                  { label: lang === "ml" ? "ഇബാദത്ത്" : "Ibadah", pillar: performer.ibadah, color: "bg-teal-50 text-teal-800" },
+                ].map(({ label, pillar, color }) => (
+                  <div key={label} className={cn("rounded-xl px-3 py-2", color)}>
+                    <p className="text-xs font-medium">{label}</p>
+                    <p className="mt-1 text-lg font-bold tabular-nums">{pillar.score}<span className="text-xs font-medium">/25</span></p>
+                  </div>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+        {teacherPeriodControls}
+        {teacherDatePicker}
+      </DashboardLayout>
+    );
+
     return (
       <DashboardLayout>
         <PageHeader
           title={lang === "ml" ? "മികച്ച ഇബാദത്ത്" : "Best Ibadah Performance"}
         />
+        {teacherCategoryTabs}
         <div ref={printRef} className="min-w-0 overflow-hidden pb-28 lg:pb-20">
           <section className="pt-13 text-center" aria-label={lang === "ml" ? "പ്രകടന സ്ഥിതിവിവരക്കണക്കുകൾ" : "Performance statistics"}>
             <div className="relative mx-auto w-fit">
@@ -522,14 +576,8 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
             </div>)}
           </section>}
         </div>
-        <div className="fixed inset-x-0 bottom-20 z-40 flex justify-center px-4 lg:bottom-6 lg:left-64">
-          <div className="flex items-center gap-1 rounded-full border border-gray-200 bg-white/95 p-1.5 shadow-lg shadow-gray-900/10 backdrop-blur">
-            <button type="button" onClick={() => selectPeriod("month")} aria-pressed={!customRange && periodType === "month"} className={cn("rounded-full px-5 py-2.5 text-sm font-semibold transition-colors", !customRange && periodType === "month" ? "bg-primary text-primary-foreground" : "text-primary hover:bg-primary/5")}>{lang === "ml" ? "മാസം" : "Month"}</button>
-            <button type="button" onClick={() => selectPeriod("week")} aria-pressed={!customRange && periodType === "week"} className={cn("rounded-full px-5 py-2.5 text-sm font-semibold transition-colors", !customRange && periodType === "week" ? "bg-primary text-primary-foreground" : "text-primary hover:bg-primary/5")}>{lang === "ml" ? "ആഴ്ച" : "Weekly"}</button>
-            <button type="button" onClick={() => setRangeStep("from")} aria-label={lang === "ml" ? "തീയതി പരിധി തിരഞ്ഞെടുക്കുക" : "Choose date range"} aria-pressed={!!customRange} className={cn("flex size-10 items-center justify-center rounded-full transition-colors", customRange ? "bg-primary text-primary-foreground" : "text-primary hover:bg-primary/5")}><Calendar className="size-5" /></button>
-          </div>
-        </div>
-        <DatePickerDrawer open={rangeStep !== null} onOpenChange={(open) => { if (!open) { if (advancingRangeRef.current) advancingRangeRef.current = false; else setRangeStep(null); } }} date={rangeStep === "to" ? rangeStart : (customRange?.from ?? "")} onDateChange={selectRangeDate} title={rangeStep === "to" ? (lang === "ml" ? "അവസാന തീയതി" : "Choose end date") : (lang === "ml" ? "ആരംഭ തീയതി" : "Choose start date")} />
+        {teacherPeriodControls}
+        {teacherDatePicker}
       </DashboardLayout>
     );
   }
@@ -736,9 +784,7 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
                 className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs space-y-4"
               >
                 <div className="flex items-center gap-2 pb-2 border-b border-gray-50">
-                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
-                    {child.name.charAt(0)}
-                  </div>
+                  <StudentAvatar name={child.name} photoUrl={child.photoUrl} size="sm" className="size-7" />
                   <p className="text-sm font-semibold text-gray-900 truncate">{child.name}</p>
                   <span className={cn(
                     "ml-auto text-[11px] font-semibold px-2 py-0.5 rounded-full",

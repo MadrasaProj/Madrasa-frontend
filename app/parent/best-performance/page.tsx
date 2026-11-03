@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { BookOpen, CalendarDays, Flame, GraduationCap, Heart, Target } from "lucide-react";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { BestPerformanceMetric } from "@/components/BestPerformanceMetric";
 import { ScrollableRangeNavigator, commonRangePreset, formatRangeDate } from "@/components/ScrollableRangeNavigator";
 import { PerformanceHistoryCharts } from "@/components/parent/PerformanceHistoryCharts";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { StudentAvatar } from "@/components/teacher/StudentAvatar";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { OverallBestPerformer } from "@/lib/best-performance-api";
@@ -19,10 +21,12 @@ function totalMaxScore(performer: OverallBestPerformer) {
 }
 
 function ScoreHero({
-  name, className, rank, score, percentage, scoreLabel, heading, illustrated = false, children,
+  name, className, photoUrl, gender, rank, score, percentage, scoreLabel, heading, illustrated = false, children,
 }: {
   name: string;
   className?: string;
+  photoUrl?: string | null;
+  gender?: string;
   rank: string;
   score: number;
   percentage: number;
@@ -36,7 +40,7 @@ function ScoreHero({
   return (
     <section className="overflow-hidden rounded-2xl bg-white" aria-label={heading}>
       <div
-        className="bg-gradient-to-br from-white via-primary-50/30 to-white px-4 pb-7 pt-5 sm:px-6"
+        className="bg-gradient-to-br from-white via-primary-50/30 to-white px-4 pb-7 pt-5 sm:px-6 rounded-t-2xl"
         style={illustrated ? {
           backgroundImage: "linear-gradient(rgb(255 255 255 / 0.78), rgb(255 255 255 / 0.78)), url('/imgs/teacher/dashboard-corner-primary.png')",
           backgroundPosition: "center, right bottom",
@@ -45,7 +49,7 @@ function ScoreHero({
         } : undefined}
       >
         <div className="flex items-center gap-3">
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white text-base font-semibold text-primary-700 ring-2 ring-primary-100">{name.charAt(0)}</span>
+          <StudentAvatar name={name} photoUrl={photoUrl} gender={gender} size="lg" className="size-11 ring-2 ring-primary-100" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-base font-bold text-gray-950">{name}</p>
             {className && <p className="mt-0.5 text-xs text-gray-600">{className}</p>}
@@ -120,9 +124,9 @@ export default function ParentBestPerformancePage() {
         : t("parentPages", "bestIbadahPerf", lang)} />
       <div className="mx-auto w-full max-w-4xl space-y-8 px-4 pb-28 pt-6 sm:px-6 sm:pt-8">
         <div className="space-y-5">
-          <Tabs className="fixed bottom-12 left-1/2 -translate-1/2 shadow-xs shadow-primary-100" value={rankingCategory} onValueChange={(value) => setRankingCategory(value as "total" | "ibadah")}>
+          <Tabs className="fixed bottom-12 left-1/2 -translate-1/2  z-12 " value={rankingCategory} onValueChange={(value) => setRankingCategory(value as "total" | "ibadah")}>
             <TabsList aria-label={lang === "ml" ? "റാങ്കിംഗ് വിഭാഗം" : "Ranking category"}
-              className="h-auto   bg-gray-100 p-1">
+              className="h-auto shadow-lg  bg-primary-50 text-primary-300 p-1">
               <TabsTrigger value="total" className="  px-5 py-2 text-sm data-[state=active]:bg-white data-[state=active]:text-gray-950 data-[state=active]:shadow-none">
                 {lang === "ml" ? "ആകെ സ്കോർ" : "Overall"}
               </TabsTrigger>
@@ -154,8 +158,10 @@ export default function ParentBestPerformancePage() {
                 <div className="space-y-4 bg-white">
                   <ScoreHero
                     name={childOverall.name}
+                    photoUrl={activeStudent?.photoUrl ?? childIbadah?.photoUrl}
+                    gender={activeStudent?.gender}
                     className={childOverall.className}
-                    rank={`${t("parentPages", "rankLabel", lang)} #${childOverall.rank}/${overallData.length}`}
+                    rank={`${t("parentPages", "rankLabel", lang)} ${childOverall.rank}/${overallData.length}`}
                     score={childOverall.totalScore}
                     percentage={childOverall.totalPercentage}
                     scoreLabel={t("parentPages", "scoreLabel", lang)}
@@ -163,10 +169,10 @@ export default function ParentBestPerformancePage() {
                     illustrated
                   >
                     {[
-                      { label: lang === "ml" ? "ഹാജർ" : "Attendance", score: childOverall.attendance.score, maxScore: childOverall.attendance.maxScore, detail: `${childOverall.attendance.rate}% · ${childOverall.attendance.presentDays}/${childOverall.attendance.totalDays}`, icon: CalendarDays, tone: "bg-linear-120 to-primary-50 text-primary-700" },
-                      { label: lang === "ml" ? "ഹോംവർക്ക്" : "Homework", score: childOverall.homework.score, maxScore: childOverall.homework.maxScore, detail: `${childOverall.homework.rate}% · ${childOverall.homework.completed}/${childOverall.homework.assigned}`, icon: BookOpen, tone: "bg-linear-120 to-sky-50/40 text-sky-700" },
-                      { label: lang === "ml" ? "പരീക്ഷ" : "Exams", score: childOverall.exam.score, maxScore: childOverall.exam.maxScore, detail: `${childOverall.exam.averagePercentage}% · ${childOverall.exam.examsCount}`, icon: GraduationCap, tone: "bg-amber-50/40 text-amber-700" },
-                      { label: lang === "ml" ? "ഇബാദത്ത്" : "Ibadah", score: childOverall.ibadah.score, maxScore: childOverall.ibadah.maxScore, detail: `${childOverall.ibadah.percentage}% · ${childOverall.ibadah.totalPrayers} ${t("parentPages", "prayersLabel", lang)}`, icon: Heart, tone: "bg-linear-120 to-violet-50/40 text-violet-700" },
+                      { label: lang === "ml" ? "ഹാജർ" : "Attendance", score: childOverall.attendance.score, maxScore: childOverall.attendance.maxScore, detail: `${childOverall.attendance.rate}% · ${childOverall.attendance.presentDays}/${childOverall.attendance.totalDays}`, icon: CalendarDays, tone: "bg-linear-120 from-white to-primary-50 text-primary-700" },
+                      { label: lang === "ml" ? "ഹോംവർക്ക്" : "Homework", score: childOverall.homework.score, maxScore: childOverall.homework.maxScore, detail: `${childOverall.homework.rate}% · ${childOverall.homework.completed}/${childOverall.homework.assigned}`, icon: BookOpen, tone: "bg-linear-120 to-sky-50/40 from-white text-sky-700" },
+                      { label: lang === "ml" ? "പരീക്ഷ" : "Exams", score: childOverall.exam.score, maxScore: childOverall.exam.maxScore, detail: `${childOverall.exam.averagePercentage}% · ${childOverall.exam.examsCount}`, icon: GraduationCap, tone: "bg-linear-120  to-amber-50 text-amber-700 from-white" },
+                      { label: lang === "ml" ? "ഇബാദത്ത്" : "Ibadah", score: childOverall.ibadah.score, maxScore: childOverall.ibadah.maxScore, detail: `${childOverall.ibadah.percentage}% · ${childOverall.ibadah.totalPrayers} ${t("parentPages", "prayersLabel", lang)}`, icon: Heart, tone: "bg-linear-120 to-violet-50/40 from-white text-violet-700" },
                     ].map((pillar) => (
                       <div key={pillar.label} className={cn("min-w-0 p-4 sm:p-5", pillar.tone)}>
                         <div className="flex items-center gap-1.5 text-xs font-medium"><pillar.icon className="size-4 shrink-0" aria-hidden="true" />{pillar.label}</div>
@@ -182,7 +188,9 @@ export default function ParentBestPerformancePage() {
                 <div className="space-y-4">
                   <ScoreHero
                     name={childIbadah.name}
-                    rank={`${t("parentPages", "rankLabel", lang)} #${ibadahData.findIndex((performer) => performer.studentId === activeId) + 1}/${ibadahData.length}`}
+                    photoUrl={activeStudent?.photoUrl ?? childIbadah.photoUrl}
+                    gender={activeStudent?.gender}
+                    rank={`${t("parentPages", "rankLabel", lang)} ${ibadahData.findIndex((performer) => performer.studentId === activeId) + 1}/${ibadahData.length}`}
                     score={childIbadah.score}
                     percentage={childIbadah.scorePercentage}
                     scoreLabel={t("parentPages", "scoreLabel", lang)}
@@ -190,10 +198,10 @@ export default function ParentBestPerformancePage() {
                     illustrated
                   >
                     {[
-                      { label: t("parentPages", "prayersLabel", lang), value: childIbadah.totalPrayers, icon: Heart, tone: "bg-primary-50/40 text-primary-700" },
-                      { label: t("parentPages", "pagesLabel", lang), value: childIbadah.totalQuranPages, icon: BookOpen, tone: "bg-sky-50/40 text-sky-700" },
-                      { label: t("parentPages", "streakLabel", lang), value: `${childIbadah.streak}d`, icon: Flame, tone: "bg-amber-50/40 text-amber-700" },
-                      { label: t("parentPages", "consistencyLabel", lang), value: `${childIbadah.consistency}%`, icon: Target, tone: "bg-violet-50/40 text-violet-700" },
+                      { label: t("parentPages", "prayersLabel", lang), value: childIbadah.totalPrayers, icon: Heart, tone: "from-white bg-linear-120 to-primary-50/40 text-primary-700" },
+                      { label: t("parentPages", "pagesLabel", lang), value: childIbadah.totalQuranPages, icon: BookOpen, tone: "from-white bg-linear-120 to-sky-50/40 text-sky-700" },
+                      { label: t("parentPages", "streakLabel", lang), value: `${childIbadah.streak}d`, icon: Flame, tone: "from-white bg-linear-120 to-amber-50/40 text-amber-700" },
+                      { label: t("parentPages", "consistencyLabel", lang), value: `${childIbadah.consistency}%`, icon: Target, tone: "from-white bg-linear-120 to-violet-50/40 text-violet-700" },
                     ].map((stat) => <div key={stat.label} className={cn("min-w-0 p-4 sm:p-5", stat.tone)}><div className="flex items-center gap-1.5 text-xs font-medium"><stat.icon className="size-4 shrink-0" aria-hidden="true" />{stat.label}</div><p className="mt-3 text-2xl font-bold leading-none tabular-nums text-gray-950 sm:text-3xl">{stat.value}</p></div>)}
                   </ScoreHero>
                   {Object.entries(childIbadah.customCounts ?? {}).some(([, value]) => value > 0) && (
@@ -205,7 +213,7 @@ export default function ParentBestPerformancePage() {
               ) : <p className="rounded-2xl border border-gray-100 bg-white px-4 py-8 text-center text-sm text-gray-500">{lang === "ml" ? "ഈ കാലയളവിൽ കുട്ടിയുടെ വിവരങ്ങൾ ലഭ്യമല്ല" : "No performance records found for your child in this period"}</p>
             )}
 
-            <section aria-label={listTitle}>
+            <section aria-label={listTitle} className="mb-10">
               <div className="mb-4 flex items-center gap-3">
                 <h2 className="min-w-0 flex-1 text-base font-semibold text-gray-950">{listTitle}</h2>
                 <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600">{performerCount}</span>
@@ -217,15 +225,26 @@ export default function ParentBestPerformancePage() {
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-semibold text-gray-950">{performer.name}{ids.includes(performer.studentId) && <span className="ml-2 text-xs font-medium text-primary-700">{t("parentPages", "myChildBestPerf", lang)}</span>}</p>
                           <p className="mt-1 text-xs text-gray-500">{performer.className} · {performer.adno}</p>
-                          {/* <p className="mt-2 text-[11px] leading-relaxed text-gray-500 sm:text-xs">{lang === "ml" ? "ഹാജർ" : "Attendance"} {performer.attendance.rate}% · {lang === "ml" ? "ഹോംവർക്ക്" : "Homework"} {performer.homework.rate}% · {lang === "ml" ? "പരീക്ഷ" : "Exams"} {performer.exam.averagePercentage}% · {lang === "ml" ? "ഇബാദത്ത്" : "Ibadah"} {performer.ibadah.percentage}%</p> */}
+                          <p className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px] leading-relaxed text-gray-500 sm:text-xs">
+                            <BestPerformanceMetric icon={CalendarDays} iconClassName="text-primary-700" label={lang === "ml" ? "ഹാജർ" : "Attendance"} value={`${performer.attendance.score}/${performer.attendance.maxScore}`} />
+                            <BestPerformanceMetric icon={BookOpen} iconClassName="text-sky-700" label={lang === "ml" ? "ഹോംവർക്ക്" : "Homework"} value={`${performer.homework.score}/${performer.homework.maxScore}`} />
+                            <BestPerformanceMetric icon={GraduationCap} iconClassName="text-amber-700" label={lang === "ml" ? "പരീക്ഷ" : "Exams"} value={`${performer.exam.score}/${performer.exam.maxScore}`} />
+                            <BestPerformanceMetric icon={Heart} iconClassName="text-violet-700" label={lang === "ml" ? "ഇബാദത്ത്" : "Ibadah"} value={`${performer.ibadah.score}/${performer.ibadah.maxScore}`} />
+                          </p>
                         </div>
                         <strong className="shrink-0 text-lg font-semibold tabular-nums text-gray-950">{performer.totalScore}<span className="text-xs font-normal text-gray-400">/{totalMaxScore(performer)}</span></strong>
                       </div>
-                    )) : ibadahData.map((performer, index) => (
+                    )) : ibadahData.map((performer) => (
                       <div key={performer.studentId} className={cn("bg-white flex items-center gap-4 p-2  px-4 sm:px-6", ids.includes(performer.studentId) && "")}>
                          <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-semibold text-gray-950">{performer.name}{ids.includes(performer.studentId) && <span className="ml-2 text-xs font-medium text-primary-700">{t("parentPages", "myChildBestPerf", lang)}</span>}</p>
-                          <p className="mt-1 text-xs text-gray-500">{performer.adno} · {performer.totalPrayers} {t("parentPages", "prayersLabel", lang)} · {performer.totalQuranPages} {t("parentPages", "pagesLabel", lang)}</p>
+                          <p className="mt-1 text-xs text-gray-500">{performer.adno}</p>
+                          <p className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px] leading-relaxed text-gray-500 sm:text-xs">
+                            <BestPerformanceMetric icon={Heart} iconClassName="text-primary-700" label={t("parentPages", "prayersLabel", lang)} value={performer.totalPrayers} />
+                            <BestPerformanceMetric icon={BookOpen} iconClassName="text-sky-700" label={t("parentPages", "pagesLabel", lang)} value={performer.totalQuranPages} />
+                            <BestPerformanceMetric icon={Flame} iconClassName="text-amber-700" label={t("parentPages", "streakLabel", lang)} value={`${performer.streak}d`} />
+                            <BestPerformanceMetric icon={Target} iconClassName="text-violet-700" label={t("parentPages", "consistencyLabel", lang)} value={`${performer.consistency}%`} />
+                          </p>
                          </div>
                         <strong className="shrink-0 text-lg font-semibold tabular-nums text-gray-950">{performer.score}</strong>
                       </div>

@@ -60,6 +60,8 @@ export default function PwaInstallBanner() {
     close();
   };
 
+  if(!installPrompt) return null;
+
   return (
     <ResponsivePopover
       open={open}

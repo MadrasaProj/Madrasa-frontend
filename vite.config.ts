@@ -26,6 +26,12 @@ export default defineConfig({
         background_color: "#faf9f6",
         display: "standalone",
         orientation: "portrait",
+        related_applications: [
+          {
+            platform: "webapp",
+            url: "/manifest.webmanifest",
+          },
+        ],
         icons: [
           {
             src: "/icons/icon-192.png",
