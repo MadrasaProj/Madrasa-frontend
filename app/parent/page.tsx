@@ -29,7 +29,6 @@ import {
   Clock3,
   GraduationCap,
   IndianRupee,
-  Loader2,
   MoonStar,
   NotebookPen,
   TrendingUp,
@@ -197,8 +196,8 @@ export default function ParentDashboard() {
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 my-auto h-10">
-              <h1 className="truncate text-lg font-bold tracking-tight text-gray-950 sm:text-xl">
-                {user?.name ?? t("common", "parent", lang)}{" "}
+              <h1 className="line-clamp-1 break-all text-lg font-bold tracking-tight text-gray-950 max-w-[calc(100dvw-220px)] sm:text-xl">
+                {user?.name ?? t("common", "parent", lang)}{" fadsfasdfadsfa adf asdfasd"}
                 <span aria-hidden="true">👋</span>
               </h1>
               <span className="relative -top-2 inline-flex rounded-full text-[11px] font-semibold text-primary-700">
@@ -207,7 +206,7 @@ export default function ParentDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <PwaInstallButton className="hidden sm:inline-flex" />
+            {/* <PwaInstallButton className="hidden sm:inline-flex" /> */}
             <PageHeaderSwitchers />
           </div>
         </header>
@@ -304,7 +303,7 @@ export default function ParentDashboard() {
               </div>
             )}
           </div>
-          {loadingAttendance ? <Loader2 className="size-5 shrink-0 animate-spin text-primary-700" /> : (
+          {loadingAttendance ? <Skeleton className="size-16 shrink-0 rounded-full" /> : (
             <div className="relative flex size-16 shrink-0 items-center justify-center rounded-full" style={{ background: `conic-gradient(#059669 ${attendancePercent}%, #e5e7eb 0)` }} role="img" aria-label={`${attendancePercent}% ${t("teacherPages", "attendanceRateLabel", lang)}`}>
               <span className="flex size-12 items-center justify-center rounded-full bg-white text-xs font-bold tabular-nums text-gray-950">{attendancePercent}%</span>
             </div>
@@ -319,7 +318,7 @@ export default function ParentDashboard() {
           </h2>
           <div className="relative w-[55%] min-w-0">
             {loadingHomework ? (
-              <div className="mt-2 flex min-h-20 items-center gap-2 text-sm text-gray-600"><Loader2 className="size-4 animate-spin" />{t("common", "loading", lang)}</div>
+              <div className="mt-2 space-y-2 py-1"><Skeleton className="h-5 w-32" /><Skeleton className="h-5 w-28" /><Skeleton className="h-3 w-20" /></div>
             ) : hwTotal === 0 ? (
               <p className="mt-2 text-sm text-gray-600">{t("teacherPages", "noAssignmentsYet", lang)}</p>
             ) : (

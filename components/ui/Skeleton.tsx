@@ -55,3 +55,61 @@ export function PageSkeleton({ className }: SkeletonProps) {
     </div>
   )
 }
+
+export function DashboardLayoutSkeleton() {
+  return (
+    <div className="min-h-[100svh] max-w-3xl mx-auto bg-primary-50/50 px-4 py-6" role="status" aria-label="Loading dashboard">
+      <div className="flex items-center justify-between mb-8">
+        <Skeleton className="h-10 w-36 rounded-xl" />
+        <Skeleton className="h-10 w-10 rounded-full" />
+      </div>
+      <PageSkeleton />
+    </div>
+  )
+}
+
+export function TableSkeleton({ rows = 5, className }: { rows?: number; className?: string }) {
+  return (
+    <div className={cn("bg-white rounded-2xl border border-gray-100 overflow-hidden", className)} role="status" aria-label="Loading records">
+      <div className="hidden lg:grid grid-cols-4 gap-4 border-b border-gray-100 p-4">
+        {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-3 w-3/4" />)}
+      </div>
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="flex items-center gap-3 border-b border-gray-100 p-4 last:border-0 lg:grid lg:grid-cols-4 lg:gap-4">
+          <Skeleton className="h-9 w-9 shrink-0 rounded-full lg:hidden" />
+          <div className="flex-1 space-y-2 lg:contents">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-3 w-1/2" />
+            <Skeleton className="hidden h-3 w-2/3 lg:block" />
+            <Skeleton className="hidden h-6 w-16 rounded-full lg:block" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export function DetailSkeleton({ className }: SkeletonProps) {
+  return (
+    <div className={cn("space-y-5 rounded-2xl bg-white p-5", className)} role="status" aria-label="Loading details">
+      <div className="flex items-center gap-3">
+        <Skeleton className="h-12 w-12 rounded-xl" />
+        <div className="flex-1 space-y-2"><Skeleton className="h-5 w-2/3" /><Skeleton className="h-3 w-1/3" /></div>
+      </div>
+      <Skeleton className="h-28 w-full rounded-xl" />
+      <SkeletonList count={3} />
+    </div>
+  )
+}
+
+export function FormSkeleton({ className }: SkeletonProps) {
+  return (
+    <div className={cn("space-y-5", className)} role="status" aria-label="Loading form">
+      <Skeleton className="h-6 w-44" />
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div key={i} className="space-y-2"><Skeleton className="h-3 w-24" /><Skeleton className="h-11 w-full rounded-xl" /></div>
+      ))}
+      <Skeleton className="h-10 w-28 rounded-xl" />
+    </div>
+  )
+}

@@ -1,3 +1,4 @@
+import { SkeletonList } from "@/components/ui/Skeleton";
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -780,9 +781,7 @@ export default function AdminFeesPage() {
       )}
 
       {typesLoading ? (
-        <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
-          <Loader2 className="w-5 h-5 animate-spin" />
-        </div>
+        <SkeletonList count={3} />
       ) : feeTypes.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <CreditCard className="w-10 h-10 mx-auto mb-3 opacity-30" />

@@ -1,3 +1,4 @@
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useState, useMemo } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -191,9 +192,7 @@ export default function StudentDetailPage() {
       >
         <SectionHeader title="Attendance" />
         {loadingAtt ? (
-          <div className="flex items-center gap-2 py-4 text-gray-400 text-sm">
-            <Loader2 className="w-4 h-4 animate-spin" /> Loading…
-          </div>
+          <div className="grid grid-cols-4 gap-2 py-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-xl" />)}</div>
         ) : (
           <>
             <div className="grid grid-cols-4 gap-2 mb-3">

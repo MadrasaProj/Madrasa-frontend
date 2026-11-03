@@ -13,7 +13,6 @@ import { useActiveClass } from "@/store/activeClass";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { toast } from "sonner";
-import { useClasses } from "@/lib/queries";
 import {
   getPendingLeaveRequests,
   reviewLeaveRequest,
@@ -29,8 +28,6 @@ import {
   Search,
   UserCheck,
   FilePen,
-  School,
-  ChevronDown,
 } from "lucide-react";
 
 const REASON_CONFIG: Record<
@@ -52,40 +49,41 @@ export default function TeacherLeaveRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("PENDING");
-  const [selectedClassId, setSelectedClassId] = useState<string>("ALL");
   const [search, setSearch] = useState("");
 
   const [selectedRequest, setSelectedRequest] = useState<LeaveRequest | null>(null);
   const [reviewNote, setReviewNote] = useState("");
   const [reviewingSave, setReviewingSave] = useState(false);
 
-  // Load teacher's classes for class dropdown filter
-  const { data: classesData } = useClasses({ clientId: cid, token });
-  const allClasses = classesData ?? [];
-  const teacherClasses = user?.id ? allClasses.filter((c) => c.classTeacherId === user.id) : [];
-  const classes = teacherClasses.length > 0 ? teacherClasses : allClasses;
-
-  const loadRequests = async () => {
-    if (!cid || !token) { setRequests([]); return; }
+  const loadRequests = async (signal?: AbortSignal) => {
+    if (!cid || !token || !activeClassId) {
+      setRequests([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     setRequests([]);
     setLoading(true);
     try {
       const res = await getPendingLeaveRequests(cid, token, {
         status: filter,
-        ...(selectedClassId !== "ALL" ? { classId: selectedClassId } : {}),
-      });
+        classId: activeClassId,
+      }, signal);
+      if (signal?.aborted) return;
       setRequests(res.requests);
       setError(null);
     } catch (e) {
-      setError((e as Error).message);
+      if (!signal?.aborted) setError((e as Error).message);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadRequests();
-  }, [cid, token, filter, selectedClassId]);
+    const controller = new AbortController();
+    loadRequests(controller.signal);
+    return () => controller.abort();
+  }, [cid, token, filter, activeClassId]);
 
   const handleReview = async (id: string, status: "APPROVED" | "REJECTED") => {
     setReviewingSave(true);
@@ -153,23 +151,6 @@ export default function TeacherLeaveRequestsPage() {
             </TabsList>
           </Tabs>
 
-          {/* Class Filter (if teacher has multiple classes) */}
-          {classes.length > 1 && (
-            <div className="relative shrink-0 sm:w-48">
-              <School className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-              <select
-                value={selectedClassId}
-                onChange={(e) => setSelectedClassId(e.target.value)}
-                className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold focus:outline-none focus:border-primary-500 bg-white cursor-pointer appearance-none"
-              >
-                <option value="ALL">{lang === "ml" ? "എല്ലാ ക്ലാസുകളും" : "All Classes"}</option>
-                {classes.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-            </div>
-          )}
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input

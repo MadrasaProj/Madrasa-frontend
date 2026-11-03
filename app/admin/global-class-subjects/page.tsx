@@ -1,3 +1,4 @@
+import { TableSkeleton, SkeletonList, DetailSkeleton } from "@/components/ui/Skeleton";
 import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -376,7 +377,7 @@ export default function AdminGlobalClassSubjectsPage() {
 
       {error && <ApiErrorBanner message={error} onRetry={loadSystems} />}
 
-      {loading && <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>}
+      {loading && <TableSkeleton />}
 
       {!loading && systems.length === 0 && (
         <div className="text-center py-20">
@@ -525,7 +526,7 @@ export default function AdminGlobalClassSubjectsPage() {
                     </div>
                     <div className="flex-1 overflow-y-auto">
                       {glLoading ? (
-                        <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>
+                        <SkeletonList count={4} className="p-3" />
                       ) : gradeLevels.length === 0 ? (
                         <p className="text-sm text-gray-400 italic text-center py-8">No classes yet</p>
                       ) : (
@@ -571,7 +572,7 @@ export default function AdminGlobalClassSubjectsPage() {
                         </div>
                       </div>
                     ) : subjLoading ? (
-                      <div className="flex-1 flex justify-center items-center"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
+                      <DetailSkeleton className="flex-1" />
                     ) : (
                       <div className="flex-1 overflow-y-auto px-6 py-4">
                         <div className="flex items-center justify-between mb-4">

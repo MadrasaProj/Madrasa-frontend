@@ -15,7 +15,7 @@ import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
   BookOpen, AlertTriangle, CheckCircle2, Clock,
-  Loader2, ChevronDown, ChevronUp, Calendar,
+  ChevronDown, ChevronUp, Calendar,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -177,13 +177,22 @@ function HWRow({
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {subs && <span className="text-xs text-red-500 font-bold">{notSubmitted}/{total} {t("teacherPages", "pendingCount", lang)}</span>}
-          {loadingSubs === hw.id
-            ? <Loader2 className="w-4 h-4 animate-spin text-gray-300" />
-            : expandedId === hw.id
+          {expandedId === hw.id
               ? <ChevronUp className="w-4 h-4 text-gray-400" />
               : <ChevronDown className="w-4 h-4 text-gray-400" />}
         </div>
       </div>
+
+      {loadingSubs === hw.id && (
+        <div className="space-y-2 border-t border-gray-50 bg-gray-50/60 px-4 py-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex items-center justify-between gap-3">
+              <div className="flex-1 space-y-1"><Skeleton className="h-3 w-2/3" /><Skeleton className="h-2 w-1/3" /></div>
+              <Skeleton className="h-5 w-16 rounded-lg" />
+            </div>
+          ))}
+        </div>
+      )}
 
       <AnimatePresence>
         {expandedId === hw.id && subs && (

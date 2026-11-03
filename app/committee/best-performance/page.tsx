@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
 import { Icon } from "@iconify/react";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { Skeleton, SkeletonList } from "@/components/ui/Skeleton";
 import { useLanguageStore } from "@/store/language";
 import { useAuthStore } from "@/store/auth";
 import { useActiveClass } from "@/store/activeClass";
@@ -48,6 +48,26 @@ import { cn } from "@/lib/utils";
 
 const medalEmoji = ["🥇", "🥈", "🥉", "🏅", "🌟", "⭐", "✨", "💫", "🔥", "🌙"];
 
+const formatScore = (score: number) => {
+  if (Math.abs(score) < 1000) return String(score);
+
+  const units = ["", "k", "M", "G", "T", "P", "E"];
+  let value = Math.abs(score);
+  let unit = 0;
+  while (value >= 1000 && unit < units.length - 1) {
+    value /= 1000;
+    unit += 1;
+  }
+
+  value = Math.round(value * 100) / 100;
+  if (value >= 1000 && unit < units.length - 1) {
+    value /= 1000;
+    unit += 1;
+  }
+
+  return `${score < 0 ? "-" : ""}${value}${units[unit]}`;
+};
+
 export default function BestPerformancePage({ variant }: { variant?: "teacher" } = {}) {
   const [searchParams, setSearchParams] = useSearchParams();
   const categoryParam = searchParams.get("category");
@@ -66,6 +86,9 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [period, setPeriod] = useState<{ from: string; to: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [overallError, setOverallError] = useState<string | null>(null);
+  const [classErrors, setClassErrors] = useState<Record<string, { ibadah?: string; total?: string }>>({});
+  const [classListError, setClassListError] = useState<string | null>(null);
   const [periodType, setPeriodType] = useState<"week" | "month">(
     periodParam === "week" ? "week" : "month"
   );
@@ -156,20 +179,27 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
   const fetchClassRankingData = useCallback(
     async (clsId: string, currentCid: string, currentToken: string, currentPeriodType: "week" | "month") => {
       if (!clsId || !currentCid || !currentToken) return;
-      const dates = getPeriodDates(currentPeriodType);
+      const dates = customRange ?? getPeriodDates(currentPeriodType);
       setClassLoading(true);
       try {
-        const [ibadahRes, overallRes] = await Promise.all([
-          getBestPerformers(currentCid, currentToken, { ...dates, classId: clsId, limit: 500 }).catch(() => ({ performers: [] })),
-          getOverallBestStudents(currentCid, currentToken, { ...dates, classId: clsId, limit: 500 }).catch(() => ({ performers: [] })),
+        const [ibadahRes, overallRes] = await Promise.allSettled([
+          getBestPerformers(currentCid, currentToken, { ...dates, classId: clsId, limit: 100 }),
+          getOverallBestStudents(currentCid, currentToken, { ...dates, classId: clsId, limit: 100 }),
         ]);
-        setClassRankingsMap((prev) => ({ ...prev, [clsId]: ibadahRes.performers }));
-        setOverallClassRankingsMap((prev) => ({ ...prev, [clsId]: overallRes.performers }));
+        if (ibadahRes.status === "fulfilled") setClassRankingsMap((prev) => ({ ...prev, [clsId]: ibadahRes.value.performers }));
+        if (overallRes.status === "fulfilled") setOverallClassRankingsMap((prev) => ({ ...prev, [clsId]: overallRes.value.performers }));
+        setClassErrors((prev) => ({
+          ...prev,
+          [clsId]: {
+            ibadah: ibadahRes.status === "rejected" ? (ibadahRes.reason?.message ?? "Failed to load Ibadah rankings") : undefined,
+            total: overallRes.status === "rejected" ? (overallRes.reason?.message ?? "Failed to load overall rankings") : undefined,
+          },
+        }));
       } finally {
         setClassLoading(false);
       }
     },
-    []
+    [customRange]
   );
 
   const handleSelectClass = (clsId: string) => {
@@ -193,6 +223,9 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setOverallError(null);
+    setClassErrors({});
+    setClassListError(null);
     setClassRankingsMap({});
     setOverallClassRankingsMap({});
 
@@ -225,9 +258,11 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
         if (cancelled) return;
         setOverallData(res.performers);
         setOverallHighlights(res.highlights);
-        if (!period) setPeriod(res.period);
+        setPeriod(res.period);
       })
-      .catch(() => {});
+      .catch((err) => {
+        if (!cancelled) setOverallError(err?.message ?? "Failed to load overall rankings");
+      });
 
     // 3. For Teachers & Admins, fetch available classes and ranking for active class
     const p3 = canViewClassRankings
@@ -252,20 +287,27 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
 
               setSelectedClassId(defaultCls);
 
-              const [ibadahRes, overallRes] = await Promise.all([
-                getBestPerformers(cid, token, { ...dates, classId: defaultCls, limit: 500 }).catch(() => ({ performers: [] })),
-                getOverallBestStudents(cid, token, { ...dates, classId: defaultCls, limit: 500 }).catch(() => ({ performers: [] })),
+              const [ibadahRes, overallRes] = await Promise.allSettled([
+                getBestPerformers(cid, token, { ...dates, classId: defaultCls, limit: 100 }),
+                getOverallBestStudents(cid, token, { ...dates, classId: defaultCls, limit: 100 }),
               ]);
 
               if (!cancelled) {
-                setClassRankingsMap({ [defaultCls]: ibadahRes.performers });
-                setOverallClassRankingsMap({ [defaultCls]: overallRes.performers });
+                if (ibadahRes.status === "fulfilled") setClassRankingsMap({ [defaultCls]: ibadahRes.value.performers });
+                if (overallRes.status === "fulfilled") setOverallClassRankingsMap({ [defaultCls]: overallRes.value.performers });
+                setClassErrors({
+                  [defaultCls]: {
+                    ibadah: ibadahRes.status === "rejected" ? (ibadahRes.reason?.message ?? "Failed to load Ibadah rankings") : undefined,
+                    total: overallRes.status === "rejected" ? (overallRes.reason?.message ?? "Failed to load overall rankings") : undefined,
+                  },
+                });
               }
             }
           })
-          .catch(() => {
+          .catch((err) => {
             if (!cancelled) {
               setAvailableClasses([]);
+              setClassListError(err?.message ?? "Failed to load classes");
             }
           })
       : Promise.resolve();
@@ -338,10 +380,12 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
     }
   };
 
+  const visibleError = rankingCategory === "total" ? overallError : error;
+
   if (variant === "teacher") {
     const streak = data.length ? Math.max(...data.map((item) => item.streak)) : 0;
     const summary = [
-      { label: lang === "ml" ? "മികച്ച സ്കോർ" : "Best score", value: data[0]?.score ?? "—" },
+      { label: lang === "ml" ? "മികച്ച സ്കോർ" : "Best score", value: data[0] ? formatScore(data[0].score) : "—" },
       { label: lang === "ml" ? "ഖുർആൻ പേജുകൾ" : "Quran pages", value: data.length ? Math.max(...data.map((item) => item.totalQuranPages)) : 0 },
       { label: lang === "ml" ? "നമസ്കാരങ്ങൾ" : "Prayers", value: data.length ? Math.max(...data.map((item) => item.totalPrayers)) : 0 },
     ];
@@ -392,7 +436,7 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
               <p className="mt-5 truncate text-lg font-bold">{performer.name}</p>
               <p className="text-xs font-medium text-gray-500">{performer.adno}</p>
               <div className="mt-5">
-                <p className="text-3xl font-extrabold text-primary">{performer.score}</p>
+                <p className="text-3xl font-extrabold text-primary">{formatScore(performer.score)}</p>
                 <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">{lang === "ml" ? "സ്കോർ" : "Score"}</p>
               </div>
               <div className="mt-5">
@@ -468,9 +512,11 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
 
             {carousel(data, `overall-${period?.from}-${period?.to}`)}
           </section>}
-          {!loading && !error && classRankings.length > 0 && <section className="mt-10 space-y-9">
+          {classListError && <p role="alert" className="mx-auto mt-8 max-w-xl rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{classListError}</p>}
+          {!loading && classRankings.length > 0 && <section className="mt-10 space-y-9">
             <h2 className="text-center text-lg font-bold text-gray-900">{lang === "ml" ? "ക്ലാസ് അടിസ്ഥാനത്തിൽ" : "Class performance"}</h2>
-            {classRankings.map(({ className, performers }) => <div key={className}>
+            {selectedClassId && classErrors[selectedClassId]?.ibadah && <p role="alert" className="mx-auto max-w-xl rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{classErrors[selectedClassId].ibadah}</p>}
+            {classRankings.filter((cls) => cls.classId === selectedClassId).map(({ classId, className, performers }) => <div key={classId}>
               <h3 className=" text-center w-full  pb-2 text-base font-bold text-primary">{className}</h3>
               {performers.length ? carousel(performers, `${className}-${period?.from}-${period?.to}`) : <p className="py-6 text-center text-sm text-gray-500">{lang === "ml" ? "ഇബാദത്ത് ഡാറ്റ ലഭ്യമല്ല" : "No ibadah data"}</p>}
             </div>)}
@@ -540,7 +586,7 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
                   {
                     icon: Award,
                     label: lang === "ml" ? "മികച്ച ആകെ സ്കോർ" : "Top Total Score",
-                    value: overallData[0] ? `${overallData[0].totalScore} / 100` : "—",
+                    value: overallData[0] ? `${formatScore(overallData[0].totalScore)} / 100` : "—",
                   },
                   {
                     icon: Users,
@@ -567,7 +613,7 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
                   {
                     icon: Star,
                     label: lang === "ml" ? "മികച്ച സ്കോർ" : "Best Score",
-                    value: displayData[0] ? `${displayData[0].score}` : "—",
+                    value: displayData[0] ? formatScore(displayData[0].score) : "—",
                   },
                   {
                     icon: BookOpen,
@@ -772,9 +818,9 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
           )}
 
           {/* Error state */}
-          {error && (
+          {visibleError && (
             <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5 text-center">
-              <p className="text-gray-700 font-semibold">{error}</p>
+              <p className="text-gray-700 font-semibold">{visibleError}</p>
             </div>
           )}
 
@@ -788,7 +834,7 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
                     <span>Top Performer</span>
                   </div>
                   <p className="font-bold text-gray-900 text-xs truncate">{overallHighlights.topPerformer.name}</p>
-                  <p className="text-[10px] text-amber-700 font-semibold mt-0.5">{overallHighlights.topPerformer.score} pts · {overallHighlights.topPerformer.className}</p>
+                  <p className="text-[10px] text-amber-700 font-semibold mt-0.5">{formatScore(overallHighlights.topPerformer.score)} pts · {overallHighlights.topPerformer.className}</p>
                 </div>
               )}
               {overallHighlights.bestAttendance && (
@@ -835,7 +881,7 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
           )}
 
           {/* Performers list: Overall Best Students */}
-          {rankingCategory === "total" && !loading && !error && (
+          {rankingCategory === "total" && !loading && !visibleError && (
             overallData.length === 0 ? (
               <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center shadow-xs">
                 <Star className="w-10 h-10 mx-auto mb-3 text-gray-300" />
@@ -885,7 +931,7 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
                         {/* Total Score Badge */}
                         <div className="text-right shrink-0">
                           <div className="flex items-baseline gap-1 justify-end">
-                            <span className="text-2xl font-black text-emerald-600">{performer.totalScore}</span>
+                            <span className="text-2xl font-black text-emerald-600">{formatScore(performer.totalScore)}</span>
                             <span className="text-xs font-semibold text-gray-400">/ 100</span>
                           </div>
                           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
@@ -896,10 +942,10 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
 
                       {/* Total composite progress bar */}
                       <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden flex">
-                        <div style={{ width: `${(performer.attendance.score / 25) * 25}%` }} className="bg-emerald-500 h-full" title="Attendance" />
-                        <div style={{ width: `${(performer.homework.score / 25) * 25}%` }} className="bg-blue-500 h-full" title="Homework" />
-                        <div style={{ width: `${(performer.exam.score / 25) * 25}%` }} className="bg-purple-500 h-full" title="Exams" />
-                        <div style={{ width: `${(performer.ibadah.score / 25) * 25}%` }} className="bg-teal-500 h-full" title="Ibadah" />
+                        <div style={{ width: `${(performer.attendance.score / Math.max(1, performer.attendance.maxScore)) * 25}%` }} className="bg-emerald-500 h-full" title="Attendance" />
+                        <div style={{ width: `${(performer.homework.score / Math.max(1, performer.homework.maxScore)) * 25}%` }} className="bg-blue-500 h-full" title="Homework" />
+                        <div style={{ width: `${(performer.exam.score / Math.max(1, performer.exam.maxScore)) * 25}%` }} className="bg-purple-500 h-full" title="Exams" />
+                        <div style={{ width: `${(performer.ibadah.score / Math.max(1, performer.ibadah.maxScore)) * 25}%` }} className="bg-teal-500 h-full" title="Ibadah" />
                       </div>
 
                       {/* 4 Pillars Breakdown Grid */}
@@ -908,7 +954,7 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
                         <div className="bg-emerald-50/70 border border-emerald-100 rounded-xl p-2.5">
                           <div className="flex items-center justify-between font-bold text-emerald-800 text-[11px] mb-1">
                             <span className="flex items-center gap-1"><Users className="w-3 h-3 text-emerald-600" /> Attendance</span>
-                            <span>{performer.attendance.score}/25</span>
+                            <span>{performer.attendance.score}/{performer.attendance.maxScore}</span>
                           </div>
                           <p className="text-[11px] font-semibold text-emerald-900">{performer.attendance.rate}% rate</p>
                           <p className="text-[10px] text-emerald-600/90">{performer.attendance.presentDays}/{performer.attendance.totalDays} days present</p>
@@ -918,7 +964,7 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
                         <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-2.5">
                           <div className="flex items-center justify-between font-bold text-blue-800 text-[11px] mb-1">
                             <span className="flex items-center gap-1"><ClipboardList className="w-3 h-3 text-blue-600" /> Homework</span>
-                            <span>{performer.homework.score}/25</span>
+                            <span>{performer.homework.score}/{performer.homework.maxScore}</span>
                           </div>
                           <p className="text-[11px] font-semibold text-blue-900">{performer.homework.rate}% completed</p>
                           <p className="text-[10px] text-blue-600/90">{performer.homework.completed}/{performer.homework.assigned} assignments</p>
@@ -928,7 +974,7 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
                         <div className="bg-purple-50/70 border border-purple-100 rounded-xl p-2.5">
                           <div className="flex items-center justify-between font-bold text-purple-800 text-[11px] mb-1">
                             <span className="flex items-center gap-1"><GraduationCap className="w-3 h-3 text-purple-600" /> Exam Marks</span>
-                            <span>{performer.exam.score}/25</span>
+                            <span>{performer.exam.score}/{performer.exam.maxScore}</span>
                           </div>
                           <p className="text-[11px] font-semibold text-purple-900">{performer.exam.averagePercentage}% avg</p>
                           <p className="text-[10px] text-purple-600/90">{performer.exam.examsCount} exams evaluated</p>
@@ -938,7 +984,7 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
                         <div className="bg-teal-50/70 border border-teal-100 rounded-xl p-2.5">
                           <div className="flex items-center justify-between font-bold text-teal-800 text-[11px] mb-1">
                             <span className="flex items-center gap-1"><Flame className="w-3 h-3 text-teal-600" /> Ibadah</span>
-                            <span>{performer.ibadah.score}/25</span>
+                            <span>{performer.ibadah.score}/{performer.ibadah.maxScore}</span>
                           </div>
                           <p className="text-[11px] font-semibold text-teal-900">{performer.ibadah.percentage}% score</p>
                           <p className="text-[10px] text-teal-600/90">{performer.ibadah.totalPrayers} prayers · {performer.ibadah.totalQuranPages}p</p>
@@ -952,7 +998,7 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
           )}
 
           {/* Performers list: Ibadah Ranking (Existing) */}
-          {rankingCategory === "ibadah" && !loading && !error && displayData.length === 0 && (
+          {rankingCategory === "ibadah" && !loading && !visibleError && displayData.length === 0 && (
             <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center shadow-xs">
               <BookOpen className="w-10 h-10 mx-auto mb-3 text-gray-300" />
               <p className="text-gray-500 font-semibold">
@@ -963,7 +1009,7 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
             </div>
           )}
 
-          {rankingCategory === "ibadah" && !loading && !error && displayData.length > 0 && (
+          {rankingCategory === "ibadah" && !loading && !visibleError && displayData.length > 0 && (
             <div className="space-y-3">
               {displayData.map((performer, i) => {
                 const rank = rankInFull(performer.studentId) ?? i + 1;
@@ -1039,7 +1085,7 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
                       </div>
                       <div className="text-right shrink-0">
                         <p className="text-2xl font-black text-primary">
-                          {performer.score}
+                          {formatScore(performer.score)}
                         </p>
                         <p className="text-[11px] font-semibold text-gray-400">
                           {lang === "ml" ? "സ്കോർ" : "SCORE"}
@@ -1061,6 +1107,7 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
           {/* Class-wise Ranking for Teachers & Admins */}
           {!isParent && canViewClassRankings && !loading && (
             <section className="space-y-4 pt-2">
+              {classListError && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{classListError}</p>}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-1 border-b border-gray-100">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-2xl bg-primary-100 text-primary-800 flex items-center justify-center shrink-0">
@@ -1105,6 +1152,12 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
                 )}
               </div>
 
+              {selectedClassId && classErrors[selectedClassId]?.[rankingCategory] && (
+                <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  {classErrors[selectedClassId][rankingCategory]}
+                </p>
+              )}
+
               {/* Class ranking cards: Total vs Ibadah */}
               {rankingCategory === "total" ? (
                 <div className="space-y-6">
@@ -1143,7 +1196,7 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
                             </div>
                             <p className="text-xs text-gray-400 mt-0.5">
                               Class Average: <span className="font-semibold text-gray-700">{classAvg} / 100</span> · Top:{" "}
-                              <span className="font-semibold text-emerald-700">{performers[0]?.totalScore ?? 0} pts</span>
+                              <span className="font-semibold text-emerald-700">{formatScore(performers[0]?.totalScore ?? 0)} pts</span>
                             </p>
                           </div>
 
@@ -1164,12 +1217,7 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
 
                         {/* Students List */}
                         {classLoading ? (
-                          <div className="py-12 flex flex-col items-center justify-center gap-2">
-                            <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
-                            <p className="text-xs text-gray-500 font-medium">
-                              {lang === "ml" ? "വിവരങ്ങൾ ശേഖരിക്കുന്നു..." : "Loading class rankings..."}
-                            </p>
-                          </div>
+                          <SkeletonList count={4} className="py-3" />
                         ) : performers.length === 0 ? (
                           <div className="text-center py-10 text-gray-400 text-xs">
                             {lang === "ml" ? "ഈ ക്ലാസിൽ വിദ്യാർത്ഥികളില്ല" : "No students found in this class."}
@@ -1218,7 +1266,7 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
 
                                   <div className="text-right shrink-0">
                                     <div className="flex items-baseline gap-1 justify-end">
-                                      <span className="text-xl font-black text-emerald-600">{performer.totalScore}</span>
+                                      <span className="text-xl font-black text-emerald-600">{formatScore(performer.totalScore)}</span>
                                       <span className="text-xs font-semibold text-gray-400">/ 100</span>
                                     </div>
                                   </div>
@@ -1228,19 +1276,19 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-1 text-[11px]">
                                   <div className="bg-emerald-50 text-emerald-800 rounded-lg px-2 py-1 flex items-center justify-between">
                                     <span className="font-semibold">Attendance</span>
-                                    <span className="font-bold">{performer.attendance.score}/25</span>
+                                    <span className="font-bold">{performer.attendance.score}/{performer.attendance.maxScore}</span>
                                   </div>
                                   <div className="bg-blue-50 text-blue-800 rounded-lg px-2 py-1 flex items-center justify-between">
                                     <span className="font-semibold">Homework</span>
-                                    <span className="font-bold">{performer.homework.score}/25</span>
+                                    <span className="font-bold">{performer.homework.score}/{performer.homework.maxScore}</span>
                                   </div>
                                   <div className="bg-purple-50 text-purple-800 rounded-lg px-2 py-1 flex items-center justify-between">
                                     <span className="font-semibold">Exams</span>
-                                    <span className="font-bold">{performer.exam.score}/25</span>
+                                    <span className="font-bold">{performer.exam.score}/{performer.exam.maxScore}</span>
                                   </div>
                                   <div className="bg-teal-50 text-teal-800 rounded-lg px-2 py-1 flex items-center justify-between">
                                     <span className="font-semibold">Ibadah</span>
-                                    <span className="font-bold">{performer.ibadah.score}/25</span>
+                                    <span className="font-bold">{performer.ibadah.score}/{performer.ibadah.maxScore}</span>
                                   </div>
                                 </div>
                               </div>
@@ -1311,8 +1359,8 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
                               </span>
                             </div>
                             <p className="text-xs text-gray-400 mt-0.5">
-                              Class Average: <span className="font-semibold text-gray-700">{classAvg} pts</span> · Top:{" "}
-                              <span className="font-semibold text-emerald-700">{performers[0]?.score ?? 0} pts</span>
+                              Class Average: <span className="font-semibold text-gray-700">{formatScore(classAvg)} pts</span> · Top:{" "}
+                              <span className="font-semibold text-emerald-700">{formatScore(performers[0]?.score ?? 0)} pts</span>
                             </p>
                           </div>
 
@@ -1333,12 +1381,7 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
 
                         {/* Students List */}
                         {classLoading ? (
-                          <div className="py-12 flex flex-col items-center justify-center gap-2">
-                            <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
-                            <p className="text-xs text-gray-500 font-medium">
-                              {lang === "ml" ? "വിവരങ്ങൾ ശേഖരിക്കുന്നു..." : "Loading class rankings..."}
-                            </p>
-                          </div>
+                          <SkeletonList count={4} className="py-3" />
                         ) : performers.length === 0 ? (
                           <div className="text-center py-10 text-gray-400 text-xs">
                             {lang === "ml" ? "ഈ ക്ലാസിൽ വിദ്യാർത്ഥികളില്ല" : "No students found in this class."}
@@ -1437,7 +1480,7 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
                                           performer.score > 0 ? "text-emerald-600" : "text-gray-400",
                                         )}
                                       >
-                                        {performer.score}
+                                        {formatScore(performer.score)}
                                       </span>
                                       <span className="text-[10px] font-semibold text-gray-400 uppercase">
                                         pts

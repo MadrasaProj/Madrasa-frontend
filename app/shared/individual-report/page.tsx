@@ -1,3 +1,4 @@
+import { DetailSkeleton } from "@/components/ui/Skeleton";
 import { ScrollableRangeNavigator, commonRangePreset } from "@/components/ScrollableRangeNavigator";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -179,10 +180,7 @@ export default function IndividualStudentReportPage({ classId }: { classId?: str
             </div>
 
             {loading ? (
-              <div className="p-12 text-center bg-white rounded-2xl border border-gray-100">
-                <Loader2 className="mx-auto w-8 h-8 animate-spin text-primary-600 mb-2" />
-                <p className="text-xs text-gray-400">Loading student analytics...</p>
-              </div>
+              <DetailSkeleton />
             ) : (
               <>
                 <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">

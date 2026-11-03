@@ -1,3 +1,4 @@
+import { FormSkeleton } from "@/components/ui/Skeleton";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader, SectionHeader } from "@/components/ui/PageHeader";
@@ -917,9 +918,7 @@ export default function AdminTeachersPage() {
  )}
 
  {loadingAssign ? (
- <div className="flex items-center gap-2 py-6 text-gray-400 text-sm justify-center">
- <Loader2 className="w-4 h-4 animate-spin" /> Loading…
- </div>
+ <FormSkeleton className="py-4" />
  ) : (
  <>
  {/* Class — multi-select checkboxes */}

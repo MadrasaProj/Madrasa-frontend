@@ -1,3 +1,4 @@
+import { TableSkeleton } from "@/components/ui/Skeleton";
 import type { ExamRecord } from "@/lib/exams-api";
 import type { ClassRecord } from "@/lib/classes-api";
 import type { SubjectRecord } from "@/lib/subjects-api";
@@ -181,9 +182,7 @@ export function   MarkEntryGrid({
 
       {/* Student list */}
       {loading ? (
-        <div className="flex items-center justify-center py-12 text-gray-400">
-          <Loader2 className="w-6 h-6 animate-spin" />
-        </div>
+        <TableSkeleton />
       ) : students.length === 0 ? (
         <div className="text-center py-10 bg-white border border-gray-100 rounded-3xl p-6">
           <GraduationCap className="w-12 h-12 text-gray-200 mx-auto mb-3" />

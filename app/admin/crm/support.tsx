@@ -1,3 +1,4 @@
+import { SkeletonList } from "@/components/ui/Skeleton";
 import { useState, useEffect } from "react";
 import {
   createTicket,
@@ -346,9 +347,7 @@ export default function SupportDashboard() {
               </div>
 
               {loading ? (
-                <div className="flex justify-center py-16">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
-                </div>
+                <SkeletonList count={5} />
               ) : filteredTickets.length === 0 ? (
                 <div className="text-center py-16 text-gray-400 text-sm font-medium">
                   <CheckCircle2 className="w-10 h-10 text-primary-400 mx-auto mb-2" />

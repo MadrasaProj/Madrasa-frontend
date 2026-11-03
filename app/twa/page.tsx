@@ -1,3 +1,4 @@
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Swiper, SwiperSlide } from "swiper/react";
@@ -149,7 +150,7 @@ export default function TwaLandingPage() {
   const drawer = <OnboardingDrawer open={drawerOpen} onOpenChange={setDrawerOpen} role={role} setRole={setRole} slug={slug} activeSlug={activeSlug} setSlug={setSlug} onSubmit={handleSubmit} onClearSlug={handleClearSlug} />;
 
   if (!hasHydrated) {
-    return <main className="flex min-h-[100dvh] items-center justify-center bg-[#f8fbf7]"><span className="h-7 w-7 animate-spin rounded-full border-2 border-primary-200 border-t-primary-600" /></main>;
+    return <main className="mx-auto min-h-[100dvh] max-w-md space-y-6 bg-[#f8fbf7] px-6 pt-16" role="status" aria-label="Loading home"><Skeleton className="mx-auto h-64 w-full rounded-3xl" /><Skeleton className="mx-auto h-7 w-3/4" /><Skeleton className="mx-auto h-12 w-full rounded-xl" /><Skeleton className="mx-auto h-12 w-full rounded-xl" /></main>;
   }
 
   if (hasSessions) {

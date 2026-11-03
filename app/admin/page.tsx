@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { ActionCard } from "@/components/ui/Cards";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { SectionHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { DataTable, type Column, type SortDir } from "@/components/ui/DataTable";
@@ -12,7 +13,7 @@ import { PortalLinksCard } from "@/components/admin/PortalLinksCard";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Users, CreditCard, BookOpen, BarChart3, Settings, GraduationCap,
-  BookMarked, ClipboardList, Loader2, Building2, ShieldCheck,
+  BookMarked, ClipboardList, Building2, ShieldCheck,
   UserCircle2, LogIn, CheckCircle, XCircle, ChevronRight,
   Briefcase, Target, LifeBuoy,
 } from "lucide-react";
@@ -34,10 +35,10 @@ function PlatformOverview() {
   const totalStaff = clients.reduce((s, c) => s + (c._count?.users ?? 0), 0);
 
   const statCards = [
-    { label: "Total Madrasas",  value: loading ? "…" : totalClients,  },
-    { label: "Active",          value: loading ? "…" : activeClients, },
-    { label: "Total Students",  value: loading ? "…" : totalStudents, },
-    { label: "Total Staff",     value: loading ? "…" : totalStaff,    },
+    { label: "Total Madrasas",  value: totalClients },
+    { label: "Active",          value: activeClients },
+    { label: "Total Students",  value: totalStudents },
+    { label: "Total Staff",     value: totalStaff },
   ];
 
   const quickActions = [
@@ -68,7 +69,7 @@ function PlatformOverview() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
             {statCards.map((s) => (
               <div key={s.label} className="bg-white/15 rounded-2xl p-2.5 text-center">
-                <p className="text-lg font-black text-white">{s.value}</p>
+                {loading ? <Skeleton className="mx-auto mb-1 h-6 w-12 bg-white/25" /> : <p className="text-lg font-black text-white">{s.value}</p>}
                 <p className="text-[10px] text-indigo-200 leading-tight">{s.label}</p>
               </div>
             ))}
@@ -165,12 +166,11 @@ function MadrasaAdminDashboard() {
       <section className="mb-8">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-900">Overview</h2>
-          {loading && <Loader2 className="h-4 w-4 animate-spin text-primary-600" />}
         </div>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {statCards.map((s) => (
             <div key={s.label} className="rounded-2xl border border-gray-200 bg-white p-4">
-              <p className={cn("text-2xl font-bold", s.color)}>{s.value}</p>
+              {loading ? <Skeleton className="h-8 w-16" /> : <p className={cn("text-2xl font-bold", s.color)}>{s.value}</p>}
               <p className="mt-1 text-xs text-gray-500">{s.label}</p>
             </div>
           ))}

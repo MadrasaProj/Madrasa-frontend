@@ -1,3 +1,4 @@
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -375,9 +376,7 @@ export default function AdminAttendancePage() {
       {/* Class tabs */}
       <div className="flex gap-2 overflow-x-auto pb-1 mb-4 scrollbar-hide">
         {classesLoading ? (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-100 text-xs text-gray-400">
-            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading classes…
-          </div>
+          <>{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-9 w-24 shrink-0 rounded-xl" />)}</>
         ) : classes.length === 0 ? (
           <p className="text-xs text-gray-400 px-3 py-2">No classes found</p>
         ) : (

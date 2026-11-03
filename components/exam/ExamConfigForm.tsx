@@ -1,3 +1,4 @@
+import { FormSkeleton } from "@/components/ui/Skeleton";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -6,7 +7,7 @@ import {
   type ExamConfig, type GradeConfig,
 } from "@/lib/exams-api";
 import {
-  Loader2, CheckCircle2, AlertCircle,
+  CheckCircle2, AlertCircle,
   Eye, EyeOff, Settings2, SlidersHorizontal,
 } from "lucide-react";
 
@@ -159,9 +160,7 @@ export function ExamConfigForm({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-48">
-        <Loader2 className="w-6 h-6 animate-spin text-primary-600" />
-      </div>
+      <FormSkeleton className="max-w-2xl mx-auto px-4 py-6" />
     );
   }
 

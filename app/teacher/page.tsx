@@ -1,3 +1,4 @@
+import { Skeleton, PageSkeleton } from "@/components/ui/Skeleton";
 import { useState, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -34,7 +35,6 @@ import {
   Bell,
   BookOpen,
   ChevronRight,
-  ClipboardList,
   Clock3,
   GraduationCap,
   IndianRupee,
@@ -42,8 +42,6 @@ import {
   MoonStar,
   NotebookPen,
   TrendingUp,
-  UserCheck,
-  UserX,
   X,
   FilePen,
   Trophy,
@@ -291,24 +289,9 @@ export default function TeacherDashboard() {
       icon: Trophy,
     },
     {
-      title: t("common", "present", lang),
-      href: "/teacher/present",
-      icon: UserCheck,
-    },
-    {
-      title: t("common", "absent", lang),
-      href: "/teacher/absent",
-      icon: UserX,
-    },
-    {
       title: t("nav", "homework", lang),
       href: "/teacher/homework",
       icon: BookOpen,
-    },
-    {
-      title: t("teacherPages", "hwOverviewAction", lang),
-      href: "/teacher/homework-list",
-      icon: ClipboardList,
     },
     {
       title: t("nav", "ibadah", lang),
@@ -428,7 +411,7 @@ export default function TeacherDashboard() {
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-3xl font-bold tabular-nums text-gray-950">
                 {loadingIbadah ? (
-                  <Loader2 className="size-6 animate-spin" />
+                  <Skeleton className="size-7 rounded-full" />
                 ) : (
                   `${ibadahPercent}%`
                 )}
@@ -539,10 +522,7 @@ export default function TeacherDashboard() {
             )}
           </div>
           {loadingAttendance ? (
-            <Loader2
-              className="size-5 shrink-0 animate-spin text-primary-700"
-              aria-hidden="true"
-            />
+            <Skeleton className="size-16 shrink-0 rounded-full" />
           ) : attendanceTaken ? (
             <div
               className="relative size-16 shrink-0 rounded-full bg-white/70 p-1"
@@ -749,9 +729,7 @@ export default function TeacherDashboard() {
               {ibadahDrawerOpen && (
                 <Suspense
                   fallback={
-                    <div className="flex items-center justify-center py-16 text-gray-400">
-                      <Loader2 className="size-6 animate-spin" />
-                    </div>
+                    <PageSkeleton />
                   }
                 >
                   <TeacherIbadahPage initialDate={date} embedded />

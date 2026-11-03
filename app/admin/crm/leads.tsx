@@ -1,3 +1,4 @@
+import { SkeletonList, DetailSkeleton } from "@/components/ui/Skeleton";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import {
@@ -2980,10 +2981,7 @@ export default function CrmLeadsPage() {
 
         {/* Loading Indicator */}
         {loading && (
-          <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
-            <p className="text-gray-500 text-xs sm:text-sm font-semibold">Loading pipeline registry...</p>
-          </div>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-12"><SkeletonList count={5} className="md:col-span-5" /><DetailSkeleton className="hidden md:col-span-7 md:block" /></div>
         )}
 
         {/* ── Split Workspace (List + Detail) ── */}
@@ -3367,10 +3365,7 @@ export default function CrmLeadsPage() {
               )}
             >
               {selectedLeadId && detailLoading && (
-                <div className="flex-1 flex items-center justify-center gap-3 flex-col">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
-                  <p className="text-xs text-gray-500 font-semibold">Loading lead details...</p>
-                </div>
+                <DetailSkeleton className="flex-1" />
               )}
 
               {selectedLeadId && !detailLoading && selectedLead && (
@@ -3447,10 +3442,7 @@ export default function CrmLeadsPage() {
                 {/* Mobile Body Content */}
                 <div className="flex-1 overflow-y-auto p-4 pb-28">
                   {detailLoading ? (
-                    <div className="flex flex-col items-center justify-center py-20 gap-3">
-                      <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
-                      <p className="text-xs text-gray-500 font-semibold">Loading details...</p>
-                    </div>
+                    <DetailSkeleton />
                   ) : (
                     renderDetailContent()
                   )}

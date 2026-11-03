@@ -1,3 +1,4 @@
+import { TableSkeleton } from "@/components/ui/Skeleton";
 import { useState, useEffect } from "react";
 import {
   getCommissions,
@@ -376,9 +377,7 @@ export default function CommissionsDashboard() {
           </div>
 
           {loading ? (
-            <div className="flex justify-center py-16">
-              <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
-            </div>
+            <TableSkeleton />
           ) : paginatedRecords.length === 0 ? (
             <div className="text-center py-16 text-gray-400 text-sm font-medium">
               No commission transactions match the current filter.

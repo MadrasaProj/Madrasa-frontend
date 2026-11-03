@@ -1,3 +1,4 @@
+import { SkeletonGrid } from "@/components/ui/Skeleton";
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/auth";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -216,9 +217,7 @@ export default function DistrictsPage() {
 
         {/* Districts Content */}
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
-          </div>
+          <SkeletonGrid count={4} className="grid-cols-1 sm:grid-cols-2" />
         ) : filteredDistricts.length === 0 ? (
           <div className="bg-white rounded-3xl border border-gray-200/80 p-12 text-center shadow-xs">
             <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-3 text-gray-400">

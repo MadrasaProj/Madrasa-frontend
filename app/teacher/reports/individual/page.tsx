@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { Skeleton, DetailSkeleton } from "@/components/ui/Skeleton";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import {
   Pagination,
@@ -1387,10 +1387,7 @@ export default function TeacherIndividualReportPage() {
 
               <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
                 {reportLoading ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-                    <Loader2 className="h-6 w-6 animate-spin text-primary-600 mb-2" />
-                    <p className="text-sm">Loading student records...</p>
-                  </div>
+                  <DetailSkeleton />
                 ) : (
                   <Tabs defaultValue="overview" className="w-full">
                     <TabsList className="grid h-auto w-full grid-cols-4 mb-4">

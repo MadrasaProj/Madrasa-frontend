@@ -1,3 +1,4 @@
+import { TableSkeleton } from "@/components/ui/Skeleton";
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/auth";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -385,9 +386,7 @@ export default function ExpensesPage() {
 
           {/* Content List */}
           {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-            </div>
+            <TableSkeleton />
           ) : paginatedExpenses.length === 0 ? (
             <div className="p-16 text-center">
               <Receipt className="w-12 h-12 text-gray-300 mx-auto mb-3" />

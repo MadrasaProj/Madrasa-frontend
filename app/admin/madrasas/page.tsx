@@ -1,3 +1,4 @@
+import { Skeleton, SkeletonList } from "@/components/ui/Skeleton";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -44,7 +45,6 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { SkeletonList } from "@/components/ui/Skeleton";
 import { ClassDivisionsPicker } from "@/components/ui/ClassDivisionsPicker";
 import { toast } from "sonner";
 import { ShareMadrasaLinksModal } from "@/components/admin/ShareMadrasaLinksModal";
@@ -417,9 +417,7 @@ function EditMadrasaDrawer({
           <p className={sectionCls}>Classes</p>
 
           {classesLoading ? (
-            <div className="flex items-center gap-2 text-gray-400 text-xs py-4 justify-center">
-              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading classes...
-            </div>
+            <div className="space-y-2 py-2"><Skeleton className="h-4 w-20" /><Skeleton className="h-10 w-full rounded-xl" /></div>
           ) : (
             <ClassDivisionsPicker
               value={editDivisions}
@@ -710,9 +708,7 @@ function ClientDetail({
       {/* Payments tab */}
       {tab === "payments" &&
         (loadingP ? (
-          <div className="flex items-center gap-2 text-gray-400 text-xs py-4 justify-center">
-            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading...
-          </div>
+          <SkeletonList count={3} className="py-3" />
         ) : payments.length === 0 ? (
           <p className="text-xs text-gray-400 text-center py-4">
             No payments recorded yet.
@@ -751,9 +747,7 @@ function ClientDetail({
       {/* Logs tab */}
       {tab === "logs" &&
         (loadingL ? (
-          <div className="flex items-center gap-2 text-gray-400 text-xs py-4 justify-center">
-            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading...
-          </div>
+          <SkeletonList count={3} className="py-3" />
         ) : logs.length === 0 ? (
           <p className="text-xs text-gray-400 text-center py-4">
             No activity yet.

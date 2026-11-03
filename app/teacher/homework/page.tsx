@@ -23,7 +23,7 @@ import { Icon } from "@iconify/react";
 import {
   Plus, Trash2, Loader2, Check, Pencil, Ellipsis,
 } from "lucide-react";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { Skeleton, SkeletonList } from "@/components/ui/Skeleton";
 
 function useStatusConfig(lang: Lang) {
   return {
@@ -439,9 +439,7 @@ export default function TeacherHomeworkPage() {
             </div>
             </div>
             {loadingSubs === assessHw.id && !submissions[assessHw.id] ? (
-              <div className="flex min-h-0 flex-1 items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-gray-300" />
-              </div>
+              <SkeletonList count={4} className="min-h-0 flex-1 overflow-y-auto px-5 py-3" />
             ) : (
             <div className="min-h-0 flex-1 overflow-y-auto px-5">
               {(submissions[assessHw.id]?.submissions ?? []).map((sub) => {

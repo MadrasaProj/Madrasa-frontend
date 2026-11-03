@@ -16,6 +16,7 @@ import { useClientConfig } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import { DrawerSelector } from "@/components/DrawerSelector";
 import { StudentAvatar } from "@/components/teacher/StudentAvatar";
+import { DashboardLayoutSkeleton } from "@/components/ui/Skeleton";
 
 // ── Super Admin Viewing Banner ─────────────────────────────────────────────────
 
@@ -472,11 +473,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const isResolving = resolvingClient || needsResolution;
 
   if (!hasHydrated || isResolving) {
-    return (
-      <div className="min-h-screen   flex items-center justify-center text-sm text-gray-500">
-        {isResolving ? "Loading tenant settings..." : "Loading..."}
-      </div>
-    );
+    return <DashboardLayoutSkeleton />;
   }
 
   if (!user) {

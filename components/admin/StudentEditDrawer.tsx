@@ -1,3 +1,4 @@
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -640,10 +641,7 @@ export default function StudentEditDrawer({
                     >
                       {/* Sibling detection alert banner */}
                       {checkingSiblings && (
-                        <div className="p-3 bg-gray-50 border border-gray-200 rounded-2xl flex items-center gap-2.5 text-xs text-gray-600 animate-pulse">
-                          <Loader2 className="w-3.5 h-3.5 animate-spin text-primary-600" />
-                          <span>Checking for linked family accounts…</span>
-                        </div>
+                        <Skeleton className="h-11 w-full rounded-2xl" />
                       )}
 
                       {siblingInfo && !checkingSiblings && (

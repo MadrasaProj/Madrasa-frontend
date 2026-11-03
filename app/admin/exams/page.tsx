@@ -1,3 +1,4 @@
+import { SkeletonGrid, TableSkeleton } from "@/components/ui/Skeleton";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -944,9 +945,7 @@ export default function AdminExamsPage() {
 
                               {/* Report content */}
                               {reportLoading ? (
-                                <div className="flex items-center justify-center py-12 text-gray-400">
-                                  <Loader2 className="w-6 h-6 animate-spin" />
-                                </div>
+                                <><SkeletonGrid count={4} className="mb-4 sm:grid-cols-4" /><TableSkeleton /></>
                               ) : reportError ? (
                                 <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm bg-red-50 text-red-700 border border-red-100">
                                   <AlertCircle className="w-4 h-4" />

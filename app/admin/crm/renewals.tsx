@@ -1,3 +1,4 @@
+import { TableSkeleton } from "@/components/ui/Skeleton";
 import { useState, useEffect } from "react";
 import { listLeads } from "@/lib/crm-api";
 import { useAuthStore } from "@/store/auth";
@@ -297,9 +298,7 @@ export default function RenewalsDashboard() {
           </div>
 
           {loading ? (
-            <div className="flex justify-center py-16">
-              <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
-            </div>
+            <TableSkeleton />
           ) : paginatedRenewals.length === 0 ? (
             <div className="text-center py-16 text-gray-400 text-sm font-medium">
               No customer accounts match the selected filters.
