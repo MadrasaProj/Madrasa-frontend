@@ -4,7 +4,7 @@ import { Check } from "lucide-react";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import PwaInstallButton from "@/components/PwaInstallButton";
+
 
 type LandingRole = "parent" | "teacher" | "admin";
 

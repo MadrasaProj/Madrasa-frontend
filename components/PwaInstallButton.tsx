@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Download,
   Smartphone,
@@ -11,21 +11,7 @@ import { useLanguageStore } from "@/store/language";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-}
-
-const checkIsInstalled = (): boolean => {
-  if (typeof window === "undefined") return false;
-  if ((window as any).__pwaInstalled) return true;
-  return (
-    window.matchMedia("(display-mode: standalone)").matches ||
-    (window.navigator as any).standalone === true ||
-    document.referrer.includes("android-app://")
-  );
-};
+import { usePwaInstall } from "@/lib/pwa";
 
 export interface PwaInstallButtonProps {
   variant?: "card" | "banner" | "button";
@@ -36,62 +22,19 @@ export default function PwaInstallButton({
   variant = "card",
   className,
 }: PwaInstallButtonProps) {
-  const [deferredPrompt, setDeferredPrompt] =
-    useState<BeforeInstallPromptEvent | null>(null);
-  const [isInstalled, setIsInstalled] = useState<boolean>(() =>
-    checkIsInstalled(),
-  );
+  const { isInstalled, installPrompt, isIos, promptToInstall } = usePwaInstall();
   const [dismissed, setDismissed] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
   const { lang } = useLanguageStore();
 
-  useEffect(() => {
-    const standalone = window.matchMedia("(display-mode: standalone)");
-    const syncInstalled = () => {
-      setIsInstalled(checkIsInstalled());
-    };
-
-    syncInstalled();
-
-    const onPromptAvailable = (event: Event) => {
-      event.preventDefault();
-      setDeferredPrompt(event as BeforeInstallPromptEvent);
-      syncInstalled();
-    };
-    const onInstalled = () => {
-      setDeferredPrompt(null);
-      setIsInstalled(true);
-    };
-
-    window.addEventListener("beforeinstallprompt", onPromptAvailable);
-    window.addEventListener("pwa-installed", onInstalled);
-    window.addEventListener("appinstalled", onInstalled);
-    standalone.addEventListener("change", syncInstalled);
-
-    return () => {
-      window.removeEventListener("beforeinstallprompt", onPromptAvailable);
-      window.removeEventListener("pwa-installed", onInstalled);
-      window.removeEventListener("appinstalled", onInstalled);
-      standalone.removeEventListener("change", syncInstalled);
-    };
-  }, []);
-
-  const isIos =
-    typeof navigator !== "undefined" &&
-    /iPad|iPhone|iPod/.test(navigator.userAgent) &&
-    !(window as any).MSStream;
-
   const handleInstall = async () => {
-    if (!deferredPrompt) {
+    if (!installPrompt) {
       setShowGuideModal(true);
       return;
     }
 
     try {
-      await deferredPrompt.prompt();
-      await deferredPrompt.userChoice;
-      (window as any).__pwaInstallPrompt = null;
-      setDeferredPrompt(null);
+      await promptToInstall();
       setDismissed(true);
     } catch (err) {
       console.warn("PWA prompt error, showing manual guide:", err);
@@ -99,12 +42,10 @@ export default function PwaInstallButton({
     }
   };
 
-  // Match PwaInstallBanner: only show Chromium install UI for a live prompt.
-  if (
-    isInstalled ||
-    dismissed ||
-    (!deferredPrompt && !isIos)
-  ) return null;
+  // If already installed, dismissed, or no install action possible, do not show
+  if (isInstalled || dismissed || (!installPrompt && !isIos)) {
+    return null;
+  }
 
   return (
     <>
@@ -147,7 +88,7 @@ export default function PwaInstallButton({
               onClick={handleInstall}
               className="mt-3 bg-white font-bold text-primary-800 hover:bg-primary-50"
             >
-               {lang === "ml" ? "ഇൻസ്റ്റാൾ ചെയ്യൂ" : "Install App"}
+              {lang === "ml" ? "ഇൻസ്റ്റാൾ ചെയ്യൂ" : "Install App"}
             </Button>
           </div>
         </div>
@@ -334,7 +275,10 @@ export default function PwaInstallButton({
 
               <Button
                 size="lg"
-                onClick={() => setShowGuideModal(false)}
+                onClick={() => {
+                  setShowGuideModal(false);
+                  setDismissed(true);
+                }}
                 className="w-full py-2.5 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl text-xs transition-colors shadow-xs"
               >
                 {lang === "ml" ? "മനസ്സിലായി" : "Got It"}
