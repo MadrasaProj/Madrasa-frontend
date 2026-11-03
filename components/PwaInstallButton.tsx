@@ -137,8 +137,14 @@ export default function PwaInstallButton({
             className,
           )}
         >
-          <div aria-hidden="true" className="pointer-events-none absolute -right-6 -bottom-8 size-36 rounded-full border border-white/15 sm:size-44" />
-          <div aria-hidden="true" className="pointer-events-none absolute -right-12 -bottom-14 size-52 rounded-full border border-white/10 sm:size-60" />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-6 -bottom-8 size-36 rounded-full border border-white/15 sm:size-44"
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-12 -bottom-14 size-52 rounded-full border border-white/10 sm:size-60"
+          />
           <img
             src="/icons/icon.svg"
             alt=""
@@ -147,7 +153,9 @@ export default function PwaInstallButton({
           />
           <div className="relative max-w-[75%]">
             <h2 className="text-sm font-bold leading-tight sm:text-base">
-              {lang === "ml" ? "സ്മാർട്ട് മദ്റസ ഇൻസ്റ്റാൾ ചെയ്യൂ" : "Install Smart Madrasa"}
+              {lang === "ml"
+                ? "സ്മാർട്ട് മദ്റസ ഇൻസ്റ്റാൾ ചെയ്യൂ"
+                : "Install Smart Madrasa"}
             </h2>
             <p className="mt-1 text-xs leading-snug text-white/90">
               {lang === "ml"
@@ -156,13 +164,12 @@ export default function PwaInstallButton({
             </p>
             <Button
               type="button"
-              size="lg"
+              size="sm"
               variant="secondary"
               onClick={handleInstall}
               className="mt-3 bg-white font-bold text-primary-800 hover:bg-primary-50"
             >
-              <Download className="size-3.5" />
-              {lang === "ml" ? "ഇൻസ്റ്റാൾ ചെയ്യൂ" : "Install App"}
+               {lang === "ml" ? "ഇൻസ്റ്റാൾ ചെയ്യൂ" : "Install App"}
             </Button>
           </div>
         </div>
@@ -279,13 +286,13 @@ export default function PwaInstallButton({
                       <p className="flex-1 leading-relaxed">
                         {lang === "ml" ? (
                           <>
-                            മുകളിൽ വലതുവശത്തുള്ള <strong>&apos;Add&apos;</strong>{" "}
-                            അമർത്തുക.
+                            മുകളിൽ വലതുവശത്തുള്ള{" "}
+                            <strong>&apos;Add&apos;</strong> അമർത്തുക.
                           </>
                         ) : (
                           <>
-                            Tap <strong>&apos;Add&apos;</strong> in the top right
-                            corner.
+                            Tap <strong>&apos;Add&apos;</strong> in the top
+                            right corner.
                           </>
                         )}
                       </p>

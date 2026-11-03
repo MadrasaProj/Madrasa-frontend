@@ -725,7 +725,7 @@ export default function TeacherDashboard() {
                 <X className="size-4" />
               </DrawerClose>
             </DrawerHeader>
-            <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-8 pt-3">
+            <div className="min-h-0 flex-1 overflow-y-auto px-0 pb-8 pt-3">
               {ibadahDrawerOpen && (
                 <Suspense
                   fallback={

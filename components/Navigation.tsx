@@ -166,7 +166,7 @@ const adminLinks = [
 ];
 
 const teacherLinks = [
-  { href: "/teacher", icon: LayoutDashboard, key: "dashboard" as NavKey },
+  { href: "/teacher", icon: Home, key: "home" as NavKey },
   { href: "/teacher/checkin", icon: Clock, key: "checkin" as NavKey },
   {
     href: "/teacher/attendance",
@@ -1219,7 +1219,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
           <ButtonGroup
             orientation="vertical"
             style={{ gap: 0 }}
-            className="w-full rounded-lg border border-gray-100"
+            className="w-full rounded-lg border border-gray-200"
           >
             <div className="flex items-center gap-3 p-2 px-3">
               <Link
@@ -1247,7 +1247,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
             </div>
             <ButtonGroup className="w-full mt-2 p-1">
               {sessionCount > 1 && (
-                <Button size="lg"  variant="outline" className="border-gray-200 rounded-t-0! min-w-0 flex-1 text-xs" onClick={() => {
+                <Button size="sm"  variant="outline" className="border-gray-200 rounded-t-0! min-w-0 flex-1  " onClick={() => {
                   setMoreOpen(false);
                   navigate("/");
                 }}>
@@ -1255,14 +1255,14 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
                   {lang === "ml" ? "സെഷൻ മാറ്റുക" : "Switch"}
                 </Button>
               )}
-              <Button  size="lg" variant="outline" className="border-gray-200 rounded-t-0! min-w-0 flex-1 text-xs" onClick={() => {
+              <Button  size="sm" variant="outline" className="border-gray-200 rounded-t-0! min-w-0 flex-1  " onClick={() => {
                 setMoreOpen(false);
                 openNewSession();
               }}>
                 <span className="text-lg leading-none">+</span>
                 {lang === "ml" ? "സെഷൻ ചേർക്കുക" : "New"}
               </Button>
-              <Button size="lg"  variant="outline" className="border-gray-200 rounded-t-0! min-w-0 flex-1 text-xs" onClick={() => {
+              <Button size="sm"  variant="outline" className="border-gray-200 rounded-t-0! min-w-0 flex-1  " onClick={() => {
                 setMoreOpen(false);
                 logout();
               }}>

@@ -18,8 +18,9 @@ import {
 } from "@/lib/queries";
 import { periodDates } from "@/lib/best-performance-period";
 import { Swiper, SwiperSlide } from "swiper/react";
-import { Pagination } from "swiper/modules";
+import { Autoplay, Pagination } from "swiper/modules";
 import "swiper/css";
+import "swiper/css/autoplay";
 import "swiper/css/pagination";
 import {
   Bell,
@@ -70,6 +71,14 @@ export default function ParentDashboard() {
     { enabled: !!cid && !!token && !!activeId },
   );
   const performers = performance?.performers ?? [];
+  const activePerformerIndex = performers.findIndex((performer) => performer.studentId === activeId);
+  const topPerformers = performers.slice(0, 3).map((performer, index) => ({ performer, rank: index + 1 }));
+  const featuredPerformers = activePerformerIndex < 0
+    ? topPerformers
+    : [
+        { performer: performers[activePerformerIndex], rank: activePerformerIndex + 1 },
+        ...topPerformers.filter(({ performer }) => performer.studentId !== activeId),
+      ];
 
   // Student Attendance query
   const { data: attendance, isLoading: loadingAttendance } = useStudentAttendance(
@@ -197,7 +206,7 @@ export default function ParentDashboard() {
             </Avatar>
             <div className="min-w-0 my-auto h-10">
               <h1 className="line-clamp-1 break-all text-lg font-bold tracking-tight text-gray-950 max-w-[calc(100dvw-220px)] sm:text-xl">
-                {user?.name ?? t("common", "parent", lang)}{" fadsfasdfadsfa adf asdfasd"}
+                {user?.name ?? t("common", "parent", lang)}
                 <span aria-hidden="true">👋</span>
               </h1>
               <span className="relative -top-2 inline-flex rounded-full text-[11px] font-semibold text-primary-700">
@@ -241,20 +250,27 @@ export default function ParentDashboard() {
             ) : (
               <Swiper
                 key={`${performance?.period.from}-${performance?.period.to}-${activeId}`}
-                modules={[Pagination]}
+                modules={[Autoplay, Pagination]}
                 slidesPerView={1}
                 spaceBetween={16}
                 grabCursor
+                loop={featuredPerformers.length > 1}
+                speed={650}
+                autoplay={featuredPerformers.length > 1 ? {
+                  delay: 3500,
+                  disableOnInteraction: false,
+                  pauseOnMouseEnter: true,
+                } : false}
                 pagination={{ clickable: true, dynamicBullets: true }}
                 className="mx-auto mt-5 w-full max-w-lg [&_.swiper-pagination-bullet]:!size-2.5 [&_.swiper-pagination-bullet-active]:!bg-primary"
                 aria-label={t("parentPages", "bestPerformers", lang)}
               >
-                {performers.map((performer, index) => (
+                {featuredPerformers.map(({ performer, rank }) => (
                   <SwiperSlide key={performer.studentId} className="!h-auto">
                     <BestPerformerCard
                       performer={performer}
-                      rank={index + 1}
-                      isMyChild={accessibleStudentIds.includes(performer.studentId)}
+                      rank={rank}
+                      isMyChild={performer.studentId === activeId}
                       customItems={performance?.customItems ?? []}
                       lang={lang}
                     />
@@ -328,7 +344,7 @@ export default function ParentDashboard() {
                 <p className="py-1 text-xs font-medium text-amber-700">{hwPending} {t("common", "pending", lang)}</p>
               </div>
             )}
-            <Button size="sm" onClick={() => navigate("/parent/homework")} className="mt-4 h-9 rounded-full px-4">
+            <Button size="sm" onClick={() => navigate("/parent/homework")} className="mt-4  rounded-full px-4">
               {t("parentPages", "hwList", lang)} <ChevronRight className="size-4" />
             </Button>
           </div>

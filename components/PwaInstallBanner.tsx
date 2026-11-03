@@ -77,8 +77,8 @@ export default function PwaInstallBanner() {
           <p className="text-sm text-gray-600">Open your browser menu and choose Install app or Add to Home screen.</p>
         ))}
         <div className="flex gap-3">
-          <Button type="button" size="lg" variant="outline" className="min-w-0 flex-1" onClick={close}>Maybe later</Button>
-          <Button type="button" size="lg" className="min-w-0 flex-1 bg-primary-600 text-white hover:bg-primary-700" onClick={installPrompt ? install : close}>
+          <Button type="button" size="lg" variant="outline" className="min-w-0 rounded-full flex-1" onClick={close}>Maybe later</Button>
+          <Button type="button" size="lg" className="min-w-0 flex-1 bg-primary-600 rounded-full text-white hover:bg-primary-700" onClick={installPrompt ? install : close}>
             {installPrompt ? <><Download className="mr-2 size-4" /> Install app</> : "Got it"}
           </Button>
         </div>
