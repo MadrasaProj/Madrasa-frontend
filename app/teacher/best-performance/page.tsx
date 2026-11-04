@@ -1,14 +1,17 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { BookOpen, CalendarDays, Flame, GraduationCap, Heart, Target } from "lucide-react";
+import { BookOpen, CalendarDays, Download, Flame, GraduationCap, Heart, Loader2, Target } from "lucide-react";
+import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { BestPerformanceMetric } from "@/components/BestPerformanceMetric";
 import { ScrollableRangeNavigator, commonRangePreset } from "@/components/ScrollableRangeNavigator";
 import { StudentAvatar } from "@/components/teacher/StudentAvatar";
+import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { OverallBestPerformer } from "@/lib/best-performance-api";
+import { downloadBestPerformanceReport } from "@/lib/best-performance-report";
 import { periodDates } from "@/lib/best-performance-period";
 import { useBestPerformers, useOverallBestStudents } from "@/lib/queries";
 import { cn } from "@/lib/utils";
@@ -18,6 +21,28 @@ import { useLanguageStore } from "@/store/language";
 
 function totalMaxScore(performer: OverallBestPerformer) {
   return performer.attendance.maxScore + performer.homework.maxScore + performer.exam.maxScore + performer.ibadah.maxScore;
+}
+
+function ReportCard({ category, lang, count, downloading, onDownload }: {
+  category: "total" | "ibadah";
+  lang: string;
+  count: number;
+  downloading: boolean;
+  onDownload: () => void;
+}) {
+  const isMalayalam = lang === "ml";
+  return (
+    <section className="relative h-[120px] overflow-hidden rounded-2xl border-2 border-white bg-linear-120 from-white via-primary-50 to-white p-3 shadow-xs sm:p-4" aria-label={isMalayalam ? "പ്രകടന റിപ്പോർട്ട്" : "Performance report"}>
+      <div className="relative z-10 flex h-full min-w-0 flex-col items-start justify-center pr-28 sm:pr-36">
+        <h2 className="line-clamp-2 text-sm font-bold leading-5 text-gray-950 sm:text-base">{isMalayalam ? (category === "total" ? "ആകെ പ്രകടന റിപ്പോർട്ട്" : "ഇബാദത്ത് പ്രകടന റിപ്പോർട്ട്") : (category === "total" ? "Best Students Performance Report" : "Best Ibadah Performance Report")}</h2>
+        <Button type="button" size="xs" onClick={onDownload} disabled={count === 0 || downloading} className="mt-2 gap-1.5   px-3">
+          {downloading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Download className="size-4" aria-hidden="true" />}
+          {downloading ? (isMalayalam ? "തയ്യാറാക്കുന്നു…" : "Preparing…") : (isMalayalam ? "റിപ്പോർട്ട് ഡൗൺലോഡ്" : "Download report")}
+        </Button>
+      </div>
+      <img src="/imgs/teacher/best-performance-report-art.webp" alt="" aria-hidden="true" className="pointer-events-none absolute bottom-0 right-0 size-28 object-contain sm:size-32" loading="lazy" />
+    </section>
+  );
 }
 
 function ScoreHero({ name, className, photoUrl, rank, score, percentage, heading, scoreLabel, children }: {
@@ -64,6 +89,7 @@ export default function TeacherBestPerformancePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const rankingCategory = searchParams.get("category") === "ibadah" ? "ibadah" : "total";
   const [dates, setDates] = useState(() => periodDates(searchParams.get("period") === "week" ? "week" : "month"));
+  const [downloading, setDownloading] = useState(false);
   const cid = activeClientId || user?.clientId || "";
   const token = accessToken ?? "";
   const query = { ...dates, classId: activeClassId, limit: 100 };
@@ -88,13 +114,26 @@ export default function TeacherBestPerformancePage() {
     return next;
   }, { replace: true });
 
+  const handleDownload = async () => {
+    if (!performerCount || downloading) return;
+    setDownloading(true);
+    try {
+      await downloadBestPerformanceReport({ category: rankingCategory, className: activeClass?.name || "Class", from: dates.from, to: dates.to, overall: overallData, ibadah: ibadahData });
+    } catch (reportError) {
+      console.error("Failed to create best performance report", reportError);
+      toast.error(lang === "ml" ? "റിപ്പോർട്ട് ഡൗൺലോഡ് ചെയ്യാനായില്ല" : "Could not download the report");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <PageHeader title={isOverall ? (lang === "ml" ? "ആകെ മികച്ച വിദ്യാർത്ഥി റാങ്കിംഗ്" : "Overall Best Student Ranking") : (lang === "ml" ? "മികച്ച ഇബാദത്ത്" : "Best Ibadah Performance")} />
       <div className="mx-auto w-full max-w-4xl space-y-8 px-4 pb-28 pt-6 sm:px-6 sm:pt-8">
         <div className="space-y-5">
           <Tabs className="fixed bottom-16 left-1/2 z-30 -translate-x-1/2 lg:bottom-6 lg:left-[calc(50%+8rem)]" value={rankingCategory} onValueChange={selectCategory}>
-            <TabsList aria-label={lang === "ml" ? "റാങ്കിംഗ് വിഭാഗം" : "Ranking category"} className="h-auto bg-primary-50 p-1 text-primary-300 shadow-lg">
+            <TabsList aria-label={lang === "ml" ? "റാങ്കിംഗ് വിഭാഗം" : "Ranking category"} className="h-auto bg-primary-50 p-1 text-primary-300 shadow-lg border-[0.5px] border-white">
               <TabsTrigger value="total" className="px-5 py-2 text-sm data-[state=active]:bg-white data-[state=active]:text-gray-950 data-[state=active]:shadow-none">{lang === "ml" ? "ആകെ സ്കോർ" : "Overall"}</TabsTrigger>
               <TabsTrigger value="ibadah" className="px-5 py-2 text-sm data-[state=active]:bg-white data-[state=active]:text-gray-950 data-[state=active]:shadow-none">{lang === "ml" ? "ഇബാദത്ത്" : "Ibadah"}</TabsTrigger>
             </TabsList>
@@ -111,28 +150,30 @@ export default function TeacherBestPerformancePage() {
             {isOverall ? topOverall && (
               <ScoreHero name={topOverall.name} className={topOverall.className || activeClass?.name} photoUrl={ibadahData.find((student) => student.studentId === topOverall.studentId)?.photoUrl} rank={`${lang === "ml" ? "റാങ്ക്" : "Rank"} ${topOverall.rank}/${overallData.length}`} score={topOverall.totalScore} percentage={topOverall.totalPercentage} scoreLabel={lang === "ml" ? "സ്കോർ" : "Score"} heading={lang === "ml" ? "ക്ലാസിലെ മികച്ച വിദ്യാർത്ഥി" : "Top student in your class"}>
                 {[
-                  { label: lang === "ml" ? "ഹാജർ" : "Attendance", score: topOverall.attendance.score, maxScore: topOverall.attendance.maxScore, detail: `${topOverall.attendance.rate}% · ${topOverall.attendance.presentDays}/${topOverall.attendance.totalDays}`, icon: CalendarDays, tone: "bg-linear-120 from-white to-primary-50 text-primary-700" },
-                  { label: lang === "ml" ? "ഹോംവർക്ക്" : "Homework", score: topOverall.homework.score, maxScore: topOverall.homework.maxScore, detail: `${topOverall.homework.rate}% · ${topOverall.homework.completed}/${topOverall.homework.assigned}`, icon: BookOpen, tone: "bg-linear-120 from-white to-sky-50/40 text-sky-700" },
-                  { label: lang === "ml" ? "പരീക്ഷ" : "Exams", score: topOverall.exam.score, maxScore: topOverall.exam.maxScore, detail: `${topOverall.exam.averagePercentage}% · ${topOverall.exam.examsCount}`, icon: GraduationCap, tone: "bg-linear-120 from-white to-amber-50 text-amber-700" },
-                  { label: lang === "ml" ? "ഇബാദത്ത്" : "Ibadah", score: topOverall.ibadah.score, maxScore: topOverall.ibadah.maxScore, detail: `${topOverall.ibadah.percentage}% · ${topOverall.ibadah.totalPrayers} ${lang === "ml" ? "നമസ്കാരങ്ങൾ" : "prayers"}`, icon: Heart, tone: "bg-linear-120 from-white to-violet-50/40 text-violet-700" },
+                  { label: lang === "ml" ? "ഹാജർ" : "Attendance", score: topOverall.attendance.score, maxScore: topOverall.attendance.maxScore, detail: `${topOverall.attendance.rate}% · ${topOverall.attendance.presentDays}/${topOverall.attendance.totalDays}`, icon: CalendarDays, tone: "bg-linear-120 from-white via-white  to-primary-50 text-primary-700" },
+                  { label: lang === "ml" ? "ഹോംവർക്ക്" : "Homework", score: topOverall.homework.score, maxScore: topOverall.homework.maxScore, detail: `${topOverall.homework.rate}% · ${topOverall.homework.completed}/${topOverall.homework.assigned}`, icon: BookOpen, tone: "bg-linear-120 from-white via-white to-sky-50/40 text-sky-700" },
+                  { label: lang === "ml" ? "പരീക്ഷ" : "Exams", score: topOverall.exam.score, maxScore: topOverall.exam.maxScore, detail: `${topOverall.exam.averagePercentage}% · ${topOverall.exam.examsCount}`, icon: GraduationCap, tone: "bg-linear-120 from-white via-white to-amber-50 text-amber-700" },
+                  { label: lang === "ml" ? "ഇബാദത്ത്" : "Ibadah", score: topOverall.ibadah.score, maxScore: topOverall.ibadah.maxScore, detail: `${topOverall.ibadah.percentage}% · ${topOverall.ibadah.totalPrayers} ${lang === "ml" ? "നമസ്കാരങ്ങൾ" : "prayers"}`, icon: Heart, tone: "bg-linear-120 from-white via-white to-violet-50/40 text-violet-700" },
                 ].map((pillar) => <div key={pillar.label} className={cn("min-w-0 p-4 sm:p-5", pillar.tone)}><div className="flex items-center gap-1.5 text-xs font-medium"><pillar.icon className="size-4 shrink-0" aria-hidden="true" />{pillar.label}</div><p className="mt-3 text-2xl font-bold leading-none tabular-nums text-gray-950 sm:text-3xl">{pillar.score}<span className="ml-0.5 text-xs font-normal text-gray-500">/{pillar.maxScore}</span></p><p className="mt-2 break-words text-xs leading-relaxed text-gray-600">{pillar.detail}</p></div>)}
               </ScoreHero>
             ) : topIbadah && (
               <div className="space-y-4">
                 <ScoreHero name={topIbadah.name} className={activeClass?.name} photoUrl={topIbadah.photoUrl} rank={`${lang === "ml" ? "റാങ്ക്" : "Rank"} 1/${ibadahData.length}`} score={topIbadah.score} percentage={topIbadah.scorePercentage} scoreLabel={lang === "ml" ? "സ്കോർ" : "Score"} heading={lang === "ml" ? "ക്ലാസിലെ മികച്ച ഇബാദത്ത് പ്രകടനം" : "Top Ibadah performance in your class"}>
                   {[
-                    { label: lang === "ml" ? "നമസ്കാരങ്ങൾ" : "Prayers", value: topIbadah.totalPrayers, icon: Heart, tone: "bg-linear-120 from-white to-primary-50/40 text-primary-700" },
-                    { label: lang === "ml" ? "പേജുകൾ" : "Pages", value: topIbadah.totalQuranPages, icon: BookOpen, tone: "bg-linear-120 from-white to-sky-50/40 text-sky-700" },
-                    { label: lang === "ml" ? "സ്ട്രീക്ക്" : "Streak", value: `${topIbadah.streak}d`, icon: Flame, tone: "bg-linear-120 from-white to-amber-50/40 text-amber-700" },
-                    { label: lang === "ml" ? "സ്ഥിരത" : "Consistency", value: `${topIbadah.consistency}%`, icon: Target, tone: "bg-linear-120 from-white to-violet-50/40 text-violet-700" },
+                    { label: lang === "ml" ? "നമസ്കാരങ്ങൾ" : "Prayers", value: topIbadah.totalPrayers, icon: Heart, tone: "bg-linear-120 from-white via-white to-primary-50/40 text-primary-700" },
+                    { label: lang === "ml" ? "പേജുകൾ" : "Pages", value: topIbadah.totalQuranPages, icon: BookOpen, tone: "bg-linear-120 from-white via-white to-sky-50/40 text-sky-700" },
+                    { label: lang === "ml" ? "സ്ട്രീക്ക്" : "Streak", value: `${topIbadah.streak}d`, icon: Flame, tone: "bg-linear-120 from-white via-white to-amber-50/40 text-amber-700" },
+                    { label: lang === "ml" ? "സ്ഥിരത" : "Consistency", value: `${topIbadah.consistency}%`, icon: Target, tone: "bg-linear-120 from-white via-white to-violet-50/40 text-violet-700" },
                   ].map((stat) => <div key={stat.label} className={cn("min-w-0 p-4 sm:p-5", stat.tone)}><div className="flex items-center gap-1.5 text-xs font-medium"><stat.icon className="size-4 shrink-0" aria-hidden="true" />{stat.label}</div><p className="mt-3 text-2xl font-bold leading-none tabular-nums text-gray-950 sm:text-3xl">{stat.value}</p></div>)}
                 </ScoreHero>
                 {Object.entries(topIbadah.customCounts ?? {}).some(([, value]) => value > 0) && <p className="rounded-2xl border border-gray-100 bg-white px-5 py-4 text-xs leading-relaxed text-gray-600">{Object.entries(topIbadah.customCounts ?? {}).filter(([, value]) => value > 0).map(([key, value]) => `${value} ${ibadahResponse?.customItems?.find((item) => item.key === key)?.label ?? key}`).join(" · ")}</p>}
               </div>
             )}
 
+            <ReportCard category={rankingCategory} lang={lang} count={performerCount} downloading={downloading} onDownload={handleDownload} />
+
             <section aria-label={listTitle} className="mb-10">
-              <div className="mb-4 flex items-center gap-3"><h2 className="min-w-0 flex-1 text-base font-semibold text-gray-950">{listTitle}</h2><span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600">{performerCount}</span></div>
+              <div className="mb-3 flex items-center gap-3"><h2 className="min-w-0 flex-1 text-base font-semibold text-gray-950">{listTitle}</h2><span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600">{performerCount}</span></div>
               <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100 bg-white">
                 {performerCount === 0 ? <p className="p-6 text-center text-sm text-gray-500">{lang === "ml" ? "ഈ കാലയളവിലെ വിവരങ്ങൾ ലഭ്യമല്ല" : "No performance records found for this period"}</p>
                   : isOverall ? overallData.map((performer) => (

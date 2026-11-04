@@ -126,7 +126,7 @@ export default function ParentBestPerformancePage() {
         <div className="space-y-5">
           <Tabs className="fixed bottom-12 left-1/2 -translate-1/2  z-12 " value={rankingCategory} onValueChange={(value) => setRankingCategory(value as "total" | "ibadah")}>
             <TabsList aria-label={lang === "ml" ? "റാങ്കിംഗ് വിഭാഗം" : "Ranking category"}
-              className="h-auto shadow-lg  bg-primary-50 text-primary-300 p-1">
+              className="h-auto shadow-lg  bg-primary-50 text-primary-300 p-1  border-[0.5px] border-white">
               <TabsTrigger value="total" className="  px-5 py-2 text-sm data-[state=active]:bg-white data-[state=active]:text-gray-950 data-[state=active]:shadow-none">
                 {lang === "ml" ? "ആകെ സ്കോർ" : "Overall"}
               </TabsTrigger>
@@ -169,10 +169,10 @@ export default function ParentBestPerformancePage() {
                     illustrated
                   >
                     {[
-                      { label: lang === "ml" ? "ഹാജർ" : "Attendance", score: childOverall.attendance.score, maxScore: childOverall.attendance.maxScore, detail: `${childOverall.attendance.rate}% · ${childOverall.attendance.presentDays}/${childOverall.attendance.totalDays}`, icon: CalendarDays, tone: "bg-linear-120 from-white to-primary-50 text-primary-700" },
-                      { label: lang === "ml" ? "ഹോംവർക്ക്" : "Homework", score: childOverall.homework.score, maxScore: childOverall.homework.maxScore, detail: `${childOverall.homework.rate}% · ${childOverall.homework.completed}/${childOverall.homework.assigned}`, icon: BookOpen, tone: "bg-linear-120 to-sky-50/40 from-white text-sky-700" },
-                      { label: lang === "ml" ? "പരീക്ഷ" : "Exams", score: childOverall.exam.score, maxScore: childOverall.exam.maxScore, detail: `${childOverall.exam.averagePercentage}% · ${childOverall.exam.examsCount}`, icon: GraduationCap, tone: "bg-linear-120  to-amber-50 text-amber-700 from-white" },
-                      { label: lang === "ml" ? "ഇബാദത്ത്" : "Ibadah", score: childOverall.ibadah.score, maxScore: childOverall.ibadah.maxScore, detail: `${childOverall.ibadah.percentage}% · ${childOverall.ibadah.totalPrayers} ${t("parentPages", "prayersLabel", lang)}`, icon: Heart, tone: "bg-linear-120 to-violet-50/40 from-white text-violet-700" },
+                      { label: lang === "ml" ? "ഹാജർ" : "Attendance", score: childOverall.attendance.score, maxScore: childOverall.attendance.maxScore, detail: `${childOverall.attendance.rate}% · ${childOverall.attendance.presentDays}/${childOverall.attendance.totalDays}`, icon: CalendarDays, tone: "bg-linear-120 via-white from-white to-primary-50 text-primary-700" },
+                      { label: lang === "ml" ? "ഹോംവർക്ക്" : "Homework", score: childOverall.homework.score, maxScore: childOverall.homework.maxScore, detail: `${childOverall.homework.rate}% · ${childOverall.homework.completed}/${childOverall.homework.assigned}`, icon: BookOpen, tone: "bg-linear-120 via-white from-white to-sky-50/40 text-sky-700" },
+                      { label: lang === "ml" ? "പരീക്ഷ" : "Exams", score: childOverall.exam.score, maxScore: childOverall.exam.maxScore, detail: `${childOverall.exam.averagePercentage}% · ${childOverall.exam.examsCount}`, icon: GraduationCap, tone: "bg-linear-120 via-white from-white to-amber-50 text-amber-700" },
+                      { label: lang === "ml" ? "ഇബാദത്ത്" : "Ibadah", score: childOverall.ibadah.score, maxScore: childOverall.ibadah.maxScore, detail: `${childOverall.ibadah.percentage}% · ${childOverall.ibadah.totalPrayers} ${t("parentPages", "prayersLabel", lang)}`, icon: Heart, tone: "bg-linear-120 via-white from-white to-violet-50/40 text-violet-700" },
                     ].map((pillar) => (
                       <div key={pillar.label} className={cn("min-w-0 p-4 sm:p-5", pillar.tone)}>
                         <div className="flex items-center gap-1.5 text-xs font-medium"><pillar.icon className="size-4 shrink-0" aria-hidden="true" />{pillar.label}</div>
@@ -198,10 +198,10 @@ export default function ParentBestPerformancePage() {
                     illustrated
                   >
                     {[
-                      { label: t("parentPages", "prayersLabel", lang), value: childIbadah.totalPrayers, icon: Heart, tone: "from-white bg-linear-120 to-primary-50/40 text-primary-700" },
-                      { label: t("parentPages", "pagesLabel", lang), value: childIbadah.totalQuranPages, icon: BookOpen, tone: "from-white bg-linear-120 to-sky-50/40 text-sky-700" },
-                      { label: t("parentPages", "streakLabel", lang), value: `${childIbadah.streak}d`, icon: Flame, tone: "from-white bg-linear-120 to-amber-50/40 text-amber-700" },
-                      { label: t("parentPages", "consistencyLabel", lang), value: `${childIbadah.consistency}%`, icon: Target, tone: "from-white bg-linear-120 to-violet-50/40 text-violet-700" },
+                      { label: t("parentPages", "prayersLabel", lang), value: childIbadah.totalPrayers, icon: Heart, tone: "from-white via-white bg-linear-120 to-primary-50/40 text-primary-700" },
+                      { label: t("parentPages", "pagesLabel", lang), value: childIbadah.totalQuranPages, icon: BookOpen, tone: "from-white via-white bg-linear-120 to-sky-50/40 text-sky-700" },
+                      { label: t("parentPages", "streakLabel", lang), value: `${childIbadah.streak}d`, icon: Flame, tone: "from-white via-white bg-linear-120 to-amber-50/40 text-amber-700" },
+                      { label: t("parentPages", "consistencyLabel", lang), value: `${childIbadah.consistency}%`, icon: Target, tone: "from-white via-white bg-linear-120 to-violet-50/40 text-violet-700" },
                     ].map((stat) => <div key={stat.label} className={cn("min-w-0 p-4 sm:p-5", stat.tone)}><div className="flex items-center gap-1.5 text-xs font-medium"><stat.icon className="size-4 shrink-0" aria-hidden="true" />{stat.label}</div><p className="mt-3 text-2xl font-bold leading-none tabular-nums text-gray-950 sm:text-3xl">{stat.value}</p></div>)}
                   </ScoreHero>
                   {Object.entries(childIbadah.customCounts ?? {}).some(([, value]) => value > 0) && (
@@ -214,7 +214,7 @@ export default function ParentBestPerformancePage() {
             )}
 
             <section aria-label={listTitle} className="mb-10">
-              <div className="mb-4 flex items-center gap-3">
+              <div className="mb-3 flex items-center gap-3">
                 <h2 className="min-w-0 flex-1 text-base font-semibold text-gray-950">{listTitle}</h2>
                 <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600">{performerCount}</span>
               </div>
