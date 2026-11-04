@@ -41,15 +41,15 @@ function ReportCard({ category, lang, count, downloading, onDownload, onPosters 
       <div className="relative z-10 flex h-full min-w-0 flex-col items-start justify-center pr-24 sm:pr-36">
         <h2 className="text-sm font-bold leading-5 text-gray-950 sm:text-base">{isMalayalam ? (category === "total" ? "ക്ലാസ് പ്രകടന റിപ്പോർട്ടും മികച്ച വിദ്യാർത്ഥികളുടെ പോസ്റ്ററുകളും" : "ഇബാദത്ത് പ്രകടന റിപ്പോർട്ടും മികച്ച വിദ്യാർത്ഥികളുടെ പോസ്റ്ററുകളും") : (category === "total" ? "Class performance report and top-student posters" : "Ibadah performance report and top-student posters")}</h2>
         {/* <p className="mt-1 text-xs leading-4 text-gray-600">{isMalayalam ? "ഈ കാലയളവിലെ മുഴുവൻ റാങ്കിംഗും ആദ്യ മൂന്ന് വിദ്യാർത്ഥികളുടെ വ്യക്തിഗത പോസ്റ്ററുകളും ലഭിക്കും." : "Get the full ranking for this period or a personalized poster for each of the top three students."}</p> */}
-        <ButtonGroup className="mt-4" aria-label={isMalayalam ? "പ്രകടന ഫയലുകൾ" : "Performance files"}>
+        <div className="mt-4 flex gap-2" aria-label={isMalayalam ? "പ്രകടന ഫയലുകൾ" : "Performance files"}>
           <Button type="button" size="xs" onClick={onDownload} disabled={count === 0 || downloading} aria-label={isMalayalam ? "റിപ്പോർട്ട് ഡൗൺലോഡ്" : "Download report"} className="gap-1.5 px-3">
-            {downloading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" />:<SquareChartGantt/>}
+            {downloading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" />:<SquareChartGantt size={16}/>}
             {isMalayalam ? "റിപ്പോർട്ട്" : "Report"}
           </Button>
           <Button type="button" size="xs" variant="outline" onClick={onPosters} disabled={count === 0} aria-label={isMalayalam ? "പോസ്റ്റർ തിരഞ്ഞെടുക്കുക" : "Choose poster"} className="bg-white px-3">
           <Image/>  {isMalayalam ? "പോസ്റ്റർ" : "Poster"}
           </Button>
-        </ButtonGroup>
+        </div>
       </div>
       <img src="/imgs/teacher/best-performance-report-art.webp" alt="" aria-hidden="true" className="pointer-events-none absolute bottom-0 right-0 size-28 object-contain sm:size-32" loading="lazy" />
     </section>

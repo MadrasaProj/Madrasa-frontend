@@ -3,6 +3,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { IllustratedEmptyState } from "@/components/ui/IllustratedEmptyState";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -37,7 +38,6 @@ import { useLanguageStore } from "@/store/language";
 import { t, type Lang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
-  Loader2,
   Receipt,
   Printer,
   IndianRupee,
@@ -52,6 +52,13 @@ import { PolarAngleAxis, RadialBar, RadialBarChart } from "recharts";
 
 const feeProgressChartConfig = {
   collected: { color: "#059669" },
+} satisfies ChartConfig;
+
+const feeStatusChartConfig = {
+  paid: { label: "Paid", color: "#059669" },
+  overdue: { label: "Overdue", color: "#dc2626" },
+  pending: { label: "Pending", color: "#f59e0b" },
+  waived: { label: "Waived", color: "#9ca3af" },
 } satisfies ChartConfig;
 
 const formatCurrency = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
@@ -262,34 +269,50 @@ function FeeSemiCircle({
   description: string;
 }) {
   const total = segments.reduce((sum, segment) => sum + segment.value, 0);
-  let position = 0;
-  const point = (fraction: number) => {
-    const angle = Math.PI * (1 - fraction);
-    return [100 + 78 * Math.cos(angle), 94 - 78 * Math.sin(angle)];
-  };
+  const chartData = [
+    {
+      ...Object.fromEntries(segments.map((segment, index) => [`segment${index}`, segment.value])),
+      empty: total === 0 ? 1 : 0,
+    },
+  ];
 
   return (
-    <svg viewBox="0 0 200 108" role="img" aria-label={description} className="mx-auto h-24 w-full max-w-52 sm:h-28">
-      <path d="M 22 94 A 78 78 0 0 1 178 94" fill="none" stroke="#e5e7eb" strokeWidth="17" strokeLinecap="round" />
-      {total > 0 && segments.map((segment, index) => {
-        const start = position;
-        position += segment.value / total;
-        if (segment.value <= 0) return null;
-        const [x1, y1] = point(start);
-        const [x2, y2] = point(position);
-        return (
-          <path
-            key={index}
-            d={`M ${x1} ${y1} A 78 78 0 0 1 ${x2} ${y2}`}
-            fill="none"
-            stroke={segment.color}
-            strokeWidth="17"
-          />
-        );
-      })}
-      <text x="100" y="72" textAnchor="middle" className="fill-gray-950 text-[23px] font-semibold">{value}</text>
-      <text x="100" y="89" textAnchor="middle" className="fill-gray-500 text-[13px] font-medium">{label}</text>
-    </svg>
+    <div className="relative mx-auto h-36 w-full max-w-72 sm:h-44" role="img" aria-label={description}>
+      <ChartContainer
+        config={feeStatusChartConfig}
+        initialDimension={{ width: 288, height: 176 }}
+        className="!aspect-auto h-full w-full"
+        aria-hidden="true"
+      >
+        <RadialBarChart
+          data={chartData}
+          startAngle={180}
+          endAngle={0}
+          cx="50%"
+          cy="92%"
+          innerRadius={88}
+          outerRadius={112}
+        >
+          <PolarAngleAxis type="number" domain={[0, Math.max(total, 1)]} tick={false} />
+          {segments.map((segment, index) => (
+            <RadialBar
+              key={index}
+              dataKey={`segment${index}`}
+              stackId="fees"
+              fill={segment.color}
+              isAnimationActive={false}
+            />
+          ))}
+          {total === 0 && (
+            <RadialBar dataKey="empty" fill="#e5e7eb" isAnimationActive={false} />
+          )}
+        </RadialBarChart>
+      </ChartContainer>
+      <div className="pointer-events-none absolute inset-x-0 bottom-3 text-center">
+        <div className="text-3xl font-semibold tabular-nums text-gray-950">{value}</div>
+        <div className="text-[16px] font-medium text-gray-500">{label}</div>
+      </div>
+    </div>
   );
 }
 
@@ -803,8 +826,25 @@ export default function TeacherFeesPage() {
       {error && <ApiErrorBanner message={error} onRetry={loadPayments} />}
 
       {payLoading ? (
-            <div className="flex items-center justify-center py-10 text-gray-400">
-              <Loader2 className="w-4 h-4 animate-spin" />
+            <div className="space-y-4" role="status" aria-label={t("common", "loading", lang)}>
+              <Skeleton className="h-44 rounded-2xl" />
+              <Skeleton className="h-5 w-28 rounded-lg" />
+              <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="flex items-center gap-3 px-4 py-4 sm:gap-4">
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <Skeleton className="h-4 w-2/5" />
+                      <Skeleton className="h-3 w-3/5" />
+                    </div>
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="ml-auto h-3 w-14" />
+                    </div>
+                    <Skeleton className="size-[30px] shrink-0 rounded-full" />
+                    <Skeleton className="h-5 w-5 shrink-0 rounded-md" />
+                  </div>
+                ))}
+              </div>
             </div>
           ) : feeTypes.length === 0 && payments.length === 0 && !error ? (
             <IllustratedEmptyState

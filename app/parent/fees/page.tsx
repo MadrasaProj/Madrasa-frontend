@@ -24,7 +24,6 @@ import {
 import { useStudentFeesBatch, usePaymentReceipt } from "@/lib/queries";
 import {
   IndianRupee,
-  Loader2,
   Receipt,
   Printer,
   AlertCircle,
@@ -393,7 +392,7 @@ function OneTimePaymentDrawer({
                   >
                     {receiptPending &&
                     receiptPaymentId === payment.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Skeleton className="h-4 w-4 shrink-0 rounded-full bg-white/50" />
                     ) : (
                       <Receipt className="h-4 w-4" />
                     )}
