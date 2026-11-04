@@ -17,7 +17,7 @@ import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 
 function totalMaxScore(performer: OverallBestPerformer) {
-  return performer.attendance.maxScore + performer.homework.maxScore + performer.exam.maxScore + performer.ibadah.maxScore;
+  return (performer.attendance.maxScore + performer.homework.maxScore + performer.exam.maxScore + performer.ibadah.maxScore) || 100;
 }
 
 function ScoreHero({
@@ -173,7 +173,7 @@ export default function ParentBestPerformancePage() {
                       { label: lang === "ml" ? "ഹോംവർക്ക്" : "Homework", score: childOverall.homework.score, maxScore: childOverall.homework.maxScore, detail: `${childOverall.homework.rate}% · ${childOverall.homework.completed}/${childOverall.homework.assigned}`, icon: BookOpen, tone: "bg-linear-120 via-white from-white to-sky-50/40 text-sky-700" },
                       { label: lang === "ml" ? "പരീക്ഷ" : "Exams", score: childOverall.exam.score, maxScore: childOverall.exam.maxScore, detail: `${childOverall.exam.averagePercentage}% · ${childOverall.exam.examsCount}`, icon: GraduationCap, tone: "bg-linear-120 via-white from-white to-amber-50 text-amber-700" },
                       { label: lang === "ml" ? "ഇബാദത്ത്" : "Ibadah", score: childOverall.ibadah.score, maxScore: childOverall.ibadah.maxScore, detail: `${childOverall.ibadah.percentage}% · ${childOverall.ibadah.totalPrayers} ${t("parentPages", "prayersLabel", lang)}`, icon: Heart, tone: "bg-linear-120 via-white from-white to-violet-50/40 text-violet-700" },
-                    ].map((pillar) => (
+                    ].filter((pillar) => pillar.maxScore > 0).map((pillar) => (
                       <div key={pillar.label} className={cn("min-w-0 p-4 sm:p-5", pillar.tone)}>
                         <div className="flex items-center gap-1.5 text-xs font-medium"><pillar.icon className="size-4 shrink-0" aria-hidden="true" />{pillar.label}</div>
                         <p className="mt-3 text-2xl font-bold leading-none tabular-nums text-gray-950 sm:text-3xl">{pillar.score}<span className="ml-0.5 text-xs font-normal text-gray-500">/{pillar.maxScore}</span></p>
@@ -226,10 +226,10 @@ export default function ParentBestPerformancePage() {
                           <p className="truncate text-sm font-semibold text-gray-950">{performer.name}{ids.includes(performer.studentId) && <span className="ml-2 text-xs font-medium text-primary-700">{t("parentPages", "myChildBestPerf", lang)}</span>}</p>
                           <p className="mt-1 text-xs text-gray-500">{performer.className} · {performer.adno}</p>
                           <p className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px] leading-relaxed text-gray-500 sm:text-xs">
-                            <BestPerformanceMetric icon={CalendarDays} iconClassName="text-primary-700" label={lang === "ml" ? "ഹാജർ" : "Attendance"} value={`${performer.attendance.score}/${performer.attendance.maxScore}`} />
-                            <BestPerformanceMetric icon={BookOpen} iconClassName="text-sky-700" label={lang === "ml" ? "ഹോംവർക്ക്" : "Homework"} value={`${performer.homework.score}/${performer.homework.maxScore}`} />
-                            <BestPerformanceMetric icon={GraduationCap} iconClassName="text-amber-700" label={lang === "ml" ? "പരീക്ഷ" : "Exams"} value={`${performer.exam.score}/${performer.exam.maxScore}`} />
-                            <BestPerformanceMetric icon={Heart} iconClassName="text-violet-700" label={lang === "ml" ? "ഇബാദത്ത്" : "Ibadah"} value={`${performer.ibadah.score}/${performer.ibadah.maxScore}`} />
+                            {performer.attendance.maxScore > 0 && <BestPerformanceMetric icon={CalendarDays} iconClassName="text-primary-700" label={lang === "ml" ? "ഹാജർ" : "Attendance"} value={`${performer.attendance.score}/${performer.attendance.maxScore}`} />}
+                            {performer.homework.maxScore > 0 && <BestPerformanceMetric icon={BookOpen} iconClassName="text-sky-700" label={lang === "ml" ? "ഹോംവർക്ക്" : "Homework"} value={`${performer.homework.score}/${performer.homework.maxScore}`} />}
+                            {performer.exam.maxScore > 0 && <BestPerformanceMetric icon={GraduationCap} iconClassName="text-amber-700" label={lang === "ml" ? "പരീക്ഷ" : "Exams"} value={`${performer.exam.score}/${performer.exam.maxScore}`} />}
+                            {performer.ibadah.maxScore > 0 && <BestPerformanceMetric icon={Heart} iconClassName="text-violet-700" label={lang === "ml" ? "ഇബാദത്ത്" : "Ibadah"} value={`${performer.ibadah.score}/${performer.ibadah.maxScore}`} />}
                           </p>
                         </div>
                         <strong className="shrink-0 text-lg font-semibold tabular-nums text-gray-950">{performer.totalScore}<span className="text-xs font-normal text-gray-400">/{totalMaxScore(performer)}</span></strong>

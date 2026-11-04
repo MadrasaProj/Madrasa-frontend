@@ -310,7 +310,7 @@ export default function TeacherAttendancePage() {
         setLeaveRequests(leaveRes?.requests ?? []);
 
         const leaveByStudent = new Map(
-          (leaveRes?.requests ?? []).map((lr) => [lr.student.id, lr]),
+          (leaveRes?.requests ?? []).filter((lr) => lr.reasonType !== "EARLY_LEAVE").map((lr) => [lr.student.id, lr]),
         );
         const map = new Map<string, LocalRecord>();
         const hasExistingRecords =

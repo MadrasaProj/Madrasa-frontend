@@ -1392,6 +1392,7 @@ const translations = {
     rejectedLabel: { en: "Rejected", ml: "നിരസിച്ചു" },
     leaveLabel: { en: "Leave", ml: "ലീവ്" },
     sickLabel: { en: "Sick", ml: "അസുഖം" },
+    earlyLeaveLabel: { en: "Early leave", ml: "നേരത്തേ പോകാൻ" },
     descriptionLabel: { en: "Description", ml: "വിവരണം" },
     searchNameAdmNo: { en: "Search by name or admission no...", ml: "പേരോ അഡ്‌മിഷൻ നമ്പറോ തിരയുക..." },
     noLeaveRequests: { en: "No requests found", ml: "അപേക്ഷകളൊന്നും കണ്ടെത്തിയില്ല" },
@@ -2115,6 +2116,7 @@ const translations = {
     rejectedLabel: { en: "Rejected", ml: "നിരസിച്ചു" },
     leaveLabel: { en: "Leave", ml: "ലീവ്" },
     sickLabel: { en: "Sick", ml: "അസുഖം" },
+    earlyLeaveLabel: { en: "Early leave", ml: "നേരത്തേ പോകാൻ" },
     // Homework page
     homeworkPageTitle: { en: "Homework", ml: "ഹോംവർക്ക്" },
     searchHomework: { en: "Search homework...", ml: "ഹോംവർക്ക് തിരയുക..." },

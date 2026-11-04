@@ -4,12 +4,14 @@ const API_ORIGIN = import.meta.env.VITE_API_ORIGIN ?? "http://localhost:3000";
 const API_BASE_PATH = import.meta.env.VITE_API_BASE_PATH ?? "/api/v2";
 const DEFAULT_API_BASE = `${API_ORIGIN}${API_BASE_PATH}`;
 
-export type LeaveReasonType = "LEAVE" | "SICK";
+import type { RequestReasonType, RequestConfig } from "@/lib/request-reasons";
+export type LeaveReasonType = RequestReasonType;
 export type LeaveRequestStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 export interface LeaveRequest {
   id: string;
   reasonType: LeaveReasonType;
+  config: RequestConfig;
   description: string;
   status: LeaveRequestStatus;
   reviewNote: string | null;
@@ -32,6 +34,7 @@ export interface LeaveRequestsListResponse {
 export interface CreateLeaveRequestPayload {
   studentId: string;
   reasonType: LeaveReasonType;
+  config?: RequestConfig;
   description: string;
   startDate: string;
   endDate?: string;

@@ -1,3 +1,4 @@
+import { REQUEST_REASON_SCHEMA as REASON_CONFIG, REQUEST_REASON_TYPES, getDefaultRequestConfig, isValidLeaveTime, getRequestConfigSummary, type RequestConfig } from "@/lib/request-reasons";
 import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -18,8 +19,6 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
-  CalendarDays,
-  HeartPulse,
   Search,
   UserCheck,
   Plus,
@@ -57,24 +56,6 @@ const STATUS_CONFIG: Record<
   },
 };
 
-const REASON_CONFIG: Record<
-  LeaveReasonType,
-  { labelKey: string; color: string; bg: string; icon: typeof CalendarDays }
-> = {
-  LEAVE: {
-    labelKey: "leaveLabel",
-    color: "text-amber-600",
-    bg: "bg-amber-50",
-    icon: CalendarDays,
-  },
-  SICK: {
-    labelKey: "sickLabel",
-    color: "text-orange-600",
-    bg: "bg-orange-50",
-    icon: HeartPulse,
-  },
-};
-
 export default function ParentLeaveRequestsPage() {
   const { user, accessToken, activeClientId, activeStudentId } = useAuthStore();
   const { lang } = useLanguageStore();
@@ -87,6 +68,9 @@ export default function ParentLeaveRequestsPage() {
   const [filter, setFilter] = useState<StatusFilter>("ALL");
   const [search, setSearch] = useState("");
   const [reasonType, setReasonType] = useState<LeaveReasonType>("LEAVE");
+  const [config, setConfig] = useState<RequestConfig>({});
+  const reasonSchema = REASON_CONFIG[reasonType];
+  const invalidLeaveTime = Boolean(reasonSchema.configs.leaveTime?.required && !isValidLeaveTime(config.leaveTime));
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -111,16 +95,18 @@ export default function ParentLeaveRequestsPage() {
   const createMutation = useCreateLeaveRequest({ clientId: cid, token });
 
   const handleSubmit = async () => {
-    if (!cid || !token || !studentId || !description.trim() || !startDate || startDate < today || (endDate && endDate < startDate)) return;
+    if (invalidLeaveTime || !cid || !token || !studentId || !description.trim() || !startDate || startDate < today || (endDate && endDate < startDate)) return;
     try {
       await createMutation.mutateAsync({
         studentId,
         reasonType,
+        config,
         description: description.trim(),
         startDate,
         endDate: endDate || undefined,
       });
       setReasonType("LEAVE");
+      setConfig({});
       setDescription("");
       setStartDate("");
       setEndDate("");
@@ -280,6 +266,11 @@ export default function ParentLeaveRequestsPage() {
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{t("parentPages", "descriptionLabel", lang)}</p>
                 <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{request.description}</p>
+                {getRequestConfigSummary(request.reasonType, request.config ?? {}, lang) && (
+                  <p className="mt-2 text-sm text-gray-600">
+                    {lang === "ml" ? "ദിവസങ്ങൾ" : "Days"}: {getRequestConfigSummary(request.reasonType, request.config ?? {}, lang)}
+                  </p>
+                )}
               </div>
               <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-gray-500">
                 <span>{t("parentPages", "submittedLabel", lang)}: {new Date(request.createdAt).toLocaleDateString()}</span>
@@ -317,7 +308,7 @@ export default function ParentLeaveRequestsPage() {
             <Button
               type="button"
               onClick={handleSubmit}
-              disabled={createMutation.isPending || !description.trim() || !startDate || startDate < today || Boolean(endDate && endDate < startDate)}
+              disabled={invalidLeaveTime || createMutation.isPending || !description.trim() || !startDate || startDate < today || Boolean(endDate && endDate < startDate)}
             >
               {t("parentPages", "submitLabel", lang)}
             </Button>
@@ -328,16 +319,20 @@ export default function ParentLeaveRequestsPage() {
           {createError && <ApiErrorBanner message={createError} />}
           <div className="space-y-2">
             <p className="text-sm font-medium">{t("parentPages", "reasonType", lang)}</p>
-            <Tabs value={reasonType} onValueChange={(value) => setReasonType(value as LeaveReasonType)}>
-              <TabsList className={reasonType === "LEAVE" ? "bg-amber-50" : "bg-orange-50"}>
-                {(["LEAVE", "SICK"] as const).map((type) => {
+            <Tabs value={reasonType} onValueChange={(value) => {
+              const reason = value as LeaveReasonType;
+              setReasonType(reason);
+              setConfig(getDefaultRequestConfig(reason));
+            }}>
+              <TabsList className={cn("h-auto flex-wrap", reasonSchema.bg)}>
+                {REQUEST_REASON_TYPES.map((type) => {
                   const reason = REASON_CONFIG[type];
                   const ReasonIcon = reason.icon;
                   return (
                     <TabsTrigger
                       key={type}
                       value={type}
-                      className={type === "LEAVE" ? "gap-1.5 data-[state=active]:bg-amber-100 data-[state=active]:text-amber-800" : "gap-1.5 data-[state=active]:bg-orange-100 data-[state=active]:text-orange-800"}
+                      className="gap-1.5"
                     >
                       <ReasonIcon className="size-4" />
                       {t("parentPages", reason.labelKey as any, lang)}
@@ -359,8 +354,49 @@ export default function ParentLeaveRequestsPage() {
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {reasonSchema.configs.leaveTime && (
             <div className="space-y-2">
+              <label htmlFor="early-leave-time" className="text-sm font-medium">
+                {lang === "ml" ? "പോകുന്ന സമയം" : "Leave time"}
+              </label>
+              <input
+                id="early-leave-time"
+                type="time"
+                step={60}
+                required={reasonSchema.configs.leaveTime.required}
+                value={typeof config.leaveTime === "string" ? config.leaveTime : ""}
+                onChange={(event) => setConfig({ ...config, leaveTime: event.target.value })}
+                className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/30"
+              />
+            </div>
+          )}
+
+          {reasonSchema.configs.days && (
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">{lang === "ml" ? "ദിവസങ്ങൾ" : "Days"}</legend>
+              <div className="flex flex-wrap gap-2">
+                {reasonSchema.configs.days.options.map((day) => {
+                  const days = Array.isArray(config.days) ? config.days as string[] : [];
+                  const selected = days.includes(day.value);
+                  return (
+                    <Button key={day.value} type="button" size="sm" variant={selected ? "default" : "outline"}
+                      aria-pressed={selected}
+                      onClick={() => {
+                        const next = day.value === "all" ? ["all"] : selected
+                          ? days.filter(value => value !== day.value)
+                          : [...days.filter(value => value !== "all"), day.value];
+                        setConfig({ ...config, days: next.length ? next : ["all"] });
+                      }}>
+                      {lang === "ml" ? day.ml : day.en}
+                    </Button>
+                  );
+                })}
+              </div>
+            </fieldset>
+          )}
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {reasonSchema.startDate && <div className="space-y-2">
               <label htmlFor="leave-start-date" className="text-sm font-medium">{t("parentPages", "startDateLabel", lang)}</label>
               <DatePickerInput
                 id="leave-start-date"
@@ -373,8 +409,8 @@ export default function ParentLeaveRequestsPage() {
                 disableFuture={false}
                 minDate={today}
               />
-            </div>
-            <div className="space-y-2">
+            </div>}
+            {reasonSchema.endDate && <div className="space-y-2">
               <label htmlFor="leave-end-date" className="text-sm font-medium">{t("parentPages", "endDateLabel", lang)}</label>
               <DatePickerInput
                 id="leave-end-date"
@@ -386,7 +422,7 @@ export default function ParentLeaveRequestsPage() {
                 allowClear
                 clearLabel={t("parentPages", "clearDateLabel", lang)}
               />
-            </div>
+            </div>}
           </div>
         </div>
       </ResponsivePopover>

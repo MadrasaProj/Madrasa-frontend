@@ -1,3 +1,4 @@
+import { REQUEST_REASON_SCHEMA as REASON_CONFIG, getRequestConfigSummary } from "@/lib/request-reasons";
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -17,7 +18,6 @@ import {
   getPendingLeaveRequests,
   reviewLeaveRequest,
   type LeaveRequest,
-  type LeaveReasonType,
 } from "@/lib/leave-requests-api";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
@@ -30,13 +30,7 @@ import {
   FilePen,
 } from "lucide-react";
 
-const REASON_CONFIG: Record<
-  LeaveReasonType,
-  { labelKey: string; color: string; bg: string }
-> = {
-  LEAVE: { labelKey: "leaveLabel", color: "text-amber-600", bg: "bg-amber-50" },
-  SICK: { labelKey: "sickLabel", color: "text-orange-600", bg: "bg-orange-50" },
-};
+
 export default function TeacherLeaveRequestsPage() {
   const queryClient = useQueryClient();
   const { user, accessToken, activeClientId } = useAuthStore();
@@ -243,6 +237,11 @@ export default function TeacherLeaveRequestsPage() {
                     {t("teacherPages", "descriptionLabel", lang)}
                   </p>
                   <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{request.description}</p>
+                {getRequestConfigSummary(request.reasonType, request.config ?? {}, lang) && (
+                  <p className="mt-2 text-sm text-gray-600">
+                    {lang === "ml" ? "ദിവസങ്ങൾ" : "Days"}: {getRequestConfigSummary(request.reasonType, request.config ?? {}, lang)}
+                  </p>
+                )}
                 </div>
 
                 {request.reviewedBy && request.status !== "PENDING" && (
