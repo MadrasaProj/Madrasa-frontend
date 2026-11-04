@@ -104,7 +104,7 @@ export default function ParentElectionsPage() {
       {/* ── My Children Info ── */}
       <motion.div
         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-        className="bg-primary-50 border border-primary-100 rounded-2xl p-3 lg:p-4 mb-4 flex items-center gap-3"
+        className="bg-primary-50 border border-primary-100 rounded-2xl p-3 lg:p-4 mb-3 flex items-center gap-3"
       >
         <Users className="w-5 h-5 text-primary-700 shrink-0" />
         <div>
