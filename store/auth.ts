@@ -1,3 +1,4 @@
+﻿import { unregisterPushToken } from '@/lib/fcm-register';
 import { create } from "zustand";
 import type { StudentInfo } from "@/lib/auth-api";
 import { getProfile, getParentStudents } from "@/lib/auth-api";
@@ -325,6 +326,8 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
   },
 
   logout: (role) => {
+    const currentClientId = get().user?.clientId ?? get().activeClientId;
+    void unregisterPushToken(currentClientId ?? undefined);
     const currentRole = role ?? get().user?.role ?? null;
     if (currentRole) {
       removeTokenForRole(currentRole as UserRole);
@@ -360,6 +363,8 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
   },
 
   logoutAll: () => {
+    const currentClientId = get().user?.clientId ?? get().activeClientId;
+    void unregisterPushToken(currentClientId ?? undefined);
     for (const r of ALL_ROLES) removeTokenForRole(r);
     if (typeof window !== "undefined") localStorage.removeItem(LEGACY_KEY);
     set({

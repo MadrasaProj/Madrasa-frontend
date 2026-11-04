@@ -2,6 +2,7 @@ import { initializeApp, FirebaseApp } from "firebase/app";
 import {
   getMessaging,
   getToken,
+  deleteToken,
   Messaging,
   MessagePayload,
   onMessage,
@@ -25,27 +26,24 @@ export function getFirebaseApp(): FirebaseApp | null {
     return null;
   }
   if (!app) {
-    try {
-      app = initializeApp(firebaseConfig);
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error("Firebase initialization failed:", err);
-      return null;
-    }
+    app = initializeApp(firebaseConfig);
   }
   return app;
 }
 
 export function getFirebaseMessaging(): Messaging | null {
-  if (messaging) return messaging;
-  const firebaseApp = getFirebaseApp();
-  if (!firebaseApp) return null;
-  try {
-    messaging = getMessaging(firebaseApp);
-    return messaging;
-  } catch {
+  const fbApp = getFirebaseApp();
+  if (!fbApp) {
     return null;
   }
+  if (!messaging && typeof window !== "undefined" && "serviceWorker" in navigator) {
+    try {
+      messaging = getMessaging(fbApp);
+    } catch {
+      messaging = null;
+    }
+  }
+  return messaging;
 }
 
 export async function requestFcmToken(
@@ -94,6 +92,32 @@ export async function requestFcmToken(
   } catch (err) {
     console.error("[FCM] getToken failed:", err);
     return null;
+  }
+}
+
+export async function deleteFcmToken(): Promise<boolean> {
+  const msg = getFirebaseMessaging();
+  if (!msg) return false;
+  try {
+    return await deleteToken(msg);
+  } catch (err) {
+    console.error("[FCM] deleteToken failed:", err);
+    return false;
+  }
+}
+
+export async function dismissActiveNotifications(): Promise<void> {
+  if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+  try {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    for (const reg of registrations) {
+      const notifs = await reg.getNotifications();
+      for (const n of notifs) {
+        n.close();
+      }
+    }
+  } catch (err) {
+    console.warn("[FCM] Failed to dismiss active notifications:", err);
   }
 }
 
