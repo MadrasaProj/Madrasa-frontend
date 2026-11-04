@@ -102,7 +102,7 @@ export function ResponsivePopover({
         role="dialog"
         aria-modal="true"
         className={cn(
-          "fixed inset-0 z-50 flex h-dvh max-h-dvh w-screen flex-col bg-white text-gray-900 shadow-2xl",
+          "fixed inset-0 z-50 flex h-dvh max-h-dvh w-screen flex-col bg-white text-gray-900 shadow-2xl md:left-auto md:right-0 md:w-full md:max-w-[400px]",
           className,
         )}
       >
@@ -178,10 +178,10 @@ export function ResponsivePopover({
       <DrawerContent
         className={cn(
           "bg-white text-gray-900 shadow-2xl",
-          compact ? "mx-auto w-full max-w-md max-h-[92dvh]" : isBottom ? "max-h-[92dvh]" : wideDesktopDrawer ? "h-full max-h-dvh max-w-none" : "h-full max-h-dvh w-full sm:max-w-md",
+          compact ? "mx-auto w-full max-w-md max-h-[92dvh]" : isBottom ? "max-h-[92dvh]" : "h-full max-h-dvh w-full md:max-w-[400px]",
           className,
         )}
-        style={wideDesktopDrawer ? { "--drawer-content-width": "90vw" } as React.CSSProperties : undefined}
+        style={wideDesktopDrawer ? { "--drawer-content-width": "400px" } as React.CSSProperties : undefined}
       >
         {beforeHeader}
         {(title || description || headerAction || showCloseButton || showBackButton) && (
