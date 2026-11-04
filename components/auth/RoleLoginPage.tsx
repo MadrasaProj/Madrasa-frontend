@@ -391,8 +391,8 @@ export default function RoleLoginPage({
         
         </div>
 
-<div className="h-[170px]"></div>
-        <div style={{boxShadow:'#dcf2ec 0px -5px 32px -6px'}} className="  bg-white p-6 py-10 fixed bottom-0 left-0 w-full rounded-t-4xl  ">
+        <div className="h-[170px] sm:hidden"></div>
+        <div style={{boxShadow:'#dcf2ec 0px -5px 32px -6px'}} className="  bg-white p-6 py-10 fixed bottom-0 left-0 w-full rounded-t-4xl sm:static sm:w-full sm:rounded-3xl sm:border sm:border-gray-100 sm:p-8 sm:mt-2  ">
           <form onSubmit={handleLogin} className="space-y-4">
             {type !== "PARENT" && (
               <div>

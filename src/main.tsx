@@ -14,6 +14,18 @@ import "@leafer-in/export";
 
 // Capture PWA install prompt globally and synchronize install status
 if (typeof window !== "undefined") {
+  // Auto-recover from chunk loading errors after major deployments
+  window.addEventListener("vite:preloadError", (event) => {
+    event.preventDefault();
+    const key = "vite_preload_error_reload";
+    const last = sessionStorage.getItem(key);
+    const now = Date.now();
+    if (!last || now - parseInt(last, 10) > 10000) {
+      sessionStorage.setItem(key, String(now));
+      window.location.reload();
+    }
+  });
+
   if (isPwaInstalledSync()) {
     markPwaAsInstalled();
   } else {

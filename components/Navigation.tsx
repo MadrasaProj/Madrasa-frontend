@@ -960,7 +960,7 @@ export function Sidebar({
         </nav>
 
         {/* ── Mobile sidebar utilities ── */}
-        <div className="lg:hidden px-4 py-3 border-t border-gray-100 bg-gray-50 space-y-1 shrink-0">
+        <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 space-y-1 shrink-0">
           <div className="flex items-center justify-between gap-2 px-3 py-2">
             <span className="text-xs  text-gray-400 uppercase tracking-wider">
               {lang === "ml" ? "ഭാഷ" : "Language"}

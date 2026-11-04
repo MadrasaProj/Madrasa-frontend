@@ -58,7 +58,7 @@ export function PageSkeleton({ className }: SkeletonProps) {
 
 export function DashboardLayoutSkeleton() {
   return (
-    <div className="min-h-[100svh] max-w-3xl mx-auto bg-primary-50/50 px-4 py-6" role="status" aria-label="Loading dashboard">
+    <div className="min-h-[100svh] w-full max-w-3xl lg:max-w-7xl lg:pl-64 mx-auto bg-primary-50/50 px-4 py-6" role="status" aria-label="Loading dashboard">
       <div className="flex items-center justify-between mb-8">
         <Skeleton className="h-10 w-36 rounded-xl" />
         <Skeleton className="h-10 w-10 rounded-full" />
