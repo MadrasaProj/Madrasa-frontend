@@ -24,7 +24,7 @@ import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 
 function totalMaxScore(performer: OverallBestPerformer) {
-  return performer.attendance.maxScore + performer.homework.maxScore + performer.exam.maxScore + performer.ibadah.maxScore;
+  return (performer.attendance.maxScore + performer.homework.maxScore + performer.exam.maxScore + performer.ibadah.maxScore) || 100;
 }
 
 function ReportCard({ category, lang, count, downloading, onDownload, onPosters }: {
@@ -41,15 +41,15 @@ function ReportCard({ category, lang, count, downloading, onDownload, onPosters 
       <div className="relative z-10 flex h-full min-w-0 flex-col items-start justify-center pr-24 sm:pr-36">
         <h2 className="text-sm font-bold leading-5 text-gray-950 sm:text-base">{isMalayalam ? (category === "total" ? "ക്ലാസ് പ്രകടന റിപ്പോർട്ടും മികച്ച വിദ്യാർത്ഥികളുടെ പോസ്റ്ററുകളും" : "ഇബാദത്ത് പ്രകടന റിപ്പോർട്ടും മികച്ച വിദ്യാർത്ഥികളുടെ പോസ്റ്ററുകളും") : (category === "total" ? "Class performance report and top-student posters" : "Ibadah performance report and top-student posters")}</h2>
         {/* <p className="mt-1 text-xs leading-4 text-gray-600">{isMalayalam ? "ഈ കാലയളവിലെ മുഴുവൻ റാങ്കിംഗും ആദ്യ മൂന്ന് വിദ്യാർത്ഥികളുടെ വ്യക്തിഗത പോസ്റ്ററുകളും ലഭിക്കും." : "Get the full ranking for this period or a personalized poster for each of the top three students."}</p> */}
-        <ButtonGroup className="mt-4" aria-label={isMalayalam ? "പ്രകടന ഫയലുകൾ" : "Performance files"}>
+        <div className="mt-4 flex gap-2" aria-label={isMalayalam ? "പ്രകടന ഫയലുകൾ" : "Performance files"}>
           <Button type="button" size="xs" onClick={onDownload} disabled={count === 0 || downloading} aria-label={isMalayalam ? "റിപ്പോർട്ട് ഡൗൺലോഡ്" : "Download report"} className="gap-1.5 px-3">
-            {downloading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" />:<SquareChartGantt/>}
+            {downloading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" />:<SquareChartGantt size={16}/>}
             {isMalayalam ? "റിപ്പോർട്ട്" : "Report"}
           </Button>
           <Button type="button" size="xs" variant="outline" onClick={onPosters} disabled={count === 0} aria-label={isMalayalam ? "പോസ്റ്റർ തിരഞ്ഞെടുക്കുക" : "Choose poster"} className="bg-white px-3">
           <Image/>  {isMalayalam ? "പോസ്റ്റർ" : "Poster"}
           </Button>
-        </ButtonGroup>
+        </div>
       </div>
       <img src="/imgs/teacher/best-performance-report-art.webp" alt="" aria-hidden="true" className="pointer-events-none absolute bottom-0 right-0 size-28 object-contain sm:size-32" loading="lazy" />
     </section>
@@ -193,7 +193,7 @@ export default function TeacherBestPerformancePage() {
                   { label: lang === "ml" ? "ഹോംവർക്ക്" : "Homework", score: topOverall.homework.score, maxScore: topOverall.homework.maxScore, detail: `${topOverall.homework.rate}% · ${topOverall.homework.completed}/${topOverall.homework.assigned}`, icon: BookOpen, tone: "bg-linear-120 from-white via-white to-sky-50/40 text-sky-700" },
                   { label: lang === "ml" ? "പരീക്ഷ" : "Exams", score: topOverall.exam.score, maxScore: topOverall.exam.maxScore, detail: `${topOverall.exam.averagePercentage}% · ${topOverall.exam.examsCount}`, icon: GraduationCap, tone: "bg-linear-120 from-white via-white to-amber-50 text-amber-700" },
                   { label: lang === "ml" ? "ഇബാദത്ത്" : "Ibadah", score: topOverall.ibadah.score, maxScore: topOverall.ibadah.maxScore, detail: `${topOverall.ibadah.percentage}% · ${topOverall.ibadah.totalPrayers} ${lang === "ml" ? "നമസ്കാരങ്ങൾ" : "prayers"}`, icon: Heart, tone: "bg-linear-120 from-white via-white to-violet-50/40 text-violet-700" },
-                ].map((pillar) => <div key={pillar.label} className={cn("min-w-0 p-4 sm:p-5", pillar.tone)}><div className="flex items-center gap-1.5 text-xs font-medium"><pillar.icon className="size-4 shrink-0" aria-hidden="true" />{pillar.label}</div><p className="mt-3 text-2xl font-bold leading-none tabular-nums text-gray-950 sm:text-3xl">{pillar.score}<span className="ml-0.5 text-xs font-normal text-gray-500">/{pillar.maxScore}</span></p><p className="mt-2 break-words text-xs leading-relaxed text-gray-600">{pillar.detail}</p></div>)}
+                ].filter((pillar) => pillar.maxScore > 0).map((pillar) => <div key={pillar.label} className={cn("min-w-0 p-4 sm:p-5", pillar.tone)}><div className="flex items-center gap-1.5 text-xs font-medium"><pillar.icon className="size-4 shrink-0" aria-hidden="true" />{pillar.label}</div><p className="mt-3 text-2xl font-bold leading-none tabular-nums text-gray-950 sm:text-3xl">{pillar.score}<span className="ml-0.5 text-xs font-normal text-gray-500">/{pillar.maxScore}</span></p><p className="mt-2 break-words text-xs leading-relaxed text-gray-600">{pillar.detail}</p></div>)}
               </ScoreHero>
             ) : topIbadah && (
               <div className="space-y-4">
@@ -245,10 +245,10 @@ export default function TeacherBestPerformancePage() {
                         <p className="truncate text-sm font-semibold text-gray-950">{performer.name}</p>
                         <p className="mt-1 text-xs text-gray-500">{performer.className} · {performer.adno}</p>
                         <p className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px] leading-relaxed text-gray-500 sm:text-xs">
-                          <BestPerformanceMetric icon={CalendarDays} iconClassName="text-primary-700" label={lang === "ml" ? "ഹാജർ" : "Attendance"} value={`${performer.attendance.score}/${performer.attendance.maxScore}`} />
-                          <BestPerformanceMetric icon={BookOpen} iconClassName="text-sky-700" label={lang === "ml" ? "ഹോംവർക്ക്" : "Homework"} value={`${performer.homework.score}/${performer.homework.maxScore}`} />
-                          <BestPerformanceMetric icon={GraduationCap} iconClassName="text-amber-700" label={lang === "ml" ? "പരീക്ഷ" : "Exams"} value={`${performer.exam.score}/${performer.exam.maxScore}`} />
-                          <BestPerformanceMetric icon={Heart} iconClassName="text-violet-700" label={lang === "ml" ? "ഇബാദത്ത്" : "Ibadah"} value={`${performer.ibadah.score}/${performer.ibadah.maxScore}`} />
+                          {performer.attendance.maxScore > 0 && <BestPerformanceMetric icon={CalendarDays} iconClassName="text-primary-700" label={lang === "ml" ? "ഹാജർ" : "Attendance"} value={`${performer.attendance.score}/${performer.attendance.maxScore}`} />}
+                          {performer.homework.maxScore > 0 && <BestPerformanceMetric icon={BookOpen} iconClassName="text-sky-700" label={lang === "ml" ? "ഹോംവർക്ക്" : "Homework"} value={`${performer.homework.score}/${performer.homework.maxScore}`} />}
+                          {performer.exam.maxScore > 0 && <BestPerformanceMetric icon={GraduationCap} iconClassName="text-amber-700" label={lang === "ml" ? "പരീക്ഷ" : "Exams"} value={`${performer.exam.score}/${performer.exam.maxScore}`} />}
+                          {performer.ibadah.maxScore > 0 && <BestPerformanceMetric icon={Heart} iconClassName="text-violet-700" label={lang === "ml" ? "ഇബാദത്ത്" : "Ibadah"} value={`${performer.ibadah.score}/${performer.ibadah.maxScore}`} />}
                         </p>
                       </div>
                       <div className="shrink-0 text-lg font-semibold tabular-nums text-gray-950">{performer.totalScore}/ <div className="text-xs font-normal text-gray-400">{totalMaxScore(performer)}</div></div>

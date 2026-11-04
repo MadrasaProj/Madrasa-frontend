@@ -139,10 +139,10 @@ export async function downloadBestPerformanceReport({ category, className, from,
       ctx.fillText(fit(ctx, student.adno || "—", 350), margin + 80, y + 51);
 
       const metrics = isOverall ? [
-        `${(student as OverallBestPerformer).attendance.score}/${(student as OverallBestPerformer).attendance.maxScore}`,
-        `${(student as OverallBestPerformer).homework.score}/${(student as OverallBestPerformer).homework.maxScore}`,
-        `${(student as OverallBestPerformer).exam.score}/${(student as OverallBestPerformer).exam.maxScore}`,
-        `${(student as OverallBestPerformer).ibadah.score}/${(student as OverallBestPerformer).ibadah.maxScore}`,
+        (student as OverallBestPerformer).attendance.maxScore > 0 ? `${(student as OverallBestPerformer).attendance.score}/${(student as OverallBestPerformer).attendance.maxScore}` : "—",
+        (student as OverallBestPerformer).homework.maxScore > 0 ? `${(student as OverallBestPerformer).homework.score}/${(student as OverallBestPerformer).homework.maxScore}` : "—",
+        (student as OverallBestPerformer).exam.maxScore > 0 ? `${(student as OverallBestPerformer).exam.score}/${(student as OverallBestPerformer).exam.maxScore}` : "—",
+        (student as OverallBestPerformer).ibadah.maxScore > 0 ? `${(student as OverallBestPerformer).ibadah.score}/${(student as OverallBestPerformer).ibadah.maxScore}` : "—",
       ] : [
         String((student as BestPerformer).totalPrayers),
         String((student as BestPerformer).totalQuranPages),
@@ -156,7 +156,7 @@ export async function downloadBestPerformanceReport({ category, className, from,
       ctx.font = "700 23px Arial, sans-serif";
       ctx.textAlign = "right";
       ctx.fillText(isOverall
-        ? `${(student as OverallBestPerformer).totalScore}/${(student as OverallBestPerformer).attendance.maxScore + (student as OverallBestPerformer).homework.maxScore + (student as OverallBestPerformer).exam.maxScore + (student as OverallBestPerformer).ibadah.maxScore}`
+        ? `${(student as OverallBestPerformer).totalScore}/${((student as OverallBestPerformer).attendance.maxScore + (student as OverallBestPerformer).homework.maxScore + (student as OverallBestPerformer).exam.maxScore + (student as OverallBestPerformer).ibadah.maxScore) || 100}`
         : String((student as BestPerformer).score), lastColumnX, y + 27);
       ctx.fillStyle = "#777580";
       ctx.font = "18px Arial, sans-serif";

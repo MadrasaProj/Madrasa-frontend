@@ -1,3 +1,4 @@
+import { REQUEST_REASON_SCHEMA as REASON_CONFIG, getRequestConfigSummary } from "@/lib/request-reasons";
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -9,7 +10,6 @@ import {
   getPendingLeaveRequests,
   reviewLeaveRequest,
   type LeaveRequest,
-  type LeaveReasonType,
 } from "@/lib/leave-requests-api";
 import {
   Loader2,
@@ -24,13 +24,7 @@ import {
 } from "lucide-react";
 import { SkeletonList } from "@/components/ui/Skeleton";
 
-const REASON_CONFIG: Record<
-  LeaveReasonType,
-  { label: string; color: string; bg: string }
-> = {
-  LEAVE: { label: "Leave", color: "text-amber-600", bg: "bg-amber-50" },
-  SICK: { label: "Sick", color: "text-orange-600", bg: "bg-orange-50" },
-};
+
 
 const STATUS_STYLES: Record<string, { border: string }> = {
   PENDING: { border: "border-l-amber-400" },
@@ -204,6 +198,11 @@ export default function AdminLeaveRequestsPage() {
                       <p className="text-sm text-gray-600 line-clamp-2">
                         {r.description}
                       </p>
+                      {getRequestConfigSummary(r.reasonType, r.config ?? {}, "en") && (
+                        <p className="mt-1 text-sm text-gray-600">
+                          Days: {getRequestConfigSummary(r.reasonType, r.config ?? {}, "en")}
+                        </p>
+                      )}
                     </div>
                     <div className="shrink-0 text-gray-400 mt-1">
                       {isOpen ? (
