@@ -13,7 +13,8 @@ const pageWidth = 1240;
 const pageHeight = 1754;
 const margin = 64;
 const rowHeight = 62;
-const rowsPerPage = 17;
+const firstPageRows = 17;
+const continuationPageRows = 25;
 
 export async function downloadBestPerformanceReport({ category, className, from, to, overall, ibadah }: ReportOptions) {
   const { jsPDF } = await import("jspdf");
@@ -26,7 +27,9 @@ export async function downloadBestPerformanceReport({ category, className, from,
     : (student as BestPerformer).scorePercentage);
   const average = Math.round(percentages.reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0) / students.length);
   const top = Math.round(Math.max(...percentages.filter(Number.isFinite)) || 0);
-  const totalPages = Math.ceil(students.length / rowsPerPage);
+  const totalPages = students.length <= firstPageRows
+    ? 1
+    : 1 + Math.ceil((students.length - firstPageRows) / continuationPageRows);
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const labels = isOverall ? ["ATTENDANCE", "HOMEWORK", "EXAMS", "IBADAH"] : ["PRAYERS", "QURAN PAGES", "STREAK", "CONSISTENCY"];
   const metricX = [530, 664, 798, 932];
@@ -51,61 +54,66 @@ export async function downloadBestPerformanceReport({ category, className, from,
 
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, pageWidth, pageHeight);
-    ctx.fillStyle = primary;
-    ctx.fillRect(0, 0, pageWidth, 242);
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "700 47px Arial, sans-serif";
-    ctx.fillText(isOverall ? "Overall performance" : "Ibadah performance", margin, 91);
-    ctx.fillStyle = "#f2fbe9";
-    ctx.font = "28px Arial, sans-serif";
-    ctx.fillText(fit(ctx, className, pageWidth - margin * 2), margin, 143);
-    ctx.font = "23px Arial, sans-serif";
-    ctx.fillText(`${from}  –  ${to}`, margin, 190);
-
-    const cards = [
-      { label: "RANKED STUDENTS", value: String(students.length) },
-      { label: "CLASS AVERAGE", value: `${average}%` },
-      { label: "TOP RESULT", value: `${top}%` },
-    ];
-    cards.forEach((card, index) => {
-      const x = margin + index * 378;
-      ctx.fillStyle = "#f3faef";
-      ctx.beginPath(); ctx.roundRect(x, 278, 354, 134, 18); ctx.fill();
+    if (page === 0) {
       ctx.fillStyle = primary;
-      ctx.fillRect(x, 278, 7, 134);
-      ctx.fillStyle = "#62616d";
-      ctx.font = "700 20px Arial, sans-serif";
-      ctx.fillText(card.label, x + 27, 324);
+      ctx.fillRect(0, 0, pageWidth, 242);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "700 47px Arial, sans-serif";
+      ctx.fillText(isOverall ? "Overall performance" : "Ibadah performance", margin, 91);
+      ctx.fillStyle = "#f2fbe9";
+      ctx.font = "28px Arial, sans-serif";
+      ctx.fillText(fit(ctx, className, pageWidth - margin * 2), margin, 143);
+      ctx.font = "23px Arial, sans-serif";
+      ctx.fillText(`${from}  –  ${to}`, margin, 190);
+
+      const cards = [
+        { label: "RANKED STUDENTS", value: String(students.length) },
+        { label: "CLASS AVERAGE", value: `${average}%` },
+        { label: "TOP RESULT", value: `${top}%` },
+      ];
+      cards.forEach((card, index) => {
+        const x = margin + index * 378;
+        ctx.fillStyle = "#f3faef";
+        ctx.beginPath(); ctx.roundRect(x, 278, 354, 134, 18); ctx.fill();
+        ctx.fillStyle = primary;
+        ctx.fillRect(x, 278, 7, 134);
+        ctx.fillStyle = "#62616d";
+        ctx.font = "700 20px Arial, sans-serif";
+        ctx.fillText(card.label, x + 27, 324);
+        ctx.fillStyle = "#25242a";
+        ctx.font = "700 46px Arial, sans-serif";
+        ctx.fillText(card.value, x + 27, 384);
+      });
+
       ctx.fillStyle = "#25242a";
-      ctx.font = "700 46px Arial, sans-serif";
-      ctx.fillText(card.value, x + 27, 384);
-    });
+      ctx.font = "700 30px Arial, sans-serif";
+      ctx.fillText("Student rankings", margin, 479);
+      ctx.fillStyle = "#686771";
+      ctx.font = "21px Arial, sans-serif";
+      ctx.textAlign = "right";
+      ctx.fillText(`Page 1 of ${totalPages}`, pageWidth - margin, 479);
+      ctx.textAlign = "left";
 
-    ctx.fillStyle = "#25242a";
-    ctx.font = "700 30px Arial, sans-serif";
-    ctx.fillText("Student rankings", margin, 479);
-    ctx.fillStyle = "#686771";
-    ctx.font = "21px Arial, sans-serif";
-    ctx.textAlign = "right";
-    ctx.fillText(`Page ${page + 1} of ${totalPages}`, pageWidth - margin, 479);
-    ctx.textAlign = "left";
+      ctx.fillStyle = "#eaf5e2";
+      ctx.beginPath(); ctx.roundRect(margin, 507, pageWidth - margin * 2, 51, 10); ctx.fill();
+      ctx.fillStyle = "#5a5864";
+      ctx.font = "700 18px Arial, sans-serif";
+      ctx.fillText("#", margin + 18, 540);
+      ctx.fillText("STUDENT / ADM. NO.", margin + 80, 540);
+      labels.forEach((label, index) => ctx.fillText(label, metricX[index], 540));
+      ctx.textAlign = "right";
+      ctx.fillText("SCORE", lastColumnX, 540);
+      ctx.textAlign = "left";
+    }
 
-    ctx.fillStyle = "#eaf5e2";
-    ctx.beginPath(); ctx.roundRect(margin, 507, pageWidth - margin * 2, 51, 10); ctx.fill();
-    ctx.fillStyle = "#5a5864";
-    ctx.font = "700 18px Arial, sans-serif";
-    ctx.fillText("#", margin + 18, 540);
-    ctx.fillText("STUDENT / ADM. NO.", margin + 80, 540);
-    labels.forEach((label, index) => ctx.fillText(label, metricX[index], 540));
-    ctx.textAlign = "right";
-    ctx.fillText("SCORE", lastColumnX, 540);
-    ctx.textAlign = "left";
-
-    students.slice(page * rowsPerPage, (page + 1) * rowsPerPage).forEach((student, index) => {
-      const y = 565 + index * rowHeight;
-      const rank = isOverall ? (student as OverallBestPerformer).rank : page * rowsPerPage + index + 1;
+    const startIndex = page === 0 ? 0 : firstPageRows + (page - 1) * continuationPageRows;
+    const rowsOnPage = page === 0 ? firstPageRows : continuationPageRows;
+    const firstRowY = page === 0 ? 565 : 90;
+    students.slice(startIndex, startIndex + rowsOnPage).forEach((student, index) => {
+      const y = firstRowY + index * rowHeight;
+      const rank = isOverall ? (student as OverallBestPerformer).rank : startIndex + index + 1;
       const topThree = rank >= 1 && rank <= 3;
-      if (topThree || index % 2 === 0) {
+      if (topThree || (startIndex + index) % 2 === 0) {
         ctx.fillStyle = topThree ? ["#e7f4dc", "#edf7e6", "#f3faee"][rank - 1] : "#f9fcf7";
         ctx.fillRect(margin, y, pageWidth - margin * 2, rowHeight);
       }
@@ -162,7 +170,7 @@ export async function downloadBestPerformanceReport({ category, className, from,
     ctx.font = "20px Arial, sans-serif";
     ctx.fillText("Smart Madrasa  •  Best performance report", margin, pageHeight - 40);
     ctx.textAlign = "right";
-    ctx.fillText(new Date().toLocaleDateString("en-GB"), pageWidth - margin, pageHeight - 40);
+    ctx.fillText(page === 0 ? new Date().toLocaleDateString("en-GB") : `Page ${page + 1} of ${totalPages}`, pageWidth - margin, pageHeight - 40);
     ctx.textAlign = "left";
 
     if (page > 0) pdf.addPage();

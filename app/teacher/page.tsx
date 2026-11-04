@@ -649,10 +649,10 @@ export default function TeacherDashboard() {
             )}
             <Button
               size="sm"
-              onClick={() => navigate("/teacher/homework-list")}
+              onClick={() => navigate("/teacher/homework")}
               className="mt-4 h-9 rounded-full px-4"
             >
-              {t("teacherPages", "hwListTitle", lang)}
+              {t("teacherPages", "homeworkTitle", lang)}
               <ChevronRight className="size-4" />
             </Button>
           </div>

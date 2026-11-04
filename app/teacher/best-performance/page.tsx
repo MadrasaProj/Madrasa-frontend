@@ -1,13 +1,17 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { useSearchParams } from "react-router-dom";
-import { BookOpen, CalendarDays, Download, Flame, GraduationCap, Heart, Loader2, Target } from "lucide-react";
+import { BookOpen, CalendarDays, Download, Flame, GraduationCap, Heart, Image, Loader2, SquareChartGantt, Target } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { BestPerformanceMetric } from "@/components/BestPerformanceMetric";
 import { ScrollableRangeNavigator, commonRangePreset } from "@/components/ScrollableRangeNavigator";
 import { StudentAvatar } from "@/components/teacher/StudentAvatar";
+import { BestPerformancePoster, type PosterStudent } from "@/components/teacher/BestPerformancePoster";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { OverallBestPerformer } from "@/lib/best-performance-api";
@@ -23,22 +27,29 @@ function totalMaxScore(performer: OverallBestPerformer) {
   return performer.attendance.maxScore + performer.homework.maxScore + performer.exam.maxScore + performer.ibadah.maxScore;
 }
 
-function ReportCard({ category, lang, count, downloading, onDownload }: {
+function ReportCard({ category, lang, count, downloading, onDownload, onPosters }: {
   category: "total" | "ibadah";
   lang: string;
   count: number;
   downloading: boolean;
   onDownload: () => void;
+  onPosters: () => void;
 }) {
   const isMalayalam = lang === "ml";
   return (
-    <section className="relative h-[120px] overflow-hidden rounded-2xl border-2 border-white bg-linear-120 from-white via-primary-50 to-white p-3 shadow-xs sm:p-4" aria-label={isMalayalam ? "പ്രകടന റിപ്പോർട്ട്" : "Performance report"}>
-      <div className="relative z-10 flex h-full min-w-0 flex-col items-start justify-center pr-28 sm:pr-36">
-        <h2 className="line-clamp-2 text-sm font-bold leading-5 text-gray-950 sm:text-base">{isMalayalam ? (category === "total" ? "ആകെ പ്രകടന റിപ്പോർട്ട്" : "ഇബാദത്ത് പ്രകടന റിപ്പോർട്ട്") : (category === "total" ? "Best Students Performance Report" : "Best Ibadah Performance Report")}</h2>
-        <Button type="button" size="xs" onClick={onDownload} disabled={count === 0 || downloading} className="mt-2 gap-1.5   px-3">
-          {downloading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Download className="size-4" aria-hidden="true" />}
-          {downloading ? (isMalayalam ? "തയ്യാറാക്കുന്നു…" : "Preparing…") : (isMalayalam ? "റിപ്പോർട്ട് ഡൗൺലോഡ്" : "Download report")}
-        </Button>
+    <section className="relative min-h-[100px] overflow-hidden rounded-2xl border-2 border-white bg-linear-120 from-white via-primary-50 to-white p-3 shadow-xs sm:p-4" aria-label={isMalayalam ? "പ്രകടന റിപ്പോർട്ടും പോസ്റ്ററുകളും" : "Performance report and posters"}>
+      <div className="relative z-10 flex h-full min-w-0 flex-col items-start justify-center pr-24 sm:pr-36">
+        <h2 className="text-sm font-bold leading-5 text-gray-950 sm:text-base">{isMalayalam ? (category === "total" ? "ക്ലാസ് പ്രകടന റിപ്പോർട്ടും മികച്ച വിദ്യാർത്ഥികളുടെ പോസ്റ്ററുകളും" : "ഇബാദത്ത് പ്രകടന റിപ്പോർട്ടും മികച്ച വിദ്യാർത്ഥികളുടെ പോസ്റ്ററുകളും") : (category === "total" ? "Class performance report and top-student posters" : "Ibadah performance report and top-student posters")}</h2>
+        {/* <p className="mt-1 text-xs leading-4 text-gray-600">{isMalayalam ? "ഈ കാലയളവിലെ മുഴുവൻ റാങ്കിംഗും ആദ്യ മൂന്ന് വിദ്യാർത്ഥികളുടെ വ്യക്തിഗത പോസ്റ്ററുകളും ലഭിക്കും." : "Get the full ranking for this period or a personalized poster for each of the top three students."}</p> */}
+        <ButtonGroup className="mt-4" aria-label={isMalayalam ? "പ്രകടന ഫയലുകൾ" : "Performance files"}>
+          <Button type="button" size="xs" onClick={onDownload} disabled={count === 0 || downloading} aria-label={isMalayalam ? "റിപ്പോർട്ട് ഡൗൺലോഡ്" : "Download report"} className="gap-1.5 px-3">
+            {downloading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" />:<SquareChartGantt/>}
+            {isMalayalam ? "റിപ്പോർട്ട്" : "Report"}
+          </Button>
+          <Button type="button" size="xs" variant="outline" onClick={onPosters} disabled={count === 0} aria-label={isMalayalam ? "പോസ്റ്റർ തിരഞ്ഞെടുക്കുക" : "Choose poster"} className="bg-white px-3">
+          <Image/>  {isMalayalam ? "പോസ്റ്റർ" : "Poster"}
+          </Button>
+        </ButtonGroup>
       </div>
       <img src="/imgs/teacher/best-performance-report-art.webp" alt="" aria-hidden="true" className="pointer-events-none absolute bottom-0 right-0 size-28 object-contain sm:size-32" loading="lazy" />
     </section>
@@ -90,6 +101,10 @@ export default function TeacherBestPerformancePage() {
   const rankingCategory = searchParams.get("category") === "ibadah" ? "ibadah" : "total";
   const [dates, setDates] = useState(() => periodDates(searchParams.get("period") === "week" ? "week" : "month"));
   const [downloading, setDownloading] = useState(false);
+  const [posterOpen, setPosterOpen] = useState(false);
+  const [downloadingPoster, setDownloadingPoster] = useState<number | null>(null);
+  const [selectedPoster, setSelectedPoster] = useState<PosterStudent | null>(null);
+  const posterRef = useRef<HTMLDivElement>(null);
   const cid = activeClientId || user?.clientId || "";
   const token = accessToken ?? "";
   const query = { ...dates, classId: activeClassId, limit: 100 };
@@ -107,6 +122,9 @@ export default function TeacherBestPerformancePage() {
   const presets = commonRangePreset().map((preset, index) => ({ ...preset, label: lang === "ml" ? ["കഴിഞ്ഞ 7 ദിവസം", "ഈ മാസം", "കഴിഞ്ഞ മാസം", "കഴിഞ്ഞ 90 ദിവസം"][index] : preset.label }));
   const dateRange = `${new Date(`${dates.from}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} – ${new Date(`${dates.to}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`;
   const listTitle = lang === "ml" ? "മികച്ച വിദ്യാർത്ഥികൾ" : "Best Students";
+  const posterStudents: PosterStudent[] = isOverall
+    ? overallData.slice(0, 3).map((student, index) => ({ name: student.name, photoUrl: ibadahData.find((entry) => entry.studentId === student.studentId)?.photoUrl, rank: index + 1, scorePercentage: student.totalPercentage }))
+    : ibadahData.slice(0, 3).map((student, index) => ({ name: student.name, photoUrl: student.photoUrl, rank: index + 1, scorePercentage: student.scorePercentage }));
 
   const selectCategory = (category: string) => setSearchParams((previous) => {
     const next = new URLSearchParams(previous);
@@ -124,6 +142,27 @@ export default function TeacherBestPerformancePage() {
       toast.error(lang === "ml" ? "റിപ്പോർട്ട് ഡൗൺലോഡ് ചെയ്യാനായില്ല" : "Could not download the report");
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const handlePosterDownload = async (student: PosterStudent) => {
+    if (downloadingPoster !== null) return;
+    setDownloadingPoster(student.rank);
+    try {
+      flushSync(() => setSelectedPoster(student));
+      const element = posterRef.current?.firstElementChild as HTMLElement | null;
+      if (!element) throw new Error("Poster is unavailable");
+      await document.fonts.ready;
+      await Promise.all(Array.from(element.querySelectorAll("img")).map((image) => image.decode().catch(() => undefined)));
+      const { snapdom } = await import("@zumer/snapdom");
+      const result = await snapdom(element, { scale: 2 });
+      const safeName = student.name.normalize("NFKD").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || `student-${student.rank}`;
+      await result.download({ format: "png", filename: `best-performance-${rankingCategory}-${student.rank}-${safeName}.png` });
+    } catch (posterError) {
+      console.error("Failed to create best performance poster", posterError);
+      toast.error(lang === "ml" ? "പോസ്റ്റർ ഡൗൺലോഡ് ചെയ്യാനായില്ല" : "Could not download the poster");
+    } finally {
+      setDownloadingPoster(null);
     }
   };
 
@@ -170,7 +209,31 @@ export default function TeacherBestPerformancePage() {
               </div>
             )}
 
-            <ReportCard category={rankingCategory} lang={lang} count={performerCount} downloading={downloading} onDownload={handleDownload} />
+            <ReportCard category={rankingCategory} lang={lang} count={performerCount} downloading={downloading} onDownload={handleDownload} onPosters={() => setPosterOpen(true)} />
+
+            <ResponsivePopover
+              open={posterOpen}
+              onOpenChange={setPosterOpen}
+              compact
+              title={lang === "ml" ? "വിദ്യാർത്ഥിയുടെ പോസ്റ്റർ തിരഞ്ഞെടുക്കുക" : "Choose a student poster"}
+             >
+              <div className="divide-y  divide-gray-100 mb-6 border border-gray-100 mx-2 rounded-2xl bg-white ">
+                {posterStudents.map((student) => (
+                  <div key={`${rankingCategory}-${student.rank}`} className="flex items-center gap-3     p-3">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-sm font-bold text-amber-800">{student.rank}</span>
+                    <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-gray-950">{student.name}</p><p className="text-xs text-gray-500">{(lang === "ml" ? ["ഒന്നാം സ്ഥാനം", "രണ്ടാം സ്ഥാനം", "മൂന്നാം സ്ഥാനം"] : ["First", "Second", "Third"])[student.rank - 1]} · {Number.isFinite(student.scorePercentage) ? Math.round(student.scorePercentage) : 0}%</p></div>
+                    <Button type="button" size="xs" onClick={() => void handlePosterDownload(student)} disabled={downloadingPoster !== null} className="gap-1.5">
+                      {downloadingPoster === student.rank ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Download className="size-4" aria-hidden="true" />}
+                      {lang === "ml" ? "ഡൗൺലോഡ്" : "Download"}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </ResponsivePopover>
+
+            {selectedPoster && <div className="pointer-events-none fixed left-[-10000px] top-0" aria-hidden="true" ref={posterRef}>
+              <BestPerformancePoster key={`${rankingCategory}-${selectedPoster.rank}-${selectedPoster.name}`} student={selectedPoster} category={rankingCategory} className={activeClass?.name || "Class"} madrasaName={user?.madrasaName || "Smart Madrasa"} madrasaLogo={user?.madrasaLogo} dateRange={dateRange} />
+            </div>}
 
             <section aria-label={listTitle} className="mb-10">
               <div className="mb-3 flex items-center gap-3"><h2 className="min-w-0 flex-1 text-base font-semibold text-gray-950">{listTitle}</h2><span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600">{performerCount}</span></div>
