@@ -303,8 +303,20 @@ export default function App() {
         />
         <Route path="/m/:slug/admin/reports" element={<AdminReportsPage />} />
         <Route path="/m/:slug/admin/ibadah" element={<AdminIbadahPage />} />
+        <Route
+          path="/m/:slug/admin/ibadah-config"
+          element={<AdminIbadahConfigPage />}
+        />
         <Route path="/m/:slug/admin/config" element={<AdminConfigPage />} />
         <Route path="/m/:slug/admin/id-cards" element={<IDCardsPage />} />
+        <Route
+          path="/m/:slug/admin/social-frames"
+          element={<AdminSocialFramesPage />}
+        />
+        <Route
+          path="/m/:slug/admin/posters"
+          element={<AdminPostersPage />}
+        />
 
         <Route path="/m/:slug/admin/logs" element={<AdminLogsPage />} />
         <Route

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SkeletonList } from "@/components/ui/Skeleton";
+import { useTenantPath } from "@/hooks/useTenantPath";
 
 const ACTOR_COLORS: Record<string, string> = {
   SUPER_ADMIN: "bg-blue-100 text-blue-700",
@@ -57,6 +58,7 @@ const ALL_ACTORS = [
 const TAKE = 30;
 
 export default function ActivityLogsPage() {
+  const tenantPath = useTenantPath();
   const { user, accessToken, activeClientId } = useAuthStore();
   const cid = activeClientId ?? "";
   const token = accessToken ?? "";
@@ -93,7 +95,7 @@ export default function ActivityLogsPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Activity Logs" back backHref="/admin/reports" />
+      <PageHeader title="Activity Logs" back backHref={tenantPath("/admin/reports")} />
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-4">

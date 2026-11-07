@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
+import { Link } from "react-router-dom";
+import { useTenantPath } from "@/hooks/useTenantPath";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
@@ -37,6 +39,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { PageSkeleton } from "@/components/ui/Skeleton";
+import { IconifyPicker } from "@/components/ui/IconifyPicker";
 
 type CustomItem = IbadahConfig["customItems"][number];
 
@@ -78,6 +81,7 @@ const DEFAULT_SCORING: IbadahScoringConfig = {
 const EMPTY_ITEM: Omit<CustomItem, "key"> & { key: string } = {
   key: "",
   label: "",
+  icon: "lucide:sparkles",
   type: "boolean",
   min: 0,
   max: 100,
@@ -101,6 +105,7 @@ function validateKey(key: string): string | null {
 }
 
 export default function IbadahConfigPage() {
+  const tenantPath = useTenantPath();
   const { accessToken, user, activeClientId, hasHydrated } = useAuthStore();
   const token = accessToken ?? "";
   const isSuperAdmin = user?.actorType === "SUPER_ADMIN";
@@ -245,6 +250,7 @@ export default function IbadahConfigPage() {
     const item: CustomItem = {
       key: newItem.key,
       label: newItem.label.trim(),
+      icon: newItem.icon || "lucide:sparkles",
       type: newItem.type,
       points: Number(newItem.points ?? 0),
       ...(newItem.type === "number" && {
@@ -291,6 +297,7 @@ export default function IbadahConfigPage() {
     const item: CustomItem = {
       key: editItem.key,
       label: editItem.label.trim(),
+      icon: editItem.icon || "lucide:sparkles",
       type: editItem.type,
       points: Number(editItem.points ?? 0),
       ...(editItem.type === "number" && {
@@ -351,7 +358,7 @@ export default function IbadahConfigPage() {
         subtitle="Tracking settings and performance scoring rules"
         icon={Moon}
         back
-        backHref={isSuperAdmin ? "/admin" : "/admin/ibadah"}
+        backHref={isSuperAdmin ? "/admin" : tenantPath("/admin/ibadah")}
       />
 
       {loading ? (
@@ -369,12 +376,12 @@ export default function IbadahConfigPage() {
           </p>
           {isSuperAdmin && (
             <div className="pt-2">
-              <a
-                href="/admin/madrasas"
+              <Link
+                to="/admin/madrasas"
                 className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
               >
                 Go to Madrasas
-              </a>
+              </Link>
             </div>
           )}
         </div>
@@ -401,13 +408,13 @@ export default function IbadahConfigPage() {
                 </p>
               </div>
             </div>
-            <a
-              href="/admin/config?tab=ibadah"
+            <Link
+              to={tenantPath("/admin/config?tab=ibadah")}
               className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors shrink-0 shadow-xs self-start sm:self-auto"
             >
               <span>Configure Alert</span>
               <ArrowRight className="w-3.5 h-3.5" />
-            </a>
+            </Link>
           </div>
 
           {/* ──────────────────────────────────────────────────────── */}
@@ -722,7 +729,9 @@ export default function IbadahConfigPage() {
                         <GripVertical className="w-4 h-4 text-gray-300 shrink-0" />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            {item.type === "boolean" ? (
+                            {item.icon ? (
+                              <Icon icon={item.icon} className="w-4 h-4 text-primary-600 shrink-0" />
+                            ) : item.type === "boolean" ? (
                               <ToggleLeft className="w-4 h-4 text-primary-500 shrink-0" />
                             ) : item.type === "enum" ? (
                               <List className="w-4 h-4 text-purple-500 shrink-0" />
@@ -1095,6 +1104,11 @@ function CustomItemForm({
           />
         </div>
       </div>
+
+      <IconifyPicker
+        value={item.icon ?? "lucide:sparkles"}
+        onChange={(icon) => onChange({ ...item, icon })}
+      />
 
       <div className="grid grid-cols-2 gap-3">
         <div>

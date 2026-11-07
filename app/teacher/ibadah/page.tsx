@@ -52,6 +52,7 @@ import { cn } from "@/lib/utils";
 import { jsPDF } from "jspdf";
 import { Bar, BarChart, Cell } from "recharts";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Icon } from "@iconify/react";
 
 type Section = "prayers" | "quran" | "custom";
 type ViewMode = "daily" | "weekly" | "monthly" | "custom";
@@ -433,7 +434,7 @@ function PeriodStudentSummaryCard({
               key={item.key}
               className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600"
             >
-              <Hash aria-hidden="true" className="h-3.5 w-3.5 text-violet-600" />
+              <Icon icon={item.icon || "lucide:hash"} aria-hidden="true" className="h-3.5 w-3.5 text-violet-600" />
               {item.label}: {count}
               {item.type !== "number" && `/${daysInPeriod}`}
             </span>
@@ -603,7 +604,10 @@ function StudentDetailSections({
                   key={item.key}
                   className="flex items-center justify-between gap-3 px-3 py-3 text-sm"
                 >
-                  <span className="text-gray-600">{item.label}</span>
+                  <span className="flex items-center gap-2 text-gray-600">
+                    <Icon icon={item.icon || "lucide:hash"} className="size-4 text-violet-600" aria-hidden="true" />
+                    {item.label}
+                  </span>
                   <span className="text-right font-semibold text-gray-900">
                     {displayValue}
                   </span>

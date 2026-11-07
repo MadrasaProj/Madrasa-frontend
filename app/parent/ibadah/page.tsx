@@ -480,13 +480,16 @@ export default function ParentIbadahPage() {
 
         {/* Quran pages */}
         {config?.enableQuranPages !== false && (
-        <IbadahCounter
-          label={t("parentPages", "quranPages", lang)}
-          icon={<BookOpen className="w-4 h-4" />}
-          value={form.quranPages}
-          onChange={(val) => setForm((f) => ({ ...f, quranPages: val }))}
-          suffix={t("parentPages", "pages", lang)}
-        />
+          <div className="p-3 rounded-2xl bg-white border border-gray-100">
+
+            <IbadahCounter
+              label={t("parentPages", "quranPages", lang)}
+              icon={<BookOpen className="w-4 h-4" />}
+              value={form.quranPages}
+              onChange={(val) => setForm((f) => ({ ...f, quranPages: val }))}
+              suffix={t("parentPages", "pages", lang)}
+            />
+          </div>
         )}
 
         {/* Custom items */}
@@ -498,7 +501,10 @@ export default function ParentIbadahPage() {
           {customItems.map((item) =>
             item.type === "boolean" ? (
             <div key={item.key} className="flex items-center justify-between px-4 py-3">
-              <p className="text-sm text-gray-700">{item.label}</p>
+              <p className="flex items-center gap-2 text-sm text-gray-700">
+                <Icon icon={item.icon || "lucide:toggle-left"} className="size-4 text-primary-600" aria-hidden="true" />
+                {item.label}
+              </p>
               <button
                 onClick={() => toggleCustomBoolean(item.key)}
                 className={cn(
@@ -518,7 +524,8 @@ export default function ParentIbadahPage() {
               className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-primary-50/30 transition-colors"
               onClick={() => setDrawerCustomEnum(item.key)}
             >
-              <div className="flex-1">
+              <div className="flex flex-1 items-center gap-2">
+                <Icon icon={item.icon || "lucide:list"} className="size-4 text-primary-600" aria-hidden="true" />
                 <p className="text-sm text-gray-700">{item.label}</p>
               </div>
               <span className="text-xs font-medium text-primary-600">
@@ -530,7 +537,7 @@ export default function ParentIbadahPage() {
             <div key={item.key} className="p-3">
               <IbadahCounter
                 label={item.label}
-                icon={<Hash className="w-4 h-4" />}
+                icon={<Icon icon={item.icon || "lucide:hash"} className="size-4" />}
                 value={(form.customData[item.key] as number) ?? 0}
                 onChange={(val) => setCustomNumber(item.key, val, item.min, item.max)}
                 min={item.min ?? 0}
@@ -681,7 +688,7 @@ export default function ParentIbadahPage() {
                   <div className="flex items-center justify-between mb-5">
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-sm">
-                        <Hash className="w-4 h-4 text-white" />
+                        <Icon icon={item.icon || "lucide:list"} className="size-4 text-white" />
                       </div>
                       <p className="text-base font-semibold text-gray-900">{item.label}</p>
                     </div>
@@ -802,7 +809,10 @@ export default function ParentIbadahPage() {
                           : String(value);
                       return (
                         <div key={item.key} className="flex items-center justify-between gap-3 px-3 py-3 text-sm">
-                          <span className="text-gray-600">{item.label}</span>
+                          <span className="flex items-center gap-2 text-gray-600">
+                            <Icon icon={item.icon || "lucide:hash"} className="size-4 text-violet-600" aria-hidden="true" />
+                            {item.label}
+                          </span>
                           <span className="text-right font-semibold text-gray-900">{displayValue}</span>
                         </div>
                       );

@@ -6,6 +6,7 @@ import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth";
+import { useTenantPath } from "@/hooks/useTenantPath";
 import {
   getPendingLeaveRequests,
   reviewLeaveRequest,
@@ -33,6 +34,7 @@ const STATUS_STYLES: Record<string, { border: string }> = {
 };
 
 export default function AdminLeaveRequestsPage() {
+  const tenantPath = useTenantPath();
   const { user, accessToken, activeClientId } = useAuthStore();
   const cid = activeClientId ?? "";
   const token = accessToken ?? "";
@@ -97,7 +99,7 @@ export default function AdminLeaveRequestsPage() {
           subtitle="Review and manage leave applications"
           icon={FilePen}
           back
-          backHref="/admin"
+          backHref={tenantPath("/admin")}
         />
 
         {error && <ApiErrorBanner message={error} />}

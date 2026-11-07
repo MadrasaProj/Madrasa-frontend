@@ -11,6 +11,7 @@ import { useClasses, useGradeLevels, useTeachers } from "@/lib/queries";
 import { type TeacherRecord } from "@/lib/teachers-api";
 import { useAuthStore } from "@/store/auth";
 import { useNavigate } from "react-router-dom";
+import { useTenantPath } from "@/hooks/useTenantPath";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import {
@@ -43,6 +44,7 @@ function classToForm(c: ClassRecord): FormState {
 }
 
 export default function AdminClassesPage() {
+  const tenantPath = useTenantPath();
   const { user, accessToken, activeClientId } = useAuthStore();
   const cid   = activeClientId ?? "";
   const token = accessToken ?? "";
@@ -207,7 +209,7 @@ export default function AdminClassesPage() {
       header: "Subjects",
       render: (c) => (
         <button
-          onClick={(e) => { e.stopPropagation(); navigate(`/admin/subjects?classId=${c.id}`); }}
+          onClick={(e) => { e.stopPropagation(); navigate(tenantPath(`/admin/subjects?classId=${c.id}`)); }}
           className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg bg-primary-50 text-primary-700 hover:bg-primary-100 transition-colors"
         >
           <BookOpen className="w-3 h-3" />

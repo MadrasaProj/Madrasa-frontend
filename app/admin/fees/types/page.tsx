@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { Link } from "react-router-dom";
+import { useTenantPath } from "@/hooks/useTenantPath";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
@@ -19,6 +21,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
 export default function AdminFeeTypesPage() {
+  const tenantPath = useTenantPath();
   const { user, accessToken, activeClientId } = useAuthStore();
   const cid = activeClientId ?? "";
   const token = accessToken ?? "";
@@ -165,12 +168,12 @@ export default function AdminFeeTypesPage() {
         icon={CreditCard}
         action={
           <div className="flex items-center gap-2">
-            <a
-              href="/admin/fees"
+            <Link
+              to={tenantPath("/admin/fees")}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-all"
             >
               <ArrowLeft className="w-4 h-4" /> Back to Fees
-            </a>
+            </Link>
             <button
               onClick={() => { setShowCreate(true); setCreateError(null); }}
               className="flex items-center gap-1.5 px-3 py-2 bg-primary-600 text-white rounded-xl text-sm font-semibold"

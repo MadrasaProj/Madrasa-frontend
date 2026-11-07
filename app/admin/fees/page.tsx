@@ -1,5 +1,7 @@
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { Link } from "react-router-dom";
+import { useTenantPath } from "@/hooks/useTenantPath";
 import { createPortal } from "react-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -279,6 +281,7 @@ function RecordPaymentModal({
 
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function AdminFeesPage() {
+  const tenantPath = useTenantPath();
   const { user, accessToken, activeClientId } = useAuthStore();
   const cid = activeClientId ?? "";
   const token = accessToken ?? "";
@@ -764,12 +767,12 @@ export default function AdminFeesPage() {
         subtitle="All fee types, campaigns, and payment records"
         icon={CreditCard}
         action={
-          <a
-            href="/admin/fees/types"
+          <Link
+            to={tenantPath("/admin/fees/types")}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-all"
           >
             <Zap className="w-4 h-4" /> Manage Types
-          </a>
+          </Link>
         }
       />
 
@@ -787,9 +790,9 @@ export default function AdminFeesPage() {
           <CreditCard className="w-10 h-10 mx-auto mb-3 opacity-30" />
           <p className="text-sm">
             No fee types yet.{" "}
-            <a href="/admin/fees/types" className="text-primary-600 underline">
+            <Link to={tenantPath("/admin/fees/types")} className="text-primary-600 underline">
               Create one
-            </a>{" "}
+            </Link>{" "}
             to start collecting.
           </p>
         </div>

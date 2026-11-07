@@ -14,6 +14,7 @@ import {
   Users, Check, Sun, Minus, X, Download,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useTenantPath } from "@/hooks/useTenantPath";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { jsPDF } from "jspdf";
@@ -136,6 +137,7 @@ function countBadgeColor(count: number, total: number) {
 }
 
 export default function AdminIbadahPage() {
+  const tenantPath = useTenantPath();
   const { user, accessToken, activeClientId } = useAuthStore();
   const cid          = activeClientId ?? user?.clientId ?? "";
   const token        = accessToken ?? "";
@@ -416,7 +418,7 @@ export default function AdminIbadahPage() {
           (isSuperAdmin || user?.actorType === "CLIENT_ADMIN" || user?.role === "admin") ? (
             <Button
             size="sm" variant="outline"
-              onClick={() => navigate("/admin/ibadah-config")}
+              onClick={() => navigate(tenantPath("/admin/ibadah-config"))}
               className="flex items-center gap-1.5 px-3 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
             >
               <Settings className="w-4 h-4" /> Config & Scoring

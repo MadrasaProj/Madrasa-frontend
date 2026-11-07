@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Icon } from "@iconify/react";
 import { BookOpen, CalendarDays, Flame, GraduationCap, Heart, Target } from "lucide-react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { BestPerformanceMetric } from "@/components/BestPerformanceMetric";
@@ -10,6 +11,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { OverallBestPerformer } from "@/lib/best-performance-api";
 import { periodDates } from "@/lib/best-performance-period";
+import { formatCompactNumber } from "@/lib/format-compact-number";
 import { useBestPerformers, useOverallBestStudents } from "@/lib/queries";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -60,7 +62,7 @@ function ScoreHero({
           <div className="flex size-40 items-center justify-center rounded-full bg-white/70 p-2" role="img" aria-label={`${scoreLabel}: ${score}`}>
             <div className="flex size-full items-center justify-center rounded-full" style={{ background: `conic-gradient(var(--primary) ${progress}%, #e5e7eb 0)` }}>
               <div className="flex size-30 flex-col items-center justify-center rounded-full bg-white">
-                <span className="text-4xl font-bold leading-none tabular-nums text-gray-950">{score}</span>
+                <span className="text-3xl font-bold leading-none tabular-nums text-gray-950">{formatCompactNumber(score)}</span>
                 <span className="mt-1 text-xs font-medium text-gray-500">{scoreLabel}</span>
               </div>
             </div>
@@ -203,12 +205,11 @@ export default function ParentBestPerformancePage() {
                       { label: t("parentPages", "streakLabel", lang), value: `${childIbadah.streak}d`, icon: Flame, tone: "from-white via-white bg-linear-120 to-amber-50/40 text-amber-700" },
                       { label: t("parentPages", "consistencyLabel", lang), value: `${childIbadah.consistency}%`, icon: Target, tone: "from-white via-white bg-linear-120 to-violet-50/40 text-violet-700" },
                     ].map((stat) => <div key={stat.label} className={cn("min-w-0 p-4 sm:p-5", stat.tone)}><div className="flex items-center gap-1.5 text-xs font-medium"><stat.icon className="size-4 shrink-0" aria-hidden="true" />{stat.label}</div><p className="mt-3 text-2xl font-bold leading-none tabular-nums text-gray-950 sm:text-3xl">{stat.value}</p></div>)}
+                    {Object.entries(childIbadah.customCounts ?? {}).filter(([, value]) => value > 0).map(([key, value]) => {
+                      const item = ibadahResponse?.customItems?.find((customItem) => customItem.key === key);
+                      return <div key={key} className="min-w-0 bg-linear-120 from-white via-white to-fuchsia-50/40 p-4 text-fuchsia-700 sm:p-5"><div className="flex items-center gap-1.5 text-xs font-medium"><Icon icon={item?.icon || "lucide:hash"} className="size-4 shrink-0" aria-hidden="true" />{item?.label ?? key}</div><p className="mt-3 text-2xl font-bold leading-none tabular-nums text-gray-950 sm:text-3xl">{value}</p></div>;
+                    })}
                   </ScoreHero>
-                  {Object.entries(childIbadah.customCounts ?? {}).some(([, value]) => value > 0) && (
-                    <p className="rounded-2xl border border-gray-100 bg-white px-5 py-4 text-xs leading-relaxed text-gray-600">
-                      {Object.entries(childIbadah.customCounts ?? {}).filter(([, value]) => value > 0).map(([key, value]) => `${value} ${ibadahResponse?.customItems?.find((item) => item.key === key)?.label ?? key}`).join(" · ")}
-                    </p>
-                  )}
                 </div>
               ) : <p className="rounded-2xl border border-gray-100 bg-white px-4 py-8 text-center text-sm text-gray-500">{lang === "ml" ? "ഈ കാലയളവിൽ കുട്ടിയുടെ വിവരങ്ങൾ ലഭ്യമല്ല" : "No performance records found for your child in this period"}</p>
             )}

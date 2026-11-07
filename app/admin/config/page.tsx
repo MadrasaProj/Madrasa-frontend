@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link, useParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import * as Tabs from "@radix-ui/react-tabs";
@@ -129,6 +130,7 @@ const TABS = [
 ];
 
 export default function AdminConfigPage() {
+  const { slug } = useParams<{ slug: string }>();
   const { user, accessToken, activeClientId, setAttendanceMode } =
     useAuthStore();
   const cid = activeClientId ?? "";
@@ -778,13 +780,13 @@ export default function AdminConfigPage() {
                   Configure automated nightly push notifications sent to parents to remind them to record daily prayers and deeds.
                 </p>
               </div>
-              <a
-                href="/admin/ibadah-config"
+              <Link
+                to={slug ? `/m/${slug}/admin/ibadah-config` : "/admin/ibadah-config"}
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-3 py-2 rounded-xl shrink-0 border border-emerald-100"
               >
                 <span>Edit Scoring Rules</span>
                 <ExternalLink className="w-3.5 h-3.5" />
-              </a>
+              </Link>
             </div>
 
             {/* Toggle & Schedule Card */}

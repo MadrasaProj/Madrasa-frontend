@@ -47,6 +47,7 @@ export interface IbadahConfig {
   customItems: {
     key: string;
     label: string;
+    icon?: string;
     type: "boolean" | "number" | "enum";
     min?: number;
     max?: number;
@@ -234,4 +235,3 @@ export const triggerIbadahReminder = (
     method: "POST",
   });
 };
-

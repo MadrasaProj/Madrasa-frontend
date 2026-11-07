@@ -8,6 +8,7 @@ import { useAuthStore } from "@/store/auth";
 import { CheckCircle, Loader2, Receipt, Search, Printer, Users } from "lucide-react";
 import { motion } from "framer-motion";
 import { SkeletonList } from "@/components/ui/Skeleton";
+import { useTenantPath } from "@/hooks/useTenantPath";
 
 function ReceiptModal({ receipt, onClose }: { receipt: ReceiptData; onClose: () => void }) {
   return (
@@ -51,6 +52,7 @@ function ReceiptModal({ receipt, onClose }: { receipt: ReceiptData; onClose: () 
 }
 
 export default function AdminFeesPaidPage() {
+  const tenantPath = useTenantPath();
   const { user, accessToken, activeClientId } = useAuthStore();
   const [payments, setPayments]     = useState<FeePayment[]>([]);
   const [total, setTotal]           = useState(0);
@@ -109,7 +111,7 @@ export default function AdminFeesPaidPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Paid Fees" subtitle={`${total} paid records`} icon={CheckCircle} back backHref="/admin/fees" />
+      <PageHeader title="Paid Fees" subtitle={`${total} paid records`} icon={CheckCircle} back backHref={tenantPath("/admin/fees")} />
 
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />

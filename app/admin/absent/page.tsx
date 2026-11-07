@@ -11,6 +11,7 @@ import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { UserX, RefreshCw } from "lucide-react";
 import { SkeletonList } from "@/components/ui/Skeleton";
+import { useTenantPath } from "@/hooks/useTenantPath";
 
 function todayISO() {
   return new Date().toISOString().split("T")[0];
@@ -32,6 +33,7 @@ const STATUS_META: Record<string, { key: "absentLower" | "lateLower" | "excusedL
 };
 
 export default function AdminAbsentPage() {
+  const tenantPath = useTenantPath();
   const { lang } = useLanguageStore();
   const { user, accessToken, activeClientId } = useAuthStore();
 
@@ -87,7 +89,7 @@ export default function AdminAbsentPage() {
         subtitle={fmtDate(today)}
         icon={UserX}
         back
-        backHref="/admin"
+        backHref={tenantPath("/admin")}
       />
 
       {/* Summary pills */}

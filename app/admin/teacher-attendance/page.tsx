@@ -1,5 +1,7 @@
 import { TeacherAttendanceContent } from "@/components/shared/TeacherAttendanceContent";
+import { useTenantPath } from "@/hooks/useTenantPath";
 
 export default function AdminTeacherAttendancePage() {
-  return <TeacherAttendanceContent backHref="/admin" />;
+  const tenantPath = useTenantPath();
+  return <TeacherAttendanceContent backHref={tenantPath("/admin")} />;
 }

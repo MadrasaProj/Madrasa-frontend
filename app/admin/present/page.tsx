@@ -10,6 +10,7 @@ import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { UserCheck, RefreshCw } from "lucide-react";
 import { SkeletonList } from "@/components/ui/Skeleton";
+import { useTenantPath } from "@/hooks/useTenantPath";
 
 function todayISO() {
   return new Date().toISOString().split("T")[0];
@@ -25,6 +26,7 @@ function fmtDate(d: string) {
 }
 
 export default function AdminPresentPage() {
+  const tenantPath = useTenantPath();
   const { lang } = useLanguageStore();
   const { user, accessToken, activeClientId } = useAuthStore();
 
@@ -77,7 +79,7 @@ export default function AdminPresentPage() {
         subtitle={fmtDate(today)}
         icon={UserCheck}
         back
-        backHref="/admin"
+        backHref={tenantPath("/admin")}
       />
 
       {/* Summary bar */}

@@ -46,7 +46,7 @@ export function IbadahCounter({ label, icon, value, onChange, min = 0, max = Num
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-4">
+    <div className=" ">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {icon && <span className="text-primary-500">{icon}</span>}
@@ -64,11 +64,11 @@ export function IbadahCounter({ label, icon, value, onChange, min = 0, max = Num
                 onChange={(e) => setDraft(e.target.value)}
                 onBlur={commit}
                 onKeyDown={handleKeyDown}
-                className="w-14 text-right text-lg font-bold text-primary-700 bg-transparent outline-none border-b-2 border-primary-300"
+                className="w-14 text-right text-sm font-bold text-primary-700 bg-transparent outline-none border-b-2 border-primary-300"
               />
             ) : (
               <button onClick={() => setEditing(true)} className="focus:outline-none">
-                <span className="text-lg font-bold text-primary-700">{value}</span>
+                <span className="text-sm font-bold text-primary-700">{value}</span>
               </button>
             )}
             {suffix && <span className="text-xs text-gray-400 font-medium">{suffix}</span>}

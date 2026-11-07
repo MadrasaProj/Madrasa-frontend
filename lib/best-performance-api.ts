@@ -25,6 +25,7 @@ export interface BestPerformanceResponse {
   customItems?: {
     key: string;
     label: string;
+    icon?: string;
     type: "boolean" | "number" | "enum";
     min?: number;
     max?: number;

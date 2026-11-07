@@ -9,10 +9,12 @@ import { AlertCircle, Loader2, CheckCircle, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { toast } from "sonner";
+import { useTenantPath } from "@/hooks/useTenantPath";
 
 const PAYMENT_METHODS = ["CASH", "BANK_TRANSFER", "UPI", "CHEQUE", "OTHER"] as const;
 
 export default function AdminFeesUnpaidPage() {
+  const tenantPath = useTenantPath();
   const { user, accessToken, activeClientId } = useAuthStore();
   const [payments, setPayments]     = useState<FeePayment[]>([]);
   const [total, setTotal]           = useState(0);
@@ -82,7 +84,7 @@ export default function AdminFeesUnpaidPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Unpaid Fees" subtitle={`${total} records`} icon={AlertCircle} back backHref="/admin/fees" />
+      <PageHeader title="Unpaid Fees" subtitle={`${total} records`} icon={AlertCircle} back backHref={tenantPath("/admin/fees")} />
 
       {/* Filters */}
       <div className="grid grid-cols-2 gap-2 mb-4">
