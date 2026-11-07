@@ -99,7 +99,7 @@ import ParentSocialFramesPage from "../app/parent/social-frames/page";
 import ParentSocialFrameViewPage from "../app/parent/social-frames/[id]/page";
 
 // ── Committee ─────────────────────────────────────────────────────────────────
-import IDCardsPage from "../app/admin/id-cards/IdCard";
+import IDCardsPage from "../app/admin/id-cards/page";
 import AdminBestPerformancePage from "../app/committee/best-performance/page";
 import CommitteeAnnouncementsPage from "../app/committee/announcements/page";
 import CommitteeAttendancePage from "../app/committee/attendance/page";

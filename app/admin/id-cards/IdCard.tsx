@@ -33,7 +33,6 @@ import { cn } from "@/lib/utils";
 
 import { Group, Leafer, Image as LeaferImage, Rect, Text } from "leafer-ui";
 
- 
 interface StudentInfo {
   id: string;
 
@@ -247,7 +246,6 @@ function CardCanvas({
     }
 
     if (theme === "islamic") {
-      
     }
 
     // ── Header ──
@@ -258,7 +256,7 @@ function CardCanvas({
 
         y: 0,
 
-        width: W ,
+        width: W,
 
         height: 42,
 
@@ -325,10 +323,6 @@ function CardCanvas({
 
     const badgeX = W - 50 - pad;
 
-    
-    
-
- 
     // ── Body: Photo + Info ──
 
     // Photo placeholder
@@ -586,7 +580,10 @@ function CardCanvas({
 
       y: 192,
 
-      text: [clientConfig?.address, clientConfig?.phone].filter(Boolean).join(" · ") || "Madrasa Address · Phone: 0495-XXXXXX",
+      text:
+        [clientConfig?.address, clientConfig?.phone]
+          .filter(Boolean)
+          .join(" · ") || "Madrasa Address · Phone: 0495-XXXXXX",
 
       fontSize: 7.5,
 
@@ -753,8 +750,8 @@ export default function IDCardsPage() {
 
     if (!leafer) return;
 
-    const dataUrl = await leafer.export("png", { quality: 1,pixelRatio:5  });
- 
+    const dataUrl = await leafer.export("png", { quality: 1, pixelRatio: 5 });
+
     if (!dataUrl) return;
 
     const link = document.createElement("a");
@@ -789,8 +786,6 @@ export default function IDCardsPage() {
       {/* Theme selector */}
 
       <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
-     
-     
         {THEMES.map((t) => (
           <button
             key={t.id}
