@@ -205,7 +205,7 @@ export default function ParentBestPerformancePage() {
                       { label: t("parentPages", "streakLabel", lang), value: `${childIbadah.streak}d`, icon: Flame, tone: "from-white via-white bg-linear-120 to-amber-50/40 text-amber-700" },
                       { label: t("parentPages", "consistencyLabel", lang), value: `${childIbadah.consistency}%`, icon: Target, tone: "from-white via-white bg-linear-120 to-violet-50/40 text-violet-700" },
                     ].map((stat) => <div key={stat.label} className={cn("min-w-0 p-4 sm:p-5", stat.tone)}><div className="flex items-center gap-1.5 text-xs font-medium"><stat.icon className="size-4 shrink-0" aria-hidden="true" />{stat.label}</div><p className="mt-3 text-2xl font-bold leading-none tabular-nums text-gray-950 sm:text-3xl">{stat.value}</p></div>)}
-                    {Object.entries(childIbadah.customCounts ?? {}).filter(([, value]) => value > 0).map(([key, value]) => {
+                    {Object.entries(childIbadah.customCounts ?? {}).map(([key, value]) => {
                       const item = ibadahResponse?.customItems?.find((customItem) => customItem.key === key);
                       return <div key={key} className="min-w-0 bg-linear-120 from-white via-white to-fuchsia-50/40 p-4 text-fuchsia-700 sm:p-5"><div className="flex items-center gap-1.5 text-xs font-medium"><Icon icon={item?.icon || "lucide:hash"} className="size-4 shrink-0" aria-hidden="true" />{item?.label ?? key}</div><p className="mt-3 text-2xl font-bold leading-none tabular-nums text-gray-950 sm:text-3xl">{value}</p></div>;
                     })}
