@@ -46,6 +46,7 @@ import {
   Target,
   LifeBuoy,
   RefreshCw,
+  Bot,
 } from "lucide-react";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import OnboardingDrawer from "@/components/twa/OnboardingDrawer";
@@ -113,7 +114,8 @@ type NavKey =
   | "crmSales"
   | "contentMedia"
   | "coreManagement"
-  | "ibadahConfig";
+  | "ibadahConfig"
+  | "agentAccess";
 
 const adminLinks = [
   { href: "/admin", icon: LayoutDashboard, key: "dashboard" as NavKey },
@@ -173,6 +175,7 @@ const teacherLinks = [
     icon: ClipboardList,
     key: "attendance" as NavKey,
   },
+  { href: "/teacher/agent-access", icon: Bot, key: "agentAccess" as NavKey },
   {
     href: "/teacher/leave-requests",
     icon: FilePen,

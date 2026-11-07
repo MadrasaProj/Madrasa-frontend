@@ -66,6 +66,7 @@ const TeacherClassReportPage = AdminClassReportPage;
 // ── Teacher ───────────────────────────────────────────────────────────────────
 import TeacherAbsentPage from "../app/teacher/absent/page";
 import TeacherAttendancePage from "../app/teacher/attendance/page";
+import TeacherAgentAccessPage from "../app/teacher/agent-access/page";
 import TeacherLeaveRequestsPage from "../app/teacher/leave-requests/page";
 import TeacherCheckinPage from "../app/teacher/checkin/page";
 import TeacherDiaryPage from "../app/teacher/diary/page";
@@ -328,6 +329,7 @@ export default function App() {
         <Route path="/teacher" element={<TeacherDashboard />} />
         <Route path="/teacher/checkin" element={<TeacherCheckinPage />} />
         <Route path="/teacher/attendance" element={<TeacherAttendancePage />} />
+        <Route path="/teacher/agent-access" element={<TeacherAgentAccessPage />} />
         <Route
           path="/teacher/leave-requests"
           element={<TeacherLeaveRequestsPage />}
@@ -358,6 +360,7 @@ export default function App() {
           path="/m/:slug/teacher/attendance"
           element={<TeacherAttendancePage />}
         />
+        <Route path="/m/:slug/teacher/agent-access" element={<TeacherAgentAccessPage />} />
         <Route
           path="/m/:slug/teacher/leave-requests"
           element={<TeacherLeaveRequestsPage />}

@@ -242,6 +242,7 @@ const translations = {
     globalClassSubjects: { en: "Accademic systems", ml: "അക്കാദമിക്സ് സിസ്റ്റങ്ങൾ" },
     config: { en: "Config", ml: "ക്രമീകരണം" },
     attendance: { en: "Attendance", ml: "ഹാജർ" },
+    agentAccess: { en: "Chat agent access", ml: "ചാറ്റ് ഏജന്റ് ആക്സസ്" },
     leaveRequests: { en: "Leave Requests", ml: "ലീവ് അപേക്ഷകൾ" },
     checkin: { en: "Check In", ml: "ചെക്ക് ഇൻ" },
     teacherCheckin: { en: "Teacher Check-in", ml: "അധ്യാപക ചെക്ക് ഇൻ" },
