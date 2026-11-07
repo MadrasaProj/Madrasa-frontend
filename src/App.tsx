@@ -67,6 +67,7 @@ const TeacherClassReportPage = AdminClassReportPage;
 import TeacherAbsentPage from "../app/teacher/absent/page";
 import TeacherAttendancePage from "../app/teacher/attendance/page";
 import TeacherAgentAccessPage from "../app/teacher/agent-access/page";
+import TeacherMcpAuthorizePage from "../app/oauth/authorize/page";
 import TeacherLeaveRequestsPage from "../app/teacher/leave-requests/page";
 import TeacherCheckinPage from "../app/teacher/checkin/page";
 import TeacherDiaryPage from "../app/teacher/diary/page";
@@ -138,6 +139,7 @@ export default function App() {
         <Route path="/twa" element={<TwaLandingPage />} />
         <Route path="/m/:slug/admin/login" element={<TenantAdminLoginPage />} />
         <Route path="/m/:slug/teacher/login" element={<TenantTeacherLoginPage />} />
+        <Route path="/oauth/authorize" element={<TeacherMcpAuthorizePage />} />
         <Route path="/m/:slug/parent/login" element={<TenantParentLoginPage />} />
 
         {/* Admin — bare paths kept for super-admin platform view */}

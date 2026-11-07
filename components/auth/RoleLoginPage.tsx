@@ -156,6 +156,7 @@ export default function RoleLoginPage({
   const queryPassword = searchParams.get("password") ?? "";
   const queryPhone = searchParams.get("phone") ?? "";
   const querySlug = searchParams.get("slug") ?? "";
+  const returnTo = searchParams.get("returnTo");
 
   const [identifier, setIdentifier] = useState(queryEmail);
   const [password, setPassword] = useState(queryPassword);
@@ -344,6 +345,11 @@ export default function RoleLoginPage({
         saveTenantSlug(finalSlug, normalized.user.role);
       }
       login(normalized);
+
+      if (type === "TEACHER" && returnTo?.startsWith("/oauth/authorize?") && !returnTo.startsWith("//")) {
+        navigate(returnTo, { replace: true });
+        return;
+      }
 
       // Push token registration is handled by PwaRegister on auth state change
       // (single source of truth to avoid duplicate token registration).

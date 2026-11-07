@@ -29,3 +29,17 @@ export const revokeTeacherMcpKey = (token: string, id: string) =>
   apiFetch<{ revoked: true }>(`${BASE}/${encodeURIComponent(id)}`, token, { method: 'DELETE' });
 
 export const teacherMcpEndpoint = `${API_ORIGIN}/mcp`;
+
+const OAUTH_CONNECTIONS = `${API_ORIGIN}/api/v2/teacher/mcp-oauth-connections`;
+
+export interface TeacherMcpOAuthConnection {
+  id: string;
+  name: string;
+  expiresAt: string;
+}
+
+export const getTeacherMcpOAuthConnections = (token: string) =>
+  apiFetch<TeacherMcpOAuthConnection[]>(OAUTH_CONNECTIONS, token);
+
+export const revokeTeacherMcpOAuthConnection = (token: string, id: string) =>
+  apiFetch<{ revoked: true }>(`${OAUTH_CONNECTIONS}/${encodeURIComponent(id)}`, token, { method: 'DELETE' });
