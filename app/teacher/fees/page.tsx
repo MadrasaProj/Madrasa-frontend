@@ -123,7 +123,7 @@ async function getAllClassStudents(clientId: string, token: string, classId: str
   const limit = 200;
   let page = 1;
   while (true) {
-    const result = await getStudents(clientId, token, { classId, page, limit, signal });
+    const result = await getStudents(clientId, token, { classId, page, limit, status: "ACTIVE", signal });
     students.push(...result.data);
     if (result.data.length === 0 || students.length >= result.total) return students;
     page += 1;

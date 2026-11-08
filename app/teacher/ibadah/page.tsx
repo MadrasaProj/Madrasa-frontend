@@ -659,7 +659,7 @@ async function getAllClassStudents(
   const limit = 200;
   let page = 1;
   while (true) {
-    const result = await getStudents(clientId, token, { classId, page, limit });
+    const result = await getStudents(clientId, token, { classId, page, limit, status: "ACTIVE" });
     students.push(...result.data);
     if (result.data.length === 0 || students.length >= result.total) break;
     page += 1;

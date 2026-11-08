@@ -20,6 +20,7 @@ import { toast } from "sonner";
 
 interface FormState {
   name: string; uid: string; adno: string; classId: string; gender: "MALE" | "FEMALE";
+  status: "ACTIVE" | "INACTIVE" | "GRADUATED" | "TRANSFERRED" | "DROPPED_OUT";
   dateOfBirth: string; guardianName: string; parentPhone: string;
   parentAltPhone: string; parentEmail: string;
   relationToStudent: string; parentPassword: string;
@@ -29,7 +30,9 @@ interface FormState {
 }
 
 const EMPTY_FORM: FormState = {
-  name: "", uid: "", adno: "", classId: "", gender: "MALE", dateOfBirth: "",
+  name: "", uid: "", adno: "", classId: "", gender: "MALE",
+  status: "ACTIVE",
+  dateOfBirth: "",
   guardianName: "", parentPhone: "", parentAltPhone: "", parentEmail: "",
   relationToStudent: "father", parentPassword: "",
   address: "", city: "", state: "", country: "", pincode: "", bloodGroup: "",
@@ -43,6 +46,7 @@ export function studentToForm(s: StudentRecord): FormState {
     adno: s.adno,
     classId: s.classId ?? "",
     gender: s.gender ?? "MALE",
+    status: s.status ?? "ACTIVE",
     dateOfBirth: s.dateOfBirth ? s.dateOfBirth.slice(0, 10) : "",
     guardianName: s.guardianName ?? "",
     parentPhone: s.parentPhone ?? "",
@@ -293,6 +297,7 @@ export default function StudentEditDrawer({
         adno: form.adno.trim(),
         ...(form.classId ? { classId: form.classId } : {}),
         gender: form.gender,
+        status: form.status,
         ...(form.dateOfBirth ? { dateOfBirth: form.dateOfBirth } : {}),
         ...(form.guardianName ? { guardianName: form.guardianName.trim() } : {}),
         ...(form.parentPhone ? { parentPhone: form.parentPhone.trim() } : {}),
@@ -578,7 +583,7 @@ export default function StudentEditDrawer({
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
                           <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                             {t("adminPages", "classField", lang)}
@@ -597,6 +602,18 @@ export default function StudentEditDrawer({
                             className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/60 focus:border-primary-400">
                             <option value="">— Select —</option>
                             {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bg) => <option key={bg} value={bg}>{bg}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 mb-1.5">Status</label>
+                          <select value={form.status}
+                            onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as any }))}
+                            className="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/60 focus:border-primary-400">
+                            <option value="ACTIVE">Active</option>
+                            <option value="INACTIVE">Inactive</option>
+                            <option value="GRADUATED">Graduated</option>
+                            <option value="TRANSFERRED">Transferred</option>
+                            <option value="DROPPED_OUT">Dropped Out</option>
                           </select>
                         </div>
                       </div>

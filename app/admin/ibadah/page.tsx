@@ -207,7 +207,7 @@ export default function AdminIbadahPage() {
     try {
       const [ibadahData, studentsData] = await Promise.all([
         getClassIbadah(cid, token, { classId: activeClassId, from: dates[0], to: dates[6] }),
-        getStudents(cid, token, { classId: activeClassId, limit: 200 }),
+        getStudents(cid, token, { classId: activeClassId, status: "ACTIVE", limit: 200 }),
       ]);
       setConfig(ibadahData.config);
       setWeeklyLogs(ibadahData.logs);
@@ -222,7 +222,7 @@ export default function AdminIbadahPage() {
     try {
       const [ibadahData, studentsData] = await Promise.all([
         getClassIbadah(cid, token, { classId: activeClassId, from: customFrom, to: customTo }),
-        getStudents(cid, token, { classId: activeClassId, limit: 300 }),
+        getStudents(cid, token, { classId: activeClassId, status: "ACTIVE", limit: 300 }),
       ]);
       setConfig(ibadahData.config);
       setCustomLogs(ibadahData.logs);

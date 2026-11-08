@@ -692,7 +692,7 @@ export default function IDCardsPage() {
     setLoading(true);
 
     Promise.all([
-      getStudents(cid, token, { limit: 500, signal: ac.signal }).catch(() => ({
+      getStudents(cid, token, { limit: 500, status: "ACTIVE", signal: ac.signal }).catch(() => ({
         data: [] as StudentRecord[],
         total: 0,
         page: 1,

@@ -213,7 +213,7 @@ export default function TeacherClassTestsPage() {
     try {
       const clsId = exam.classId ?? "";
       const [stuData, subData, resultData] = await Promise.all([
-        getStudents(cid, token, { classId: clsId, limit: 500 }),
+        getStudents(cid, token, { classId: clsId, status: "ACTIVE", limit: 500 }),
         getSubjects(cid, token, { classId: clsId, limit: 200 }),
         getResults(cid, token, { examId: exam.id, classId: clsId, limit: 2000 }),
       ]);

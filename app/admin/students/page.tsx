@@ -265,6 +265,7 @@ export default function AdminStudentsPage() {
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeClassId, setActiveClassId] = useState<string | "all">("all");
   const [gender, setGender] = useState<"all" | "MALE" | "FEMALE">("all");
+  const [statusFilter, setStatusFilter] = useState<string | "all">("all");
 
   const [drawer, setDrawer] = useState<null | "add" | StudentRecord>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -286,11 +287,11 @@ export default function AdminStudentsPage() {
       search: search || undefined,
       classId: activeClassId !== "all" ? activeClassId : undefined,
       gender: gender !== "all" ? gender : undefined,
-      status: "ACTIVE" as const,
+      status: statusFilter !== "all" ? statusFilter : undefined,
       sortBy: sortBy,
       sortOrder: sortDir,
     }),
-    [page, pageSize, search, activeClassId, gender, sortBy, sortDir],
+    [page, pageSize, search, activeClassId, gender, statusFilter, sortBy, sortDir],
   );
 
   const { data, isLoading, error } = useStudentsList(ctx, queryParams, {
@@ -562,6 +563,27 @@ console.log(classes);
         headerClass: "hidden lg:table-cell",
       },
       {
+        key: "status",
+        header: "Status",
+        sortable: true,
+        render: (s) => (
+          <span
+            className={cn(
+              "text-xs font-semibold px-2 py-0.5 rounded-md",
+              s.status === "ACTIVE"
+                ? "bg-emerald-100 text-emerald-700"
+                : s.status === "INACTIVE"
+                  ? "bg-gray-100 text-gray-600"
+                  : "bg-amber-100 text-amber-700",
+            )}
+          >
+            {s.status ?? "ACTIVE"}
+          </span>
+        ),
+        className: "hidden md:table-cell",
+        headerClass: "hidden md:table-cell",
+      },
+      {
         key: "actions",
         header: "",
         render: (s) => (
@@ -692,9 +714,24 @@ console.log(classes);
           >
             <option value="all">{t("adminPages", "allFilter", lang)}</option>
             <option value="MALE">{t("adminPages", "boysFilter", lang)}</option>
-            <option value="FEMALE">
-              {t("adminPages", "girlsFilter", lang)}
-            </option>
+            <option value="FEMALE">{t("adminPages", "girlsFilter", lang)}</option>
+          </select>
+        </div>
+        <div className="relative">
+          <select
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPage(1);
+            }}
+            className="pl-3 pr-8 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none cursor-pointer"
+          >
+            <option value="all">All Statuses</option>
+            <option value="ACTIVE">Active</option>
+            <option value="INACTIVE">Inactive</option>
+            <option value="GRADUATED">Graduated</option>
+            <option value="TRANSFERRED">Transferred</option>
+            <option value="DROPPED_OUT">Dropped Out</option>
           </select>
         </div>
       </div>

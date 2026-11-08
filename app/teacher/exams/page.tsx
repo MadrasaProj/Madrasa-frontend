@@ -222,7 +222,7 @@ export default function TeacherExamsPage() {
     if (!cid || !token || !queryClassId || !queryExamId) return;
 
     const [stuData, resData] = await Promise.all([
-      getStudents(cid, token, { classId: queryClassId, limit: 200 }).catch(
+      getStudents(cid, token, { classId: queryClassId, status: "ACTIVE", limit: 200 }).catch(
         () => ({ data: [] as StudentRecord[] }),
       ),
       querySubjectId

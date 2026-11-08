@@ -396,7 +396,7 @@ export default function AdminExamsPage() {
     try {
       const [subData, stuData] = await Promise.all([
         getSubjects(cid, token, { classId, limit: 200 }),
-        getStudents(cid, token, { classId, limit: 500 }),
+        getStudents(cid, token, { classId, status: "ACTIVE", limit: 500 }),
       ]);
       const subs = subData.data ?? [];
       const stus = stuData.data ?? [];

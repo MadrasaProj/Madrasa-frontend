@@ -91,7 +91,7 @@ export default function ClassReportPage() {
  try {
  const [rep, studs] = await Promise.all([
  getClassReport(cid, token, { examId, classId }),
- getStudents(cid, token, { classId, limit: 500 }).catch(() => ({ data: [] as StudentRecord[] })),
+ getStudents(cid, token, { classId, status: "ACTIVE", limit: 500 }).catch(() => ({ data: [] as StudentRecord[] })),
  ]);
  setReport(rep);
  setStudents(studs.data ?? []);

@@ -109,7 +109,7 @@ export default function TeacherDashboard() {
 
   const students = useStudentsList(
     { clientId, token },
-    { classId: activeClassId, limit: 1 },
+    { classId: activeClassId, limit: 1, status: "ACTIVE" },
     { enabled: !!clientId && !!token && !!activeClassId },
   );
 
