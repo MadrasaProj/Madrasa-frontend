@@ -1,0 +1,45 @@
+.agent-access-cta {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.agent-access-cta::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 200%;
+  aspect-ratio: 1;
+  background: conic-gradient(
+    var(--color-primary-100) 0deg 35deg,
+    var(--primary) 75deg 105deg,
+    var(--color-primary-100) 145deg 215deg,
+    var(--primary) 255deg 285deg,
+    var(--color-primary-100) 325deg 360deg
+  );
+  animation: agent-access-border-spin 6s linear infinite;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.agent-access-cta::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: inherit;
+  background: white;
+  pointer-events: none;
+}
+
+@keyframes agent-access-border-spin {
+  to {
+    transform: translate(-50%, -50%) rotate(1turn);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-access-cta::before {
+    animation: none;
+  }
+}

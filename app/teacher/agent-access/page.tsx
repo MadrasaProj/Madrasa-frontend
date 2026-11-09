@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { ArrowUpRight, Bot, Check, Copy } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ResponsivePopover } from '@/components/ui/responsivePopover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { teacherMcpEndpoint } from '@/lib/teacher-mcp-api';
+import './agent-access.css';
 
 const assetRoot = '/images/teacher/agent-access';
 const clients = [
@@ -14,39 +15,44 @@ const clients = [
 ] as const;
 type ClientId = (typeof clients)[number]['id'];
 
-function ClientLogo({ client, small = false }: { client: (typeof clients)[number]; small?: boolean }) {
-  return <span className={`flex shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm ${small ? 'size-8 p-1.5' : 'size-10 p-2'}`}><img src={client.logo} alt={`${client.name} logo`} className="h-full w-full object-contain" /></span>;
-}
-
 export default function TeacherAgentAccessPage() {
   const [open, setOpen] = useState(false);
   const [activeClient, setActiveClient] = useState<ClientId>('chatgpt');
-  const [copied, setCopied] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
 
   const copyUrl = async () => {
     try {
       await navigator.clipboard.writeText(teacherMcpEndpoint);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2500);
+      setCopyStatus('copied');
     } catch {
-      setCopied(false);
+      setCopyStatus('failed');
     }
   };
 
   return (
     <DashboardLayout>
-      <PageHeader title="Agent access" icon={Bot} />
+      <PageHeader title="Agent access"  />
       <div className="mx-auto flex max-w-xl flex-col items-center gap-5 px-5 pb-12 pt-8 sm:gap-7 sm:pt-10">
-        <figure className="relative aspect-square w-full max-w-[410px]" aria-label="A teacher connecting to ChatGPT, Claude, and Gemini">
-          <img src={`${assetRoot}/hero.webp`} alt="Teacher using a tablet" className="h-full w-full object-contain" />
-          <div className="absolute left-[18%] top-[20%] -translate-x-1/2 -translate-y-1/2"><ClientLogo client={clients[0]} /></div>
-          <div className="absolute left-[50%] top-[13%] -translate-x-1/2 -translate-y-1/2"><ClientLogo client={clients[1]} /></div>
-          <div className="absolute left-[81%] top-[20%] -translate-x-1/2 -translate-y-1/2"><ClientLogo client={clients[2]} /></div>
+        <figure className="aspect-square w-full  max-w-[440px]">
+          <img
+            src={`${assetRoot}/hero.webp`}
+            alt="Friendly AI assistant floating above a tablet with chat bubbles"
+            className="h-full mt-10 w-full object-contain"
+          />
         </figure>
-        <button type="button" onClick={() => setOpen(true)} className="group flex w-full max-w-[310px] items-center gap-3 rounded-2xl border border-emerald-200/80 bg-white px-4 py-3.5 text-left text-gray-900 shadow-[0_0_0_4px_rgba(121,191,139,0.08),0_10px_32px_rgba(51,112,68,0.13)] transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-[0_0_0_5px_rgba(121,191,139,0.13),0_14px_38px_rgba(51,112,68,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-4">
-          <span className="flex shrink-0 items-center pl-1.5">{clients.map((client, index) => <span key={client.id} className={index === 0 ? '' : '-ml-2.5'}><ClientLogo client={client} small /></span>)}</span>
-          <span className="min-w-0 flex-1 text-sm font-semibold">Install MCP</span>
-          <ArrowUpRight aria-hidden="true" className="size-4 text-gray-500 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+        <div className="space-y-1.5 text-center">
+          <h2 className="text-xl font-semibold text-foreground sm:text-2xl">Connect your AI assistant</h2>
+          <p className="text-sm text-muted-foreground">Use ChatGPT, Claude, or Gemini with your teacher tools.</p>
+        </div>
+        <button type="button" onClick={() => setOpen(true)} className="agent-access-cta inline-flex min-h-16 w-full max-w-[280px] items-center justify-center gap-3 rounded-full bg-white px-7 text-primary-700 shadow-[0_4px_12px_var(--color-primary-100)] transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_var(--color-primary-150)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4">
+          <span aria-hidden="true" className="relative z-10 flex shrink-0 items-center -space-x-2">
+            {clients.map((client) => (
+              <span key={client.id} className="flex size-8 items-center justify-center rounded-full border-2 border-white bg-white p-1 shadow-sm">
+                <img src={client.logo} alt="" className="h-full w-full object-contain" />
+              </span>
+            ))}
+          </span>
+          <span className="relative z-10 text-lg font-semibold">Install MCP</span>
         </button>
       </div>
 
@@ -57,11 +63,13 @@ export default function TeacherAgentAccessPage() {
           </TabsList>
           {clients.map((client) => <TabsContent key={client.id} value={client.id} className="mt-5 space-y-4">
             <video key={client.video} src={client.video} aria-label={`How to install MCP in ${client.name}`} className="aspect-video w-full rounded-xl border border-gray-200 bg-[#f9f6f0] object-cover" autoPlay muted loop playsInline controls preload="metadata" />
-            <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 p-2">
-              <input aria-label="MCP server URL" readOnly value={teacherMcpEndpoint} onFocus={(event) => event.currentTarget.select()} className="min-w-0 flex-1 bg-transparent px-2 text-xs text-gray-600 outline-none" />
-              <button type="button" onClick={copyUrl} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-gray-800 shadow-sm ring-1 ring-gray-200 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600">{copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}{copied ? 'Copied' : 'Copy URL'}</button>
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+              <input aria-label="MCP server URL" readOnly value={teacherMcpEndpoint} onFocus={(event) => event.currentTarget.select()} className="w-full bg-transparent px-1 text-xs text-gray-600 outline-none" />
             </div>
-            <a href={client.href} target="_blank" rel="noopener noreferrer" className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#527F37] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#41672c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2">{client.action}<ArrowUpRight aria-hidden="true" className="size-4" /></a>
+            <a href={client.href} target="_blank" rel="noopener noreferrer" onClick={() => { void copyUrl(); }} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary-700 px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">{client.action}<ArrowUpRight aria-hidden="true" className="size-4" /></a>
+            <p role="status" className="text-center text-xs text-muted-foreground">
+              {copyStatus === 'copied' ? 'MCP URL copied. Paste it into the opened page.' : copyStatus === 'failed' ? 'Could not copy the URL. Select it above to copy manually.' : `Opening ${client.name} also copies the MCP URL.`}
+            </p>
           </TabsContent>)}
         </Tabs>
       </ResponsivePopover>
