@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
 import {
   Users,
   GraduationCap,
@@ -7,10 +6,12 @@ import {
   Check,
   ExternalLink,
   MessageCircle,
-  Share2,
-  Sparkles,
+  type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
+import { cn } from "@/lib/utils";
 
 export interface PortalLinksCardProps {
   slug: string;
@@ -18,10 +19,18 @@ export interface PortalLinksCardProps {
   className?: string;
 }
 
+type Portal = {
+  key: "teacher" | "parent";
+  title: string;
+  description: string;
+  url: string;
+  icon: LucideIcon;
+};
+
 export function PortalLinksCard({
   slug,
   madrasaName,
-  className = "",
+  className,
 }: PortalLinksCardProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
@@ -30,6 +39,10 @@ export function PortalLinksCard({
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const teacherUrl = `${origin}/m/${slug}/teacher`;
   const parentUrl = `${origin}/m/${slug}/parent`;
+  const portals: Portal[] = [
+    { key: "teacher", title: "Teacher Portal", description: "For staff attendance & classes", url: teacherUrl, icon: Users },
+    { key: "parent", title: "Parent Portal", description: "For fees, exams & attendance", url: parentUrl, icon: GraduationCap },
+  ];
 
   const copyToClipboard = async (url: string, key: string, label: string) => {
     try {
@@ -56,203 +69,88 @@ export function PortalLinksCard({
 
   const shareSingleViaWhatsApp = (portalName: string, url: string) => {
     const org = madrasaName ? `${madrasaName} - ` : "";
-    const text = `*${org}${portalName}*\nAccess your portal here:\n${url}\n\n_Tip: Open this link and add it to your Home Screen for quick access._`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+    const message = `*${org}${portalName}*\nAccess your portal here:\n${url}\n\n_Tip: Open this link and add it to your Home Screen for quick access._`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank");
   };
 
   const shareBroadcastViaWhatsApp = () => {
     const org = madrasaName ? ` for *${madrasaName}*` : "";
-    const text =
+    const message =
       `*Smart Madrasa Portals${org}*\n\n` +
       `👩‍🏫 *Teacher Portal:*\n${teacherUrl}\n\n` +
       `👨‍👩‍👧 *Parent Portal:*\n${parentUrl}\n\n` +
       `_Save these links or tap the browser menu to "Add to Home Screen" for easy app-like access._`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank");
   };
 
   return (
-    <div
-      className={`bg-white rounded-3xl p-5 border border-gray-100 shadow-xs mb-5 ${className}`}
-    >
-      {/* Card Header */}
-      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-primary-100 text-primary-700 flex items-center justify-center">
-            <Share2 className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold text-gray-900">
-                Staff & Parent Portal Links
-              </h2>
-              <span className="flex items-center gap-1 text-[10px] font-semibold bg-primary-50 text-primary-700 border border-primary-200 px-2 py-0.5 rounded-full">
-                <Sparkles className="w-2.5 h-2.5" />
-                Live Portals
-              </span>
-            </div>
-            <p className="text-xs text-gray-500">
-              Share login portal links with your teachers and student parents
-            </p>
-          </div>
+    <section className={cn("card rounded-2xl border border-gray-100 bg-white p-4 shadow-xs sm:p-5", className)}>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-bold text-gray-950 sm:text-base">Staff & Parent Portal Links</h2>
+          <p className="mt-0.5 text-xs text-gray-500">Share login links with teachers and parents</p>
         </div>
-
-        <button
-          onClick={shareBroadcastViaWhatsApp}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-primary-50 hover:bg-primary-100 text-primary-700 border border-primary-200 transition-colors cursor-pointer"
-        >
-          <MessageCircle className="w-3.5 h-3.5" />
-          Broadcast Both Links
-        </button>
+        <Button type="button" size="sm" variant="outline" onClick={shareBroadcastViaWhatsApp}>
+          <MessageCircle aria-hidden="true" className="size-3.5" />
+          Share both
+        </Button>
       </div>
 
-      {/* Two Portal Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-        {/* Teacher Portal */}
-        <div className="bg-gradient-to-br from-primary-50/40 via-white to-teal-50/30 rounded-2xl p-4 border border-primary-100 hover:border-primary-200 transition-all flex flex-col justify-between">
-          <div>
-            <div className="flex items-start justify-between gap-2 mb-2">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-primary-100 text-primary-700 flex items-center justify-center shrink-0">
-                  <Users className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-gray-900">
-                    Teacher Portal
-                  </h3>
-                  <p className="text-xs text-gray-500">
-                    For staff attendance & classes
-                  </p>
+      <div className="grid gap-3 md:grid-cols-2">
+        {portals.map((portal) => (
+          <div
+            key={portal.key}
+            className="flex min-w-0 flex-col justify-between rounded-2xl border border-white bg-linear-to-br from-primary-50 via-white to-white p-4 shadow-xs"
+          >
+            <div>
+              <div className="flex items-center gap-3">
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary-100 text-primary-700">
+                  <portal.icon aria-hidden="true" className="size-5" />
+                </span>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold text-gray-950">{portal.title}</h3>
+                  <p className="text-xs text-gray-600">{portal.description}</p>
                 </div>
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-primary-100/70 text-primary-800">
-                Staff
-              </span>
+              <p className="mt-4 truncate rounded-xl bg-white/80 px-3 py-2 text-xs text-gray-600 select-all" title={portal.url}>
+                {portal.url}
+              </p>
             </div>
 
-            {/* URL display */}
-            <div className="bg-white/80 rounded-xl p-2 border border-primary-150 mb-3 flex items-center gap-2">
-              <span className="text-xs font-mono text-gray-600 truncate flex-1 select-all">
-                {teacherUrl}
-              </span>
-            </div>
+            <ButtonGroup aria-label={`${portal.title} actions`} className="mt-3 w-full">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="min-w-0 flex-1"
+                onClick={() => copyToClipboard(portal.url, portal.key, `${portal.title} Link`)}
+              >
+                {copiedKey === portal.key ? <Check aria-hidden="true" className="size-3.5" /> : <Copy aria-hidden="true" className="size-3.5" />}
+                {copiedKey === portal.key ? "Copied" : "Copy"}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="min-w-0 flex-1"
+                onClick={() => shareSingleViaWhatsApp(portal.title, portal.url)}
+              >
+                <MessageCircle aria-hidden="true" className="size-3.5" />
+                Share
+              </Button>
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="outline"
+                aria-label={`Open ${portal.title} in a new tab`}
+                title={`Open ${portal.title} in a new tab`}
+                onClick={() => window.open(portal.url, "_blank", "noopener,noreferrer")}
+              >
+                <ExternalLink aria-hidden="true" className="size-4" />
+              </Button>
+            </ButtonGroup>
           </div>
-
-          {/* Action buttons */}
-          <div className="flex items-center gap-1.5 pt-1 border-t border-primary-100/60">
-            <button
-              onClick={() =>
-                copyToClipboard(teacherUrl, "teacher", "Teacher Portal Link")
-              }
-              className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl text-xs font-semibold bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors shadow-2xs cursor-pointer"
-            >
-              {copiedKey === "teacher" ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-primary-600" />
-                  <span className="text-primary-600 font-bold">Copied!</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5 text-gray-400" />
-                  <span>Copy Link</span>
-                </>
-              )}
-            </button>
-
-            <button
-              onClick={() =>
-                shareSingleViaWhatsApp("Teacher Portal", teacherUrl)
-              }
-              className="flex items-center justify-center gap-1 py-1.5 px-2.5 rounded-xl text-xs font-semibold bg-primary-600 text-white hover:bg-primary-700 transition-colors shadow-2xs cursor-pointer"
-              title="Share to WhatsApp"
-            >
-              <MessageCircle className="w-3.5 h-3.5" />
-              <span>Share</span>
-            </button>
-
-            <a
-              href={teacherUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-1.5 rounded-xl text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors cursor-pointer"
-              title="Open Teacher Portal in new tab"
-            >
-              <ExternalLink className="w-4 h-4" />
-            </a>
-          </div>
-        </div>
-
-        {/* Parent Portal */}
-        <div className="bg-gradient-to-br from-indigo-50/40 via-white to-purple-50/30 rounded-2xl p-4 border border-indigo-100 hover:border-indigo-200 transition-all flex flex-col justify-between">
-          <div>
-            <div className="flex items-start justify-between gap-2 mb-2">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
-                  <GraduationCap className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-gray-900">
-                    Parent Portal
-                  </h3>
-                  <p className="text-xs text-gray-500">
-                    For fees, exams & attendance
-                  </p>
-                </div>
-              </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-100/70 text-indigo-800">
-                Parents
-              </span>
-            </div>
-
-            {/* URL display */}
-            <div className="bg-white/80 rounded-xl p-2 border border-indigo-150 mb-3 flex items-center gap-2">
-              <span className="text-xs font-mono text-gray-600 truncate flex-1 select-all">
-                {parentUrl}
-              </span>
-            </div>
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex items-center gap-1.5 pt-1 border-t border-indigo-100/60">
-            <button
-              onClick={() =>
-                copyToClipboard(parentUrl, "parent", "Parent Portal Link")
-              }
-              className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl text-xs font-semibold bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors shadow-2xs cursor-pointer"
-            >
-              {copiedKey === "parent" ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-indigo-600" />
-                  <span className="text-indigo-600 font-bold">Copied!</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5 text-gray-400" />
-                  <span>Copy Link</span>
-                </>
-              )}
-            </button>
-
-            <button
-              onClick={() => shareSingleViaWhatsApp("Parent Portal", parentUrl)}
-              className="flex items-center justify-center gap-1 py-1.5 px-2.5 rounded-xl text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-2xs cursor-pointer"
-              title="Share to WhatsApp"
-            >
-              <MessageCircle className="w-3.5 h-3.5" />
-              <span>Share</span>
-            </button>
-
-            <a
-              href={parentUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-1.5 rounded-xl text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors cursor-pointer"
-              title="Open Parent Portal in new tab"
-            >
-              <ExternalLink className="w-4 h-4" />
-            </a>
-          </div>
-        </div>
+        ))}
       </div>
-    </div>
+    </section>
   );
 }

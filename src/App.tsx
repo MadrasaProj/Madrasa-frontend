@@ -51,6 +51,7 @@ import AdminSubjectsPage from "../app/admin/subjects/page";
 import AdminSuperUsersPage from "../app/admin/super-users/page";
 import AdminTeachersPage from "../app/admin/teachers/page";
 import AdminTeacherAttendancePage from "../app/admin/teacher-attendance/page";
+import AdminClassTestsPage from "../app/admin/exams/class-test/page";
 
 // ── CRM Platform Modules ──────────────────────────────────────────────────────
 import OperationsDashboard from "../app/admin/crm/operations";
@@ -171,7 +172,7 @@ export default function App() {
         <Route path="/admin/exams" element={<AdminExamsPage />} />
         <Route
           path="/admin/exams/class-test"
-          element={<TeacherClassTestsPage />}
+          element={<AdminClassTestsPage />}
         />
         <Route
           path="/admin/exams/class-report"
@@ -287,7 +288,7 @@ export default function App() {
         <Route path="/m/:slug/admin/exams" element={<AdminExamsPage />} />
         <Route
           path="/m/:slug/admin/exams/class-test"
-          element={<TeacherClassTestsPage />}
+          element={<AdminClassTestsPage />}
         />
         <Route
           path="/m/:slug/admin/exams/class-report"

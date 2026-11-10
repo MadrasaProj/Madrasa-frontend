@@ -1,9 +1,16 @@
-import { SkeletonGrid, TableSkeleton } from "@/components/ui/Skeleton";
+import { Skeleton, SkeletonGrid, TableSkeleton } from "@/components/ui/Skeleton";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { IllustratedEmptyState } from "@/components/ui/IllustratedEmptyState";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
-import { DataTable, type Column, type SortDir } from "@/components/ui/DataTable";
+import { DataTable, type SortDir } from "@/components/ui/DataTable";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
+import { DrawerSelector } from "@/components/DrawerSelector";
+import { DatePickerDrawer } from "@/components/DatePickerDrawer";
 import {
   getExams,
   createExam,
@@ -34,13 +41,15 @@ import {
   CheckCircle2,
   BarChart2,
   GraduationCap,
-  Award,
   Clock,
   ClipboardCheck,
   Trophy,
   RefreshCw,
   FileSpreadsheet,
   FileText,
+  SlidersHorizontal,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -54,8 +63,6 @@ import { MarklistPoster } from "@/components/exam/MarklistPoster";
 import { ResultAnnouncementPoster } from "@/components/exam/ResultAnnouncementPoster";
 import { ExcelImportModal } from "@/components/exam/ExcelImportModal";
 import { useExamColumns } from "@/components/exam/ExamColumns";
-import { ExamMobileCard } from "@/components/exam/ExamMobileCard";
-import { ExamStatsCards } from "@/components/exam/ExamStatsCards";
 import { fmt, shortDate, getExamCategories, PAGE_SIZE_OPTIONS } from "@/lib/exam-utils";
 import {
   getClassReport, computeSummary, setFinalStatus,
@@ -73,6 +80,8 @@ interface ExamForm {
   maxMarks: number;
   passMarks: number;
 }
+
+type ExamDateField = "startDate" | "endDate" | "markEntryLastDate" | "publishedDate";
 
 const EMPTY_FORM: ExamForm = {
   name: "",
@@ -148,6 +157,8 @@ export default function AdminExamsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState<"create" | "edit">("create");
   const [form, setForm] = useState<ExamForm>(EMPTY_FORM);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [activeDateField, setActiveDateField] = useState<ExamDateField | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [editTargetId, setEditTargetId] = useState<string | null>(null);
 
@@ -207,12 +218,14 @@ export default function AdminExamsPage() {
 
   const openCreateDrawer = () => {
     setForm(EMPTY_FORM);
+    setFormError(null);
     setDrawerMode("create");
     setEditTargetId(null);
     setDrawerOpen(true);
   };
 
   const openEditDrawer = (exam: ExamRecord) => {
+    setFormError(null);
     setForm({
       name: exam.name,
       startDate: exam.startDate
@@ -238,8 +251,14 @@ export default function AdminExamsPage() {
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !cid || !token) return;
+    if (!cid || !token) return;
+    if (!form.name.trim() || !form.startDate || !form.endDate || !form.markEntryLastDate || !form.publishedDate) {
+      setFormError("Enter the exam name and all required dates.");
+      toast.error("Enter the exam name and all required dates.");
+      return;
+    }
     setSubmitting(true);
+    setFormError(null);
     setPageError(null);
 
     const payload = {
@@ -632,6 +651,12 @@ export default function AdminExamsPage() {
   }, [searchText, pageSize]);
 
   const { upcoming: upcomingExams, markEntryOpen: markEntryOpenExams, completed: completedExams, published: publishedExams } = getExamCategories(exams);
+  const examSummary = [
+    { label: "Upcoming", value: upcomingExams.length, icon: Clock, color: "text-primary-700" },
+    { label: "Mark entry", value: markEntryOpenExams.length, icon: PenLine, color: "text-primary-700" },
+    { label: "Completed", value: completedExams.length, icon: ClipboardCheck, color: "text-blue-700" },
+    { label: "Published", value: publishedExams.length, icon: Trophy, color: "text-amber-700" },
+  ];
 
   const columns = useExamColumns({
     showActions: true,
@@ -639,51 +664,22 @@ export default function AdminExamsPage() {
     onClasses: (exam) => openClassDrawer(exam.id),
     onDelete: startDeleteExam,
   });
+  const showExamList = loading || exams.length > 0;
 
   return (
     <DashboardLayout>
-      <div className="py-3 lg:px-8 lg:py-6 space-y-6">
+      <div className="p-0! pb-24! lg:pb-8!">
         <PageHeader
           title="Exams"
-          subtitle="Manage term examinations"
-          icon={GraduationCap}
-          action={
-            <button
+          action={showExamList ? (
+            <Button
+              type="button"
               onClick={openCreateDrawer}
-              className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-bold text-sm px-4 py-2.5 rounded-xl transition-all shadow-sm hover:scale-[1.01]"
+              className="hidden rounded-full md:inline-flex"
             >
-              <Plus className="w-4 h-4" /> Create Exam
-            </button>
-          }
-        />
-
-        <ExamStatsCards
-          stats={[
-            {
-              label: "Upcoming Exams",
-              value: upcomingExams.length,
-              color: "bg-primary-50 text-primary-600 border border-primary-100",
-              icon: Clock,
-            },
-            {
-              label: "Mark Entry Open",
-              value: markEntryOpenExams.length,
-              color: "bg-amber-50 text-amber-600 border border-amber-100",
-              icon: PenLine,
-            },
-            {
-              label: "Completed",
-              value: completedExams.length,
-              color: "bg-purple-50 text-purple-700 border border-purple-100",
-              icon: ClipboardCheck,
-            },
-            {
-              label: "Results Published",
-              value: publishedExams.length,
-              color: "bg-teal-50 text-teal-600 border border-teal-100",
-              icon: Trophy,
-            },
-          ]}
+              <Plus className="h-4 w-4" /> Create Exam
+            </Button>
+          ) : undefined}
         />
 
         {pageError && (
@@ -696,53 +692,205 @@ export default function AdminExamsPage() {
           />
         )}
 
-        <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search exam by name..."
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-500 transition-all"
+        {!showExamList && !pageError && (
+          <IllustratedEmptyState
+            image="/images/teacher/exams-empty.webp"
+            title="No term exams yet"
+            description="Create an exam to get started."
+            action={
+              <Button type="button" size="lg" onClick={openCreateDrawer} className="rounded-full">
+                <Plus className="h-5 w-5" /> Create Exam
+              </Button>
+            }
           />
-        </div>
+        )}
 
-        <DataTable
-          columns={columns}
-          data={pagedExams}
-          keyExtractor={(e) => e.id}
-          loading={loading}
-          error={null}
-          emptyIcon={GraduationCap}
-          emptyMessage="No term exams found"
-          onSort={(key, dir) => {
-            setSortBy(key);
-            setSortDir(dir);
-          }}
-          sortKey={sortBy}
-          sortDir={sortDir}
-          pagination={{
-            page,
-            totalPages,
-            total: sortedExams.length,
-            pageSize,
-            pageSizeOptions: PAGE_SIZE_OPTIONS,
-            onPageChange: setPage,
-            onPageSizeChange: (sz) => {
-              setPageSize(sz);
-              setPage(1);
-            },
-          }}
-          mobileRender={(exam) => (
-            <ExamMobileCard
-              exam={exam}
-              onEdit={openEditDrawer}
-              onClasses={(e) => openClassDrawer(e.id)}
-              onDelete={startDeleteExam}
+        {showExamList && (
+          <>
+            <div className="px-3 pb-2 pt-6">
+              <div className="mx-auto flex w-full max-w-md items-center gap-2">
+                <InputGroup className="h-10 min-w-0 flex-1 rounded-lg bg-white">
+                  <InputGroupInput
+                    type="search"
+                    aria-label="Search exams by name"
+                    placeholder="Search exam by name..."
+                    value={searchText}
+                    onChange={(event) => setSearchText(event.target.value)}
+                    className="h-full text-sm"
+                  />
+                  <InputGroupAddon align="inline-start">
+                    <Search className="h-4 w-4 text-gray-400" />
+                  </InputGroupAddon>
+                </InputGroup>
+                <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600">
+                  <SlidersHorizontal aria-hidden="true" className="h-4 w-4" />
+                  <select
+                    aria-label="Sort exams"
+                    value={`${sortBy ?? "startDate"}:${sortDir}`}
+                    onChange={(event) => {
+                      const [key, direction] = event.target.value.split(":");
+                      setSortBy(key);
+                      setSortDir(direction as SortDir);
+                      setPage(1);
+                    }}
+                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                  >
+                    <option value="startDate:desc">Newest first</option>
+                    <option value="startDate:asc">Oldest first</option>
+                    <option value="name:asc">Name A–Z</option>
+                    <option value="name:desc">Name Z–A</option>
+                    <option value="examStatus:asc">Status A–Z</option>
+                    <option value="examStatus:desc">Status Z–A</option>
+                    <option value="markEntryLastDate:asc">Mark entry: earliest</option>
+                    <option value="markEntryLastDate:desc">Mark entry: latest</option>
+                    <option value="publishedDate:asc">Published: earliest</option>
+                    <option value="publishedDate:desc">Published: latest</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="mx-3 mb-3 overflow-hidden rounded-2xl bg-white">
+                <Skeleton className="h-20 rounded-none" />
+                <div className="grid grid-cols-2 gap-px bg-gray-100 sm:grid-cols-4">
+                  {Array.from({ length: 4 }).map((_, index) => (
+                    <Skeleton key={index} className="h-20 rounded-none" />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <section className="mx-3 mb-3 overflow-hidden rounded-2xl bg-gradient-to-br from-white to-sky-50">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-3 py-2.5">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-xl font-semibold tabular-nums text-gray-950">{exams.length}</span>
+                    <span className="text-xs font-medium text-gray-600">Total exams</span>
+                  </div>
+                  <span className="rounded-full border border-primary-100 bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
+                    <strong className="tabular-nums">{sortedExams.length}</strong> shown
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-px bg-gray-100 sm:grid-cols-4">
+                  {examSummary.map((stat) => {
+                    const Icon = stat.icon;
+                    return (
+                      <div key={stat.label} className="min-w-0 bg-white/90 p-2.5 sm:p-3">
+                        <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-600">
+                          <Icon aria-hidden="true" className={`h-3.5 w-3.5 shrink-0 ${stat.color}`} />
+                          <span>{stat.label}</span>
+                        </div>
+                        <div className="mt-1 text-lg font-semibold tabular-nums text-gray-950">{stat.value}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            <DataTable
+              className="mx-3 hidden md:block md:w-auto"
+              columns={columns}
+              data={pagedExams}
+              keyExtractor={(e) => e.id}
+              loading={loading}
+              error={null}
+              emptyIcon={GraduationCap}
+              emptyMessage="No term exams found"
+              onSort={(key, dir) => {
+                setSortBy(key);
+                setSortDir(dir);
+              }}
+              sortKey={sortBy}
+              sortDir={sortDir}
+              pagination={{
+                page,
+                totalPages,
+                total: sortedExams.length,
+                pageSize,
+                pageSizeOptions: PAGE_SIZE_OPTIONS,
+                onPageChange: setPage,
+                onPageSizeChange: (sz) => {
+                  setPageSize(sz);
+                  setPage(1);
+                },
+              }}
             />
-          )}
-        />
+            <section className="card mx-3 divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white p-0! shadow-none md:hidden" data-ui-style="classic" aria-label="Exams">
+              {loading ? (
+                Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="space-y-2 p-3">
+                    <Skeleton className="h-4 w-1/2" />
+                    <Skeleton className="h-3 w-3/4" />
+                  </div>
+                ))
+              ) : pagedExams.length === 0 ? (
+                <div className="flex flex-col items-center px-3 py-8 text-center">
+                  <img src="/icons/exams/empty.webp" alt="" className="mb-3 h-28 w-28 object-contain" />
+                  <p className="text-sm text-gray-500">{searchText ? "No matching exams found" : "No term exams found"}</p>
+                </div>
+              ) : pagedExams.map((exam) => {
+                const status = getExamStatusInfo(exam);
+                return (
+                  <div key={exam.id} className="p-3">
+                    <button
+                      type="button"
+                      onClick={() => openClassDrawer(exam.id)}
+                      className="w-full text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+                    >
+                      <span className="flex items-start justify-between gap-3">
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-semibold text-gray-900">{exam.name}</span>
+                          <span className="mt-0.5 block text-xs text-gray-500">{status.description || "—"}</span>
+                        </span>
+                        <ExamStatusBadge exam={exam} className="rounded-full border px-2.5 py-1 text-xs font-medium normal-case tracking-normal" />
+                      </span>
+                      <span className="mt-2 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+                        <span className="text-xs text-gray-500">Exam period</span>
+                        <span className="text-xs font-medium text-gray-700">{shortDate(exam.startDate)} – {shortDate(exam.endDate)}</span>
+                      </span>
+                    </button>
+                    <div className="mt-3 flex items-center gap-2 border-t border-gray-100 pt-2">
+                      <button type="button" onClick={() => openClassDrawer(exam.id)} className="rounded-lg bg-primary-50 px-3 py-1.5 text-xs font-medium text-primary-700 hover:bg-primary-100">Classes</button>
+                      <button type="button" onClick={() => openEditDrawer(exam)} className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200">Edit</button>
+                      <button type="button" onClick={() => startDeleteExam(exam)} className="ml-auto rounded-lg bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100">Delete</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </section>
+            {!loading && sortedExams.length > 0 && (
+              <div className="mx-3 mt-3 flex flex-wrap items-center justify-center gap-3 text-sm text-gray-500 md:hidden">
+                <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(page - 1)} className="rounded-xl">
+                  <ChevronLeft className="h-4 w-4" /> Previous
+                </Button>
+                <span className="tabular-nums">{(page - 1) * pageSize + 1}–{Math.min(page * pageSize, sortedExams.length)} of {sortedExams.length}</span>
+                <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage(page + 1)} className="rounded-xl">
+                  Next <ChevronRight className="h-4 w-4" />
+                </Button>
+                <select
+                  aria-label="Exams per page"
+                  value={pageSize}
+                  onChange={(event) => setPageSize(Number(event.target.value))}
+                  className="h-8 rounded-lg border border-gray-200 bg-white px-2 text-xs text-gray-600"
+                >
+                  {PAGE_SIZE_OPTIONS.map((size) => <option key={size} value={size}>{size} per page</option>)}
+                </select>
+              </div>
+            )}
+          </>
+        )}
       </div>
+
+      {showExamList && !drawerOpen && !classDrawerExamId && (
+        <Button
+          type="button"
+          size="lg"
+          onClick={openCreateDrawer}
+          className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-1/2 z-30 max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-full shadow-lg shadow-primary-900/20 md:hidden"
+        >
+          <Plus className="h-5 w-5" /> Create Exam
+        </Button>
+      )}
 
       {/* ── Class Drawer (View Classes + Mark Entry) ── */}
       <AnimatePresence>
@@ -1078,218 +1226,132 @@ export default function AdminExamsPage() {
         )}
       </AnimatePresence>
 
-      {/* ── Sliding Side Drawer Form (Create / Edit) ── */}
-      <AnimatePresence>
-        {drawerOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.3 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setDrawerOpen(false)}
-              className="fixed inset-0 bg-black z-40 backdrop-blur-xs pointer-events-auto"
-            />
-            <motion.div
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "tween", duration: 0.3 }}
-              className="fixed top-0 right-0 h-full w-full max-w-md bg-white border-l border-gray-100 shadow-2xl z-50 overflow-y-auto pointer-events-auto flex flex-col"
-            >
-              <div className="flex items-center justify-between p-5 border-b border-gray-100">
-                <div>
-                  <h2 className="text-lg font-extrabold text-gray-900 tracking-tight">
-                    {drawerMode === "create" ? "Create New Exam" : "Edit Exam"}
-                  </h2>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Define dates and configuration for term exams
-                  </p>
-                </div>
-                <button
-                  onClick={() => setDrawerOpen(false)}
-                  className="p-1.5 hover:bg-gray-100 rounded-xl transition-colors text-gray-400"
-                >
-                  <X className="w-5.5 h-5.5" />
-                </button>
+      {/* Create / Edit Exam */}
+      <ResponsivePopover
+        open={drawerOpen}
+        onOpenChange={(open) => {
+          if (submitting) return;
+          setDrawerOpen(open);
+          if (!open) setActiveDateField(null);
+        }}
+        side="bottom"
+        drawerOnDesktop
+        title={drawerMode === "create" ? "Create New Exam" : "Edit Exam"}
+        description="Define dates and configuration for term exams"
+        className="mx-auto w-full max-w-xl rounded-t-2xl"
+        showCloseButton={!submitting}
+        footer={
+          <div className="flex justify-end gap-2 border-t border-gray-100 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <Button type="button" variant="outline" size="lg" className="rounded-xl" disabled={submitting} onClick={() => setDrawerOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" form="admin-exam-form" size="lg" className="rounded-xl" disabled={submitting}>
+              {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+              {drawerMode === "create" ? "Create Exam" : "Save Changes"}
+            </Button>
+          </div>
+        }
+      >
+        <form id="admin-exam-form" onSubmit={handleFormSubmit} className="space-y-5 p-4">
+          {formError && <p role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">{formError}</p>}
+
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-gray-700">Basic Information</h3>
+            <div>
+              <label htmlFor="admin-exam-name" className="mb-1.5 block text-sm font-medium text-gray-700">Exam Name *</label>
+              <Input
+                id="admin-exam-name"
+                type="text"
+                size="lg"
+                required
+                value={form.name}
+                onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                placeholder="e.g. First Term Exam 2026"
+              />
+            </div>
+          </section>
+
+          <section className="space-y-3 border-t border-gray-100 pt-4">
+            <h3 className="text-sm font-semibold text-gray-700">Exam Period</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="mb-1.5 text-sm font-medium text-gray-700">Exam Start Date *</p>
+                <Button type="button" variant="outline" size="lg" aria-haspopup="dialog" aria-expanded={activeDateField === "startDate"} aria-label={`Exam Start Date: ${form.startDate ? fmt(form.startDate) : "Select date"}`} onClick={() => setActiveDateField("startDate")} className="w-full justify-start gap-2 overflow-hidden px-3 font-normal shadow-none!">
+                  <Calendar className="h-4 w-4 shrink-0 text-gray-500" />
+                  <span className="truncate">{form.startDate ? fmt(form.startDate) : "Select date"}</span>
+                </Button>
               </div>
+              <div>
+                <p className="mb-1.5 text-sm font-medium text-gray-700">Exam End Date *</p>
+                <Button type="button" variant="outline" size="lg" aria-haspopup="dialog" aria-expanded={activeDateField === "endDate"} aria-label={`Exam End Date: ${form.endDate ? fmt(form.endDate) : "Select date"}`} onClick={() => setActiveDateField("endDate")} className="w-full justify-start gap-2 overflow-hidden px-3 font-normal shadow-none!">
+                  <Calendar className="h-4 w-4 shrink-0 text-gray-500" />
+                  <span className="truncate">{form.endDate ? fmt(form.endDate) : "Select date"}</span>
+                </Button>
+              </div>
+            </div>
+          </section>
 
-              <form
-                onSubmit={handleFormSubmit}
-                className="p-5 flex-1 space-y-5"
-              >
-                <div className="space-y-4">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                    <GraduationCap className="w-4 h-4 text-primary-600" />{" "}
-                    Basic Information
-                  </p>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                      Exam Name *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={form.name}
-                      onChange={(e) =>
-                        setForm((f) => ({ ...f, name: e.target.value }))
-                      }
-                      placeholder="e.g. First Term Exam 2026"
-                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-500 transition-all bg-white"
-                    />
-                  </div>
-                </div>
+          <section className="space-y-3 border-t border-gray-100 pt-4">
+            <h3 className="text-sm font-semibold text-gray-700">Mark Entry Period</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="admin-exam-mark-entry-opens" className="mb-1.5 block text-sm font-medium text-gray-700">Mark Entry Opens On *</label>
+                <Input
+                  id="admin-exam-mark-entry-opens"
+                  type="text"
+                  size="lg"
+                  disabled
+                  value={form.endDate ? fmt(new Date(new Date(`${form.endDate}T00:00:00`).getTime() + 86400000).toISOString()) : ""}
+                  placeholder="After exam ends"
+                />
+              </div>
+              <div>
+                <p className="mb-1.5 text-sm font-medium text-gray-700">Mark Entry Closes On *</p>
+                <Button type="button" variant="outline" size="lg" aria-haspopup="dialog" aria-expanded={activeDateField === "markEntryLastDate"} aria-label={`Mark Entry Closes On: ${form.markEntryLastDate ? fmt(form.markEntryLastDate) : "Select date"}`} onClick={() => setActiveDateField("markEntryLastDate")} className="w-full justify-start gap-2 overflow-hidden px-3 font-normal shadow-none!">
+                  <Calendar className="h-4 w-4 shrink-0 text-gray-500" />
+                  <span className="truncate">{form.markEntryLastDate ? fmt(form.markEntryLastDate) : "Select date"}</span>
+                </Button>
+              </div>
+            </div>
+          </section>
 
-                <div className="space-y-4">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5 border-t pt-4">
-                    <Calendar className="w-4 h-4 text-primary-600" /> Exam
-                    Period
-                  </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                        Exam Start Date *
-                      </label>
-                      <input
-                        type="date"
-                        required
-                        value={form.startDate}
-                        onChange={(e) =>
-                          setForm((f) => ({ ...f, startDate: e.target.value }))
-                        }
-                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-500 transition-all bg-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                        Exam End Date *
-                      </label>
-                      <input
-                        type="date"
-                        required
-                        value={form.endDate}
-                        onChange={(e) =>
-                          setForm((f) => ({ ...f, endDate: e.target.value }))
-                        }
-                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-500 transition-all bg-white"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5 border-t pt-4">
-                    <PenLine className="w-4 h-4 text-primary-600" /> Mark Entry
-                    Period
-                  </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                        Mark Entry Opens On *
-                      </label>
-                      <input
-                        type="date"
-                        required
-                        value={
-                          form.endDate
-                            ? new Date(
-                                new Date(form.endDate).getTime() + 86400000,
-                              )
-                                .toISOString()
-                                .split("T")[0]
-                            : ""
-                        }
-                        disabled
-                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-400 cursor-not-allowed"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                        Mark Entry Closes On *
-                      </label>
-                      <input
-                        type="date"
-                        required
-                        value={form.markEntryLastDate}
-                        onChange={(e) =>
-                          setForm((f) => ({
-                            ...f,
-                            markEntryLastDate: e.target.value,
-                          }))
-                        }
-                        className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-500 transition-all bg-white"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5 border-t pt-4">
-                    <Award className="w-4 h-4 text-primary-600" /> Result
-                    Publication
-                  </p>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                      Result Publish Date *
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={form.publishedDate}
-                      onChange={(e) =>
-                        setForm((f) => ({
-                          ...f,
-                          publishedDate: e.target.value,
-                        }))
-                      }
-                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-500 transition-all bg-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                      Initial Status
-                    </label>
-                    <select
-                      value={form.examStatus}
-                      onChange={(e) =>
-                        setForm((f) => ({
-                          ...f,
-                          examStatus: e.target.value as ExamStatus,
-                        }))
-                      }
-                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-500 transition-all bg-white"
-                    >
-                      <option value="DRAFT">Draft</option>
-                      <option value="MARK_ENTRY">Mark Entry Open</option>
-                      <option value="PUBLISHED">Published</option>
-                      <option value="CANCELLED">Cancelled</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="flex gap-3 mt-6 pt-5 border-t border-gray-100">
-                  <button
-                    type="button"
-                    onClick={() => setDrawerOpen(false)}
-                    className="flex-1 py-3 border border-gray-200 hover:bg-gray-50 text-gray-600 rounded-xl text-sm font-bold transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="flex-1 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-2 transition-colors shadow-sm"
-                  >
-                    {submitting && (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    )}
-                    {drawerMode === "create" ? "Create Exam" : "Save Changes"}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+          <section className="space-y-3 border-t border-gray-100 pt-4">
+            <h3 className="text-sm font-semibold text-gray-700">Result Publication</h3>
+            <div>
+              <p className="mb-1.5 text-sm font-medium text-gray-700">Result Publish Date *</p>
+              <Button type="button" variant="outline" size="lg" aria-haspopup="dialog" aria-expanded={activeDateField === "publishedDate"} aria-label={`Result Publish Date: ${form.publishedDate ? fmt(form.publishedDate) : "Select date"}`} onClick={() => setActiveDateField("publishedDate")} className="w-full justify-start gap-2 px-3 font-normal shadow-none!">
+                <Calendar className="h-4 w-4 text-gray-500" />
+                {form.publishedDate ? fmt(form.publishedDate) : "Select date"}
+              </Button>
+            </div>
+            <div>
+              <p className="mb-1.5 text-sm font-medium text-gray-700">Initial Status</p>
+              <DrawerSelector
+                title="Initial Status"
+                options={[
+                  { value: "DRAFT", label: "Draft" },
+                  { value: "MARK_ENTRY", label: "Mark Entry Open" },
+                  { value: "PUBLISHED", label: "Published" },
+                  { value: "CANCELLED", label: "Cancelled" },
+                ]}
+                value={form.examStatus}
+                onChange={(value) => setForm((current) => ({ ...current, examStatus: value as ExamStatus }))}
+              />
+            </div>
+          </section>
+          <DatePickerDrawer
+            open={drawerOpen && activeDateField !== null}
+            onOpenChange={(open) => { if (!open) setActiveDateField(null); }}
+            date={activeDateField ? form[activeDateField] : ""}
+            onDateChange={(date) => {
+              if (activeDateField) setForm((current) => ({ ...current, [activeDateField]: date }));
+              setFormError(null);
+            }}
+            title={activeDateField === "startDate" ? "Exam Start Date" : activeDateField === "endDate" ? "Exam End Date" : activeDateField === "markEntryLastDate" ? "Mark Entry Closes On" : "Result Publish Date"}
+            disableFuture={false}
+          />
+        </form>
+      </ResponsivePopover>
 
       {/* Delete Exam Confirm Dialog */}
       <AnimatePresence>
