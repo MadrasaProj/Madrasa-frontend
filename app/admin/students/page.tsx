@@ -1,8 +1,13 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
-import { DataTable, type Column } from "@/components/ui/DataTable";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
+import { DrawerSelector } from "@/components/DrawerSelector";
 import {
   ImportModal,
   type ImportConfig,
@@ -24,22 +29,19 @@ import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { toast } from "sonner";
-import { parse, isValid, format } from "date-fns";
 import {
   Plus,
   Search,
-  Eye,
   GraduationCap,
   Loader2,
   Pencil,
   Trash2,
-  Phone,
-  Check,
   Users,
   Upload,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -52,30 +54,6 @@ const GENDER_AVATAR = {
 
 const DEFAULT_PAGE_SIZE = 20;
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
-
-function IndeterminateCheckbox({
-  checked,
-  indeterminate,
-  onChange,
-}: {
-  checked: boolean;
-  indeterminate: boolean;
-  onChange: (checked: boolean) => void;
-}) {
-  const ref = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    if (ref.current) ref.current.indeterminate = indeterminate;
-  }, [indeterminate]);
-  return (
-    <input
-      ref={ref}
-      type="checkbox"
-      checked={checked}
-      onChange={(e) => onChange(e.target.checked)}
-      className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
-    />
-  );
-}
 
 // ── Import column definitions (static — no auth deps here) ───────────────────
 
@@ -262,7 +240,6 @@ export default function AdminStudentsPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
-  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeClassId, setActiveClassId] = useState<string | "all">("all");
   const [gender, setGender] = useState<"all" | "MALE" | "FEMALE">("all");
   const [statusFilter, setStatusFilter] = useState<string | "all">("all");
@@ -307,20 +284,19 @@ export default function AdminStudentsPage() {
     token: accessToken ?? "",
   });
   const classes = classesData ?? [];
-console.log(classes);
-
   const handleSearch = (val: string) => {
     setSearchInput(val);
     setPage(1);
-    if (searchTimer.current) clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => setSearch(val), 400);
   };
 
   useEffect(() => {
-    return () => {
-      if (searchTimer.current) clearTimeout(searchTimer.current);
-    };
-  }, []);
+    const timer = setTimeout(() => setSearch(searchInput), 400);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [page, pageSize, search, activeClassId, gender, statusFilter, sortBy, sortDir]);
 
   const handleSort = (key: string, dir: "asc" | "desc") => {
     setSortBy(key);
@@ -457,212 +433,13 @@ console.log(classes);
     });
   }, []);
 
-  const columns = useMemo(
-    (): Column<StudentRecord>[] => [
-      {
-        key: "__checkbox",
-        header: (
-          <IndeterminateCheckbox
-            checked={students.length > 0 && selectedIds.size === students.length}
-            indeterminate={selectedIds.size > 0 && selectedIds.size < students.length}
-            onChange={(checked) => handleSelectAll(checked)}
-          />
-        ),
-        render: (s) => (
-          <input
-            type="checkbox"
-            checked={selectedIds.has(s.id)}
-            onChange={(e) => handleSelectOne(s.id, e.target.checked)}
-            onClick={(e) => e.stopPropagation()}
-            className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
-          />
-        ),
-        className: "w-10",
-        headerClass: "w-10",
-      },
-      {
-        key: "name",
-        header: t("adminPages", "studentCol", lang),
-        sortable: true,
-        render: (s) => {
-          const av =
-            s.gender === "FEMALE" ? GENDER_AVATAR.FEMALE : GENDER_AVATAR.MALE;
-          return (
-            <div className="flex items-center gap-3">
-              {s.photoUrl ? (
-                <img
-                  src={s.photoUrl}
-                  alt={s.name}
-                  className="w-10 h-10 rounded-xl object-cover shrink-0 border border-gray-200"
-                />
-              ) : (
-                <div
-                  className={cn(
-                    "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0",
-                    av.bg,
-                    av.text,
-                  )}
-                >
-                  {s.name.charAt(0)}
-                </div>
-              )}
-              <div>
-                <p className="font-semibold text-gray-900 text-sm leading-tight">
-                  {s.name}
-                </p>
-                <p className="text-xs text-gray-400">{s.adno}</p>
-              </div>
-            </div>
-          );
-        },
-      },
-      {
-        key: "class",
-        header: t("adminPages", "classCol", lang),
-        render: (s) =>
-          s.class ? (
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-gray-100 text-gray-700">
-              {s.class.name}
-            </span>
-          ) : (
-            <span className="text-gray-300">—</span>
-          ),
-      },
-      {
-        key: "gender",
-        header: t("adminPages", "genderCol", lang),
-        sortable: true,
-        render: (s) => (
-          <span
-            className={cn(
-              "text-xs font-semibold px-2.5 py-1 rounded-lg",
-              s.gender === "FEMALE"
-                ? "bg-pink-100 text-pink-700"
-                : "bg-indigo-100 text-indigo-700",
-            )}
-          >
-            {s.gender === "FEMALE"
-              ? t("adminPages", "girlsLabel", lang)
-              : t("adminPages", "boysLabel", lang)}
-          </span>
-        ),
-        className: "hidden sm:table-cell",
-        headerClass: "hidden sm:table-cell",
-      },
-      {
-        key: "guardianName",
-        header: t("adminPages", "guardianCol", lang),
-        sortable: true,
-        render: (s) =>
-          s.guardianName ? (
-            <span className="text-sm text-gray-600">{s.guardianName}</span>
-          ) : (
-            <span className="text-gray-300">—</span>
-          ),
-        className: "hidden lg:table-cell",
-        headerClass: "hidden lg:table-cell",
-      },
-      {
-        key: "status",
-        header: "Status",
-        sortable: true,
-        render: (s) => (
-          <span
-            className={cn(
-              "text-xs font-semibold px-2 py-0.5 rounded-md",
-              s.status === "ACTIVE"
-                ? "bg-emerald-100 text-emerald-700"
-                : s.status === "INACTIVE"
-                  ? "bg-gray-100 text-gray-600"
-                  : "bg-amber-100 text-amber-700",
-            )}
-          >
-            {s.status ?? "ACTIVE"}
-          </span>
-        ),
-        className: "hidden md:table-cell",
-        headerClass: "hidden md:table-cell",
-      },
-      {
-        key: "actions",
-        header: "",
-        render: (s) => (
-          <div className="flex items-center gap-1.5 justify-end">
-            {canWrite && (
-              <>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openEdit(s);
-                  }}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors text-xs font-semibold"
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDeleteTarget(s);
-                    setShowDeleteConfirm(true);
-                  }}
-                  disabled={deleteMutation.isPending && deleteTarget?.id === s.id}
-                  className="p-1.5 rounded-lg text-red-400 bg-red-50 hover:bg-red-100 hover:text-red-500 transition-colors disabled:opacity-40"
-                  title={t("adminPages", "deleteStudentTitle", lang)}
-                >
-                  {deleteMutation.isPending && deleteTarget?.id === s.id ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Trash2 className="w-3.5 h-3.5" />
-                  )}
-                </button>
-              </>
-            )}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`${slugPrefix}/admin/students/${s.id}`);
-              }}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-primary-50 hover:bg-primary-100 text-primary-700 transition-colors text-xs font-semibold"
-            >
-              <Eye className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        ),
-        className: "text-right",
-      },
-    ],
-    [lang, navigate, canWrite, deleteMutation.isPending, deleteTarget, students, selectedIds, handleSelectAll, handleSelectOne],
-  );
+  const visibleSelectedCount = students.filter((student) => selectedIds.has(student.id)).length;
+  const allVisibleSelected = students.length > 0 && visibleSelectedCount === students.length;
+  const sortValue = sortBy ? `${sortBy}:${sortDir}` : "default";
 
   return (
     <DashboardLayout>
-      <PageHeader
-        title={t("adminPages", "studentsTitle", lang)}
-        subtitle={`${total} ${t("common", "students", lang).toLowerCase()}`}
-        icon={Users}
-        action={
-          canWrite ? (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowImport(true)}
-                className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 px-3 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
-              >
-                <Upload className="w-4 h-4" />
-                <span className="hidden sm:inline">
-                  {t("adminPages", "importBtn", lang)}
-                </span>
-              </button>
-              <button
-                onClick={openAdd}
-                className="flex items-center gap-1.5 bg-primary-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-700 transition-colors"
-              >
-                <Plus className="w-4 h-4" />{" "}
-                {t("adminPages", "addStudent", lang)}
-              </button>
-            </div>
-          ) : undefined
-        }
-      />
+      <PageHeader title={t("adminPages", "studentsTitle", lang)} />
 
       {error && (
         <ApiErrorBanner
@@ -671,210 +448,256 @@ console.log(classes);
         />
       )}
 
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input
-          value={searchInput}
-          onChange={(e) => handleSearch(e.target.value)}
-          placeholder={t("adminPages", "searchNameOrAdm", lang)}
-          className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-        />
+      <div className="mb-4 grid grid-cols-2 overflow-hidden rounded-2xl bg-gradient-to-br from-primary-50/60 via-white to-sky-50/60">
+        <div className="min-w-0 border-r border-gray-100 p-2.5 sm:p-3">
+          <div className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+            <Users aria-hidden="true" className="h-3.5 w-3.5" />
+            {t("common", "students", lang)}
+          </div>
+          <span className="mt-1.5 block text-[22px] font-medium leading-none tabular-nums text-gray-950">
+            {isLoading ? "—" : total}
+          </span>
+        </div>
+        <div className="min-w-0 p-2.5 sm:p-3">
+          <div className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+            <GraduationCap aria-hidden="true" className="h-3.5 w-3.5" />
+            {t("adminPages", "allClassesFilter", lang)}
+          </div>
+          <span className="mt-1.5 block text-[22px] font-medium leading-none tabular-nums text-gray-950">
+            {classes.length}
+          </span>
+        </div>
       </div>
 
-      <div className="flex gap-3 mb-5">
-        <div className="flex-1 relative">
-          <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-          <select
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {canWrite && (
+          <>
+            <Button type="button" variant="outline" className="shadow-none" onClick={() => setShowImport(true)}>
+              <Upload aria-hidden="true" />
+              {t("adminPages", "importBtn", lang)}
+            </Button>
+            <Button type="button" className="shadow-none" onClick={openAdd}>
+              <Plus aria-hidden="true" />
+              {t("adminPages", "addStudent", lang)}
+            </Button>
+          </>
+        )}
+      </div>
+
+      <div className="mb-4 space-y-2">
+        <div className="relative">
+          <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Input
+            type="search"
+            size="lg"
+            value={searchInput}
+            onChange={(event) => handleSearch(event.target.value)}
+            aria-label={t("adminPages", "searchNameOrAdm", lang)}
+            placeholder={t("adminPages", "searchNameOrAdm", lang)}
+            className="bg-white pl-10 shadow-none"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <DrawerSelector
+            title={t("adminPages", "classCol", lang)}
+            options={[
+              { value: "all", label: t("adminPages", "allClassesFilter", lang) },
+              ...classes.map((cls) => ({
+                value: cls.id,
+                label: `${cls.name}${cls.studentCount != null ? ` (${cls.studentCount})` : ""}`,
+              })),
+            ]}
             value={activeClassId}
-            onChange={(e) => {
-              setActiveClassId(e.target.value);
-              setPage(1);
-            }}
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none cursor-pointer"
-          >
-            <option value="all">
-              {t("adminPages", "allClassesFilter", lang)} ({total})
-            </option>
-            {classes.map((cls) => (
-              <option key={cls.id} value={cls.id}>
-                {cls.name}
-                {cls.studentCount != null ? ` (${cls.studentCount})` : ""}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="relative">
-          <select
+            onChange={(value) => { setActiveClassId(value); setPage(1); }}
+            className="shadow-none"
+          />
+          <DrawerSelector
+            title={t("adminPages", "genderCol", lang)}
+            options={[
+              { value: "all", label: t("adminPages", "allFilter", lang) },
+              { value: "MALE", label: t("adminPages", "boysFilter", lang) },
+              { value: "FEMALE", label: t("adminPages", "girlsFilter", lang) },
+            ]}
             value={gender}
-            onChange={(e) => {
-              setGender(e.target.value as typeof gender);
-              setPage(1);
-            }}
-            className="pl-3 pr-8 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none cursor-pointer"
-          >
-            <option value="all">{t("adminPages", "allFilter", lang)}</option>
-            <option value="MALE">{t("adminPages", "boysFilter", lang)}</option>
-            <option value="FEMALE">{t("adminPages", "girlsFilter", lang)}</option>
-          </select>
-        </div>
-        <div className="relative">
-          <select
+            onChange={(value) => { setGender(value as typeof gender); setPage(1); }}
+            className="shadow-none"
+          />
+          <DrawerSelector
+            title="Status"
+            options={[
+              { value: "all", label: "All statuses" },
+              { value: "ACTIVE", label: "Active" },
+              { value: "INACTIVE", label: "Inactive" },
+              { value: "GRADUATED", label: "Graduated" },
+              { value: "TRANSFERRED", label: "Transferred" },
+              { value: "DROPPED_OUT", label: "Dropped out" },
+            ]}
             value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setPage(1);
+            onChange={(value) => { setStatusFilter(value); setPage(1); }}
+            className="shadow-none"
+          />
+          <DrawerSelector
+            title="Sort students"
+            options={[
+              { value: "default", label: "Default order" },
+              { value: "name:asc", label: "Name A–Z" },
+              { value: "name:desc", label: "Name Z–A" },
+              { value: "gender:asc", label: "Gender A–Z" },
+              { value: "gender:desc", label: "Gender Z–A" },
+              { value: "guardianName:asc", label: "Guardian A–Z" },
+              { value: "guardianName:desc", label: "Guardian Z–A" },
+              { value: "status:asc", label: "Status A–Z" },
+              { value: "status:desc", label: "Status Z–A" },
+            ]}
+            value={sortValue}
+            onChange={(value) => {
+              if (value === "default") {
+                setSortBy(undefined);
+                setSortDir("asc");
+                setPage(1);
+                return;
+              }
+              const [key, direction] = value.split(":");
+              handleSort(key, direction as "asc" | "desc");
             }}
-            className="pl-3 pr-8 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none cursor-pointer"
-          >
-            <option value="all">All Statuses</option>
-            <option value="ACTIVE">Active</option>
-            <option value="INACTIVE">Inactive</option>
-            <option value="GRADUATED">Graduated</option>
-            <option value="TRANSFERRED">Transferred</option>
-            <option value="DROPPED_OUT">Dropped Out</option>
-          </select>
+            className="shadow-none"
+          />
         </div>
       </div>
 
-      {selectedIds.size > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between bg-primary-50 border border-primary-200 rounded-2xl px-4 py-3 mb-4"
-        >
+      {visibleSelectedCount > 0 && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-primary-200 bg-primary-50 px-4 py-3">
           <span className="text-sm font-semibold text-primary-800">
-            {selectedIds.size} {t("common", "selected", lang)}
+            {visibleSelectedCount} {t("common", "selected", lang)}
           </span>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setSelectedIds(new Set())}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-gray-600 text-xs font-semibold hover:bg-gray-50 transition-colors"
-            >
-              <X className="w-3.5 h-3.5" />
+            <Button type="button" size="sm" variant="outline" className="bg-white shadow-none" onClick={() => setSelectedIds(new Set())}>
+              <X aria-hidden="true" />
               {t("common", "cancel", lang)}
-            </button>
+            </Button>
             {canWrite && (
-              <button
-                onClick={() => setShowBulkDeleteConfirm(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-600 text-white text-xs font-semibold hover:bg-red-700 transition-colors"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
+              <Button type="button" size="sm" variant="destructive" className="shadow-none" onClick={() => setShowBulkDeleteConfirm(true)}>
+                <Trash2 aria-hidden="true" />
                 {t("adminPages", "deleteStudentTitle", lang)}
-              </button>
+              </Button>
             )}
           </div>
-        </motion.div>
+        </div>
       )}
 
-      <DataTable
-        columns={columns}
-        data={students}
-        keyExtractor={(s) => s.id}
-        loading={isLoading}
-        error={error ? (error as Error).message : null}
-        emptyIcon={Users}
-        emptyMessage={t("adminPages", "noStudentsFound", lang)}
-        emptySubtext={t("adminPages", "tryAdjustFilter", lang)}
-        onRowClick={(s) => navigate(`${slugPrefix}/admin/students/${s.id}`)}
-        onSort={handleSort}
-        sortKey={sortBy}
-        sortDir={sortDir}
-        pagination={{
-          page,
-          totalPages,
-          total,
-          pageSize,
-          pageSizeOptions: PAGE_SIZE_OPTIONS,
-          onPageChange: setPage,
-          onPageSizeChange: (sz) => {
-            setPageSize(sz);
-            setPage(1);
-          },
-        }}
-        mobileRender={(s) => (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={selectedIds.has(s.id)}
-                onChange={(e) => handleSelectOne(s.id, e.target.checked)}
-                onClick={(e) => e.stopPropagation()}
-                className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer shrink-0"
-              />
-              {s.photoUrl ? (
-                <img
-                  src={s.photoUrl}
-                  alt={s.name}
-                  className="w-12 h-12 rounded-2xl object-cover shrink-0 border border-gray-200"
-                />
-              ) : (
-                <div
-                  className={cn(
-                    "w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg shrink-0",
-                    s.gender === "FEMALE"
-                      ? "bg-pink-100 text-pink-700"
-                      : "bg-indigo-100 text-indigo-700",
-                  )}
-                >
-                  {s.name.charAt(0)}
+      <section aria-label={t("adminPages", "studentsTitle", lang)}>
+        <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-none">
+          {isLoading ? (
+            Array.from({ length: 5 }).map((_, index) => (
+              <div key={index} className="flex items-center gap-3 px-4 py-4">
+                <Skeleton className="h-10 w-10 shrink-0 rounded-xl" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Skeleton className="h-4 w-1/3" />
+                  <Skeleton className="h-3 w-1/2" />
                 </div>
-              )}
-              <div>
-                <p className="font-semibold text-gray-900 text-sm">{s.name}</p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {s.adno}
-                  {s.class?.name ? ` · ${s.class.name}` : ""}
-                </p>
-                {s.guardianName && (
-                  <p className="text-xs text-gray-400 mt-0.5">{s.guardianName}</p>
-                )}
               </div>
+            ))
+          ) : students.length === 0 ? (
+            <div className="px-4 py-12 text-center">
+              <Users aria-hidden="true" className="mx-auto mb-3 h-9 w-9 text-gray-300" />
+              <p className="text-sm font-semibold text-gray-700">{t("adminPages", "noStudentsFound", lang)}</p>
+              <p className="mt-1 text-xs text-gray-500">{t("adminPages", "tryAdjustFilter", lang)}</p>
             </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              {canWrite && (
-                <>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openEdit(s);
-                    }}
-                    className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeleteTarget(s);
-                      setShowDeleteConfirm(true);
-                    }}
-                    disabled={deleteMutation.isPending && deleteTarget?.id === s.id}
-                    className="p-2 rounded-xl text-red-400 bg-red-50 hover:bg-red-100 hover:text-red-500 transition-colors disabled:opacity-40"
-                  >
-                    {deleteMutation.isPending && deleteTarget?.id === s.id ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Trash2 className="w-3.5 h-3.5" />
+          ) : (
+            <>
+              <div className="flex items-center gap-3 px-4 py-3">
+                <Checkbox
+                  checked={allVisibleSelected}
+                  onCheckedChange={(checked) => handleSelectAll(checked === true)}
+                  aria-label="Select all students on this page"
+                />
+                <span className="text-xs font-medium text-gray-500">Select all on this page</span>
+              </div>
+              {students.map((student) => {
+                const avatar = student.gender === "FEMALE" ? GENDER_AVATAR.FEMALE : student.gender === "MALE" ? GENDER_AVATAR.MALE : GENDER_AVATAR.null;
+                return (
+                  <div key={student.id} className="flex items-center gap-2 px-4 py-4 sm:gap-3">
+                    <Checkbox
+                      checked={selectedIds.has(student.id)}
+                      onCheckedChange={(checked) => handleSelectOne(student.id, checked === true)}
+                      aria-label={`Select ${student.name}`}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => navigate(`${slugPrefix}/admin/students/${student.id}`)}
+                      className="h-auto min-w-0 flex-1 justify-start gap-3 rounded-lg px-0 py-0 text-left whitespace-normal shadow-none hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+                    >
+                      {student.photoUrl ? (
+                        <img src={student.photoUrl} alt="" className="h-10 w-10 shrink-0 rounded-xl border border-gray-200 object-cover" />
+                      ) : (
+                        <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold", avatar.bg, avatar.text)}>
+                          {student.name.charAt(0)}
+                        </span>
+                      )}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-gray-950 sm:text-base">{student.name}</span>
+                        <span className="mt-1 block truncate text-xs text-gray-500">
+                          {student.adno}{student.class?.name ? ` · ${student.class.name}` : ""}{student.guardianName ? ` · ${student.guardianName}` : ""}
+                        </span>
+                      </span>
+                      <span className={cn(
+                        "hidden shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold sm:inline-flex",
+                        student.status === "ACTIVE" || !student.status ? "bg-emerald-100 text-emerald-700" : student.status === "INACTIVE" ? "bg-gray-100 text-gray-600" : "bg-amber-100 text-amber-700",
+                      )}>
+                        {student.status ?? "ACTIVE"}
+                      </span>
+                      <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-gray-400" />
+                    </Button>
+                    {canWrite && (
+                      <div className="flex shrink-0 items-center gap-1">
+                        <Button type="button" size="icon-xs" variant="ghost" aria-label={`Edit ${student.name}`} onClick={() => openEdit(student)}>
+                          <Pencil aria-hidden="true" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon-xs"
+                          variant="ghost"
+                          aria-label={`Delete ${student.name}`}
+                          className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                          disabled={deleteMutation.isPending && deleteTarget?.id === student.id}
+                          onClick={() => { setDeleteTarget(student); setShowDeleteConfirm(true); }}
+                        >
+                          {deleteMutation.isPending && deleteTarget?.id === student.id ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Trash2 aria-hidden="true" />}
+                        </Button>
+                      </div>
                     )}
-                  </button>
-                </>
-              )}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate(`${slugPrefix}/admin/students/${s.id}`);
-                }}
-                className="flex items-center gap-1 px-3 py-2 rounded-xl bg-primary-50 hover:bg-primary-100 text-primary-700 transition-colors text-xs font-semibold"
-              >
-                <Eye className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">
-                  {t("adminPages", "viewBtn", lang)}
-                </span>
-              </button>
-            </div>
+                  </div>
+                );
+              })}
+            </>
+          )}
+        </div>
+      </section>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 px-1">
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          <span className="tabular-nums">{total} total</span>
+          <DrawerSelector
+            title="Students per page"
+            options={PAGE_SIZE_OPTIONS.map((size) => ({ value: String(size), label: String(size) }))}
+            value={String(pageSize)}
+            onChange={(value) => { setPageSize(Number(value)); setPage(1); }}
+            className="h-9 w-20 shadow-none"
+          />
+        </div>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-2">
+            <Button type="button" size="icon-xs" variant="outline" className="shadow-none" aria-label="Previous page" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+              <ChevronLeft aria-hidden="true" />
+            </Button>
+            <span className="min-w-16 text-center text-sm font-medium tabular-nums text-gray-600">{page} / {totalPages}</span>
+            <Button type="button" size="icon-xs" variant="outline" className="shadow-none" aria-label="Next page" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+              <ChevronRight aria-hidden="true" />
+            </Button>
           </div>
         )}
-      />
+      </div>
 
       <StudentEditDrawer
         open={drawer !== null}
@@ -906,136 +729,62 @@ console.log(classes);
         onClose={() => setShowImport(false)}
       />
 
-      <AnimatePresence>
-        {showDeleteConfirm && (
-          <>
-            <motion.div
-              key="del-backdrop"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => !deleteMutation.isPending && setShowDeleteConfirm(false)}
-              className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
-            />
-            <motion.div
-              key="del-dialog"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 bg-white rounded-3xl p-6 max-w-sm mx-auto shadow-2xl"
-            >
-              <div className="text-center space-y-3">
-                <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto animate-bounce">
-                  <Trash2 className="w-7 h-7 text-red-600" />
-                </div>
-                <h3 className="font-bold text-gray-900 text-lg">
-                  {t("adminPages", "deleteStudentTitle", lang)}
-                </h3>
-                <p className="text-sm text-gray-500">
-                  {t("adminPages", "deleteStudentConfirm", lang).replace(
-                    "{name}",
-                    deleteTarget?.name ?? "",
-                  )}
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-3 mt-6">
-                <button
-                  onClick={() => setShowDeleteConfirm(false)}
-                  disabled={deleteMutation.isPending}
-                  className="py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
-                >
-                  {t("common", "cancel", lang)}
-                </button>
-                <button
-                  onClick={handleDelete}
-                  disabled={deleteMutation.isPending}
-                  className="py-3 rounded-2xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors disabled:opacity-60"
-                >
-                  {deleteMutation.isPending ? (
-                      <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" />{" "}
-                      {t("adminPages", "deletingLabel", lang)}
-                    </span>
-                  ) : (
-                    t("adminPages", "deleteConfirm", lang)
-                  )}
-                </button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      <ResponsivePopover
+        open={showDeleteConfirm}
+        onOpenChange={(open) => { if (!deleteMutation.isPending) setShowDeleteConfirm(open); }}
+        title={t("adminPages", "deleteStudentTitle", lang)}
+        footer={
+          <div className="flex w-full gap-2">
+            <Button type="button" variant="outline" className="flex-1 shadow-none" disabled={deleteMutation.isPending} onClick={() => setShowDeleteConfirm(false)}>
+              {t("common", "cancel", lang)}
+            </Button>
+            <Button type="button" variant="destructive" className="flex-1 shadow-none" disabled={deleteMutation.isPending} onClick={handleDelete}>
+              {deleteMutation.isPending ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Trash2 aria-hidden="true" />}
+              {deleteMutation.isPending ? t("adminPages", "deletingLabel", lang) : t("adminPages", "deleteConfirm", lang)}
+            </Button>
+          </div>
+        }
+      >
+        <p className="px-4 py-4 text-sm text-gray-600">
+          {t("adminPages", "deleteStudentConfirm", lang).replace("{name}", deleteTarget?.name ?? "")}
+        </p>
+      </ResponsivePopover>
 
-      <AnimatePresence>
-        {showBulkDeleteConfirm && (
-          <>
-            <motion.div
-              key="bulk-del-backdrop"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => !bulkDeleteMutation.isPending && setShowBulkDeleteConfirm(false)}
-              className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
-            />
-            <motion.div
-              key="bulk-del-dialog"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 bg-white rounded-3xl p-6 max-w-sm mx-auto shadow-2xl"
+      <ResponsivePopover
+        open={showBulkDeleteConfirm}
+        onOpenChange={(open) => { if (!bulkDeleteMutation.isPending) setShowBulkDeleteConfirm(open); }}
+        title={t("adminPages", "deleteStudentTitle", lang)}
+        footer={
+          <div className="flex w-full gap-2">
+            <Button type="button" variant="outline" className="flex-1 shadow-none" disabled={bulkDeleteMutation.isPending} onClick={() => setShowBulkDeleteConfirm(false)}>
+              {t("common", "cancel", lang)}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              className="flex-1 shadow-none"
+              disabled={bulkDeleteMutation.isPending}
+              onClick={() => {
+                bulkDeleteMutation.mutate(Array.from(selectedIds), {
+                  onSuccess: () => {
+                    setShowBulkDeleteConfirm(false);
+                    setSelectedIds(new Set());
+                    setPage(1);
+                  },
+                  onError: () => setShowBulkDeleteConfirm(false),
+                });
+              }}
             >
-              <div className="text-center space-y-3">
-                <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto animate-bounce">
-                  <Trash2 className="w-7 h-7 text-red-600" />
-                </div>
-                <h3 className="font-bold text-gray-900 text-lg">
-                  {t("adminPages", "deleteStudentTitle", lang)}
-                </h3>
-                <p className="text-sm text-gray-500">
-                  {t("adminPages", "bulkDeleteStudentsConfirm", lang).replace(
-                    "{count}",
-                    String(selectedIds.size),
-                  )}
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-3 mt-6">
-                <button
-                  onClick={() => setShowBulkDeleteConfirm(false)}
-                  disabled={bulkDeleteMutation.isPending}
-                  className="py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
-                >
-                  {t("common", "cancel", lang)}
-                </button>
-                <button
-                  onClick={() => {
-                    bulkDeleteMutation.mutate(Array.from(selectedIds), {
-                      onSuccess: () => {
-                        setShowBulkDeleteConfirm(false);
-                        setSelectedIds(new Set());
-                        setPage(1);
-                      },
-                      onError: () => {
-                        setShowBulkDeleteConfirm(false);
-                      },
-                    });
-                  }}
-                  disabled={bulkDeleteMutation.isPending}
-                  className="py-3 rounded-2xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors disabled:opacity-60"
-                >
-                  {bulkDeleteMutation.isPending ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" />{" "}
-                      {t("adminPages", "deletingLabel", lang)}
-                    </span>
-                  ) : (
-                    t("adminPages", "deleteConfirm", lang)
-                  )}
-                </button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+              {bulkDeleteMutation.isPending ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Trash2 aria-hidden="true" />}
+              {bulkDeleteMutation.isPending ? t("adminPages", "deletingLabel", lang) : t("adminPages", "deleteConfirm", lang)}
+            </Button>
+          </div>
+        }
+      >
+        <p className="px-4 py-4 text-sm text-gray-600">
+          {t("adminPages", "bulkDeleteStudentsConfirm", lang).replace("{count}", String(selectedIds.size))}
+        </p>
+      </ResponsivePopover>
     </DashboardLayout>
   );
 }
