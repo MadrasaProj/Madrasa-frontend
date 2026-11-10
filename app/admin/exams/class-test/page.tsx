@@ -4,7 +4,6 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { IllustratedEmptyState } from "@/components/ui/IllustratedEmptyState";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
-import type { SortDir } from "@/components/ui/DataTable";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
   getExams,
@@ -31,15 +30,14 @@ import {
   GraduationCap,
   Search,
   School,
-  SlidersHorizontal,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ExamStatusBadge, getExamStatusInfo, STATUS_LABELS } from "@/components/exam/ExamStatusBadge";
 import { TeacherMarkEntryView } from "@/components/exam/TeacherMarkEntryView";
 import { fmt } from "@/lib/exam-utils";
 import { Input } from "@/components/ui/input";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Pagination,
   PaginationContent,
@@ -67,6 +65,24 @@ function classTestPageItems(current: number, total: number): Array<number | "ell
   });
 
   return items;
+}
+
+async function getAllClassTests(clientId: string, token: string): Promise<ExamRecord[]> {
+  const pageSize = 200;
+  const exams: ExamRecord[] = [];
+
+  for (let page = 1; ; page += 1) {
+    const response = await getExams(clientId, token, {
+      type: "CLASS_TEST",
+      page,
+      limit: pageSize,
+    });
+    const batch = response.data ?? [];
+    exams.push(...batch);
+    if (batch.length < pageSize || (response.total != null && exams.length >= response.total)) break;
+  }
+
+  return exams;
 }
 
 export default function AdminClassTestsPage() {
@@ -130,10 +146,9 @@ export default function AdminClassTestsPage() {
   const selectedExam = exams.find((exam) => exam.id === selectedExamId);
 
   const [searchText, setSearchText] = useState("");
+  const [selectedClassId, setSelectedClassId] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [sortBy, setSortBy] = useState<string | undefined>("startDate");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const isPeriodBased = user?.attendanceMode === "PERIOD_BASED";
   const teacherId = user?.id ?? "";
@@ -142,25 +157,25 @@ export default function AdminClassTestsPage() {
     const q = searchText.toLowerCase();
     return exams.filter((exam) => {
       if (q && !exam.name.toLowerCase().includes(q)) return false;
+      if (selectedClassId && exam.classId !== selectedClassId) return false;
       return true;
     });
-  }, [exams, searchText]);
+  }, [exams, searchText, selectedClassId]);
 
   const sortedExams = useMemo(() => {
-    if (!sortBy) return searchFiltered;
     const arr = [...searchFiltered];
     arr.sort((a, b) => {
-      const av = (a as any)[sortBy];
-      const bv = (b as any)[sortBy];
+      const av = a.startDate;
+      const bv = b.startDate;
       if (av == null && bv == null) return 0;
       if (av == null) return 1;
       if (bv == null) return -1;
-      if (av < bv) return sortDir === "asc" ? -1 : 1;
-      if (av > bv) return sortDir === "asc" ? 1 : -1;
+      if (av < bv) return 1;
+      if (av > bv) return -1;
       return 0;
     });
     return arr;
-  }, [searchFiltered, sortBy, sortDir]);
+  }, [searchFiltered]);
 
   const totalPages = Math.max(1, Math.ceil(sortedExams.length / pageSize));
   const pagedExams = useMemo(
@@ -170,7 +185,7 @@ export default function AdminClassTestsPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [searchText, pageSize]);
+  }, [searchText, selectedClassId, pageSize]);
 
   const openMarkEntry = (exam: ExamRecord) => {
     setSelectedExamId(null);
@@ -238,14 +253,11 @@ export default function AdminClassTestsPage() {
       setError(null);
       try {
         const [examData, clsData, subData] = await Promise.all([
-          getExams(cid, token, {
-            type: "CLASS_TEST",
-            limit: 1000,
-          }),
+          getAllClassTests(cid, token),
           getAllClasses(cid, token),
           getSubjects(cid, token, {}),
         ]);
-        setExams(examData.data ?? []);
+        setExams(examData);
         setClasses(clsData);
         setSubjects(subData.data ?? []);
       } catch (e) {
@@ -490,44 +502,27 @@ export default function AdminClassTestsPage() {
 
         <div className="px-3 pb-2 pt-6">
           <div className="mx-auto flex w-full max-w-md items-center gap-2">
-            <InputGroup className="h-10 min-w-0 flex-1 rounded-lg bg-white">
-              <InputGroupInput
-              type="search"
-              aria-label="Search class tests by name"
-              placeholder="Search class test by name..."
-              value={searchText}
-              onChange={(event) => setSearchText(event.target.value)}
-              className="h-full text-sm"
+            <div className="relative min-w-0 flex-1">
+              <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                type="search"
+                aria-label="Search class tests by name"
+                placeholder="Search class test by name..."
+                value={searchText}
+                onChange={(event) => setSearchText(event.target.value)}
+                className="h-10 rounded-lg bg-white pl-9 text-sm"
               />
-              <InputGroupAddon align="inline-start">
-                <Search className="h-4 w-4 text-gray-400" />
-              </InputGroupAddon>
-            </InputGroup>
-            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600">
-              <SlidersHorizontal aria-hidden="true" className="h-4 w-4" />
-              <select
-                aria-label="Sort class tests"
-                value={`${sortBy ?? "startDate"}:${sortDir}`}
-                onChange={(event) => {
-                  const [key, direction] = event.target.value.split(":");
-                  setSortBy(key);
-                  setSortDir(direction as SortDir);
-                  setPage(1);
-                }}
-                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-              >
-                <option value="startDate:desc">Newest first</option>
-                <option value="startDate:asc">Oldest first</option>
-                <option value="name:asc">Name A–Z</option>
-                <option value="name:desc">Name Z–A</option>
-                <option value="examStatus:asc">Status A–Z</option>
-                <option value="examStatus:desc">Status Z–A</option>
-                <option value="markEntryLastDate:asc">Mark entry: earliest</option>
-                <option value="markEntryLastDate:desc">Mark entry: latest</option>
-                <option value="publishedDate:asc">Published: earliest</option>
-                <option value="publishedDate:desc">Published: latest</option>
-              </select>
             </div>
+            <DrawerSelector
+              title="Filter by class"
+              options={[
+                { value: "", label: "All classes" },
+                ...classes.map((cls) => ({ value: cls.id, label: cls.name })),
+              ]}
+              value={selectedClassId}
+              onChange={setSelectedClassId}
+              className="h-10 w-36 shrink-0 rounded-xl bg-white px-3 text-sm"
+            />
           </div>
         </div>
 
@@ -585,11 +580,12 @@ export default function AdminClassTestsPage() {
                   <p className="text-sm text-gray-500">{searchText ? t("common", "noResults", lang) : "No class tests found"}</p>
                 </div>
               ) : pagedExams.map((exam) => (
-                <button
+                <Button
                   key={exam.id}
                   type="button"
+                  variant="ghost"
                   onClick={() => setSelectedExamId(exam.id)}
-                  className="w-full rounded-none p-3 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500"
+                  className="h-auto w-full justify-start rounded-none p-3 text-left whitespace-normal hover:bg-gray-50"
                 >
                   <span className="flex items-start justify-between gap-3">
                     <span className="min-w-0">
@@ -600,7 +596,7 @@ export default function AdminClassTestsPage() {
                     </span>
                     <ExamStatusBadge exam={exam} className="rounded-full border px-2.5 py-1 text-xs font-medium normal-case tracking-normal" />
                   </span>
-                </button>
+                </Button>
               ))}
             </section>
 
@@ -613,14 +609,16 @@ export default function AdminClassTestsPage() {
                       .replace("{end}", String(Math.min(page * pageSize, sortedExams.length)))
                       .replace("{total}", String(sortedExams.length))}
                   </span>
-                  <select
-                    aria-label="Class tests per page"
-                    value={pageSize}
-                    onChange={(event) => setPageSize(Number(event.target.value))}
-                    className="h-8 rounded-lg border border-gray-200 bg-white px-2 text-xs text-gray-600"
-                  >
-                    {[10, 20, 50, 100].map((size) => <option key={size} value={size}>{size} per page</option>)}
-                  </select>
+                  <Select value={String(pageSize)} onValueChange={(value) => setPageSize(Number(value))}>
+                    <SelectTrigger aria-label="Class tests per page" className="h-8 bg-white text-xs text-gray-600">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[10, 20, 50, 100].map((size) => (
+                        <SelectItem key={size} value={String(size)}>{size} per page</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 {totalPages > 1 && (
                   <Pagination className="mt-2" aria-label="Class test pages">
@@ -997,17 +995,21 @@ export default function AdminClassTestsPage() {
                 </p>
               </div>
               <div className="mt-4 grid grid-cols-2 gap-2">
-                <button
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => setShowDeleteConfirm(false)}
                   disabled={deleting !== null}
-                  className="rounded-xl border border-gray-200 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+                  className="rounded-xl"
                 >
                   {t("common", "cancel", lang)}
-                </button>
-                <button
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
                   onClick={handleDelete}
                   disabled={deleting !== null}
-                  className="rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-60"
+                  className="rounded-xl"
                 >
                   {deleting !== null ? (
                     <span className="flex items-center justify-center gap-2">
@@ -1016,7 +1018,7 @@ export default function AdminClassTestsPage() {
                   ) : (
                     t("common", "delete", lang)
                   )}
-                </button>
+                </Button>
               </div>
             </motion.div>
           </>
