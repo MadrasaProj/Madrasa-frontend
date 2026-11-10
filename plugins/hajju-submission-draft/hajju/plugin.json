@@ -1,0 +1,94 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "hajju",
+  "version": "0.1.3",
+  "description": "Connect Smart Madrasa teachers to their assigned classes and attendance through the Hajju MCP server.",
+  "author": {
+    "name": "Fayis Mahmood"
+  },
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Hajju",
+        "shortDescription": "Teacher attendance assistant",
+        "longDescription": "Hajju connects Smart Madrasa teachers to their assigned classes. It can show class rosters and daily attendance, review attendance reports for up to 90 days, and record attendance for dates within the last 30 days after the teacher confirms the exact changes. Attendance changes may notify parents. Each teacher signs in to authorize access. Hajju does not manage fees, exam results, or other school records.",
+        "developerName": "Fayis Mahmood",
+        "category": "Education & Research",
+        "capabilities": [
+          "Interactive",
+          "Write"
+        ],
+        "defaultPrompt": [
+          "Show my assigned classes.",
+          "Show attendance for my class today.",
+          "Summarize absences for my class this week."
+        ],
+        "logo": "assets/hajju.png",
+        "composerIcon": "assets/hajju.png"
+      },
+      "review": {
+        "prompts": [
+          "What classes am I assigned to?",
+          "Show attendance for my assigned class today, including students not yet marked.",
+          "Summarize absences for my assigned class over the last seven days."
+        ],
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Assigned-class discovery. Setup: sign in as the reviewer teacher with one active assigned class containing at least two active students. Pass when the answer lists only the returned assigned class names and student counts.",
+              "prompt": "What classes am I assigned to?",
+              "tools_triggered": "list_my_classes",
+              "expected_behavior": "Call list_my_classes once. Present the class names and studentCount values returned by the tool; do not invent other classes or student counts."
+            },
+            {
+              "description": "Daily roster and unmarked statuses. Setup: the reviewer teacher has one assigned active class; at least one student has no attendance mark today. Pass when the date, student names, statuses, marked count, and total count match the tool response.",
+              "prompt": "Show attendance for my assigned class today, including anyone not yet marked.",
+              "tools_triggered": "list_my_classes, get_attendance",
+              "expected_behavior": "Use the classId from list_my_classes, then call get_attendance with that classId and today’s date in YYYY-MM-DD. Show the returned roster, including UNMARKED students; do not record attendance."
+            },
+            {
+              "description": "Status-filtered week report. Setup: the reviewer class has at least one ABSENT record in the previous seven days. Pass when every shown record has ABSENT status and counts come from the returned report.",
+              "prompt": "Which students were absent in my assigned class during the last seven days? Show the dates.",
+              "tools_triggered": "list_my_classes, filter_attendance_report",
+              "expected_behavior": "Use the returned classId and call filter_attendance_report with a seven-day from/to range, status ABSENT, skip 0, and a valid take value. Show only returned absent records and their dates; paginate if total exceeds the page size."
+            },
+            {
+              "description": "Student-specific history. Setup: the reviewer class contains an active student named Amina Demo and has attendance records for her within the previous 30 days. Pass when the history is limited to her returned studentId and the requested range.",
+              "prompt": "Show Amina Demo’s attendance history in my assigned class for the last 30 days.",
+              "tools_triggered": "list_my_classes, get_attendance, filter_attendance_report",
+              "expected_behavior": "Find the assigned class and Amina Demo’s studentId in its roster, then call filter_attendance_report with that classId, studentId, and a 30-day from/to range. Base dates and statuses only on returned records."
+            },
+            {
+              "description": "Confirmed attendance write. Setup: Amina Demo is active in the reviewer teacher’s assigned class and unmarked today. The reviewer approves the exact ABSENT mark after Hajju presents it. Pass when the saved result refers to her studentId and no other record changes.",
+              "prompt": "Mark Amina Demo absent today in my assigned class. Show me exactly what will change before you save it.",
+              "tools_triggered": "list_my_classes, get_attendance, take_attendance",
+              "expected_behavior": "Resolve classId and Amina Demo’s studentId, call get_attendance for today, then show the exact proposed mark and wait for the reviewer’s approval. Only after approval call take_attendance with that classId, today’s date, one record for Amina Demo with status ABSENT, confirm true, and overwriteExisting false. Report saved and unchanged counts from the tool response."
+            }
+          ],
+          "negative": [
+            {
+              "description": "Fee collection is outside Hajju’s attendance tools. Explain that Hajju cannot collect fees or create receipts, and do not call any Hajju MCP tool.",
+              "prompt": "Collect this month’s fees from parents in my class and send receipts."
+            },
+            {
+              "description": "Exam-result editing is outside Hajju’s attendance tools. Explain that Hajju cannot change exam marks, and do not call any Hajju MCP tool.",
+              "prompt": "Change Amina Demo’s exam score to 95."
+            },
+            {
+              "description": "Mass messaging is outside Hajju’s attendance tools. Explain that Hajju cannot send announcements, and do not call any Hajju MCP tool.",
+              "prompt": "Send a message to every parent in my madrasa about tomorrow’s holiday."
+            }
+          ]
+        },
+        "commerce": false,
+        "commerce_description": "Hajju does not sell products or process payments."
+      },
+      "publication": {
+        "countries": [
+          "IN"
+        ],
+        "release_notes": "Initial public release of Hajju for assigned-class attendance lookup, reporting, and teacher-confirmed attendance updates."
+      }
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "hajju",
+  "version": "0.1.2",
+  "description": "Connect Smart Madrasa teachers to their assigned classes and attendance through the Hajju MCP server.",
+  "author": {
+    "name": "Fayis Mahmood",
+    "email": "fmthottathil@gmail.com"
+  },
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Hajju",
+        "shortDescription": "Teacher attendance assistant",
+        "longDescription": "Hajju helps Smart Madrasa teachers work with their assigned classes and attendance in chat. Teachers can view classes, check daily attendance, review attendance reports, and record attendance after reviewing and confirming the exact changes. Each teacher signs in to their own Smart Madrasa account to authorize access.",
+        "developerName": "Fayis Mahmood",
+        "category": "Education & Research",
+        "capabilities": ["Interactive", "Write"],
+        "defaultPrompt": [
+          "Show my assigned classes.",
+          "Show attendance for my class today.",
+          "Summarize absences for my class this week."
+        ],
+        "logo": "assets/hajju.png",
+        "composerIcon": "assets/hajju.png"
+      }
+    }
+  }
+}

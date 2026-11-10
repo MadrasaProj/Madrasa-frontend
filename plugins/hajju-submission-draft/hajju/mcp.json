@@ -1,0 +1,21 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "hajju": {
+      "type": "streamable-http",
+      "url": "https://devapi.smartmadrasa.app/mcp",
+      "extensions": {
+        "com.openai": {
+          "auth": {
+            "type": "oauth",
+            "client": { "mode": "cimd" },
+            "baseScopes": ["attendance:read"],
+            "defaultScopes": ["attendance:read", "attendance:write"],
+            "authorizationEndpoint": "https://devapi.smartmadrasa.app/oauth/authorize",
+            "tokenEndpoint": "https://devapi.smartmadrasa.app/oauth/token"
+          }
+        }
+      }
+    }
+  }
+}
