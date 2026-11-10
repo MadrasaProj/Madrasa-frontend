@@ -7,6 +7,7 @@ import { ScrollableWeekNavigator } from "@/components/ScrollableWeekNavigator";
 import { ScrollableMonthlyNavigator } from "@/components/ScrollableMonthlyNavigator";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Button } from "@/components/ui/button";
+import { DrawerSelector } from "@/components/DrawerSelector";
 import {
   Drawer,
   DrawerClose,
@@ -24,9 +25,11 @@ import {
   type IbadahRecord,
 } from "@/lib/ibadah-api";
 import { getStudents, type StudentRecord } from "@/lib/students-api";
+import type { ClassRecord } from "@/lib/classes-api";
 import { useAuthStore } from "@/store/auth";
 import { useActiveClass } from "@/store/activeClass";
 import { useLanguageStore } from "@/store/language";
+import { useTenantPath } from "@/hooks/useTenantPath";
 import { t } from "@/lib/i18n";
 import {
   Moon,
@@ -44,7 +47,9 @@ import {
   Minus,
   Download,
   Hash,
-  Trophy,
+  Settings,
+  School,
+  ChevronDown,
   X,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -675,22 +680,34 @@ function reportPrayerType(status: PrayerStatus | null): string {
   return "Ada";
 }
 
+interface IbadahClassContext {
+  classes: ClassRecord[];
+  activeClassId: string | null;
+  isLoading: boolean;
+  error: string | null;
+  onRetry: () => void;
+  onClassChange: (classId: string) => void;
+}
+
 export default function TeacherIbadahPage({
   initialDate,
   embedded = false,
-}: { initialDate?: string; embedded?: boolean } = {}) {
+  adminClassContext,
+}: { initialDate?: string; embedded?: boolean; adminClassContext?: IbadahClassContext } = {}) {
   const navigate = useNavigate();
-  const { user, accessToken } = useAuthStore();
+  const tenantPath = useTenantPath();
+  const { user, accessToken, activeClientId } = useAuthStore();
   const { lang } = useLanguageStore();
-  const cid = user?.clientId ?? "";
+  const cid = adminClassContext ? (activeClientId ?? user?.clientId ?? "") : (user?.clientId ?? "");
   const token = accessToken ?? "";
 
-  const {
-    activeClassId,
-    activeClass,
-    classes,
-    isLoading: loadingClasses,
-  } = useActiveClass();
+  const teacherClassContext = useActiveClass();
+  const classes = adminClassContext?.classes ?? teacherClassContext.classes;
+  const activeClassId = adminClassContext?.activeClassId ?? (adminClassContext ? "" : teacherClassContext.activeClassId);
+  const activeClass = adminClassContext
+    ? classes.find((cls) => cls.id === activeClassId) ?? null
+    : teacherClassContext.activeClass;
+  const loadingClasses = adminClassContext?.isLoading ?? teacherClassContext.isLoading;
   const [date, setDate] = useState(initialDate ?? fmt(new Date()));
   useEffect(() => {
     if (initialDate) setDate(initialDate);
@@ -1111,23 +1128,41 @@ export default function TeacherIbadahPage({
       {!embedded && (
         <PageHeader
           title={t("teacherPages", "ibadahRecordsTitle", lang)}
-           backHref="/teacher"
+          backHref={adminClassContext ? tenantPath("/admin") : "/teacher"}
+          switcher={adminClassContext ? (
+            <DrawerSelector
+              title={lang === "ml" ? "സജീവ ക്ലാസ്" : "Active class"}
+              options={[...classes]
+                .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }))
+                .map((cls) => ({ value: cls.id, label: cls.name, disabled: loadingClasses }))}
+              value={activeClassId}
+              onChange={adminClassContext.onClassChange}
+              placeholder={loadingClasses ? (lang === "ml" ? "ക്ലാസുകൾ ലോഡ് ചെയ്യുന്നു…" : "Loading classes…") : "Class"}
+              disabled={loadingClasses}
+              triggerItem={
+                <button
+                  type="button"
+                  className="inline-flex max-w-40 shrink-0 items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                >
+                  <School className="size-4 shrink-0 text-primary-600" />
+                  <span className="truncate">{activeClass?.name ?? "Class"}</span>
+                  <ChevronDown className="size-4 shrink-0" />
+                </button>
+              }
+            />
+          ) : undefined}
           action={
-            // <button
-            //   type="button"
-            //   onClick={() =>
-            //     navigate(
-            //       `/teacher/best-performance?category=ibadah${
-            //         activeClassId ? `&classId=${activeClassId}` : ""
-            //       }`
-            //     )
-            //   }
-            //   className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer"
-            // >
-            //   <Trophy className="w-3.5 h-3.5" />
-            //   <span>{lang === "ml" ? "റാങ്ക് ലിസ്റ്റ്" : "Class Rankings"}</span>
-            // </button>
-            <></>
+            adminClassContext && (user?.actorType === "SUPER_ADMIN" || user?.actorType === "CLIENT_ADMIN" || user?.role === "admin") ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => navigate(tenantPath("/admin/ibadah-config"))}
+              >
+                <Settings className="h-4 w-4" />
+                Config & Scoring
+              </Button>
+            ) : undefined
           }
         />
       )}
@@ -1137,6 +1172,12 @@ export default function TeacherIbadahPage({
         <ApiErrorBanner
           message={error}
           onRetry={viewMode === "daily" ? loadDailyIbadah : loadPeriodIbadah}
+        />
+      )}
+      {adminClassContext?.error && (
+        <ApiErrorBanner
+          message={adminClassContext.error}
+          onRetry={adminClassContext.onRetry}
         />
       )}
 
@@ -1155,7 +1196,7 @@ export default function TeacherIbadahPage({
         </div>
       ) : classes.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm">
-          {t("teacherPages", "noClassesAssigned", lang)}
+          {adminClassContext ? "No classes found" : t("teacherPages", "noClassesAssigned", lang)}
         </div>
       ) : (
         <>

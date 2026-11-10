@@ -30,6 +30,7 @@ import {
   GraduationCap,
   Search,
   School,
+  ChevronDown,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ExamStatusBadge, getExamStatusInfo, STATUS_LABELS } from "@/components/exam/ExamStatusBadge";
@@ -483,7 +484,24 @@ export default function AdminClassTestsPage() {
   return (
     <DashboardLayout>
       <div className="p-0! pb-8!">
-        <PageHeader title={t("nav", "classTests", lang)} />
+        <PageHeader
+          title={t("nav", "classTests", lang)}
+          showActionOnMobile
+          action={<DrawerSelector
+            title="Filter by class"
+            options={[
+              { value: "", label: "All classes" },
+              ...[...classes].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" })).map((cls) => ({ value: cls.id, label: cls.name })),
+            ]}
+            value={selectedClassId}
+            onChange={setSelectedClassId}
+            triggerItem={<button type="button" className="inline-flex max-w-40 shrink-0 items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
+              <School className="size-4 shrink-0 text-primary-600" />
+              <span className="truncate">{classes.find((cls) => cls.id === selectedClassId)?.name ?? "All classes"}</span>
+              <ChevronDown className="size-4 shrink-0" />
+            </button>}
+          />}
+        />
 
         {!loading && exams.length === 0 && !error ? (
           <IllustratedEmptyState
@@ -513,16 +531,6 @@ export default function AdminClassTestsPage() {
                 className="h-10 rounded-lg bg-white pl-9 text-sm"
               />
             </div>
-            <DrawerSelector
-              title="Filter by class"
-              options={[
-                { value: "", label: "All classes" },
-                ...classes.map((cls) => ({ value: cls.id, label: cls.name })),
-              ]}
-              value={selectedClassId}
-              onChange={setSelectedClassId}
-              className="h-10 w-36 shrink-0 rounded-xl bg-white px-3 text-sm"
-            />
           </div>
         </div>
 

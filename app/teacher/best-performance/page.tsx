@@ -2,9 +2,10 @@ import { useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import { BookOpen, CalendarDays, Download, Flame, GraduationCap, Heart, Image, Loader2, SquareChartGantt, Target } from "lucide-react";
+import { BookOpen, CalendarDays, ChevronDown, Download, Flame, GraduationCap, Heart, Image, Loader2, School, SquareChartGantt, Target } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { DrawerSelector } from "@/components/DrawerSelector";
 import { BestPerformanceMetric } from "@/components/BestPerformanceMetric";
 import { ScrollableRangeNavigator, commonRangePreset } from "@/components/ScrollableRangeNavigator";
 import { StudentAvatar } from "@/components/teacher/StudentAvatar";
@@ -19,7 +20,7 @@ import type { OverallBestPerformer } from "@/lib/best-performance-api";
 import { downloadBestPerformanceReport } from "@/lib/best-performance-report";
 import { periodDates } from "@/lib/best-performance-period";
 import { formatCompactNumber } from "@/lib/format-compact-number";
-import { useBestPerformers, useOverallBestStudents } from "@/lib/queries";
+import { useBestPerformers, useClasses, useOverallBestStudents } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import { useActiveClass } from "@/store/activeClass";
 import { useAuthStore } from "@/store/auth";
@@ -29,19 +30,20 @@ function totalMaxScore(performer: OverallBestPerformer) {
   return (performer.attendance.maxScore + performer.homework.maxScore + performer.exam.maxScore + performer.ibadah.maxScore) || 100;
 }
 
-function ReportCard({ category, lang, count, downloading, onDownload, onPosters }: {
+function ReportCard({ category, lang, count, downloading, onDownload, onPosters, allClasses = false }: {
   category: "total" | "ibadah";
   lang: string;
   count: number;
   downloading: boolean;
   onDownload: () => void;
   onPosters: () => void;
+  allClasses?: boolean;
 }) {
   const isMalayalam = lang === "ml";
   return (
     <section className="relative min-h-[100px] overflow-hidden rounded-2xl border-2 border-white bg-linear-120 from-white via-primary-50 to-white p-3 shadow-xs sm:p-4" aria-label={isMalayalam ? "പ്രകടന റിപ്പോർട്ടും പോസ്റ്ററുകളും" : "Performance report and posters"}>
       <div className="relative z-10 flex h-full min-w-0 flex-col items-start justify-center pr-24 sm:pr-36">
-        <h2 className="text-sm font-bold leading-5 text-gray-950 sm:text-base">{isMalayalam ? (category === "total" ? "ക്ലാസ് പ്രകടന റിപ്പോർട്ടും മികച്ച വിദ്യാർത്ഥികളുടെ പോസ്റ്ററുകളും" : "ഇബാദത്ത് പ്രകടന റിപ്പോർട്ടും മികച്ച വിദ്യാർത്ഥികളുടെ പോസ്റ്ററുകളും") : (category === "total" ? "Class performance report and top-student posters" : "Ibadah performance report and top-student posters")}</h2>
+        <h2 className="text-sm font-bold leading-5 text-gray-950 sm:text-base">{isMalayalam ? (category === "total" ? `${allClasses ? "മദ്രസ" : "ക്ലാസ്"} പ്രകടന റിപ്പോർട്ടും മികച്ച വിദ്യാർത്ഥികളുടെ പോസ്റ്ററുകളും` : "ഇബാദത്ത് പ്രകടന റിപ്പോർട്ടും മികച്ച വിദ്യാർത്ഥികളുടെ പോസ്റ്ററുകളും") : (category === "total" ? `${allClasses ? "Madrasa" : "Class"} performance report and top-student posters` : "Ibadah performance report and top-student posters")}</h2>
         {/* <p className="mt-1 text-xs leading-4 text-gray-600">{isMalayalam ? "ഈ കാലയളവിലെ മുഴുവൻ റാങ്കിംഗും ആദ്യ മൂന്ന് വിദ്യാർത്ഥികളുടെ വ്യക്തിഗത പോസ്റ്ററുകളും ലഭിക്കും." : "Get the full ranking for this period or a personalized poster for each of the top three students."}</p> */}
         <div className="mt-4 flex gap-2" aria-label={isMalayalam ? "പ്രകടന ഫയലുകൾ" : "Performance files"}>
           <Button type="button" size="xs" onClick={onDownload} disabled={count === 0 || downloading} aria-label={isMalayalam ? "റിപ്പോർട്ട് ഡൗൺലോഡ്" : "Download report"} className="gap-1.5 px-3">
@@ -95,11 +97,13 @@ function ScoreHero({ name, className, photoUrl, rank, score, percentage, heading
   );
 }
 
-export default function TeacherBestPerformancePage() {
+export default function TeacherBestPerformancePage({ scope = "teacher" }: { scope?: "teacher" | "admin" }) {
+  const isAdmin = scope === "admin";
   const { lang } = useLanguageStore();
   const { user, accessToken, activeClientId } = useAuthStore();
   const { activeClass, activeClassId, isLoading: classLoading, error: classError } = useActiveClass();
   const [searchParams, setSearchParams] = useSearchParams();
+  const selectedClassParam = searchParams.get("classId");
   const rankingCategory = searchParams.get("category") === "ibadah" ? "ibadah" : "total";
   const [dates, setDates] = useState(() => periodDates(searchParams.get("period") === "week" ? "week" : "month"));
   const [downloading, setDownloading] = useState(false);
@@ -109,13 +113,19 @@ export default function TeacherBestPerformancePage() {
   const posterRef = useRef<HTMLDivElement>(null);
   const cid = activeClientId || user?.clientId || "";
   const token = accessToken ?? "";
-  const query = { ...dates, classId: activeClassId, limit: 100 };
-  const enabled = !!cid && !!token && !!activeClassId;
+  const { data: classes = [], isLoading: adminClassesLoading, error: adminClassesError } = useClasses(
+    { clientId: cid, token }, undefined, { enabled: isAdmin && !!cid && !!token },
+  );
+  const selectedClass = isAdmin ? classes.find((item) => item.id === selectedClassParam) : activeClass;
+  const classId = isAdmin ? selectedClass?.id : activeClassId;
+  const className = selectedClass?.name || (isAdmin ? "All classes" : "Class");
+  const query = { ...dates, ...(classId ? { classId } : {}), limit: 100 };
+  const enabled = !!cid && !!token && (isAdmin || !!activeClassId);
   const { data: ibadahResponse, isLoading: loadingIbadah, error: errorIbadah } = useBestPerformers({ clientId: cid, token }, query, { enabled });
   const { data: overallResponse, isLoading: loadingOverall, error: errorOverall } = useOverallBestStudents({ clientId: cid, token }, query, { enabled });
   const isOverall = rankingCategory === "total";
-  const isLoading = classLoading || (enabled && (isOverall ? loadingOverall : loadingIbadah));
-  const error = classError ?? (isOverall ? errorOverall : errorIbadah);
+  const isLoading = (isAdmin ? adminClassesLoading : classLoading) || (enabled && (isOverall ? loadingOverall : loadingIbadah));
+  const error = (isAdmin ? adminClassesError : classError) ?? (isOverall ? errorOverall : errorIbadah);
   const overallData = overallResponse?.performers ?? [];
   const ibadahData = ibadahResponse?.performers ?? [];
   const topOverall = overallData[0];
@@ -134,11 +144,18 @@ export default function TeacherBestPerformancePage() {
     return next;
   }, { replace: true });
 
+  const selectClass = (value: string) => setSearchParams((previous) => {
+    const next = new URLSearchParams(previous);
+    if (value && value !== "all") next.set("classId", value);
+    else next.delete("classId");
+    return next;
+  }, { replace: true });
+
   const handleDownload = async () => {
     if (!performerCount || downloading) return;
     setDownloading(true);
     try {
-      await downloadBestPerformanceReport({ category: rankingCategory, className: activeClass?.name || "Class", from: dates.from, to: dates.to, overall: overallData, ibadah: ibadahData });
+      await downloadBestPerformanceReport({ category: rankingCategory, className, from: dates.from, to: dates.to, overall: overallData, ibadah: ibadahData });
     } catch (reportError) {
       console.error("Failed to create best performance report", reportError);
       toast.error(lang === "ml" ? "റിപ്പോർട്ട് ഡൗൺലോഡ് ചെയ്യാനായില്ല" : "Could not download the report");
@@ -170,7 +187,26 @@ export default function TeacherBestPerformancePage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title={isOverall ? (lang === "ml" ? "ആകെ മികച്ച വിദ്യാർത്ഥി റാങ്കിംഗ്" : "Overall Best Student Ranking") : (lang === "ml" ? "മികച്ച ഇബാദത്ത്" : "Best Ibadah Performance")} />
+      <PageHeader
+        title={isOverall ? (lang === "ml" ? "ആകെ മികച്ച വിദ്യാർത്ഥി റാങ്കിംഗ്" : "Overall Best Student Ranking") : (lang === "ml" ? "മികച്ച ഇബാദത്ത്" : "Best Ibadah Performance")}
+        showActionOnMobile
+        action={isAdmin && <DrawerSelector
+          title={lang === "ml" ? "ക്ലാസ് തിരഞ്ഞെടുക്കുക" : "Choose class"}
+          options={[
+            { value: "all", label: lang === "ml" ? "എല്ലാ ക്ലാസുകളും" : "All classes" },
+            ...[...classes].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" })).map((item) => ({ value: item.id, label: item.name })),
+          ]}
+          value={classId || "all"}
+          onChange={selectClass}
+          disabled={adminClassesLoading}
+          placeholder={adminClassesLoading ? (lang === "ml" ? "ക്ലാസുകൾ ലോഡ് ചെയ്യുന്നു…" : "Loading classes…") : "Class"}
+          triggerItem={<button type="button" className="inline-flex max-w-40 shrink-0 items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
+            <School className="size-4 shrink-0 text-primary-600" />
+            <span className="truncate">{classId ? className : (lang === "ml" ? "എല്ലാ ക്ലാസുകളും" : "All classes")}</span>
+            <ChevronDown className="size-4 shrink-0" />
+          </button>}
+        />}
+      />
       <div className="mx-auto w-full max-w-4xl space-y-8 px-4 pb-28 pt-6 sm:px-6 sm:pt-8">
         <div className="space-y-5">
           <Tabs className="fixed bottom-16 left-1/2 z-30 -translate-x-1/2 lg:bottom-6 lg:left-[calc(50%+8rem)]" value={rankingCategory} onValueChange={selectCategory}>
@@ -184,12 +220,12 @@ export default function TeacherBestPerformancePage() {
 
         {isLoading && <div className="space-y-5"><Skeleton className="h-64 rounded-3xl" /><Skeleton className="h-48 rounded-3xl" /></div>}
         {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error.message}</p>}
-        {!isLoading && !error && !activeClassId && <p className="rounded-2xl border border-gray-100 bg-white px-4 py-8 text-center text-sm text-gray-500">{lang === "ml" ? "ക്ലാസ് ലഭ്യമല്ല" : "No class available"}</p>}
+        {!isLoading && !error && !isAdmin && !activeClassId && <p className="rounded-2xl border border-gray-100 bg-white px-4 py-8 text-center text-sm text-gray-500">{lang === "ml" ? "ക്ലാസ് ലഭ്യമല്ല" : "No class available"}</p>}
 
-        {!isLoading && !error && activeClassId && (
+        {!isLoading && !error && (isAdmin || activeClassId) && (
           <>
             {isOverall ? topOverall && (
-              <ScoreHero name={topOverall.name} className={topOverall.className || activeClass?.name} photoUrl={ibadahData.find((student) => student.studentId === topOverall.studentId)?.photoUrl} rank={`${lang === "ml" ? "റാങ്ക്" : "Rank"} ${topOverall.rank}/${overallData.length}`} score={topOverall.totalScore} percentage={topOverall.totalPercentage} scoreLabel={lang === "ml" ? "സ്കോർ" : "Score"} heading={lang === "ml" ? "ക്ലാസിലെ മികച്ച വിദ്യാർത്ഥി" : "Top student in your class"}>
+              <ScoreHero name={topOverall.name} className={topOverall.className || className} photoUrl={ibadahData.find((student) => student.studentId === topOverall.studentId)?.photoUrl} rank={`${lang === "ml" ? "റാങ്ക്" : "Rank"} ${topOverall.rank}/${overallData.length}`} score={topOverall.totalScore} percentage={topOverall.totalPercentage} scoreLabel={lang === "ml" ? "സ്കോർ" : "Score"} heading={lang === "ml" ? (isAdmin && !classId ? "മദ്രസയിലെ മികച്ച വിദ്യാർത്ഥി" : "ക്ലാസിലെ മികച്ച വിദ്യാർത്ഥി") : (isAdmin && !classId ? "Top student in the madrasa" : "Top student in your class")}>
                 {[
                   { label: lang === "ml" ? "ഹാജർ" : "Attendance", score: topOverall.attendance.score, maxScore: topOverall.attendance.maxScore, detail: `${topOverall.attendance.rate}% · ${topOverall.attendance.presentDays}/${topOverall.attendance.totalDays}`, icon: CalendarDays, tone: "bg-linear-120 from-white via-white  to-primary-50 text-primary-700" },
                   { label: lang === "ml" ? "ഹോംവർക്ക്" : "Homework", score: topOverall.homework.score, maxScore: topOverall.homework.maxScore, detail: `${topOverall.homework.rate}% · ${topOverall.homework.completed}/${topOverall.homework.assigned}`, icon: BookOpen, tone: "bg-linear-120 from-white via-white to-sky-50/40 text-sky-700" },
@@ -199,7 +235,7 @@ export default function TeacherBestPerformancePage() {
               </ScoreHero>
             ) : topIbadah && (
               <div className="space-y-4">
-                <ScoreHero name={topIbadah.name} className={activeClass?.name} photoUrl={topIbadah.photoUrl} rank={`${lang === "ml" ? "റാങ്ക്" : "Rank"} 1/${ibadahData.length}`} score={topIbadah.score} percentage={topIbadah.scorePercentage} scoreLabel={lang === "ml" ? "സ്കോർ" : "Score"} heading={lang === "ml" ? "ക്ലാസിലെ മികച്ച ഇബാദത്ത് പ്രകടനം" : "Top Ibadah performance in your class"}>
+                <ScoreHero name={topIbadah.name} className={className} photoUrl={topIbadah.photoUrl} rank={`${lang === "ml" ? "റാങ്ക്" : "Rank"} 1/${ibadahData.length}`} score={topIbadah.score} percentage={topIbadah.scorePercentage} scoreLabel={lang === "ml" ? "സ്കോർ" : "Score"} heading={lang === "ml" ? (isAdmin && !classId ? "മദ്രസയിലെ മികച്ച ഇബാദത്ത് പ്രകടനം" : "ക്ലാസിലെ മികച്ച ഇബാദത്ത് പ്രകടനം") : (isAdmin && !classId ? "Top Ibadah performance in the madrasa" : "Top Ibadah performance in your class")}>
                   {[
                     { label: lang === "ml" ? "നമസ്കാരങ്ങൾ" : "Prayers", value: topIbadah.totalPrayers, icon: Heart, tone: "bg-linear-120 from-white via-white to-primary-50/40 text-primary-700" },
                     { label: lang === "ml" ? "പേജുകൾ" : "Pages", value: topIbadah.totalQuranPages, icon: BookOpen, tone: "bg-linear-120 from-white via-white to-sky-50/40 text-sky-700" },
@@ -214,7 +250,7 @@ export default function TeacherBestPerformancePage() {
               </div>
             )}
 
-            <ReportCard category={rankingCategory} lang={lang} count={performerCount} downloading={downloading} onDownload={handleDownload} onPosters={() => setPosterOpen(true)} />
+            <ReportCard category={rankingCategory} lang={lang} count={performerCount} downloading={downloading} onDownload={handleDownload} onPosters={() => setPosterOpen(true)} allClasses={isAdmin && !classId} />
 
             <ResponsivePopover
               open={posterOpen}
@@ -237,7 +273,7 @@ export default function TeacherBestPerformancePage() {
             </ResponsivePopover>
 
             {selectedPoster && <div className="pointer-events-none fixed left-[-10000px] top-0" aria-hidden="true" ref={posterRef}>
-              <BestPerformancePoster key={`${rankingCategory}-${selectedPoster.rank}-${selectedPoster.name}`} student={selectedPoster} category={rankingCategory} className={activeClass?.name || "Class"} madrasaName={user?.madrasaName || "Smart Madrasa"} madrasaLogo={user?.madrasaLogo} dateRange={dateRange} />
+              <BestPerformancePoster key={`${rankingCategory}-${selectedPoster.rank}-${selectedPoster.name}`} student={selectedPoster} category={rankingCategory} className={className} madrasaName={user?.madrasaName || "Smart Madrasa"} madrasaLogo={user?.madrasaLogo} dateRange={dateRange} />
             </div>}
 
             <section aria-label={listTitle} className="mb-10">

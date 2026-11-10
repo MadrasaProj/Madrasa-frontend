@@ -15,6 +15,7 @@ import TenantParentLoginPage from "../app/m/[slug]/parent/login/page";
 // ── Admin ─────────────────────────────────────────────────────────────────────
 import AdminAbsentPage from "../app/admin/absent/page";
 import AdminAttendancePage from "../app/admin/attendance/page";
+import AdminBestPerformancePage from "../app/admin/best-performance/page";
 import AdminLeaveRequestsPage from "../app/admin/leave-requests/page";
 import AdminClassesPage from "../app/admin/classes/page";
 import AdminConfigPage from "../app/admin/config/page";
@@ -101,7 +102,6 @@ import ParentSocialFrameViewPage from "../app/parent/social-frames/[id]/page";
 
 // ── Committee ─────────────────────────────────────────────────────────────────
 import IDCardsPage from "../app/admin/id-cards/page";
-import AdminBestPerformancePage from "../app/committee/best-performance/page";
 import CommitteeAnnouncementsPage from "../app/committee/announcements/page";
 import CommitteeAttendancePage from "../app/committee/attendance/page";
 import CommitteeFinancePage from "../app/committee/finance/page";

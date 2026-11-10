@@ -92,6 +92,7 @@ interface PageHeaderProps {
   action?: React.ReactNode;
   showActionOnMobile?: boolean;
   hideSwitcherChevron?: boolean;
+  switcher?: React.ReactNode;
 }
 
 export function PageHeader({
@@ -103,6 +104,7 @@ export function PageHeader({
   action,
   showActionOnMobile,
   hideSwitcherChevron,
+  switcher,
 }: PageHeaderProps) {
   const navigate = useNavigate();
   return (
@@ -138,7 +140,7 @@ export function PageHeader({
               </div>
             )}
           </div>
-          <PageHeaderSwitchers hideChevron={hideSwitcherChevron} />
+          {switcher ?? <PageHeaderSwitchers hideChevron={hideSwitcherChevron} />}
         </div>
       </div>
     </div>
