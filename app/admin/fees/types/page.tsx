@@ -7,6 +7,12 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DrawerSelector } from "@/components/DrawerSelector";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   getFeeTypes, createFeeType, updateFeeType, deleteFeeType, generatePayments,
   type FeeType, type CreateFeeTypePayload,
@@ -15,9 +21,8 @@ import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
-  CreditCard, Plus, Loader2, Zap, X, RefreshCw, ArrowLeft, Pencil, Trash2,
+  CreditCard, Plus, Loader2, Zap, ArrowLeft, Pencil, Trash2,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
 export default function AdminFeeTypesPage() {
@@ -162,35 +167,11 @@ export default function AdminFeeTypesPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader
-        title="Fee Type Management"
-        subtitle="Create, manage, and generate payments for fee types"
-        icon={CreditCard}
-        action={
-          <div className="flex items-center gap-2">
-            <Link
-              to={tenantPath("/admin/fees")}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-all"
-            >
-              <ArrowLeft className="w-4 h-4" /> Back to Fees
-            </Link>
-            <button
-              onClick={() => { setShowCreate(true); setCreateError(null); }}
-              className="flex items-center gap-1.5 px-3 py-2 bg-primary-600 text-white rounded-xl text-sm font-semibold"
-            >
-              <Plus className="w-4 h-4" /> New Fee Type
-            </button>
-          </div>
-        }
-      />
-
-      <button
-        type="button"
-        onClick={() => { setShowCreate(true); setCreateError(null); }}
-        className="sm:hidden w-full mb-5 flex items-center justify-center gap-1.5 px-4 py-3 bg-primary-600 text-white rounded-xl text-sm font-semibold"
-      >
-        <Plus className="w-4 h-4" /> New Fee Type
-      </button>
+      <PageHeader title="Fee Type Management" />
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
+        <Link to={tenantPath("/admin/fees")} className="inline-flex items-center gap-1 text-sm font-medium text-primary-700 hover:underline"><ArrowLeft className="size-4" /> All fees</Link>
+        <Button type="button" onClick={() => { setShowCreate(true); setCreateError(null); }}><Plus className="size-4" /> New fee type</Button>
+      </div>
 
       {error && <ApiErrorBanner message={error} onRetry={load} />}
 
@@ -204,210 +185,103 @@ export default function AdminFeeTypesPage() {
         <div className="text-center py-16 text-gray-400">
           <CreditCard className="w-10 h-10 mx-auto mb-3 opacity-30" />
           <p className="text-sm">No fee types yet. Create one to start collecting.</p>
-          <button
+          <Button
             onClick={() => { setShowCreate(true); setCreateError(null); }}
             className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-semibold inline-flex items-center gap-1.5"
           >
             <Plus className="w-4 h-4" /> Create Fee Type
-          </button>
+          </Button>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-auto w-full">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/80">
-                <th className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">Name</th>
-                <th className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">Amount</th>
-                <th className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 hidden sm:table-cell">Type</th>
-                <th className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 hidden md:table-cell">Classes</th>
-                <th className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 hidden lg:table-cell">Records</th>
-                <th className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">Status</th>
-                <th className="text-right px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {feeTypes.map((ft) => {
-                const targetClasses = classes.filter((c) => (ft.targetClassIds ?? []).includes(c.id));
-                return (
-                  <tr key={ft.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-4 py-3">
-                      <p className="font-semibold text-gray-900 text-sm">{ft.name}</p>
-                      {ft.description && (
-                        <p className="text-[11px] text-gray-400 mt-0.5 truncate max-w-[200px]">{ft.description}</p>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="font-bold text-gray-900">{ft.isDonation ? "Variable" : `₹${Number(ft.amount).toLocaleString()}`}</span>
-                    </td>
-                    <td className="px-4 py-3 hidden sm:table-cell">
-                      <span className="text-xs text-gray-600">
-                        {ft.isDonation ? "Donation" : null}
-                        {ft.isDonation ? " · " : ""}
-                        {ft.kind === "RECURRING" ? `${ft.frequency ?? "recurring"}` : "one-time"}
-                        {ft.dueDay ? ` · day ${ft.dueDay}` : ""}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 hidden md:table-cell">
-                      <div className="flex flex-wrap gap-1">
-                        {targetClasses.length > 0 ? targetClasses.map((c) => (
-                          <span key={c.id} className="text-[10px] text-gray-500 bg-gray-50 px-1.5 py-0.5 rounded-lg">{c.name}</span>
-                        )) : <span className="text-[10px] text-gray-400">All</span>}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 hidden lg:table-cell">
-                      <span className="text-xs text-gray-500">{ft._count?.payments ?? 0}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={cn(
-                        "inline-block px-2 py-0.5 rounded-lg text-[10px] font-semibold",
-                        ft.status === "ACTIVE" ? "bg-primary-100 text-primary-700" : "bg-gray-100 text-gray-500",
-                      )}>
-                        {ft.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleEdit(ft)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-50 text-gray-600 text-[11px] font-semibold hover:bg-gray-100 transition-all"
-                        >
-                          <Pencil className="w-3 h-3" /> Edit
-                        </button>
-                        <button
-                          onClick={() => handleGenerate(ft)}
-                          disabled={generating === ft.id}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-700 text-[11px] font-semibold hover:bg-amber-100 transition-all disabled:opacity-50"
-                        >
-                          {generating === ft.id ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <Zap className="w-3 h-3" />
-                          )}
-                          Generate
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { setDeleteTarget(ft); setDeleteError(null); }}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-50 text-red-600 text-[11px] font-semibold hover:bg-red-100 transition-all"
-                          aria-label={`Delete ${ft.name}`}
-                        >
-                          <Trash2 className="w-3 h-3" /> Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <section>
+          <h2 className="mb-2 px-1 text-sm font-semibold text-gray-700">All fee types <span className="font-normal text-gray-500">({feeTypes.length})</span></h2>
+          <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white">
+            {feeTypes.map((feeType) => {
+              const targetClasses = classes.filter((item) => (feeType.targetClassIds ?? []).includes(item.id));
+              return (
+                <div key={feeType.id} className="flex flex-wrap items-center gap-3 px-4 py-4">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold text-gray-950 sm:text-base">{feeType.name}</span>
+                    <span className="mt-1 block text-xs text-gray-500">
+                      {feeType.kind === "RECURRING" ? feeType.frequency ?? "Recurring" : "One time"}
+                      {" · "}{targetClasses.length ? targetClasses.map((item) => item.name).join(", ") : "All classes"}
+                      {" · "}{feeType._count?.payments ?? 0} records
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-right">
+                    <span className="block text-sm font-semibold tabular-nums text-gray-950">{feeType.isDonation ? "Variable" : `₹${Number(feeType.amount).toLocaleString("en-IN")}`}</span>
+                    <span className={cn("mt-1 inline-block rounded-lg px-2 py-0.5 text-xs font-medium", feeType.status === "ACTIVE" ? "bg-primary-50 text-primary-700" : "bg-gray-100 text-gray-500")}>{feeType.status}</span>
+                  </span>
+                  <div className="flex w-full justify-end gap-1 sm:w-auto">
+                    <Button type="button" variant="ghost" size="icon-sm" aria-label={`Edit ${feeType.name}`} onClick={() => handleEdit(feeType)}><Pencil className="size-4" /></Button>
+                    <Button type="button" variant="ghost" size="icon-sm" aria-label={`Generate payments for ${feeType.name}`} disabled={generating === feeType.id} onClick={() => handleGenerate(feeType)}>{generating === feeType.id ? <Loader2 className="size-4 animate-spin" /> : <Zap className="size-4" />}</Button>
+                    <Button type="button" variant="ghost" size="icon-sm" aria-label={`Delete ${feeType.name}`} onClick={() => { setDeleteTarget(feeType); setDeleteError(null); }}><Trash2 className="size-4" /></Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
       )}
 
-      {/* ── Create fee type modal ── */}
-      <AnimatePresence>
-        {showCreate && (
-          <>
-            <motion.div
-              key="bd"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
-              onClick={() => setShowCreate(false)}
-            />
-            <motion.div
-              key="modal"
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-              onClick={() => setShowCreate(false)}
-            >
-              <div className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-md shadow-xl max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-center justify-between px-5 py-4 border-b">
-                  <p className="font-bold text-gray-900">New Fee Type</p>
-                  <button onClick={() => setShowCreate(false)}>
-                    <X className="w-5 h-5 text-gray-400" />
-                  </button>
-                </div>
+      <ResponsivePopover open={showCreate} onOpenChange={setShowCreate} title="New fee type" fullHeight>
+        <div className="mx-auto w-full max-w-xl pb-5">
                 <div className="px-5 py-4 space-y-4">
                   {createError && (
                     <div className="bg-red-50 text-red-600 text-sm px-3 py-2 rounded-xl">{createError}</div>
                   )}
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Name *</label>
-                    <input
+                    <Input
                       type="text" value={newFee.name ?? ""}
                       placeholder="e.g. Monthly Fee, SKSBV Fund"
                       onChange={(e) => setNewFee((n) => ({ ...n, name: e.target.value }))}
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 text-sm"
+                      className="w-full"
                     />
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Amount (₹) {newFee.isDonation ? "(not applicable)" : "*"}</label>
-                    <input
+                    <Input
                       type="number" value={newFee.isDonation ? "" : (newFee.amount ?? "")} placeholder={newFee.isDonation ? "Entered during collection" : "500"}
                       disabled={newFee.isDonation}
                       onChange={(e) => setNewFee((n) => ({ ...n, amount: Number(e.target.value) }))}
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 text-sm"
+                      className="w-full"
                     />
                   </div>
                   <label className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 cursor-pointer">
-                    <input type="checkbox" checked={!!newFee.isDonation} onChange={(e) => setNewFee((n) => ({ ...n, isDonation: e.target.checked, amount: e.target.checked ? 0 : (n.amount ?? 0) }))} className="h-4 w-4 accent-amber-600" />
+                    <Checkbox checked={!!newFee.isDonation} onCheckedChange={(checked) => setNewFee((n) => ({ ...n, isDonation: checked === true, amount: checked === true ? 0 : (n.amount ?? 0) }))} />
                     <span><span className="block text-sm font-semibold text-amber-800">This is a donation</span><span className="block text-[11px] text-amber-700">No fixed amount; enter it when marking payment.</span></span>
                   </label>
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Description (optional)</label>
-                    <input
+                    <Input
                       type="text" value={newFee.description ?? ""} placeholder="Details…"
                       onChange={(e) => setNewFee((n) => ({ ...n, description: e.target.value }))}
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 text-sm"
+                      className="w-full"
                     />
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Type</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {(["ONE_TIME", "RECURRING"] as const).map((k) => (
-                        <label
-                          key={k}
-                          className={cn(
-                            "flex items-center justify-center gap-2 py-3 rounded-2xl border text-sm font-semibold cursor-pointer transition-all",
-                            newFee.kind === k
-                              ? "border-primary-500 bg-primary-50 text-primary-700"
-                              : "border-gray-200 bg-gray-50 text-gray-700",
-                          )}
-                        >
-                          <input
-                            type="radio" className="sr-only"
-                            checked={newFee.kind === k}
-                            onChange={() => setNewFee((n) => ({ ...n, kind: k }))}
-                          />
-                          {k === "ONE_TIME" ? "One Time" : "Recurring"}
-                        </label>
-                      ))}
-                    </div>
+                    <Tabs value={newFee.kind ?? "ONE_TIME"} onValueChange={(value) => setNewFee((current) => ({ ...current, kind: value as "ONE_TIME" | "RECURRING" }))}>
+                      <TabsList className="grid w-full grid-cols-2 shadow-none">
+                        <TabsTrigger value="ONE_TIME" className="shadow-none!">One time</TabsTrigger>
+                        <TabsTrigger value="RECURRING" className="shadow-none!">Recurring</TabsTrigger>
+                      </TabsList>
+                    </Tabs>
                   </div>
                   {newFee.kind === "RECURRING" && (
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Frequency</label>
-                        <select
-                          value={newFee.frequency ?? "monthly"}
-                          onChange={(e) => setNewFee((n) => ({ ...n, frequency: e.target.value }))}
-                          className="w-full px-3 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm"
-                        >
-                          {["monthly", "quarterly", "yearly"].map((f) => (
-                            <option key={f} value={f}>{f}</option>
-                          ))}
-                        </select>
+                        <DrawerSelector title="Frequency" value={newFee.frequency ?? "monthly"} options={["monthly", "quarterly", "yearly"].map((frequency) => ({ value: frequency, label: frequency.charAt(0).toUpperCase() + frequency.slice(1) }))} onChange={(value) => setNewFee((current) => ({ ...current, frequency: value }))} />
                       </div>
                       <div>
                         <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Due Day</label>
-                        <input
+                        <Input
                           type="number" min={1} max={31} placeholder="5"
                           value={newFee.dueDay ?? ""}
                           onChange={(e) => setNewFee((n) => ({ ...n, dueDay: Number(e.target.value) }))}
-                          className="w-full px-3 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm focus:outline-none"
+                          className="w-full"
                         />
                       </div>
                     </div>
@@ -419,8 +293,8 @@ export default function AdminFeeTypesPage() {
                         {classes.map((c) => {
                           const selected = (newFee.targetClassIds ?? []).includes(c.id);
                           return (
-                            <button
-                              key={c.id} type="button"
+                            <Button
+                              key={c.id} type="button" variant="outline" aria-pressed={selected}
                               onClick={() =>
                                 setNewFee((n) => ({
                                   ...n,
@@ -435,7 +309,7 @@ export default function AdminFeeTypesPage() {
                               )}
                             >
                               {c.name}
-                            </button>
+                            </Button>
                           );
                         })}
                       </div>
@@ -443,213 +317,100 @@ export default function AdminFeeTypesPage() {
                   )}
                 </div>
                 <div className="px-5 pb-5">
-                  <button
+                  <Button
                     onClick={handleCreate}
                     disabled={creating || !newFee.name || (!newFee.isDonation && !newFee.amount)}
                     className="w-full bg-primary-600 text-white font-bold py-4 rounded-2xl disabled:opacity-60 flex items-center justify-center gap-2"
                   >
                     {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                     Create Fee Type
-                  </button>
+                  </Button>
                 </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+        </div>
+      </ResponsivePopover>
 
-      {/* ── Delete fee type confirmation ── */}
-      <AnimatePresence>
+      <ResponsivePopover open={deleteTarget !== null} onOpenChange={(open) => { if (!open && !deleting) setDeleteTarget(null); }} title="Delete fee type" description="Existing payment records will be preserved">
         {deleteTarget && (
-          <>
-            <motion.div
-              key="delete-bd"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
-              onClick={() => { if (!deleting) setDeleteTarget(null); }}
-            />
-            <motion.div
-              key="delete-dialog"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              role="alertdialog"
-              aria-modal="true"
-              aria-labelledby="delete-fee-type-title"
-              aria-describedby="delete-fee-type-description"
-              className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 bg-white rounded-3xl p-6 max-w-sm mx-auto shadow-2xl"
-            >
-              <div className="text-center space-y-3">
-                <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto">
-                  <Trash2 className="w-7 h-7 text-red-600" />
-                </div>
-                <h3 id="delete-fee-type-title" className="font-bold text-gray-900 text-lg">Delete Fee Type?</h3>
-                <p id="delete-fee-type-description" className="text-sm text-gray-500">
-                  <strong>{deleteTarget.name}</strong> will be removed from the active fee types. Existing payment records will be preserved.
-                </p>
-                {deleteError && (
-                  <div className="bg-red-50 text-red-600 text-sm px-3 py-2 rounded-xl text-left">{deleteError}</div>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setDeleteTarget(null)}
-                  disabled={deleting}
-                  className="py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  className="py-3 rounded-2xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors disabled:opacity-60"
-                >
-                  {deleting ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" /> Deleting…
-                    </span>
-                  ) : "Delete"}
-                </button>
-              </div>
-            </motion.div>
-          </>
+          <div className="space-y-4 px-4 pb-6 pt-2 sm:px-6">
+            <p className="text-sm text-gray-600">Remove <strong className="text-gray-900">{deleteTarget.name}</strong> from the active fee types?</p>
+            {deleteError && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{deleteError}</p>}
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" className="flex-1" disabled={deleting} onClick={() => setDeleteTarget(null)}>Keep</Button>
+              <Button type="button" variant="destructive" className="flex-1" disabled={deleting} onClick={handleDelete}><Trash2 className="size-4" /> Delete</Button>
+            </div>
+          </div>
         )}
-      </AnimatePresence>
+      </ResponsivePopover>
 
-      {/* ── Edit fee type modal ── */}
-      <AnimatePresence>
-        {showEdit && editingFee && (
-          <>
-            <motion.div
-              key="edit-bd"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
-              onClick={() => { setShowEdit(false); setEditingFee(null); }}
-            />
-            <motion.div
-              key="edit-modal"
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-              onClick={() => { setShowEdit(false); setEditingFee(null); }}
-            >
-              <div className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-md shadow-xl max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-center justify-between px-5 py-4 border-b">
-                  <p className="font-bold text-gray-900">Edit Fee Type</p>
-                  <button onClick={() => { setShowEdit(false); setEditingFee(null); }}>
-                    <X className="w-5 h-5 text-gray-400" />
-                  </button>
-                </div>
+      <ResponsivePopover open={showEdit && editingFee !== null} onOpenChange={(open) => { if (!open) { setShowEdit(false); setEditingFee(null); } }} title={editingFee ? `Edit ${editingFee.name}` : "Edit fee type"} fullHeight>
+        <div className="mx-auto w-full max-w-xl pb-5">
                 <div className="px-5 py-4 space-y-4">
                   {editError && (
                     <div className="bg-red-50 text-red-600 text-sm px-3 py-2 rounded-xl">{editError}</div>
                   )}
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Name *</label>
-                    <input
+                    <Input
                       type="text" value={editFee.name ?? ""}
                       placeholder="e.g. Monthly Fee, SKSBV Fund"
                       onChange={(e) => setEditFee((n) => ({ ...n, name: e.target.value }))}
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 text-sm"
+                      className="w-full"
                     />
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Amount (₹) {editFee.isDonation ? "(not applicable)" : "*"}</label>
-                    <input
+                    <Input
                       type="number" value={editFee.isDonation ? "" : (editFee.amount ?? "")} placeholder={editFee.isDonation ? "Entered during collection" : "500"} disabled={editFee.isDonation}
                       onChange={(e) => setEditFee((n) => ({ ...n, amount: Number(e.target.value) }))}
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 text-sm"
+                      className="w-full"
                     />
                   </div>
                   <label className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 cursor-pointer">
-                    <input type="checkbox" checked={!!editFee.isDonation} onChange={(e) => setEditFee((n) => ({ ...n, isDonation: e.target.checked, amount: e.target.checked ? 0 : (n.amount ?? 0) }))} className="h-4 w-4 accent-amber-600" />
+                    <Checkbox checked={!!editFee.isDonation} onCheckedChange={(checked) => setEditFee((n) => ({ ...n, isDonation: checked === true, amount: checked === true ? 0 : (n.amount ?? 0) }))} />
                     <span><span className="block text-sm font-semibold text-amber-800">This is a donation</span><span className="block text-[11px] text-amber-700">No fixed amount; enter it when marking payment.</span></span>
                   </label>
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Description (optional)</label>
-                    <input
+                    <Input
                       type="text" value={editFee.description ?? ""} placeholder="Details…"
                       onChange={(e) => setEditFee((n) => ({ ...n, description: e.target.value }))}
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 text-sm"
+                      className="w-full"
                     />
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Type</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {(["ONE_TIME", "RECURRING"] as const).map((k) => (
-                        <label
-                          key={k}
-                          className={cn(
-                            "flex items-center justify-center gap-2 py-3 rounded-2xl border text-sm font-semibold cursor-pointer transition-all",
-                            editFee.kind === k
-                              ? "border-primary-500 bg-primary-50 text-primary-700"
-                              : "border-gray-200 bg-gray-50 text-gray-700",
-                          )}
-                        >
-                          <input
-                            type="radio" className="sr-only"
-                            checked={editFee.kind === k}
-                            onChange={() => setEditFee((n) => ({ ...n, kind: k }))}
-                          />
-                          {k === "ONE_TIME" ? "One Time" : "Recurring"}
-                        </label>
-                      ))}
-                    </div>
+                    <Tabs value={editFee.kind ?? "ONE_TIME"} onValueChange={(value) => setEditFee((current) => ({ ...current, kind: value as "ONE_TIME" | "RECURRING" }))}>
+                      <TabsList className="grid w-full grid-cols-2 shadow-none">
+                        <TabsTrigger value="ONE_TIME" className="shadow-none!">One time</TabsTrigger>
+                        <TabsTrigger value="RECURRING" className="shadow-none!">Recurring</TabsTrigger>
+                      </TabsList>
+                    </Tabs>
                   </div>
                   {editFee.kind === "RECURRING" && (
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Frequency</label>
-                        <select
-                          value={editFee.frequency ?? "monthly"}
-                          onChange={(e) => setEditFee((n) => ({ ...n, frequency: e.target.value }))}
-                          className="w-full px-3 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm"
-                        >
-                          {["monthly", "quarterly", "yearly"].map((f) => (
-                            <option key={f} value={f}>{f}</option>
-                          ))}
-                        </select>
+                        <DrawerSelector title="Frequency" value={editFee.frequency ?? "monthly"} options={["monthly", "quarterly", "yearly"].map((frequency) => ({ value: frequency, label: frequency.charAt(0).toUpperCase() + frequency.slice(1) }))} onChange={(value) => setEditFee((current) => ({ ...current, frequency: value }))} />
                       </div>
                       <div>
                         <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Due Day</label>
-                        <input
+                        <Input
                           type="number" min={1} max={31} placeholder="5"
                           value={editFee.dueDay ?? ""}
                           onChange={(e) => setEditFee((n) => ({ ...n, dueDay: Number(e.target.value) }))}
-                          className="w-full px-3 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm focus:outline-none"
+                          className="w-full"
                         />
                       </div>
                     </div>
                   )}
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Status</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {(["ACTIVE", "INACTIVE"] as const).map((s) => (
-                        <label
-                          key={s}
-                          className={cn(
-                            "flex items-center justify-center gap-2 py-3 rounded-2xl border text-sm font-semibold cursor-pointer transition-all",
-                            editFee.status === s
-                              ? "border-primary-500 bg-primary-50 text-primary-700"
-                              : "border-gray-200 bg-gray-50 text-gray-700",
-                          )}
-                        >
-                          <input
-                            type="radio" className="sr-only"
-                            checked={editFee.status === s}
-                            onChange={() => setEditFee((n) => ({ ...n, status: s }))}
-                          />
-                          {s === "ACTIVE" ? "Active" : "Inactive"}
-                        </label>
-                      ))}
-                    </div>
+                    <Tabs value={editFee.status ?? "ACTIVE"} onValueChange={(value) => setEditFee((current) => ({ ...current, status: value }))}>
+                      <TabsList className="grid w-full grid-cols-2 shadow-none">
+                        <TabsTrigger value="ACTIVE" className="shadow-none!">Active</TabsTrigger>
+                        <TabsTrigger value="INACTIVE" className="shadow-none!">Inactive</TabsTrigger>
+                      </TabsList>
+                    </Tabs>
                   </div>
                   {classes.length > 0 && (
                     <div>
@@ -658,8 +419,8 @@ export default function AdminFeeTypesPage() {
                         {classes.map((c) => {
                           const selected = (editFee.targetClassIds ?? []).includes(c.id);
                           return (
-                            <button
-                              key={c.id} type="button"
+                            <Button
+                              key={c.id} type="button" variant="outline" aria-pressed={selected}
                               onClick={() =>
                                 setEditFee((n) => ({
                                   ...n,
@@ -674,7 +435,7 @@ export default function AdminFeeTypesPage() {
                               )}
                             >
                               {c.name}
-                            </button>
+                            </Button>
                           );
                         })}
                       </div>
@@ -682,20 +443,17 @@ export default function AdminFeeTypesPage() {
                   )}
                 </div>
                 <div className="px-5 pb-5">
-                  <button
+                  <Button
                     onClick={handleUpdate}
                     disabled={updating || !editFee.name || (!editFee.isDonation && !editFee.amount)}
                     className="w-full bg-primary-600 text-white font-bold py-4 rounded-2xl disabled:opacity-60 flex items-center justify-center gap-2"
                   >
                     {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
                     Update Fee Type
-                  </button>
+                  </Button>
                 </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+        </div>
+      </ResponsivePopover>
     </DashboardLayout>
   );
 }

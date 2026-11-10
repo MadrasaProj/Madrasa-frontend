@@ -1,53 +1,43 @@
 import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
+import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { getPayments, getPaymentReceipt, type FeePayment, type ReceiptData } from "@/lib/fees-api";
 import { getTeachers } from "@/lib/teachers-api";
 import { apiFetch } from "@/lib/fetch";
 import { useAuthStore } from "@/store/auth";
-import { CheckCircle, Loader2, Receipt, Search, Printer, Users } from "lucide-react";
-import { motion } from "framer-motion";
+import { ArrowLeft, Loader2, Receipt, Search, Printer } from "lucide-react";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { useTenantPath } from "@/hooks/useTenantPath";
+import { Link } from "react-router-dom";
 
 function ReceiptModal({ receipt, onClose }: { receipt: ReceiptData; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <motion.div initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-        className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-6 shadow-2xl"
-      >
-        <div className="text-center mb-4 border-b border-dashed pb-4">
-          <p className="font-bold text-lg">{receipt.client.name}</p>
-          {receipt.client.address && <p className="text-xs text-gray-500">{receipt.client.address}</p>}
-          <p className="text-xs font-bold text-primary-700 mt-1 uppercase tracking-widest">Fee Receipt</p>
-        </div>
-        <div className="space-y-2 text-sm mb-4">
+    <ResponsivePopover open onOpenChange={(open) => { if (!open) onClose(); }} title="Fee receipt" description={receipt.client.name}>
+      <div className="space-y-5 px-4 pb-6 pt-2 sm:px-6">
+        <dl className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white text-sm">
           {[
-            ["Receipt No", receipt.reference ?? receipt.id.slice(0, 8).toUpperCase()],
+            ["Receipt no", receipt.reference ?? receipt.id.slice(0, 8).toUpperCase()],
             ["Date", receipt.paidAt ? new Date(receipt.paidAt).toLocaleDateString("en-GB") : "—"],
             ["Student", receipt.student.name],
-            ["Adm No", receipt.student.adno],
+            ["Admission no", receipt.student.adno],
             ["Class", receipt.student.class?.name ?? "—"],
             ["Fee", receipt.feeType.name],
-            ["Amount Paid", `₹${Number(receipt.paidAmount ?? 0).toLocaleString()}`],
+            ["Amount paid", `₹${Number(receipt.paidAmount ?? 0).toLocaleString("en-IN")}`],
             ["Method", receipt.method ?? "—"],
           ].map(([label, value]) => (
-            <div key={label} className="flex items-center justify-between">
-              <span className="text-gray-500">{label}</span>
-              <span className="font-semibold">{value}</span>
+            <div key={label} className="flex items-center justify-between gap-3 px-4 py-4">
+              <dt className="text-gray-500">{label}</dt><dd className="text-right font-semibold text-gray-900">{value}</dd>
             </div>
           ))}
-        </div>
-        {receipt.notes && <p className="text-xs text-gray-400 italic mb-4">Note: {receipt.notes}</p>}
-        <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border text-sm font-semibold text-gray-600">Close</button>
-          <button onClick={() => window.print()} className="flex-1 py-2.5 rounded-xl bg-primary-600 text-white text-sm font-semibold flex items-center justify-center gap-1.5">
-            <Printer className="w-4 h-4" /> Print
-          </button>
-        </div>
-      </motion.div>
-    </div>
+        </dl>
+        {receipt.notes && <p className="text-sm text-gray-500">Note: {receipt.notes}</p>}
+        <Button type="button" onClick={() => window.print()}><Printer className="size-4" /> Print receipt</Button>
+      </div>
+    </ResponsivePopover>
   );
 }
 
@@ -111,24 +101,25 @@ export default function AdminFeesPaidPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Paid Fees" subtitle={`${total} paid records`} icon={CheckCircle} back backHref={tenantPath("/admin/fees")} />
+      <PageHeader title="Paid Fees" />
+      <Link to={tenantPath("/admin/fees")} className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-primary-700 hover:underline"><ArrowLeft className="size-4" /> All fees</Link>
 
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input value={search} onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search student name or adm no..."
-          className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none text-sm" />
+        <Input value={search} onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search student name or adm no..." aria-label="Search student name or admission number"
+          className="w-full pl-10" />
       </div>
 
       {loading ? (
         <SkeletonList count={4} />
       ) : error ? (
-        <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl">{error}</div>
+        <ApiErrorBanner message={error} onRetry={load} />
       ) : (
         <>
-          <div className="space-y-2">
+          <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white">
             {filtered.map((p) => (
-              <div key={p.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-3">
+              <div key={p.id} className="flex items-center gap-3 px-4 py-4">
                 <div className="w-9 h-9 rounded-xl bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-sm shrink-0">
                   {p.student.name.charAt(0)}
                 </div>
@@ -142,10 +133,10 @@ export default function AdminFeesPaidPage() {
                 </div>
                 <div className="text-right shrink-0 flex flex-col items-end gap-1">
                   <p className="font-bold text-primary-700">₹{Number(p.paidAmount ?? p.dueAmount).toLocaleString()}</p>
-                  <button onClick={() => showReceipt(p.id)} disabled={loadingReceipt === p.id}
-                    className="text-xs text-gray-500 flex items-center gap-1">
+                  <Button type="button" variant="ghost" size="xs" onClick={() => showReceipt(p.id)} disabled={loadingReceipt === p.id}
+                    className="text-xs text-gray-600">
                     {loadingReceipt === p.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Receipt className="w-3 h-3" />} Receipt
-                  </button>
+                  </Button>
                 </div>
               </div>
             ))}
@@ -154,9 +145,9 @@ export default function AdminFeesPaidPage() {
 
           {total > 30 && (
             <div className="flex items-center justify-center gap-3 mt-4">
-              <button disabled={skip === 0} onClick={() => setSkip(Math.max(0, skip - 30))} className="px-4 py-2 rounded-xl border text-sm disabled:opacity-40">Prev</button>
+              <Button type="button" variant="outline" size="sm" disabled={skip === 0} onClick={() => setSkip(Math.max(0, skip - 30))}>Previous</Button>
               <span className="text-sm text-gray-500">{skip + 1}–{Math.min(skip + 30, total)} of {total}</span>
-              <button disabled={skip + 30 >= total} onClick={() => setSkip(skip + 30)} className="px-4 py-2 rounded-xl border text-sm disabled:opacity-40">Next</button>
+              <Button type="button" variant="outline" size="sm" disabled={skip + 30 >= total} onClick={() => setSkip(skip + 30)}>Next</Button>
             </div>
           )}
         </>
