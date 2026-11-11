@@ -1453,6 +1453,7 @@ const translations = {
     examsBreadcrumb: { en: "Exams", ml: "പരീക്ഷകൾ" },
     markEntryBreadcrumb: { en: "Mark Entry", ml: "മാർക്ക് എൻട്രി" },
     enterMarksBreadcrumb: { en: "Enter Marks", ml: "മാർക്ക് നൽകുക" },
+    report: { en: "Report", ml: "റിപ്പോർട്ട്" },
     upcomingExams: { en: "Upcoming Exams", ml: "വരാനിരിക്കുന്ന പരീക്ഷകൾ" },
     markEntryOpen: { en: "Mark Entry Open", ml: "മാർക്ക് എൻട്രി തുറന്നിരിക്കുന്നു" },
     completedLabel: { en: "Completed", ml: "പൂർത്തിയായി" },

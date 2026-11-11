@@ -37,6 +37,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { ExamStatusBadge, getExamStatusInfo, STATUS_LABELS } from "@/components/exam/ExamStatusBadge";
 import { TeacherMarkEntryView } from "@/components/exam/TeacherMarkEntryView";
+import { TeacherMarkEntryActions } from "@/components/exam/TeacherMarkEntryActions";
 import { fmt } from "@/lib/exam-utils";
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
@@ -426,8 +427,8 @@ export default function TeacherClassTestsPage() {
     setMeScores(scoreMap);
   };
 
-  const handleMeSave = async (submit = false) => {
-    if (!markEntryExam || !meSubjectId || markEntryExam.examStatus !== "MARK_ENTRY") return;
+  const handleMeSave = async () => {
+    if (!markEntryExam || !meSubjectId || markEntryExam.examStatus !== "MARK_ENTRY") return false;
     const exam = markEntryExam;
     const currentSubject = meSubjects.find((s) => s.id === meSubjectId);
     const subjectMaxMarks = currentSubject?.classSubject?.maxMarks ?? exam?.maxMarks ?? 50;
@@ -441,7 +442,7 @@ export default function TeacherClassTestsPage() {
       }));
     if (!items.length) {
       setMeError(t("teacherPages", "noScoresEntered", lang));
-      return;
+      return false;
     }
     setMeSaving(true);
     setMeError(null);
@@ -454,12 +455,11 @@ export default function TeacherClassTestsPage() {
       });
       await loadMarkEntry(exam);
       setMeSaved(true);
-      setTimeout(() => {
-        setMeSaved(false);
-        if (submit) closeMarkEntry();
-      }, 1500);
+      setTimeout(() => setMeSaved(false), 1500);
+      return true;
     } catch (e) {
       setMeError((e as Error).message);
+      return false;
     } finally {
       setMeSaving(false);
     }
@@ -780,16 +780,26 @@ export default function TeacherClassTestsPage() {
           className="mx-auto w-full max-w-6xl rounded-t-2xl"
           contentClassName="min-w-0"
           footer={isMarkEntryView && (
-            <div className="border-t border-gray-200 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
-              <div className="flex w-full flex-wrap justify-end gap-2">
-                <Button type="button" variant="outline" size="lg" className="rounded-xl" disabled={isLocked || !meSubjectId} onClick={() => setImportOpen(true)}>Import</Button>
-                <Button type="button" variant="outline" size="lg" className="rounded-xl" disabled={meSaving || meStudents.length === 0} onClick={resetScores}>Reset</Button>
-                <Button type="button" variant="outline" size="lg" className="rounded-xl" disabled={meSaving || isLocked || hasInvalidMarks || meStudents.length === 0} onClick={() => handleMeSave(false)}>Save as Draft</Button>
-                <Button type="button" size="lg" className="rounded-xl" disabled={meSaving || isLocked || hasInvalidMarks || meStudents.length === 0} onClick={() => handleMeSave(true)}>
-                  {meSaving ? "Saving…" : meSaved ? "Saved" : "Save"}
-                </Button>
-              </div>
-            </div>
+            <TeacherMarkEntryActions
+              clientId={cid}
+              token={token}
+              examId={markEntryExam?.id ?? ""}
+              examName={markEntryExam?.name ?? "Class test"}
+              examType={markEntryExam?.type ?? "CLASS_TEST"}
+              classId={markEntryExam?.classId ?? ""}
+              className={classes.find((cls) => cls.id === markEntryExam?.classId)?.name ?? "Class"}
+              subjectId={meSubjectId}
+              lang={lang}
+              saving={meSaving}
+              saved={meSaved}
+              isLocked={isLocked}
+              saveDisabled={meSaving || isLocked || hasInvalidMarks || meStudents.length === 0}
+              importDisabled={isLocked || !meSubjectId}
+              resetDisabled={meSaving || meStudents.length === 0}
+              onSave={handleMeSave}
+              onImport={() => setImportOpen(true)}
+              onReset={resetScores}
+            />
           )}
         >
           {isMarkEntryView && markEntryExam && (

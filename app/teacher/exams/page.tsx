@@ -33,6 +33,7 @@ import { Button } from "@/components/ui/button";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { ExamStatusBadge, getExamStatusInfo } from "@/components/exam/ExamStatusBadge";
 import { TeacherMarkEntryView } from "@/components/exam/TeacherMarkEntryView";
+import { TeacherMarkEntryActions } from "@/components/exam/TeacherMarkEntryActions";
 import { fmt, shortDate } from "@/lib/exam-utils";
 
 export default function TeacherExamsPage() {
@@ -271,8 +272,8 @@ export default function TeacherExamsPage() {
 
   // ── Save Marks ───────────────────────────────────────────────────────────────
 
-  const handleSave = async (submit = false) => {
-    if (!queryExamId || !querySubjectId || !queryClassId || isLocked) return;
+  const handleSave = async () => {
+    if (!queryExamId || !querySubjectId || !queryClassId || isLocked) return false;
     setSaving(true);
     setEntryError(null);
     try {
@@ -291,7 +292,7 @@ export default function TeacherExamsPage() {
 
       if (!items.length) {
         setEntryError(t("teacherPages", "noScoresEntered", lang));
-        return;
+        return false;
       }
 
       await bulkUpsertResults(cid, token, {
@@ -303,14 +304,11 @@ export default function TeacherExamsPage() {
 
       await loadExamData();
       setSaved(true);
-      setTimeout(() => {
-        setSaved(false);
-        if (submit) {
-          closeMarkEntry();
-        }
-      }, 1500);
+      setTimeout(() => setSaved(false), 1500);
+      return true;
     } catch (e: any) {
       setEntryError(e.message ?? t("teacherPages", "saveFailedMsg", lang));
+      return false;
     } finally {
       setSaving(false);
     }
@@ -615,26 +613,27 @@ export default function TeacherExamsPage() {
           onBack={closeMarkEntry}
           title={activeExam?.name ?? t("teacherPages", "enterMarksBreadcrumb", lang)}
           description={t("teacherPages", "enterMarksBreadcrumb", lang)}
-          footer={
-            isMarkEntryView && (
-              <div className="border-t border-gray-200 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
-                <div className="mx-auto flex w-full max-w-6xl flex-wrap justify-end gap-2">
-                  <Button type="button" variant="outline" size="lg" className="rounded-xl" disabled={entryLoading || subjectLoading || !queryExamId || !queryClassId || !querySubjectId} onClick={() => setImportOpen(true)}>
-                    Import
-                  </Button>
-                  <Button type="button" variant="outline" size="lg" className="rounded-xl" disabled={entryLoading || subjectLoading || saving || students.length === 0} onClick={resetScores}>
-                    Reset
-                  </Button>
-                  <Button type="button" variant="outline" size="lg" className="rounded-xl" disabled={entryLoading || subjectLoading || saving || isLocked || hasInvalidMarks || students.length === 0} onClick={() => handleSave(false)}>
-                    Save as Draft
-                  </Button>
-                  <Button type="button" size="lg" className="rounded-xl" disabled={entryLoading || subjectLoading || saving || isLocked || hasInvalidMarks || students.length === 0} onClick={() => handleSave(true)}>
-                    {saving ? "Saving…" : saved ? "Saved" : "Save"}
-                  </Button>
-                </div>
-              </div>
-            )
-          }
+          footer={isMarkEntryView && (
+            <TeacherMarkEntryActions
+              clientId={cid}
+              token={token}
+              examId={queryExamId}
+              examName={activeExam?.name ?? "Exam"}
+              examType={activeExam?.type ?? "TERM_EXAM"}
+              classId={queryClassId}
+              className={teacherClasses.find((cls) => cls.id === queryClassId)?.name ?? "Class"}
+              lang={lang}
+              saving={saving}
+              saved={saved}
+              isLocked={isLocked}
+              saveDisabled={entryLoading || subjectLoading || saving || isLocked || hasInvalidMarks || students.length === 0}
+              importDisabled={entryLoading || subjectLoading || !queryExamId || !queryClassId || !querySubjectId}
+              resetDisabled={entryLoading || subjectLoading || saving || students.length === 0}
+              onSave={handleSave}
+              onImport={() => setImportOpen(true)}
+              onReset={resetScores}
+            />
+          )}
           className="md:max-w-none"
           contentClassName="min-w-0"
         >
