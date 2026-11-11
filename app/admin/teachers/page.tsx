@@ -1,9 +1,15 @@
-import { FormSkeleton } from "@/components/ui/Skeleton";
+import { FormSkeleton, Skeleton } from "@/components/ui/Skeleton";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { DatePickerDrawer } from "@/components/DatePickerDrawer";
+import { DrawerSelector } from "@/components/DrawerSelector";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader, SectionHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
-import { DataTable, type Column, type SortDir } from "@/components/ui/DataTable";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
+import { type SortDir } from "@/components/ui/DataTable";
 import {
  ImportModal,
  type ImportConfig,
@@ -16,7 +22,6 @@ import {
 } from "@/lib/teachers-api";
 import {
  TEACHER_IMPORT_COLUMNS,
- toBulkUpsertTeacherRow,
 } from "@/lib/teacher-import";
 import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
 import { getSubjects, type SubjectRecord } from "@/lib/subjects-api";
@@ -25,10 +30,9 @@ import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
- Users, Plus, Search, Loader2, X, Eye, EyeOff, Pencil,
- GraduationCap, BookOpen, CheckCircle2, ChevronDown, Trash2, Upload,
+ Users, Plus, Search, Loader2, Eye, EyeOff,
+ GraduationCap, CheckCircle2, ChevronDown, ChevronRight, Trash2, Upload,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -40,13 +44,6 @@ export default function AdminTeachersPage() {
  const cid = activeClientId ?? "";
  const token = accessToken ?? "";
  const isPeriodBased = user?.attendanceMode === "PERIOD_BASED";
-
- const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" ? window.innerWidth < 768 : true);
- useEffect(() => {
- const checkMobile = () => setIsMobile(window.innerWidth < 768);
- window.addEventListener("resize", checkMobile);
- return () => window.removeEventListener("resize", checkMobile);
- }, []);
 
  // ── List state ─────────────────────────────────────────────────────────────
   const [teachers, setTeachers] = useState<TeacherRecord[]>([]);
@@ -62,6 +59,8 @@ export default function AdminTeachersPage() {
 
   // ── Import state ──────────────────────────────────────────────────────────
   const [showImport, setShowImport] = useState(false);
+  const [selectedTeacher, setSelectedTeacher] = useState<TeacherRecord | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // ── Form state ─────────────────────────────────────────────────────────────
   const [showDrawer, setShowDrawer] = useState(false);
@@ -160,6 +159,7 @@ export default function AdminTeachersPage() {
       toast.success("Teacher deleted successfully");
       setShowDeleteConfirm(false);
       setShowDrawer(false);
+      setSelectedTeacher(null);
       setPage(1);
       load(search, 1, pageSize, sortBy, sortDir);
     } catch (e) {
@@ -178,6 +178,7 @@ export default function AdminTeachersPage() {
  };
 
   const openEdit = async (t: TeacherRecord) => {
+   setSelectedTeacher(null);
    if (!cid) { setAssignError("No active madrasa selected."); return; }
    const teacherSubjectIds = new Set(t.subjects?.map((s) => s.id) ?? []);
    setEditTarget(t);
@@ -390,274 +391,187 @@ export default function AdminTeachersPage() {
  return next;
  });
 
- // ── Columns ────────────────────────────────────────────────────────────────
- const columns = useMemo((): Column<TeacherRecord>[] => {
- const cols: Column<TeacherRecord>[] = [
- {
- key: "name",
- header: "Teacher",
- sortable: true,
- render: (t) => (
- <div className="flex items-center gap-3">
- <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm shrink-0">
- {t.name.charAt(0).toUpperCase()}
- </div>
- <div>
- <p className="font-semibold text-gray-900 text-sm">{t.name}</p>
- <p className="text-xs text-gray-400">@{t.username}</p>
- </div>
- </div>
- ),
- },
- {
- key: "classes",
- header: "Class",
- render: (t) => {
- const classes = t.classes ?? [];
- if (!classes.length) return <span className="text-gray-300 text-xs">—</span>;
- return (
- <div className="flex flex-wrap gap-1">
- {classes.map((c) => (
- <span key={c.id} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
- {c.name}
- </span>
- ))}
- </div>
- );
- },
- className: "hidden md:table-cell",
- headerClass: "hidden md:table-cell",
- },
+ const pageCount = Math.max(1, totalPages);
+ const stats = [
+  { label: "Total teachers", value: total, icon: Users },
+  { label: "On this page", value: teachers.length, icon: Users },
+  { label: "With classes", value: teachers.filter((teacher) => (teacher.classes?.length ?? 0) > 0).length, icon: GraduationCap },
+  { label: "Active on page", value: teachers.filter((teacher) => teacher.status === "ACTIVE").length, icon: CheckCircle2 },
  ];
-
- if (isPeriodBased) {
- cols.push({
- key: "subjects",
- header: "Subjects",
- render: (t) => {
- const subjects = t.subjects ?? [];
- if (!subjects.length) return <span className="text-gray-300 text-xs">—</span>;
- return (
- <div className="flex flex-wrap gap-1">
- {subjects.map((s) => (
- <span key={s.id} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary-100 text-primary-700">
- {s.name}{s.class ? ` · ${s.class.name}` : ""}
- </span>
- ))}
- </div>
- );
- },
- className: "hidden lg:table-cell",
- headerClass: "hidden lg:table-cell",
- });
- }
-
- cols.push(
- {
- key: "status",
- header: "Status",
- sortable: true,
- render: (t) => (
- <span className={cn(
- "text-xs font-bold px-2.5 py-1 rounded-lg",
- t.status === "ACTIVE" ? "bg-primary-100 text-primary-700" : "bg-gray-100 text-gray-500",
- )}>
- {t.status}
- </span>
- ),
- className: "hidden sm:table-cell",
- headerClass: "hidden sm:table-cell",
- },
- {
- key: "actions",
- header: "",
- render: (t) => (
- <div className="flex items-center gap-1.5 justify-end">
- <button
- onClick={(e) => { e.stopPropagation(); openEdit(t); }}
- className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors text-xs font-semibold"
- >
- <Pencil className="w-3.5 h-3.5" />
- <span className="hidden sm:inline">Edit</span>
- </button>
- <button
- onClick={(e) => {
- e.stopPropagation();
- setEditTarget(t);
- setShowDeleteConfirm(true);
- }}
- className="p-1.5 rounded-lg text-red-400 bg-red-50 hover:bg-red-100 hover:text-red-500 transition-colors"
- title="Delete Teacher"
- >
- <Trash2 className="w-3.5 h-3.5" />
- </button>
- </div>
- ),
- className: "text-right",
- },
- );
-
- return cols;
- }, [isPeriodBased]); // eslint-disable-line
 
  return (
   <DashboardLayout>
-  <PageHeader
-  title={t("adminPages", "teachersTitle", lang)}
-  subtitle={`${total} ${t("common", "total", lang).toLowerCase()}`}
-  icon={Users}
-  action={
-  <div className="flex items-center gap-2">
-  <button
-  onClick={() => setShowImport(true)}
-  className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 px-3 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
-  title={t("adminPages", "importTeachers", lang)}
-  >
-  <Upload className="w-4 h-4" />
-  <span className="hidden sm:inline">{t("adminPages", "importBtn", lang)}</span>
-  </button>
-  <button onClick={openAdd}
-  className="flex items-center gap-1.5 px-4 py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700 transition-colors"
-  >
-  <Plus className="w-4 h-4" /> {t("adminPages", "addTeacher", lang)}
-  </button>
-  </div>
-  }
-  />
+   <PageHeader title={t("adminPages", "teachersTitle", lang)} />
 
- {error && <ApiErrorBanner message={error} onRetry={() => load(search, page, pageSize, sortBy, sortDir)} />}
+   <div className="space-y-5">
+    {error && <ApiErrorBanner message={error} onRetry={() => load(search, page, pageSize, sortBy, sortDir)} />}
 
- <div className="relative mb-5">
- <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
- <input
- value={search}
- onChange={(e) => handleSearch(e.target.value)}
- placeholder="Search by name or username…"
- className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
- />
- </div>
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+     <div className="relative min-w-0 flex-1">
+      <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+      <Input size="lg"
+       type="search"
+       aria-label="Search teachers"
+       value={search}
+       onChange={(event) => handleSearch(event.target.value)}
+       placeholder="Search by name or username…"
+       className="bg-white pl-10 shadow-none"
+      />
+     </div>
+     <div className="flex flex-wrap gap-2">
+      <Button type="button" variant="outline" onClick={() => setShowImport(true)} className="shadow-none">
+       <Upload className="size-4" /> {t("adminPages", "importBtn", lang)}
+      </Button>
+      <Button type="button" onClick={openAdd} className="shadow-none">
+       <Plus className="size-4" /> {t("adminPages", "addTeacher", lang)}
+      </Button>
+     </div>
+    </div>
 
- <DataTable
- columns={columns}
- data={teachers}
- keyExtractor={(t) => t.id}
- loading={loading}
- error={error}
- emptyIcon={Users}
- emptyMessage="No teachers found"
- onSort={handleSort}
- sortKey={sortBy}
- sortDir={sortDir}
- pagination={{
- page, totalPages, total,
- pageSize, pageSizeOptions: PAGE_SIZE_OPTIONS,
- onPageChange: setPage,
- onPageSizeChange: (sz) => { setPageSize(sz); setPage(1); },
- }}
- mobileRender={(t) => {
- const classes = t.classes ?? [];
- const subjects = t.subjects ?? [];
- return (
- <div className="flex items-start gap-3">
- <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-lg shrink-0 mt-0.5">
- {t.name.charAt(0).toUpperCase()}
- </div>
- <div className="flex-1 min-w-0">
- <div className="flex items-center justify-between gap-2">
- <div>
- <p className="font-semibold text-gray-900 text-sm">{t.name}</p>
- <p className="text-xs text-gray-400">@{t.username}</p>
- </div>
- <div className="flex items-center gap-1.5 shrink-0">
- <span className={cn(
- "text-[10px] font-bold px-2 py-0.5 rounded-lg",
- t.status === "ACTIVE" ? "bg-primary-100 text-primary-700" : "bg-gray-100 text-gray-500",
- )}>
- {t.status}
- </span>
- <button onClick={(e) => { e.stopPropagation(); openEdit(t); }}
- className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors">
- <Pencil className="w-3.5 h-3.5" />
- </button>
- <button onClick={(e) => { e.stopPropagation(); setEditTarget(t); setShowDeleteConfirm(true); }}
- className="p-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 transition-colors">
- <Trash2 className="w-3.5 h-3.5" />
- </button>
- </div>
- </div>
- {classes.length > 0 && (
- <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
- <GraduationCap className="w-3 h-3 text-indigo-500 shrink-0" />
- {classes.map((c) => (
- <span key={c.id} className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
- {c.name}
- </span>
- ))}
- </div>
- )}
- {isPeriodBased && subjects.length > 0 && (
- <div className="flex items-center gap-1.5 mt-1 flex-wrap">
- <BookOpen className="w-3 h-3 text-primary-500 shrink-0" />
- {subjects.map((s) => (
- <span key={s.id} className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary-100 text-primary-700">
- {s.name}{s.class ? ` · ${s.class.name}` : ""}
- </span>
- ))}
- </div>
- )}
- </div>
- </div>
- );
- }}
- />
+    {!loading && (
+     <div className="grid grid-cols-2 overflow-hidden rounded-2xl bg-gradient-to-br from-primary-50/60 via-white to-sky-50/60">
+      {stats.map(({ label, value, icon: Icon }, index) => (
+       <div key={label} className={"min-w-0 p-2.5 sm:p-3 " + (index % 2 === 0 ? "border-r border-gray-100 " : "") + (index < 2 ? "border-b border-gray-100" : "")}>
+        <div className="flex items-center gap-1.5 text-sm font-medium leading-4 text-gray-700">
+         <Icon aria-hidden="true" className="size-3.5 shrink-0" />
+         <span>{label}</span>
+        </div>
+        <span className="mt-1.5 block text-[22px] font-medium leading-none tabular-nums text-gray-950">{value}</span>
+       </div>
+      ))}
+     </div>
+    )}
 
- {/* ── Add / Edit Teacher Drawer ── */}
- <AnimatePresence>
- {showDrawer && (
- <>
- <motion.div key="teacher-backdrop"
- initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
- onClick={() => !saving && setShowDrawer(false)}
- className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
- />
- <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-none md:p-4">
- <motion.div key="teacher-drawer"
- initial={isMobile ? { y: "100%", opacity: 1, scale: 1 } : { y: 0, opacity: 0, scale: 0.95 }}
- animate={{ y: 0, opacity: 1, scale: 1 }}
- exit={isMobile ? { y: "100%", opacity: 1, scale: 1 } : { y: 0, opacity: 0, scale: 0.95 }}
- transition={isMobile ? { type: "spring", damping: 30, stiffness: 300 } : { duration: 0.2 }}
- className={cn(
- "w-full bg-white flex flex-col pointer-events-auto shadow-2xl relative",
- isMobile 
- ? "rounded-t-3xl max-h-[92dvh]" 
- : "rounded-3xl max-w-xl max-h-[85dvh]"
- )}
- >
- {/* Handle */}
- <div className="flex justify-center pt-3 pb-1 shrink-0 md:hidden">
- <div className="w-10 h-1 bg-gray-300 rounded-full" />
- </div>
+    <div className="flex flex-wrap items-center justify-between gap-2">
+     <h2 id="teachers-list-title" className="px-1 text-sm font-semibold text-gray-700">All teachers</h2>
+     <DrawerSelector
+      title="Sort teachers"
+      options={[
+       { value: "", label: "Default order" },
+       { value: "name:asc", label: "Name A to Z" },
+       { value: "name:desc", label: "Name Z to A" },
+       { value: "status:asc", label: "Status A to Z" },
+       { value: "status:desc", label: "Status Z to A" },
+      ]}
+      value={sortBy ? sortBy + ":" + sortDir : ""}
+      onChange={(value) => {
+       if (!value) {
+        setSortBy(undefined);
+        setSortDir("asc");
+        setPage(1);
+       } else {
+        const [key, direction] = value.split(":");
+        handleSort(key, direction as SortDir);
+       }
+      }}
+      className="w-40 shadow-none"
+     />
+    </div>
 
- {/* Header */}
- <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
- <div>
- <h2 className="font-bold text-gray-900 text-lg">
- {editTarget ? "Edit Teacher" : "Add Teacher"}
- </h2>
- {editTarget && (
- <p className="text-xs text-gray-400 mt-0.5">@{editTarget.username}</p>
- )}
- </div>
- <button onClick={() => !saving && setShowDrawer(false)}
- className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 disabled:opacity-50"
- disabled={saving}
- >
- <X className="w-4 h-4" />
- </button>
- </div>
+    <section aria-labelledby="teachers-list-title">
+     <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white">
+      {loading ? Array.from({ length: 5 }, (_, index) => (
+       <div key={index} className="flex items-center gap-3 px-4 py-4">
+        <div className="min-w-0 flex-1 space-y-2"><Skeleton className="h-4 w-40 max-w-full" /><Skeleton className="h-3 w-56 max-w-full" /></div>
+        <Skeleton className="h-4 w-16" />
+       </div>
+      )) : teachers.length === 0 ? (
+       <p className="px-4 py-10 text-center text-sm text-gray-500">{search ? "No teachers match your search" : "No teachers found"}</p>
+      ) : teachers.map((teacher) => (
+       <Button
+        key={teacher.id}
+        type="button"
+        variant="ghost"
+        aria-haspopup="dialog"
+        onClick={() => setSelectedTeacher(teacher)}
+        className="h-auto w-full justify-start gap-3 whitespace-normal px-4 py-4 text-left shadow-none transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500"
+       >
+        <span className="min-w-0 flex-1">
+         <span className="block truncate text-sm font-semibold text-gray-950 sm:text-base">{teacher.name}</span>
+         <span className="mt-1 block truncate text-xs text-gray-500">
+          @{teacher.username}{teacher.classes?.length ? " · " + teacher.classes.map((item) => item.name).join(", ") : ""}
+         </span>
+        </span>
+        <span className={"shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold " + (teacher.status === "ACTIVE" ? "bg-primary-50 text-primary-700" : "bg-gray-100 text-gray-600")}>
+         {teacher.status === "ACTIVE" ? "Active" : "Inactive"}
+        </span>
+        <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-gray-400" />
+       </Button>
+      ))}
+     </div>
+    </section>
 
+    {!loading && (
+     <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+      <span className="text-xs text-gray-500">Page {page} of {pageCount} · {total} teachers</span>
+      <div className="flex items-center gap-2">
+       <DrawerSelector
+        title="Teachers per page"
+        options={PAGE_SIZE_OPTIONS.map((size) => ({ value: String(size), label: String(size) + " per page" }))}
+        value={String(pageSize)}
+        onChange={(value) => { setPageSize(Number(value)); setPage(1); }}
+        className="w-32 shadow-none"
+       />
+       <Button type="button" variant="outline" size="xs" disabled={page <= 1} onClick={() => setPage((current) => current - 1)} className="shadow-none">Previous</Button>
+       <Button type="button" variant="outline" size="xs" disabled={page >= totalPages} onClick={() => setPage((current) => current + 1)} className="shadow-none">Next</Button>
+      </div>
+     </div>
+    )}
+   </div>
+
+   <ResponsivePopover
+    open={selectedTeacher !== null}
+    onOpenChange={(open) => { if (!open) setSelectedTeacher(null); }}
+    title={selectedTeacher?.name}
+    side="bottom"
+    desktopView="right-drawer"
+    className="shadow-none"
+    contentClassName="px-5 py-4"
+   >
+    {selectedTeacher && (
+     <div className="space-y-5">
+      <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100 bg-white text-sm">
+       <div className="flex justify-between gap-4 px-4 py-3"><span className="text-gray-500">Username</span><span className="font-medium text-gray-900">@{selectedTeacher.username}</span></div>
+       <div className="flex justify-between gap-4 px-4 py-3"><span className="text-gray-500">Status</span><span className="font-medium text-gray-900">{selectedTeacher.status === "ACTIVE" ? "Active" : "Inactive"}</span></div>
+       <div className="flex justify-between gap-4 px-4 py-3"><span className="text-gray-500">Classes</span><span className="text-right font-medium text-gray-900">{selectedTeacher.classes?.map((item) => item.name).join(", ") || "None"}</span></div>
+       {isPeriodBased && <div className="flex justify-between gap-4 px-4 py-3"><span className="text-gray-500">Subjects</span><span className="text-right font-medium text-gray-900">{selectedTeacher.subjects?.map((item) => item.name).join(", ") || "None"}</span></div>}
+      </div>
+      <div className="flex gap-2">
+       <Button type="button" variant="outline" className="flex-1 shadow-none" onClick={() => void openEdit(selectedTeacher)}>Edit teacher</Button>
+       <Button type="button" variant="destructive" className="flex-1 shadow-none" onClick={() => { setEditTarget(selectedTeacher); setSelectedTeacher(null); setShowDeleteConfirm(true); }}><Trash2 className="size-4" /> Delete</Button>
+      </div>
+     </div>
+    )}
+   </ResponsivePopover>
+
+   <ResponsivePopover
+    open={showDrawer}
+    onOpenChange={(open) => { if (!saving) setShowDrawer(open); }}
+    title={editTarget ? "Edit Teacher" : "Add Teacher"}
+    description={editTarget ? "@" + editTarget.username : undefined}
+    side="bottom"
+    desktopView="right-drawer"
+    className="shadow-none"
+    contentClassName="p-0"
+    footer={
+     <div className="flex flex-col gap-2 border-t border-gray-100 bg-white px-5 py-4">
+      {editTarget && (
+       <Button type="button" variant="destructive" onClick={() => { setShowDrawer(false); setShowDeleteConfirm(true); }} className="w-full shadow-none">Delete Teacher</Button>
+      )}
+      <Button
+       type="button"
+       onClick={handleSave}
+       disabled={saving || !fName.trim() || !fUsername.trim() || (!editTarget && !fPassword) || (editTarget !== null && loadingAssign)}
+       className="w-full shadow-none"
+      >
+       {saving && <Loader2 className="size-4 animate-spin" />}
+       {saving ? "Saving…" : editTarget ? "Save Changes" : "Add Teacher"}
+      </Button>
+     </div>
+    }
+   >
  {/* Scrollable body */}
- <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4 pb-8">
+ <div className="space-y-4 px-5 py-4 pb-8">
  {saveError && (
  <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl">{saveError}</div>
  )}
@@ -665,10 +579,10 @@ export default function AdminTeachersPage() {
  {/* ── Basic fields ── */}
  <div>
  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Full Name *</label>
- <input
+ <Input size="lg"
  type="text" value={fName} placeholder="Abdul Rahman"
  onChange={(e) => setFName(e.target.value)}
- className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors"
+ className="bg-gray-50 shadow-none"
  />
  </div>
 
@@ -676,21 +590,21 @@ export default function AdminTeachersPage() {
  <label className="block text-xs font-semibold text-gray-600 mb-1.5">
  Username *{editTarget && " (cannot change)"}
  </label>
- <input
+ <Input size="lg"
  type="text" value={fUsername} placeholder="abdulrahman"
  disabled={!!editTarget}
  onChange={(e) => setFUsername(e.target.value)}
  className={cn(
- "w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors",
- editTarget && "opacity-50 cursor-not-allowed bg-gray-100",
+ "bg-gray-50 shadow-none",
+ editTarget && "cursor-not-allowed bg-gray-100",
  )}
  />
  </div>
 
   {/* Browser autofill decoy trap to prevent Chrome from auto-injecting credentials */}
   <div style={{ position: "absolute", opacity: 0, height: 0, width: 0, overflow: "hidden", zIndex: -1 }}>
-    <input type="text" name="fake_username_trap" tabIndex={-1} autoComplete="username" />
-    <input type="password" name="fake_password_trap" tabIndex={-1} autoComplete="current-password" />
+    <Input size="lg" type="text" name="fake_username_trap" tabIndex={-1} autoComplete="username" />
+    <Input size="lg" type="password" name="fake_password_trap" tabIndex={-1} autoComplete="current-password" />
   </div>
 
   {/* Password — create */}
@@ -698,7 +612,7 @@ export default function AdminTeachersPage() {
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Password *</label>
   <div className="relative">
-  <input
+  <Input size="lg"
   type={showPw ? "text" : "password"} value={fPassword}
   name="teacher_create_pwd_field"
   autoComplete="new-password"
@@ -707,12 +621,12 @@ export default function AdminTeachersPage() {
   onMouseDown={(e) => (e.target as HTMLInputElement).removeAttribute("readOnly")}
   onChange={(e) => setFPassword(e.target.value)}
   placeholder="Min. 6 characters"
-  className="w-full px-4 py-3 pr-12 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors"
+  className="bg-gray-50 pr-12 shadow-none"
   />
-  <button type="button" onClick={() => setShowPw(!showPw)}
+  <Button variant="ghost" type="button" onClick={() => setShowPw(!showPw)}
   className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
   {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-  </button>
+  </Button>
   </div>
   </div>
   )}
@@ -724,7 +638,7 @@ export default function AdminTeachersPage() {
   New Password <span className="font-normal text-gray-400">(leave blank to keep)</span>
   </label>
   <div className="relative">
-  <input
+  <Input size="lg"
   type={showNewPw ? "text" : "password"} value={fNewPassword}
   name="teacher_edit_pwd_field"
   autoComplete="new-password"
@@ -733,12 +647,12 @@ export default function AdminTeachersPage() {
   onMouseDown={(e) => (e.target as HTMLInputElement).removeAttribute("readOnly")}
   onChange={(e) => setFNewPassword(e.target.value)}
   placeholder="Enter new password…"
-  className="w-full px-4 py-3 pr-12 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors"
+  className="bg-gray-50 pr-12 shadow-none"
   />
-  <button type="button" onClick={() => setShowNewPw(!showNewPw)}
+  <Button variant="ghost" type="button" onClick={() => setShowNewPw(!showNewPw)}
   className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
   {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-  </button>
+  </Button>
   </div>
   </div>
   )}
@@ -747,22 +661,13 @@ export default function AdminTeachersPage() {
   {editTarget && (
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Status</label>
-  <div className="flex gap-2">
-  {(["ACTIVE", "INACTIVE"] as const).map((s) => (
-  <button key={s} type="button" onClick={() => setFStatus(s)}
-  className={cn(
-  "flex-1 py-2.5 rounded-xl text-xs font-bold border transition-colors",
-  fStatus === s
-  ? s === "ACTIVE"
-  ? "bg-primary-100 border-primary-300 text-primary-700"
-  : "bg-red-100 border-red-300 text-red-600"
-  : "bg-gray-50 border-gray-200 text-gray-400 hover:border-gray-300",
-  )}
-  >
-  {s}
-  </button>
-  ))}
-  </div>
+  <DrawerSelector
+   title="Teacher status"
+   options={[{ value: "ACTIVE", label: "Active" }, { value: "INACTIVE", label: "Inactive" }]}
+   value={fStatus}
+   onChange={(value) => setFStatus(value as "ACTIVE" | "INACTIVE")}
+   className="shadow-none"
+  />
   </div>
   )}
 
@@ -781,13 +686,13 @@ export default function AdminTeachersPage() {
   <div className="flex gap-2">
   <label className="cursor-pointer px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-semibold text-gray-700 transition-colors">
   {photoUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Upload"}
-  <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={photoUploading} />
+  <Input size="lg" type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={photoUploading} />
   </label>
   {fPhotoUrl && (
-  <button onClick={handlePhotoRemove} disabled={photoUploading}
+  <Button variant="ghost" onClick={handlePhotoRemove} disabled={photoUploading}
   className="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-xs font-semibold text-red-600 transition-colors">
   Remove
-  </button>
+  </Button>
   )}
   </div>
   </div>
@@ -800,50 +705,51 @@ export default function AdminTeachersPage() {
   <div className="space-y-3">
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Qualification</label>
-  <input type="text" value={fQualification} placeholder="e.g. B.Ed, M.Sc"
+  <Input size="lg" type="text" value={fQualification} placeholder="e.g. B.Ed, M.Sc"
   onChange={(e) => setFQualification(e.target.value)}
-  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors" />
+  className="bg-gray-50 shadow-none" />
   </div>
   <div className="grid grid-cols-2 gap-3">
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Phone</label>
-  <input type="text" value={fPhone} placeholder="9876543210"
+  <Input size="lg" type="text" value={fPhone} placeholder="9876543210"
   onChange={(e) => setFPhone(e.target.value)}
-  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors" />
+  className="bg-gray-50 shadow-none" />
   </div>
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Email</label>
-  <input type="email" value={fEmail} placeholder="teacher@madrasa.org"
+  <Input size="lg" type="email" value={fEmail} placeholder="teacher@madrasa.org"
   onChange={(e) => setFEmail(e.target.value)}
-  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors" />
+  className="bg-gray-50 shadow-none" />
   </div>
   </div>
   <div className="grid grid-cols-2 gap-3">
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Date of Birth</label>
-  <input type="date" value={fDateOfBirth}
-  onChange={(e) => setFDateOfBirth(e.target.value)}
-  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors" />
+  <Button type="button" variant="outline" onClick={() => setShowDatePicker(true)} className="w-full justify-start shadow-none">
+   {fDateOfBirth || "Select date"}
+  </Button>
   </div>
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Gender</label>
-  <select value={fGender} onChange={(e) => setFGender(e.target.value)}
-  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors appearance-none cursor-pointer">
-  <option value="">Select</option>
-  <option value="MALE">Male</option>
-  <option value="FEMALE">Female</option>
-  </select>
+  <DrawerSelector
+   title="Gender"
+   options={[{ value: "", label: "Select" }, { value: "MALE", label: "Male" }, { value: "FEMALE", label: "Female" }]}
+   value={fGender}
+   onChange={setFGender}
+   className="shadow-none"
+  />
   </div>
   </div>
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Blood Group</label>
-  <select value={fBloodGroup} onChange={(e) => setFBloodGroup(e.target.value)}
-  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors appearance-none cursor-pointer">
-  <option value="">Select</option>
-  {["A+","A-","B+","B-","AB+","AB-","O+","O-"].map((bg) => (
-  <option key={bg} value={bg}>{bg}</option>
-  ))}
-  </select>
+  <DrawerSelector
+   title="Blood group"
+   options={[{ value: "", label: "Select" }, ...["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((value) => ({ value, label: value }))]}
+   value={fBloodGroup}
+   onChange={setFBloodGroup}
+   className="shadow-none"
+  />
   </div>
   </div>
   </div>
@@ -854,36 +760,36 @@ export default function AdminTeachersPage() {
   <div className="space-y-3">
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Address</label>
-  <textarea value={fAddress} placeholder="Street, building, area…" rows={2}
+  <Textarea value={fAddress} placeholder="Street, building, area…" rows={2}
   onChange={(e) => setFAddress(e.target.value)}
-  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors resize-none" />
+  className="resize-none bg-gray-50 shadow-none" />
   </div>
   <div className="grid grid-cols-2 gap-3">
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">City</label>
-  <input type="text" value={fCity} placeholder="Kozhikode"
+  <Input size="lg" type="text" value={fCity} placeholder="Kozhikode"
   onChange={(e) => setFCity(e.target.value)}
-  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors" />
+  className="bg-gray-50 shadow-none" />
   </div>
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">State</label>
-  <input type="text" value={fState} placeholder="Kerala"
+  <Input size="lg" type="text" value={fState} placeholder="Kerala"
   onChange={(e) => setFState(e.target.value)}
-  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors" />
+  className="bg-gray-50 shadow-none" />
   </div>
   </div>
   <div className="grid grid-cols-2 gap-3">
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Country</label>
-  <input type="text" value={fCountry} placeholder="India"
+  <Input size="lg" type="text" value={fCountry} placeholder="India"
   onChange={(e) => setFCountry(e.target.value)}
-  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors" />
+  className="bg-gray-50 shadow-none" />
   </div>
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Pincode</label>
-  <input type="text" value={fPincode} placeholder="673001"
+  <Input size="lg" type="text" value={fPincode} placeholder="673001"
   onChange={(e) => setFPincode(e.target.value)}
-  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors" />
+  className="bg-gray-50 shadow-none" />
   </div>
   </div>
   </div>
@@ -895,15 +801,15 @@ export default function AdminTeachersPage() {
   <div className="grid grid-cols-2 gap-3">
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Contact Name</label>
-  <input type="text" value={fEmergencyName} placeholder="Spouse / parent"
+  <Input size="lg" type="text" value={fEmergencyName} placeholder="Spouse / parent"
   onChange={(e) => setFEmergencyName(e.target.value)}
-  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors" />
+  className="bg-gray-50 shadow-none" />
   </div>
   <div>
   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Contact Phone</label>
-  <input type="text" value={fEmergencyPhone} placeholder="9876543210"
+  <Input size="lg" type="text" value={fEmergencyPhone} placeholder="9876543210"
   onChange={(e) => setFEmergencyPhone(e.target.value)}
-  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white text-sm transition-colors" />
+  className="bg-gray-50 shadow-none" />
   </div>
   </div>
   </div>
@@ -935,9 +841,10 @@ export default function AdminTeachersPage() {
  const selected = fClassIds.has(cls.id);
  const otherTeacher = cls.classTeacherId && cls.classTeacherId !== editTarget.id;
  return (
- <button
+ <Button variant="ghost"
  key={cls.id}
  type="button"
+ aria-pressed={selected}
  onClick={() => {
  setFClassIds((prev) => {
  const next = new Set(prev);
@@ -947,7 +854,7 @@ export default function AdminTeachersPage() {
  });
  }}
  className={cn(
- "w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left",
+ "h-auto w-full justify-between whitespace-normal p-3 rounded-xl border text-left shadow-none transition-colors focus-visible:outline-2 focus-visible:outline-primary-500",
  selected
  ? "border-indigo-300 bg-indigo-50 ring-1 ring-indigo-200"
  : "border-gray-100 bg-gray-50 hover:border-indigo-200 hover:bg-indigo-50/40",
@@ -967,7 +874,7 @@ export default function AdminTeachersPage() {
  : <div className="w-4 h-4 rounded-md border-2 border-gray-300" />
  }
  </div>
- </button>
+ </Button>
  );
  })}
  </div>
@@ -988,7 +895,7 @@ export default function AdminTeachersPage() {
  {/* Search */}
  <div className="relative mb-3">
  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
- <input
+ <Input size="lg"
  type="text"
  value={subjectSearch}
  onChange={(e) => {
@@ -1000,7 +907,7 @@ export default function AdminTeachersPage() {
  }
  }}
  placeholder="Search subjects or class…"
- className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:border-primary-400 focus:bg-white transition-colors"
+ className="bg-gray-50 pl-9 shadow-none"
  />
  </div>
 
@@ -1014,10 +921,11 @@ export default function AdminTeachersPage() {
  return (
  <div key={group.classId} className="rounded-xl border border-gray-200 overflow-hidden">
  {/* Group header */}
- <button
+ <Button variant="ghost"
  type="button"
+ aria-expanded={isOpen}
  onClick={() => toggleGroup(group.classId)}
- className="w-full flex items-center justify-between px-3 py-2.5 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+ className="h-auto w-full justify-between whitespace-normal bg-gray-50 px-3 py-2.5 text-left shadow-none transition-colors hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-primary-500"
  >
  <div className="flex items-center gap-2">
  <GraduationCap className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
@@ -1032,7 +940,7 @@ export default function AdminTeachersPage() {
  )}
  <ChevronDown className={cn("w-3.5 h-3.5 text-gray-400 transition-transform", isOpen && "rotate-180")} />
  </div>
- </button>
+ </Button>
 
  {/* Subject list */}
  {isOpen && (
@@ -1041,12 +949,13 @@ export default function AdminTeachersPage() {
  const selected = fSubjectIds.has(subj.id);
  const hasOther = subj.teacherId && subj.teacherId !== editTarget.id;
  return (
- <button
+ <Button variant="ghost"
  key={subj.id}
  type="button"
+ aria-pressed={selected}
  onClick={() => toggleSubject(subj.id)}
  className={cn(
- "w-full flex items-center justify-between px-3 py-2.5 transition-colors text-left",
+ "h-auto w-full justify-between whitespace-normal px-3 py-2.5 text-left shadow-none transition-colors focus-visible:outline-2 focus-visible:outline-primary-500",
  selected ? "bg-primary-50" : "bg-white hover:bg-gray-50",
  )}
  >
@@ -1062,7 +971,7 @@ export default function AdminTeachersPage() {
  : <div className="w-4 h-4 rounded-full border-2 border-gray-300" />
  }
  </div>
- </button>
+ </Button>
  );
  })}
  </div>
@@ -1082,93 +991,50 @@ export default function AdminTeachersPage() {
  )}
  </div>
 
- {/* Footer */}
- <div className="px-5 py-4 border-t border-gray-100 flex flex-col gap-3 shrink-0">
- {editTarget && (
- <button
- type="button"
- onClick={() => setShowDeleteConfirm(true)}
- className="w-full border border-red-200 hover:border-red-300 text-red-600 font-semibold py-3 rounded-2xl text-sm transition-all"
- >
- Delete Teacher
- </button>
- )}
- <button
- onClick={handleSave}
- disabled={saving || !fName.trim() || !fUsername.trim() || (!editTarget && !fPassword) || (editTarget !== null && loadingAssign)}
- className="w-full bg-primary-600 text-white font-bold py-3.5 rounded-2xl text-sm shadow-lg disabled:opacity-60 active:scale-[0.98] transition-transform"
- >
- {saving ? (
- <span className="flex items-center justify-center gap-2">
- <Loader2 className="w-4 h-4 animate-spin" /> Saving…
- </span>
- ) : editTarget ? "Save Changes" : "Add Teacher"}
- </button>
- </div>
- </motion.div>
- </div>
- </>
- )}
- </AnimatePresence>
 
- {/* Standalone Delete Confirm Dialog */}
- <AnimatePresence>
- {showDeleteConfirm && (
- <>
- <motion.div key="del-backdrop"
- initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
- onClick={() => !deleting && setShowDeleteConfirm(false)}
- className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
- />
- <motion.div key="del-dialog"
- initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
- className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 bg-white rounded-3xl p-6 max-w-sm mx-auto shadow-2xl"
- >
- <div className="text-center space-y-3">
- <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto animate-bounce">
- <Trash2 className="w-7 h-7 text-red-600" />
- </div>
- <h3 className="font-bold text-gray-900 text-lg">Delete Teacher?</h3>
- <p className="text-sm text-gray-500">
- Are you sure you want to delete <strong>{editTarget?.name}</strong>? This action cannot be undone. All classes, subjects, results, diaries, and homework will be unlinked or deleted.
- </p>
- </div>
- <div className="grid grid-cols-2 gap-3 mt-6">
- <button
- onClick={() => setShowDeleteConfirm(false)}
- disabled={deleting}
- className="py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
- >
- Cancel
- </button>
- <button
- onClick={handleDelete}
- disabled={deleting}
- className="py-3 rounded-2xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors disabled:opacity-60"
- >
- {deleting ? (
- <span className="flex items-center justify-center gap-2">
- <Loader2 className="w-4 h-4 animate-spin" /> Deleting…
- </span>
- ) : "Delete"}
- </button>
- </div>
-  </motion.div>
-  </>
-  )}
-  </AnimatePresence>
+   </ResponsivePopover>
 
-  {/* ── Import Modal (bulk upsert) ── */}
-  <ImportModal
-  show={showImport}
-  config={importConfig}
-  onComplete={() => {
-   toast.success("Import completed successfully");
-   setPage(1);
-   load(search, 1, pageSize, sortBy, sortDir);
-  }}
-  onClose={() => setShowImport(false)}
-  />
+   <DatePickerDrawer
+    open={showDatePicker}
+    onOpenChange={setShowDatePicker}
+    date={fDateOfBirth}
+    onDateChange={setFDateOfBirth}
+    title="Date of birth"
+    allowClear
+    disableFuture
+   />
+
+   <ResponsivePopover
+    open={showDeleteConfirm}
+    onOpenChange={(open) => { if (!deleting) setShowDeleteConfirm(open); }}
+    title="Delete teacher?"
+    description={editTarget ? "This action cannot be undone. Classes, subjects, results, diaries, and homework will be unlinked or deleted." : undefined}
+    side="bottom"
+    desktopView="right-drawer"
+    className="shadow-none"
+    contentClassName="px-5 py-4"
+    footer={
+     <div className="flex gap-3 border-t border-gray-100 bg-white px-5 py-4">
+      <Button type="button" variant="outline" disabled={deleting} onClick={() => setShowDeleteConfirm(false)} className="flex-1 shadow-none">Cancel</Button>
+      <Button type="button" variant="destructive" disabled={deleting} onClick={handleDelete} className="flex-1 shadow-none">
+       {deleting && <Loader2 className="size-4 animate-spin" />} Delete
+      </Button>
+     </div>
+    }
+   >
+    <p className="text-sm text-gray-600">Delete <strong>{editTarget?.name}</strong>?</p>
+   </ResponsivePopover>
+
+   <ImportModal
+    show={showImport}
+    config={importConfig}
+    onComplete={() => {
+     toast.success("Import completed successfully");
+     setPage(1);
+     load(search, 1, pageSize, sortBy, sortDir);
+    }}
+    onClose={() => setShowImport(false)}
+   />
   </DashboardLayout>
-  );
+ );
 }

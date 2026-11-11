@@ -30,15 +30,12 @@ import {
   GraduationCap,
   Search,
   School,
-  ChevronDown,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { ExamStatusBadge, getExamStatusInfo, STATUS_LABELS } from "@/components/exam/ExamStatusBadge";
 import { TeacherMarkEntryView } from "@/components/exam/TeacherMarkEntryView";
 import { fmt } from "@/lib/exam-utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Pagination,
   PaginationContent,
@@ -50,7 +47,7 @@ import {
 } from "@/components/ui/pagination";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { DrawerSelector } from "@/components/DrawerSelector";
-import { DatePickerInput } from "@/components/DatePickerInput";
+import { DatePickerDrawer } from "@/components/DatePickerDrawer";
 
 function classTestPageItems(current: number, total: number): Array<number | "ellipsis"> {
   const pages = [...new Set([1, total, current - 1, current, current + 1])]
@@ -125,6 +122,7 @@ export default function AdminClassTestsPage() {
   const [formSubjectId, setFormSubjectId] = useState("");
   const [formStartDate, setFormStartDate] = useState("");
   const [formEndDate, setFormEndDate] = useState("");
+  const [activeDateField, setActiveDateField] = useState<"start" | "end" | null>(null);
   const [formStatus, setFormStatus] = useState<ExamStatus>("MARK_ENTRY");
   const [formMaxMarks, setFormMaxMarks] = useState("100");
   const [formPassMarks, setFormPassMarks] = useState("");
@@ -475,19 +473,19 @@ export default function AdminClassTestsPage() {
   const isLocked = !markEntryExam || markEntryExam.examStatus !== "MARK_ENTRY" ||
     (!!markEntryExam.markEntryLastDate && new Date() > new Date(markEntryExam.markEntryLastDate));
   const testSummary = [
-    { label: "Total tests", value: searchFiltered.length, icon: GraduationCap, color: "text-primary-700" },
-    { label: "Mark entry", value: searchFiltered.filter((exam) => exam.examStatus === "MARK_ENTRY").length, icon: ClipboardCheck, color: "text-primary-700" },
-    { label: "Published", value: searchFiltered.filter((exam) => exam.examStatus === "PUBLISHED").length, icon: CalendarDays, color: "text-blue-700" },
-    { label: "Draft", value: searchFiltered.filter((exam) => exam.examStatus === "DRAFT").length, icon: Clock3, color: "text-amber-700" },
+    { label: "Tests", value: searchFiltered.length, icon: GraduationCap },
+    { label: "Mark entry", value: searchFiltered.filter((exam) => exam.examStatus === "MARK_ENTRY").length, icon: ClipboardCheck },
+    { label: "Published", value: searchFiltered.filter((exam) => exam.examStatus === "PUBLISHED").length, icon: CalendarDays },
+    { label: "Draft", value: searchFiltered.filter((exam) => exam.examStatus === "DRAFT").length, icon: Clock3 },
   ];
 
   return (
     <DashboardLayout>
       <div className="p-0! pb-8!">
-        <PageHeader
-          title={t("nav", "classTests", lang)}
-          showActionOnMobile
-          action={<DrawerSelector
+        <PageHeader title={t("nav", "classTests", lang)} />
+
+        <div className="flex flex-wrap items-center gap-2 px-3 pt-4">
+          <DrawerSelector
             title="Filter by class"
             options={[
               { value: "", label: "All classes" },
@@ -495,13 +493,12 @@ export default function AdminClassTestsPage() {
             ]}
             value={selectedClassId}
             onChange={setSelectedClassId}
-            triggerItem={<button type="button" className="inline-flex max-w-40 shrink-0 items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
-              <School className="size-4 shrink-0 text-primary-600" />
-              <span className="truncate">{classes.find((cls) => cls.id === selectedClassId)?.name ?? "All classes"}</span>
-              <ChevronDown className="size-4 shrink-0" />
-            </button>}
-          />}
-        />
+            className="w-44 shadow-none"
+          />
+          <Button type="button" onClick={openAdd} className="shadow-none">
+            <Plus className="size-4" /> {t("teacherPages", "newClassTestBtn", lang)}
+          </Button>
+        </div>
 
         {!loading && exams.length === 0 && !error ? (
           <IllustratedEmptyState
@@ -538,15 +535,12 @@ export default function AdminClassTestsPage() {
 
         {loading ? (
           <>
-            <div className="mx-3 mb-3 overflow-hidden rounded-2xl bg-white">
-              <Skeleton className="h-20 rounded-none" />
-              <div className="grid grid-cols-2 gap-px bg-gray-100 sm:grid-cols-4">
-                {Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-20 rounded-none" />)}
-              </div>
+            <div className="mx-3 mb-3 grid grid-cols-2 overflow-hidden rounded-2xl bg-white">
+              {Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-20 rounded-none" />)}
             </div>
             <div className="mx-3 divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white">
               {Array.from({ length: 4 }).map((_, index) => (
-                <div key={index} className="space-y-2 p-3">
+                <div key={index} className="space-y-2 px-4 py-4">
                   <Skeleton className="h-4 w-1/2" />
                   <Skeleton className="h-3 w-3/4" />
                 </div>
@@ -555,33 +549,19 @@ export default function AdminClassTestsPage() {
           </>
         ) : (
           <>
-            <section className="mx-3 mb-3 overflow-hidden rounded-2xl bg-gradient-to-br from-white to-sky-50">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-3 py-2.5">
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-xl font-semibold tabular-nums text-gray-950">{exams.length}</span>
-                  <span className="text-xs font-medium text-gray-600">Total tests</span>
+            <section className="mx-3 mb-3 grid grid-cols-2 overflow-hidden rounded-2xl bg-gradient-to-br from-primary-50/60 via-white to-sky-50/60" aria-label="Class test statistics">
+              {testSummary.map(({ label, value, icon: Icon }, index) => (
+                <div key={label} className={`min-w-0 p-2.5 sm:p-3 ${index % 2 === 0 ? "border-r border-gray-100" : ""} ${index < 2 ? "border-b border-gray-100" : ""}`}>
+                  <div className="flex items-center gap-1.5 text-sm font-medium leading-4 text-gray-700">
+                    <Icon aria-hidden="true" className="size-3.5 shrink-0" />
+                    <span>{label}</span>
+                  </div>
+                  <span className="mt-1.5 block text-[22px] font-medium leading-none tabular-nums text-gray-950">{value}</span>
                 </div>
-                <span className="rounded-full border border-primary-100 bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
-                  <strong className="tabular-nums">{sortedExams.length}</strong> shown
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-px bg-gray-100 sm:grid-cols-4">
-                {testSummary.map((stat) => {
-                  const Icon = stat.icon;
-                  return (
-                    <div key={stat.label} className="min-w-0 bg-white/90 p-2.5 sm:p-3">
-                      <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-600">
-                        <Icon aria-hidden="true" className={`h-3.5 w-3.5 shrink-0 ${stat.color}`} />
-                        <span>{stat.label}</span>
-                      </div>
-                      <div className="mt-1 text-lg font-semibold tabular-nums text-gray-950">{stat.value}</div>
-                    </div>
-                  );
-                })}
-              </div>
+              ))}
             </section>
 
-            <section className="card mx-3 divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white p-0! shadow-none" data-ui-style="classic" aria-label="Class tests">
+            <section className="mx-3 divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white" aria-label="Class tests">
               {pagedExams.length === 0 ? (
                 <div className="flex flex-col items-center px-3 py-8 text-center">
                   <img src="/icons/exams/empty.webp" alt="" className="mb-3 h-28 w-28 object-contain" />
@@ -593,7 +573,8 @@ export default function AdminClassTestsPage() {
                   type="button"
                   variant="ghost"
                   onClick={() => setSelectedExamId(exam.id)}
-                  className="h-auto w-full justify-start rounded-none p-3 text-left whitespace-normal hover:bg-gray-50"
+                  aria-haspopup="dialog"
+                  className="h-auto w-full justify-start rounded-none px-4 py-4 text-left whitespace-normal shadow-none hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500"
                 >
                   <span className="flex items-start justify-between gap-3">
                     <span className="min-w-0">
@@ -617,16 +598,13 @@ export default function AdminClassTestsPage() {
                       .replace("{end}", String(Math.min(page * pageSize, sortedExams.length)))
                       .replace("{total}", String(sortedExams.length))}
                   </span>
-                  <Select value={String(pageSize)} onValueChange={(value) => setPageSize(Number(value))}>
-                    <SelectTrigger aria-label="Class tests per page" className="h-8 bg-white text-xs text-gray-600">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[10, 20, 50, 100].map((size) => (
-                        <SelectItem key={size} value={String(size)}>{size} per page</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <DrawerSelector
+                    title="Class tests per page"
+                    options={[10, 20, 50, 100].map((size) => ({ value: String(size), label: `${size} per page` }))}
+                    value={String(pageSize)}
+                    onChange={(value) => setPageSize(Number(value))}
+                    className="w-32 shadow-none"
+                  />
                 </div>
                 {totalPages > 1 && (
                   <Pagination className="mt-2" aria-label="Class test pages">
@@ -690,15 +668,6 @@ export default function AdminClassTestsPage() {
           </>
         )}
 
-        <Button
-          type="button"
-          size="lg"
-          onClick={openAdd}
-          className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-1/2 z-30 max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-full  shadow-lg shadow-primary-900/20 lg:bottom-6 lg:left-[calc(50%+8rem)]"
-        >
-          <Plus className="h-5 w-5" />
-          {t("teacherPages", "newClassTestBtn", lang)}
-        </Button>
           </>
         )}
 
@@ -706,9 +675,9 @@ export default function AdminClassTestsPage() {
           open={!!selectedExam}
           onOpenChange={(open) => { if (!open) setSelectedExamId(null); }}
           side="bottom"
-          className="mx-auto w-full max-w-2xl rounded-t-2xl"
+          className="mx-auto w-full max-w-2xl rounded-t-2xl shadow-none"
           title={selectedExam?.name}
-          showCloseButton={false}
+          showCloseButton
           headerAction={selectedExam?.examStatus === "MARK_ENTRY" &&
             (!selectedExam.markEntryLastDate || new Date(selectedExam.markEntryLastDate) >= new Date()) ? (
               <Button size="sm" onClick={() => openMarkEntry(selectedExam)}>
@@ -770,7 +739,7 @@ export default function AdminClassTestsPage() {
           side="bottom"
           title={markEntryExam?.name ?? t("teacherPages", "enterMarksBreadcrumb", lang)}
           description={t("teacherPages", "enterMarksBreadcrumb", lang)}
-          className="mx-auto w-full max-w-6xl rounded-t-2xl"
+          className="mx-auto w-full max-w-6xl rounded-t-2xl shadow-none"
           contentClassName="min-w-0"
           footer={isMarkEntryView && (
             <div className="border-t border-gray-200 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
@@ -825,10 +794,10 @@ export default function AdminClassTestsPage() {
       {/* Add/Edit Class Test */}
       <ResponsivePopover
         open={showDrawer}
-        onOpenChange={(open) => { if (!saving) setShowDrawer(open); }}
+        onOpenChange={(open) => { if (!saving) { setShowDrawer(open); if (!open) setActiveDateField(null); } }}
         side="bottom"
         title={editTarget ? t("teacherPages", "editClassTestTitle", lang) : t("teacherPages", "newClassTestTitle", lang)}
-        className="mx-auto w-full max-w-xl rounded-t-2xl"
+        className="mx-auto w-full max-w-xl rounded-t-2xl shadow-none"
         showCloseButton={!saving}
         footer={
           <div className="flex w-full justify-end gap-2 border-t border-gray-100 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
@@ -905,30 +874,20 @@ export default function AdminClassTestsPage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="class-test-start" className="mb-1.5 block text-sm font-medium text-gray-700">
+              <p className="mb-1.5 block text-sm font-medium text-gray-700">
                 {t("teacherPages", "startDateLabel", lang)}
-              </label>
-              <DatePickerInput
-                id="class-test-start"
-                title={t("teacherPages", "startDateLabel", lang)}
-                value={formStartDate}
-                onChange={setFormStartDate}
-                disableFuture={false}
-                allowClear
-              />
+              </p>
+              <Button type="button" variant="outline" aria-haspopup="dialog" aria-expanded={activeDateField === "start"} onClick={() => setActiveDateField("start")} className="w-full justify-start shadow-none">
+                <CalendarDays className="size-4" /> {formStartDate ? fmt(formStartDate) : "Select date"}
+              </Button>
             </div>
             <div>
-              <label htmlFor="class-test-end" className="mb-1.5 block text-sm font-medium text-gray-700">
+              <p className="mb-1.5 block text-sm font-medium text-gray-700">
                 {t("teacherPages", "endDateLabel", lang)}
-              </label>
-              <DatePickerInput
-                id="class-test-end"
-                title={t("teacherPages", "endDateLabel", lang)}
-                value={formEndDate}
-                onChange={setFormEndDate}
-                disableFuture={false}
-                allowClear
-              />
+              </p>
+              <Button type="button" variant="outline" aria-haspopup="dialog" aria-expanded={activeDateField === "end"} onClick={() => setActiveDateField("end")} className="w-full justify-start shadow-none">
+                <CalendarDays className="size-4" /> {formEndDate ? fmt(formEndDate) : "Select date"}
+              </Button>
             </div>
           </div>
 
@@ -966,68 +925,32 @@ export default function AdminClassTestsPage() {
         </form>
       </ResponsivePopover>
 
-      {/* Standalone Delete Confirm Dialog */}
-      <AnimatePresence>
-        {showDeleteConfirm && deleteTarget && (
-          <>
-            <motion.div
-              key="del-backdrop"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => !deleting && setShowDeleteConfirm(false)}
-              className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm pointer-events-auto"
-            />
-            <motion.div
-              key="del-dialog"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="pointer-events-auto fixed inset-x-4 top-1/2 z-50 mx-auto max-w-sm -translate-y-1/2 rounded-2xl bg-white p-4 shadow-2xl"
-            >
-              <div className="space-y-2 text-center">
-                <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-red-100">
-                  <Trash2 className="h-5 w-5 text-red-600" />
-                </div>
-                <h3 className="font-bold text-gray-900 text-lg">
-                  {t("teacherPages", "deleteClassTestTitle", lang)}
-                </h3>
-                <p className="text-sm text-gray-500">
-                  Are you sure you want to delete the class test{" "}
-                  <strong>{deleteTarget.name}</strong>? All scores entered for
-                  this test will be lost.
-                </p>
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowDeleteConfirm(false)}
-                  disabled={deleting !== null}
-                  className="rounded-xl"
-                >
-                  {t("common", "cancel", lang)}
-                </Button>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  onClick={handleDelete}
-                  disabled={deleting !== null}
-                  className="rounded-xl"
-                >
-                  {deleting !== null ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" /> Deleting…
-                    </span>
-                  ) : (
-                    t("common", "delete", lang)
-                  )}
-                </Button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      <DatePickerDrawer open={activeDateField === "start"} onOpenChange={(open) => { if (!open) setActiveDateField(null); }} date={formStartDate} onDateChange={setFormStartDate} title={t("teacherPages", "startDateLabel", lang)} disableFuture={false} allowClear />
+      <DatePickerDrawer open={activeDateField === "end"} onOpenChange={(open) => { if (!open) setActiveDateField(null); }} date={formEndDate} onDateChange={setFormEndDate} title={t("teacherPages", "endDateLabel", lang)} disableFuture={false} allowClear />
+
+      <ResponsivePopover
+        open={showDeleteConfirm && deleteTarget !== null}
+        onOpenChange={(open) => { if (!open && deleting === null) setShowDeleteConfirm(false); }}
+        title={t("teacherPages", "deleteClassTestTitle", lang)}
+        description={deleteTarget ? "All scores entered for " + deleteTarget.name + " will be lost." : undefined}
+        side="bottom"
+        desktopView="right-drawer"
+        className="shadow-none"
+        contentClassName="px-5 py-4"
+        footer={
+          <div className="flex gap-3 border-t border-gray-100 bg-white px-5 py-4">
+            <Button type="button" variant="outline" disabled={deleting !== null} onClick={() => setShowDeleteConfirm(false)} className="flex-1 shadow-none">
+              {t("common", "cancel", lang)}
+            </Button>
+            <Button type="button" variant="destructive" disabled={deleting !== null} onClick={handleDelete} className="flex-1 shadow-none">
+              {deleting !== null && <Loader2 className="size-4 animate-spin" />}
+              {t("common", "delete", lang)}
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-sm text-gray-600">Delete <strong>{deleteTarget?.name}</strong>?</p>
+      </ResponsivePopover>
     </DashboardLayout>
   );
 }

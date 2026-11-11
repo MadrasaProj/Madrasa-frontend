@@ -1,7 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { DrawerSelector } from "@/components/DrawerSelector";
+import { ScrollableDateNavigator } from "@/components/ScrollableDateNavigator";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   getSessionsByDate,
   getSessionsByTeacher,
@@ -10,18 +14,16 @@ import {
 import { getTeachers, type TeacherRecord } from "@/lib/teachers-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
-import {
-  CalendarDays, ChevronLeft, ChevronRight, ClipboardCheck,
-  Search, User,
-} from "lucide-react";
+import { ClipboardCheck, Search, Users } from "lucide-react";
 import { SkeletonList } from "@/components/ui/Skeleton";
 
 function todayISO() {
-  return new Date().toISOString().split("T")[0];
+  const date = new Date();
+  return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-");
 }
 
 function fmtDate(d: string) {
-  return new Date(d).toLocaleDateString("en-GB", {
+  return new Date(`${d}T00:00:00`).toLocaleDateString("en-GB", {
     weekday: "short",
     day: "2-digit",
     month: "short",
@@ -33,17 +35,9 @@ function fmtTime(d: string) {
   return new Date(d).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
 }
 
-function shiftDays(iso: string, n: number) {
-  const d = new Date(iso);
-  d.setDate(d.getDate() + n);
-  return d.toISOString().split("T")[0];
-}
-
 function dateKey(d: string) {
   return d.split("T")[0];
 }
-
-type Tab = "by-day" | "by-teacher";
 
 function groupByDate(sessions: TeacherSession[]) {
   const map = new Map<string, TeacherSession[]>();
@@ -57,20 +51,47 @@ function groupByDate(sessions: TeacherSession[]) {
     .map(([date, list]) => ({ date, sessions: list }));
 }
 
-function uniqueDays(sessions: TeacherSession[]) {
-  return new Set(sessions.map((s) => dateKey(s.date))).size;
+function SessionStatus({ session }: { session: TeacherSession }) {
+  const active = session.status === "CHECKED_IN";
+  return (
+    <span className={cn("shrink-0 text-xs font-semibold", active ? "text-primary-600" : "text-gray-400")}>
+      {active ? "Active" : "Out"}
+    </span>
+  );
 }
 
-interface TeacherAttendanceContentProps {
-  backHref: string;
+function AttendanceStats({ firstLabel, firstValue, secondLabel, secondValue }: {
+  firstLabel: string;
+  firstValue: number;
+  secondLabel: string;
+  secondValue: number;
+}) {
+  return (
+    <div className="grid grid-cols-2 overflow-hidden rounded-2xl bg-gradient-to-br from-primary-50/60 via-white to-sky-50/60">
+      <div className="min-w-0 border-r border-gray-100 p-2.5 sm:p-3">
+        <div className="flex items-center justify-between gap-2 text-sm font-medium text-gray-700">
+          <span>{firstLabel}</span>
+          <ClipboardCheck aria-hidden="true" className="size-4 shrink-0 text-primary-600" />
+        </div>
+        <p className="mt-1.5 text-xl font-medium leading-none tabular-nums text-gray-950 sm:text-[22px]">{firstValue}</p>
+      </div>
+      <div className="min-w-0 p-2.5 sm:p-3">
+        <div className="flex items-center justify-between gap-2 text-sm font-medium text-gray-700">
+          <span>{secondLabel}</span>
+          <Users aria-hidden="true" className="size-4 shrink-0 text-primary-600" />
+        </div>
+        <p className="mt-1.5 text-xl font-medium leading-none tabular-nums text-gray-950 sm:text-[22px]">{secondValue}</p>
+      </div>
+    </div>
+  );
 }
 
-export function TeacherAttendanceContent({ backHref }: TeacherAttendanceContentProps) {
+export function TeacherAttendanceContent() {
   const { accessToken, activeClientId } = useAuthStore();
   const cid   = activeClientId ?? "";
   const token = accessToken ?? "";
 
-  const [tab, setTab]             = useState<Tab>("by-day");
+  const [tab, setTab]             = useState("by-day");
   const [selectedDate, setSelectedDate] = useState(todayISO());
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>("");
   const [teacherSearch, setTeacherSearch] = useState("");
@@ -130,56 +151,30 @@ export function TeacherAttendanceContent({ backHref }: TeacherAttendanceContentP
     return [...map.values()].sort((a, b) => (a.teacher?.name ?? "").localeCompare(b.teacher?.name ?? ""));
   }, [daySessions]);
 
+  const dayRows = useMemo(() => [...daySessions].sort((a, b) =>
+    (a.teacher?.name ?? "").localeCompare(b.teacher?.name ?? "") || a.checkInTime.localeCompare(b.checkInTime),
+  ), [daySessions]);
+
   const teacherGrouped = useMemo(() => groupByDate(teacherSessions), [teacherSessions]);
   const selectedTeacherName = allTeachers.find((t) => t.id === selectedTeacherId)?.name ?? "";
+  const teacherOptions = [
+    ...allTeachers.filter((teacher) => teacher.id === selectedTeacherId && !filteredTeachers.some((item) => item.id === teacher.id)),
+    ...filteredTeachers,
+  ].map((teacher) => ({ value: teacher.id, label: teacher.name }));
 
   return (
     <DashboardLayout>
-      <PageHeader
-        title="Teacher Attendance"
-        subtitle={fmtDate(selectedDate)}
-        icon={ClipboardCheck}
-        back
-        backHref={backHref}
-      />
+      <PageHeader title="Teacher Attendance" />
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-5">
-        {([
-          { key: "by-day" as Tab, label: "By Day", icon: CalendarDays },
-          { key: "by-teacher" as Tab, label: "By Teacher", icon: User },
-        ]).map((t) => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all",
-              tab === t.key ? "bg-white text-primary-700 shadow-sm" : "text-gray-500 hover:text-gray-700",
-            )}>
-            <t.icon className="w-4 h-4" />
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList aria-label="Teacher attendance view">
+          <TabsTrigger value="by-day">By Day</TabsTrigger>
+          <TabsTrigger value="by-teacher">By Teacher</TabsTrigger>
+        </TabsList>
 
-      {/* ═══ BY DAY ════════════════════════════════════════════════════════════ */}
-      {tab === "by-day" && (
-        <>
-          <div className="flex items-center justify-between mb-4">
-            <button onClick={() => setSelectedDate((d) => shiftDays(d, -1))}
-              className="p-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 transition-colors">
-              <ChevronLeft className="w-4 h-4 text-gray-600" />
-            </button>
-            <div className="flex items-center gap-3">
-              <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500" />
-              {selectedDate !== todayISO() && (
-                <button onClick={() => setSelectedDate(todayISO())}
-                  className="text-xs font-semibold text-primary-600 hover:text-primary-700">Today</button>
-              )}
-            </div>
-            <button onClick={() => setSelectedDate((d) => shiftDays(d, 1))} disabled={selectedDate >= todayISO()}
-              className="p-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-40">
-              <ChevronRight className="w-4 h-4 text-gray-600" />
-            </button>
+        <TabsContent value="by-day">
+          <div className="mb-4 flex min-w-0 items-center">
+            <ScrollableDateNavigator date={selectedDate} onDateChange={setSelectedDate} pickerTitle="Choose attendance date" />
           </div>
 
           {dayLoading ? (
@@ -187,79 +182,52 @@ export function TeacherAttendanceContent({ backHref }: TeacherAttendanceContentP
           ) : dayError ? (
             <ApiErrorBanner message={dayError} onRetry={loadDay} />
           ) : (
-            <>
-              <div className="grid grid-cols-2 gap-3 mb-5">
-                <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
-                  <p className="text-2xl font-black text-primary-600">{dayByTeacher.length}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">Teachers Present</p>
-                </div>
-                <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
-                  <p className="text-2xl font-black text-gray-900">{allTeachers.length}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">Total Teachers</p>
-                </div>
-              </div>
-
-              {dayByTeacher.length === 0 ? (
-                <div className="py-12 text-center text-sm text-gray-400">No teacher check-ins for this date</div>
-              ) : (
-                <div className="space-y-2">
-                  {dayByTeacher.map(({ teacher, sessions }) => (
-                    <div key={teacher?.id ?? sessions[0].teacherId}
-                      className="flex items-center justify-between bg-white rounded-2xl border border-gray-100 px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-sm shrink-0">
-                          {teacher?.name?.charAt(0)?.toUpperCase() ?? "?"}
-                        </div>
-                        <div>
-                          <p className="font-semibold text-gray-900 text-sm">{teacher?.name ?? "Unknown"}</p>
-                          <p className="text-xs text-gray-400">
-                            {fmtTime(sessions[0].checkInTime)} – {sessions[0].checkOutTime ? fmtTime(sessions[0].checkOutTime) : "—"}
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-xs font-bold text-primary-700 bg-primary-50 px-2.5 py-1 rounded-lg">
-                        {uniqueDays(sessions)} day
-                      </span>
+            <div className="space-y-4">
+              <AttendanceStats
+                firstLabel="Teachers present"
+                firstValue={dayByTeacher.length}
+                secondLabel="Total teachers"
+                secondValue={allTeachers.length}
+              />
+              <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white">
+                {dayRows.length === 0 ? (
+                  <p className="px-4 py-10 text-center text-sm text-gray-500">No teacher check-ins for this date</p>
+                ) : dayRows.map((session) => (
+                  <div key={session.id} className="flex items-center justify-between gap-3 px-4 py-4">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-gray-900">{session.teacher?.name ?? "Unknown"}</p>
+                      <p className="mt-0.5 text-sm text-gray-600">
+                        {fmtTime(session.checkInTime)} – {session.checkOutTime ? fmtTime(session.checkOutTime) : "Ongoing"}
+                      </p>
                     </div>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </>
-      )}
-
-      {/* ═══ BY TEACHER ════════════════════════════════════════════════════════ */}
-      {tab === "by-teacher" && (
-        <>
-          <div className="mb-5">
-            <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input value={teacherSearch} onChange={(e) => setTeacherSearch(e.target.value)}
-                placeholder="Search teachers…"
-                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm" />
-            </div>
-            <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
-              {filteredTeachers.map((t) => (
-                <button key={t.id}
-                  onClick={() => { setSelectedTeacherId(t.id); setTeacherSearch(""); }}
-                  className={cn(
-                    "flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold whitespace-nowrap transition-all shrink-0",
-                    selectedTeacherId === t.id
-                      ? "border-primary-300 bg-primary-50 text-primary-700"
-                      : "border-gray-200 bg-white text-gray-600 hover:border-primary-200",
-                  )}>
-                  <div className={cn(
-                    "w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0",
-                    selectedTeacherId === t.id ? "bg-primary-200 text-primary-800" : "bg-gray-100 text-gray-500",
-                  )}>
-                    {t.name.charAt(0).toUpperCase()}
+                    <SessionStatus session={session} />
                   </div>
-                  {t.name}
-                </button>
-              ))}
-              {filteredTeachers.length === 0 && <p className="text-xs text-gray-400 py-2">No teachers found</p>}
+                ))}
+              </div>
             </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="by-teacher">
+          <div className="mb-5 space-y-3">
+            <div className="relative">
+              <Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                value={teacherSearch}
+                onChange={(event) => setTeacherSearch(event.target.value)}
+                placeholder="Search teachers…"
+                aria-label="Search teachers"
+                className="h-11 pl-10"
+              />
+            </div>
+            <DrawerSelector
+              title="Choose teacher"
+              options={teacherOptions}
+              value={selectedTeacherId}
+              onChange={(value) => { setSelectedTeacherId(value); setTeacherSearch(""); }}
+              placeholder="Select a teacher"
+            />
+            {filteredTeachers.length === 0 && <p className="text-xs text-gray-500">No teachers found</p>}
           </div>
 
           {!selectedTeacherId ? (
@@ -269,50 +237,35 @@ export function TeacherAttendanceContent({ backHref }: TeacherAttendanceContentP
           ) : teacherError ? (
             <ApiErrorBanner message={teacherError} onRetry={loadTeacher} />
           ) : (
-            <>
-              <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-lg shrink-0">
-                    {selectedTeacherName.charAt(0).toUpperCase()}
+            <div className="space-y-4">
+              <h2 className="text-base font-semibold text-gray-900">{selectedTeacherName}</h2>
+              <AttendanceStats
+                firstLabel="Attendance days"
+                firstValue={teacherGrouped.length}
+                secondLabel="Total sessions"
+                secondValue={teacherSessions.length}
+              />
+              <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white">
+                {teacherGrouped.length === 0 ? (
+                  <p className="px-4 py-10 text-center text-sm text-gray-500">No attendance records found</p>
+                ) : teacherGrouped.map(({ date, sessions }) => (
+                  <div key={date}>
+                    <p className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-400">{fmtDate(date)}</p>
+                    {sessions.map((session) => (
+                      <div key={session.id} className="flex items-center justify-between gap-3 border-t border-gray-100 px-4 py-4">
+                        <p className="text-sm text-gray-600">
+                          {fmtTime(session.checkInTime)} – {session.checkOutTime ? fmtTime(session.checkOutTime) : "Ongoing"}
+                        </p>
+                        <SessionStatus session={session} />
+                      </div>
+                    ))}
                   </div>
-                  <div>
-                    <p className="font-bold text-gray-900">{selectedTeacherName}</p>
-                    <p className="text-xs text-gray-400">
-                      {teacherGrouped.length} attendance day{teacherGrouped.length !== 1 ? "s" : ""}
-                    </p>
-                  </div>
-                </div>
+                ))}
               </div>
-
-              {teacherGrouped.length === 0 ? (
-                <div className="py-12 text-center text-sm text-gray-400">No attendance records found</div>
-              ) : (
-                <div className="space-y-3">
-                  {teacherGrouped.map(({ date, sessions }) => (
-                    <div key={date} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                      <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-50">
-                        <p className="text-sm font-semibold text-gray-900">{fmtDate(date)}</p>
-                        <span className="text-xs font-bold text-primary-700 bg-primary-50 px-2 py-0.5 rounded-lg">
-                          {sessions.length} session{sessions.length !== 1 ? "s" : ""}
-                        </span>
-                      </div>
-                      <div className="divide-y divide-gray-50">
-                        {sessions.map((s) => (
-                          <div key={s.id} className="flex items-center justify-between px-4 py-2.5">
-                            <p className="text-xs text-gray-500">
-                              {fmtTime(s.checkInTime)} – {s.checkOutTime ? fmtTime(s.checkOutTime) : "—"}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
+            </div>
           )}
-        </>
-      )}
+        </TabsContent>
+      </Tabs>
     </DashboardLayout>
   );
 }

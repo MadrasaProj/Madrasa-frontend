@@ -690,35 +690,17 @@ export default function AdminExamsPage() {
 
   const { upcoming: upcomingExams, markEntryOpen: markEntryOpenExams, completed: completedExams, published: publishedExams } = getExamCategories(exams);
   const examSummary = [
-    { label: "Upcoming", value: upcomingExams.length, icon: Clock, color: "text-primary-700" },
-    { label: "Mark entry", value: markEntryOpenExams.length, icon: PenLine, color: "text-primary-700" },
-    { label: "Completed", value: completedExams.length, icon: ClipboardCheck, color: "text-blue-700" },
-    { label: "Published", value: publishedExams.length, icon: Trophy, color: "text-amber-700" },
+    { label: "Upcoming", value: upcomingExams.length, icon: Clock },
+    { label: "Mark entry", value: markEntryOpenExams.length, icon: PenLine },
+    { label: "Completed", value: completedExams.length, icon: ClipboardCheck },
+    { label: "Published", value: publishedExams.length, icon: Trophy },
   ];
-
-  const columns = useExamColumns({
-    showActions: true,
-    onEdit: openEditDrawer,
-    onClasses: (exam) => openClassDrawer(exam.id),
-    onDelete: startDeleteExam,
-  });
   const showExamList = loading || exams.length > 0;
 
   return (
     <DashboardLayout>
       <div className="p-0! pb-24! lg:pb-8!">
-        <PageHeader
-          title="Exams"
-          action={showExamList ? (
-            <Button
-              type="button"
-              onClick={openCreateDrawer}
-              className="hidden rounded-full md:inline-flex"
-            >
-              <Plus className="h-4 w-4" /> Create Exam
-            </Button>
-          ) : undefined}
-        />
+        <PageHeader title="Exams" />
 
         {pageError && (
           <ApiErrorBanner
@@ -747,8 +729,8 @@ export default function AdminExamsPage() {
 
         {showExamList && (
           <>
-            <div className="px-3 pb-2 pt-6">
-              <div className="mx-auto flex w-full max-w-md items-center gap-2">
+            <div className="px-3 pb-3 pt-4">
+              <div className="flex w-full flex-wrap items-center gap-2">
                 <InputGroup className="h-10 min-w-0 flex-1 rounded-lg bg-white">
                   <InputGroupInput
                     type="search"
@@ -762,213 +744,135 @@ export default function AdminExamsPage() {
                     <Search className="h-4 w-4 text-gray-400" />
                   </InputGroupAddon>
                 </InputGroup>
-                <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600">
-                  <SlidersHorizontal aria-hidden="true" className="h-4 w-4" />
-                  <select
-                    aria-label="Sort exams"
-                    value={`${sortBy ?? "startDate"}:${sortDir}`}
-                    onChange={(event) => {
-                      const [key, direction] = event.target.value.split(":");
-                      setSortBy(key);
-                      setSortDir(direction as SortDir);
-                      setPage(1);
-                    }}
-                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                  >
-                    <option value="startDate:desc">Newest first</option>
-                    <option value="startDate:asc">Oldest first</option>
-                    <option value="name:asc">Name A–Z</option>
-                    <option value="name:desc">Name Z–A</option>
-                    <option value="examStatus:asc">Status A–Z</option>
-                    <option value="examStatus:desc">Status Z–A</option>
-                    <option value="markEntryLastDate:asc">Mark entry: earliest</option>
-                    <option value="markEntryLastDate:desc">Mark entry: latest</option>
-                    <option value="publishedDate:asc">Published: earliest</option>
-                    <option value="publishedDate:desc">Published: latest</option>
-                  </select>
-                </div>
+                <DrawerSelector
+                  title="Sort exams"
+                  options={[
+                    { value: "startDate:desc", label: "Newest first" },
+                    { value: "startDate:asc", label: "Oldest first" },
+                    { value: "name:asc", label: "Name A–Z" },
+                    { value: "name:desc", label: "Name Z–A" },
+                    { value: "examStatus:asc", label: "Status A–Z" },
+                    { value: "examStatus:desc", label: "Status Z–A" },
+                    { value: "markEntryLastDate:asc", label: "Mark entry: earliest" },
+                    { value: "markEntryLastDate:desc", label: "Mark entry: latest" },
+                    { value: "publishedDate:asc", label: "Published: earliest" },
+                    { value: "publishedDate:desc", label: "Published: latest" },
+                  ]}
+                  value={`${sortBy ?? "startDate"}:${sortDir}`}
+                  onChange={(value) => {
+                    const [key, direction] = value.split(":");
+                    setSortBy(key);
+                    setSortDir(direction as SortDir);
+                    setPage(1);
+                  }}
+                  className="w-40 shadow-none"
+                />
+                <Button type="button" onClick={openCreateDrawer} className="shadow-none">
+                  <Plus className="size-4" /> Create Exam
+                </Button>
               </div>
             </div>
 
             {loading ? (
-              <div className="mx-3 mb-3 overflow-hidden rounded-2xl bg-white">
-                <Skeleton className="h-20 rounded-none" />
-                <div className="grid grid-cols-2 gap-px bg-gray-100 sm:grid-cols-4">
-                  {Array.from({ length: 4 }).map((_, index) => (
-                    <Skeleton key={index} className="h-20 rounded-none" />
-                  ))}
-                </div>
+              <div className="mx-3 mb-3 grid grid-cols-2 overflow-hidden rounded-2xl bg-white">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <Skeleton key={index} className="h-20 rounded-none" />
+                ))}
               </div>
             ) : (
-              <section className="mx-3 mb-3 overflow-hidden rounded-2xl bg-gradient-to-br from-white to-sky-50">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-3 py-2.5">
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-xl font-semibold tabular-nums text-gray-950">{exams.length}</span>
-                    <span className="text-xs font-medium text-gray-600">Total exams</span>
+              <section className="mx-3 mb-3 grid grid-cols-2 overflow-hidden rounded-2xl bg-gradient-to-br from-primary-50/60 via-white to-sky-50/60" aria-label="Exam statistics">
+                {examSummary.map(({ label, value, icon: Icon }, index) => (
+                  <div key={label} className={`min-w-0 p-2.5 sm:p-3 ${index % 2 === 0 ? "border-r border-gray-100" : ""} ${index < 2 ? "border-b border-gray-100" : ""}`}>
+                    <div className="flex items-center gap-1.5 text-sm font-medium leading-4 text-gray-700">
+                      <Icon aria-hidden="true" className="size-3.5 shrink-0" />
+                      <span>{label}</span>
+                    </div>
+                    <span className="mt-1.5 block text-[22px] font-medium leading-none tabular-nums text-gray-950">{value}</span>
                   </div>
-                  <span className="rounded-full border border-primary-100 bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
-                    <strong className="tabular-nums">{sortedExams.length}</strong> shown
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-px bg-gray-100 sm:grid-cols-4">
-                  {examSummary.map((stat) => {
-                    const Icon = stat.icon;
-                    return (
-                      <div key={stat.label} className="min-w-0 bg-white/90 p-2.5 sm:p-3">
-                        <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-600">
-                          <Icon aria-hidden="true" className={`h-3.5 w-3.5 shrink-0 ${stat.color}`} />
-                          <span>{stat.label}</span>
-                        </div>
-                        <div className="mt-1 text-lg font-semibold tabular-nums text-gray-950">{stat.value}</div>
-                      </div>
-                    );
-                  })}
-                </div>
+                ))}
               </section>
             )}
 
-            <DataTable
-              className="mx-3 hidden md:block md:w-auto"
-              columns={columns}
-              data={pagedExams}
-              keyExtractor={(e) => e.id}
-              loading={loading}
-              error={null}
-              emptyIcon={GraduationCap}
-              emptyMessage="No term exams found"
-              onSort={(key, dir) => {
-                setSortBy(key);
-                setSortDir(dir);
-              }}
-              sortKey={sortBy}
-              sortDir={sortDir}
-              pagination={{
-                page,
-                totalPages,
-                total: sortedExams.length,
-                pageSize,
-                pageSizeOptions: PAGE_SIZE_OPTIONS,
-                onPageChange: setPage,
-                onPageSizeChange: (sz) => {
-                  setPageSize(sz);
-                  setPage(1);
-                },
-              }}
-            />
-            <section className="card mx-3 divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white p-0! shadow-none md:hidden" data-ui-style="classic" aria-label="Exams">
-              {loading ? (
-                Array.from({ length: 4 }).map((_, index) => (
-                  <div key={index} className="space-y-2 p-3">
+            <section className="mx-3" aria-labelledby="admin-exams-list-title">
+              <h2 id="admin-exams-list-title" className="mb-2 px-1 text-sm font-semibold text-gray-700">
+                All exams · {sortedExams.length} shown
+              </h2>
+              <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white">
+                {loading ? Array.from({ length: 4 }, (_, index) => (
+                  <div key={index} className="space-y-2 px-4 py-4">
                     <Skeleton className="h-4 w-1/2" />
                     <Skeleton className="h-3 w-3/4" />
                   </div>
-                ))
-              ) : pagedExams.length === 0 ? (
-                <div className="flex flex-col items-center px-3 py-8 text-center">
-                  <img src="/icons/exams/empty.webp" alt="" className="mb-3 h-28 w-28 object-contain" />
-                  <p className="text-sm text-gray-500">{searchText ? "No matching exams found" : "No term exams found"}</p>
-                </div>
-              ) : pagedExams.map((exam) => {
-                const status = getExamStatusInfo(exam);
-                return (
-                  <div key={exam.id} className="p-3">
-                    <button
-                      type="button"
-                      onClick={() => openClassDrawer(exam.id)}
-                      className="w-full text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
-                    >
-                      <span className="flex items-start justify-between gap-3">
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-semibold text-gray-900">{exam.name}</span>
-                          <span className="mt-0.5 block text-xs text-gray-500">{status.description || "—"}</span>
-                        </span>
-                        <ExamStatusBadge exam={exam} className="rounded-full border px-2.5 py-1 text-xs font-medium normal-case tracking-normal" />
-                      </span>
-                      <span className="mt-2 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
-                        <span className="text-xs text-gray-500">Exam period</span>
-                        <span className="text-xs font-medium text-gray-700">{shortDate(exam.startDate)} – {shortDate(exam.endDate)}</span>
-                      </span>
-                    </button>
-                    <div className="mt-3 flex items-center gap-2 border-t border-gray-100 pt-2">
-                      <button type="button" onClick={() => openClassDrawer(exam.id)} className="rounded-lg bg-primary-50 px-3 py-1.5 text-xs font-medium text-primary-700 hover:bg-primary-100">Classes</button>
-                      <button type="button" onClick={() => openEditDrawer(exam)} className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200">Edit</button>
-                      <button type="button" onClick={() => startDeleteExam(exam)} className="ml-auto rounded-lg bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100">Delete</button>
-                    </div>
-                  </div>
-                );
-              })}
+                )) : pagedExams.length === 0 ? (
+                  <p className="px-4 py-10 text-center text-sm text-gray-500">
+                    {searchText ? "No matching exams found" : "No term exams found"}
+                  </p>
+                ) : pagedExams.map((exam) => (
+                  <Button
+                    key={exam.id}
+                    type="button"
+                    variant="ghost"
+                    aria-haspopup="dialog"
+                    onClick={() => openClassDrawer(exam.id)}
+                    className="h-auto w-full justify-start gap-3 rounded-none px-4 py-4 text-left whitespace-normal shadow-none hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold text-gray-950 sm:text-base">{exam.name}</span>
+                      <span className="mt-1 block text-xs text-gray-500">{shortDate(exam.startDate)} – {shortDate(exam.endDate)}</span>
+                    </span>
+                    <ExamStatusBadge exam={exam} className="shrink-0 rounded-full border px-2.5 py-1 text-xs font-medium normal-case tracking-normal" />
+                    <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-gray-400" />
+                  </Button>
+                ))}
+              </div>
             </section>
             {!loading && sortedExams.length > 0 && (
-              <div className="mx-3 mt-3 flex flex-wrap items-center justify-center gap-3 text-sm text-gray-500 md:hidden">
-                <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(page - 1)} className="rounded-xl">
-                  <ChevronLeft className="h-4 w-4" /> Previous
-                </Button>
-                <span className="tabular-nums">{(page - 1) * pageSize + 1}–{Math.min(page * pageSize, sortedExams.length)} of {sortedExams.length}</span>
-                <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage(page + 1)} className="rounded-xl">
-                  Next <ChevronRight className="h-4 w-4" />
-                </Button>
-                <select
-                  aria-label="Exams per page"
-                  value={pageSize}
-                  onChange={(event) => setPageSize(Number(event.target.value))}
-                  className="h-8 rounded-lg border border-gray-200 bg-white px-2 text-xs text-gray-600"
-                >
-                  {PAGE_SIZE_OPTIONS.map((size) => <option key={size} value={size}>{size} per page</option>)}
-                </select>
+              <div className="mx-3 mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-500">
+                <span className="tabular-nums">
+                  {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, sortedExams.length)} of {sortedExams.length}
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <DrawerSelector
+                    title="Exams per page"
+                    options={PAGE_SIZE_OPTIONS.map((size) => ({ value: String(size), label: String(size) + " per page" }))}
+                    value={String(pageSize)}
+                    onChange={(value) => { setPageSize(Number(value)); setPage(1); }}
+                    className="w-32 shadow-none"
+                  />
+                  <Button type="button" variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(page - 1)} className="shadow-none">
+                    <ChevronLeft className="size-4" /> Previous
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage(page + 1)} className="shadow-none">
+                    Next <ChevronRight className="size-4" />
+                  </Button>
+                </div>
               </div>
             )}
           </>
         )}
       </div>
 
-      {showExamList && !drawerOpen && !classDrawerExamId && (
-        <Button
-          type="button"
-          size="lg"
-          onClick={openCreateDrawer}
-          className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-1/2 z-30 max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-full shadow-lg shadow-primary-900/20 md:hidden"
-        >
-          <Plus className="h-5 w-5" /> Create Exam
-        </Button>
-      )}
-
-      {/* ── Class Drawer (View Classes + Mark Entry) ── */}
-      <AnimatePresence>
+      <ResponsivePopover
+        open={classDrawerExam !== null}
+        onOpenChange={(open) => { if (!open) closeClassDrawer(); }}
+        fullHeight
+        showBackButton={false}
+        title="Class Reports & Entry"
+        description={classDrawerExam?.name}
+        className="shadow-none md:max-w-none"
+        contentClassName="flex min-h-0 flex-col p-0"
+      >
         {classDrawerExam && (
           <>
-            <motion.div
-              key="class-backdrop"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.3 }}
-              exit={{ opacity: 0 }}
-              onClick={closeClassDrawer}
-              className="fixed inset-0 bg-black z-40 backdrop-blur-xs pointer-events-auto"
-            />
-            <motion.div
-                            className="fixed top-0 right-0 h-full w-full   bg-white border-l border-gray-100 shadow-2xl z-50 pointer-events-auto flex flex-col"
-            >
-              <div className="flex items-center justify-between p-5 border-b border-gray-100">
-                <div className="min-w-0">
-                  <h2 className="text-lg font-extrabold text-gray-900 tracking-tight">
-                    Class Reports &amp; Entry
-                  </h2>
-                  <p className="text-xs text-gray-400 mt-1 truncate">
-                    {classDrawerExam.name}
-                  </p>
-                </div>
-                <button
-                  onClick={closeClassDrawer}
-                  className="p-1.5 hover:bg-gray-100 rounded-xl transition-colors text-gray-400 shrink-0"
-                >
-                  <X className="w-5.5 h-5.5" />
-                </button>
-              </div>
-
+            <div className="flex shrink-0 justify-end gap-2 border-b border-gray-100 px-5 py-3">
+              <Button type="button" variant="outline" className="shadow-none" onClick={() => { closeClassDrawer(); openEditDrawer(classDrawerExam); }}>Edit exam</Button>
+              <Button type="button" variant="destructive" className="shadow-none" onClick={() => { closeClassDrawer(); startDeleteExam(classDrawerExam); }}>Delete exam</Button>
+            </div>
               <div className="flex flex-1 overflow-hidden">
                 {/* Side tabs — desktop */}
                 <div className="hidden md:flex w-[200px] flex-col gap-1 pt-5 overflow-y-auto shrink-0 border-r border-b border-gray-100">
                   {classes.map((cls) => (
-                    <button
+                    <Button variant="ghost"
                       key={cls.id}
                       onClick={() => {
                         if (classDrawerExamId) {
@@ -983,7 +887,7 @@ export default function AdminExamsPage() {
                       )}
                     >
                       {cls.name}
-                    </button>
+                    </Button>
                   ))}
                 </div>
 
@@ -991,7 +895,7 @@ export default function AdminExamsPage() {
                   {/* Top tabs — mobile */}
                   <div className="flex overflow-x-auto gap-3 px-5 border-b border-gray-100 md:hidden">
                     {classes.map((cls) => (
-                      <button
+                      <Button variant="ghost"
                         key={cls.id}
                         onClick={() => {
                           if (classDrawerExamId) {
@@ -1006,7 +910,7 @@ export default function AdminExamsPage() {
                         )}
                       >
                         {cls.name}
-                      </button>
+                      </Button>
                     ))}
                   </div>
 
@@ -1026,30 +930,30 @@ export default function AdminExamsPage() {
                       {/* Contained tabs */}
                       <div className="px-5 shrink-0">
                         <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
-                          <button
+                          <Button variant="ghost"
                             onClick={() => setContentTab("markentry")}
                             className={cn(
                               "px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-1.5",
                               contentTab === "markentry"
-                                ? "bg-white text-primary-700 shadow-sm"
+                                ? "bg-white text-primary-700 shadow-none"
                                 : "text-gray-500 hover:text-gray-700",
                             )}
                           >
                             <PenLine className="w-4 h-4" />
                             Mark Entry
-                          </button>
-                          <button
+                          </Button>
+                          <Button variant="ghost"
                             onClick={() => setContentTab("report")}
                             className={cn(
                               "px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-1.5",
                               contentTab === "report"
-                                ? "bg-white text-primary-700 shadow-sm"
+                                ? "bg-white text-primary-700 shadow-none"
                                 : "text-gray-500 hover:text-gray-700",
                             )}
                           >
                             <BarChart2 className="w-4 h-4" />
                             Report
-                          </button>
+                          </Button>
                         </div>
                       </div>
 
@@ -1112,28 +1016,28 @@ export default function AdminExamsPage() {
 
                               {/* Actions */}
                               <div className="flex items-center gap-2 flex-wrap">
-                                <button
+                                <Button variant="ghost"
                                   onClick={handleCompute}
                                   disabled={computing}
-                                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold disabled:opacity-50 transition-all shadow-sm"
+                                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold disabled:opacity-50 transition-all shadow-none"
                                 >
                                   {computing
                                     ? <Loader2 className="w-4 h-4 animate-spin" />
                                     : <RefreshCw className="w-4 h-4" />}
                                   Compute Grades
-                                </button>
-                                <button
+                                </Button>
+                                <Button variant="ghost"
                                   onClick={() => setImportOpen(true)}
-                                  className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 bg-white hover:bg-gray-50 transition-colors shadow-xs"
+                                  className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 bg-white hover:bg-gray-50 transition-colors shadow-none"
                                 >
                                   <FileSpreadsheet className="w-4 h-4 text-primary-600" />
                                   Import Excel
-                                </button>
+                                </Button>
                               </div>
 
                               {/* Report content */}
                               {reportLoading ? (
-                                <><SkeletonGrid count={4} className="mb-4 sm:grid-cols-4" /><TableSkeleton /></>
+                                <><SkeletonGrid count={4} className="mb-4 sm:grid-cols-2" /><TableSkeleton /></>
                               ) : reportError ? (
                                 <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm bg-red-50 text-red-700 border border-red-100">
                                   <AlertCircle className="w-4 h-4" />
@@ -1141,18 +1045,17 @@ export default function AdminExamsPage() {
                                 </div>
                               ) : reportData ? (
                                 <div className="space-y-4">
-                                  {/* Stats cards */}
-                                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                                  <div className="grid grid-cols-2 overflow-hidden rounded-2xl bg-gradient-to-br from-primary-50/60 via-white to-sky-50/60">
                                     {[
-                                      { label: "Total Students", value: reportData.stats.totalStudents, color: "text-gray-800", bg: "bg-gray-50" },
-                                      { label: "Passed", value: reportData.stats.passedCount, color: "text-primary-700", bg: "bg-primary-50" },
-                                      { label: "Failed", value: reportData.stats.failedCount, color: "text-red-700", bg: "bg-red-50" },
-                                      { label: "Ranked", value: reportData.stats.rankedCount, color: "text-primary-700", bg: "bg-primary-50" },
-                                      { label: "Class Average", value: `${reportData.stats.classAverage.toFixed(1)}%`, color: "text-teal-700", bg: "bg-teal-50" },
-                                    ].map(({ label, value, color, bg }) => (
-                                      <div key={label} className={cn("rounded-xl p-4 text-center", bg)}>
-                                        <div className={cn("text-2xl font-bold", color)}>{value}</div>
-                                        <div className="text-xs text-gray-500 mt-0.5">{label}</div>
+                                      { label: "Total students", value: reportData.stats.totalStudents, icon: GraduationCap },
+                                      { label: "Passed", value: reportData.stats.passedCount, icon: CheckCircle2 },
+                                      { label: "Failed", value: reportData.stats.failedCount, icon: AlertCircle },
+                                      { label: "Ranked", value: reportData.stats.rankedCount, icon: Trophy },
+                                      { label: "Class average", value: `${reportData.stats.classAverage.toFixed(1)}%`, icon: BarChart2 },
+                                    ].map(({ label, value, icon: Icon }, index) => (
+                                      <div key={label} className={cn("min-w-0 p-2.5 sm:p-3", index % 2 === 0 && "border-r border-gray-100", index < 4 && "border-b border-gray-100")}>
+                                        <div className="flex items-center gap-1.5 text-sm font-medium leading-4 text-gray-700"><Icon aria-hidden="true" className="size-3.5 shrink-0" />{label}</div>
+                                        <span className="mt-1.5 block text-[22px] font-medium leading-none tabular-nums text-gray-950">{value}</span>
                                       </div>
                                     ))}
                                   </div>
@@ -1165,7 +1068,7 @@ export default function AdminExamsPage() {
                                       { key: "status" as ReportTab, label: "Final Status" },
                                       { key: "posters" as ReportTab, label: "Rank Posters" },
                                     ]).map(({ key, label }) => (
-                                      <button key={key} onClick={() => { setReportTab(key); setMarklistStudId(null); setPosterStudentId(null); }}
+                                      <Button variant="ghost" key={key} onClick={() => { setReportTab(key); setMarklistStudId(null); setPosterStudentId(null); }}
                                         className={cn(
                                           "px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap",
                                           reportTab === key
@@ -1173,7 +1076,7 @@ export default function AdminExamsPage() {
                                             : "text-gray-500 border-transparent hover:text-gray-700",
                                         )}>
                                         {label}
-                                      </button>
+                                      </Button>
                                     ))}
                                   </div>
 
@@ -1261,10 +1164,9 @@ export default function AdminExamsPage() {
                   )}
                 </div>
               </div>
-            </motion.div>
           </>
         )}
-      </AnimatePresence>
+      </ResponsivePopover>
 
       {/* Create / Edit Exam */}
       <ResponsivePopover
@@ -1277,14 +1179,14 @@ export default function AdminExamsPage() {
         side="bottom"
         title={drawerMode === "create" ? "Create New Exam" : "Edit Exam"}
         description="Define dates and configuration for term exams"
-        className="mx-auto w-full max-w-xl rounded-t-2xl"
+        className="mx-auto w-full max-w-xl rounded-t-2xl shadow-none"
         showCloseButton={!submitting}
         footer={
           <div className="flex justify-end gap-2 border-t border-gray-100 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-            <Button type="button" variant="outline" size="lg" className="rounded-xl" disabled={submitting} onClick={() => setDrawerOpen(false)}>
+            <Button type="button" variant="outline" size="lg" className="rounded-xl shadow-none" disabled={submitting} onClick={() => setDrawerOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" form="admin-exam-form" size="lg" className="rounded-xl" disabled={submitting}>
+            <Button type="submit" form="admin-exam-form" size="lg" className="rounded-xl shadow-none" disabled={submitting}>
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
               {drawerMode === "create" ? "Create Exam" : "Save Changes"}
             </Button>
@@ -1392,59 +1294,26 @@ export default function AdminExamsPage() {
         </form>
       </ResponsivePopover>
 
-      {/* Delete Exam Confirm Dialog */}
-      <AnimatePresence>
-        {showDeleteExamConfirm && deleteExamTarget && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.5 }}
-              exit={{ opacity: 0 }}
-              onClick={() => !deletingId && setShowDeleteExamConfirm(false)}
-              className="fixed inset-0 bg-black z-50 backdrop-blur-xs pointer-events-auto"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-[60] bg-white rounded-3xl p-6 max-w-sm mx-auto shadow-2xl pointer-events-auto"
-            >
-              <div className="text-center space-y-3">
-                <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
-                  <Trash2 className="w-6 h-6 animate-bounce" />
-                </div>
-                <h3 className="font-bold text-gray-900 text-base">
-                  Delete Exam?
-                </h3>
-                <p className="text-xs text-gray-500 leading-relaxed">
-                  Are you sure you want to delete exam{" "}
-                  <strong>{deleteExamTarget.name}</strong>? This action cannot
-                  be undone.
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-3 mt-6">
-                <button
-                  onClick={() => setShowDeleteExamConfirm(false)}
-                  disabled={deletingId !== null}
-                  className="py-2.5 rounded-xl border border-gray-200 text-gray-600 font-bold text-xs hover:bg-gray-50 transition-colors disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDeleteExam}
-                  disabled={deletingId !== null}
-                  className="py-2.5 rounded-xl bg-rose-600 text-white font-bold text-xs hover:bg-rose-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-1"
-                >
-                  {deletingId !== null && (
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                  )}
-                  {deletingId !== null ? "Deleting…" : "Delete"}
-                </button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      <ResponsivePopover
+        open={showDeleteExamConfirm && deleteExamTarget !== null}
+        onOpenChange={(open) => { if (!open && deletingId === null) setShowDeleteExamConfirm(false); }}
+        title="Delete exam?"
+        description={deleteExamTarget ? "Deleting " + deleteExamTarget.name + " cannot be undone." : undefined}
+        side="bottom"
+        desktopView="right-drawer"
+        className="shadow-none"
+        contentClassName="px-5 py-4"
+        footer={
+          <div className="flex gap-3 border-t border-gray-100 bg-white px-5 py-4">
+            <Button type="button" variant="outline" disabled={deletingId !== null} onClick={() => setShowDeleteExamConfirm(false)} className="flex-1 shadow-none">Cancel</Button>
+            <Button type="button" variant="destructive" disabled={deletingId !== null} onClick={handleDeleteExam} className="flex-1 shadow-none">
+              {deletingId !== null && <Loader2 className="size-4 animate-spin" />} Delete
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-sm text-gray-600">Delete <strong>{deleteExamTarget?.name}</strong>?</p>
+      </ResponsivePopover>
     </DashboardLayout>
   );
 }

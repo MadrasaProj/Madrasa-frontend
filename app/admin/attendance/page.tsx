@@ -1,589 +1,497 @@
-import { Skeleton } from "@/components/ui/Skeleton";
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { useLocation } from "react-router-dom";
-import { DashboardLayout } from "@/components/DashboardLayout";
-import { PageHeader, SectionHeader } from "@/components/ui/PageHeader";
-import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
-import { type ClassRecord } from "@/lib/classes-api";
-import { useClasses } from "@/lib/queries";
-import { getStudents } from "@/lib/students-api";
-import {
-  getClassAttendance,
-  bulkUpsertAttendance,
-  bulkDeleteAttendance,
-  type AttendanceStatus,
-  type ClassAttendanceRecord,
-} from "@/lib/attendance-api";
-import { useAuthStore } from "@/store/auth";
-import {
-  ClipboardList,
-  ChevronLeft,
-  ChevronRight,
-  Save,
-  Loader2,
-  GraduationCap,
-  CheckCircle2,
-  Trash2,
-  AlertCircle,
-  FileSpreadsheet,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { SkeletonList } from "@/components/ui/Skeleton";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { CheckCircle2, FileSpreadsheet, School, UserCheck } from "lucide-react";
 import { toast } from "sonner";
+import { DashboardLayout } from "@/components/DashboardLayout";
+import { DrawerSelector } from "@/components/DrawerSelector";
+import { ScrollableDateNavigator } from "@/components/ScrollableDateNavigator";
 import { AttendanceImportModal } from "@/components/attendance/AttendanceImportModal";
-
-const STATUS_CONFIG: Record<
-  string,
-  { label: string; short: string; bg: string; text: string }
-> = {
-  PRESENT: {
-    label: "Present",
-    short: "P",
-    bg: "bg-primary-100",
-    text: "text-primary-700",
-  },
-  ABSENT: {
-    label: "Absent",
-    short: "A",
-    bg: "bg-red-100",
-    text: "text-red-600",
-  },
-  LEAVE: {
-    label: "Leave",
-    short: "L",
-    bg: "bg-amber-100",
-    text: "text-amber-700",
-  },
-  SICK: { label: "Sick", short: "S", bg: "bg-blue-100", text: "text-blue-700" },
-};
-const ACTIVE_STATUSES = ["PRESENT", "ABSENT", "LEAVE", "SICK"] as const;
-type ActiveStatus = (typeof ACTIVE_STATUSES)[number];
+import { AttendanceSemiCircle, StudentAttendanceRadial } from "@/components/attendance/AttendanceSummaryCharts";
+import { AttendanceEditorContent, type ActiveStatus } from "@/components/teacher/AttendanceEditorContent";
+import { StudentAttendanceDrawer } from "@/components/teacher/StudentAttendanceDrawer";
+import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
+import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { bulkDeleteAttendance, bulkUpsertAttendance, getClassAttendance, type AttendanceStatus } from "@/lib/attendance-api";
+import { t } from "@/lib/i18n";
+import { queryKeys } from "@/lib/queryKeys";
+import { useClassAttendanceSummary, useClasses } from "@/lib/queries";
+import type { ClassAttendanceSummary } from "@/lib/reports-api";
+import { getStudents } from "@/lib/students-api";
+import { useAuthStore } from "@/store/auth";
+import { useLanguageStore } from "@/store/language";
 
 function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  const date = new Date();
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 interface LocalRecord {
   attendanceId?: string;
   status: AttendanceStatus | null;
+  notes: string;
+  lateComing: boolean;
+  lateComingTime: string;
   dirty: boolean;
 }
 
 export default function AdminAttendancePage() {
   const { user, accessToken, activeClientId } = useAuthStore();
-  const { pathname } = useLocation();
-
+  const { lang } = useLanguageStore();
+  const queryClient = useQueryClient();
   const cid = activeClientId ?? "";
   const token = accessToken ?? "";
-
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [date, setDate] = useState(todayISO());
-  const [activeClassId, setActiveClassId] = useState<string | null>(null);
-  const [students, setStudents] = useState<
-    { id: string; name: string; adno: string; gender?: string }[]
-  >([]);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [students, setStudents] = useState<{
+    id: string;
+    name: string;
+    adno: string;
+    gender?: string;
+    photoUrl?: string | null;
+  }[]>([]);
   const [records, setRecords] = useState<Map<string, LocalRecord>>(new Map());
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
-  const [showImport, setShowImport] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<{
+    classId: string;
+    student: ClassAttendanceSummary["students"][number];
+  } | null>(null);
+  const [studentDrawerOpen, setStudentDrawerOpen] = useState(false);
+  const saveSuccessTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load classes using cached query hook
-  const { data: classesData, isLoading: classesLoading } = useClasses({
-    clientId: cid,
-    token,
-  });
-  const classes = classesData ?? [];
+  useEffect(() => () => {
+    if (saveSuccessTimer.current) clearTimeout(saveSuccessTimer.current);
+  }, []);
 
-  // Load attendance + students lazily when class OR date changes
-  const loadAttendance = useCallback(
-    async (classId: string, dateStr: string, signal?: AbortSignal) => {
-      if (!cid || !token || !classId) return;
-      setLoading(true);
-      setError(null);
-
-      try {
-        const [attendanceRes, studentsRes] = await Promise.all([
-          getClassAttendance(
-            cid,
-            token,
-            {
-              date: dateStr,
-              classId,
-              ...(user?.defaultAcademicYearId
-                ? { academicYearId: user.defaultAcademicYearId }
-                : {}),
-              take: 500,
-            },
-            signal,
-          ),
-          getStudents(cid, token, {
-            classId,
-            status: "ACTIVE",
-            limit: 500,
-            signal,
-          }),
-        ]);
-
-        const map = new Map<string, LocalRecord>();
-        for (const s of studentsRes.data) {
-          map.set(s.id, { status: null, dirty: false });
-        }
-        for (const rec of attendanceRes.records) {
-          map.set(rec.student.id, {
-            attendanceId: rec.id,
-            status: rec.status,
-            dirty: false,
-          });
-        }
-        setStudents(
-          studentsRes.data.map((s) => ({
-            id: s.id,
-            name: s.name,
-            adno: s.adno,
-            gender: s.gender ?? undefined,
-          })),
-        );
-        setRecords(map);
-      } catch (e) {
-        if ((e as Error).name === "AbortError") return;
-        setError((e as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [cid, token, user?.defaultAcademicYearId],
+  const classesQuery = useClasses({ clientId: cid, token });
+  const classes = classesQuery.data ?? [];
+  const activeClass = classes.find((cls) => cls.id === selectedClassId) ?? classes[0] ?? null;
+  const activeClassId = activeClass?.id ?? "";
+  const overallAttendance = useClassAttendanceSummary(
+    { clientId: cid, token },
+    activeClassId,
+    { refetchOnMount: "always" },
   );
+  const overall = overallAttendance.data;
+  const overallAbsent = overall?.byStatus.find((entry) => entry.status === "ABSENT")?._count.id ?? 0;
+  const overallOther = Math.max(0, (overall?.total ?? 0) - (overall?.present ?? 0) - overallAbsent);
+  const overallRate = Math.max(0, Math.min(100, overall?.rate ?? 0));
+
+  const loadAttendance = useCallback(async (classId: string, dateStr: string, signal?: AbortSignal) => {
+    if (!cid || !token || !classId) return;
+    setLoading(true);
+    setError(null);
+    setStudents([]);
+    setRecords(new Map());
+    try {
+      const [attendanceRes, studentsRes] = await Promise.all([
+        getClassAttendance(cid, token, {
+          date: dateStr,
+          classId,
+          ...(user?.defaultAcademicYearId ? { academicYearId: user.defaultAcademicYearId } : {}),
+          take: 500,
+        }, signal),
+        getStudents(cid, token, { classId, status: "ACTIVE", limit: 500, signal }),
+      ]);
+      if (signal?.aborted) return;
+      const next = new Map<string, LocalRecord>();
+      for (const student of studentsRes.data) {
+        next.set(student.id, {
+          status: null,
+          notes: "",
+          lateComing: false,
+          lateComingTime: "",
+          dirty: false,
+        });
+      }
+      for (const record of attendanceRes.records) {
+        next.set(record.student.id, {
+          attendanceId: record.id,
+          status: record.status,
+          notes: record.notes ?? "",
+          lateComing: record.lateComing ?? false,
+          lateComingTime: record.lateComingTime ?? "",
+          dirty: false,
+        });
+      }
+      setStudents(studentsRes.data.map((student) => ({
+        id: student.id,
+        name: student.name,
+        adno: student.adno,
+        gender: student.gender ?? undefined,
+        photoUrl: student.photoUrl ?? student.photo,
+      })));
+      setRecords(next);
+    } catch (cause) {
+      if (signal?.aborted || (cause as Error).name === "AbortError") return;
+      setError((cause as Error).message);
+    } finally {
+      if (!signal?.aborted) setLoading(false);
+    }
+  }, [cid, token, user?.defaultAcademicYearId]);
 
   useEffect(() => {
-    const ac = new AbortController();
-    if (activeClassId) loadAttendance(activeClassId, date, ac.signal);
+    const controller = new AbortController();
+    setSaveError(null);
+    setSaveSuccess(false);
+    setConfirmClear(false);
+    if (activeClassId) void loadAttendance(activeClassId, date, controller.signal);
     else {
+      setLoading(false);
       setStudents([]);
       setRecords(new Map());
     }
-    return () => ac.abort();
+    return () => controller.abort();
   }, [activeClassId, date, loadAttendance]);
 
   const setStatus = (studentId: string, status: ActiveStatus) => {
-    setRecords((prev) => {
-      const next = new Map(prev);
-      const existing = next.get(studentId) ?? { status: null, dirty: false };
-      next.set(studentId, { ...existing, status, dirty: true });
+    setRecords((previous) => {
+      const next = new Map(previous);
+      const current = next.get(studentId);
+      if (!current) return previous;
+      next.set(studentId, {
+        ...current,
+        status,
+        notes: status === "PRESENT" ? "" : current.notes,
+        lateComing: status === "PRESENT" ? current.lateComing : false,
+        lateComingTime: status === "PRESENT" ? current.lateComingTime : "",
+        dirty: true,
+      });
+      return next;
+    });
+    setSaveSuccess(false);
+  };
+
+  const setNotes = (studentId: string, notes: string) => {
+    setRecords((previous) => {
+      const next = new Map(previous);
+      const current = next.get(studentId);
+      if (current) next.set(studentId, { ...current, notes, dirty: true });
+      return next;
+    });
+    setSaveSuccess(false);
+  };
+
+  const setLateComing = (studentId: string, lateComing: boolean, lateComingTime?: string) => {
+    setRecords((previous) => {
+      const next = new Map(previous);
+      const current = next.get(studentId);
+      if (current) next.set(studentId, {
+        ...current,
+        lateComing,
+        lateComingTime: lateComing ? (lateComingTime ?? current.lateComingTime) : "",
+        dirty: true,
+      });
       return next;
     });
     setSaveSuccess(false);
   };
 
   const markAll = (status: ActiveStatus) => {
-    setRecords((prev) => {
-      const next = new Map(prev);
-      for (const [sid] of next)
-        next.set(sid, { ...next.get(sid)!, status, dirty: true });
+    setRecords((previous) => {
+      const next = new Map(previous);
+      for (const [studentId, record] of next) {
+        next.set(studentId, {
+          ...record,
+          status,
+          notes: status === "PRESENT" ? "" : record.notes,
+          lateComing: false,
+          lateComingTime: "",
+          dirty: true,
+        });
+      }
       return next;
     });
     setSaveSuccess(false);
   };
 
+  const hasDirty = useMemo(() => [...records.values()].some((record) => record.dirty), [records]);
+  const hasExisting = useMemo(() => [...records.values()].some((record) => !!record.attendanceId), [records]);
+  const summary = useMemo(() => {
+    const counts: Record<string, number> = { PRESENT: 0, ABSENT: 0, LEAVE: 0, SICK: 0, UNMARKED: 0 };
+    for (const record of records.values()) {
+      if (record.status && counts[record.status] !== undefined) counts[record.status]++;
+      else counts.UNMARKED++;
+    }
+    return counts;
+  }, [records]);
+  const pct = records.size > 0 ? Math.round((summary.PRESENT / records.size) * 100) : 0;
+
+  const invalidateAttendance = useCallback(async (classId: string) => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.reports.attendanceSummary(cid) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.reports.classAttendanceSummary(cid, classId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all }),
+    ]);
+  }, [cid, queryClient]);
+
   const clearAll = async () => {
-    if (!activeClassId) return;
+    if (!activeClassId || !cid || !token) return;
     setSaving(true);
+    setSaveError(null);
     try {
       await bulkDeleteAttendance(cid, token, { date, classId: activeClassId });
       toast.success("Attendance cleared successfully");
-      await loadAttendance(activeClassId, date);
-    } catch (e) {
-      setSaveError((e as Error).message);
-      toast.error((e as Error).message || "Failed to clear attendance");
+      await Promise.all([loadAttendance(activeClassId, date), invalidateAttendance(activeClassId)]);
+    } catch (cause) {
+      const message = (cause as Error).message || "Failed to clear attendance";
+      setSaveError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
       setConfirmClear(false);
     }
   };
 
-  const hasDirty = useMemo(() => {
-    for (const r of records.values()) if (r.dirty) return true;
-    return false;
-  }, [records]);
-
-  const hasExisting = useMemo(() => {
-    for (const r of records.values()) if (r.attendanceId) return true;
-    return false;
-  }, [records]);
-
   const saveAll = async () => {
     if (!activeClassId || !cid || !token) return;
+    const entries = [...records.entries()].filter(([, record]) => record.status !== null).map(([studentId, record]) => ({
+      studentId,
+      status: record.status as AttendanceStatus,
+      notes: record.notes,
+      lateComing: record.status === "PRESENT" && record.lateComing,
+      lateComingTime: record.status === "PRESENT" && record.lateComing ? record.lateComingTime || null : null,
+    }));
+    if (entries.length === 0) return;
     setSaving(true);
     setSaveError(null);
     try {
-      const entries: { studentId: string; status: AttendanceStatus }[] = [];
-      for (const [sid, rec] of records) {
-        if (rec.status !== null)
-          entries.push({ studentId: sid, status: rec.status });
-      }
-      if (entries.length === 0) {
-        setSaving(false);
-        return;
-      }
-
       await bulkUpsertAttendance(cid, token, {
         classId: activeClassId,
         date,
-        ...(user?.defaultAcademicYearId
-          ? { academicYearId: user.defaultAcademicYearId }
-          : {}),
+        ...(user?.defaultAcademicYearId ? { academicYearId: user.defaultAcademicYearId } : {}),
         records: entries,
-      });
-
-      setRecords((prev) => {
-        const next = new Map(prev);
-        for (const [sid, rec] of next) next.set(sid, { ...rec, dirty: false });
-        return next;
       });
       setSaveSuccess(true);
       toast.success("Attendance saved successfully");
-      setTimeout(() => setSaveSuccess(false), 3000);
-      await loadAttendance(activeClassId, date);
-    } catch (e) {
-      setSaveError((e as Error).message);
-      toast.error((e as Error).message || "Failed to save attendance");
+      if (saveSuccessTimer.current) clearTimeout(saveSuccessTimer.current);
+      saveSuccessTimer.current = setTimeout(() => setSaveSuccess(false), 3000);
+      await Promise.all([loadAttendance(activeClassId, date), invalidateAttendance(activeClassId)]);
+    } catch (cause) {
+      const message = (cause as Error).message || "Failed to save attendance";
+      setSaveError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }
   };
 
-  const summary = useMemo(() => {
-    const counts: Record<string, number> = {
-      PRESENT: 0,
-      ABSENT: 0,
-      LEAVE: 0,
-      SICK: 0,
-      UNMARKED: 0,
-    };
-    for (const r of records.values()) {
-      if (r.status && counts[r.status] !== undefined) counts[r.status]++;
-      else if (!r.status) counts.UNMARKED++;
-    }
-    return counts;
-  }, [records]);
-
-  const changeDate = (delta: number) => {
-    const d = new Date(date);
-    d.setDate(d.getDate() + delta);
-    setDate(d.toISOString().slice(0, 10));
-  };
-
-  const activeClass = classes.find((c) => c.id === activeClassId);
+  const classSelector = (iconOnly: boolean) => (
+    <DrawerSelector
+      title="Select class"
+      value={activeClassId}
+      onChange={setSelectedClassId}
+      options={classes.map((cls) => ({ value: cls.id, label: cls.name }))}
+      placeholder={classesQuery.isLoading ? "Loading classes…" : "No classes found"}
+      disabled={saving || classesQuery.isLoading}
+      triggerIcon={iconOnly ? <School className="size-5" /> : undefined}
+      className={iconOnly ? "h-14 w-12" : "h-11 min-w-40 max-w-64"}
+    />
+  );
 
   return (
     <DashboardLayout>
-      <PageHeader
-        title="Attendance"
-        subtitle={
-          activeClassId
-            ? `${activeClass?.name ?? ""} · ${records.size} students`
-            : "Select a class"
-        }
-        icon={ClipboardList}
-        showActionOnMobile
-        action={
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() => setShowImport(true)}
-              className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors shadow-xs cursor-pointer"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-primary-600" />
-              <span>Import Previous Month</span>
-            </button>
-            {hasDirty ? (
-              <button
-                onClick={saveAll}
-                disabled={saving}
-                className="flex items-center gap-1.5 bg-primary-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-700 disabled:opacity-60 transition-colors"
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" /> Saving…
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" /> Save
-                  </>
-                )}
-              </button>
-            ) : saveSuccess ? (
-              <span className="flex items-center gap-1 text-primary-600 text-sm font-semibold">
-                <CheckCircle2 className="w-4 h-4" /> Saved
-              </span>
-            ) : null}
-            {hasExisting && (
-              <button
-                onClick={() => setConfirmClear(true)}
-                className="flex items-center gap-1.5 bg-red-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-600 transition-colors"
-              >
-                <Trash2 className="w-4 h-4" /> Clear All
-              </button>
-            )}
-          </div>
-        }
-      />
+      <PageHeader title="Attendance" />
 
-      {error && (
-        <ApiErrorBanner
-          message={error}
-          onRetry={
-            activeClassId
-              ? () => loadAttendance(activeClassId, date)
-              : undefined
-          }
+      <div className="px-4! pt-4! pb-28! lg:pb-24!">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          {classSelector(false)}
+          <Button type="button" variant="outline" className="gap-2 shadow-none" onClick={() => setShowImport(true)}>
+            <FileSpreadsheet className="size-4 text-primary-600" />
+            Import Previous Month
+          </Button>
+        </div>
+
+        <section aria-labelledby="attendance-snapshot-title" className="overflow-hidden rounded-2xl bg-gradient-to-br from-white to-sky-50">
+          <h2 id="attendance-snapshot-title" className="border-b border-gray-100 px-4 py-3 text-base font-semibold text-gray-900 sm:px-5">
+            {t("teacherPages", "attendanceSnapshot", lang)}
+          </h2>
+          {classesQuery.isLoading || (activeClassId && overallAttendance.isLoading) ? (
+            <div className="space-y-4 bg-white/90 p-5" aria-busy="true">
+              <Skeleton className="mx-auto h-24 w-full max-w-52 rounded-t-full" />
+              <Skeleton className="mx-auto h-3 w-48" />
+              <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4">
+                <Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" />
+              </div>
+            </div>
+          ) : classesQuery.isError ? (
+            <div className="p-4"><ApiErrorBanner message={classesQuery.error.message} onRetry={() => { void classesQuery.refetch(); }} /></div>
+          ) : !activeClassId ? (
+            <p className="p-5 text-sm text-gray-600">{t("teacherPages", "selectClassView", lang)}</p>
+          ) : overallAttendance.isError ? (
+            <div className="p-4"><ApiErrorBanner message={overallAttendance.error.message} onRetry={() => { void overallAttendance.refetch(); }} /></div>
+          ) : (
+            <div className="bg-white/90">
+              <div className="px-4 py-4 text-center sm:py-5">
+                <AttendanceSemiCircle
+                  segments={[
+                    { key: "present", value: overall?.present ?? 0 },
+                    { key: "absent", value: overallAbsent },
+                    { key: "other", value: overallOther },
+                  ]}
+                  value={String(overall?.total ?? 0)}
+                  label={t("teacherPages", "totalRecords", lang)}
+                  description={`${t("teacherPages", "attendanceSnapshot", lang)}: ${overall?.total ?? 0} ${t("teacherPages", "totalRecords", lang)}, ${overall?.present ?? 0} ${t("common", "present", lang)}, ${overallAbsent} ${t("common", "absent", lang)}, ${overallOther} ${t("teacherPages", "otherAttendance", lang)}`}
+                />
+                <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-gray-600">
+                  <span><span className="mr-1 inline-block size-2 rounded-full bg-emerald-600" />{t("common", "present", lang)}</span>
+                  <span><span className="mr-1 inline-block size-2 rounded-full bg-red-600" />{t("common", "absent", lang)}</span>
+                  <span><span className="mr-1 inline-block size-2 rounded-full bg-amber-500" />{t("teacherPages", "otherAttendance", lang)}</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-px border-t border-gray-100 bg-gray-100">
+                <div className="bg-white/90 p-2.5 sm:p-3">
+                  <p className="text-sm font-medium text-gray-600">{t("teacherPages", "attendanceTotalDays", lang)}</p>
+                  <strong className="block text-2xl font-semibold tabular-nums text-gray-950">{overall?.totalDays ?? "—"}</strong>
+                </div>
+                <div className="bg-white/90 p-2.5 sm:p-3">
+                  <p className="text-sm font-medium text-gray-600">{t("teacherPages", "attendanceAverage", lang)}</p>
+                  <strong className="block text-2xl font-semibold tabular-nums text-gray-950">{overallRate}%</strong>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+
+        <section aria-labelledby="student-attendance-title" className="mt-4 overflow-hidden rounded-2xl bg-white">
+          <h2 id="student-attendance-title" className="border-b border-gray-100 px-4 py-3 text-base font-semibold text-gray-900 sm:px-5">
+            {t("teacherPages", "studentAttendanceTitle", lang)}
+          </h2>
+          {classesQuery.isLoading || (activeClassId && overallAttendance.isLoading) ? (
+            <div className="divide-y divide-gray-100" aria-busy="true">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="flex items-center gap-3 px-4 py-4 sm:px-5">
+                  <Skeleton className="h-5 min-w-0 max-w-40 flex-1" /><Skeleton className="h-5 w-14" /><Skeleton className="h-9 w-14 rounded-t-full" />
+                </div>
+              ))}
+            </div>
+          ) : classesQuery.isError ? (
+            <div className="p-4"><ApiErrorBanner message={classesQuery.error.message} onRetry={() => { void classesQuery.refetch(); }} /></div>
+          ) : !activeClassId ? (
+            <p className="p-5 text-sm text-gray-600">{t("teacherPages", "selectClassView", lang)}</p>
+          ) : overallAttendance.isError ? (
+            <div className="p-4"><ApiErrorBanner message={overallAttendance.error.message} onRetry={() => { void overallAttendance.refetch(); }} /></div>
+          ) : !overall?.students.length ? (
+            <p className="p-5 text-sm text-gray-600">{t("teacherPages", "noActiveStudents", lang)}</p>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {overall.students.map((student) => (
+                <button
+                  key={student.id}
+                  type="button"
+                  onClick={() => { setSelectedStudent({ classId: activeClassId, student }); setStudentDrawerOpen(true); }}
+                  className="flex w-full min-w-0 items-center gap-3 px-4 py-4 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-600 sm:px-5"
+                >
+                  <p className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-900" title={`${student.name} · ${student.adno}`}>
+                    {student.name} <span className="text-xs font-normal text-gray-500">· {student.adno}</span>
+                  </p>
+                  <span className="shrink-0 text-sm font-medium tabular-nums text-gray-600">
+                    {student.presentDays}/{student.totalDays}<span className="hidden sm:inline"> {t("teacherPages", "daysLabel", lang)}</span>
+                  </span>
+                  <StudentAttendanceRadial
+                    rate={student.rate}
+                    description={`${student.name}: ${student.rate === null ? t("teacherPages", "noAttendanceRecords", lang) : `${student.rate}%`}`}
+                  />
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+
+      {selectedStudent?.classId === activeClassId && (
+        <StudentAttendanceDrawer
+          key={`${selectedStudent.classId}-${selectedStudent.student.id}`}
+          student={selectedStudent.student}
+          open={studentDrawerOpen}
+          classId={selectedStudent.classId}
+          clientId={cid}
+          token={token}
+          onClose={() => setStudentDrawerOpen(false)}
         />
       )}
 
-      {/* Date nav */}
-      <div className="flex items-center justify-between bg-white rounded-2xl border border-gray-100 px-4 py-3 mb-4">
-        <button
-          onClick={() => changeDate(-1)}
-          className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50"
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </button>
-        <div className="flex items-center gap-3">
-          <input
-            type="date"
-            value={date}
-            max={todayISO()}
-            onChange={(e) => setDate(e.target.value)}
-            className="text-sm font-semibold text-gray-800 bg-transparent border-none focus:outline-none cursor-pointer"
-          />
-          {date === todayISO() && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary-100 text-primary-700">
-              TODAY
-            </span>
+      {!editorOpen && (
+        <div className="fixed bottom-[92px] left-1/2 z-40 w-max -translate-x-1/2 lg:bottom-6">
+          <Button type="button" size="lg" className="gap-2 rounded-full shadow-lg shadow-primary-900/20" onClick={() => setEditorOpen(true)}>
+            <UserCheck aria-hidden="true" className="size-4" />
+            {t("teacherPages", "markAttendanceDesc", lang)}
+          </Button>
+        </div>
+      )}
+
+      <ResponsivePopover
+        open={editorOpen}
+        onOpenChange={setEditorOpen}
+        title={t("teacherPages", "markAttendanceDesc", lang)}
+        fullHeight
+        className="md:max-w-none shadow-none"
+        contentClassName="px-5 py-6 sm:px-6"
+      >
+        <div className="mx-auto max-w-2xl pb-8">
+          <div className="mb-6 space-y-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <ScrollableDateNavigator date={date} onDateChange={setDate} pickerTitle="Choose attendance date" disabled={saving} hideCalendarButton />
+              {classSelector(true)}
+            </div>
+            <div className="flex items-center justify-between gap-3 text-sm font-medium text-gray-500">
+              <span>{new Date(`${date}T00:00:00`).toLocaleDateString(lang === "ml" ? "ml-IN" : "en-GB", { day: "numeric", month: "long", year: "numeric" })}</span>
+              <span className="truncate text-right">{activeClass?.name ?? "No classes found"}</span>
+            </div>
+          </div>
+          {error && <ApiErrorBanner message={error} onRetry={() => { if (activeClassId) void loadAttendance(activeClassId, date); }} />}
+          {classesQuery.isError && <ApiErrorBanner message={classesQuery.error.message} onRetry={() => { void classesQuery.refetch(); }} />}
+          {saveSuccess && <p role="status" className="mb-4 flex items-center gap-1 text-sm font-semibold text-primary-600"><CheckCircle2 className="size-4" />{t("teacherPages", "saved", lang)}</p>}
+          {activeClassId && !loading && students.length > 0 && (
+            <div className="mb-3 rounded-lg bg-gradient-to-r from-primary-50/50 to-sky-50/50 px-4 py-3 text-sm">
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-1 font-semibold">
+                <span className="text-emerald-700">{t("teacherPages", "present", lang)}: {summary.PRESENT}</span>
+                <span className="text-red-700">{t("teacherPages", "absent", lang)}: {summary.ABSENT + summary.LEAVE + summary.SICK}</span>
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                {t("teacherPages", "unapprovedAbsence", lang)} {summary.ABSENT} · {t("teacherPages", "approvedLeave", lang)} {summary.LEAVE} · {t("teacherPages", "sickLeave", lang)} {summary.SICK}
+              </p>
+            </div>
           )}
-        </div>
-        <button
-          onClick={() => changeDate(1)}
-          disabled={date >= todayISO()}
-          className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 disabled:opacity-40"
-        >
-          <ChevronRight className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* Class tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-1 mb-4 scrollbar-hide">
-        {classesLoading ? (
-          <>{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-9 w-24 shrink-0 rounded-xl" />)}</>
-        ) : classes.length === 0 ? (
-          <p className="text-xs text-gray-400 px-3 py-2">No classes found</p>
-        ) : (
-          classes.map((cls) => (
-            <button
-              key={cls.id}
-              onClick={() => setActiveClassId(cls.id)}
-              className={cn(
-                "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 transition-all",
-                activeClassId === cls.id
-                  ? "bg-primary-600 text-white shadow-sm"
-                  : "bg-white border border-gray-200 text-gray-600 hover:border-primary-200",
-              )}
-            >
-              <GraduationCap className="w-3.5 h-3.5" /> {cls.name}
-              {cls.studentCount > 0 && (
-                <span
-                  className={cn(
-                    "text-xs px-1.5 py-0.5 rounded-full font-bold",
-                    activeClassId === cls.id
-                      ? "bg-white/20 text-white"
-                      : "bg-gray-100 text-gray-500",
-                  )}
-                >
-                  {cls.studentCount}
-                </span>
-              )}
-            </button>
-          ))
-        )}
-      </div>
-
-      {/* No class selected prompt */}
-      {!activeClassId && !classesLoading && (
-        <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-          <GraduationCap className="w-12 h-12 mb-4 opacity-20" />
-          <p className="font-semibold text-gray-500">
-            Select a class to view attendance
-          </p>
-          <p className="text-xs mt-1">Choose a class from the tabs above</p>
-        </div>
-      )}
-
-      {/* Summary bar */}
-      {activeClassId && records.size > 0 && (
-        <div className="grid grid-cols-5 gap-2 mb-4">
-          {[
-            {
-              key: "PRESENT",
-              label: "Present",
-              cls: "bg-primary-50 text-primary-700",
-            },
-            { key: "ABSENT", label: "Absent", cls: "bg-red-50 text-red-600" },
-            { key: "LEAVE", label: "Leave", cls: "bg-amber-50 text-amber-700" },
-            { key: "SICK", label: "Sick", cls: "bg-blue-50 text-blue-700" },
-            {
-              key: "UNMARKED",
-              label: "Unmarked",
-              cls: "bg-gray-50 text-gray-500",
-            },
-          ].map(({ key, label, cls }) => (
-            <div key={key} className={cn("rounded-xl p-2.5 text-center", cls)}>
-              <p className="text-xl font-bold">{summary[key] ?? 0}</p>
-              <p className="text-[10px] font-semibold mt-0.5">{label}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Clear all confirmation modal */}
-      {confirmClear && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
-                <AlertCircle className="w-5 h-5 text-red-600" />
-              </div>
-              <div>
-                <p className="font-bold text-gray-900">Clear all attendance</p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {activeClass?.name} · {date}
-                </p>
-              </div>
-            </div>
-            <p className="text-sm text-gray-600 mb-5">
-              This will remove all attendance records for this class and date.
-              This action cannot be undone.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setConfirmClear(false)}
-                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={clearAll}
-                disabled={saving}
-                className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-60"
-              >
-                {saving ? "Clearing..." : "Yes, Clear All"}
-              </button>
-            </div>
+          <div aria-busy={loading || classesQuery.isLoading}>
+            <AttendanceEditorContent
+              isOwnClass
+              activeClassId={activeClassId}
+              classesLoading={classesQuery.isLoading}
+              records={records}
+              summary={summary}
+              pct={pct}
+              confirmClear={confirmClear}
+              setConfirmClear={setConfirmClear}
+              activeClassName={activeClass?.name}
+              date={date}
+              clearAll={clearAll}
+              saving={saving}
+              markAll={markAll}
+              saveError={saveError}
+              loading={loading}
+              error={error}
+              students={students}
+              setStatus={setStatus}
+              setNotes={setNotes}
+              setLateComing={setLateComing}
+              hasDirty={hasDirty}
+              hasExisting={hasExisting}
+              handleSave={saveAll}
+            />
           </div>
         </div>
-      )}
+      </ResponsivePopover>
 
-      {/* Bulk actions */}
-      {activeClassId && records.size > 0 && (
-        <div className="flex gap-2 mb-4 flex-wrap">
-          <span className="text-xs text-gray-400 self-center mr-1">
-            Mark all:
-          </span>
-          {ACTIVE_STATUSES.map((s) => (
-            <button
-              key={s}
-              onClick={() => markAll(s)}
-              className={cn(
-                "text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors",
-                STATUS_CONFIG[s].bg,
-                STATUS_CONFIG[s].text,
-                "hover:opacity-80",
-              )}
-            >
-              {STATUS_CONFIG[s].label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {saveError && (
-        <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl mb-4">
-          {saveError}
-        </div>
-      )}
-
-      {/* Student list */}
-      {activeClassId &&
-        (loading ? (
-          <div className="space-y-2">
-            <SkeletonList count={4} />
-          </div>
-        ) : error ? (
-          <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl">
-            {error}
-          </div>
-        ) : students.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">
-            <GraduationCap className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p className="font-semibold">No active students in this class</p>
-          </div>
-        ) : (
-          <div className="space-y-2 pb-20">
-            {students.map((student) => {
-              const rec = records.get(student.id);
-              const status = rec?.status ?? null;
-              const cfg = status ? STATUS_CONFIG[status] : null;
-              return (
-                <div
-                  key={student.id}
-                  className={cn(
-                    "bg-white rounded-2xl border p-3.5 flex items-center gap-3 transition-all",
-                    rec?.dirty
-                      ? "border-amber-200 bg-amber-50/30"
-                      : "border-gray-100",
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0",
-                      student.gender === "FEMALE"
-                        ? "bg-pink-100 text-pink-700"
-                        : "bg-primary-100 text-primary-700",
-                    )}
-                  >
-                    {student.name.charAt(0)}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-900 text-sm truncate">
-                      {student.name}
-                    </p>
-                    <p className="text-xs text-gray-400">{student.adno}</p>
-                  </div>
-
-                  <div className="flex items-center gap-1 shrink-0">
-                    {ACTIVE_STATUSES.map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => setStatus(student.id, s)}
-                        title={STATUS_CONFIG[s].label}
-                        className={cn(
-                          "text-[10px] font-bold px-2 py-1 rounded-lg transition-all",
-                          status === s
-                            ? `${STATUS_CONFIG[s].bg} ${STATUS_CONFIG[s].text} ring-2 ring-offset-1 ring-current`
-                            : "bg-gray-100 text-gray-400 hover:bg-gray-200",
-                        )}
-                      >
-                        {STATUS_CONFIG[s].short}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ))}
       {showImport && (
         <AttendanceImportModal
           clientId={cid}
@@ -593,7 +501,10 @@ export default function AdminAttendancePage() {
           initialClassId={activeClassId}
           onClose={() => setShowImport(false)}
           onSuccess={() => {
-            if (activeClassId) loadAttendance(activeClassId, date);
+            if (activeClassId) {
+              void loadAttendance(activeClassId, date);
+              void invalidateAttendance(activeClassId);
+            }
           }}
         />
       )}

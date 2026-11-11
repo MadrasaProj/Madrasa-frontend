@@ -51,5 +51,5 @@ export default function CommitteeTeacherAttendancePage() {
     );
   }
 
-  return <TeacherAttendanceContent backHref="/committee" />;
+  return <TeacherAttendanceContent />;
 }
