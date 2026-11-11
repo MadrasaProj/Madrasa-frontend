@@ -40,6 +40,7 @@ export interface ClientListItem {
   lastLoginAt?: string;
   createdAt: string;
   currentAcademicYear?: { id: string; name: string } | null;
+  currentAcademicYearId?: string | null;
   loginEmail?: string;
   loginPhone?: string;
   _count: { users: number; students: number };
@@ -47,6 +48,10 @@ export interface ClientListItem {
 
 export function listClients(token: string) {
   return getJson<{ data: ClientListItem[]; total: number }>("/super-admin/clients", token);
+}
+
+export function getClient(clientId: string, token: string) {
+  return getJson<ClientListItem>(`/super-admin/clients/${clientId}`, token);
 }
 
 export interface UpdateClientDto {

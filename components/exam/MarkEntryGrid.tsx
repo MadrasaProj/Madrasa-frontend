@@ -1,8 +1,9 @@
-import { TableSkeleton } from "@/components/ui/Skeleton";
+import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import type { ExamRecord } from "@/lib/exams-api";
 import type { ClassRecord } from "@/lib/classes-api";
 import type { SubjectRecord } from "@/lib/subjects-api";
 import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   GraduationCap,
   Save,
@@ -12,6 +13,7 @@ import {
   AlertCircle,
   RotateCcw,
   FileSpreadsheet,
+  MoreHorizontal,
 } from "lucide-react";
 
 function fmt(d?: string | null) {
@@ -65,6 +67,7 @@ export interface MarkEntryGridProps {
   showResetButton?: boolean;
   showLockPeriod?: boolean;
   showActionButtons?: boolean;
+  compactStudentRows?: boolean;
 }
 
 export function   MarkEntryGrid({
@@ -100,6 +103,7 @@ export function   MarkEntryGrid({
   showResetButton = true,
   showLockPeriod = true,
   showActionButtons = true,
+  compactStudentRows = false,
 }: MarkEntryGridProps) {
   const filled = Object.values(scores).filter((v) => v !== "").length;
   const currentSubject = subjects.find((s) => s.id === subjectId);
@@ -182,8 +186,23 @@ export function   MarkEntryGrid({
 
       {/* Student list */}
       {loading ? (
-        <TableSkeleton />
-      ) : students.length === 0 ? (
+        compactStudentRows ? <div role="status" aria-label="Loading student marks" className="divide-y divide-gray-100 rounded-2xl bg-white">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} className="flex items-center gap-3 px-3 py-3 sm:px-5">
+              <div className="min-w-0 flex-1 space-y-2">
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="h-3 w-1/3" />
+              </div>
+              <Skeleton className="h-10 w-16 rounded-xl sm:w-20" />
+              {showRemarks && <Skeleton className="size-10 rounded-xl" />}
+            </div>
+          ))}
+        </div> : <TableSkeleton />
+      ) : !subjectId ? (
+        <div className="rounded-2xl bg-white px-5 py-10 text-center text-sm text-gray-500">
+          No subjects available for mark entry in this class.
+        </div>
+      ) : error && students.length === 0 ? null : students.length === 0 ? (
         <div className="text-center py-10 bg-white border border-gray-100 rounded-3xl p-6">
           <GraduationCap className="w-12 h-12 text-gray-200 mx-auto mb-3" />
           <p className="text-sm font-semibold text-gray-900">
@@ -194,7 +213,83 @@ export function   MarkEntryGrid({
           </p>
         </div>
       ) : (
-        <div className="bg-white  rounded-2xl   flex flex-col">
+        <div className="flex flex-col rounded-2xl bg-white">
+          {compactStudentRows ? (
+            <>
+          <div className="divide-y divide-gray-100">
+            {students.map((student) => {
+              const score = scores[student.id] ?? "";
+              const remark = remarks[student.id] ?? "";
+              const invalid = score !== "" &&
+                (Number(score) > effectiveMaxMarks || Number(score) < 0);
+              return (
+                <div key={student.id} className="flex items-center gap-3 px-3 py-3 sm:px-5">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-gray-900">{student.name}</p>
+                    <p className="mt-0.5 truncate text-xs text-gray-500">
+                      Admission no. <span className="font-mono font-medium text-gray-700">{student.adno}</span>
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <input
+                      type="number"
+                      min={0}
+                      max={effectiveMaxMarks}
+                      aria-label={`Marks for ${student.name} out of ${effectiveMaxMarks}`}
+                      disabled={isLocked || saving}
+                      value={score}
+                      onChange={(event) => onScoreChange(student.id, event.target.value)}
+                      placeholder="—"
+                      className={cn(
+                        "h-10 w-16 rounded-xl border px-2 text-center text-sm font-bold outline-none transition-colors sm:w-20",
+                        isLocked
+                          ? "cursor-not-allowed border-gray-100 bg-gray-50 text-gray-400"
+                          : invalid
+                            ? "border-red-400 bg-red-50 text-red-700 focus:border-red-500"
+                            : "border-gray-200 bg-white focus:border-primary-500",
+                      )}
+                    />
+                    <span className="text-xs font-medium text-gray-500">/{effectiveMaxMarks}</span>
+                  </div>
+                  {showRemarks && (
+                    <Popover>
+                      <PopoverTrigger
+                        type="button"
+                        aria-label={`Add remarks for ${student.name}`}
+                        disabled={isLocked || saving}
+                        className={cn(
+                          "relative flex size-10 shrink-0 items-center justify-center rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-primary-500 disabled:opacity-40",
+                          remark && "border-primary-200 bg-primary-50 text-primary-700",
+                        )}
+                      >
+                        <MoreHorizontal className="size-5" aria-hidden="true" />
+                        {remark && <span className="absolute right-1 top-1 size-1.5 rounded-full bg-primary-600" />}
+                      </PopoverTrigger>
+                      <PopoverContent align="end" side="bottom" className="w-72 p-4">
+                        <label htmlFor={`remark-${student.id}`} className="text-sm font-semibold text-gray-900">
+                          Remarks for {student.name}
+                        </label>
+                        <textarea
+                          id={`remark-${student.id}`}
+                          value={remark}
+                          onChange={(event) => onRemarkChange?.(student.id, event.target.value)}
+                          placeholder="Add a remark"
+                          rows={3}
+                          maxLength={500}
+                          className="w-full resize-none rounded-xl border border-gray-200 p-3 text-sm outline-none focus:border-primary-500"
+                        />
+                        <p className="text-xs text-gray-500">Saved when you save marks.</p>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+            </>
+          ) : (
+            <>
           {/* Desktop Table View */}
           <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-left border-collapse text-sm">
@@ -350,6 +445,9 @@ export function   MarkEntryGrid({
               );
             })}
           </div>
+
+            </>
+          )}
 
           {/* Bottom statistics bar */}
           <div className="bg-gray-50 px-6 py-4 flex flex-wrap items-center justify-between border-t border-gray-100 gap-4">

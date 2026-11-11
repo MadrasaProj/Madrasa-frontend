@@ -789,7 +789,6 @@ export default function AdminClassTestsPage() {
         >
           {isMarkEntryView && markEntryExam && (
             <TeacherMarkEntryView
-              showClassSelector={false}
               gridProps={{
                 exams: [markEntryExam],
                 classes: classes.filter((cls) => cls.id === markEntryExam.classId),

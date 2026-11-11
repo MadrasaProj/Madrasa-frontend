@@ -24,6 +24,8 @@ import { type ClassRecord } from "@/lib/classes-api";
 import { useClasses } from "@/lib/queries";
 import { getSubjects, type SubjectRecord } from "@/lib/subjects-api";
 import { getStudents } from "@/lib/students-api";
+import { getClient } from "@/lib/super-admin-api";
+import { getClientCurrentAcademicYearId } from "@/lib/client-academic-year-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -123,7 +125,13 @@ export default function AdminExamsPage() {
   const { user, accessToken, activeClientId } = useAuthStore();
   const cid = activeClientId ?? "";
   const token = accessToken ?? "";
-  const ayId = user?.defaultAcademicYearId ?? "";
+  const isSuperAdmin = user?.actorType === "SUPER_ADMIN";
+  const sessionAcademicYearId = user?.defaultAcademicYearId ?? "";
+  const [selectedClientAcademicYearId, setSelectedClientAcademicYearId] = useState("");
+  const [missingAcademicYear, setMissingAcademicYear] = useState(false);
+  const ayId = isSuperAdmin
+    ? selectedClientAcademicYearId
+    : sessionAcademicYearId || selectedClientAcademicYearId;
 
   const [exams, setExams] = useState<ExamRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -195,18 +203,41 @@ export default function AdminExamsPage() {
     setPageError(null);
     setLoading(true);
     try {
-      const examData = await getExams(cid, token, { limit: 200, signal });
+      setMissingAcademicYear(false);
+      setSelectedClientAcademicYearId("");
+      let academicYearId = sessionAcademicYearId.trim();
+      if (isSuperAdmin) {
+        const client = await getClient(cid, token);
+        if (signal?.aborted) return;
+        academicYearId = client.currentAcademicYear?.id ?? client.currentAcademicYearId ?? "";
+        setSelectedClientAcademicYearId(academicYearId);
+      } else if (!academicYearId) {
+        academicYearId = await getClientCurrentAcademicYearId(cid, token, signal);
+        if (signal?.aborted) return;
+        setSelectedClientAcademicYearId(academicYearId);
+      }
+      if (!academicYearId) {
+        setExams([]);
+        setMissingAcademicYear(true);
+        return;
+      }
+      const examData = await getExams(cid, token, {
+        accademicYearId: academicYearId,
+        type: "TERM_EXAM",
+        limit: 200,
+        signal,
+      });
       const termExams = (examData.data ?? []).filter(
         (e) => e.type === "TERM_EXAM" || !e.type,
       );
       setExams(termExams);
     } catch (e: any) {
-      if (e.name === "AbortError") return;
+      if (signal?.aborted || e.name === "AbortError") return;
       setPageError(e.message ?? "Load failed");
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
-  }, [cid, token]);
+  }, [cid, token, sessionAcademicYearId, isSuperAdmin]);
 
   useEffect(() => {
     const ac = new AbortController();
@@ -257,6 +288,13 @@ export default function AdminExamsPage() {
       toast.error("Enter the exam name and all required dates.");
       return;
     }
+    const academicYearId = ayId.trim();
+    if (drawerMode === "create" && !academicYearId) {
+      const message = "Set a default academic year before creating an exam.";
+      setFormError(message);
+      toast.error(message);
+      return;
+    }
     setSubmitting(true);
     setFormError(null);
     setPageError(null);
@@ -271,7 +309,7 @@ export default function AdminExamsPage() {
       examStatus: form.examStatus,
       maxMarks: Number(form.maxMarks) || 100,
       passMarks: Number(form.passMarks) || undefined,
-      accademicYearId: ayId || "",
+      accademicYearId: academicYearId,
     };
 
     try {
@@ -695,13 +733,15 @@ export default function AdminExamsPage() {
         {!showExamList && !pageError && (
           <IllustratedEmptyState
             image="/images/teacher/exams-empty.webp"
-            title="No term exams yet"
-            description="Create an exam to get started."
-            action={
+            title={missingAcademicYear ? "No default academic year" : "No term exams yet"}
+            description={missingAcademicYear
+              ? "Set a default academic year in madrasa settings to view or create exams."
+              : "Create an exam to get started."}
+            action={!missingAcademicYear ? (
               <Button type="button" size="lg" onClick={openCreateDrawer} className="rounded-full">
                 <Plus className="h-5 w-5" /> Create Exam
               </Button>
-            }
+            ) : undefined}
           />
         )}
 

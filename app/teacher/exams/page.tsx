@@ -11,7 +11,6 @@ import {
   bulkUpsertResults,
   type ResultRecord,
 } from "@/lib/results-api";
-import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
 import { getSubjects, type SubjectRecord } from "@/lib/subjects-api";
 import { getStudents, type StudentRecord } from "@/lib/students-api";
 import { useAuthStore } from "@/store/auth";
@@ -52,12 +51,14 @@ export default function TeacherExamsPage() {
 
   // Selection states (from query params or fallback)
   const queryExamId = searchParams.get("examId") ?? "";
-  const initialExamId = useRef(queryExamId);
-  const { activeClassId: queryClassId, activeClass } = useActiveClass();
+  // React Router recreates this setter when the URL changes; the exam list fetch should not restart.
+  const setSearchParamsRef = useRef(setSearchParams);
+  useEffect(() => { setSearchParamsRef.current = setSearchParams; }, [setSearchParams]);
+  const { classes: teacherClasses, activeClassId } = useActiveClass();
+  const queryClassId = activeClassId;
   const querySubjectId = searchParams.get("subjectId") ?? "";
 
   // Data
-  const [allClasses, setAllClasses] = useState<ClassRecord[]>([]);
   const [mySubjects, setMySubjects] = useState<SubjectRecord[]>([]);
   const [exams, setExams] = useState<ExamRecord[]>([]);
   const [students, setStudents] = useState<StudentRecord[]>([]);
@@ -67,6 +68,10 @@ export default function TeacherExamsPage() {
 
   // UI state
   const [loading, setLoading] = useState(true);
+  const [entryLoading, setEntryLoading] = useState(false);
+  const [subjectLoading, setSubjectLoading] = useState(false);
+  const [entryError, setEntryError] = useState<string | null>(null);
+  const entryRequestRef = useRef(0);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -82,9 +87,6 @@ export default function TeacherExamsPage() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   // Derived arrays
-  const myClassIds = new Set(mySubjects.map((s) => s.classId));
-  const teacherClasses = activeClass ? [activeClass] : [];
-
   const activeExam = exams.find((e) => e.id === queryExamId);
   const selectedExam = exams.find((e) => e.id === selectedExamId);
   const isLocked =
@@ -107,17 +109,21 @@ export default function TeacherExamsPage() {
 
   const openMarkEntry = (exam: ExamRecord) => {
     setSelectedExamId(null);
+    setEntryLoading(true);
+    setEntryError(null);
     setSearchParams((prev) => {
       prev.set("view", "mark-entry");
       prev.set("examId", exam.id);
-      const firstCls = teacherClasses[0]?.id || "";
+      const firstCls = queryClassId || teacherClasses[0]?.id || "";
       if (firstCls) prev.set("classId", firstCls);
       return prev;
     });
   };
 
   const closeMarkEntry = () => {
+    entryRequestRef.current += 1;
     setImportOpen(false);
+    setEntryLoading(false);
     setSearchParams((prev) => {
       prev.delete("view");
       return prev;
@@ -127,120 +133,118 @@ export default function TeacherExamsPage() {
   const resetScores = () => {
     if (!window.confirm(t("teacherPages", "confirmResetMarks", lang))) return;
     const scoreMap: Record<string, string> = {};
+    const remarkMap: Record<string, string> = {};
     students.forEach((student) => {
       const result = existingResults.find(
         (item) => item.student?.id === student.id && item.subject?.id === querySubjectId,
       );
       scoreMap[student.id] = result != null ? String(result.score) : "";
+      remarkMap[student.id] = result?.remarks ?? "";
     });
     setScores(scoreMap);
+    setRemarks(remarkMap);
   };
 
   // ── Initial load ─────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!cid || !token || !teacherId || !queryClassId) return;
+    if (!cid || !token || !teacherId) return;
     setLoading(true);
 
     Promise.all([
-      getMyClasses(cid, token),
       getSubjects(cid, token, { teacherId, limit: 500 }),
-      getExams(cid, token, { accademicYearId: ayId || undefined, classId: queryClassId, limit: 50 }),
+      getExams(cid, token, { accademicYearId: ayId || undefined, type: "TERM_EXAM", limit: 50 }),
     ])
-      .then(([cls, subs, examData]) => {
-        setAllClasses(cls.filter((item) => item.id === queryClassId));
+      .then(([subs, examData]) => {
         setMySubjects(subs.data ?? []);
         const loadedExams = (examData.data ?? []).filter(
           (e) => e.type === "TERM_EXAM" || !e.type,
         );
         setExams(loadedExams);
-
-        // Auto-initialize query params if not set
-        if (!loadedExams.some((exam) => exam.id === initialExamId.current) && loadedExams[0]) {
-          initialExamId.current = loadedExams[0].id;
-          const firstClass = cls.find((c) => c.id === queryClassId);
-          const mine = (subs.data ?? []).filter(
-            (s) => s.classId === firstClass?.id,
-          );
-          setSearchParams((prev) => {
-            prev.set("examId", loadedExams[0].id);
-            if (firstClass) prev.set("classId", firstClass.id);
-            if (mine[0]) prev.set("subjectId", mine[0].id);
-            else prev.delete("subjectId");
-            return prev;
-          });
-        }
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [cid, token, teacherId, ayId, queryClassId, setSearchParams]);
+  }, [cid, token, teacherId, ayId]);
+
+  useEffect(() => {
+    if (loading || exams.length === 0 || exams.some((exam) => exam.id === queryExamId)) return;
+    setSearchParamsRef.current((prev) => {
+      prev.set("examId", exams[0].id);
+      return prev;
+    });
+  }, [loading, exams, queryExamId]);
 
   // ── Load subjects for selected class ─────────────────────────────────────────
 
   useEffect(() => {
-    if (!cid || !token || !queryClassId) return;
-    const cls = allClasses.find((c) => c.id === queryClassId);
+    if (!cid || !token || !queryClassId) {
+      setSubjectLoading(false);
+      setEntryLoading(false);
+      return;
+    }
+    let cancelled = false;
+    const cls = teacherClasses.find((c) => c.id === queryClassId);
     const isOwn = cls?.classTeacherId === teacherId;
+    setClassSubjects([]);
+    setSubjectLoading(isOwn);
 
     if (isOwn) {
       getSubjects(cid, token, { classId: queryClassId, limit: 200 })
         .then((r) => {
+          if (cancelled) return;
           const subs = r.data ?? [];
           setClassSubjects(subs);
-          if (subs.length > 0 && !subs.some((s) => s.id === querySubjectId)) {
-            setSearchParams((prev) => {
+          if (subs.length === 0) setEntryLoading(false);
+          setSearchParamsRef.current((prev) => {
+            if (subs.length > 0 && !subs.some((s) => s.id === prev.get("subjectId"))) {
               prev.set("subjectId", subs[0].id);
-              return prev;
-            });
-          }
+            } else if (subs.length === 0) prev.delete("subjectId");
+            return prev;
+          });
         })
-        .catch((e: Error) => setError(e.message));
+        .catch((e: Error) => { if (!cancelled) { setEntryError(e.message); setEntryLoading(false); } })
+        .finally(() => { if (!cancelled) setSubjectLoading(false); });
     } else {
       const mine = mySubjects.filter((s) => s.classId === queryClassId);
       setClassSubjects(mine);
-      if (mine.length > 0 && !mine.some((s) => s.id === querySubjectId)) {
-        setSearchParams((prev) => {
+      if (mine.length === 0) setEntryLoading(false);
+      setSearchParamsRef.current((prev) => {
+        if (mine.length > 0 && !mine.some((s) => s.id === prev.get("subjectId"))) {
           prev.set("subjectId", mine[0].id);
-          return prev;
-        });
-      }
+        } else if (mine.length === 0) prev.delete("subjectId");
+        return prev;
+      });
     }
+    return () => { cancelled = true; };
   }, [
     queryClassId,
-    allClasses,
+    teacherClasses,
     mySubjects,
     teacherId,
     cid,
     token,
-    querySubjectId,
-    setSearchParams,
   ]);
 
   // ── Load students + results when exam/class/subject changes ──────────────────
 
   const loadExamData = useCallback(async () => {
-    if (!cid || !token || !queryClassId || !queryExamId) return;
+    if (!cid || !token || !queryClassId || !queryExamId || !querySubjectId) return;
+    const requestId = ++entryRequestRef.current;
+    setEntryLoading(true);
+    setEntryError(null);
+    setStudents([]);
+    setExistingResults([]);
+    try {
+      const [stuData, resData] = await Promise.all([
+        getStudents(cid, token, { classId: queryClassId, status: "ACTIVE", limit: 200 }),
+        getResults(cid, token, { examId: queryExamId, classId: queryClassId, limit: 500 }),
+      ]);
+      if (requestId !== entryRequestRef.current) return;
+      const stuList = stuData.data ?? [];
+      const resList = resData.data ?? [];
+      setStudents(stuList);
+      setExistingResults(resList);
 
-    const [stuData, resData] = await Promise.all([
-      getStudents(cid, token, { classId: queryClassId, status: "ACTIVE", limit: 200 }).catch(
-        () => ({ data: [] as StudentRecord[] }),
-      ),
-      querySubjectId
-        ? getResults(cid, token, {
-            examId: queryExamId,
-            classId: queryClassId,
-            limit: 500,
-          }).catch(() => ({ data: [] as ResultRecord[] }))
-        : Promise.resolve({ data: [] as ResultRecord[] }),
-    ]);
-
-    const stuList = stuData.data ?? [];
-    const resList = resData.data ?? [];
-    setStudents(stuList);
-    setExistingResults(resList);
-
-    // Pre-fill scores for current subject only
-    if (querySubjectId) {
       const scoreMap: Record<string, string> = {};
       const remarkMap: Record<string, string> = {};
       stuList.forEach((s) => {
@@ -248,25 +252,29 @@ export default function TeacherExamsPage() {
           (r) => r.student?.id === s.id && r.subject?.id === querySubjectId,
         );
         scoreMap[s.id] = r != null ? String(r.score) : "";
-        remarkMap[s.id] = ""; // remarks computed in state
+        remarkMap[s.id] = r?.remarks ?? "";
       });
       setScores(scoreMap);
       setRemarks(remarkMap);
+    } catch (e: any) {
+      if (requestId === entryRequestRef.current) setEntryError(e.message ?? "Could not load marks.");
+    } finally {
+      if (requestId === entryRequestRef.current) setEntryLoading(false);
     }
   }, [cid, token, queryClassId, queryExamId, querySubjectId]);
 
   useEffect(() => {
-    if (isMarkEntryView) {
+    if (isMarkEntryView && querySubjectId && classSubjects.some((subject) => subject.id === querySubjectId)) {
       loadExamData();
     }
-  }, [isMarkEntryView, loadExamData]);
+  }, [isMarkEntryView, querySubjectId, classSubjects, loadExamData]);
 
   // ── Save Marks ───────────────────────────────────────────────────────────────
 
   const handleSave = async (submit = false) => {
     if (!queryExamId || !querySubjectId || !queryClassId || isLocked) return;
     setSaving(true);
-    setError(null);
+    setEntryError(null);
     try {
       const currentSubject = classSubjects.find((s) => s.id === querySubjectId);
       const subjectMaxMarks =
@@ -278,10 +286,11 @@ export default function TeacherExamsPage() {
           studentId: s.id,
           score: Number(scores[s.id]),
           totalMarks: subjectMaxMarks,
+          remarks: remarks[s.id] ?? "",
         }));
 
       if (!items.length) {
-        setError(t("teacherPages", "noScoresEntered", lang));
+        setEntryError(t("teacherPages", "noScoresEntered", lang));
         return;
       }
 
@@ -301,7 +310,7 @@ export default function TeacherExamsPage() {
         }
       }, 1500);
     } catch (e: any) {
-      setError(e.message ?? t("teacherPages", "saveFailedMsg", lang));
+      setEntryError(e.message ?? t("teacherPages", "saveFailedMsg", lang));
     } finally {
       setSaving(false);
     }
@@ -602,36 +611,36 @@ export default function TeacherExamsPage() {
           onOpenChange={(open) => {
             if (!open) closeMarkEntry();
           }}
-          side="bottom"
-          drawerOnDesktop
+          fullHeight
+          onBack={closeMarkEntry}
           title={activeExam?.name ?? t("teacherPages", "enterMarksBreadcrumb", lang)}
           description={t("teacherPages", "enterMarksBreadcrumb", lang)}
           footer={
             isMarkEntryView && (
               <div className="border-t border-gray-200 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
-                <div className="flex w-full flex-wrap justify-end gap-2">
-                  <Button type="button" variant="outline" size="lg" className="rounded-xl" disabled={!queryExamId || !queryClassId || !querySubjectId} onClick={() => setImportOpen(true)}>
+                <div className="mx-auto flex w-full max-w-6xl flex-wrap justify-end gap-2">
+                  <Button type="button" variant="outline" size="lg" className="rounded-xl" disabled={entryLoading || subjectLoading || !queryExamId || !queryClassId || !querySubjectId} onClick={() => setImportOpen(true)}>
                     Import
                   </Button>
-                  <Button type="button" variant="outline" size="lg" className="rounded-xl" disabled={saving || students.length === 0} onClick={resetScores}>
+                  <Button type="button" variant="outline" size="lg" className="rounded-xl" disabled={entryLoading || subjectLoading || saving || students.length === 0} onClick={resetScores}>
                     Reset
                   </Button>
-                  <Button type="button" variant="outline" size="lg" className="rounded-xl" disabled={saving || isLocked || hasInvalidMarks || students.length === 0} onClick={() => handleSave(false)}>
+                  <Button type="button" variant="outline" size="lg" className="rounded-xl" disabled={entryLoading || subjectLoading || saving || isLocked || hasInvalidMarks || students.length === 0} onClick={() => handleSave(false)}>
                     Save as Draft
                   </Button>
-                  <Button type="button" size="lg" className="rounded-xl" disabled={saving || isLocked || hasInvalidMarks || students.length === 0} onClick={() => handleSave(true)}>
+                  <Button type="button" size="lg" className="rounded-xl" disabled={entryLoading || subjectLoading || saving || isLocked || hasInvalidMarks || students.length === 0} onClick={() => handleSave(true)}>
                     {saving ? "Saving…" : saved ? "Saved" : "Save"}
                   </Button>
                 </div>
               </div>
             )
           }
-          className="mx-auto w-full max-w-6xl rounded-t-2xl"
+          className="md:max-w-none"
           contentClassName="min-w-0"
         >
           {isMarkEntryView && (
+            <div className="mx-auto w-full max-w-6xl py-4">
             <TeacherMarkEntryView
-              showClassSelector={false}
               gridProps={{
                 exams,
                 classes: teacherClasses,
@@ -645,24 +654,26 @@ export default function TeacherExamsPage() {
                 isLocked,
                 saving,
                 saved,
-                error,
+                loading: entryLoading || subjectLoading,
+                error: entryError,
                 activeExam,
                 onExamChange: (value) => setSearchParams((prev) => {
                   prev.set("examId", value);
                   return prev;
                 }),
-                onClassChange: (value) => setSearchParams((prev) => {
-                  prev.set("classId", value);
-                  return prev;
-                }),
-                onSubjectChange: (value) => setSearchParams((prev) => {
-                  prev.set("subjectId", value);
-                  return prev;
-                }),
+                onClassChange: () => {},
+                onSubjectChange: (value) => {
+                  setEntryLoading(true);
+                  setSearchParams((prev) => {
+                    prev.set("subjectId", value);
+                    return prev;
+                  });
+                },
                 onScoreChange: (studentId, value) => setScores((prev) => ({ ...prev, [studentId]: value })),
                 onRemarkChange: (studentId, value) => setRemarks((prev) => ({ ...prev, [studentId]: value })),
                 onSave: handleSave,
                 showRemarks: true,
+                compactStudentRows: true,
                 showLockPeriod: true,
               }}
               clientId={cid}
@@ -672,6 +683,7 @@ export default function TeacherExamsPage() {
               onImportOpenChange={setImportOpen}
               onReload={loadExamData}
             />
+            </div>
           )}
         </ResponsivePopover>
       </div>

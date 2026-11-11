@@ -1,8 +1,7 @@
 import { createPortal } from "react-dom";
-import { DrawerSelector } from "@/components/DrawerSelector";
-import { ButtonGroup } from "@/components/ui/button-group";
 import { ExcelImportModal } from "@/components/exam/ExcelImportModal";
 import { MarkEntryGrid, type MarkEntryGridProps } from "@/components/exam/MarkEntryGrid";
+import { ScrollableSubjectNavigator } from "@/components/ScrollableSubjectNavigator";
 
 interface TeacherMarkEntryViewProps {
   gridProps: Omit<MarkEntryGridProps, "onReset" | "onImportOpen">;
@@ -13,7 +12,6 @@ interface TeacherMarkEntryViewProps {
   onImportOpenChange: (open: boolean) => void;
   onReload: () => Promise<void>;
   showSelectors?: boolean;
-  showClassSelector?: boolean;
 }
 
 export function TeacherMarkEntryView({
@@ -25,40 +23,20 @@ export function TeacherMarkEntryView({
   onImportOpenChange,
   onReload,
   showSelectors = true,
-  showClassSelector = true,
 }: TeacherMarkEntryViewProps) {
-  const { examId, classId, subjectId, classes, subjects, students, activeExam } = gridProps;
+  const { examId, classId, subjectId, subjects, students, activeExam } = gridProps;
   const currentSubject = subjects.find((subject) => subject.id === subjectId);
 
   return (
     <div className="space-y-4 px-2 sm:px-6">
-      {showSelectors && <ButtonGroup aria-label="Mark entry class and subject" className="w-full max-w-xl">
-        {showClassSelector && <DrawerSelector
-          title="Select Class"
-          triggerLabel="Class"
-          options={classes.map((classRecord) => ({
-            value: classRecord.id,
-            label: classRecord.name,
-          }))}
-          value={classId}
-          onChange={gridProps.onClassChange}
-          placeholder="Select Class"
-          className="min-w-0 flex-1"
-        />}
-        <DrawerSelector
-          title="Select Subject"
-          triggerLabel="Subject"
-          options={subjects.map((subject) => ({
-            value: subject.id,
-            label: subject.name,
-          }))}
+      {showSelectors && (
+        <ScrollableSubjectNavigator
+          subjects={subjects}
           value={subjectId}
           onChange={gridProps.onSubjectChange}
-          placeholder="Select Subject"
           disabled={!classId}
-          className="min-w-0 flex-1"
         />
-      </ButtonGroup>}
+      )}
       <MarkEntryGrid
         {...gridProps}
         showExamSelector={false}

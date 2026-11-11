@@ -8,6 +8,7 @@ const V2_BASE    = `${API_ORIGIN}/api/v2`;
 export interface ResultRecord {
   id: string;
   score: number;
+  remarks?: string | null;
   totalMarks: number;
   grade?: string | null;
   rank?: number | null;
@@ -119,7 +120,7 @@ export const getResults = (
   return apiFetch<ResultListResponse>(`${V2_BASE}/${clientId}/results?${q}`, token);
 };
 
-export interface BulkResultItem { subjectId: string; studentId: string; score: number; totalMarks?: number }
+export interface BulkResultItem { subjectId: string; studentId: string; score: number; totalMarks?: number; remarks?: string }
 
 export const bulkUpsertResults = (
   clientId: string, token: string,

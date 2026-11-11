@@ -63,10 +63,16 @@ export const createExam = (
     markEntryLastDate?: string; publishedDate?: string; examStatus?: ExamStatus;
     maxMarks?: number; passMarks?: number;
   },
-) =>
-  apiFetch<ExamRecord>(`${V2_BASE}/${clientId}/exams`, token, {
-    method: "POST", body: JSON.stringify(data),
+) => {
+  const academicYearId = data.accademicYearId?.trim();
+  if (!academicYearId) {
+    throw new Error("Set a default academic year before creating an exam.");
+  }
+
+  return apiFetch<ExamRecord>(`${V2_BASE}/${clientId}/exams`, token, {
+    method: "POST", body: JSON.stringify({ ...data, accademicYearId: academicYearId }),
   });
+};
 
 export const updateExam = (
   clientId: string, token: string, id: string,
