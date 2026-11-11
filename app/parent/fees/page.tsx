@@ -236,6 +236,14 @@ function getBillingInterval(dueDate: string, frequency: string | null, lang: "en
 }
 
 function feeStatus(payments: ParentPayment[]): FeePaymentStatus {
+  if (payments[0]?.feeType.kind === "ONE_TIME") {
+    if (payments.length > 0 && payments.every((payment) => payment.status === "WAIVED")) return "WAIVED";
+    const totals = feeTotals(payments);
+    if (totals.due > 0 && totals.paid >= totals.due) return "PAID";
+    if (payments.some((payment) => payment.status === "OVERDUE")) return "OVERDUE";
+    if (totals.paid > 0) return "PARTIAL";
+    return "PENDING";
+  }
   if (payments.some((payment) => payment.status === "OVERDUE")) return "OVERDUE";
   if (payments.some((payment) => payment.status === "PARTIAL")) return "PARTIAL";
   if (payments.some((payment) => payment.status === "PENDING") || payments.length === 0) return "PENDING";
@@ -243,14 +251,63 @@ function feeStatus(payments: ParentPayment[]): FeePaymentStatus {
   return "PAID";
 }
 
+function effectiveFeePayments(payments: ParentPayment[], kind: ParentPayment["feeType"]["kind"]) {
+  if (kind !== "ONE_TIME") return payments;
+  // A recorded payment can have a different due date from the generated placeholder.
+  const recorded = payments.filter((payment) => !payment.virtual);
+  return recorded.length > 0 ? recorded : payments;
+}
+
 function feeTotals(payments: ParentPayment[]) {
-  return payments.filter((payment) => payment.status !== "WAIVED").reduce(
+  const chargeable = payments.filter((payment) => payment.status !== "WAIVED");
+  if (payments[0]?.feeType.kind === "ONE_TIME") {
+    const totals = chargeable.reduce(
+      (sum, payment) => ({
+        due: Math.max(sum.due, Number(payment.dueAmount)),
+        paid: sum.paid + Number(payment.paidAmount ?? (payment.status === "PAID" ? payment.dueAmount : 0)),
+      }),
+      { due: 0, paid: 0 },
+    );
+    return {
+      due: Math.max(totals.due, totals.paid),
+      paid: totals.paid,
+    };
+  }
+  return chargeable.reduce(
     (totals, payment) => {
       const paid = Number(payment.paidAmount ?? (payment.status === "PAID" ? payment.dueAmount : 0));
       return {
         due: totals.due + Math.max(Number(payment.dueAmount), paid),
         paid: totals.paid + paid,
       };
+    },
+    { due: 0, paid: 0 },
+  );
+}
+
+function effectiveStudentPayments(payments: ParentPayment[]) {
+  const byType = new Map<string, ParentPayment[]>();
+  payments.forEach((payment) => {
+    const group = byType.get(payment.feeType.id);
+    if (group) group.push(payment);
+    else byType.set(payment.feeType.id, [payment]);
+  });
+  return Array.from(byType.values()).flatMap((group) =>
+    effectiveFeePayments(group, group[0].feeType.kind),
+  );
+}
+
+function studentFeeTotals(payments: ParentPayment[]) {
+  const byType = new Map<string, ParentPayment[]>();
+  payments.forEach((payment) => {
+    const group = byType.get(payment.feeType.id);
+    if (group) group.push(payment);
+    else byType.set(payment.feeType.id, [payment]);
+  });
+  return Array.from(byType.values()).reduce(
+    (totals, group) => {
+      const current = feeTotals(group);
+      return { due: totals.due + current.due, paid: totals.paid + current.paid };
     },
     { due: 0, paid: 0 },
   );
@@ -452,21 +509,20 @@ export default function ParentFeesPage() {
   const activeInfo = accessibleStudents.find((s) => s.id === activeId);
   const errorMessage = error instanceof Error ? error.message : null;
   const selectedFeeType = activeSummary?.feeTypes.find((type) => type.id === selectedTypeId) ?? null;
-  const selectedTypePayments = activeSummary?.payments
-    .filter((payment) => payment.feeType.id === selectedTypeId)
-    .sort((a, b) => a.dueDate.localeCompare(b.dueDate)) ?? [];
+  const selectedTypePayments = effectiveFeePayments(
+    activeSummary?.payments.filter((payment) => payment.feeType.id === selectedTypeId) ?? [],
+    selectedFeeType?.kind ?? "RECURRING",
+  ).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
 
-  const overdueCount =
-    activeSummary?.payments.filter((p) => p.status === "OVERDUE").length ?? 0;
-  const totalDue = activeSummary
-    ? Math.max(0, activeSummary.totalDue - activeSummary.totalPaid)
-    : 0;
-  const paidCount =
-    activeSummary?.payments.filter((p) => p.status === "PAID").length ?? 0;
+  const effectivePayments = effectiveStudentPayments(activeSummary?.payments ?? []);
+  const overdueCount = effectivePayments.filter((p) => p.status === "OVERDUE").length;
+  const overallTotals = studentFeeTotals(effectivePayments);
+  const totalDue = Math.max(0, overallTotals.due - overallTotals.paid);
+  const paidCount = effectivePayments.filter((p) => p.status === "PAID").length;
   const progress =
-    activeSummary && activeSummary.totalPaid + totalDue > 0
+    activeSummary && overallTotals.paid + totalDue > 0
       ? Math.round(
-          (activeSummary.totalPaid / (activeSummary.totalPaid + totalDue)) *
+          (overallTotals.paid / (overallTotals.paid + totalDue)) *
             100,
         )
       : 0;
@@ -541,7 +597,7 @@ export default function ParentFeesPage() {
                       r="54"
                       fill="none"
                       stroke={
-                        activeSummary.totalPaid + totalDue > 0
+                        overallTotals.paid + totalDue > 0
                           ? "#fde68a"
                           : "#e5e7eb"
                       }
@@ -593,7 +649,7 @@ export default function ParentFeesPage() {
                 {[
                   {
                     label: t("parentPages", "totalPaidFees", lang),
-                    value: formatAmount(activeSummary.totalPaid),
+                    value: formatAmount(overallTotals.paid),
                     icon: CircleCheck,
                     color: "text-primary-700",
                   },
@@ -658,7 +714,10 @@ export default function ParentFeesPage() {
                     {t("teacherPages", "noFeeTypes", lang)}
                   </div>
                 ) : activeSummary.feeTypes.map((feeType) => {
-                  const payments = activeSummary.payments.filter((payment) => payment.feeType.id === feeType.id);
+                  const payments = effectiveFeePayments(
+                    activeSummary.payments.filter((payment) => payment.feeType.id === feeType.id),
+                    feeType.kind,
+                  );
                   const status = feeStatus(payments);
                   const totals = feeTotals(payments);
                   const frequency = getFrequencyLabel(feeType.frequency, feeType.kind, lang);
@@ -669,7 +728,7 @@ export default function ParentFeesPage() {
                       aria-haspopup="dialog"
                       onClick={() => {
                         if (feeType.kind === "ONE_TIME") {
-                          const payment = payments[0];
+                          const payment = payments.find((item) => !item.virtual && item.id);
                           if (payment) { setSelectedPaymentId(payment.id); return; }
                         }
                         setSelectedTypeId(feeType.id);
@@ -688,6 +747,7 @@ export default function ParentFeesPage() {
                           </span>
                         </span>
                         <span className={cn("shrink-0 my-auto ml-auto text-right text-xs font-semibold tabular-nums", STATUS_META[status].text)}>
+
                           {status !== "WAIVED" && (
                             <span className="block">{formatAmount(status === "PAID" ? totals.paid : payments.length === 0 ? Number(feeType.amount) : Math.max(0, totals.due - totals.paid))}</span>
                           )}
@@ -731,7 +791,9 @@ export default function ParentFeesPage() {
         contentClassName="px-4 pb-6"
       >
         {selectedFeeType && (() => {
-          const totals = feeTotals(selectedTypePayments);
+          const totals = selectedTypePayments.length === 0 && selectedFeeType.kind === "ONE_TIME"
+            ? { due: Number(selectedFeeType.amount), paid: 0 }
+            : feeTotals(selectedTypePayments);
           const status = feeStatus(selectedTypePayments);
           const groups = new Map<string, { label: string; payments: ParentPayment[] }>();
           selectedTypePayments.forEach((payment) => {
