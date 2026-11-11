@@ -88,7 +88,6 @@ export function StudentAttendanceDrawer({
     <ResponsivePopover
       open={open}
       onOpenChange={(open) => { if (!open) onClose(); }}
-      drawerOnDesktop
       title={student.name}
       description={<span className="text-sm">{t("teacherPages", "studentAttendanceDetails", lang)} · {student.adno}</span>}
       contentClassName="px-4 pb-6 sm:px-5"

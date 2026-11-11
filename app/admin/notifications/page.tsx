@@ -1,7 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
+import { DrawerSelector } from "@/components/DrawerSelector";
+import { DatePickerDrawer } from "@/components/DatePickerDrawer";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import {
   getSentNotifications, createNotification, deleteNotification, updateNotification,
@@ -11,11 +17,10 @@ import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
-  Bell, Plus, Send, Trash2, Loader2, X, Pencil, ExternalLink,
+  Bell, Plus, Send, Trash2, Loader2, Pencil, ExternalLink, CalendarDays,
   BookOpen, ClipboardList, GraduationCap, CreditCard,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { SkeletonList } from "@/components/ui/Skeleton";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "sonner";
 
 const TYPE_CONFIG: Record<NotificationType, { label: string; icon: React.ElementType; color: string; bg: string }> = {
@@ -43,12 +48,7 @@ export default function AdminNotificationsPage() {
   const [deletingId, setDeletingId]   = useState<string | null>(null);
   const [editTarget, setEditTarget]   = useState<NotificationRecord | null>(null);
 
-  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" ? window.innerWidth < 768 : true);
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
+  const [eventDateOpen, setEventDateOpen] = useState(false);
 
   // Compose form
   const [cTitle, setCTitle]       = useState("");
@@ -146,205 +146,146 @@ export default function AdminNotificationsPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader
-        title="Notifications"
-        subtitle={`${total} sent`}
-        icon={Bell}
-        showActionOnMobile
-        action={
-          <button onClick={handleComposeClick}
-            className="flex items-center gap-1.5 px-3 py-2 bg-primary-600 hover:bg-primary-700 active:scale-95 text-white rounded-xl text-sm font-semibold transition-all shadow-sm">
-            <Plus className="w-4 h-4" /> Compose
-          </button>
-        }
-      />
+      <PageHeader title="Notifications" />
+
+      <div className="mx-3 mb-4 mt-4 flex items-center justify-between gap-3">
+        <p className="text-sm text-gray-500"><span className="font-semibold tabular-nums text-gray-900">{total}</span> sent</p>
+        <Button type="button" size="sm" onClick={handleComposeClick}>
+          <Plus className="size-4" /> Compose
+        </Button>
+      </div>
 
       {error && <ApiErrorBanner message={error} onRetry={loadSent} />}
 
       {loading ? (
-        <SkeletonList count={4} />
+        <div className="mx-3 overflow-hidden rounded-2xl bg-white divide-y divide-gray-100">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="flex items-center gap-3 px-4 py-4">
+              <Skeleton className="size-10 shrink-0" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-3 w-3/4" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : sent.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 p-8 shadow-sm max-w-md mx-auto">
+        <div className="mx-3 rounded-2xl border border-gray-100 bg-white px-4 py-16 text-center">
           <Bell className="w-12 h-12 mx-auto mb-3 text-primary-200" />
           <p className="text-base font-bold text-gray-800">No notifications sent yet</p>
           <p className="text-xs text-gray-500 mt-1 mb-5">Broadcast announcements, fee reminders, and alerts to parents and teachers.</p>
-          <button onClick={handleComposeClick}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600 hover:bg-primary-700 active:scale-95 text-white rounded-xl text-sm font-semibold shadow-md shadow-primary-600/20 transition-all">
+          <Button type="button" onClick={handleComposeClick}>
             <Plus className="w-4 h-4" /> Create Notification
-          </button>
+          </Button>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white mb-20">
-          <Table className="min-w-[760px]">
-            <TableHeader className="bg-gray-50">
-              <TableRow className="hover:bg-transparent">
-                <TableHead scope="col" className="w-[40%]">Notification</TableHead>
-                <TableHead scope="col">Type</TableHead>
-                <TableHead scope="col">Audience</TableHead>
-                <TableHead scope="col">Sent / reads</TableHead>
-                <TableHead scope="col" className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+        <div className="mx-3 mb-20 divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white">
               {sent.map((n) => {
                 const cfg = TYPE_CONFIG[n.type] ?? TYPE_CONFIG.GENERAL;
                 const Icon = cfg.icon;
                 return (
-                  <TableRow key={n.id}>
-                    <TableCell className="whitespace-normal">
+                  <div key={n.id} className="flex items-start gap-3 px-4 py-4">
+                    <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl", cfg.bg)}>
+                      <Icon className={cn("size-4", cfg.color)} />
+                    </span>
+                    <div className="min-w-0 flex-1">
                       <p className="font-semibold text-gray-900">{n.title}</p>
-                      <p className="mt-0.5 text-xs text-gray-500 line-clamp-2">{n.body}</p>
-                      {n.actionUrl && (
-                        <p className="mt-1 flex items-center gap-1 text-xs text-blue-600 break-all">
-                          <ExternalLink className="h-3 w-3 shrink-0" />{n.actionUrl}
-                        </p>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <span className={cn("inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold", cfg.bg, cfg.color)}>
-                        <Icon className="h-3.5 w-3.5" />{cfg.label}
-                      </span>
-                    </TableCell>
-                    <TableCell className="whitespace-normal text-xs text-gray-600">{n.targetRoles.join(", ")}</TableCell>
-                    <TableCell className="text-xs text-gray-500">
-                      {new Date(n.createdAt).toLocaleDateString("en-GB")}
-                      {n._count && <p className="mt-1">{n._count.reads} read</p>}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <button onClick={() => handleEditClick(n)} aria-label={`Edit ${n.title}`}
-                          className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-primary-600">
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button onClick={() => handleDelete(n.id)} disabled={deletingId === n.id}
-                          aria-label={`Delete ${n.title}`}
-                          className="rounded-lg p-2 text-gray-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-50">
-                          {deletingId === n.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                        </button>
+                      <p className="mt-0.5 line-clamp-2 text-sm text-gray-500">{n.body}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
+                        <span className={cn("font-medium", cfg.color)}>{cfg.label}</span>
+                        <span aria-hidden="true">·</span>
+                        <span>{n.targetRoles.join(", ")}</span>
+                        <span aria-hidden="true">·</span>
+                        <span className="tabular-nums">{new Date(n.createdAt).toLocaleDateString("en-GB")}</span>
+                        {n._count && <span>· {n._count.reads} read</span>}
                       </div>
-                    </TableCell>
-                  </TableRow>
+                      {n.actionUrl && <p className="mt-1 flex items-center gap-1 break-all text-xs text-blue-600"><ExternalLink className="size-3 shrink-0" />{n.actionUrl}</p>}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Button type="button" variant="ghost" size="icon-sm" onClick={() => handleEditClick(n)} aria-label={`Edit ${n.title}`}>
+                        <Pencil className="size-4" />
+                      </Button>
+                      <Button type="button" variant="ghost" size="icon-sm" onClick={() => handleDelete(n.id)} disabled={deletingId === n.id} aria-label={`Delete ${n.title}`} className="text-red-600 hover:bg-red-50">
+                        {deletingId === n.id ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+                      </Button>
+                    </div>
+                  </div>
                 );
               })}
-            </TableBody>
-          </Table>
         </div>
       )}
 
-      {/* Mobile Floating Action Button (FAB) */}
-      <div className="fixed bottom-20 right-4 z-30 md:hidden">
-        <button
-          onClick={handleComposeClick}
-          className="flex items-center gap-2 px-4 py-3 bg-primary-600 hover:bg-primary-700 active:scale-95 text-white rounded-full shadow-lg shadow-primary-600/40 font-semibold text-sm transition-all"
-          aria-label="Create Notification"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Compose</span>
-        </button>
-      </div>
-
-      {/* Compose modal */}
-      <AnimatePresence>
-        {showCompose && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/30 z-40 backdrop-blur-sm" onClick={() => setShowCompose(false)} />
-            <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-none md:p-4">
-              <motion.div
-                initial={isMobile ? { y: "100%", opacity: 1, scale: 1 } : { y: 0, opacity: 0, scale: 0.95 }}
-                animate={{ y: 0, opacity: 1, scale: 1 }}
-                exit={isMobile ? { y: "100%", opacity: 1, scale: 1 } : { y: 0, opacity: 0, scale: 0.95 }}
-                transition={isMobile ? { type: "spring", damping: 30, stiffness: 300 } : { duration: 0.2 }}
-                className={cn(
-                  "w-full bg-white flex flex-col pointer-events-auto shadow-2xl relative",
-                  isMobile 
-                    ? "rounded-t-3xl max-h-[90dvh]" 
-                    : "rounded-3xl max-w-xl max-h-[85dvh]"
-                )}
-              >
-                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
-                  <p className="font-bold text-gray-900 text-lg">{editTarget ? "Edit Notification" : "Compose Notification"}</p>
-                  <button onClick={() => setShowCompose(false)}><X className="w-5 h-5 text-gray-400" /></button>
-                </div>
-                <div className="overflow-y-auto flex-1 p-5 space-y-4">
-                {sendError && (
-                  <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl">{sendError}</div>
-                )}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Title *</label>
-                  <input value={cTitle} onChange={(e) => setCTitle(e.target.value)}
-                    placeholder="Notification title"
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Message *</label>
-                  <textarea value={cBody} onChange={(e) => setCBody(e.target.value)} rows={3}
-                    placeholder="Write your message..."
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Type</label>
-                  <select value={cType} onChange={(e) => setCType(e.target.value as NotificationType)}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none bg-white">
-                    {Object.entries(TYPE_CONFIG).map(([k, v]) => (
-                      <option key={k} value={k}>{v.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-2">Target Roles</label>
-                  <div className="flex gap-2 flex-wrap">
-                    {ROLES.map((r) => (
-                      <button key={r} onClick={() => toggleRole(r)}
-                        className={cn("px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all",
-                          cRoles.includes(r) ? "bg-primary-600 text-white border-primary-600" : "bg-white text-gray-600 border-gray-200")}>
-                        {r}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {classes.length > 0 && (
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-2">
-                      Target Classes <span className="text-gray-400 font-normal">(empty = all)</span>
-                    </label>
-                    <div className="flex gap-2 flex-wrap">
-                      {classes.map((c) => (
-                        <button key={c.id} onClick={() =>
-                          setCClassIds((prev) => prev.includes(c.id) ? prev.filter((x) => x !== c.id) : [...prev, c.id])
-                        }
-                          className={cn("px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all",
-                            cClassIds.includes(c.id) ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200")}>
-                          {c.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                    Event Date <span className="text-gray-400 font-normal">(optional — shows in diary)</span>
-                  </label>
-                  <input type="date" value={cEventDate} onChange={(e) => setCEventDate(e.target.value)}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white" />
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className="px-5 py-4 border-t border-gray-100 shrink-0 flex gap-3">
-                <button onClick={() => setShowCompose(false)}
-                  className="flex-1 py-3.5 border border-gray-200 rounded-2xl text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all">Cancel</button>
-                <button onClick={handleSend} disabled={!cTitle || !cBody || !cRoles.length || sending}
-                  className="flex-1 py-3.5 bg-primary-600 text-white rounded-2xl text-sm font-semibold disabled:opacity-60 flex items-center justify-center gap-2">
-                  {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                  Send
-                </button>
-              </div>
-            </motion.div>
+      <ResponsivePopover
+        open={showCompose}
+        onOpenChange={setShowCompose}
+        title={editTarget ? "Edit Notification" : "Compose Notification"}
+        desktopView="right-drawer"
+        className="shadow-none"
+        footer={
+          <div className="flex gap-3 border-t border-gray-100 p-4">
+            <Button type="button" variant="outline" className="flex-1" onClick={() => setShowCompose(false)}>Cancel</Button>
+            <Button type="button" className="flex-1" onClick={handleSend} disabled={!cTitle.trim() || !cBody.trim() || !cRoles.length || sending}>
+              {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+              {editTarget ? "Save" : "Send"}
+            </Button>
           </div>
-          </>
-        )}
-      </AnimatePresence>
+        }
+      >
+        <div className="space-y-5 px-5 pb-6 pt-2">
+          {sendError && <p role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{sendError}</p>}
+          <div className="space-y-1.5">
+            <label htmlFor="notification-title" className="text-xs font-semibold text-gray-600">Title *</label>
+            <Input id="notification-title" size="lg" value={cTitle} onChange={(event) => setCTitle(event.target.value)} placeholder="Notification title" />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="notification-message" className="text-xs font-semibold text-gray-600">Message *</label>
+            <Textarea id="notification-message" size="lg" value={cBody} onChange={(event) => setCBody(event.target.value)} rows={4} placeholder="Write your message..." />
+          </div>
+          <DrawerSelector
+            title="Notification type"
+            options={Object.entries(TYPE_CONFIG).map(([value, config]) => ({ value, label: config.label }))}
+            value={cType}
+            onChange={(value) => setCType(value as NotificationType)}
+          />
+          <fieldset className="space-y-2">
+            <legend className="mb-2 text-xs font-semibold text-gray-600">Target roles *</legend>
+            {ROLES.map((role) => (
+              <label key={role} className="flex items-center gap-3 rounded-lg border border-gray-100 px-3 py-2.5 text-sm text-gray-700">
+                <Checkbox checked={cRoles.includes(role)} onCheckedChange={() => toggleRole(role)} aria-label={role} />
+                {role === "CLIENT_ADMIN" ? "Admin" : role === "TEACHER" ? "Teacher" : "Parent"}
+              </label>
+            ))}
+          </fieldset>
+          {classes.length > 0 && (
+            <fieldset className="space-y-2">
+              <legend className="text-xs font-semibold text-gray-600">Target classes <span className="font-normal text-gray-400">(none selected = all)</span></legend>
+              <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-gray-100 p-2">
+                {classes.map((cls) => (
+                  <label key={cls.id} className="flex items-center gap-3 rounded-lg px-2 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                    <Checkbox checked={cClassIds.includes(cls.id)} onCheckedChange={() => setCClassIds((previous) => previous.includes(cls.id) ? previous.filter((id) => id !== cls.id) : [...previous, cls.id])} aria-label={cls.name} />
+                    {cls.name}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
+          <div className="space-y-1.5">
+            <span className="text-xs font-semibold text-gray-600">Event date <span className="font-normal text-gray-400">(optional, shows in diary)</span></span>
+            <Button type="button" variant="outline" className="w-full justify-between" onClick={() => setEventDateOpen(true)}>
+              {cEventDate || "Select date"}<CalendarDays className="size-4 text-gray-500" />
+            </Button>
+          </div>
+        </div>
+      </ResponsivePopover>
+      <DatePickerDrawer
+        open={eventDateOpen}
+        onOpenChange={setEventDateOpen}
+        date={cEventDate}
+        onDateChange={setCEventDate}
+        title="Event date"
+        disableFuture={false}
+        allowClear
+      />
     </DashboardLayout>
   );
 }

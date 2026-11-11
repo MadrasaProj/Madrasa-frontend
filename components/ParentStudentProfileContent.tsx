@@ -326,7 +326,6 @@ export function ParentStudentProfileContent({
       <ResponsivePopover
         open={showEdit}
         onOpenChange={setShowEdit}
-        drawerOnDesktop
         title={t("parentPages", "editStudent", lang)}
         description={student.name}
         contentClassName="px-5 py-5"

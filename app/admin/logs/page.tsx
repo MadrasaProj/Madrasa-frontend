@@ -1,18 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { DrawerSelector } from "@/components/DrawerSelector";
 import { getActivityLogs, type ActivityLogItem } from "@/lib/super-admin-api";
 import { useAuthStore } from "@/store/auth";
-import { motion } from "framer-motion";
-import {
-  Activity,
-  RefreshCw,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { Icon } from "@iconify/react";
 import { cn } from "@/lib/utils";
 import { SkeletonList } from "@/components/ui/Skeleton";
-import { useTenantPath } from "@/hooks/useTenantPath";
 
 const ACTOR_COLORS: Record<string, string> = {
   SUPER_ADMIN: "bg-blue-100 text-blue-700",
@@ -23,28 +19,40 @@ const ACTOR_COLORS: Record<string, string> = {
 };
 
 const ACTION_ICONS: Record<string, string> = {
-  AUTH_LOGIN: "🔐",
-  AUTH_IMPERSONATE: "🎭",
-  ATTENDANCE_BULK_UPSERT: "📋",
-  ATTENDANCE_UPDATE: "✏️",
-  HOMEWORK_CREATE: "📝",
-  HOMEWORK_UPDATE: "✏️",
-  HOMEWORK_DELETE: "🗑️",
-  HOMEWORK_SUBMISSIONS_UPDATE: "✅",
-  DIARY_UPSERT: "📔",
-  DIARY_UPDATE: "✏️",
-  DIARY_DELETE: "🗑️",
-  IBADAH_BULK_UPSERT: "🤲",
-  FEE_TYPE_CREATE: "💰",
-  FEE_TYPE_UPDATE: "✏️",
-  FEE_TYPE_DELETE: "🗑️",
-  FEE_PAYMENT_RECORD: "💳",
-  FEE_PAYMENT_UPDATE: "✏️",
-  FEE_PAYMENTS_GENERATE: "⚡",
-  NOTIFICATION_CREATE: "🔔",
-  NOTIFICATION_DELETE: "🗑️",
-  CLIENT_UPDATE: "⚙️",
-  SUBSCRIPTION_PAYMENT_RECORD: "💳",
+  AUTH_LOGIN: "mdi:lock-open-outline",
+  AUTH_IMPERSONATE: "mdi:account-switch-outline",
+  ATTENDANCE_BULK_UPSERT: "mdi:clipboard-check-outline",
+  ATTENDANCE_UPDATE: "mdi:pencil-outline",
+  HOMEWORK_CREATE: "mdi:note-plus-outline",
+  HOMEWORK_UPDATE: "mdi:pencil-outline",
+  HOMEWORK_DELETE: "mdi:delete-outline",
+  HOMEWORK_SUBMISSIONS_UPDATE: "mdi:check-circle-outline",
+  DIARY_UPSERT: "mdi:book-open-page-variant-outline",
+  DIARY_UPDATE: "mdi:pencil-outline",
+  DIARY_DELETE: "mdi:delete-outline",
+  IBADAH_BULK_UPSERT: "mdi:hands-pray",
+  FEE_TYPE_CREATE: "mdi:cash-plus",
+  FEE_TYPE_UPDATE: "mdi:pencil-outline",
+  FEE_TYPE_DELETE: "mdi:delete-outline",
+  FEE_PAYMENT_RECORD: "mdi:credit-card-check-outline",
+  FEE_PAYMENT_UPDATE: "mdi:pencil-outline",
+  FEE_PAYMENTS_GENERATE: "mdi:lightning-bolt-outline",
+  NOTIFICATION_CREATE: "mdi:bell-outline",
+  NOTIFICATION_DELETE: "mdi:delete-outline",
+  CLIENT_UPDATE: "mdi:cog-outline",
+  SUBSCRIPTION_PAYMENT_RECORD: "mdi:credit-card-check-outline",
+};
+
+const ACTION_GRADIENTS: Record<string, string> = {
+  AUTH: "from-violet-500 to-fuchsia-600",
+  ATTENDANCE: "from-sky-500 to-blue-600",
+  HOMEWORK: "from-indigo-500 to-violet-600",
+  DIARY: "from-amber-400 to-orange-600",
+  IBADAH: "from-emerald-500 to-teal-600",
+  FEE: "from-green-500 to-emerald-700",
+  NOTIFICATION: "from-rose-500 to-pink-600",
+  CLIENT: "from-slate-500 to-slate-700",
+  SUBSCRIPTION: "from-cyan-500 to-blue-600",
 };
 
 const ALL_ACTORS = [
@@ -58,8 +66,7 @@ const ALL_ACTORS = [
 const TAKE = 30;
 
 export default function ActivityLogsPage() {
-  const tenantPath = useTenantPath();
-  const { user, accessToken, activeClientId } = useAuthStore();
+  const { accessToken, activeClientId } = useAuthStore();
   const cid = activeClientId ?? "";
   const token = accessToken ?? "";
 
@@ -95,26 +102,24 @@ export default function ActivityLogsPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Activity Logs" back backHref={tenantPath("/admin/reports")} />
+      <PageHeader title="Activity Logs" />
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-4">
-        <select
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <DrawerSelector
+          title="Role"
+          options={ALL_ACTORS.map((value) => ({
+            value,
+            label: value ? value.replace(/_/g, " ") : "All roles",
+          }))}
           value={actorType}
-          onChange={(e) => {
-            setActorType(e.target.value);
+          onChange={(value) => {
+            setActorType(value);
             setPage(0);
           }}
-          className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary-400"
-        >
-          <option value="">All roles</option>
-          {ALL_ACTORS.slice(1).map((a) => (
-            <option key={a} value={a}>
-              {a}
-            </option>
-          ))}
-        </select>
-        <input
+          className="w-auto min-w-36 shadow-none"
+        />
+        <Input
           type="text"
           value={action}
           onChange={(e) => {
@@ -122,130 +127,136 @@ export default function ActivityLogsPage() {
             setPage(0);
           }}
           placeholder="Filter by action…"
-          className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary-400 min-w-[180px]"
+          aria-label="Filter by action"
+          size="lg"
+          className="w-full min-w-[180px] flex-1 bg-white sm:max-w-64"
         />
-        <button
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
           onClick={() => {
             setActorType("");
             setAction("");
             setPage(0);
           }}
-          className="text-xs text-gray-400 hover:text-gray-700 px-3 py-2 rounded-xl hover:bg-gray-50 transition-all"
+          className="shadow-none"
         >
           Clear
-        </button>
-        <button
-          onClick={load}
-          className="ml-auto flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-primary-700 bg-primary-50 border border-primary-200 rounded-xl hover:bg-primary-100 transition-all"
-        >
-          <RefreshCw className="w-3.5 h-3.5" /> Refresh
-        </button>
+        </Button>
       </div>
 
       {/* Summary */}
-      <p className="text-xs text-gray-400 mb-3">
-        {total} total entries{actorType || action ? " (filtered)" : ""}
-      </p>
+      <div className="mb-4 grid grid-cols-2 overflow-hidden rounded-2xl bg-gradient-to-br from-primary-50/60 via-white to-sky-50/60">
+        <div className="min-w-0 border-r border-gray-100 p-2.5 sm:p-3">
+          <span className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+            <Icon icon="mdi:format-list-bulleted" className="size-4 text-primary-600" aria-hidden="true" />
+            {actorType || action ? "Matching entries" : "Total entries"}
+          </span>
+          <span className="mt-1.5 block text-xl font-medium leading-none tabular-nums text-gray-950 sm:text-[22px]">
+            {total}
+          </span>
+        </div>
+        <div className="min-w-0 p-2.5 sm:p-3">
+          <span className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+            <Icon icon="mdi:eye-outline" className="size-4 text-primary-600" aria-hidden="true" />
+            On this page
+          </span>
+          <span className="mt-1.5 block text-xl font-medium leading-none tabular-nums text-gray-950 sm:text-[22px]">
+            {logs.length}
+          </span>
+        </div>
+      </div>
 
       {/* Log list */}
       {loading ? (
         <SkeletonList count={4} />
       ) : logs.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
-          <Activity className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <Icon icon="mdi:history" className="mx-auto mb-3 size-10 opacity-30" aria-hidden="true" />
           <p className="font-semibold">No activity found</p>
           <p className="text-xs mt-1">
             Mutations and logins are recorded here.
           </p>
         </div>
       ) : (
-        <div className="space-y-2 mb-6">
-          {logs.map((log, i) => (
-            <motion.div
-              key={log.id}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.02 }}
-              className="bg-white rounded-2xl border border-gray-100 px-4 py-3 flex items-start gap-3"
-            >
-              <span className="text-lg shrink-0 mt-0.5" aria-hidden>
-                {ACTION_ICONS[log.action] ?? "📌"}
-              </span>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                  <span className="text-sm font-semibold text-gray-900">
-                    {log.action}
+        <div className="mb-6 overflow-x-auto rounded-2xl !p-0 bg-white">
+          <div className="min-w-[620px] divide-y divide-gray-100">
+            {logs.map((log) => (
+              <div
+                key={log.id}
+                className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-4 px-4 py-4"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <span
+                    className={cn(
+                      "flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-white",
+                      ACTION_GRADIENTS[log.action.split("_")[0]] ?? "from-primary-500 to-primary-700",
+                    )}
+                    aria-hidden="true"
+                  >
+                    <Icon icon={ACTION_ICONS[log.action] ?? "mdi:pin-outline"} className="size-5" />
+                  </span>
+                  <span className="min-w-0 truncate text-sm font-semibold text-gray-900" title={log.action}>
+                    {log.action.replace(/_/g, " ")}
+                  </span>
+                </div>
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="min-w-0 truncate text-sm text-gray-600" title={log.actorName ?? log.actorId}>
+                    {log.actorName ?? log.actorId.slice(0, 20)}
                   </span>
                   <span
                     className={cn(
-                      "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
-                      ACTOR_COLORS[log.actorType] ??
-                        "bg-gray-100 text-gray-500",
+                      "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold whitespace-nowrap",
+                      ACTOR_COLORS[log.actorType] ?? "bg-gray-100 text-gray-500",
                     )}
                   >
-                    {log.actorType}
+                    {log.actorType.replace(/_/g, " ")}
                   </span>
-                  {log.resource && (
-                    <span className="text-[10px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded-full">
-                      {log.resource}
-                    </span>
-                  )}
                 </div>
-                <p className="text-xs text-gray-500">
-                  {log.actorName ?? log.actorId.slice(0, 20)}
-                  {log.resourceId && (
-                    <span className="text-gray-300 ml-1">
-                      · {log.resourceId.slice(0, 8)}…
-                    </span>
-                  )}
-                </p>
-                {log.meta &&
-                typeof log.meta === "object" &&
-                Object.keys(log.meta as Record<string, unknown>).length > 0 ? (
-                  <p className="text-[10px] text-gray-400 mt-0.5 font-mono truncate">
-                    {JSON.stringify(log.meta as Record<string, unknown>).slice(
-                      0,
-                      80,
-                    )}
-                  </p>
-                ) : null}
+                <time dateTime={log.createdAt} className="whitespace-nowrap text-right text-xs tabular-nums text-gray-500">
+                  {new Date(log.createdAt).toLocaleDateString("en-IN", {
+                    day: "2-digit",
+                    month: "short",
+                  })}
+                  {" · "}
+                  {new Date(log.createdAt).toLocaleTimeString("en-IN", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </time>
               </div>
-              <time className="text-[10px] text-gray-400 shrink-0 text-right">
-                {new Date(log.createdAt).toLocaleDateString("en-IN", {
-                  day: "2-digit",
-                  month: "short",
-                })}
-                <br />
-                {new Date(log.createdAt).toLocaleTimeString("en-IN", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </time>
-            </motion.div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
 
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-3 pb-24">
-          <button
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
             onClick={() => setPage((p) => Math.max(0, p - 1))}
             disabled={page === 0}
-            className="flex items-center gap-1 px-3 py-2 text-xs font-semibold rounded-xl border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-all"
+            className="shadow-none"
           >
-            <ChevronLeft className="w-3.5 h-3.5" /> Prev
-          </button>
+            <Icon icon="mdi:chevron-left" className="size-4" aria-hidden="true" /> Prev
+          </Button>
           <span className="text-xs text-gray-500">
             Page {page + 1} of {totalPages}
           </span>
-          <button
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
             onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
             disabled={page >= totalPages - 1}
-            className="flex items-center gap-1 px-3 py-2 text-xs font-semibold rounded-xl border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-all"
+            className="shadow-none"
           >
-            Next <ChevronRight className="w-3.5 h-3.5" />
-          </button>
+            Next <Icon icon="mdi:chevron-right" className="size-4" aria-hidden="true" />
+          </Button>
         </div>
       )}
     </DashboardLayout>

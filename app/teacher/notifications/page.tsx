@@ -6,15 +6,8 @@ import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerFooter,
-  DrawerTitle,
-} from "@/components/ui/drawer";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import {
   Pagination,
   PaginationContent,
@@ -33,7 +26,7 @@ import {
 import { useAuthStore } from "@/store/auth";
 import { useActiveClass } from "@/store/activeClass";
 import { useLanguageStore } from "@/store/language";
-import { t, type Lang } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
   Bell,
@@ -44,11 +37,6 @@ import {
   CreditCard,
   Search,
   SlidersHorizontal,
-  CircleCheck,
-  Clock3,
-  Calendar,
-  CheckCheck,
-  Loader2,
   Inbox,
 } from "lucide-react";
 
@@ -58,17 +46,16 @@ interface TypeConfigItem {
   icon: React.ElementType;
   color: string;
   bg: string;
-  chartColor: string;
 }
 
 const NOTIFICATION_TYPES: TypeConfigItem[] = [
-  { id: "ALL",               label: "All Types",  icon: Bell,          color: "text-gray-700",    bg: "bg-gray-100 border-gray-200",     chartColor: "#9ca3af" },
-  { id: "ANNOUNCEMENT",      label: "Announce",   icon: Bell,          color: "text-indigo-700",  bg: "bg-indigo-50 border-indigo-100",  chartColor: "#4f46e5" },
-  { id: "ATTENDANCE_ALERT",  label: "Attendance", icon: ClipboardList, color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-100", chartColor: "#059669" },
-  { id: "FEE_REMINDER",      label: "Fees",       icon: CreditCard,    color: "text-amber-700",   bg: "bg-amber-50 border-amber-100",    chartColor: "#f59e0b" },
-  { id: "HOMEWORK_REMINDER", label: "Homework",   icon: BookOpen,      color: "text-blue-700",    bg: "bg-blue-50 border-blue-100",      chartColor: "#2563eb" },
-  { id: "EXAM_NOTICE",       label: "Exam",       icon: GraduationCap, color: "text-purple-700",  bg: "bg-purple-50 border-purple-100",  chartColor: "#9333ea" },
-  { id: "GENERAL",           label: "General",    icon: Bell,          color: "text-gray-700",    bg: "bg-gray-100 border-gray-200",     chartColor: "#6b7280" },
+  { id: "ALL",               label: "All Types",  icon: Bell,          color: "text-gray-700",    bg: "bg-gray-100 border-gray-200" },
+  { id: "ANNOUNCEMENT",      label: "Announce",   icon: Bell,          color: "text-indigo-700",  bg: "bg-indigo-50 border-indigo-100" },
+  { id: "ATTENDANCE_ALERT",  label: "Attendance", icon: ClipboardList, color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-100" },
+  { id: "FEE_REMINDER",      label: "Fees",       icon: CreditCard,    color: "text-amber-700",   bg: "bg-amber-50 border-amber-100" },
+  { id: "HOMEWORK_REMINDER", label: "Homework",   icon: BookOpen,      color: "text-blue-700",    bg: "bg-blue-50 border-blue-100" },
+  { id: "EXAM_NOTICE",       label: "Exam",       icon: GraduationCap, color: "text-purple-700",  bg: "bg-purple-50 border-purple-100" },
+  { id: "GENERAL",           label: "General",    icon: Bell,          color: "text-gray-700",    bg: "bg-gray-100 border-gray-200" },
 ];
 
 const TYPE_CONFIG: Record<string, TypeConfigItem> = {
@@ -96,255 +83,6 @@ function notificationPageItems(current: number, total: number): Array<number | "
   return items;
 }
 
-function NotificationSemiCircle({
-  segments,
-  value,
-  label,
-  description,
-}: {
-  segments: { value: number; color: string }[];
-  value: string;
-  label: string;
-  description: string;
-}) {
-  const total = segments.reduce((sum, segment) => sum + segment.value, 0);
-  let position = 0;
-  const point = (fraction: number) => {
-    const angle = Math.PI * (1 - fraction);
-    return [100 + 78 * Math.cos(angle), 94 - 78 * Math.sin(angle)];
-  };
-
-  return (
-    <svg viewBox="0 0 200 108" role="img" aria-label={description} className="mx-auto h-24 w-full max-w-52 sm:h-28">
-      <path d="M 22 94 A 78 78 0 0 1 178 94" fill="none" stroke="#e5e7eb" strokeWidth="17" strokeLinecap="round" />
-      {total > 0 && segments.map((segment, index) => {
-        const start = position;
-        position += segment.value / total;
-        if (segment.value <= 0) return null;
-        const [x1, y1] = point(start);
-        const [x2, y2] = point(position);
-        return (
-          <path
-            key={index}
-            d={`M ${x1} ${y1} A 78 78 0 0 1 ${x2} ${y2}`}
-            fill="none"
-            stroke={segment.color}
-            strokeWidth="17"
-          />
-        );
-      })}
-      <text x="100" y="72" textAnchor="middle" className="fill-gray-950 text-[23px] font-semibold">{value}</text>
-      <text x="100" y="89" textAnchor="middle" className="fill-gray-500 text-[10px] font-medium">{label}</text>
-    </svg>
-  );
-}
-
-function NotificationStats({
-  notifications,
-  total,
-  activeTypeName,
-  statusName,
-  search,
-  lang,
-  onMarkAllRead,
-  markingAll,
-}: {
-  notifications: NotificationRecord[];
-  total: number;
-  activeTypeName: string;
-  statusName: string;
-  search: string;
-  lang: Lang;
-  onMarkAllRead: () => void;
-  markingAll: boolean;
-}) {
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
-  const readCount = notifications.filter((n) => n.isRead).length;
-  const readRate = notifications.length > 0
-    ? Math.round((readCount / notifications.length) * 100)
-    : 100;
-
-  const announcements = notifications.filter((n) => n.type === "ANNOUNCEMENT" || n.type === "GENERAL").length;
-  const alerts = notifications.filter((n) => n.type === "ATTENDANCE_ALERT" || n.type === "FEE_REMINDER").length;
-  const academic = notifications.filter((n) => n.type === "HOMEWORK_REMINDER" || n.type === "EXAM_NOTICE").length;
-
-  const typeCounts = {
-    ANNOUNCEMENT: notifications.filter((n) => n.type === "ANNOUNCEMENT").length,
-    HOMEWORK_REMINDER: notifications.filter((n) => n.type === "HOMEWORK_REMINDER").length,
-    EXAM_NOTICE: notifications.filter((n) => n.type === "EXAM_NOTICE").length,
-    ATTENDANCE_ALERT: notifications.filter((n) => n.type === "ATTENDANCE_ALERT").length,
-    FEE_REMINDER: notifications.filter((n) => n.type === "FEE_REMINDER").length,
-    GENERAL: notifications.filter((n) => n.type === "GENERAL").length,
-  };
-
-  const stats = [
-    {
-      label: t("notif", "unread", lang) || "Unread",
-      value: unreadCount,
-      detail: unreadCount === 0 ? (t("notif", "allCaughtUp", lang) || "All caught up") : `${unreadCount} unread`,
-      icon: Clock3,
-      color: "text-amber-600",
-    },
-    {
-      label: t("teacherPages", "notifRead", lang) || "Read",
-      value: readCount,
-      detail: `${readRate}% read rate`,
-      icon: CircleCheck,
-      color: "text-emerald-600",
-    },
-    {
-      label: "Announcements",
-      value: announcements,
-      detail: "General & school notices",
-      icon: Bell,
-      color: "text-indigo-600",
-    },
-    {
-      label: "Academic",
-      value: academic,
-      detail: "Homework & exam notices",
-      icon: BookOpen,
-      color: "text-blue-600",
-    },
-    {
-      label: "Alerts & Fees",
-      value: alerts,
-      detail: "Attendance & fee alerts",
-      icon: ClipboardList,
-      color: "text-teal-600",
-    },
-    {
-      label: "Filtered Items",
-      value: notifications.length,
-      detail: `Out of ${total} total`,
-      icon: Inbox,
-      color: "text-gray-600",
-    },
-  ];
-
-  return (
-    <section className="mb-4 overflow-hidden rounded-2xl bg-gradient-to-br from-white to-sky-50">
-      <div className="border-b border-gray-100 px-4 py-3 sm:px-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-xl font-semibold tabular-nums text-gray-950">{total}</span>
-            <span className="text-xs font-medium text-gray-600">
-              {t("notif", "total", lang) || "Total"}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            {unreadCount > 0 && (
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={onMarkAllRead}
-                disabled={markingAll}
-                className="h-7 px-2.5 rounded-full border border-primary-200 bg-white text-xs font-medium text-primary-700 hover:bg-primary-50"
-              >
-                {markingAll ? (
-                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                ) : (
-                  <CheckCheck className="mr-1 h-3 w-3 text-primary-600" />
-                )}
-                {t("notif", "markAllRead", lang) || "Mark all read"}
-              </Button>
-            )}
-            <span className="rounded-full border border-primary-100 bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
-              <strong className="tabular-nums">{notifications.length}</strong>{" "}
-              {t("teacherPages", "feeResultsShown", lang) || "shown"}
-            </span>
-          </div>
-        </div>
-        <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-medium">
-          <span className="max-w-full truncate rounded-full bg-white px-2.5 py-1 text-gray-700 ring-1 ring-gray-200">
-            Type: {activeTypeName}
-          </span>
-          <span className="max-w-full truncate rounded-full bg-white px-2.5 py-1 text-gray-700 ring-1 ring-gray-200">
-            {t("common", "status", lang) || "Status"}: {statusName}
-          </span>
-          {search.trim() && (
-            <span className="max-w-full truncate rounded-full bg-white px-2.5 py-1 text-gray-700 ring-1 ring-gray-200">
-              {t("teacherPages", "feeResultsSearch", lang) || "Search"}: {search.trim()}
-            </span>
-          )}
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-px bg-gray-100">
-        <div className="min-w-0 bg-white/90 p-3 text-center sm:p-4">
-          <h3 className="text-xs font-semibold text-gray-700">Read Status</h3>
-          <NotificationSemiCircle
-            segments={[
-              { value: readCount, color: "#059669" },
-              { value: unreadCount, color: "#f59e0b" },
-            ]}
-            value={`${readRate}%`}
-            label={t("teacherPages", "notifRead", lang) || "Read"}
-            description={`Read Rate: ${readRate}%`}
-          />
-          <div className="flex justify-center gap-3 text-[11px] text-gray-600">
-            <span>
-              <span className="mr-1 inline-block size-2 rounded-full bg-emerald-600" />
-              {t("teacherPages", "notifRead", lang) || "Read"}
-            </span>
-            <span>
-              <span className="mr-1 inline-block size-2 rounded-full bg-amber-500" />
-              {t("notif", "unread", lang) || "Unread"}
-            </span>
-          </div>
-        </div>
-        <div className="min-w-0 bg-white/90 p-3 text-center sm:p-4">
-          <h3 className="text-xs font-semibold text-gray-700">Categories</h3>
-          <NotificationSemiCircle
-            segments={[
-              { value: typeCounts.ANNOUNCEMENT, color: "#4f46e5" },
-              { value: typeCounts.HOMEWORK_REMINDER, color: "#2563eb" },
-              { value: typeCounts.EXAM_NOTICE, color: "#9333ea" },
-              { value: typeCounts.ATTENDANCE_ALERT, color: "#059669" },
-              { value: typeCounts.FEE_REMINDER, color: "#f59e0b" },
-              { value: typeCounts.GENERAL, color: "#6b7280" },
-            ]}
-            value={String(notifications.length)}
-            label="Items"
-            description="Notification categories"
-          />
-          <div className="flex flex-wrap justify-center gap-x-2.5 gap-y-1 text-[11px] text-gray-600">
-            {[
-              ["Announce", "bg-indigo-600"],
-              ["Homework", "bg-blue-600"],
-              ["Exam", "bg-purple-600"],
-              ["Attendance", "bg-emerald-600"],
-              ["Fees", "bg-amber-500"],
-            ].map(([label, color]) => (
-              <span key={label}>
-                <span className={cn("mr-1 inline-block size-2 rounded-full", color)} />
-                {label}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-px border-t border-gray-100 bg-gray-100 sm:grid-cols-3">
-        {stats.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div key={stat.label} className="min-w-0 bg-white/90 p-3 sm:p-4">
-              <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-600">
-                <Icon aria-hidden="true" className={cn("h-3.5 w-3.5 shrink-0", stat.color)} />
-                <span>{stat.label}</span>
-              </div>
-              <div className="mt-2 text-base font-semibold tabular-nums text-gray-950 sm:text-lg">
-                {stat.value}
-              </div>
-              <div className="mt-1 text-[11px] text-gray-500 truncate">{stat.detail}</div>
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
 export default function TeacherNotificationsPage() {
   const { user, accessToken } = useAuthStore();
   const { lang } = useLanguageStore();
@@ -366,7 +104,6 @@ export default function TeacherNotificationsPage() {
   const pageSize                        = 20;
 
   const [selectedNotifId, setSelectedNotifId] = useState<string | null>(null);
-  const [markingAll, setMarkingAll]           = useState(false);
 
   const load = useCallback(async () => {
     if (!cid || !token) return;
@@ -396,18 +133,6 @@ export default function TeacherNotificationsPage() {
     if (!n.isRead) {
       markNotificationRead(cid, token, n.id).catch(() => {});
       setNotifs((prev) => prev.map((x) => (x.id === n.id ? { ...x, isRead: true } : x)));
-    }
-  };
-
-  const handleMarkAllRead = async () => {
-    const unread = notifs.filter((n) => !n.isRead);
-    if (unread.length === 0) return;
-    setMarkingAll(true);
-    try {
-      await Promise.allSettled(unread.map((n) => markNotificationRead(cid, token, n.id)));
-      setNotifs((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    } finally {
-      setMarkingAll(false);
     }
   };
 
@@ -441,24 +166,12 @@ export default function TeacherNotificationsPage() {
     ? notifs.find((n) => n.id === selectedNotifId) ?? null
     : null;
 
-  const activeTypeName = activeTypeId
-    ? (TYPE_CONFIG[activeTypeId]?.label ?? activeTypeId)
-    : "All Types";
-
-  const statusName =
-    statusFilter === "all"
-      ? (t("common", "all", lang) || "All")
-      : statusFilter === "UNREAD"
-      ? (t("notif", "unread", lang) || "Unread")
-      : (t("teacherPages", "notifRead", lang) || "Read");
-
   return (
     <DashboardLayout>
       <PageHeader title={t("teacherPages", "notifTitle", lang) || "Notifications"} />
 
       {/* Search and Filters Trigger Drawer */}
-      <Drawer open={filtersOpen} onOpenChange={setFiltersOpen} swipeDirection="down">
-        <div className="pt-4! pb-2!">
+      <div className="pt-4! pb-2!">
           <div className="mx-auto flex w-full max-w-md items-center gap-2 p-1.5">
             <InputGroup className="h-10 flex-1 rounded-lg bg-white">
               <InputGroupInput
@@ -486,16 +199,9 @@ export default function TeacherNotificationsPage() {
               <SlidersHorizontal className="w-4 h-4" />
             </Button>
           </div>
-        </div>
-
-        <DrawerContent
-          className="max-h-[85dvh] bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
-          aria-label="Notification filters"
-        >
-          <div className="flex items-center justify-between mb-6">
-            <DrawerTitle className="text-lg font-bold text-gray-900">Filters</DrawerTitle>
-          </div>
-
+      </div>
+      <ResponsivePopover open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters" className="shadow-none" footer={<div className="border-t border-gray-100 p-4"><Button type="button" className="w-full" onClick={() => setFiltersOpen(false)}>Done</Button></div>}>
+        <div className="px-5 pb-5 pt-2">
           <section className="mb-6">
             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
               Notification Type
@@ -553,18 +259,26 @@ export default function TeacherNotificationsPage() {
             </Tabs>
           </section>
 
-          <DrawerClose className="mt-8 w-full h-10 rounded-xl bg-primary-600 text-white text-sm font-semibold">
-            Done
-          </DrawerClose>
-        </DrawerContent>
-      </Drawer>
+        </div>
+      </ResponsivePopover>
 
       {error && <ApiErrorBanner message={error} onRetry={load} />}
 
+      {!loading && (
+        <div className="mx-3 mb-3 mt-2 grid grid-cols-2 overflow-hidden rounded-2xl bg-gradient-to-br from-primary-50/60 via-white to-sky-50/60">
+          <div className="border-r border-gray-100 p-2.5 sm:p-3">
+            <span className="flex items-center gap-1.5 text-sm font-medium text-gray-700"><Bell className="size-3.5" />{t("notif", "total", lang) || "Total"}</span>
+            <span className="mt-1.5 block text-[22px] font-medium leading-none tabular-nums text-gray-950">{notifs.length}</span>
+          </div>
+          <div className="p-2.5 sm:p-3">
+            <span className="flex items-center gap-1.5 text-sm font-medium text-gray-700"><Inbox className="size-3.5" />{t("notif", "unread", lang) || "Unread"}</span>
+            <span className="mt-1.5 block text-[22px] font-medium leading-none tabular-nums text-gray-950">{notifs.filter((n) => !n.isRead).length}</span>
+          </div>
+        </div>
+      )}
       {loading ? (
         <div
-          data-ui-style="classic"
-          className="card p-0! mx-3 divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-none"
+          className="mx-3 divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white"
         >
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="p-4">
@@ -581,22 +295,8 @@ export default function TeacherNotificationsPage() {
         </div>
       ) : (
         <>
-          <div className="p-0! px-4! pt-2!">
-            {/* <NotificationStats
-              notifications={filtered}
-              total={notifs.length}
-              activeTypeName={activeTypeName}
-              statusName={statusName}
-              search={search}
-              lang={lang}
-              onMarkAllRead={handleMarkAllRead}
-              markingAll={markingAll}
-            /> */}
-          </div>
-
           <div
-            data-ui-style="classic"
-            className="card mx-3 divide-y p-0! divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-none"
+            className="mx-3 divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white"
           >
             {filtered.length === 0 ? (
               <div className="px-4 py-16 text-center text-sm text-muted-foreground">
@@ -638,7 +338,7 @@ export default function TeacherNotificationsPage() {
                     aria-label={`${n.title}, ${cfg.label}, ${n.isRead ? "read" : "unread"}`}
                     onClick={() => handleSelectNotification(n)}
                     className={cn(
-                      "w-full rounded-none p-4 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500",
+                      "w-full rounded-none px-4 py-4 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500",
                       !n.isRead && "bg-blue-50/40"
                     )}
                   >
@@ -805,166 +505,33 @@ export default function TeacherNotificationsPage() {
         </>
       )}
 
-      {/* Notification Detail Drawer */}
-      <Drawer
+      <ResponsivePopover
         open={selectedNotif !== null}
-        onOpenChange={(open) => {
-          if (!open) setSelectedNotifId(null);
-        }}
-        swipeDirection="down"
+        onOpenChange={(open) => { if (!open) setSelectedNotifId(null); }}
+        title={selectedNotif?.title}
+        description={selectedNotif ? `${selectedNotif.creator?.name ?? "Madrasa"} · ${new Date(selectedNotif.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}` : undefined}
+        desktopView="right-drawer"
+        className="shadow-none"
+        footer={selectedNotif && <div className="flex gap-2 border-t border-gray-100 p-4">
+          <Button type="button" variant="outline" className="flex-1" onClick={() => setSelectedNotifId(null)}>{t("common", "close", lang) || "Close"}</Button>
+          {selectedNotif.actionUrl && <Button type="button" className="flex-1" onClick={() => { const url = selectedNotif.actionUrl!; setSelectedNotifId(null); navigate(url); }}><ExternalLink className="size-4" />Go to Page</Button>}
+        </div>}
       >
-        <DrawerContent className="max-h-[88dvh] bg-background">
-          {selectedNotif && (() => {
-            const cfg = TYPE_CONFIG[selectedNotif.type] ?? TYPE_CONFIG.GENERAL;
-            const Icon = cfg.icon;
-            return (
-              <>
-                <div className="shrink-0 border-b px-5 py-4">
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={cn(
-                        "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border",
-                        cfg.bg
-                      )}
-                    >
-                      <Icon className={cn("h-4 w-4", cfg.color)} />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <DrawerTitle className="text-base font-semibold text-gray-900 truncate">
-                        {selectedNotif.title}
-                      </DrawerTitle>
-                      <p className="mt-0.5 text-xs text-muted-foreground truncate">
-                        {selectedNotif.creator?.name
-                          ? `${t("teacherPages", "notifFrom", lang) || "From"} ${selectedNotif.creator.name}`
-                          : "Madrasa"} ·{" "}
-                        {new Date(selectedNotif.createdAt).toLocaleDateString("en-GB", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
-                  <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4 text-sm leading-relaxed text-gray-800 whitespace-pre-wrap">
-                    {selectedNotif.body}
-                  </div>
-
-                  <dl className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
-                    <div>
-                      <dt className="text-muted-foreground">Category</dt>
-                      <dd className="mt-1">
-                        <span
-                          className={cn(
-                            "inline-flex rounded-full px-2.5 py-1 text-xs font-medium border",
-                            cfg.bg,
-                            cfg.color
-                          )}
-                        >
-                          {cfg.label}
-                        </span>
-                      </dd>
-                    </div>
-
-                    <div>
-                      <dt className="text-muted-foreground">
-                        {t("common", "status", lang) || "Status"}
-                      </dt>
-                      <dd className="mt-1">
-                        <span
-                          className={cn(
-                            "inline-flex rounded-full px-2.5 py-1 text-xs font-medium",
-                            selectedNotif.isRead
-                              ? "bg-gray-100 text-gray-600"
-                              : "bg-blue-100 text-blue-700"
-                          )}
-                        >
-                          {selectedNotif.isRead
-                            ? (t("teacherPages", "notifRead", lang) || "Read")
-                            : (t("notif", "unread", lang) || "Unread")}
-                        </span>
-                      </dd>
-                    </div>
-
-                    <div>
-                      <dt className="text-muted-foreground">
-                        {t("teacherPages", "notifFrom", lang) || "From"}
-                      </dt>
-                      <dd className="mt-1 font-medium text-gray-900">
-                        {selectedNotif.creator?.name ?? "Admin"}
-                      </dd>
-                    </div>
-
-                    <div>
-                      <dt className="text-muted-foreground">
-                        {t("teacherPages", "notifDate", lang) || "Date"}
-                      </dt>
-                      <dd className="mt-1 font-medium text-gray-900">
-                        {new Date(selectedNotif.createdAt).toLocaleDateString("en-GB", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })}
-                      </dd>
-                    </div>
-
-                    {selectedNotif.eventDate && (
-                      <div>
-                        <dt className="text-muted-foreground">Event Date</dt>
-                        <dd className="mt-1 font-medium text-gray-900">
-                          {new Date(selectedNotif.eventDate).toLocaleDateString("en-GB")}
-                        </dd>
-                      </div>
-                    )}
-
-                    <div>
-                      <dt className="text-muted-foreground">Target Audience</dt>
-                      <dd className="mt-1 font-medium text-gray-900">
-                        {selectedNotif.targetRoles?.length > 0
-                          ? selectedNotif.targetRoles.join(", ")
-                          : "All"}
-                      </dd>
-                    </div>
-                  </dl>
-                </div>
-
-                <DrawerFooter className="shrink-0 bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-                  <ButtonGroup className="w-full [&>button]:flex-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="lg"
-                      onClick={() => setSelectedNotifId(null)}
-                    >
-                      {t("common", "close", lang) || "Close"}
-                    </Button>
-                    {selectedNotif.actionUrl && (
-                      <Button
-                        type="button"
-                        size="lg"
-                        className="bg-primary-600 text-white hover:bg-primary-700"
-                        onClick={() => {
-                          const url = selectedNotif.actionUrl!;
-                          setSelectedNotifId(null);
-                          navigate(url);
-                        }}
-                      >
-                        <ExternalLink className="mr-1.5 h-4 w-4" />
-                        Go to Page
-                      </Button>
-                    )}
-                  </ButtonGroup>
-                </DrawerFooter>
-              </>
-            );
-          })()}
-        </DrawerContent>
-      </Drawer>
+        {selectedNotif && (() => {
+          const cfg = TYPE_CONFIG[selectedNotif.type] ?? TYPE_CONFIG.GENERAL;
+          return <div className="space-y-5 p-5 pt-2">
+            <div className="whitespace-pre-wrap rounded-xl border border-gray-100 bg-gray-50/70 p-4 text-sm leading-relaxed text-gray-800">{selectedNotif.body}</div>
+            <dl className="grid grid-cols-2 gap-4 text-sm">
+              <div><dt className="text-gray-500">Category</dt><dd className={cn("mt-1 font-medium", cfg.color)}>{cfg.label}</dd></div>
+              <div><dt className="text-gray-500">{t("common", "status", lang) || "Status"}</dt><dd className="mt-1 font-medium text-gray-900">{selectedNotif.isRead ? (t("teacherPages", "notifRead", lang) || "Read") : (t("notif", "unread", lang) || "Unread")}</dd></div>
+              <div><dt className="text-gray-500">{t("teacherPages", "notifFrom", lang) || "From"}</dt><dd className="mt-1 font-medium text-gray-900">{selectedNotif.creator?.name ?? "Madrasa"}</dd></div>
+              <div><dt className="text-gray-500">{t("teacherPages", "notifDate", lang) || "Date"}</dt><dd className="mt-1 font-medium text-gray-900">{new Date(selectedNotif.createdAt).toLocaleDateString("en-GB")}</dd></div>
+              {selectedNotif.eventDate && <div><dt className="text-gray-500">Event Date</dt><dd className="mt-1 font-medium text-gray-900">{new Date(selectedNotif.eventDate).toLocaleDateString("en-GB")}</dd></div>}
+              <div><dt className="text-gray-500">Target Audience</dt><dd className="mt-1 font-medium text-gray-900">{selectedNotif.targetRoles?.length ? selectedNotif.targetRoles.join(", ") : "All"}</dd></div>
+            </dl>
+          </div>;
+        })()}
+      </ResponsivePopover>
     </DashboardLayout>
   );
 }
-

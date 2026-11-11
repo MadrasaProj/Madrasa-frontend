@@ -205,7 +205,6 @@ export default function ParentHomeworkPage() {
       <ResponsivePopover
         open={!!selected}
         onOpenChange={(open) => { if (!open) closeDetails(); }}
-        drawerOnDesktop
         title={selected?.title}
         description={selected?.subject?.name}
       >

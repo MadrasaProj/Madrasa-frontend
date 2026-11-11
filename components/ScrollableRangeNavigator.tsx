@@ -39,6 +39,7 @@ interface ScrollableRangeNavigatorProps {
   to: string;
   onChange: (range: { from: string; to: string }) => void;
   presets?: RangePreset[];
+  allowAllTime?: boolean;
   showPresetDescription?: boolean;
   showCustomPicker?: boolean;
   title?: string;
@@ -48,25 +49,38 @@ interface ScrollableRangeNavigatorProps {
 }
 
 export function ScrollableRangeNavigator({
-  from, to, onChange, presets = commonRangePreset(), showCustomPicker = true,
+  from, to, onChange, presets = commonRangePreset(), allowAllTime = false, showCustomPicker = true,
   title = "Date range", disabled = false, className, actions,showPresetDescription = false
 }: ScrollableRangeNavigatorProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const stripRef = useRef<HTMLDivElement>(null);
   const selectedRef = useRef<HTMLButtonElement>(null);
   const selectedIndex = presets.findIndex((preset) => formatRangeDate(preset.from) === from && formatRangeDate(preset.to) === to);
+  const allTimeSelected = allowAllTime && from === "ALL" && to === "ALL";
 
   useEffect(() => {
     const strip = stripRef.current;
     const selected = selectedRef.current;
     if (!strip || !selected) return;
     strip.scrollTo({ left: selected.offsetLeft - strip.offsetLeft - (strip.clientWidth - selected.offsetWidth) / 2, behavior: "instant" });
-  }, [selectedIndex]);
+  }, [selectedIndex, allTimeSelected]);
 
   return (
     <div className={cn("min-w-0   ", className)}>
       <div className="flex min-w-0 items-center gap-2">
         <div ref={stripRef} role="group" aria-label={title} className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto overscroll-x-contain py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {allowAllTime && (
+            <button
+              ref={allTimeSelected ? selectedRef : undefined}
+              type="button"
+              aria-pressed={allTimeSelected}
+              disabled={disabled}
+              onClick={() => { setPickerOpen(false); onChange({ from: "ALL", to: "ALL" }); }}
+              className={cn(showPresetDescription ? "h-14" : "h-10", "min-w-28 shrink-0 rounded-lg border px-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:opacity-35", allTimeSelected ? "border-gray-950 bg-gray-950 text-white" : "border-gray-300 bg-white text-gray-900 hover:bg-gray-50")}
+            >
+              All Time
+            </button>
+          )}
           {presets.map((preset, index) => {
             const selected = index === selectedIndex;
             const start = formatRangeDate(preset.from);
@@ -86,7 +100,7 @@ export function ScrollableRangeNavigator({
         {showCustomPicker && (
           <button type="button" aria-label="Custom date range" title="Custom date range" aria-expanded={pickerOpen} disabled={disabled}
             onClick={() => setPickerOpen((open) => !open)}
-            className={cn(showPresetDescription?"h-14 w-12":"h-10 w-10","flex   shrink-0 items-center justify-center rounded-lg border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:opacity-35", pickerOpen || selectedIndex === -1 ? "border-gray-950 bg-gray-950 text-white" : "border-gray-300 bg-white text-gray-900 hover:bg-gray-50")}
+            className={cn(showPresetDescription?"h-14 w-12":"h-10 w-10","flex   shrink-0 items-center justify-center rounded-lg border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:opacity-35", pickerOpen || (selectedIndex === -1 && !allTimeSelected) ? "border-gray-950 bg-gray-950 text-white" : "border-gray-300 bg-white text-gray-900 hover:bg-gray-50")}
           ><CalendarDays aria-hidden="true" className="h-5 w-5" /></button>
         )}
         {actions}
@@ -96,8 +110,8 @@ export function ScrollableRangeNavigator({
           open={pickerOpen}
           onOpenChange={setPickerOpen}
           value={{
-            from: from ? new Date(`${from}T00:00:00`) : undefined,
-            to: to ? new Date(`${to}T00:00:00`) : undefined,
+            from: from && from !== "ALL" ? new Date(`${from}T00:00:00`) : undefined,
+            to: to && to !== "ALL" ? new Date(`${to}T00:00:00`) : undefined,
           }}
           onApply={(range) => {
             if (range?.from && range.to) {

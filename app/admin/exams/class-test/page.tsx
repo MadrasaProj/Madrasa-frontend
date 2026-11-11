@@ -706,7 +706,6 @@ export default function AdminClassTestsPage() {
           open={!!selectedExam}
           onOpenChange={(open) => { if (!open) setSelectedExamId(null); }}
           side="bottom"
-          drawerOnDesktop
           className="mx-auto w-full max-w-2xl rounded-t-2xl"
           title={selectedExam?.name}
           showCloseButton={false}
@@ -769,7 +768,6 @@ export default function AdminClassTestsPage() {
           open={isMarkEntryView}
           onOpenChange={(open) => { if (!open) closeMarkEntry(); }}
           side="bottom"
-          drawerOnDesktop
           title={markEntryExam?.name ?? t("teacherPages", "enterMarksBreadcrumb", lang)}
           description={t("teacherPages", "enterMarksBreadcrumb", lang)}
           className="mx-auto w-full max-w-6xl rounded-t-2xl"
@@ -829,7 +827,6 @@ export default function AdminClassTestsPage() {
         open={showDrawer}
         onOpenChange={(open) => { if (!saving) setShowDrawer(open); }}
         side="bottom"
-        drawerOnDesktop
         title={editTarget ? t("teacherPages", "editClassTestTitle", lang) : t("teacherPages", "newClassTestTitle", lang)}
         className="mx-auto w-full max-w-xl rounded-t-2xl"
         showCloseButton={!saving}

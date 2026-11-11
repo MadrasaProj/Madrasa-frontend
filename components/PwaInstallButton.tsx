@@ -52,7 +52,7 @@ export default function PwaInstallButton({
       {(variant === "card" || variant === "banner") && (
         <div
           className={cn(
-            "relative isolate overflow-hidden rounded-2xl border border-primary-200 bg-linear-to-br from-primary-600 via-primary-600 to-primary-800 p-4 text-white shadow-xs sm:p-5",
+            "relative isolate overflow-hidden rounded-2xl border border-primary-200 bg-linear-to-br from-primary-600 via-primary-600 to-primary-800 p-4 text-white shadow-xs sm:p-5 lg:hidden",
             className,
           )}
         >

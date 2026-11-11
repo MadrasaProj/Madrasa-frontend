@@ -39,7 +39,6 @@ export function TeacherMarkEntryActions({
   const [reportOpen, setReportOpen] = useState(false);
   const [reportSaving, setReportSaving] = useState(false);
   const [report, setReport] = useState<ClassReport | null>(null);
-  const [reportFromSavedMarks, setReportFromSavedMarks] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
   const [reportRequest, setReportRequest] = useState(0);
@@ -62,7 +61,6 @@ export function TeacherMarkEntryActions({
     if (!reportOpen || !clientId || !token || !examId || !classId) return;
     let active = true;
     setReport(null);
-    setReportFromSavedMarks(false);
     setReportError(null);
     setReportLoading(true);
     const loadReport = async () => {
@@ -150,7 +148,6 @@ export function TeacherMarkEntryActions({
             students: rows,
             stats: { totalStudents: rows.length, passedCount: 0, failedCount: 0, rankedCount: 0, classAverage },
           });
-          setReportFromSavedMarks(true);
         }
       } catch (error) {
         if (active) setReportError(error instanceof Error ? error.message : "Could not load the class report.");
@@ -184,7 +181,6 @@ export function TeacherMarkEntryActions({
         open={moreOpen}
         onOpenChange={setMoreOpen}
         side="bottom"
-        drawerOnDesktop
         title={t("common", "actions", lang)}
         className="mx-auto w-full max-w-md rounded-t-2xl"
       >
@@ -206,7 +202,7 @@ export function TeacherMarkEntryActions({
         onOpenChange={setReportOpen}
         fullHeight
         onBack={() => setReportOpen(false)}
-        title={`${examName} · ${t("teacherPages", "report", lang)}`}
+        title={<span className="sr-only">{`${examName} · ${t("teacherPages", "report", lang)}`}</span>}
         className="z-[60] md:max-w-none"
       >
         <div className="mx-auto w-full max-w-[1400px] px-4 py-5 sm:px-6">
@@ -221,14 +217,7 @@ export function TeacherMarkEntryActions({
               <Button type="button" variant="outline" className="mt-3" onClick={() => setReportRequest((value) => value + 1)}>Retry</Button>
             </div>
           ) : report ? (
-            <>
-              {reportFromSavedMarks && (
-                <p className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                  Showing saved marks. Ranks and final statuses appear after results are computed.
-                </p>
-              )}
-              <ClassResultTable report={report} madrasaName={report.clientName ?? ""} />
-            </>
+            <ClassResultTable report={report} madrasaName={report.clientName ?? ""} hideReportHeader previewOutcomes />
           ) : null}
         </div>
       </ResponsivePopover>

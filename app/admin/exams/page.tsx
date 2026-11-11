@@ -1275,7 +1275,6 @@ export default function AdminExamsPage() {
           if (!open) setActiveDateField(null);
         }}
         side="bottom"
-        drawerOnDesktop
         title={drawerMode === "create" ? "Create New Exam" : "Edit Exam"}
         description="Define dates and configuration for term exams"
         className="mx-auto w-full max-w-xl rounded-t-2xl"

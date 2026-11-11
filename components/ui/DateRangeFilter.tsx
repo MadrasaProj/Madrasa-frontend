@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Calendar, ChevronRight } from "lucide-react";
+import { DatePickerDrawer } from "@/components/DatePickerDrawer";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export type DatePreset = "ALL" | "TODAY" | "THIS_WEEK" | "THIS_MONTH" | "LAST_MONTH" | "CUSTOM";
@@ -8,6 +10,8 @@ export interface DateRangeFilterProps {
   from: string;
   to: string;
   onChange: (range: { from: string; to: string; preset: DatePreset }) => void;
+  preset?: DatePreset;
+  presets?: readonly DatePreset[];
   initialPreset?: DatePreset;
   allowAllTime?: boolean;
   className?: string;
@@ -52,26 +56,36 @@ export function DateRangeFilter({
   from,
   to,
   onChange,
+  preset,
+  presets = ["ALL", "TODAY", "THIS_WEEK", "THIS_MONTH", "LAST_MONTH", "CUSTOM"],
   initialPreset = "THIS_MONTH",
   allowAllTime = true,
   className,
   compact = false,
 }: DateRangeFilterProps) {
-  const [activePreset, setActivePreset] = useState<DatePreset>(initialPreset);
+  const [selectedPreset, setSelectedPreset] = useState<DatePreset>(initialPreset);
+  const activePreset = preset ?? selectedPreset;
   const [customFrom, setCustomFrom] = useState(from && from !== "ALL" ? from : fmt(new Date()));
   const [customTo, setCustomTo] = useState(to && to !== "ALL" ? to : fmt(new Date()));
+  const [fromPickerOpen, setFromPickerOpen] = useState(false);
+  const [toPickerOpen, setToPickerOpen] = useState(false);
 
-  const presets: { id: DatePreset; label: string }[] = [
-    ...(allowAllTime ? [{ id: "ALL" as DatePreset, label: "All Time" }] : []),
-    { id: "TODAY", label: "Today" },
-    { id: "THIS_WEEK", label: "This Week" },
-    { id: "THIS_MONTH", label: "This Month" },
-    { id: "LAST_MONTH", label: "Last Month" },
-    { id: "CUSTOM", label: "Custom Range" },
-  ];
+  useEffect(() => {
+    if (from && from !== "ALL") setCustomFrom(from);
+    if (to && to !== "ALL") setCustomTo(to);
+  }, [from, to]);
+
+  const presetLabels: Record<DatePreset, string> = {
+    ALL: "All Time",
+    TODAY: "Today",
+    THIS_WEEK: "This Week",
+    THIS_MONTH: "This Month",
+    LAST_MONTH: "Last Month",
+    CUSTOM: "Custom Range",
+  };
 
   const handlePresetClick = (p: DatePreset) => {
-    setActivePreset(p);
+    setSelectedPreset(p);
     if (p === "CUSTOM") {
       onChange({ from: customFrom, to: customTo, preset: "CUSTOM" });
     } else {
@@ -85,19 +99,23 @@ export function DateRangeFilter({
   };
 
   const handleCustomFromChange = (newFrom: string) => {
+    const newTo = newFrom > customTo ? newFrom : customTo;
     setCustomFrom(newFrom);
-    setActivePreset("CUSTOM");
-    onChange({ from: newFrom, to: customTo, preset: "CUSTOM" });
+    setCustomTo(newTo);
+    setSelectedPreset("CUSTOM");
+    onChange({ from: newFrom, to: newTo, preset: "CUSTOM" });
   };
 
   const handleCustomToChange = (newTo: string) => {
+    const newFrom = newTo < customFrom ? newTo : customFrom;
+    setCustomFrom(newFrom);
     setCustomTo(newTo);
-    setActivePreset("CUSTOM");
-    onChange({ from: customFrom, to: newTo, preset: "CUSTOM" });
+    setSelectedPreset("CUSTOM");
+    onChange({ from: newFrom, to: newTo, preset: "CUSTOM" });
   };
 
   return (
-    <div className={cn("bg-white rounded-2xl border border-gray-100 p-3 sm:p-4 shadow-sm space-y-3", className)}>
+    <div className={cn("space-y-3 rounded-2xl border border-gray-100 bg-white p-3 shadow-none sm:p-4", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
           <Calendar className="w-4 h-4 text-emerald-600" />
@@ -111,22 +129,25 @@ export function DateRangeFilter({
 
         {/* Preset chips */}
         <div className="flex flex-wrap gap-1.5">
-          {presets.map((p) => {
-            const isActive = activePreset === p.id;
+          {presets.filter((p) => allowAllTime || p !== "ALL").map((p) => {
+            const isActive = activePreset === p;
             return (
-              <button
-                key={p.id}
+              <Button
+                key={p}
                 type="button"
-                onClick={() => handlePresetClick(p.id)}
+                variant={isActive ? "default" : "outline"}
+                size="xs"
+                aria-pressed={isActive}
+                onClick={() => handlePresetClick(p)}
                 className={cn(
-                  "px-2.5 py-1 rounded-xl text-xs font-medium transition-all",
+                  "h-auto rounded-xl px-2.5 py-1 text-xs shadow-none",
                   isActive
-                    ? "bg-emerald-600 text-white shadow-sm font-semibold"
-                    : "bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100"
+                    ? "bg-primary-600 font-semibold text-white"
+                    : "border-gray-100 bg-gray-50 text-gray-600 hover:bg-gray-100"
                 )}
               >
-                {p.label}
-              </button>
+                {presetLabels[p]}
+              </Button>
             );
           })}
         </div>
@@ -134,26 +155,16 @@ export function DateRangeFilter({
 
       {/* Custom range date inputs */}
       {activePreset === "CUSTOM" && (
-        <div className="pt-2 border-t border-gray-100 flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500 font-medium">From:</span>
-            <input
-              type="date"
-              value={customFrom}
-              onChange={(e) => handleCustomFromChange(e.target.value)}
-              className="text-xs px-3 py-1.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:border-emerald-500 focus:outline-none transition-all"
-            />
-          </div>
-          <ChevronRight className="w-3.5 h-3.5 text-gray-400 hidden sm:block" />
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500 font-medium">To:</span>
-            <input
-              type="date"
-              value={customTo}
-              onChange={(e) => handleCustomToChange(e.target.value)}
-              className="text-xs px-3 py-1.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:border-emerald-500 focus:outline-none transition-all"
-            />
-          </div>
+        <div className={cn("flex flex-wrap items-center gap-2 border-t border-gray-100 pt-2", compact && "gap-1.5")}>
+          <Button type="button" variant="outline" size="sm" onClick={() => setFromPickerOpen(true)} className="h-9 shadow-none" aria-label={`From date: ${customFrom}`}>
+            From: {customFrom}
+          </Button>
+          <ChevronRight className="hidden size-3.5 text-gray-400 sm:block" aria-hidden="true" />
+          <Button type="button" variant="outline" size="sm" onClick={() => setToPickerOpen(true)} className="h-9 shadow-none" aria-label={`To date: ${customTo}`}>
+            To: {customTo}
+          </Button>
+          <DatePickerDrawer open={fromPickerOpen} onOpenChange={setFromPickerOpen} date={customFrom} onDateChange={handleCustomFromChange} title="From date" />
+          <DatePickerDrawer open={toPickerOpen} onOpenChange={setToPickerOpen} date={customTo} onDateChange={handleCustomToChange} title="To date" minDate={customFrom} />
         </div>
       )}
     </div>

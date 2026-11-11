@@ -342,7 +342,6 @@ export default function TeacherPerformancePage() {
           open={filtersOpen}
           onOpenChange={setFiltersOpen}
           side="bottom"
-          drawerOnDesktop
           title={t("teacherPages", "performanceSelectExam", lang)}
           className="mx-auto w-full max-w-lg rounded-t-2xl"
         >

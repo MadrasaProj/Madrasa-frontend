@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import type {
   ClassReport, ClassReportRow, SubjectMeta, ClassReportConfig,
 } from "@/lib/results-api";
-import { GRADE_COLORS, TOTAL_GRADE_LABELS } from "@/lib/results-api";
+import { calcGradeFromConfig, GRADE_COLORS, TOTAL_GRADE_LABELS } from "@/lib/results-api";
 
 function fmt(d?: string | null) {
   if (!d) return "—";
@@ -78,14 +78,42 @@ function printTable(el: HTMLElement, title: string,head:string) {
 interface Props {
   report: ClassReport;
   madrasaName?: string;
+  hideReportHeader?: boolean;
+  previewOutcomes?: boolean;
 }
 
-export function ClassResultTable({ report, madrasaName }: Props) {
+function getPreviewOutcome(row: ClassReportRow, subjects: SubjectMeta[]) {
+  const enteredSubjects = subjects.filter((subject) => row.marks[subject.id]);
+  if (enteredSubjects.length === 0) return { status: null, grade: null };
+
+  const failed = enteredSubjects.some((subject) => {
+    const mark = row.marks[subject.id];
+    if (mark.isPassed != null) return !mark.isPassed;
+    if (subject.passMarks != null) return mark.score < subject.passMarks;
+    return (mark.grade ?? calcGradeFromConfig(mark.score, mark.maxMarks, subject.gradeConfig)) === "D";
+  });
+  const complete = enteredSubjects.length === subjects.length;
+  const totalScore = enteredSubjects.reduce((sum, subject) => sum + row.marks[subject.id].score, 0);
+  const totalMaxMarks = enteredSubjects.reduce((sum, subject) => sum + row.marks[subject.id].maxMarks, 0);
+  const grade = failed ? "Failed" : enteredSubjects.length === 1
+    ? row.marks[enteredSubjects[0].id].grade ?? calcGradeFromConfig(totalScore, totalMaxMarks, enteredSubjects[0].gradeConfig)
+    : calcGradeFromConfig(totalScore, totalMaxMarks);
+
+  return { status: complete ? (failed ? "FAILED" : "PASSED") : "PENDING", grade };
+}
+
+export function ClassResultTable({ report, madrasaName, hideReportHeader = false, previewOutcomes = false }: Props) {
   const { exam, class: cls, subjects, config, students, stats } = report;
   const tableRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState<"pdf" | "png" | "print" | null>(null);
 
   const filename = `${madrasaName ? madrasaName + " - " : ""}${cls.name} - ${exam.name}`;
+  const previewStats = previewOutcomes ? students.reduce((counts, row) => {
+    const status = row.summary.finalStatus ?? getPreviewOutcome(row, subjects).status;
+    if (status === "PASSED" || status === "PROMOTED") counts.passedCount += 1;
+    if (status === "FAILED") counts.failedCount += 1;
+    return counts;
+  }, { passedCount: 0, failedCount: 0 }) : stats;
 
   const doExport = useCallback(async (type: "pdf" | "png" | "print") => {
     if (!tableRef.current) return;
@@ -120,8 +148,7 @@ export function ClassResultTable({ report, madrasaName }: Props) {
       </div>
 
       <div ref={tableRef} className="bg-white rounded-xl border border-gray-200 overflow-hidden" style={{ fontFamily: "'Segoe UI', Arial, sans-serif" }}>
-        {/* Decorative header */}
-        <div className="text-center px-6 pt-6 pb-4 border-b-4 border-primary-700">
+        {!hideReportHeader && <div className="text-center px-6 pt-6 pb-4 border-b-4 border-primary-700">
           <div className="w-16 h-0.5 bg-primary-300 mx-auto mb-3" />
           {madrasaName && (
             <p className="text-primary-700 text-xs font-bold uppercase tracking-[0.2em] mb-1">{madrasaName}</p>
@@ -134,14 +161,14 @@ export function ClassResultTable({ report, madrasaName }: Props) {
             <p className="text-[10px] text-gray-400 mt-0.5">Published: {fmt(exam.publishedDate)}</p>
           )}
           <div className="w-12 h-0.5 bg-primary-300 mx-auto mt-3" />
-        </div>
+        </div>}
 
         {/* Stats bar */}
         <div className="grid grid-cols-5 divide-x divide-gray-100 border-b border-gray-100 text-center bg-primary-50/30">
           {[
             { label: "Students", value: stats.totalStudents },
-            { label: "Passed", value: stats.passedCount, color: "text-primary-700" },
-            { label: "Failed", value: stats.failedCount, color: "text-red-600" },
+            { label: "Passed", value: previewStats.passedCount, color: "text-primary-700" },
+            { label: "Failed", value: previewStats.failedCount, color: "text-red-600" },
             { label: "Ranked", value: stats.rankedCount, color: "text-primary-700" },
             { label: "Class Avg", value: `${stats.classAverage.toFixed(1)}%`, color: "text-teal-700" },
           ].map(({ label, value, color }) => (
@@ -175,7 +202,7 @@ export function ClassResultTable({ report, madrasaName }: Props) {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {students.map((row, idx) => (
-                <StudentRow key={row.student.id} row={row} idx={idx} subjects={subjects} config={config} />
+                <StudentRow key={row.student.id} row={row} idx={idx} subjects={subjects} config={config} previewOutcomes={previewOutcomes} />
               ))}
               {students.length === 0 && (
                 <tr>
@@ -209,22 +236,25 @@ export function ClassResultTable({ report, madrasaName }: Props) {
           </table>
         </div>
 
-        {/* Footer */}
-        <div className="text-center py-3 border-t border-gray-100 text-[9px] text-gray-400">
+        {!hideReportHeader && <div className="text-center py-3 border-t border-gray-100 text-[9px] text-gray-400">
           Generated by <span className="font-semibold text-primary-600">Smart Madrasa</span> · {new Date().toLocaleString("en-IN")}
-        </div>
+        </div>}
       </div>
     </div>
   );
 }
 
-function StudentRow({ row, idx, subjects, config }: {
+function StudentRow({ row, idx, subjects, config, previewOutcomes }: {
   row: ClassReportRow;
   idx: number;
   subjects: SubjectMeta[];
   config: ClassReportConfig;
+  previewOutcomes: boolean;
 }) {
   const { summary, student, marks } = row;
+  const preview = previewOutcomes ? getPreviewOutcome(row, subjects) : null;
+  const status = summary.finalStatus ?? preview?.status;
+  const grade = summary.totalGrade ? (TOTAL_GRADE_LABELS[summary.totalGrade] ?? summary.totalGrade) : preview?.grade;
   const rankClass = summary.rank === 1 ? "bg-yellow-50/50" : summary.rank === 2 ? "bg-slate-50/60" : summary.rank === 3 ? "bg-amber-50/40" : "";
 
   return (
@@ -270,22 +300,22 @@ function StudentRow({ row, idx, subjects, config }: {
         {summary.rank ?? "—"}
       </td>
       <td className="px-2 py-2.5 text-center">
-        {summary.finalStatus ? (
+        {status ? (
           <span className={cn(
             "text-xs font-semibold px-2 py-0.5 rounded",
-            summary.finalStatus === "PASSED" || summary.finalStatus === "PROMOTED"
+            status === "PASSED" || status === "PROMOTED"
               ? "bg-primary-100 text-primary-700"
-              : "bg-red-100 text-red-700",
+              : status === "PENDING" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700",
           )}>
-            {summary.finalStatus === "PASSED" ? config.passedLabel
-              : summary.finalStatus === "FAILED" ? config.failedLabel
-              : summary.finalStatus === "PROMOTED" ? config.promotedLabel
-              : config.withheldLabel}
+            {status === "PASSED" ? config.passedLabel
+              : status === "FAILED" ? config.failedLabel
+              : status === "PROMOTED" ? config.promotedLabel
+              : status === "PENDING" ? "Pending" : config.withheldLabel}
           </span>
         ) : "—"}
       </td>
       <td className="px-2 py-2.5 text-center text-xs text-gray-600 font-medium">
-        {summary.totalGrade ? (TOTAL_GRADE_LABELS[summary.totalGrade] ?? summary.totalGrade) : "—"}
+        {grade ?? "—"}
       </td>
     </tr>
   );

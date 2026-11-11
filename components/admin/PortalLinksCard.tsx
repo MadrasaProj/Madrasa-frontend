@@ -84,7 +84,7 @@ export function PortalLinksCard({
   };
 
   return (
-    <section className={cn("card rounded-2xl border border-gray-100 bg-white p-4 shadow-xs sm:p-5", className)}>
+    <section className={cn("card rounded-2xl border border-gray-100 bg-white p-4 sm:p-5", className)}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-bold text-gray-950 sm:text-base">Staff & Parent Portal Links</h2>
@@ -100,7 +100,7 @@ export function PortalLinksCard({
         {portals.map((portal) => (
           <div
             key={portal.key}
-            className="flex min-w-0 flex-col justify-between rounded-2xl border border-white bg-linear-to-br from-primary-50 via-white to-white p-4 shadow-xs"
+            className="flex min-w-0 flex-col justify-between rounded-2xl border border-white bg-linear-to-br from-primary-50 via-white to-white p-4"
           >
             <div>
               <div className="flex items-center gap-3">

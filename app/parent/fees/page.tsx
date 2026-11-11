@@ -787,7 +787,6 @@ export default function ParentFeesPage() {
         onOpenChange={(open) => { if (!open) setSelectedTypeId(null); }}
         title={selectedFeeType?.name}
         description={selectedFeeType ? getFrequencyLabel(selectedFeeType.frequency, selectedFeeType.kind, lang) : undefined}
-        drawerOnDesktop
         contentClassName="px-4 pb-6"
       >
         {selectedFeeType && (() => {

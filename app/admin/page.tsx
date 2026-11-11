@@ -59,23 +59,23 @@ function AdminWelcomeHeader({ platform }: { platform: boolean }) {
 function OverviewCard({ stats, loading, title = "Overview" }: { stats: DashboardStat[]; loading: boolean; title?: string }) {
   return (
     <section aria-labelledby="admin-overview-heading">
-      <h2 id="admin-overview-heading" className="mb-3 text-base font-bold text-gray-900 sm:text-lg">{title}</h2>
-      <div className="grid grid-cols-2 overflow-hidden rounded-2xl bg-gradient-to-br from-primary-50/60 via-white to-sky-50/60">
+      <h2 id="admin-overview-heading" className="mb-4 text-base font-bold text-gray-900 sm:text-lg">{title}</h2>
+      <div className="grid grid-cols-2 overflow-hidden rounded-2xl bg-gradient-to-br from-primary-50/60 via-white to-sky-50/60 lg:grid-cols-4">
         {stats.map((stat, index) => {
           const tone = statToneClasses[stat.tone];
           return (
             <div
               key={stat.label}
-              className={`min-w-0 p-2.5 sm:p-3 ${tone.background} ${index < 2 ? "border-b border-gray-100" : ""} ${index % 2 === 0 ? "border-r border-gray-100" : ""}`}
+              className={`min-w-0 border-gray-100 p-4 sm:p-6 ${tone.background} ${index < 2 ? "border-b lg:border-b-0" : ""} ${index % 2 === 0 ? "border-r" : ""} ${index === 1 ? "lg:border-r" : ""}`}
             >
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <stat.icon aria-hidden="true" className={`size-4 shrink-0 ${tone.icon}`} />
                 <span className="text-sm font-medium leading-4 text-gray-700">{stat.label}</span>
               </div>
               {loading ? (
-                <Skeleton className="mt-1.5 h-6 w-14" />
+                <Skeleton className="mt-3 h-6 w-14" />
               ) : (
-                <span className={`mt-1.5 block text-[22px] font-medium leading-none tabular-nums ${tone.value}`}>{stat.value}</span>
+                <span className={`mt-3 block text-[22px] font-medium leading-none tabular-nums ${tone.value}`}>{stat.value}</span>
               )}
             </div>
           );
@@ -89,12 +89,12 @@ function QuickActionsGrid({ actions }: { actions: DashboardAction[] }) {
   const navigate = useNavigate();
 
   return (
-    <section aria-labelledby="admin-actions-heading" className="overflow-hidden rounded-2xl border border-gray-100 bg-white p-4 shadow-xs card sm:p-5">
+    <section aria-labelledby="admin-actions-heading" className="overflow-hidden rounded-2xl border border-gray-100 bg-white p-4 card sm:p-5">
       <div className="mb-3.5 flex items-center justify-between">
         <h2 id="admin-actions-heading" className="text-sm font-bold text-gray-950 sm:text-base">Quick Actions</h2>
         <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-600">{actions.length}</span>
       </div>
-      <ul className="grid grid-cols-3 gap-2 sm:gap-3">
+      <ul className="grid grid-cols-3 gap-2 sm:gap-3 lg:grid-cols-5">
         {actions.map((action) => (
           <li key={action.href} className="min-w-0">
             <button
@@ -242,9 +242,9 @@ export default function AdminDashboard() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-4 sm:space-y-5">
+      <div className="space-y-6 sm:space-y-8 lg:mt-10 lg:space-y-10">
         <AdminWelcomeHeader platform={isSuperAdminPlatform} />
-        <PwaInstallButton variant="banner" className="mb-2" />
+        <PwaInstallButton variant="banner" className="shadow-none" />
         {isSuperAdminPlatform ? <PlatformOverview /> : <MadrasaAdminDashboard />}
       </div>
     </DashboardLayout>

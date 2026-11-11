@@ -751,7 +751,6 @@ export default function ParentIbadahPage() {
           onOpenChange={(open) => { if (!open) setSelectedLogId(null); }}
           title={ibadah.student.name}
           description={selectedLog ? `${ibadah.student.adno} · ${new Date(`${selectedLog.date.split("T")[0]}T00:00:00`).toLocaleDateString(lang === "ml" ? "ml-IN" : "en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}` : undefined}
-          drawerOnDesktop
           contentClassName="px-4 pb-6"
           footer={selectedLog && (
             <div className="border-t border-gray-100 bg-white px-4 py-3">

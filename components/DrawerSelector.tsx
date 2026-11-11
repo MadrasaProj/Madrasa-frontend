@@ -107,7 +107,6 @@ export function DrawerSelector({
         open={open}
         onOpenChange={setOpen}
         side="bottom"
-        drawerOnDesktop
         title={title}
         className="mx-auto w-full max-w-lg rounded-t-2xl"
         contentClassName="p-2 pb-5"

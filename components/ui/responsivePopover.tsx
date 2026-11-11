@@ -9,18 +9,26 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import {
+  Popover,
+  PopoverContent,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type Side = "right" | "bottom" | "responsive";
+type DesktopView = "popover" | "right-drawer" | "bottom-drawer";
 
 export interface ResponsivePopoverProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   side?: Side;
-  drawerOnDesktop?: boolean;
+  /** Desktop presentation. Defaults to an anchored popover. */
+  desktopView?: DesktopView;
+  /** Optional element to position the desktop popover against. Defaults to the last interacted element. */
+  popoverAnchor?: React.ComponentProps<typeof PopoverContent>["anchor"];
   compact?: boolean;
   fullHeight?: boolean;
   title?: React.ReactNode;
@@ -37,7 +45,9 @@ export interface ResponsivePopoverProps {
 }
 
 function useIsDesktop() {
-  const [isDesktop, setIsDesktop] = React.useState(false);
+  const [isDesktop, setIsDesktop] = React.useState(
+    () => typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches,
+  );
 
   React.useEffect(() => {
     const mediaQuery = window.matchMedia("(min-width: 768px)");
@@ -50,12 +60,13 @@ function useIsDesktop() {
   return isDesktop;
 }
 
-/** A controlled drawer: wide from the right on desktop, responsive on mobile. When fullHeight=true, renders a fixed full-screen div without drawer motion. */
+/** A controlled popover on desktop and drawer on mobile. fullHeight renders a fixed full-screen view. */
 export function ResponsivePopover({
   open,
   onOpenChange,
   side = "responsive",
-  drawerOnDesktop = false,
+  desktopView = "popover",
+  popoverAnchor,
   compact = false,
   fullHeight = false,
   title,
@@ -71,11 +82,36 @@ export function ResponsivePopover({
   onBack,
 }: ResponsivePopoverProps) {
   const isDesktop = useIsDesktop();
-  const wideDesktopDrawer = !compact && isDesktop && !drawerOnDesktop;
-  const swipeDirection = compact ? "down" : wideDesktopDrawer ? "right" : side === "bottom" || (side === "responsive" && !isDesktop) ? "down" : "right";
+  const isDesktopPopover = isDesktop && desktopView === "popover";
+  const swipeDirection = isDesktop
+    ? (desktopView === "bottom-drawer" ? "down" : "right")
+    : (compact || side !== "right" ? "down" : "right");
   const isBottom = swipeDirection === "down";
 
   const renderClose = !showBackButton && showCloseButton;
+  const lastInteraction = React.useRef<Element | null>(
+    typeof document !== "undefined" && document.activeElement instanceof Element && document.activeElement !== document.body
+      ? document.activeElement
+      : null,
+  );
+  const viewportAnchor = React.useMemo(() => ({
+    getBoundingClientRect: () => new DOMRect(window.innerWidth / 2, Math.min(window.innerHeight / 4, 160), 0, 0),
+  }), []);
+
+  React.useEffect(() => {
+    if (open || !isDesktopPopover || popoverAnchor) return;
+    const remember = (event: Event) => {
+      if (event.target instanceof Element) {
+        lastInteraction.current = event.target.closest("button, [role='button'], input, select, textarea") ?? event.target;
+      }
+    };
+    document.addEventListener("pointerdown", remember, true);
+    document.addEventListener("focusin", remember, true);
+    return () => {
+      document.removeEventListener("pointerdown", remember, true);
+      document.removeEventListener("focusin", remember, true);
+    };
+  }, [open, isDesktopPopover, popoverAnchor]);
 
   React.useEffect(() => {
     if (!fullHeight || !open) return;
@@ -173,15 +209,39 @@ export function ResponsivePopover({
       : fullHeightContent;
   }
 
+  if (isDesktopPopover) {
+    return (
+      <Popover open={open} onOpenChange={onOpenChange}>
+        <PopoverContent
+          anchor={popoverAnchor ?? (lastInteraction.current?.isConnected ? lastInteraction.current : viewportAnchor)}
+          side="left"
+          align="start"
+          sideOffset={8}
+          aria-label={typeof title === "string" ? title : "Details"}
+          className={cn(
+            "    p-0 text-gray-900 shadow-2xl",
+            className,
+          )}
+        >
+          {beforeHeader}
+          <div className={cn("min-h-0 flex-auto overflow-y-auto overscroll-contain", contentClassName)}>{children}</div>
+          {footer && <div className="shrink-0">{footer}</div>}
+        </PopoverContent>
+      </Popover>
+    );
+  }
+
   return (
     <BaseDrawer open={open} onOpenChange={onOpenChange} swipeDirection={swipeDirection} showSwipeHandle={false}>
       <DrawerContent
         className={cn(
           "bg-white text-gray-900 shadow-2xl",
-          compact ? "mx-auto w-full max-w-md max-h-[92dvh]" : isBottom ? "max-h-[92dvh]" : "h-full max-h-dvh w-full md:max-w-[400px]",
+          isBottom
+            ? (compact ? "mx-auto w-full max-w-md max-h-[92dvh]" : "max-h-[92dvh]")
+            : "h-full max-h-dvh w-full md:max-w-[400px]",
           className,
         )}
-        style={wideDesktopDrawer ? { "--drawer-content-width": "400px" } as React.CSSProperties : undefined}
+        style={isDesktop && !isBottom ? { "--drawer-content-width": "400px" } as React.CSSProperties : undefined}
       >
         {beforeHeader}
         {(title || description || headerAction || showCloseButton || showBackButton) && (

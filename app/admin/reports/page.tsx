@@ -1,7 +1,11 @@
-import { useState, useCallback, useMemo, useRef } from "react";
+import { useState, useMemo, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { DateRangeFilter, computePresetRange, type DatePreset } from "@/components/ui/DateRangeFilter";
+import { DrawerSelector } from "@/components/DrawerSelector";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
+import { ScrollableRangeNavigator, commonRangePreset, formatRangeDate, type RangePreset } from "@/components/ScrollableRangeNavigator";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/store/auth";
 import {
   useStudentStats,
@@ -14,8 +18,6 @@ import {
   useClientConfig,
 } from "@/lib/queries";
 import type { ParentAdoptionItem } from "@/lib/reports-api";
-import { useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/queryKeys";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -55,7 +57,6 @@ import {
   Image,
   ExternalLink,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   BarChart,
   Bar,
@@ -479,9 +480,13 @@ export default function AdminReportsPage() {
 
   const { data: clientConfig } = useClientConfig({ clientId: cid, token });
 
-  const [dateRange, setDateRange] = useState<{ from: string; to: string; preset: DatePreset }>(() => {
-    const range = computePresetRange("TODAY");
-    return { ...range, preset: "TODAY" };
+  const [reportPresets] = useState<RangePreset[]>(() => {
+    const today = new Date();
+    return [{ label: "Today", from: today, to: today }, ...commonRangePreset(today)];
+  });
+  const [dateRange, setDateRange] = useState(() => {
+    const today = formatRangeDate(reportPresets[0].from);
+    return { from: today, to: today };
   });
 
   // Modal States for On-Demand Detail Inspection (Lazy Loaded)
@@ -518,10 +523,8 @@ export default function AdminReportsPage() {
   const [facultyModalTab, setFacultyModalTab] = useState<"INACTIVE" | "ACTIVE" | "ALL">("INACTIVE");
   const [facultyModalSearch, setFacultyModalSearch] = useState("");
 
-  const qc = useQueryClient();
-
   const dateParams = useMemo(() => {
-    if (dateRange.preset === "ALL" || dateRange.from === "ALL") {
+    if (dateRange.from === "ALL") {
       return { from: "ALL", to: "ALL" };
     }
     if (dateRange.from || dateRange.to) {
@@ -531,7 +534,7 @@ export default function AdminReportsPage() {
   }, [dateRange]);
 
   const displayDateStr = useMemo(() => {
-    if (dateRange.preset === "ALL" || dateRange.from === "ALL") return "All Time";
+    if (dateRange.from === "ALL") return "All Time";
     if (dateRange.from && dateRange.to) {
       return dateRange.from === dateRange.to ? dateRange.from : `${dateRange.from} to ${dateRange.to}`;
     }
@@ -622,10 +625,6 @@ export default function AdminReportsPage() {
     loadingStudentStats || loadingFeeSummary || loadingAttendanceSummary || loadingHomeworkSummary;
 
   const coreError = studentError?.message || feeError?.message || attendanceError?.message || homeworkError?.message || null;
-
-  const load = useCallback(() => {
-    qc.invalidateQueries({ queryKey: queryKeys.reports.all });
-  }, [qc]);
 
   const genderData =
     students?.byGender.map((g) => ({
@@ -912,10 +911,26 @@ export default function AdminReportsPage() {
     }
   };
 
+  const reportControls = (
+    <ScrollableRangeNavigator
+      from={dateRange.from}
+      to={dateRange.to}
+      presets={reportPresets}
+      onChange={setDateRange}
+      allowAllTime
+      showPresetDescription
+      title="Report date range"
+    />
+  );
+
   if (coreLoading && !students) {
     return (
       <DashboardLayout>
-        <PageSkeleton />
+        <div className="mx-auto max-w-7xl space-y-6">
+          <PageHeader title="Institutional Reports & Operations" />
+          {reportControls}
+          <PageSkeleton />
+        </div>
       </DashboardLayout>
     );
   }
@@ -950,32 +965,9 @@ export default function AdminReportsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6 pb-12 max-w-7xl mx-auto">
-        {/* Header with Title & Date Controls */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <PageHeader
-            title="Institutional Reports & Operations"
-            subtitle="Real-time compliance monitoring, stakeholder system engagement, and academic analytics."
-          />
-          <div className="flex items-center gap-2">
-            <button
-              onClick={load}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition shadow-sm"
-              title="Refresh all metrics"
-            >
-              <RefreshCw className="w-3.5 h-3.5 text-gray-500" />
-              <span>Sync</span>
-            </button>
-          </div>
-        </div>
+        <PageHeader title="Institutional Reports & Operations" />
 
-        {/* Coordinated Date Filter */}
-        <DateRangeFilter
-          from={dateRange.from}
-          to={dateRange.to}
-          onChange={setDateRange}
-          initialPreset="TODAY"
-          allowAllTime
-        />
+        {reportControls}
 
         {/* Non-blocking subtle alert if any optional subsystem has an error */}
         {coreError && (
@@ -1002,193 +994,49 @@ export default function AdminReportsPage() {
               </div>
             </div>
             <div className="flex items-center gap-2 self-start sm:self-auto">
-              <button
+              <Button type="button" variant="ghost" size="xs"
                 onClick={() => openParentInspection("NOT_ACCESSED")}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 transition border border-rose-200"
               >
                 <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
                 <span>Inactive Roster ({parentInactiveCount})</span>
-              </button>
+              </Button>
             </div>
           </div>
 
-          {/* 4 Clean Executive Metric Tiles */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-            {/* 1. Student Portal Access */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm hover:border-blue-200 transition-colors flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
-                      <Smartphone className="w-4 h-4" />
+          <div className="grid grid-cols-2 overflow-hidden rounded-2xl border border-gray-100 bg-gradient-to-br from-primary-50/60 via-white to-sky-50/60">
+            {[
+              { label: "Portal Access", value: parentAccessedCount, total: parentTotalCount, unit: "students", rate: parentAdoptionPct, pending: parentInactiveCount, icon: Smartphone, color: "bg-blue-600", onReview: () => openParentInspection("NOT_ACCESSED") },
+              { label: "Attendance", value: classAttMarked, total: classAttTotal, unit: "classes", rate: classAttRate, pending: classAttPending, icon: ClipboardList, color: "bg-primary-600", onReview: () => { setAttendanceModalTab(classAttPending > 0 ? "PENDING" : "ALL"); setAttendanceModalSearch(""); setAttendanceModalOpen(true); } },
+              { label: "Homework", value: hwAssignedCount, total: hwTotalClasses, unit: "classes", rate: hwComplianceRate, pending: hwPendingCount, icon: BookOpen, color: "bg-indigo-600", onReview: () => { setHomeworkModalTab(hwPendingCount > 0 ? "PENDING" : "ALL"); setHomeworkModalSearch(""); setHomeworkModalOpen(true); } },
+              { label: "Ibadah", value: ibRecordedCount, total: ibTotalClasses, unit: "classes", rate: ibComplianceRate, pending: ibPendingCount, icon: Sparkles, color: "bg-amber-500", onReview: () => { setIbadahModalTab(ibPendingCount > 0 ? "PENDING" : "ALL"); setIbadahModalSearch(""); setIbadahModalOpen(true); } },
+            ].map((metric, index) => {
+              const Icon = metric.icon;
+              return (
+                <div key={metric.label} className={cn("min-w-0 p-2.5 sm:p-3", index % 2 === 0 && "border-r border-gray-100", index < 2 && "border-b border-gray-100")}>
+                  <div className="flex items-center gap-1.5 text-sm font-medium leading-4 text-gray-700">
+                    <Icon className="size-3.5 shrink-0" aria-hidden="true" />
+                    <span>{metric.label}</span>
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap items-baseline gap-x-1.5">
+                    <span className="text-xl font-medium leading-none tabular-nums text-gray-950 sm:text-[22px]">{metric.value}</span>
+                    <span className="text-[11px] text-gray-500">of {metric.total} {metric.unit}</span>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-gray-200" role="progressbar" aria-label={`${metric.label} rate`} aria-valuenow={metric.rate} aria-valuemin={0} aria-valuemax={100}>
+                      <div className={cn("h-full rounded-full", metric.color)} style={{ width: `${Math.max(0, Math.min(100, metric.rate))}%` }} />
                     </div>
-                    <span className="text-xs font-bold text-gray-900">Portal Access</span>
+                    <span className="text-[11px] font-semibold tabular-nums text-gray-700">{metric.rate}%</span>
                   </div>
-                  <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
-                    {parentAdoptionPct}%
-                  </span>
-                </div>
-                <div className="mt-3">
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-2xl font-black text-gray-900 tracking-tight">{parentAccessedCount}</span>
-                    <span className="text-xs text-gray-500">/ {parentTotalCount} active</span>
-                  </div>
-                  <div className="w-full bg-gray-100 rounded-full h-1.5 mt-2 overflow-hidden">
-                    <div
-                      className="bg-blue-600 h-1.5 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(100, parentAdoptionPct)}%` }}
-                    />
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-1 border-t border-gray-100 pt-2 text-[11px]">
+                    <span className="text-gray-500"><strong className="font-semibold text-gray-800">{metric.pending}</strong> pending</span>
+                    <Button type="button" variant="ghost" size="xs" onClick={metric.onReview} className="h-auto gap-0.5 px-1 py-0.5 text-xs text-primary-700 shadow-none">
+                      Review <ChevronRight className="size-3.5" />
+                    </Button>
                   </div>
                 </div>
-              </div>
-              <div className="pt-3 mt-2 border-t border-gray-100 flex items-center justify-between">
-                <span className="text-[11px] text-gray-500">
-                  <strong className="text-rose-600 font-bold">{parentInactiveCount}</strong> pending
-                </span>
-                <button
-                  onClick={() => openParentInspection("NOT_ACCESSED")}
-                  className="text-xs font-semibold text-blue-600 hover:text-blue-800 inline-flex items-center gap-0.5"
-                >
-                  <span>Inspect</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-
-            {/* 2. Class Attendance */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm hover:border-primary-200 transition-colors flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-primary-50 text-primary-600 rounded-xl">
-                      <ClipboardList className="w-4 h-4" />
-                    </div>
-                    <span className="text-xs font-bold text-gray-900">Attendance</span>
-                  </div>
-                  <span className="text-xs font-bold text-primary-700 bg-primary-50 px-2 py-0.5 rounded-full border border-primary-100">
-                    {classAttRate}%
-                  </span>
-                </div>
-                <div className="mt-3">
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-2xl font-black text-gray-900 tracking-tight">{classAttMarked}</span>
-                    <span className="text-xs text-gray-500">/ {classAttTotal} classes</span>
-                  </div>
-                  <div className="w-full bg-gray-100 rounded-full h-1.5 mt-2 overflow-hidden">
-                    <div
-                      className="bg-primary-600 h-1.5 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(100, classAttRate)}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="pt-3 mt-2 border-t border-gray-100 flex items-center justify-between">
-                <span className="text-[11px] text-gray-500">
-                  <strong className="text-amber-600 font-bold">{classAttPending}</strong> pending
-                </span>
-                <button
-                  onClick={() => {
-                    setAttendanceModalTab(classAttPending > 0 ? "PENDING" : "ALL");
-                    setAttendanceModalSearch("");
-                    setAttendanceModalOpen(true);
-                  }}
-                  className="text-xs font-semibold text-primary-600 hover:text-primary-800 inline-flex items-center gap-0.5"
-                >
-                  <span>Review</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-
-            {/* 3. Homework Compliance */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm hover:border-indigo-200 transition-colors flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
-                      <BookOpen className="w-4 h-4" />
-                    </div>
-                    <span className="text-xs font-bold text-gray-900">Homework</span>
-                  </div>
-                  <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">
-                    {hwComplianceRate}%
-                  </span>
-                </div>
-                <div className="mt-3">
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-2xl font-black text-gray-900 tracking-tight">{hwAssignedCount}</span>
-                    <span className="text-xs text-gray-500">/ {hwTotalClasses} classes</span>
-                  </div>
-                  <div className="w-full bg-gray-100 rounded-full h-1.5 mt-2 overflow-hidden">
-                    <div
-                      className="bg-indigo-600 h-1.5 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(100, hwComplianceRate)}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="pt-3 mt-2 border-t border-gray-100 flex items-center justify-between">
-                <span className="text-[11px] text-gray-500">
-                  <strong className="text-amber-600 font-bold">{hwPendingCount}</strong> pending
-                </span>
-                <button
-                  onClick={() => {
-                    setHomeworkModalTab(hwPendingCount > 0 ? "PENDING" : "ALL");
-                    setHomeworkModalSearch("");
-                    setHomeworkModalOpen(true);
-                  }}
-                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 inline-flex items-center gap-0.5"
-                >
-                  <span>Review</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-
-            {/* 4. Ibadah Tracking */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm hover:border-amber-200 transition-colors flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-amber-50 text-amber-600 rounded-xl">
-                      <Sparkles className="w-4 h-4" />
-                    </div>
-                    <span className="text-xs font-bold text-gray-900">Ibadah</span>
-                  </div>
-                  <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">
-                    {ibComplianceRate}%
-                  </span>
-                </div>
-                <div className="mt-3">
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-2xl font-black text-gray-900 tracking-tight">{ibRecordedCount}</span>
-                    <span className="text-xs text-gray-500">/ {ibTotalClasses} classes</span>
-                  </div>
-                  <div className="w-full bg-gray-100 rounded-full h-1.5 mt-2 overflow-hidden">
-                    <div
-                      className="bg-amber-500 h-1.5 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(100, ibComplianceRate)}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="pt-3 mt-2 border-t border-gray-100 flex items-center justify-between">
-                <span className="text-[11px] text-gray-500">
-                  <strong className="text-rose-600 font-bold">{ibPendingCount}</strong> pending
-                </span>
-                <button
-                  onClick={() => {
-                    setIbadahModalTab(ibPendingCount > 0 ? "PENDING" : "ALL");
-                    setIbadahModalSearch("");
-                    setIbadahModalOpen(true);
-                  }}
-                  className="text-xs font-semibold text-amber-700 hover:text-amber-900 inline-flex items-center gap-0.5"
-                >
-                  <span>Review</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
+              );
+            })}
           </div>
 
           {/* Secondary Executive Ribbon: Faculty Diligence & Class Breakdown Drawer Toggle */}
@@ -1200,7 +1048,7 @@ export default function AdminReportsPage() {
                 <strong className="text-gray-900">{teacherActive} of {teacherTotal}</strong>
                 <span>active ({teacherUtilization}%)</span>
               </div>
-              <button
+              <Button type="button" variant="ghost" size="xs"
                 onClick={() => {
                   setFacultyModalTab(teacherInactive > 0 ? "INACTIVE" : "ALL");
                   setFacultyModalSearch("");
@@ -1209,22 +1057,22 @@ export default function AdminReportsPage() {
                 className="text-[11px] font-semibold text-purple-700 hover:text-purple-900 underline underline-offset-2 ml-1"
               >
                 Review Faculty
-              </button>
+              </Button>
             </div>
 
             {ops?.parents?.classAdoption && ops.parents.classAdoption.length > 0 && (
               <div className="flex items-center gap-2 self-start sm:self-auto">
-                <button
+                <Button type="button" variant="ghost" size="xs"
                   onClick={handleDownloadClassAdoptionSummaryCsv}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-white border border-gray-200 text-gray-700 hover:bg-gray-100 transition shadow-xs"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-white border border-gray-200 text-gray-700 hover:bg-gray-100 transition shadow-none"
                   title="Download Class Adoption Summary CSV"
                 >
                   <Download className="w-3 h-3 text-gray-500" />
                   <span>CSV</span>
-                </button>
-                <button
+                </Button>
+                <Button type="button" variant="ghost" size="xs"
                   onClick={() => setShowClassBreakdown((prev) => !prev)}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-white border border-gray-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 transition shadow-xs"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-white border border-gray-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 transition shadow-none"
                 >
                   <Smartphone className="w-3 h-3 text-blue-600" />
                   <span>
@@ -1235,7 +1083,7 @@ export default function AdminReportsPage() {
                   ) : (
                     <ChevronDown className="w-3 h-3" />
                   )}
-                </button>
+                </Button>
               </div>
             )}
           </div>
@@ -1243,29 +1091,31 @@ export default function AdminReportsPage() {
 
         {/* Collapsible Section: Class-By-Class Student Adoption Breakdown */}
         {showClassBreakdown && ops?.parents?.classAdoption && ops.parents.classAdoption.length > 0 && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm space-y-3 animate-in fade-in-50 duration-200">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-              <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+          <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
+            <div className="flex items-center justify-between gap-2 border-b border-gray-100 px-4 py-4">
+              <span className="text-xs font-semibold text-gray-700">
                 Class-Wise Student Engagement Breakdown
               </span>
-              <button
+              <Button type="button" variant="ghost" size="xs"
                 onClick={() => openParentInspection("ALL")}
-                className="text-xs font-semibold text-blue-600 hover:text-blue-700 inline-flex items-center gap-1"
+                className="h-auto gap-1 px-1 text-xs text-primary-700 shadow-none"
               >
                 <span>View Full Roster</span>
                 <ChevronRight className="w-3.5 h-3.5" />
-              </button>
+              </Button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+            <div className="divide-y divide-gray-100">
               {ops.parents.classAdoption.map((cls) => (
-                <div
+                <Button
                   key={cls.classId}
+                  type="button"
+                  variant="ghost"
                   onClick={() => openParentInspection("NOT_ACCESSED", cls.classId)}
-                  className="p-3 rounded-xl border border-gray-100 bg-gray-50/60 hover:bg-blue-50/40 hover:border-blue-200 transition-all cursor-pointer group space-y-1.5"
+                  className="group h-auto w-full flex-col items-stretch gap-2 rounded-none px-4 py-4 text-left whitespace-normal hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500"
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-gray-900 group-hover:text-blue-700 transition">
+                  <span className="flex w-full items-center justify-between gap-3">
+                    <span className="text-sm font-semibold text-gray-900 group-hover:text-primary-700">
                       {cls.className}
                     </span>
                     <span
@@ -1280,12 +1130,12 @@ export default function AdminReportsPage() {
                     >
                       {cls.adoptionRate}%
                     </span>
-                  </div>
+                  </span>
 
-                  <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
-                    <div
+                  <span className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                    <span
                       className={cn(
-                        "h-1.5 rounded-full transition-all duration-300",
+                        "block h-1.5 rounded-full transition-all duration-300",
                         cls.adoptionRate >= 70
                           ? "bg-primary-600"
                           : cls.adoptionRate >= 40
@@ -1294,17 +1144,17 @@ export default function AdminReportsPage() {
                       )}
                       style={{ width: `${Math.min(100, cls.adoptionRate)}%` }}
                     />
-                  </div>
+                  </span>
 
-                  <div className="flex items-center justify-between text-[11px] text-gray-500">
+                  <span className="flex w-full items-center justify-between gap-2 text-[11px] text-gray-500">
                     <span>
                       <strong className="text-gray-700">{cls.accessedFamilies}</strong> / {cls.totalFamilies} active
                     </span>
                     <span className="text-rose-600 font-medium">
                       {cls.notAccessedFamilies} inactive
                     </span>
-                  </div>
-                </div>
+                  </span>
+                </Button>
               ))}
             </div>
           </div>
@@ -1323,7 +1173,7 @@ export default function AdminReportsPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Student Demographics */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-4">
+            <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-none space-y-4">
               <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                 <div className="flex items-center gap-2">
                   <Users className="w-4 h-4 text-primary-600" />
@@ -1367,10 +1217,11 @@ export default function AdminReportsPage() {
                 </div>
 
                 {/* Status List */}
-                <div className="space-y-2 flex flex-col justify-center">
-                  <p className="text-[11px] font-semibold text-gray-500">Status Distribution</p>
+                <div className="flex flex-col justify-center">
+                  <p className="mb-2 text-[11px] font-semibold text-gray-500">Status Distribution</p>
+                  <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white">
                   {students?.byStatus.map((s) => (
-                    <div key={s.status} className="flex items-center justify-between text-xs py-1 border-b border-gray-50">
+                    <div key={s.status} className="flex items-center justify-between gap-2 px-4 py-4 text-xs">
                       <span className="flex items-center gap-1.5 font-medium text-gray-700">
                         <span
                           className="w-2 h-2 rounded-full"
@@ -1381,12 +1232,13 @@ export default function AdminReportsPage() {
                       <span className="font-bold text-gray-900">{s._count.id}</span>
                     </div>
                   ))}
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Fee Collection Summary */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-4">
+            <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-none space-y-4">
               <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                 <div className="flex items-center gap-2">
                   <IndianRupee className="w-4 h-4 text-primary-600" />
@@ -1399,16 +1251,16 @@ export default function AdminReportsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 p-3 bg-gray-50 rounded-xl text-center">
-                <div>
+              <div className="grid grid-cols-2 overflow-hidden rounded-2xl bg-gradient-to-br from-primary-50/60 via-white to-sky-50/60 text-center">
+                <div className="border-r border-gray-100 p-2.5 sm:p-3">
                   <p className="text-[11px] text-gray-500 font-medium">Total Collected</p>
-                  <p className="text-lg font-bold text-primary-600">
+                  <p className="text-xl font-medium tabular-nums text-primary-700">
                     ₹{Number(fees?.totalCollected ?? 0).toLocaleString()}
                   </p>
                 </div>
-                <div>
+                <div className="p-2.5 sm:p-3">
                   <p className="text-[11px] text-gray-500 font-medium">Total Outstanding</p>
-                  <p className="text-lg font-bold text-amber-600">
+                  <p className="text-xl font-medium tabular-nums text-amber-700">
                     ₹{Number(fees?.totalPending ?? 0).toLocaleString()}
                   </p>
                 </div>
@@ -1432,15 +1284,15 @@ export default function AdminReportsPage() {
         {/* ============================================================== */}
         {/* ON-DEMAND MODAL 1: PARENT ACCESS ROSTER                         */}
         {/* ============================================================== */}
-        <AnimatePresence>
-          {parentModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border-t sm:border border-gray-200 w-full max-w-4xl h-[92vh] sm:h-auto sm:max-h-[88vh] flex flex-col overflow-hidden"
-              >
+        <ResponsivePopover
+          open={parentModalOpen}
+          onOpenChange={setParentModalOpen}
+          side="bottom"
+          title="Student Portal Access Roster"
+          showCloseButton={false}
+          className="mx-auto h-[92dvh] w-full max-w-4xl shadow-none sm:h-auto sm:max-h-[88dvh] [&_[data-slot=drawer-header]]:sr-only"
+          contentClassName="flex flex-col overflow-hidden p-0"
+        >
                 {/* Modal Header */}
                 <div className="p-4 sm:p-5 border-b border-gray-100 bg-gray-50/80 flex-shrink-0">
                   <div className="flex items-start justify-between gap-3">
@@ -1459,33 +1311,33 @@ export default function AdminReportsPage() {
                     </div>
 
                     {/* Dedicated Top-Right Close Button with large touch target */}
-                    <button
+                    <Button type="button" variant="ghost" size="xs"
                       onClick={() => setParentModalOpen(false)}
                       className="p-2 -mr-1 -mt-1 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-200/70 active:bg-gray-300 transition flex-shrink-0 touch-manipulation"
                       aria-label="Close modal"
                     >
                       <X className="w-5 h-5" />
-                    </button>
+                    </Button>
                   </div>
 
                   {/* Actions Toolbar - Horizontally scrollable on mobile */}
                   <div className="mt-3 pt-2.5 border-t border-gray-200/60 flex items-center gap-2 overflow-x-auto no-scrollbar">
                     {/* 1. WhatsApp Share */}
-                    <button
+                    <Button type="button" variant="ghost" size="xs"
                       onClick={() => {
                         setWhatsappTargetClass(parentModalClassId !== "ALL" ? parentModalClassId : "ALL");
                         setWhatsappFilterStatus(parentModalStatus);
                         setWhatsappModalOpen(true);
                       }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white transition text-xs font-semibold shadow-sm flex-shrink-0"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white transition text-xs font-semibold shadow-none flex-shrink-0"
                       title="Format and share/copy parent reminder text for WhatsApp"
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
                       <span>WhatsApp Share</span>
-                    </button>
+                    </Button>
 
                     {/* 2. Print / PDF */}
-                    <button
+                    <Button type="button" variant="ghost" size="xs"
                       onClick={() =>
                         printClassWiseParentReport({
                           groups: classGroupedFamilies,
@@ -1502,15 +1354,15 @@ export default function AdminReportsPage() {
                             : undefined,
                         })
                       }
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 transition text-xs font-semibold shadow-sm flex-shrink-0"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 transition text-xs font-semibold shadow-none flex-shrink-0"
                       title="Open clean printable view formatted for A4 printing or saving as PDF"
                     >
                       <Printer className="w-3.5 h-3.5 text-blue-600" />
                       <span>Print / PDF</span>
-                    </button>
+                    </Button>
 
                     {/* 3. Image Snapshot */}
-                    <button
+                    <Button type="button" variant="ghost" size="xs"
                       onClick={() =>
                         handleDownloadReportImage(
                           "parent-report-view-area",
@@ -1518,22 +1370,22 @@ export default function AdminReportsPage() {
                         )
                       }
                       disabled={isExportingImage}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 transition text-xs font-semibold shadow-sm disabled:opacity-50 flex-shrink-0"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 transition text-xs font-semibold shadow-none disabled:opacity-50 flex-shrink-0"
                       title="Download high-resolution PNG image of the report"
                     >
                       <Image className="w-3.5 h-3.5 text-purple-600" />
                       <span>{isExportingImage ? "Saving..." : "Save Image"}</span>
-                    </button>
+                    </Button>
 
                     {/* 4. Download CSV */}
-                    <button
+                    <Button type="button" variant="ghost" size="xs"
                       onClick={() => handleDownloadParentCsv()}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 transition border border-blue-200 text-xs font-semibold shadow-sm flex-shrink-0"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 transition border border-blue-200 text-xs font-semibold shadow-none flex-shrink-0"
                       title="Download clean CSV report with student names, classes, guardian names, and contact phones"
                     >
                       <Download className="w-3.5 h-3.5" />
                       <span>Export CSV</span>
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
@@ -1542,7 +1394,7 @@ export default function AdminReportsPage() {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     {/* Status Tabs */}
                     <div className="inline-flex p-1 bg-gray-100 rounded-xl text-xs font-semibold">
-                      <button
+                      <Button type="button" variant="ghost" size="xs"
                         onClick={() => {
                           setParentModalStatus("NOT_ACCESSED");
                           setParentModalPage(1);
@@ -1550,13 +1402,13 @@ export default function AdminReportsPage() {
                         className={cn(
                           "px-3 py-1.5 rounded-lg transition",
                           parentModalStatus === "NOT_ACCESSED"
-                            ? "bg-white text-rose-700 shadow-sm font-bold"
+                            ? "bg-white text-rose-700 shadow-none font-bold"
                             : "text-gray-600 hover:text-gray-900"
                         )}
                       >
                         Not Accessed ({parentReport?.summary.notAccessedCount ?? parentInactiveCount})
-                      </button>
-                      <button
+                      </Button>
+                      <Button type="button" variant="ghost" size="xs"
                         onClick={() => {
                           setParentModalStatus("ACCESSED");
                           setParentModalPage(1);
@@ -1564,13 +1416,13 @@ export default function AdminReportsPage() {
                         className={cn(
                           "px-3 py-1.5 rounded-lg transition",
                           parentModalStatus === "ACCESSED"
-                            ? "bg-white text-primary-700 shadow-sm font-bold"
+                            ? "bg-white text-primary-700 shadow-none font-bold"
                             : "text-gray-600 hover:text-gray-900"
                         )}
                       >
-                        {dateRange.preset === "ALL" ? "Accessed (All Time)" : "Accessed Today"} ({parentReport?.summary.accessedCount ?? parentAccessedCount})
-                      </button>
-                      <button
+                        {dateRange.from === "ALL" ? "Accessed (All Time)" : "Accessed Today"} ({parentReport?.summary.accessedCount ?? parentAccessedCount})
+                      </Button>
+                      <Button type="button" variant="ghost" size="xs"
                         onClick={() => {
                           setParentModalStatus("ALL");
                           setParentModalPage(1);
@@ -1578,67 +1430,65 @@ export default function AdminReportsPage() {
                         className={cn(
                           "px-3 py-1.5 rounded-lg transition",
                           parentModalStatus === "ALL"
-                            ? "bg-white text-blue-700 shadow-sm font-bold"
+                            ? "bg-white text-blue-700 shadow-none font-bold"
                             : "text-gray-600 hover:text-gray-900"
                         )}
                       >
                         All Students ({parentReport?.summary.totalStudents ?? parentReport?.summary.totalFamilies ?? parentTotalCount})
-                      </button>
+                      </Button>
                     </div>
 
                     {/* View Mode & Class Filter */}
                     <div className="flex items-center gap-2">
                       <div className="inline-flex p-1 bg-gray-100 rounded-xl text-xs font-medium">
-                        <button
+                        <Button type="button" variant="ghost" size="xs"
                           onClick={() => setParentViewMode("CLASS_WISE")}
                           className={cn(
                             "inline-flex items-center gap-1 px-2.5 py-1 rounded-lg transition",
                             parentViewMode === "CLASS_WISE"
-                              ? "bg-white text-gray-900 shadow-sm font-bold"
+                              ? "bg-white text-gray-900 shadow-none font-bold"
                               : "text-gray-500 hover:text-gray-700"
                           )}
                           title="Group by Class"
                         >
                           <Layers className="w-3.5 h-3.5" />
                           <span>Class-Wise</span>
-                        </button>
-                        <button
+                        </Button>
+                        <Button type="button" variant="ghost" size="xs"
                           onClick={() => setParentViewMode("FLAT")}
                           className={cn(
                             "inline-flex items-center gap-1 px-2.5 py-1 rounded-lg transition",
                             parentViewMode === "FLAT"
-                              ? "bg-white text-gray-900 shadow-sm font-bold"
+                              ? "bg-white text-gray-900 shadow-none font-bold"
                               : "text-gray-500 hover:text-gray-700"
                           )}
                           title="Flat Table Roster"
                         >
                           <TableIcon className="w-3.5 h-3.5" />
                           <span>Flat Roster</span>
-                        </button>
+                        </Button>
                       </div>
 
-                      <select
+                      <DrawerSelector
+                        title="Class scope"
+                        options={[
+                          { value: "ALL", label: "All Classes" },
+                          ...(classesList ?? []).map((c: any) => ({ value: c.id, label: c.division ? `${c.name} - ${c.division}` : c.name })),
+                        ]}
                         value={parentModalClassId}
-                        onChange={(e) => {
-                          setParentModalClassId(e.target.value);
+                        onChange={(value) => {
+                          setParentModalClassId(value);
                           setParentModalPage(1);
                         }}
-                        className="text-xs px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="ALL">All Classes</option>
-                        {(classesList ?? []).map((c: any) => (
-                          <option key={c.id} value={c.id}>
-                            {c.division ? `${c.name} - ${c.division}` : c.name}
-                          </option>
-                        ))}
-                      </select>
+                        className="h-9 w-auto min-w-32 text-xs"
+                      />
                     </div>
                   </div>
 
                   {/* Search input */}
                   <div className="relative">
                     <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
+                    <Input
                       type="text"
                       placeholder="Search by student name, guardian name, admission number, or contact phone..."
                       value={parentModalSearch}
@@ -1713,20 +1563,24 @@ export default function AdminReportsPage() {
                         return (
                           <div
                             key={group.className}
-                            className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm"
+                            className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-none"
                           >
                             {/* Class Section Header */}
                             <div className="p-3 bg-gray-50 flex flex-wrap items-center justify-between gap-2 border-b border-gray-200/60">
-                              <div
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="xs"
                                 onClick={() => toggleClassCollapse(group.className)}
-                                className="flex items-center gap-2.5 cursor-pointer select-none"
+                                aria-expanded={!isCollapsed}
+                                className="h-auto flex-wrap justify-start gap-2.5 whitespace-normal text-left shadow-none"
                               >
                                 {isCollapsed ? (
                                   <ChevronRight className="w-4 h-4 text-gray-400" />
                                 ) : (
                                   <ChevronDown className="w-4 h-4 text-gray-400" />
                                 )}
-                                <h4 className="text-xs font-bold text-gray-900">{group.className}</h4>
+                                <span className="text-xs font-bold text-gray-900">{group.className}</span>
                                 <span className="text-[11px] text-gray-500 font-medium">({classTotal} students total)</span>
                                 {parentModalStatus === "NOT_ACCESSED" ? (
                                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">
@@ -1741,12 +1595,12 @@ export default function AdminReportsPage() {
                                     {activeInClass} Active • {inactiveInClass} Not Accessed
                                   </span>
                                 )}
-                              </div>
+                              </Button>
 
                               {/* Class Action Suite: WhatsApp, Print, CSV */}
                               <div className="flex items-center gap-1.5">
                                 {/* 1-Click WhatsApp Copy */}
-                                <button
+                                <Button type="button" variant="ghost" size="xs"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     const txt = formatWhatsAppClassMessage({
@@ -1774,10 +1628,10 @@ export default function AdminReportsPage() {
                                       <span>WhatsApp</span>
                                     </>
                                   )}
-                                </button>
+                                </Button>
 
                                 {/* Direct WhatsApp Share Link */}
-                                <button
+                                <Button type="button" variant="ghost" size="xs"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     const txt = formatWhatsAppClassMessage({
@@ -1793,10 +1647,10 @@ export default function AdminReportsPage() {
                                   title={`Open ${group.className} reminder directly in WhatsApp`}
                                 >
                                   <ExternalLink className="w-3 h-3 text-primary-600" />
-                                </button>
+                                </Button>
 
                                 {/* Print This Class */}
-                                <button
+                                <Button type="button" variant="ghost" size="xs"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     printClassWiseParentReport({
@@ -1811,10 +1665,10 @@ export default function AdminReportsPage() {
                                   title={`Print / PDF for ${group.className}`}
                                 >
                                   <Printer className="w-3 h-3 text-blue-600" />
-                                </button>
+                                </Button>
 
                                 {/* Export CSV for This Class */}
-                                <button
+                                <Button type="button" variant="ghost" size="xs"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleDownloadParentCsv(group.classId, group.className);
@@ -1824,7 +1678,7 @@ export default function AdminReportsPage() {
                                 >
                                   <Download className="w-3 h-3 text-gray-500" />
                                   <span>CSV</span>
-                                </button>
+                                </Button>
                               </div>
                             </div>
 
@@ -1994,54 +1848,51 @@ export default function AdminReportsPage() {
                   <div className="flex items-center gap-2">
                     {parentReport && parentReport.pagination.totalPages > 1 && (
                       <div className="flex items-center gap-1 mr-1">
-                        <button
+                        <Button type="button" variant="ghost" size="xs"
                           disabled={parentModalPage <= 1}
                           onClick={() => setParentModalPage((p) => Math.max(1, p - 1))}
                           className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
                           title="Previous page"
                         >
                           <ChevronLeft className="w-4 h-4" />
-                        </button>
-                        <button
+                        </Button>
+                        <Button type="button" variant="ghost" size="xs"
                           disabled={parentModalPage >= parentReport.pagination.totalPages}
                           onClick={() => setParentModalPage((p) => p + 1)}
                           className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
                           title="Next page"
                         >
                           <ChevronRight className="w-4 h-4" />
-                        </button>
+                        </Button>
                       </div>
                     )}
-                    <button
+                    <Button type="button" variant="ghost" size="xs"
                       onClick={() => setParentModalOpen(false)}
-                      className="px-3.5 py-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-100 active:bg-gray-200 text-gray-700 font-semibold transition text-xs shadow-sm"
+                      className="px-3.5 py-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-100 active:bg-gray-200 text-gray-700 font-semibold transition text-xs shadow-none"
                     >
                       Close
-                    </button>
+                    </Button>
                   </div>
                 </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
+        </ResponsivePopover>
 
         {/* ============================================================== */}
         {/* INTERACTIVE WHATSAPP PREVIEW & SHARE MODAL                      */}
         {/* ============================================================== */}
-        <AnimatePresence>
-          {whatsappModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border-t sm:border border-gray-200 w-full max-w-2xl h-[90vh] sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden"
-              >
+        <ResponsivePopover
+          open={whatsappModalOpen}
+          onOpenChange={setWhatsappModalOpen}
+          side="bottom"
+          title="Share Student Portal Roster"
+          showCloseButton={false}
+          className="mx-auto h-[92dvh] w-full max-w-2xl shadow-none sm:h-auto sm:max-h-[90dvh] [&_[data-slot=drawer-header]]:sr-only"
+          contentClassName="flex flex-col overflow-hidden p-0"
+        >
                 {/* Header */}
                 <div className="p-4 sm:p-5 border-b border-gray-100 bg-primary-50/70 flex-shrink-0">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="p-2 sm:p-2.5 bg-primary-600 text-white rounded-xl shadow-sm flex-shrink-0">
+                      <div className="p-2 sm:p-2.5 bg-primary-600 text-white rounded-xl shadow-none flex-shrink-0">
                         <MessageCircle className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
@@ -2054,13 +1905,13 @@ export default function AdminReportsPage() {
                       </div>
                     </div>
                     {/* Dedicated Top-Right Close Button */}
-                    <button
+                    <Button type="button" variant="ghost" size="xs"
                       onClick={() => setWhatsappModalOpen(false)}
                       className="p-2 -mr-1 -mt-1 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-primary-100/60 active:bg-primary-200 transition flex-shrink-0 touch-manipulation"
                       aria-label="Close modal"
                     >
                       <X className="w-5 h-5" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
@@ -2069,21 +1920,19 @@ export default function AdminReportsPage() {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     {/* Class Selector */}
                     <div className="flex-1 min-w-[180px]">
-                      <label className="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1">
+                      <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-gray-700">
                         Class Scope
-                      </label>
-                      <select
+                      </span>
+                      <DrawerSelector
+                        title="Class scope"
+                        options={[
+                          { value: "ALL", label: "All Classes (Full Institutional Digest)" },
+                          ...classGroupedFamilies.map((g) => ({ value: g.className, label: `${g.className} (${g.families.length} students)` })),
+                        ]}
                         value={whatsappTargetClass}
-                        onChange={(e) => setWhatsappTargetClass(e.target.value)}
-                        className="w-full text-xs px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-800 font-semibold focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      >
-                        <option value="ALL">All Classes (Full Institutional Digest)</option>
-                        {classGroupedFamilies.map((g) => (
-                          <option key={g.className} value={g.className}>
-                            {g.className} ({g.families.length} students)
-                          </option>
-                        ))}
-                      </select>
+                        onChange={setWhatsappTargetClass}
+                        className="text-xs shadow-none"
+                      />
                     </div>
 
                     {/* Filter Mode */}
@@ -2092,39 +1941,39 @@ export default function AdminReportsPage() {
                         Inclusion Filter
                       </label>
                       <div className="inline-flex p-1 bg-gray-200/70 rounded-xl text-xs font-semibold w-full">
-                        <button
+                        <Button type="button" variant="ghost" size="xs"
                           onClick={() => setWhatsappFilterStatus("NOT_ACCESSED")}
                           className={cn(
                             "flex-1 py-1.5 rounded-lg transition text-center",
                             whatsappFilterStatus === "NOT_ACCESSED"
-                              ? "bg-white text-rose-700 shadow-sm font-bold"
+                              ? "bg-white text-rose-700 shadow-none font-bold"
                               : "text-gray-600 hover:text-gray-900"
                           )}
                         >
                           Pending Only
-                        </button>
-                        <button
+                        </Button>
+                        <Button type="button" variant="ghost" size="xs"
                           onClick={() => setWhatsappFilterStatus("ACCESSED")}
                           className={cn(
                             "flex-1 py-1.5 rounded-lg transition text-center",
                             whatsappFilterStatus === "ACCESSED"
-                              ? "bg-white text-primary-700 shadow-sm font-bold"
+                              ? "bg-white text-primary-700 shadow-none font-bold"
                               : "text-gray-600 hover:text-gray-900"
                           )}
                         >
                           Active
-                        </button>
-                        <button
+                        </Button>
+                        <Button type="button" variant="ghost" size="xs"
                           onClick={() => setWhatsappFilterStatus("ALL")}
                           className={cn(
                             "flex-1 py-1.5 rounded-lg transition text-center",
                             whatsappFilterStatus === "ALL"
-                              ? "bg-white text-gray-900 shadow-sm font-bold"
+                              ? "bg-white text-gray-900 shadow-none font-bold"
                               : "text-gray-600 hover:text-gray-900"
                           )}
                         >
                           All
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -2167,7 +2016,7 @@ export default function AdminReportsPage() {
                           })();
 
                     return (
-                      <div className="border border-gray-300 rounded-xl overflow-hidden shadow-sm bg-white">
+                      <div className="border border-gray-300 rounded-xl overflow-hidden shadow-none bg-white">
                         <div className="bg-[#075E54] text-white px-3.5 py-2 text-xs font-bold flex items-center gap-2">
                           <MessageCircle className="w-4 h-4 text-primary-300" />
                           <span>WhatsApp Formatted Message</span>
@@ -2217,13 +2066,13 @@ export default function AdminReportsPage() {
 
                       return (
                         <>
-                          <button
+                          <Button type="button" variant="ghost" size="xs"
                             onClick={() => {
                               copyToClipboard(msgText, "Copied WhatsApp message to clipboard!");
                               setCopiedKey("wa-modal-preview");
                               setTimeout(() => setCopiedKey(null), 2000);
                             }}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-800 transition text-xs font-bold shadow-sm"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-800 transition text-xs font-bold shadow-none"
                           >
                             {copiedKey === "wa-modal-preview" ? (
                               <>
@@ -2236,44 +2085,41 @@ export default function AdminReportsPage() {
                                 <span>Copy Text</span>
                               </>
                             )}
-                          </button>
+                          </Button>
 
-                          <button
+                          <Button type="button" variant="ghost" size="xs"
                             onClick={() => openWhatsApp(msgText)}
-                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white transition text-xs font-bold shadow-md"
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white transition text-xs font-bold shadow-none"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
                             <span>Open WhatsApp</span>
-                          </button>
+                          </Button>
 
-                          <button
+                          <Button type="button" variant="ghost" size="xs"
                             onClick={() => setWhatsappModalOpen(false)}
-                            className="px-3.5 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-100 active:bg-gray-200 text-gray-700 font-semibold transition text-xs shadow-sm ml-1"
+                            className="px-3.5 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-100 active:bg-gray-200 text-gray-700 font-semibold transition text-xs shadow-none ml-1"
                           >
                             Close
-                          </button>
+                          </Button>
                         </>
                       );
                     })()}
                   </div>
                 </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
+        </ResponsivePopover>
 
         {/* ============================================================== */}
         {/* ON-DEMAND MODAL 2: CLASS ATTENDANCE SUBMISSIONS                */}
         {/* ============================================================== */}
-        <AnimatePresence>
-          {attendanceModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border-t sm:border border-gray-200 w-full max-w-3xl h-[92vh] sm:h-auto sm:max-h-[85vh] flex flex-col overflow-hidden"
-              >
+        <ResponsivePopover
+          open={attendanceModalOpen}
+          onOpenChange={setAttendanceModalOpen}
+          side="bottom"
+          title="Class Attendance"
+          showCloseButton={false}
+          className="mx-auto h-[92dvh] w-full max-w-3xl shadow-none sm:h-auto sm:max-h-[85dvh] [&_[data-slot=drawer-header]]:sr-only"
+          contentClassName="flex flex-col overflow-hidden p-0"
+        >
                 {/* Header */}
                 <div className="p-4 sm:p-5 border-b border-gray-100 bg-gray-50/80 flex-shrink-0">
                   <div className="flex items-start justify-between gap-3">
@@ -2291,18 +2137,18 @@ export default function AdminReportsPage() {
                       </div>
                     </div>
                     {/* Dedicated Top-Right Close Button */}
-                    <button
+                    <Button type="button" variant="ghost" size="xs"
                       onClick={() => setAttendanceModalOpen(false)}
                       className="p-2 -mr-1 -mt-1 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-200/70 active:bg-gray-300 transition flex-shrink-0 touch-manipulation"
                       aria-label="Close modal"
                     >
                       <X className="w-5 h-5" />
-                    </button>
+                    </Button>
                   </div>
 
                   {/* Actions Toolbar - Mobile friendly scrolling */}
                   <div className="mt-3 pt-2.5 border-t border-gray-200/60 flex items-center gap-2 overflow-x-auto no-scrollbar">
-                    <button
+                    <Button type="button" variant="ghost" size="xs"
                       onClick={() => {
                         const pending = ops?.classAttendance?.pendingClasses ?? [];
                         if (pending.length === 0) {
@@ -2318,7 +2164,7 @@ export default function AdminReportsPage() {
                         setCopiedKey("wa-attendance");
                         setTimeout(() => setCopiedKey(null), 2000);
                       }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white transition text-xs font-semibold shadow-sm flex-shrink-0"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white transition text-xs font-semibold shadow-none flex-shrink-0"
                       title="Copy formatted notice for pending teachers to WhatsApp"
                     >
                       {copiedKey === "wa-attendance" ? (
@@ -2332,8 +2178,8 @@ export default function AdminReportsPage() {
                           <span>WhatsApp Notice</span>
                         </>
                       )}
-                    </button>
-                    <button
+                    </Button>
+                    <Button type="button" variant="ghost" size="xs"
                       onClick={() => {
                         const pending = ops?.classAttendance?.pendingClasses ?? [];
                         if (pending.length === 0) {
@@ -2351,59 +2197,59 @@ export default function AdminReportsPage() {
                       title="Open attendance reminder directly in WhatsApp"
                     >
                       <ExternalLink className="w-3.5 h-3.5 text-primary-600" />
-                    </button>
-                    <button
+                    </Button>
+                    <Button type="button" variant="ghost" size="xs"
                       onClick={handleDownloadAttendanceCsv}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary-50 text-primary-700 hover:bg-primary-100 transition border border-primary-200 text-xs font-semibold shadow-sm flex-shrink-0"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary-50 text-primary-700 hover:bg-primary-100 transition border border-primary-200 text-xs font-semibold shadow-none flex-shrink-0"
                       title="Download Attendance CSV"
                     >
                       <Download className="w-3.5 h-3.5" />
                       <span>Download CSV</span>
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
                 <div className="p-4 border-b border-gray-100 space-y-3 bg-white">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="inline-flex p-1 bg-gray-100 rounded-xl text-xs font-semibold">
-                      <button
+                      <Button type="button" variant="ghost" size="xs"
                         onClick={() => setAttendanceModalTab("PENDING")}
                         className={cn(
                           "px-3 py-1.5 rounded-lg transition",
                           attendanceModalTab === "PENDING"
-                            ? "bg-white text-amber-800 shadow-sm font-bold"
+                            ? "bg-white text-amber-800 shadow-none font-bold"
                             : "text-gray-600 hover:text-gray-900"
                         )}
                       >
                         Pending ({classAttPending})
-                      </button>
-                      <button
+                      </Button>
+                      <Button type="button" variant="ghost" size="xs"
                         onClick={() => setAttendanceModalTab("SUBMITTED")}
                         className={cn(
                           "px-3 py-1.5 rounded-lg transition",
                           attendanceModalTab === "SUBMITTED"
-                            ? "bg-white text-primary-800 shadow-sm font-bold"
+                            ? "bg-white text-primary-800 shadow-none font-bold"
                             : "text-gray-600 hover:text-gray-900"
                         )}
                       >
                         Submitted ({classAttMarked})
-                      </button>
-                      <button
+                      </Button>
+                      <Button type="button" variant="ghost" size="xs"
                         onClick={() => setAttendanceModalTab("ALL")}
                         className={cn(
                           "px-3 py-1.5 rounded-lg transition",
                           attendanceModalTab === "ALL"
-                            ? "bg-white text-gray-900 shadow-sm font-bold"
+                            ? "bg-white text-gray-900 shadow-none font-bold"
                             : "text-gray-600 hover:text-gray-900"
                         )}
                       >
                         All Classes ({classAttTotal})
-                      </button>
+                      </Button>
                     </div>
 
                     <div className="relative flex-1 min-w-[200px]">
                       <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                      <input
+                      <Input
                         type="text"
                         placeholder="Search class or teacher..."
                         value={attendanceModalSearch}
@@ -2462,9 +2308,9 @@ export default function AdminReportsPage() {
                     }
 
                     return (
-                      <div className="divide-y divide-gray-100">
+                      <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white">
                         {list.map((c) => (
-                          <div key={c.id} className="py-3 flex items-center justify-between gap-4">
+                          <div key={c.id} className="flex items-center justify-between gap-4 px-4 py-4">
                             <div>
                               <h4 className="text-xs font-bold text-gray-900">{c.name}</h4>
                               <p className="text-[11px] text-gray-500 flex items-center gap-1.5 mt-0.5">
@@ -2503,30 +2349,27 @@ export default function AdminReportsPage() {
                       <span className="text-primary-700 font-semibold">All classes submitted</span>
                     )}
                   </span>
-                  <button
+                  <Button type="button" variant="ghost" size="xs"
                     onClick={() => setAttendanceModalOpen(false)}
-                    className="px-3.5 py-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-100 active:bg-gray-200 text-gray-700 font-semibold transition text-xs shadow-sm"
+                    className="px-3.5 py-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-100 active:bg-gray-200 text-gray-700 font-semibold transition text-xs shadow-none"
                   >
                     Close
-                  </button>
+                  </Button>
                 </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
+        </ResponsivePopover>
 
         {/* ============================================================== */}
         {/* ON-DEMAND MODAL 3: HOMEWORK COMPLIANCE                         */}
         {/* ============================================================== */}
-        <AnimatePresence>
-          {homeworkModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border-t sm:border border-gray-200 w-full max-w-3xl h-[92vh] sm:h-auto sm:max-h-[85vh] flex flex-col overflow-hidden"
-              >
+        <ResponsivePopover
+          open={homeworkModalOpen}
+          onOpenChange={setHomeworkModalOpen}
+          side="bottom"
+          title="Homework"
+          showCloseButton={false}
+          className="mx-auto h-[92dvh] w-full max-w-3xl shadow-none sm:h-auto sm:max-h-[85dvh] [&_[data-slot=drawer-header]]:sr-only"
+          contentClassName="flex flex-col overflow-hidden p-0"
+        >
                 {/* Header */}
                 <div className="p-4 sm:p-5 border-b border-gray-100 bg-gray-50/80 flex-shrink-0">
                   <div className="flex items-start justify-between gap-3">
@@ -2544,18 +2387,18 @@ export default function AdminReportsPage() {
                       </div>
                     </div>
                     {/* Dedicated Top-Right Close Button */}
-                    <button
+                    <Button type="button" variant="ghost" size="xs"
                       onClick={() => setHomeworkModalOpen(false)}
                       className="p-2 -mr-1 -mt-1 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-200/70 active:bg-gray-300 transition flex-shrink-0 touch-manipulation"
                       aria-label="Close modal"
                     >
                       <X className="w-5 h-5" />
-                    </button>
+                    </Button>
                   </div>
 
                   {/* Actions Toolbar - Mobile friendly scrolling */}
                   <div className="mt-3 pt-2.5 border-t border-gray-200/60 flex items-center gap-2 overflow-x-auto no-scrollbar">
-                    <button
+                    <Button type="button" variant="ghost" size="xs"
                       onClick={() => {
                         const pending = ops?.homeworkCompliance?.pendingClasses ?? [];
                         if (pending.length === 0) {
@@ -2571,7 +2414,7 @@ export default function AdminReportsPage() {
                         setCopiedKey("wa-homework");
                         setTimeout(() => setCopiedKey(null), 2000);
                       }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition text-xs font-semibold shadow-sm flex-shrink-0"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition text-xs font-semibold shadow-none flex-shrink-0"
                       title="Copy formatted notice for classes with missing homework to WhatsApp"
                     >
                       {copiedKey === "wa-homework" ? (
@@ -2585,8 +2428,8 @@ export default function AdminReportsPage() {
                           <span>WhatsApp Notice</span>
                         </>
                       )}
-                    </button>
-                    <button
+                    </Button>
+                    <Button type="button" variant="ghost" size="xs"
                       onClick={() => {
                         const pending = ops?.homeworkCompliance?.pendingClasses ?? [];
                         if (pending.length === 0) {
@@ -2604,59 +2447,59 @@ export default function AdminReportsPage() {
                       title="Open homework reminder directly in WhatsApp"
                     >
                       <ExternalLink className="w-3.5 h-3.5 text-indigo-600" />
-                    </button>
-                    <button
+                    </Button>
+                    <Button type="button" variant="ghost" size="xs"
                       onClick={handleDownloadHomeworkCsv}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition border border-indigo-200 text-xs font-semibold shadow-sm flex-shrink-0"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition border border-indigo-200 text-xs font-semibold shadow-none flex-shrink-0"
                       title="Download Homework Compliance CSV"
                     >
                       <Download className="w-3.5 h-3.5" />
                       <span>Download CSV</span>
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
                 <div className="p-4 border-b border-gray-100 space-y-3 bg-white">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="inline-flex p-1 bg-gray-100 rounded-xl text-xs font-semibold">
-                      <button
+                      <Button type="button" variant="ghost" size="xs"
                         onClick={() => setHomeworkModalTab("PENDING")}
                         className={cn(
                           "px-3 py-1.5 rounded-lg transition",
                           homeworkModalTab === "PENDING"
-                            ? "bg-white text-amber-800 shadow-sm font-bold"
+                            ? "bg-white text-amber-800 shadow-none font-bold"
                             : "text-gray-600 hover:text-gray-900"
                         )}
                       >
                         No Homework ({hwPendingCount})
-                      </button>
-                      <button
+                      </Button>
+                      <Button type="button" variant="ghost" size="xs"
                         onClick={() => setHomeworkModalTab("ASSIGNED")}
                         className={cn(
                           "px-3 py-1.5 rounded-lg transition",
                           homeworkModalTab === "ASSIGNED"
-                            ? "bg-white text-indigo-800 shadow-sm font-bold"
+                            ? "bg-white text-indigo-800 shadow-none font-bold"
                             : "text-gray-600 hover:text-gray-900"
                         )}
                       >
                         Assigned ({hwAssignedCount})
-                      </button>
-                      <button
+                      </Button>
+                      <Button type="button" variant="ghost" size="xs"
                         onClick={() => setHomeworkModalTab("ALL")}
                         className={cn(
                           "px-3 py-1.5 rounded-lg transition",
                           homeworkModalTab === "ALL"
-                            ? "bg-white text-gray-900 shadow-sm font-bold"
+                            ? "bg-white text-gray-900 shadow-none font-bold"
                             : "text-gray-600 hover:text-gray-900"
                         )}
                       >
                         All Classes ({hwTotalClasses})
-                      </button>
+                      </Button>
                     </div>
 
                     <div className="relative flex-1 min-w-[200px]">
                       <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                      <input
+                      <Input
                         type="text"
                         placeholder="Search class or teacher..."
                         value={homeworkModalSearch}
@@ -2716,9 +2559,9 @@ export default function AdminReportsPage() {
                     }
 
                     return (
-                      <div className="divide-y divide-gray-100">
+                      <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white">
                         {list.map((c) => (
-                          <div key={c.id} className="py-3 flex items-start justify-between gap-4">
+                          <div key={c.id} className="flex items-start justify-between gap-4 px-4 py-4">
                             <div>
                               <h4 className="text-xs font-bold text-gray-900">{c.name}</h4>
                               <p className="text-[11px] text-gray-500 mt-0.5">
@@ -2766,30 +2609,27 @@ export default function AdminReportsPage() {
                       <span className="text-indigo-700 font-semibold">All classes posted</span>
                     )}
                   </span>
-                  <button
+                  <Button type="button" variant="ghost" size="xs"
                     onClick={() => setHomeworkModalOpen(false)}
-                    className="px-3.5 py-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-100 active:bg-gray-200 text-gray-700 font-semibold transition text-xs shadow-sm"
+                    className="px-3.5 py-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-100 active:bg-gray-200 text-gray-700 font-semibold transition text-xs shadow-none"
                   >
                     Close
-                  </button>
+                  </Button>
                 </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
+        </ResponsivePopover>
 
         {/* ============================================================== */}
         {/* ON-DEMAND MODAL 4: IBADAH TRACKING                             */}
         {/* ============================================================== */}
-        <AnimatePresence>
-          {ibadahModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border-t sm:border border-gray-200 w-full max-w-3xl h-[92vh] sm:h-auto sm:max-h-[85vh] flex flex-col overflow-hidden"
-              >
+        <ResponsivePopover
+          open={ibadahModalOpen}
+          onOpenChange={setIbadahModalOpen}
+          side="bottom"
+          title="Ibadah"
+          showCloseButton={false}
+          className="mx-auto h-[92dvh] w-full max-w-3xl shadow-none sm:h-auto sm:max-h-[85dvh] [&_[data-slot=drawer-header]]:sr-only"
+          contentClassName="flex flex-col overflow-hidden p-0"
+        >
                 {/* Header */}
                 <div className="p-4 sm:p-5 border-b border-gray-100 bg-gray-50/80 flex-shrink-0">
                   <div className="flex items-start justify-between gap-3">
@@ -2807,18 +2647,18 @@ export default function AdminReportsPage() {
                       </div>
                     </div>
                     {/* Dedicated Top-Right Close Button */}
-                    <button
+                    <Button type="button" variant="ghost" size="xs"
                       onClick={() => setIbadahModalOpen(false)}
                       className="p-2 -mr-1 -mt-1 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-200/70 active:bg-gray-300 transition flex-shrink-0 touch-manipulation"
                       aria-label="Close modal"
                     >
                       <X className="w-5 h-5" />
-                    </button>
+                    </Button>
                   </div>
 
                   {/* Actions Toolbar - Mobile friendly scrolling */}
                   <div className="mt-3 pt-2.5 border-t border-gray-200/60 flex items-center gap-2 overflow-x-auto no-scrollbar">
-                    <button
+                    <Button type="button" variant="ghost" size="xs"
                       onClick={() => {
                         const pending = ops?.ibadahCompliance?.pendingClasses ?? [];
                         if (pending.length === 0) {
@@ -2834,7 +2674,7 @@ export default function AdminReportsPage() {
                         setCopiedKey("wa-ibadah");
                         setTimeout(() => setCopiedKey(null), 2000);
                       }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white transition text-xs font-semibold shadow-sm flex-shrink-0"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white transition text-xs font-semibold shadow-none flex-shrink-0"
                       title="Copy formatted notice for classes with missing ibadah logs to WhatsApp"
                     >
                       {copiedKey === "wa-ibadah" ? (
@@ -2848,8 +2688,8 @@ export default function AdminReportsPage() {
                           <span>WhatsApp Notice</span>
                         </>
                       )}
-                    </button>
-                    <button
+                    </Button>
+                    <Button type="button" variant="ghost" size="xs"
                       onClick={() => {
                         const pending = ops?.ibadahCompliance?.pendingClasses ?? [];
                         if (pending.length === 0) {
@@ -2867,59 +2707,59 @@ export default function AdminReportsPage() {
                       title="Open ibadah tracking notice directly in WhatsApp"
                     >
                       <ExternalLink className="w-3.5 h-3.5 text-amber-600" />
-                    </button>
-                    <button
+                    </Button>
+                    <Button type="button" variant="ghost" size="xs"
                       onClick={handleDownloadIbadahCsv}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-800 hover:bg-amber-100 transition border border-amber-200 text-xs font-semibold shadow-sm flex-shrink-0"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-800 hover:bg-amber-100 transition border border-amber-200 text-xs font-semibold shadow-none flex-shrink-0"
                       title="Download Ibadah Tracking CSV"
                     >
                       <Download className="w-3.5 h-3.5" />
                       <span>Download CSV</span>
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
                 <div className="p-4 border-b border-gray-100 space-y-3 bg-white">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="inline-flex p-1 bg-gray-100 rounded-xl text-xs font-semibold">
-                      <button
+                      <Button type="button" variant="ghost" size="xs"
                         onClick={() => setIbadahModalTab("PENDING")}
                         className={cn(
                           "px-3 py-1.5 rounded-lg transition",
                           ibadahModalTab === "PENDING"
-                            ? "bg-white text-rose-800 shadow-sm font-bold"
+                            ? "bg-white text-rose-800 shadow-none font-bold"
                             : "text-gray-600 hover:text-gray-900"
                         )}
                       >
                         Pending ({ibPendingCount})
-                      </button>
-                      <button
+                      </Button>
+                      <Button type="button" variant="ghost" size="xs"
                         onClick={() => setIbadahModalTab("RECORDED")}
                         className={cn(
                           "px-3 py-1.5 rounded-lg transition",
                           ibadahModalTab === "RECORDED"
-                            ? "bg-white text-amber-800 shadow-sm font-bold"
+                            ? "bg-white text-amber-800 shadow-none font-bold"
                             : "text-gray-600 hover:text-gray-900"
                         )}
                       >
                         Recorded ({ibRecordedCount})
-                      </button>
-                      <button
+                      </Button>
+                      <Button type="button" variant="ghost" size="xs"
                         onClick={() => setIbadahModalTab("ALL")}
                         className={cn(
                           "px-3 py-1.5 rounded-lg transition",
                           ibadahModalTab === "ALL"
-                            ? "bg-white text-gray-900 shadow-sm font-bold"
+                            ? "bg-white text-gray-900 shadow-none font-bold"
                             : "text-gray-600 hover:text-gray-900"
                         )}
                       >
                         All Classes ({ibTotalClasses})
-                      </button>
+                      </Button>
                     </div>
 
                     <div className="relative flex-1 min-w-[200px]">
                       <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                      <input
+                      <Input
                         type="text"
                         placeholder="Search class or teacher..."
                         value={ibadahModalSearch}
@@ -2978,9 +2818,9 @@ export default function AdminReportsPage() {
                     }
 
                     return (
-                      <div className="divide-y divide-gray-100">
+                      <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white">
                         {list.map((c) => (
-                          <div key={c.id} className="py-3 flex items-center justify-between gap-4">
+                          <div key={c.id} className="flex items-center justify-between gap-4 px-4 py-4">
                             <div>
                               <h4 className="text-xs font-bold text-gray-900">{c.name}</h4>
                               <p className="text-[11px] text-gray-500 mt-0.5">
@@ -3016,30 +2856,27 @@ export default function AdminReportsPage() {
                       <span className="text-amber-800 font-semibold">All classes recorded</span>
                     )}
                   </span>
-                  <button
+                  <Button type="button" variant="ghost" size="xs"
                     onClick={() => setIbadahModalOpen(false)}
-                    className="px-3.5 py-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-100 active:bg-gray-200 text-gray-700 font-semibold transition text-xs shadow-sm"
+                    className="px-3.5 py-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-100 active:bg-gray-200 text-gray-700 font-semibold transition text-xs shadow-none"
                   >
                     Close
-                  </button>
+                  </Button>
                 </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
+        </ResponsivePopover>
 
         {/* ============================================================== */}
         {/* ON-DEMAND MODAL 5: FACULTY DILIGENCE & UTILIZATION             */}
         {/* ============================================================== */}
-        <AnimatePresence>
-          {facultyModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border-t sm:border border-gray-200 w-full max-w-4xl h-[92vh] sm:h-auto sm:max-h-[88vh] flex flex-col overflow-hidden"
-              >
+        <ResponsivePopover
+          open={facultyModalOpen}
+          onOpenChange={setFacultyModalOpen}
+          side="bottom"
+          title="Faculty"
+          showCloseButton={false}
+          className="mx-auto h-[92dvh] w-full max-w-4xl shadow-none sm:h-auto sm:max-h-[88dvh] [&_[data-slot=drawer-header]]:sr-only"
+          contentClassName="flex flex-col overflow-hidden p-0"
+        >
                 {/* Header */}
                 <div className="p-4 sm:p-5 border-b border-gray-100 bg-gray-50/80 flex-shrink-0">
                   <div className="flex items-start justify-between gap-3">
@@ -3057,18 +2894,18 @@ export default function AdminReportsPage() {
                       </div>
                     </div>
                     {/* Dedicated Top-Right Close Button */}
-                    <button
+                    <Button type="button" variant="ghost" size="xs"
                       onClick={() => setFacultyModalOpen(false)}
                       className="p-2 -mr-1 -mt-1 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-200/70 active:bg-gray-300 transition flex-shrink-0 touch-manipulation"
                       aria-label="Close modal"
                     >
                       <X className="w-5 h-5" />
-                    </button>
+                    </Button>
                   </div>
 
                   {/* Actions Toolbar - Mobile friendly scrolling */}
                   <div className="mt-3 pt-2.5 border-t border-gray-200/60 flex items-center gap-2 overflow-x-auto no-scrollbar">
-                    <button
+                    <Button type="button" variant="ghost" size="xs"
                       onClick={() => {
                         const teachers = ops?.teachers?.teacherList ?? [];
                         const unchecked = teachers.filter((t) => !t.checkedIn && !t.attendanceMarked);
@@ -3095,7 +2932,7 @@ export default function AdminReportsPage() {
                         setCopiedKey("wa-faculty");
                         setTimeout(() => setCopiedKey(null), 2000);
                       }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white transition text-xs font-semibold shadow-sm flex-shrink-0"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white transition text-xs font-semibold shadow-none flex-shrink-0"
                       title="Copy reminder for teachers who have not checked in to WhatsApp"
                     >
                       {copiedKey === "wa-faculty" ? (
@@ -3109,59 +2946,59 @@ export default function AdminReportsPage() {
                           <span>WhatsApp Notice</span>
                         </>
                       )}
-                    </button>
-                    <button
+                    </Button>
+                    <Button type="button" variant="ghost" size="xs"
                       onClick={handleDownloadFacultyCsv}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 text-purple-700 hover:bg-purple-100 transition border border-purple-200 text-xs font-semibold shadow-sm flex-shrink-0"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 text-purple-700 hover:bg-purple-100 transition border border-purple-200 text-xs font-semibold shadow-none flex-shrink-0"
                       title="Download Faculty Diligence CSV"
                     >
                       <Download className="w-3.5 h-3.5" />
                       <span>Download CSV</span>
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
                 <div className="p-4 border-b border-gray-100 space-y-3 bg-white">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="inline-flex p-1 bg-gray-100 rounded-xl text-xs font-semibold">
-                      <button
+                      <Button type="button" variant="ghost" size="xs"
                         onClick={() => setFacultyModalTab("INACTIVE")}
                         className={cn(
                           "px-3 py-1.5 rounded-lg transition",
                           facultyModalTab === "INACTIVE"
-                            ? "bg-white text-gray-900 shadow-sm font-bold"
+                            ? "bg-white text-gray-900 shadow-none font-bold"
                             : "text-gray-600 hover:text-gray-900"
                         )}
                       >
                         Inactive ({teacherInactive})
-                      </button>
-                      <button
+                      </Button>
+                      <Button type="button" variant="ghost" size="xs"
                         onClick={() => setFacultyModalTab("ACTIVE")}
                         className={cn(
                           "px-3 py-1.5 rounded-lg transition",
                           facultyModalTab === "ACTIVE"
-                            ? "bg-white text-purple-700 shadow-sm font-bold"
+                            ? "bg-white text-purple-700 shadow-none font-bold"
                             : "text-gray-600 hover:text-gray-900"
                         )}
                       >
                         Active ({teacherActive})
-                      </button>
-                      <button
+                      </Button>
+                      <Button type="button" variant="ghost" size="xs"
                         onClick={() => setFacultyModalTab("ALL")}
                         className={cn(
                           "px-3 py-1.5 rounded-lg transition",
                           facultyModalTab === "ALL"
-                            ? "bg-white text-blue-700 shadow-sm font-bold"
+                            ? "bg-white text-blue-700 shadow-none font-bold"
                             : "text-gray-600 hover:text-gray-900"
                         )}
                       >
                         All Faculty ({teacherTotal})
-                      </button>
+                      </Button>
                     </div>
 
                     <div className="relative flex-1 min-w-[200px]">
                       <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                      <input
+                      <Input
                         type="text"
                         placeholder="Search faculty by name..."
                         value={facultyModalSearch}
@@ -3289,17 +3126,14 @@ export default function AdminReportsPage() {
                   <span className="text-[11px] sm:text-xs">
                     <strong className="text-purple-700 font-semibold">{teacherActive}</strong> of {teacherTotal} faculty active today
                   </span>
-                  <button
+                  <Button type="button" variant="ghost" size="xs"
                     onClick={() => setFacultyModalOpen(false)}
-                    className="px-3.5 py-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-100 active:bg-gray-200 text-gray-700 font-semibold transition text-xs shadow-sm"
+                    className="px-3.5 py-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-100 active:bg-gray-200 text-gray-700 font-semibold transition text-xs shadow-none"
                   >
                     Close
-                  </button>
+                  </Button>
                 </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
+        </ResponsivePopover>
       </div>
     </DashboardLayout>
   );

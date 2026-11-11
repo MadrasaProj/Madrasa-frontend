@@ -1,23 +1,18 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
+import { BookOpen, ChevronRight, GraduationCap, Loader2, Plus, Search, Users } from "lucide-react";
+import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { DrawerSelector } from "@/components/DrawerSelector";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
-import { DataTable, type Column } from "@/components/ui/DataTable";
-import {
-  getSubjects, createSubject, updateSubject, bulkAssignTeacher,
-  type SubjectRecord,
-} from "@/lib/subjects-api";
-import { type ClassRecord } from "@/lib/classes-api";
-import { type TeacherRecord } from "@/lib/teachers-api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { createSubject, getSubjects, updateSubject, bulkAssignTeacher, type SubjectRecord } from "@/lib/subjects-api";
 import { useClasses, useTeachers } from "@/lib/queries";
 import { useAuthStore } from "@/store/auth";
-import { useLocation } from "react-router-dom";
-import {
-  BookOpen, Pencil, Loader2, X, Users, Search, GraduationCap,
-} from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 
 interface FormState {
   name: string;
@@ -28,497 +23,403 @@ interface FormState {
 
 const EMPTY_FORM: FormState = { name: "", classId: "", teacherId: "", status: "ACTIVE" };
 
-function subjectToForm(s: SubjectRecord): FormState {
+function subjectToForm(subject: SubjectRecord): FormState {
   return {
-    name: s.name,
-    classId: s.classId,
-    teacherId: s.teacherId ?? "",
-    status: (s.status as "ACTIVE" | "INACTIVE") ?? "ACTIVE",
+    name: subject.name,
+    classId: subject.classId,
+    teacherId: subject.teacherId ?? "",
+    status: subject.status === "INACTIVE" ? "INACTIVE" : "ACTIVE",
   };
 }
 
 export default function AdminSubjectsPage() {
   const { user, accessToken, activeClientId } = useAuthStore();
-  const cid   = activeClientId ?? "";
+  const clientId = activeClientId ?? "";
   const token = accessToken ?? "";
   const location = useLocation();
-
   const isPeriodBased = user?.attendanceMode === "PERIOD_BASED";
   const isAdmin = user?.actorType === "CLIENT_ADMIN" || user?.actorType === "SUPER_ADMIN";
 
-  const [isMobile, setIsMobile] = useState(true);
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
-
   const defaultClassId = new URLSearchParams(location.search).get("classId") ?? "";
-
-  const [subjects, setSubjects]           = useState<SubjectRecord[]>([]);
-  const [loading, setLoading]             = useState(true);
-  const [error, setError]                 = useState<string | null>(null);
+  const [subjects, setSubjects] = useState<SubjectRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filterClassId, setFilterClassId] = useState(defaultClassId);
-  const [search, setSearch]               = useState("");
-  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [showDrawer, setShowDrawer]   = useState(false);
-  const [editTarget, setEditTarget]   = useState<SubjectRecord | null>(null);
-  const [form, setForm]               = useState<FormState>(EMPTY_FORM);
-  const [saving, setSaving]           = useState(false);
-  const [saveError, setSaveError]     = useState("");
-
-  // Bulk assign modal
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedSubject, setSelectedSubject] = useState<SubjectRecord | null>(null);
+  const [showDrawer, setShowDrawer] = useState(false);
+  const [editTarget, setEditTarget] = useState<SubjectRecord | null>(null);
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [showBulkModal, setShowBulkModal] = useState(false);
-  const [bulkClassId, setBulkClassId]     = useState("");
+  const [bulkClassId, setBulkClassId] = useState("");
   const [bulkTeacherId, setBulkTeacherId] = useState("");
-  const [bulkSaving, setBulkSaving]       = useState(false);
-  const [bulkError, setBulkError]         = useState("");
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [bulkError, setBulkError] = useState("");
 
-  // Load classes using cached query hook
-  const { data: classesData } = useClasses({ clientId: cid, token });
+  const { data: classesData } = useClasses({ clientId, token });
+  const { data: teachersData } = useTeachers({ clientId, token });
   const classes = classesData ?? [];
-
-  // Load teachers using cached query hook
-  const { data: teachersData } = useTeachers({ clientId: cid, token });
   const teachers = teachersData?.data ?? [];
 
-  const load = useCallback(async (clsId?: string, srch?: string, signal?: AbortSignal) => {
-    if (!cid || !token) return;
-    setLoading(true); setError(null);
-    try {
-      const subs = await getSubjects(cid, token, { classId: clsId || undefined, search: srch || undefined, signal });
-      setSubjects(subs.data);
-    } catch (e) {
-      if ((e as Error).name === "AbortError") return;
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [cid, token]);
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchQuery(searchInput.trim()), 400);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   useEffect(() => {
-    const ac = new AbortController();
-    load(filterClassId, search, ac.signal);
-    return () => ac.abort();
-  }, [filterClassId, search, load]);
+    setFilterClassId(defaultClassId);
+  }, [defaultClassId]);
 
-  const handleFilterClass = (id: string) => {
-    setFilterClassId(id);
-    load(id, search);
-  };
+  const load = useCallback(async (classId: string, search: string, signal?: AbortSignal) => {
+    if (!clientId || !token) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await getSubjects(clientId, token, {
+        classId: classId || undefined,
+        search: search || undefined,
+        signal,
+      });
+      if (!signal?.aborted) setSubjects(result.data);
+    } catch (cause) {
+      if (!signal?.aborted && (cause as Error).name !== "AbortError") {
+        setError((cause as Error).message);
+      }
+    } finally {
+      if (!signal?.aborted) setLoading(false);
+    }
+  }, [clientId, token]);
 
-  const handleSearch = (val: string) => {
-    setSearch(val);
-    if (searchTimer.current) clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => load(filterClassId, val), 400);
-  };
+  useEffect(() => {
+    const controller = new AbortController();
+    void load(filterClassId, searchQuery, controller.signal);
+    return () => controller.abort();
+  }, [filterClassId, searchQuery, load]);
 
   const openAdd = () => {
     setEditTarget(null);
     setForm({ ...EMPTY_FORM, classId: filterClassId });
-    setSaveError(""); setShowDrawer(true);
+    setSaveError("");
+    setShowDrawer(true);
   };
 
-  const openEdit = (s: SubjectRecord) => {
-    setEditTarget(s); setForm(subjectToForm(s)); setSaveError("");
+  const openEdit = (subject: SubjectRecord) => {
+    setSelectedSubject(null);
+    setEditTarget(subject);
+    setForm(subjectToForm(subject));
+    setSaveError("");
     setShowDrawer(true);
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) { setSaveError("Subject name is required"); return; }
-    if (!editTarget && !form.classId) { setSaveError("Class is required"); return; }
-    setSaving(true); setSaveError("");
+    if (!form.name.trim()) {
+      setSaveError("Subject name is required");
+      return;
+    }
+    if (!editTarget && !form.classId) {
+      setSaveError("Class is required");
+      return;
+    }
+    setSaving(true);
+    setSaveError("");
     try {
       if (editTarget) {
-        const updated = await updateSubject(cid, token, editTarget.id, {
+        await updateSubject(clientId, token, editTarget.id, {
           name: form.name.trim(),
           teacherId: isPeriodBased ? (form.teacherId || null) : undefined,
           status: form.status,
         });
-        setSubjects((prev) => prev.map((s) => (s.id === updated.id ? { ...s, ...updated } : s)));
         toast.success("Subject updated successfully");
       } else {
-        const created = await createSubject(cid, token, {
+        await createSubject(clientId, token, {
           name: form.name.trim(),
           classId: form.classId,
           teacherId: isPeriodBased && form.teacherId ? form.teacherId : undefined,
         });
-        setSubjects((prev) => [...prev, created]);
         toast.success("Subject created successfully");
       }
       setShowDrawer(false);
-    } catch (e) {
-      setSaveError((e as Error).message);
-      toast.error((e as Error).message || "Failed to save subject");
+      await load(filterClassId, searchQuery);
+    } catch (cause) {
+      const message = (cause as Error).message || "Failed to save subject";
+      setSaveError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }
   };
 
   const handleBulkAssign = async () => {
-    if (!bulkClassId || !bulkTeacherId) { setBulkError("Select both class and teacher"); return; }
-    setBulkSaving(true); setBulkError("");
+    if (!bulkClassId || !bulkTeacherId) {
+      setBulkError("Select both class and teacher");
+      return;
+    }
+    setBulkSaving(true);
+    setBulkError("");
     try {
-      const result = await bulkAssignTeacher(cid, token, { classId: bulkClassId, teacherId: bulkTeacherId });
+      const result = await bulkAssignTeacher(clientId, token, {
+        classId: bulkClassId,
+        teacherId: bulkTeacherId,
+      });
       setShowBulkModal(false);
-      setBulkClassId(""); setBulkTeacherId("");
-      load(filterClassId, search);
-      toast.success(`Assigned teacher to ${result.updated} subjects`);
-    } catch (e) {
-      setBulkError((e as Error).message);
-      toast.error((e as Error).message || "Failed to assign teacher");
+      setBulkClassId("");
+      setBulkTeacherId("");
+      await load(filterClassId, searchQuery);
+      toast.success("Assigned teacher to " + result.updated + " subjects");
+    } catch (cause) {
+      const message = (cause as Error).message || "Failed to assign teacher";
+      setBulkError(message);
+      toast.error(message);
     } finally {
       setBulkSaving(false);
     }
   };
 
-  const columns: Column<SubjectRecord>[] = [
-    {
-      key: "name",
-      header: "Subject",
-      sortable: true,
-      render: (s) => (
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center font-bold text-sm shrink-0 text-primary-700">
-            {s.name.charAt(0)}
-          </div>
-          <div>
-            <p className="font-semibold text-gray-900 text-sm leading-tight">{s.name}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{s.class?.name}</p>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: "class",
-      header: "Class",
-      render: (s) => (
-        <span className="text-xs font-semibold px-2 py-1 rounded-lg bg-indigo-50 text-indigo-700">
-          {s.class?.name ?? "—"}
-        </span>
-      ),
-      className: "hidden sm:table-cell",
-      headerClass: "hidden sm:table-cell",
-    },
-    ...(isPeriodBased
-      ? [{
-          key: "teacher",
-          header: "Teacher",
-          render: (s: SubjectRecord) =>
-            s.teacher ? (
-              <span className="text-sm text-gray-700">{s.teacher.name}</span>
-            ) : (
-              <span className="text-xs text-gray-400 italic">Unassigned</span>
-            ),
-          className: "hidden sm:table-cell",
-          headerClass: "hidden sm:table-cell",
-        } as Column<SubjectRecord>]
-      : []),
-    {
-      key: "status",
-      header: "Status",
-      render: (s) => (
-        <span className={cn(
-          "text-xs font-bold px-2.5 py-1 rounded-lg",
-          s.status === "ACTIVE" ? "bg-primary-100 text-primary-700" : "bg-gray-100 text-gray-500",
-        )}>
-          {s.status}
-        </span>
-      ),
-      className: "hidden sm:table-cell",
-      headerClass: "hidden sm:table-cell",
-    },
-    ...(isAdmin
-      ? [{
-          key: "actions",
-          header: "",
-          render: (s: SubjectRecord) => (
-            <div className="flex items-center justify-end">
-              <button
-                onClick={(e) => { e.stopPropagation(); openEdit(s); }}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors text-xs font-semibold"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Edit</span>
-              </button>
-            </div>
-          ),
-          className: "text-right",
-        } as Column<SubjectRecord>]
-      : []),
+  const stats = [
+    { label: "Subjects", value: subjects.length, icon: BookOpen },
+    { label: "Active", value: subjects.filter((subject) => subject.status === "ACTIVE").length, icon: BookOpen },
+    { label: "Classes represented", value: new Set(subjects.map((subject) => subject.classId)).size, icon: GraduationCap },
+    isPeriodBased
+      ? { label: "Teacher assigned", value: subjects.filter((subject) => subject.teacherId).length, icon: Users }
+      : { label: "Inactive", value: subjects.filter((subject) => subject.status === "INACTIVE").length, icon: BookOpen },
   ];
 
   return (
     <DashboardLayout>
-      <PageHeader
-        title="Subjects"
-        subtitle={`${subjects.length} total`}
-        icon={BookOpen}
-        action={
-          isAdmin ? (
-            <div className="flex items-center gap-2">
-              {isPeriodBased && (
-                <button
-                  onClick={() => { setBulkError(""); setBulkClassId(filterClassId); setShowBulkModal(true); }}
-                  className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 px-3 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
-                >
-                  <Users className="w-4 h-4" />
-                  <span className="hidden sm:inline">Sync Teacher</span>
-                </button>
-              )}
-            </div>
-          ) : undefined
-        }
-      />
+      <PageHeader title="Subjects" />
 
-      {error && <ApiErrorBanner message={error} onRetry={() => load(filterClassId, search)} />}
+      <div className="space-y-5">
+        {error && <ApiErrorBanner message={error} onRetry={() => void load(filterClassId, searchQuery)} />}
 
-      {/* Search + class filter */}
-      <div className="flex gap-3 mb-4">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            value={search}
-            onChange={(e) => handleSearch(e.target.value)}
-            placeholder="Search subjects…"
-            className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1">
+            <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+            <Input
+              type="search"
+              aria-label="Search subjects"
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder="Search subjects…"
+              size="lg"
+              className="bg-white pl-10 shadow-none"
+            />
+          </div>
+          <DrawerSelector
+            title="Filter by class"
+            options={[{ value: "", label: "All classes" }, ...classes.map((item) => ({ value: item.id, label: item.name }))]}
+            value={filterClassId}
+            onChange={setFilterClassId}
+            className="w-full shadow-none sm:w-44"
           />
         </div>
-        <div className="relative">
-          <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-          <select
-            value={filterClassId}
-            onChange={(e) => handleFilterClass(e.target.value)}
-            className="pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none cursor-pointer"
-          >
-            <option value="">All Classes</option>
-            {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </div>
-      </div>
 
-      <DataTable
-        columns={columns}
-        data={subjects}
-        keyExtractor={(s) => s.id}
-        loading={loading}
-        emptyIcon={BookOpen}
-        emptyMessage="No subjects found"
-        mobileRender={(s) => (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-primary-100 flex items-center justify-center font-bold text-lg shrink-0 text-primary-700">
-                {s.name.charAt(0)}
-              </div>
-              <div>
-                <p className="font-semibold text-gray-900 text-sm">{s.name}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{s.class?.name}</p>
-                {isPeriodBased && (
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {s.teacher ? s.teacher.name : "No teacher assigned"}
-                  </p>
-                )}
-              </div>
-            </div>
-            {isAdmin && (
-              <button
-                onClick={(e) => { e.stopPropagation(); openEdit(s); }}
-                className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
+        {isAdmin && (
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" onClick={openAdd} className="shadow-none"><Plus className="size-4" /> Add Subject</Button>
+            {isPeriodBased && (
+              <Button
+                type="button"
+                variant="outline"
+                className="shadow-none"
+                onClick={() => {
+                  setBulkError("");
+                  setBulkClassId(filterClassId);
+                  setShowBulkModal(true);
+                }}
               >
-                <Pencil className="w-3.5 h-3.5" />
-              </button>
+                <Users className="size-4" /> Sync Teacher
+              </Button>
             )}
           </div>
         )}
-      />
 
-      {/* Add/Edit Drawer */}
-      <AnimatePresence>
-        {showDrawer && (
-          <>
-            <motion.div key="subjects-backdrop"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => !saving && setShowDrawer(false)}
-              className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
-            />
-            <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-none md:p-4">
-              <motion.div key="subjects-drawer"
-                initial={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.95 }}
-                animate={isMobile ? { y: 0 } : { opacity: 1, scale: 1 }}
-                exit={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.95 }}
-                transition={isMobile ? { type: "spring", damping: 30, stiffness: 300 } : { duration: 0.2 }}
-                className={cn(
-                  "w-full bg-white flex flex-col pointer-events-auto shadow-2xl relative",
-                  isMobile 
-                    ? "rounded-t-3xl max-h-[92dvh]" 
-                    : "rounded-3xl max-w-xl max-h-[85dvh]"
-                )}
+        {!loading && (
+          <div className="grid grid-cols-2 overflow-hidden rounded-2xl bg-gradient-to-br from-primary-50/60 via-white to-sky-50/60">
+            {stats.map(({ label, value, icon: Icon }, index) => (
+              <div key={label} className={"min-w-0 p-2.5 sm:p-3 " + (index % 2 === 0 ? "border-r border-gray-100 " : "") + (index < 2 ? "border-b border-gray-100" : "")}>
+                <div className="flex items-center gap-1.5 text-sm font-medium leading-4 text-gray-700">
+                  <Icon aria-hidden="true" className="size-3.5 shrink-0" />
+                  <span>{label}</span>
+                </div>
+                <span className="mt-1.5 block text-[22px] font-medium leading-none tabular-nums text-gray-950">{value}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <section aria-labelledby="subjects-list-title">
+          <h2 id="subjects-list-title" className="mb-2 px-1 text-sm font-semibold text-gray-700">All subjects</h2>
+          <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white">
+            {loading ? Array.from({ length: 4 }, (_, index) => (
+              <div key={index} className="flex items-center gap-3 px-4 py-4">
+                <div className="min-w-0 flex-1 space-y-2"><Skeleton className="h-4 w-32" /><Skeleton className="h-3 w-44 max-w-full" /></div>
+                <Skeleton className="h-4 w-16" />
+              </div>
+            )) : subjects.length === 0 ? (
+              <p className="px-4 py-10 text-center text-sm text-gray-500">{searchQuery || filterClassId ? "No subjects match your filters" : "No subjects found"}</p>
+            ) : subjects.map((subject) => (
+              <button
+                key={subject.id}
+                type="button"
+                aria-haspopup="dialog"
+                onClick={() => setSelectedSubject(subject)}
+                className="flex w-full items-center gap-3 px-4 py-4 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500"
               >
-                {/* Handle */}
-                <div className="flex justify-center pt-3 pb-1 shrink-0 md:hidden">
-                  <div className="w-10 h-1 bg-gray-300 rounded-full" />
-                </div>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-gray-950 sm:text-base">{subject.name}</span>
+                  <span className="mt-1 block truncate text-xs text-gray-500">
+                    {subject.class?.name ?? "Class unavailable"}
+                    {isPeriodBased && " · " + (subject.teacher?.name ?? "No teacher assigned")}
+                  </span>
+                </span>
+                <span className={"shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold " + (subject.status === "ACTIVE" ? "bg-primary-50 text-primary-700" : "bg-gray-100 text-gray-600")}>
+                  {subject.status === "ACTIVE" ? "Active" : "Inactive"}
+                </span>
+                <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-gray-400" />
+              </button>
+            ))}
+          </div>
+        </section>
+      </div>
 
-              <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
-                <h2 className="font-bold text-gray-900 text-lg">
-                  {editTarget ? "Edit Subject" : "Add Subject"}
-                </h2>
-                <button
-                  onClick={() => !saving && setShowDrawer(false)}
-                  disabled={saving}
-                  className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 disabled:opacity-50"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+      <ResponsivePopover
+        open={selectedSubject !== null}
+        onOpenChange={(open) => { if (!open) setSelectedSubject(null); }}
+        title={selectedSubject?.name}
+        side="bottom"
+        desktopView="right-drawer"
+        className="shadow-none"
+        contentClassName="px-5 py-4"
+      >
+        {selectedSubject && (
+          <div className="space-y-5">
+            <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100 bg-white text-sm">
+              <div className="flex justify-between gap-4 px-4 py-3"><span className="text-gray-500">Class</span><span className="text-right font-medium text-gray-900">{selectedSubject.class?.name ?? "Unavailable"}</span></div>
+              {isPeriodBased && <div className="flex justify-between gap-4 px-4 py-3"><span className="text-gray-500">Teacher</span><span className="text-right font-medium text-gray-900">{selectedSubject.teacher?.name ?? "Unassigned"}</span></div>}
+              <div className="flex justify-between gap-4 px-4 py-3"><span className="text-gray-500">Status</span><span className="font-medium text-gray-900">{selectedSubject.status === "ACTIVE" ? "Active" : "Inactive"}</span></div>
+              {selectedSubject.classSubject && <div className="flex justify-between gap-4 px-4 py-3"><span className="text-gray-500">Global subject</span><span className="text-right font-medium text-gray-900">{selectedSubject.classSubject.subjectName}</span></div>}
+            </div>
+            {isAdmin && <Button type="button" variant="outline" className="w-full shadow-none" onClick={() => openEdit(selectedSubject)}>Edit subject</Button>}
+          </div>
+        )}
+      </ResponsivePopover>
 
-              <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4 pb-8">
-                {saveError && (
-                  <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl">{saveError}</div>
-                )}
+      <ResponsivePopover
+        open={showDrawer}
+        onOpenChange={(open) => { if (!saving) setShowDrawer(open); }}
+        title={editTarget ? "Edit Subject" : "Add Subject"}
+        side="bottom"
+        desktopView="right-drawer"
+        className="shadow-none"
+        contentClassName="space-y-4 px-5 py-4"
+        footer={
+          <div className="flex gap-3 border-t border-gray-100 bg-white px-5 py-4">
+            <Button type="button" variant="outline" disabled={saving} onClick={() => setShowDrawer(false)} className="flex-1 shadow-none">Cancel</Button>
+            <Button type="button" disabled={saving} onClick={handleSave} className="flex-1 shadow-none">
+              {saving && <Loader2 className="size-4 animate-spin" />}
+              {editTarget ? "Save Changes" : "Create Subject"}
+            </Button>
+          </div>
+        }
+      >
+        {saveError && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{saveError}</p>}
 
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                    Display Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={form.name}
-                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                    placeholder="e.g. Mathematics"
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-primary-400 focus:bg-white transition-colors"
-                  />
-                </div>
+        <div className="space-y-1.5">
+          <label htmlFor="subject-name" className="block text-xs font-semibold text-gray-600">Display name <span className="text-red-600">*</span></label>
+          <Input id="subject-name" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder="e.g. Mathematics" size="lg" className="shadow-none" />
+        </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                    Class <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={form.classId}
-                    disabled
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-100 text-sm text-gray-500 cursor-not-allowed"
-                  >
-                    <option value="">Select class</option>
-                    {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-gray-600">Class <span className="text-red-600">*</span></label>
+          <DrawerSelector
+            title="Select class"
+            options={[{ value: "", label: "Select class" }, ...classes.map((item) => ({ value: item.id, label: item.name }))]}
+            value={form.classId}
+            onChange={(value) => setForm((current) => ({ ...current, classId: value }))}
+            disabled={Boolean(editTarget)}
+            className="shadow-none"
+          />
+        </div>
 
-                {isPeriodBased && (
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">Assigned Teacher</label>
-                    <select
-                      value={form.teacherId}
-                      onChange={(e) => setForm((f) => ({ ...f, teacherId: e.target.value }))}
-                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-primary-400 focus:bg-white transition-colors"
-                    >
-                      <option value="">(Unassigned)</option>
-                      {teachers.map((t) => <option key={t.id} value={t.id}>{t.name} · @{t.username}</option>)}
-                    </select>
-                  </div>
-                )}
+        {isPeriodBased && (
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-gray-600">Assigned teacher</label>
+            <DrawerSelector
+              title="Select teacher"
+              options={[{ value: "", label: "Unassigned" }, ...teachers.map((teacher) => ({ value: teacher.id, label: teacher.name + " · @" + teacher.username }))]}
+              value={form.teacherId}
+              onChange={(value) => setForm((current) => ({ ...current, teacherId: value }))}
+              className="shadow-none"
+            />
+          </div>
+        )}
 
-                {editTarget && (
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">Global Subject</label>
-                    <select
-                      value={editTarget.classSubject?.id ?? ""}
-                      disabled
-                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-100 text-sm text-gray-500 cursor-not-allowed"
-                    >
-                      <option value="">{editTarget.classSubject?.subjectName ?? "None"}</option>
-                    </select>
-                  </div>
-                )}
-
-              </div>
-
-              <div className="px-5 py-4 border-t border-gray-100 flex gap-3 shrink-0">
-                <button
-                  onClick={() => !saving && setShowDrawer(false)}
-                  disabled={saving}
-                  className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-primary-600 rounded-xl hover:bg-primary-700 disabled:opacity-50"
-                >
-                  {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {editTarget ? "Save Changes" : "Create Subject"}
-                </button>
-              </div>
-            </motion.div>
+        {editTarget && (
+          <>
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-gray-600">Status</label>
+              <DrawerSelector
+                title="Subject status"
+                options={[{ value: "ACTIVE", label: "Active" }, { value: "INACTIVE", label: "Inactive" }]}
+                value={form.status}
+                onChange={(value) => setForm((current) => ({ ...current, status: value as FormState["status"] }))}
+                className="shadow-none"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <span className="block text-xs font-semibold text-gray-600">Global subject</span>
+              <p className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-3 text-sm text-gray-600">{editTarget.classSubject?.subjectName ?? "None"}</p>
             </div>
           </>
         )}
-      </AnimatePresence>
+      </ResponsivePopover>
 
-      {/* Bulk Assign Teacher Modal (period-based) */}
-      <AnimatePresence>
-        {showBulkModal && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
-              onClick={() => !bulkSaving && setShowBulkModal(false)}
-            />
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            >
-              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-gray-900 text-lg">Sync Teacher to Class</h3>
-                  <button onClick={() => setShowBulkModal(false)}
-                    className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-                <p className="text-xs text-gray-500">Assigns one teacher to all active subjects in the selected class.</p>
-
-                {bulkError && (
-                  <div className="bg-red-50 text-red-600 text-sm px-3 py-2 rounded-xl">{bulkError}</div>
-                )}
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Class</label>
-                  <select value={bulkClassId} onChange={(e) => setBulkClassId(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-primary-400 focus:bg-white transition-colors">
-                    <option value="">Select class</option>
-                    {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Teacher</label>
-                  <select value={bulkTeacherId} onChange={(e) => setBulkTeacherId(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-primary-400 focus:bg-white transition-colors">
-                    <option value="">Select teacher</option>
-                    {teachers.map((t) => <option key={t.id} value={t.id}>{t.name} · @{t.username}</option>)}
-                  </select>
-                </div>
-
-                <div className="flex gap-3">
-                  <button onClick={() => setShowBulkModal(false)} disabled={bulkSaving}
-                    className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 disabled:opacity-50">
-                    Cancel
-                  </button>
-                  <button onClick={handleBulkAssign} disabled={bulkSaving}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-primary-600 rounded-xl hover:bg-primary-700 disabled:opacity-50">
-                    {bulkSaving && <Loader2 className="w-4 h-4 animate-spin" />}
-                    Assign
-                  </button>
-                 </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
+      <ResponsivePopover
+        open={showBulkModal}
+        onOpenChange={(open) => { if (!bulkSaving) setShowBulkModal(open); }}
+        title="Sync Teacher to Class"
+        description="Assigns one teacher to all active subjects in the selected class."
+        side="bottom"
+        desktopView="right-drawer"
+        className="shadow-none"
+        contentClassName="space-y-4 px-5 py-4"
+        footer={
+          <div className="flex gap-3 border-t border-gray-100 bg-white px-5 py-4">
+            <Button type="button" variant="outline" disabled={bulkSaving} onClick={() => setShowBulkModal(false)} className="flex-1 shadow-none">Cancel</Button>
+            <Button type="button" disabled={bulkSaving} onClick={handleBulkAssign} className="flex-1 shadow-none">
+              {bulkSaving && <Loader2 className="size-4 animate-spin" />} Assign
+            </Button>
+          </div>
+        }
+      >
+        {bulkError && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{bulkError}</p>}
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-gray-600">Class</label>
+          <DrawerSelector
+            title="Select class"
+            options={[{ value: "", label: "Select class" }, ...classes.map((item) => ({ value: item.id, label: item.name }))]}
+            value={bulkClassId}
+            onChange={setBulkClassId}
+            className="shadow-none"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-gray-600">Teacher</label>
+          <DrawerSelector
+            title="Select teacher"
+            options={[{ value: "", label: "Select teacher" }, ...teachers.map((teacher) => ({ value: teacher.id, label: teacher.name + " · @" + teacher.username }))]}
+            value={bulkTeacherId}
+            onChange={setBulkTeacherId}
+            className="shadow-none"
+          />
+        </div>
+      </ResponsivePopover>
     </DashboardLayout>
   );
 }

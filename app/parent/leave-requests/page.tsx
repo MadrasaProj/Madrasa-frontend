@@ -298,7 +298,6 @@ export default function ParentLeaveRequestsPage() {
       <ResponsivePopover
         open={showForm}
         onOpenChange={setShowForm}
-        drawerOnDesktop
         title={t("parentPages", "applyForLeave", lang)}
         footer={
           <div className="flex justify-end gap-2 border-t p-4">

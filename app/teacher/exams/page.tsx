@@ -553,7 +553,6 @@ export default function TeacherExamsPage() {
             if (!open) setSelectedExamId(null);
           }}
           side="bottom"
-          drawerOnDesktop
           className="mx-auto w-full max-w-2xl rounded-t-2xl"
           title={selectedExam?.name}
           showCloseButton={false}

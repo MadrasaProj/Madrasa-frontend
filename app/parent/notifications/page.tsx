@@ -6,7 +6,7 @@ import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/button";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { Drawer, DrawerClose, DrawerContent, DrawerFooter, DrawerTitle } from "@/components/ui/drawer";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Pagination, PaginationContent, PaginationEllipsis, PaginationItem,
@@ -139,8 +139,7 @@ export default function ParentNotificationsPage() {
   return (
     <DashboardLayout>
       <PageHeader title={t("parentPages", "notifPageTitle", lang)} />
-      <Drawer open={filtersOpen} onOpenChange={setFiltersOpen} swipeDirection="down">
-        <div className="pt-4! pb-2!">
+      <div className="pt-4! pb-2!">
           <div className="mx-auto flex w-full max-w-md items-center gap-2 p-1.5">
             <InputGroup className="h-10 min-w-0 flex-1 rounded-lg bg-white">
               <InputGroupInput value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder={copy.search} aria-label={copy.search} className="h-full text-sm" />
@@ -150,9 +149,9 @@ export default function ParentNotificationsPage() {
               <SlidersHorizontal className="h-4 w-4" />
             </Button>
           </div>
-        </div>
-        <DrawerContent className="max-h-[85dvh] overflow-y-auto bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]" aria-label={copy.filters}>
-          <DrawerTitle className="mb-6 text-lg font-bold text-gray-900">{copy.filters}</DrawerTitle>
+      </div>
+      <ResponsivePopover open={filtersOpen} onOpenChange={setFiltersOpen} title={copy.filters} className="shadow-none" footer={<div className="border-t border-gray-100 p-4"><Button type="button" className="w-full" onClick={() => setFiltersOpen(false)}>{copy.done}</Button></div>}>
+        <div className="px-5 pb-5 pt-2">
           <section className="mb-6">
             <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-400">{copy.notificationType}</h3>
             <div className="-mx-5 overflow-x-auto px-5"><div className="flex w-max gap-2">
@@ -174,12 +173,20 @@ export default function ParentNotificationsPage() {
               </TabsList>
             </Tabs>
           </section>
-          <DrawerClose className="mt-8 h-10 w-full rounded-xl bg-primary-600 text-sm font-semibold text-white">{copy.done}</DrawerClose>
-        </DrawerContent>
-      </Drawer>
+        </div>
+      </ResponsivePopover>
 
-      <div className="mx-3 mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
-        <span>{unread > 0 ? t("parentPages", "unreadCount", lang).replace("{count}", String(unread)) : t("parentPages", "allCaughtUpMsg", lang)}</span>
+      {!isLoading && <div className="mx-3 mb-3 grid grid-cols-2 overflow-hidden rounded-2xl bg-gradient-to-br from-primary-50/60 via-white to-sky-50/60">
+        <div className="border-r border-gray-100 p-2.5 sm:p-3">
+          <span className="flex items-center gap-1.5 text-sm font-medium text-gray-700"><Bell className="size-3.5" />{t("notif", "total", lang)}</span>
+          <span className="mt-1.5 block text-[22px] font-medium leading-none tabular-nums text-gray-950">{notifs.length}</span>
+        </div>
+        <div className="p-2.5 sm:p-3">
+          <span className="flex items-center gap-1.5 text-sm font-medium text-gray-700"><Inbox className="size-3.5" />{t("parentPages", "unreadLabel", lang)}</span>
+          <span className="mt-1.5 block text-[22px] font-medium leading-none tabular-nums text-gray-950">{unread}</span>
+        </div>
+      </div>}
+      <div className="mx-3 mb-3 flex flex-wrap items-center justify-end gap-2 text-xs text-gray-500">
         <div className="flex items-center gap-2">
           {unread > 0 && <Button type="button" variant="outline" size="sm" onClick={markAllRead} disabled={markAll.isPending} className="h-8 rounded-full px-3 text-xs text-primary-700" aria-label={t("parentPages", "markAllReadBtn", lang)}><CheckCheck className="mr-1 h-3.5 w-3.5" />{t("parentPages", "markAllReadBtn", lang)}</Button>}
           <Button type="button" variant="outline" size="icon" onClick={() => refetch()} disabled={isRefetching} className="h-8 w-8 rounded-full text-gray-600" aria-label={t("parentPages", "notifRefresh", lang)}><RefreshCw className={cn("h-3.5 w-3.5", isRefetching && "animate-spin")} /></Button>
@@ -187,12 +194,12 @@ export default function ParentNotificationsPage() {
       </div>
       {error instanceof Error && <ApiErrorBanner message={error.message} onRetry={() => refetch()} />}
       {isLoading ? (
-        <div data-ui-style="classic" className="card mx-3 mb-20 divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white p-0! shadow-none">
+        <div className="mx-3 mb-20 divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white">
           {Array.from({ length: 6 }).map((_, index) => <div key={index} className="p-4"><div className="flex items-start justify-between gap-3"><div className="w-2/3 space-y-2"><Skeleton className="h-4 w-2/3" /><Skeleton className="h-3 w-1/2" /></div><Skeleton className="h-6 w-16 rounded-full" /></div><Skeleton className="mt-4 h-4 w-1/2" /></div>)}
         </div>
       ) : (
         <>
-          <div data-ui-style="classic" className={cn("card mx-3 divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white p-0! shadow-none", filtered.length <= PAGE_SIZE && "mb-20")}>
+          <div className={cn("mx-3 divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white", filtered.length <= PAGE_SIZE && "mb-20")}>
             {filtered.length === 0 ? (
               <div className="px-4 py-16 text-center text-sm text-muted-foreground">
                 <Inbox className="mx-auto mb-2 h-8 w-8 text-gray-300" />
@@ -203,7 +210,7 @@ export default function ParentNotificationsPage() {
               const cfg = TYPE_CONFIG[n.type] ?? TYPE_CONFIG.GENERAL;
               const Icon = cfg.icon;
               return (
-                <button type="button" key={n.id} aria-label={`${n.title}, ${copy.types[cfg.id]}, ${n.isRead ? t("parentPages", "notifRead", lang) : t("parentPages", "unreadLabel", lang)}`} onClick={() => selectNotification(n)} className={cn("w-full rounded-none p-4 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500", !n.isRead && "bg-blue-50/40")}>
+                <button type="button" key={n.id} aria-label={`${n.title}, ${copy.types[cfg.id]}, ${n.isRead ? t("parentPages", "notifRead", lang) : t("parentPages", "unreadLabel", lang)}`} onClick={() => selectNotification(n)} className={cn("w-full rounded-none px-4 py-4 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500", !n.isRead && "bg-blue-50/40")}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex min-w-0 items-start gap-3">
                       <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border", cfg.bg)}><Icon className={cn("h-4 w-4", cfg.color)} /></span>
@@ -230,25 +237,32 @@ export default function ParentNotificationsPage() {
         </>
       )}
 
-      <Drawer open={selectedNotif !== null} onOpenChange={(open) => { if (!open) setSelectedNotifId(null); }} swipeDirection="down">
-        <DrawerContent className="max-h-[88dvh] bg-background">
-          {selectedNotif && (() => {
-            const cfg = TYPE_CONFIG[selectedNotif.type] ?? TYPE_CONFIG.GENERAL;
-            const Icon = cfg.icon;
-            return <>
-              <div className="shrink-0 border-b px-5 py-4"><div className="flex items-center gap-3"><span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border", cfg.bg)}><Icon className={cn("h-4 w-4", cfg.color)} /></span><div className="min-w-0 flex-1"><DrawerTitle className="truncate text-base font-semibold text-gray-900">{selectedNotif.title}</DrawerTitle><p className="mt-0.5 truncate text-xs text-muted-foreground">{selectedNotif.creator?.name ? `${t("parentPages", "notifFrom", lang)} ${selectedNotif.creator.name}` : "Madrasa"} · {new Date(selectedNotif.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p></div></div></div>
-              <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5"><div className="whitespace-pre-wrap rounded-2xl border border-gray-100 bg-gray-50/70 p-4 text-sm leading-relaxed text-gray-800">{selectedNotif.body}</div><dl className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
-                <div><dt className="text-muted-foreground">{copy.category}</dt><dd className="mt-1"><span className={cn("inline-flex rounded-full border px-2.5 py-1 text-xs font-medium", cfg.bg, cfg.color)}>{copy.types[cfg.id]}</span></dd></div>
-                <div><dt className="text-muted-foreground">{t("parentPages", "statusLabel", lang)}</dt><dd className="mt-1"><span className={cn("inline-flex rounded-full px-2.5 py-1 text-xs font-medium", selectedNotif.isRead ? "bg-gray-100 text-gray-600" : "bg-blue-100 text-blue-700")}>{selectedNotif.isRead ? t("parentPages", "notifRead", lang) : t("parentPages", "unreadLabel", lang)}</span></dd></div>
-                <div><dt className="text-muted-foreground">{t("parentPages", "notifFrom", lang)}</dt><dd className="mt-1 font-medium text-gray-900">{selectedNotif.creator?.name ?? "Madrasa"}</dd></div>
-                <div><dt className="text-muted-foreground">{t("parentPages", "dateLabel", lang)}</dt><dd className="mt-1 font-medium text-gray-900">{new Date(selectedNotif.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</dd></div>
-                {selectedNotif.eventDate && <div><dt className="text-muted-foreground">{copy.eventDate}</dt><dd className="mt-1 font-medium text-gray-900">{new Date(selectedNotif.eventDate).toLocaleDateString("en-GB")}</dd></div>}
-              </dl></div>
-              <DrawerFooter className="shrink-0 border-t bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"><div className="flex w-full gap-2"><Button type="button" variant="outline" size="lg" onClick={() => setSelectedNotifId(null)} className="flex-1">{t("common", "close", lang)}</Button>{selectedNotif.actionUrl && <Button type="button" size="lg" className="flex-1 bg-primary-600 text-white hover:bg-primary-700" onClick={() => { const url = selectedNotif.actionUrl!; setSelectedNotifId(null); navigate(url); }}><ExternalLink className="mr-1.5 h-4 w-4" />{copy.goToPage}</Button>}</div></DrawerFooter>
-            </>;
-          })()}
-        </DrawerContent>
-      </Drawer>
+      <ResponsivePopover
+        open={selectedNotif !== null}
+        onOpenChange={(open) => { if (!open) setSelectedNotifId(null); }}
+        title={selectedNotif?.title}
+        description={selectedNotif ? `${selectedNotif.creator?.name ?? "Madrasa"} · ${new Date(selectedNotif.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}` : undefined}
+        desktopView="right-drawer"
+        className="shadow-none"
+        footer={selectedNotif && <div className="flex gap-2 border-t border-gray-100 p-4">
+          <Button type="button" variant="outline" className="flex-1" onClick={() => setSelectedNotifId(null)}>{t("common", "close", lang)}</Button>
+          {selectedNotif.actionUrl && <Button type="button" className="flex-1" onClick={() => { const url = selectedNotif.actionUrl!; setSelectedNotifId(null); navigate(url); }}><ExternalLink className="size-4" />{copy.goToPage}</Button>}
+        </div>}
+      >
+        {selectedNotif && (() => {
+          const cfg = TYPE_CONFIG[selectedNotif.type] ?? TYPE_CONFIG.GENERAL;
+          return <div className="space-y-5 p-5 pt-2">
+            <div className="whitespace-pre-wrap rounded-xl border border-gray-100 bg-gray-50/70 p-4 text-sm leading-relaxed text-gray-800">{selectedNotif.body}</div>
+            <dl className="grid grid-cols-2 gap-4 text-sm">
+              <div><dt className="text-gray-500">{copy.category}</dt><dd className={cn("mt-1 font-medium", cfg.color)}>{copy.types[cfg.id]}</dd></div>
+              <div><dt className="text-gray-500">{t("parentPages", "statusLabel", lang)}</dt><dd className="mt-1 font-medium text-gray-900">{selectedNotif.isRead ? t("parentPages", "notifRead", lang) : t("parentPages", "unreadLabel", lang)}</dd></div>
+              <div><dt className="text-gray-500">{t("parentPages", "notifFrom", lang)}</dt><dd className="mt-1 font-medium text-gray-900">{selectedNotif.creator?.name ?? "Madrasa"}</dd></div>
+              <div><dt className="text-gray-500">{t("parentPages", "dateLabel", lang)}</dt><dd className="mt-1 font-medium text-gray-900">{new Date(selectedNotif.createdAt).toLocaleDateString("en-GB")}</dd></div>
+              {selectedNotif.eventDate && <div><dt className="text-gray-500">{copy.eventDate}</dt><dd className="mt-1 font-medium text-gray-900">{new Date(selectedNotif.eventDate).toLocaleDateString("en-GB")}</dd></div>}
+            </dl>
+          </div>;
+        })()}
+      </ResponsivePopover>
     </DashboardLayout>
   );
 }

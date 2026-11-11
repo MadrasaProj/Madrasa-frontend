@@ -509,7 +509,6 @@ export default function TeacherHomeworkPage() {
         open={showAssessOptions && assessHw !== null}
         onOpenChange={setShowAssessOptions}
         side="bottom"
-        drawerOnDesktop
         showCloseButton={false}
         className="mx-auto w-full max-w-md rounded-t-2xl"
       >
