@@ -2,11 +2,11 @@ import { REQUEST_REASON_SCHEMA as REASON_CONFIG, getRequestConfigSummary } from 
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { IllustratedEmptyState } from "@/components/ui/IllustratedEmptyState";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
-import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { useAuthStore } from "@/store/auth";
-import { useTenantPath } from "@/hooks/useTenantPath";
 import {
   getPendingLeaveRequests,
   reviewLeaveRequest,
@@ -14,28 +14,21 @@ import {
 } from "@/lib/leave-requests-api";
 import {
   Loader2,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
+  Check,
+  X,
   Search,
-  ChevronDown,
-  ChevronUp,
   UserCheck,
-  FilePen,
 } from "lucide-react";
 import { SkeletonList } from "@/components/ui/Skeleton";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 
-
-const STATUS_STYLES: Record<string, { border: string }> = {
-  PENDING: { border: "border-l-amber-400" },
-  APPROVED: { border: "border-l-primary-400" },
-  REJECTED: { border: "border-l-red-400" },
-};
 
 export default function AdminLeaveRequestsPage() {
-  const tenantPath = useTenantPath();
-  const { user, accessToken, activeClientId } = useAuthStore();
+  const { accessToken, activeClientId } = useAuthStore();
   const cid = activeClientId ?? "";
   const token = accessToken ?? "";
 
@@ -45,7 +38,7 @@ export default function AdminLeaveRequestsPage() {
   const [filter, setFilter] = useState<string>("PENDING");
   const [search, setSearch] = useState("");
 
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<LeaveRequest | null>(null);
   const [reviewNote, setReviewNote] = useState("");
   const [reviewingSave, setReviewingSave] = useState(false);
 
@@ -55,6 +48,7 @@ export default function AdminLeaveRequestsPage() {
     try {
       const res = await getPendingLeaveRequests(cid, token, { status: filter });
       setRequests(res.requests);
+      setError(null);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -73,7 +67,7 @@ export default function AdminLeaveRequestsPage() {
         status,
         reviewNote: reviewNote || undefined,
       });
-      setExpanded(null);
+      setSelectedRequest(null);
       setReviewNote("");
       loadRequests();
     } catch (e) {
@@ -94,48 +88,35 @@ export default function AdminLeaveRequestsPage() {
   return (
     <DashboardLayout>
       <div className="p-4 sm:p-6 px-0 mx-auto">
-        <PageHeader
-          title="Leave Requests"
-          subtitle="Review and manage leave applications"
-          icon={FilePen}
-          back
-          backHref={tenantPath("/admin")}
-        />
+        <PageHeader title="Leave Requests" />
 
         {error && <ApiErrorBanner message={error} />}
 
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+        <div className="flex flex-col gap-3 mb-6 sm:flex-row">
+          <Tabs value={filter} onValueChange={(value) => {
+            setFilter(value);
+            setSelectedRequest(null);
+          }} className="w-full sm:w-auto">
+            <TabsList className="w-full sm:w-auto">
             {(["PENDING", "APPROVED", "REJECTED"] as const).map((s) => (
-              <button
-                key={s}
-                onClick={() => {
-                  setFilter(s);
-                  setExpanded(null);
-                }}
-                className={cn(
-                  "flex-1 py-2 px-4 rounded-lg text-xs font-semibold transition-all hover:text-gray-700 active:scale-[0.98]",
-                  filter === s
-                    ? "bg-white text-primary-700 shadow-sm font-bold"
-                    : "text-gray-500",
-                )}
-              >
+              <TabsTrigger key={s} value={s} className="flex-1">
                 {s === "PENDING"
                   ? "Pending"
                   : s === "APPROVED"
                     ? "Approved"
                     : "Rejected"}
-              </button>
+              </TabsTrigger>
             ))}
-          </div>
+            </TabsList>
+          </Tabs>
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
+            <Input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name or admission no..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/30 transition-all"
+              className="w-full rounded-xl pl-10"
             />
           </div>
         </div>
@@ -143,137 +124,88 @@ export default function AdminLeaveRequestsPage() {
         {loading ? (
           <SkeletonList count={3} />
         ) : filtered.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
-            <AlertCircle className="w-8 h-8 mx-auto mb-2" />
-            <p className="text-sm">No {filter.toLowerCase()} requests</p>
-          </div>
+          <IllustratedEmptyState
+            image="/images/teacher/leave-requests-empty.webp"
+            title={`No ${filter.toLowerCase()} requests`}
+            description="Leave requests will appear here when submitted."
+          />
         ) : (
-          <div className="space-y-3">
+          <div className="overflow-hidden rounded-2xl border border-gray-200 bg-background divide-y divide-gray-100">
             {filtered.map((r) => {
               const rc = REASON_CONFIG[r.reasonType];
-              const isOpen = expanded === r.id;
-              const styles = STATUS_STYLES[r.status] ?? {};
               return (
-                <div
+                <button
                   key={r.id}
-                  className={cn(
-                    "bg-white rounded-2xl border border-gray-200 border-l-4 overflow-hidden transition-shadow",
-                    styles.border,
-                    isOpen ? "shadow-md" : "shadow-sm",
-                  )}
+                  type="button"
+                  onClick={() => {
+                    setReviewNote("");
+                    setSelectedRequest(r);
+                  }}
+                  className="flex h-auto w-full items-center justify-start gap-3 rounded-none border-x-0 border-t-0 border-b last:border-b-0 border-gray-200 p-2 text-left shadow-none transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
                 >
-                  <button
-                    onClick={() => setExpanded(isOpen ? null : r.id)}
-                    className="w-full text-left p-4 flex items-start justify-between gap-3"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold text-gray-900 text-sm">
-                          {r.student.name}
-                        </span>
-                        <span className="text-xs text-gray-400">
-                          #{r.student.adno}
-                        </span>
-                        {r.student.class && (
-                          <span className="text-xs text-gray-400">
-                            ({r.student.class.name})
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span
-                          className={cn(
-                            "px-2 py-0.5 rounded-full text-xs font-semibold",
-                            rc.bg,
-                            rc.color,
-                          )}
-                        >
-                          {rc.label}
-                        </span>
-                        <span className="text-xs text-gray-400">
-                          {new Date(r.startDate).toLocaleDateString()}
-                          {r.endDate && (
-                            <> - {new Date(r.endDate).toLocaleDateString()}</>
-                          )}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600 line-clamp-2">
-                        {r.description}
-                      </p>
-                      {getRequestConfigSummary(r.reasonType, r.config ?? {}, "en") && (
-                        <p className="mt-1 text-sm text-gray-600">
-                          Days: {getRequestConfigSummary(r.reasonType, r.config ?? {}, "en")}
-                        </p>
-                      )}
-                    </div>
-                    <div className="shrink-0 text-gray-400 mt-1">
-                      {isOpen ? (
-                        <ChevronUp className="w-5 h-5" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5" />
-                      )}
-                    </div>
-                  </button>
-
-                  <AnimatePresence>
-                    {isOpen && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="px-4 pb-4 pt-0 border-t border-gray-100 space-y-3">
-                          <div className="pt-3 space-y-2">
-                            {r.reviewedBy && r.status !== "PENDING" && (
-                              <div className="flex items-center gap-2 text-xs text-gray-500">
-                                <UserCheck className="w-3.5 h-3.5" />
-                                Reviewed by {r.reviewedBy.name}
-                              </div>
-                            )}
-                            <textarea
-                              value={reviewNote}
-                              onChange={(e) => setReviewNote(e.target.value)}
-                              placeholder="Add a note (optional)..."
-                              rows={2}
-                              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/30 resize-none transition-all"
-                            />
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => handleReview(r.id, "REJECTED")}
-                                disabled={reviewingSave}
-                                className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-[0.98] shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-red-500/20"
-                              >
-                                {reviewingSave ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <XCircle className="w-4 h-4" />
-                                )}
-                                Reject
-                              </button>
-                              <button
-                                onClick={() => handleReview(r.id, "APPROVED")}
-                                disabled={reviewingSave}
-                                className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-[0.98] shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                              >
-                                {reviewingSave ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <CheckCircle2 className="w-4 h-4" />
-                                )}
-                                Approve
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                  <span className="min-w-0 flex-1 truncate font-semibold text-sm text-gray-900">{r.student.name}</span>
+                  {r.student.class && <span className="shrink-0 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">{r.student.class.name}</span>}
+                  <span className={cn("shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold", rc.bg, rc.color)}>{rc.label}</span>
+                </button>
               );
             })}
           </div>
         )}
+
+        <ResponsivePopover
+          open={selectedRequest !== null}
+          desktopView="right-drawer"
+          onOpenChange={(open) => {
+            if (!open) setSelectedRequest(null);
+          }}
+          title={selectedRequest?.student.name}
+          description={selectedRequest?.student.class?.name}
+        >
+          {selectedRequest && (() => {
+            const request = selectedRequest;
+            const reason = REASON_CONFIG[request.reasonType];
+            return (
+              <div className="space-y-5 p-5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">#{request.student.adno}</span>
+                  <span className={cn("rounded-full px-2.5 py-1 text-xs font-semibold", reason.bg, reason.color)}>{reason.label}</span>
+                  <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">{request.status}</span>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Leave period</p>
+                  <p className="mt-1 text-sm text-gray-700">
+                    {new Date(request.startDate).toLocaleDateString()}
+                    {request.endDate && <> – {new Date(request.endDate).toLocaleDateString()}</>}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Description</p>
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{request.description}</p>
+                  {getRequestConfigSummary(request.reasonType, request.config ?? {}, "en") && (
+                    <p className="mt-2 text-sm text-gray-600">Days: {getRequestConfigSummary(request.reasonType, request.config ?? {}, "en")}</p>
+                  )}
+                </div>
+                {request.reviewedBy && request.status !== "PENDING" && (
+                  <div className="flex items-center gap-2 text-xs text-gray-500"><UserCheck className="h-3.5 w-3.5" />Reviewed by {request.reviewedBy.name}</div>
+                )}
+                {request.reviewNote && request.status !== "PENDING" && (
+                  <div><p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Review note</p><p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{request.reviewNote}</p></div>
+                )}
+                <div className="space-y-3 border-t border-gray-100 pt-4">
+                  <Textarea value={reviewNote} onChange={(e) => setReviewNote(e.target.value)} placeholder="Add a note (optional)..." rows={3} className="resize-none" />
+                  <div className="flex gap-2">
+                    <Button type="button" variant="destructive" size="lg" onClick={() => handleReview(request.id, "REJECTED")} disabled={reviewingSave || request.status === "REJECTED"} className="flex-1 bg-red-500 text-white hover:bg-red-600">
+                      {reviewingSave ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : <span className="inline-flex items-center gap-1.5"><X className="h-4 w-4" />Reject</span>}
+                    </Button>
+                    <Button type="button" size="lg" onClick={() => handleReview(request.id, "APPROVED")} disabled={reviewingSave || request.status === "APPROVED"} className="flex-1 bg-primary-600 text-white hover:bg-primary-700">
+                      {reviewingSave ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : <span className="inline-flex items-center gap-1.5"><Check className="h-4 w-4" />Approve</span>}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </ResponsivePopover>
       </div>
     </DashboardLayout>
   );

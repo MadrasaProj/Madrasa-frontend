@@ -2,7 +2,12 @@ import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import * as Tabs from "@radix-ui/react-tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { DrawerSelector } from "@/components/DrawerSelector";
 import {
   getClientConfig,
   updateClientConfig,
@@ -12,7 +17,6 @@ import {
 import { triggerIbadahReminder } from "@/lib/ibadah-api";
 import { useAuthStore } from "@/store/auth";
 import {
-  Settings,
   Save,
   CheckCircle2,
   Loader2,
@@ -20,7 +24,6 @@ import {
   CalendarCheck,
   Eye,
   EyeOff,
-  Users,
   Building2,
   UserCog,
   Radio,
@@ -28,13 +31,11 @@ import {
   KeyRound,
   Moon,
   Bell,
-  Clock,
   Send,
   Sparkles,
   ExternalLink,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
 import { PageSkeleton } from "@/components/ui/Skeleton";
 import { toast } from "sonner";
 
@@ -131,7 +132,7 @@ const TABS = [
 
 export default function AdminConfigPage() {
   const { slug } = useParams<{ slug: string }>();
-  const { user, accessToken, activeClientId, setAttendanceMode } =
+  const { accessToken, activeClientId, setAttendanceMode } =
     useAuthStore();
   const cid = activeClientId ?? "";
   const token = accessToken ?? "";
@@ -267,6 +268,7 @@ export default function AdminConfigPage() {
     setAttError("");
     try {
       await updateClientConfig(cid, token, { attendanceMode: attMode });
+      setConfig((prev) => ({ ...prev, attendanceMode: attMode }));
       setAttendanceMode(attMode);
       setSavedAtt(true);
       toast.success("Attendance mode updated successfully");
@@ -430,41 +432,38 @@ export default function AdminConfigPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader
-        title="Configuration"
-        subtitle="Madrasa settings"
-        icon={Settings}
-      />
+      <PageHeader title="Configuration" />
 
       {loading ? (
         <PageSkeleton />
       ) : (
-        <Tabs.Root value={activeTab} onValueChange={setActiveTab} className="lg:flex lg:gap-6 lg:items-start pb-28">
+        <>
           {error && (
-            <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" /> {error}
+            <div className="mb-5 flex items-center gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+              <AlertCircle className="h-4 w-4 shrink-0" /> {error}
             </div>
           )}
+          <div className="pb-28">
+            <Tabs value={activeTab} onValueChange={setActiveTab} orientation="vertical">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
+                <div className="w-full lg:sticky lg:top-24 lg:w-60 lg:shrink-0">
+                  <TabsList>
+                    {TABS.map((tab) => {
+                      const Icon = tab.icon;
+                      return (
+                        <TabsTrigger key={tab.value} value={tab.value}>
+                          <Icon className="w-4 h-4 shrink-0" />
+                          {tab.label}
+                        </TabsTrigger>
+                      );
+                    })}
+                  </TabsList>
+                </div>
 
-          <Tabs.List className="flex gap-6 overflow-x-auto border-b border-gray-200 scrollbar-none lg:flex-col lg:border-b-0 lg:border-r lg:border-gray-200 lg:shrink-0 lg:w-60 lg:gap-0.5 lg:sticky lg:top-24">
-            {TABS.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <Tabs.Trigger
-                  key={tab.value}
-                  value={tab.value}
-                  className="data-[state=active]:text-primary-600 data-[state=active]:bg-primary-50 px-4 py-3 text-gray-500 border-b-2 border-transparent hover:text-primary-600 hover:border-b-primary-300 flex items-center gap-2 px-1 py-3 text-sm font-semibold transition-all whitespace-nowrap -mb-px lg:w-full lg:px-3 lg:py-2.5 lg:-mb-0 lg:border-b-0 lg:border-r-0 lg:data-[state=active]:border-b-0 lg:data-[state=active]:border-r-primary-600 lg:hover:border-r-primary-300 lg:hover:border-b-transparent"
-                >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  {tab.label}
-                </Tabs.Trigger>
-              );
-            })}
-          </Tabs.List>
-
-          <div className="min-w-0 flex-1 space-y-5 lg:max-w-2xl">
+                <div className="min-w-0 w-full max-w-2xl flex-1">
           {/* ── General Tab ── */}
-          <Tabs.Content value="general" className="space-y-5">
+          <TabsContent value="general">
+            <div className="space-y-5">
             <div>
               <h2 className="text-lg font-bold text-gray-900">General Information</h2>
               <p className="text-sm text-gray-500 mt-1">Basic details and address of the madrasa</p>
@@ -490,15 +489,16 @@ export default function AdminConfigPage() {
                   {section.fields.map(
                     ({ key, label, placeholder, type = "text" }) => (
                       <div key={key}>
-                        <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                        <label htmlFor={key} className="block text-xs font-semibold text-gray-500 mb-1.5">
                           {label}
                         </label>
-                        <input
+                        <Input
+                          size="lg"
+                          id={key}
                           type={type}
                           value={String(config[key] ?? "")}
                           onChange={(e) => handleChange(key, e.target.value)}
                           placeholder={placeholder}
-                          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
                       </div>
                     ),
@@ -512,12 +512,13 @@ export default function AdminConfigPage() {
               saved={saved}
               onSave={handleSave}
             />
-          </Tabs.Content>
+            </div>
+          </TabsContent>
 
           {/* ── Management Tab ── */}
 
-          <div className="mt-10"></div>
-          <Tabs.Content value="management" className="space-y-5">
+          <TabsContent value="management">
+            <div className="space-y-5">
             <div>
               <h2 className="text-lg font-bold text-gray-900">Management &amp; Settings</h2>
               <p className="text-sm text-gray-500 mt-1">Head master details and madrasa preferences</p>
@@ -536,15 +537,16 @@ export default function AdminConfigPage() {
                   {section.fields.map(
                     ({ key, label, placeholder, type = "text" }) => (
                       <div key={key}>
-                        <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                        <label htmlFor={key} className="block text-xs font-semibold text-gray-500 mb-1.5">
                           {label}
                         </label>
-                        <input
+                        <Input
+                          size="lg"
+                          id={key}
                           type={type}
                           value={String(config[key] ?? "")}
                           onChange={(e) => handleChange(key, e.target.value)}
                           placeholder={placeholder}
-                          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
                       </div>
                     ),
@@ -558,10 +560,12 @@ export default function AdminConfigPage() {
               saved={saved}
               onSave={handleSave}
             />
-          </Tabs.Content>
+            </div>
+          </TabsContent>
 
           {/* ── Attendance Tab ── */}
-          <Tabs.Content value="attendance" className="space-y-5">
+          <TabsContent value="attendance">
+            <div className="space-y-5">
             <div>
               <h2 className="text-lg font-bold text-gray-900">Attendance &amp; Visibility</h2>
               <p className="text-sm text-gray-500 mt-1">Attendance mode and committee dashboard visibility</p>
@@ -577,68 +581,46 @@ export default function AdminConfigPage() {
                   Attendance Mode
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                {(["CLASS_BASED", "PERIOD_BASED"] as const).map((mode) => (
-                  <label
-                    key={mode}
-                    className={cn(
-                      "flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition-all",
-                      attMode === mode
-                        ? "border-primary-500 bg-primary-50"
-                        : "border-gray-200 bg-gray-50",
-                    )}
-                  >
-                    <input
-                      type="radio"
-                      name="attendanceMode"
-                      value={mode}
-                      checked={attMode === mode}
-                      onChange={() => setAttMode(mode)}
-                      className="sr-only"
-                    />
-                    <span
-                      className={cn(
-                        "text-sm font-bold mb-1",
-                        attMode === mode ? "text-primary-700" : "text-gray-700",
-                      )}
-                    >
-                      {mode === "CLASS_BASED" ? "Class Based" : "Period Based"}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {mode === "CLASS_BASED"
-                        ? "Class teacher marks whole class once per day"
-                        : "Each subject teacher marks attendance per period"}
-                    </span>
-                  </label>
-                ))}
+              <div className="mb-4">
+                <DrawerSelector
+                  title="Attendance Mode"
+                  value={attMode}
+                  onChange={(value) => setAttMode(value as "CLASS_BASED" | "PERIOD_BASED")}
+                  options={[
+                    { value: "CLASS_BASED", label: "Class Based" },
+                    { value: "PERIOD_BASED", label: "Period Based" },
+                  ]}
+                />
+                <p className="mt-2 text-xs text-gray-500">
+                  {attMode === "CLASS_BASED"
+                    ? "Class teacher marks whole class once per day"
+                    : "Each subject teacher marks attendance per period"}
+                </p>
               </div>
               {attError && (
                 <div className="bg-red-50 text-red-600 text-xs px-3 py-2 rounded-xl mb-3">
                   {attError}
                 </div>
               )}
-              <button
-                onClick={handleSaveAttendanceMode}
-                disabled={savingAtt || attMode === config.attendanceMode}
-                className={cn(
-                  "flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold transition-colors",
-                  savedAtt
-                    ? "bg-primary-100 text-primary-700"
-                    : "bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60",
-                )}
-              >
-                {savingAtt ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : savedAtt ? (
-                  <>
-                    <CheckCircle2 className="w-4 h-4" /> Saved!
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" /> Save Attendance Mode
-                  </>
-                )}
-              </button>
+              <div className="mt-4">
+                <Button
+                  variant={savedAtt ? "secondary" : "default"}
+                  onClick={handleSaveAttendanceMode}
+                  disabled={savingAtt || attMode === config.attendanceMode}
+                >
+                  {savingAtt ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : savedAtt ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" /> Saved!
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" /> Save Attendance Mode
+                    </>
+                  )}
+                </Button>
+              </div>
             </motion.div>
 
             <motion.div
@@ -656,53 +638,39 @@ export default function AdminConfigPage() {
                   Committee View
                 </p>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-sm font-semibold text-gray-800">
+                  <label htmlFor="committee-attendance" className="text-sm font-semibold text-gray-800">
                     Show Attendance to Committee
-                  </p>
+                  </label>
                   <p className="text-xs text-gray-500 mt-0.5">
                     Toggle visibility of student &amp; teacher attendance on the
                     committee dashboard
                   </p>
                 </div>
-                <button
-                  onClick={() => setShowCommAtt((v) => !v)}
-                  className={`relative w-12 h-6 rounded-full transition-colors duration-200 shrink-0 ${
-                    showCommAtt ? "bg-primary-500" : "bg-gray-300"
-                  }`}
-                >
-                  <span
-                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
-                      showCommAtt ? "translate-x-6" : "translate-x-0"
-                    }`}
-                  />
-                </button>
+                <Switch id="committee-attendance" checked={showCommAtt} onCheckedChange={setShowCommAtt} aria-label="Show attendance to committee" />
               </div>
-              <button
-                onClick={handleSaveCommitteeAttendance}
-                disabled={
-                  savingCommAtt || showCommAtt === config.showCommitteeAttendance
-                }
-                className={cn(
-                  "flex items-center justify-center gap-2 w-full py-3 mt-4 rounded-xl text-sm font-bold transition-colors",
-                  savedCommAtt
-                    ? "bg-primary-100 text-primary-700"
-                    : "bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60",
-                )}
-              >
-                {savingCommAtt ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : savedCommAtt ? (
-                  <>
-                    <CheckCircle2 className="w-4 h-4" /> Saved!
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" /> Save
-                  </>
-                )}
-              </button>
+              <div className="mt-4">
+                <Button
+                  variant={savedCommAtt ? "secondary" : "default"}
+                  onClick={handleSaveCommitteeAttendance}
+                  disabled={
+                    savingCommAtt || showCommAtt === config.showCommitteeAttendance
+                  }
+                >
+                  {savingCommAtt ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : savedCommAtt ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" /> Saved!
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" /> Save
+                    </>
+                  )}
+                </Button>
+              </div>
             </motion.div>
 
             <motion.div
@@ -720,59 +688,47 @@ export default function AdminConfigPage() {
                   Committee View
                 </p>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-sm font-semibold text-gray-800">
+                  <label htmlFor="committee-checkin" className="text-sm font-semibold text-gray-800">
                     Show Teacher Check-in to Committee
-                  </p>
+                  </label>
                   <p className="text-xs text-gray-500 mt-0.5">
                     Toggle visibility of teacher check-in/check-out details on the
                     committee dashboard
                   </p>
                 </div>
-                <button
-                  onClick={() => setShowCommTC((v) => !v)}
-                  className={`relative w-12 h-6 rounded-full transition-colors duration-200 shrink-0 ${
-                    showCommTC ? "bg-primary-500" : "bg-gray-300"
-                  }`}
-                >
-                  <span
-                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
-                      showCommTC ? "translate-x-6" : "translate-x-0"
-                    }`}
-                  />
-                </button>
+                <Switch id="committee-checkin" checked={showCommTC} onCheckedChange={setShowCommTC} aria-label="Show teacher check-in to committee" />
               </div>
-              <button
-                onClick={handleSaveCommitteeTeacherCheckin}
-                disabled={
-                  savingCommTC ||
-                  showCommTC === config.showCommitteeTeacherCheckin
-                }
-                className={cn(
-                  "flex items-center justify-center gap-2 w-full py-3 mt-4 rounded-xl text-sm font-bold transition-colors",
-                  savedCommTC
-                    ? "bg-primary-100 text-primary-700"
-                    : "bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60",
-                )}
-              >
-                {savingCommTC ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : savedCommTC ? (
-                  <>
-                    <CheckCircle2 className="w-4 h-4" /> Saved!
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" /> Save
-                  </>
-                )}
-              </button>
+              <div className="mt-4">
+                <Button
+                  variant={savedCommTC ? "secondary" : "default"}
+                  onClick={handleSaveCommitteeTeacherCheckin}
+                  disabled={
+                    savingCommTC ||
+                    showCommTC === config.showCommitteeTeacherCheckin
+                  }
+                >
+                  {savingCommTC ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : savedCommTC ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" /> Saved!
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" /> Save
+                    </>
+                  )}
+                </Button>
+              </div>
             </motion.div>
-          </Tabs.Content>
+            </div>
+          </TabsContent>
 
           {/* ── Ibadah Alert Tab ── */}
-          <Tabs.Content value="ibadah" className="space-y-5">
+          <TabsContent value="ibadah">
+            <div className="space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
                 <h2 className="text-lg font-bold text-gray-900">Daily Night Ibadah Alert</h2>
@@ -802,52 +758,40 @@ export default function AdminConfigPage() {
                 </p>
               </div>
 
-              <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+              <div className="flex items-center justify-between gap-4 pb-4 border-b border-gray-100">
                 <div>
-                  <p className="text-sm font-semibold text-gray-800">
+                  <label htmlFor="ibadah-reminder" className="text-sm font-semibold text-gray-800">
                     Enable Nightly Ibadah Reminder
-                  </p>
+                  </label>
                   <p className="text-xs text-gray-500 mt-0.5">
                     Automatically send a push notification to all parents every evening
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIbadahEnabled((v) => !v)}
-                  className={`relative w-12 h-6 rounded-full transition-colors duration-200 shrink-0 ${
-                    ibadahEnabled ? "bg-emerald-500" : "bg-gray-300"
-                  }`}
-                >
-                  <span
-                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
-                      ibadahEnabled ? "translate-x-6" : "translate-x-0"
-                    }`}
-                  />
-                </button>
+                <Switch id="ibadah-reminder" checked={ibadahEnabled} onCheckedChange={setIbadahEnabled} aria-label="Enable nightly Ibadah reminder" />
               </div>
 
               {/* Schedule time selector */}
               <div className="pt-4">
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                <label className="mb-1.5 block text-xs font-semibold text-gray-700">
                   Scheduled Alert Time (IST)
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-                  <select
+                  <DrawerSelector
+                    title="Scheduled Alert Time (IST)"
                     value={ibadahTime}
-                    onChange={(e) => setIbadahTime(e.target.value)}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
-                  >
-                    <option value="18:00">06:00 PM (18:00)</option>
-                    <option value="18:30">06:30 PM (18:30)</option>
-                    <option value="19:00">07:00 PM (19:00) — Recommended</option>
-                    <option value="19:30">07:30 PM (19:30)</option>
-                    <option value="20:00">08:00 PM (20:00)</option>
-                    <option value="20:30">08:30 PM (20:30)</option>
-                    <option value="21:00">09:00 PM (21:00)</option>
-                    <option value="21:30">09:30 PM (21:30)</option>
-                    <option value="22:00">10:00 PM (22:00)</option>
-                  </select>
+                    onChange={setIbadahTime}
+                    options={[
+                      { value: "18:00", label: "06:00 PM (18:00)" },
+                      { value: "18:30", label: "06:30 PM (18:30)" },
+                      { value: "19:00", label: "07:00 PM (19:00) — Recommended" },
+                      { value: "19:30", label: "07:30 PM (19:30)" },
+                      { value: "20:00", label: "08:00 PM (20:00)" },
+                      { value: "20:30", label: "08:30 PM (20:30)" },
+                      { value: "21:00", label: "09:00 PM (21:00)" },
+                      { value: "21:30", label: "09:30 PM (21:30)" },
+                      { value: "22:00", label: "10:00 PM (22:00)" },
+                    ]}
+                  />
                   <p className="text-xs text-gray-500 leading-relaxed">
                     Evaluated every 15 minutes between 18:00 and 23:00 IST. Sent once daily per madrasa.
                   </p>
@@ -869,15 +813,16 @@ export default function AdminConfigPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                <label htmlFor="ibadah-title" className="block text-xs font-semibold text-gray-700 mb-1.5">
                   Notification Title
                 </label>
-                <input
+                <Input
+                  size="lg"
+                  id="ibadah-title"
                   type="text"
                   value={ibadahTitle}
                   onChange={(e) => setIbadahTitle(e.target.value)}
                   placeholder="Daily Ibadah Reminder (Default)"
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
                 <p className="text-xs text-gray-400 mt-1">
                   Default: <span className="text-gray-600 font-medium">Daily Ibadah Reminder</span>
@@ -886,19 +831,19 @@ export default function AdminConfigPage() {
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold text-gray-700">
+                  <label htmlFor="ibadah-body" className="block text-xs font-semibold text-gray-700">
                     Notification Message Body
                   </label>
                   <span className="text-[11px] bg-emerald-50 text-emerald-700 font-mono px-2 py-0.5 rounded-md border border-emerald-100">
                     {"{madrasaName}"} supported
                   </span>
                 </div>
-                <textarea
+                <Textarea
+                  id="ibadah-body"
                   rows={3}
                   value={ibadahBody}
                   onChange={(e) => setIbadahBody(e.target.value)}
                   placeholder="Assalamu Alaikum. Please remember to record today's prayers and good deeds for your children in {madrasaName}."
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
                 />
                 <p className="text-xs text-gray-400 mt-1">
                   Tip: Use <code className="bg-gray-100 px-1 py-0.5 rounded text-gray-700">{"{madrasaName}"}</code> to dynamically insert this madrasa&apos;s name.
@@ -918,7 +863,7 @@ export default function AdminConfigPage() {
                   Live Parent Phone Preview
                 </p>
               </div>
-              <div className="bg-gray-50 border border-gray-200/80 rounded-2xl p-4 max-w-md shadow-xs">
+              <div className="bg-gray-50 border border-gray-200/80 rounded-2xl p-4 max-w-md">
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <div className="flex items-center gap-2">
                     <div className="w-5 h-5 rounded-md bg-emerald-600 flex items-center justify-center text-white text-[10px] font-bold">
@@ -944,16 +889,11 @@ export default function AdminConfigPage() {
 
             {/* Buttons: Save & Test */}
             <div className="space-y-3">
-              <button
+              <Button
                 type="button"
+                variant={savedIbadah ? "secondary" : "default"}
                 onClick={handleSaveIbadahReminder}
                 disabled={savingIbadah}
-                className={cn(
-                  "flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold transition-colors",
-                  savedIbadah
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60",
-                )}
               >
                 {savingIbadah ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -966,23 +906,23 @@ export default function AdminConfigPage() {
                     <Save className="w-4 h-4" /> Save Ibadah Alert Settings
                   </>
                 )}
-              </button>
+              </Button>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <button
+                <Button
                   type="button"
+                  variant="outline"
                   onClick={() => handleTestTriggerReminder(true)}
                   disabled={triggeringReminder}
-                  className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-semibold border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition-colors disabled:opacity-60"
                 >
                   <Eye className="w-3.5 h-3.5 text-gray-500" />
                   Preview Audience (Dry Run)
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="outline"
                   onClick={() => handleTestTriggerReminder(false)}
                   disabled={triggeringReminder}
-                  className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-semibold border border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors disabled:opacity-60"
                 >
                   {triggeringReminder ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -990,13 +930,15 @@ export default function AdminConfigPage() {
                     <Send className="w-3.5 h-3.5 text-emerald-600" />
                   )}
                   Send Test Alert Now
-                </button>
+                </Button>
               </div>
             </div>
-          </Tabs.Content>
+            </div>
+          </TabsContent>
 
           {/* ── Admin Account Tab ── */}
-          <Tabs.Content value="admin-account" className="space-y-5">
+          <TabsContent value="admin-account">
+            <div className="space-y-5">
             <div>
               <h2 className="text-lg font-bold text-gray-900">Admin Account</h2>
               <p className="text-sm text-gray-500 mt-1">Update your admin login credentials</p>
@@ -1020,15 +962,16 @@ export default function AdminConfigPage() {
                 </p>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                <label htmlFor="new-username" className="block text-xs font-semibold text-gray-500 mb-1.5">
                   New username (email or phone)
                 </label>
-                <input
+                <Input
+                  size="lg"
+                  id="new-username"
                   type="text"
                   value={newUsername}
                   onChange={(e) => setNewUsername(e.target.value)}
                   placeholder="admin@madrasa.com or +91 9876543210"
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>
               {usernameError && (
@@ -1036,24 +979,21 @@ export default function AdminConfigPage() {
                   {usernameError}
                 </div>
               )}
-              <button
-                onClick={handleSaveUsername}
-                disabled={savingUsername || !newUsername.trim()}
-                className={cn(
-                  "flex items-center justify-center gap-2 w-full py-3 mt-4 rounded-xl text-sm font-bold transition-colors",
-                  savedUsername
-                    ? "bg-primary-100 text-primary-700"
-                    : "bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60",
-                )}
-              >
-                {savingUsername ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : savedUsername ? (
-                  <><CheckCircle2 className="w-4 h-4" /> Saved!</>
-                ) : (
-                  <><Save className="w-4 h-4" /> Update Username</>
-                )}
-              </button>
+              <div className="mt-4">
+                <Button
+                  variant={savedUsername ? "secondary" : "default"}
+                  onClick={handleSaveUsername}
+                  disabled={savingUsername || !newUsername.trim()}
+                >
+                  {savingUsername ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : savedUsername ? (
+                    <><CheckCircle2 className="w-4 h-4" /> Saved!</>
+                  ) : (
+                    <><Save className="w-4 h-4" /> Update Username</>
+                  )}
+                </Button>
+              </div>
             </motion.div>
 
             <motion.div
@@ -1068,13 +1008,15 @@ export default function AdminConfigPage() {
                     Password
                   </p>
                 </div>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={showPasswords ? "Hide passwords" : "Show passwords"}
                   onClick={() => setShowPasswords((v) => !v)}
-                  className="text-gray-400 hover:text-gray-600"
                 >
                   {showPasswords ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+                </Button>
               </div>
               {/* Browser autofill decoy trap to prevent Chrome from auto-injecting credentials */}
               <div style={{ position: "absolute", opacity: 0, height: 0, width: 0, overflow: "hidden", zIndex: -1 }}>
@@ -1084,10 +1026,12 @@ export default function AdminConfigPage() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                  <label htmlFor="new-password" className="block text-xs font-semibold text-gray-500 mb-1.5">
                     New password
                   </label>
-                  <input
+                  <Input
+                    size="lg"
+                    id="new-password"
                     type={showPasswords ? "text" : "password"}
                     name="client_admin_new_pwd_custom"
                     autoComplete="new-password"
@@ -1097,14 +1041,15 @@ export default function AdminConfigPage() {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="At least 6 characters"
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                  <label htmlFor="confirm-password" className="block text-xs font-semibold text-gray-500 mb-1.5">
                     Confirm new password
                   </label>
-                  <input
+                  <Input
+                    size="lg"
+                    id="confirm-password"
                     type={showPasswords ? "text" : "password"}
                     name="client_admin_confirm_pwd_custom"
                     autoComplete="new-password"
@@ -1114,7 +1059,6 @@ export default function AdminConfigPage() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Re-enter new password"
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>
@@ -1123,86 +1067,72 @@ export default function AdminConfigPage() {
                   {passwordError}
                 </div>
               )}
-              <button
-                onClick={handleSavePassword}
-                disabled={savingPassword || !newPassword || !confirmPassword}
-                className={cn(
-                  "flex items-center justify-center gap-2 w-full py-3 mt-4 rounded-xl text-sm font-bold transition-colors",
-                  savedPassword
-                    ? "bg-primary-100 text-primary-700"
-                    : "bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60",
-                )}
-              >
-                {savingPassword ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : savedPassword ? (
-                  <><CheckCircle2 className="w-4 h-4" /> Saved!</>
-                ) : (
-                  <><Save className="w-4 h-4" /> Change Password</>
-                )}
-              </button>
+              <div className="mt-4">
+                <Button
+                  variant={savedPassword ? "secondary" : "default"}
+                  onClick={handleSavePassword}
+                  disabled={savingPassword || !newPassword || !confirmPassword}
+                >
+                  {savingPassword ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : savedPassword ? (
+                    <><CheckCircle2 className="w-4 h-4" /> Saved!</>
+                  ) : (
+                    <><Save className="w-4 h-4" /> Change Password</>
+                  )}
+                </Button>
+              </div>
             </motion.div>
-          </Tabs.Content>
+            </div>
+          </TabsContent>
 
           {/* ── Parent Modules Tab ── */}
-          <Tabs.Content value="parent-modules" className="space-y-5">
+          <TabsContent value="parent-modules">
+            <div className="space-y-5">
             <div>
               <h2 className="text-lg font-bold text-gray-900">Parent Module Access</h2>
               <p className="text-sm text-gray-500 mt-1">Enable or disable modules visible to parents in their dashboard</p>
             </div>
-            <motion.div
-              initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-2xl border border-gray-100 p-5"
-            >
-              <div className="flex items-center gap-2 mb-4">
-                <Users className="w-4 h-4 text-primary-600" />
-                <p className="text-xs font-bold text-primary-600 uppercase tracking-wide">Parent Modules</p>
-              </div>
-              <div className="space-y-3">
-                {PARENT_MODULES.map((mod) => {
-                  const enabled = !disabledModules.includes(mod.key);
-                  return (
-                    <div key={mod.key} className="flex items-center justify-between py-2">
-                      <div className="pr-4">
-                        <p className="text-sm font-semibold text-gray-800">{mod.label}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{mod.desc}</p>
-                      </div>
-                      <button
-                        onClick={() =>
-                          setDisabledModules((prev) =>
-                            enabled ? [...prev, mod.key] : prev.filter((k) => k !== mod.key)
-                          )
-                        }
-                        className={`relative w-12 h-6 rounded-full transition-colors duration-200 shrink-0 ${
-                          enabled ? "bg-primary-500" : "bg-gray-300"
-                        }`}
-                      >
-                        <span
-                          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
-                            enabled ? "translate-x-6" : "translate-x-0"
-                          }`}
-                        />
-                      </button>
+            <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-none">
+              {PARENT_MODULES.map((mod) => {
+                const enabled = !disabledModules.includes(mod.key);
+                return (
+                  <div key={mod.key} className="flex w-full items-center justify-between gap-4 px-4 py-4 transition-colors hover:bg-gray-50 focus-within:bg-gray-50">
+                    <div className="min-w-0 pr-2">
+                      <p className="text-sm font-semibold text-gray-800">{mod.label}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{mod.desc}</p>
                     </div>
-                  );
-                })}
-              </div>
-              <button
+                    <Switch
+                      checked={enabled}
+                      aria-label={`${mod.label} for parents`}
+                      onCheckedChange={() =>
+                        setDisabledModules((prev) =>
+                          enabled ? [...prev, mod.key] : prev.filter((k) => k !== mod.key)
+                        )
+                      }
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-4">
+              <Button
+                variant={savedParentToggles ? "secondary" : "default"}
                 onClick={handleSaveParentModules}
                 disabled={savingParentToggles}
-                className={cn(
-                  "flex items-center justify-center gap-2 w-full py-3 mt-4 rounded-xl text-sm font-bold transition-colors",
-                  savedParentToggles ? "bg-primary-100 text-primary-700" : "bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60",
-                )}
               >
                 {savingParentToggles ? <Loader2 className="w-4 h-4 animate-spin" /> :
-                 savedParentToggles  ? <><CheckCircle2 className="w-4 h-4" /> Saved!</> :
-                                        <><Save className="w-4 h-4" /> Save Module Settings</>}
-              </button>
-            </motion.div>
-          </Tabs.Content>
+                 savedParentToggles ? <><CheckCircle2 className="w-4 h-4" /> Saved!</> :
+                 <><Save className="w-4 h-4" /> Save Module Settings</>}
+              </Button>
+            </div>
+            </div>
+          </TabsContent>
+                </div>
+              </div>
+            </Tabs>
           </div>
-        </Tabs.Root>
+        </>
       )}
     </DashboardLayout>
   );
@@ -1219,14 +1149,10 @@ function StickySaveButton({
 }) {
   return (
     <div className="sticky bottom-20 lg:bottom-6">
-      <button
+      <Button
+        variant={saved ? "secondary" : "default"}
         onClick={onSave}
         disabled={saving}
-        className={`w-full lg:w-auto lg:px-10 flex items-center justify-center gap-2.5 py-4 rounded-2xl font-bold text-sm transition-all shadow-lg ${
-          saved
-            ? "bg-primary-100 text-primary-700"
-            : "bg-primary-600 text-white hover:bg-primary-700"
-        }`}
       >
         {saving ? (
           <Loader2 className="w-5 h-5 animate-spin" />
@@ -1239,7 +1165,7 @@ function StickySaveButton({
             <Save className="w-5 h-5" /> Save Configuration
           </>
         )}
-      </button>
+      </Button>
     </div>
   );
 }

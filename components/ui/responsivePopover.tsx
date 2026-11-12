@@ -31,6 +31,7 @@ export interface ResponsivePopoverProps {
   popoverAnchor?: React.ComponentProps<typeof PopoverContent>["anchor"];
   compact?: boolean;
   fullHeight?: boolean;
+  fullHeightWidth?: string;
   title?: React.ReactNode;
   headerAction?: React.ReactNode;
   beforeHeader?: React.ReactNode;
@@ -69,6 +70,7 @@ export function ResponsivePopover({
   popoverAnchor,
   compact = false,
   fullHeight = false,
+  fullHeightWidth = "400px",
   title,
   headerAction,
   beforeHeader,
@@ -208,7 +210,7 @@ export function ResponsivePopover({
         <BaseDrawer open={open} onOpenChange={onOpenChange} swipeDirection="right" showSwipeHandle={false}>
           <DrawerContent
             className={cn("h-full max-h-dvh w-full max-w-[400px] bg-white text-gray-900 shadow-2xl", className)}
-            style={{ "--drawer-content-width": "400px" } as React.CSSProperties}
+            style={{ "--drawer-content-width": fullHeightWidth } as React.CSSProperties}
           >
             {fullHeightContent}
           </DrawerContent>

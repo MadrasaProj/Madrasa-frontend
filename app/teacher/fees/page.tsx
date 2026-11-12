@@ -9,15 +9,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { PaymentMethodPicker } from "@/components/teacher/PaymentMethodPicker";
+import { DrawerSelector } from "@/components/DrawerSelector";
+import { FeeStats, FeeTypeProgress } from "@/components/fees/FeeStats";
+import { FeeTypeList } from "@/components/fees/FeeTypeList";
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerFooter,
-  DrawerTitle,
-} from "@/components/ui/drawer";
 import {
   getFeeTypes,
   getPayments,
@@ -40,7 +37,6 @@ import { cn } from "@/lib/utils";
 import {
   Receipt,
   Printer,
-  IndianRupee,
   Clock3,
   CircleCheck,
   CircleX,
@@ -52,13 +48,6 @@ import { PolarAngleAxis, RadialBar, RadialBarChart } from "recharts";
 
 const feeProgressChartConfig = {
   collected: { color: "#059669" },
-} satisfies ChartConfig;
-
-const feeStatusChartConfig = {
-  paid: { label: "Paid", color: "#059669" },
-  overdue: { label: "Overdue", color: "#dc2626" },
-  pending: { label: "Pending", color: "#f59e0b" },
-  waived: { label: "Waived", color: "#9ca3af" },
 } satisfies ChartConfig;
 
 const formatCurrency = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
@@ -118,7 +107,7 @@ function getBillingInterval(dueDate: string, frequency: string | null, lang: Lan
   }
 }
 
-async function getAllClassStudents(clientId: string, token: string, classId: string, signal: AbortSignal) {
+async function getAllClassStudents(clientId: string, token: string, classId: string | undefined, signal: AbortSignal) {
   const students: StudentRecord[] = [];
   const limit = 200;
   let page = 1;
@@ -128,41 +117,6 @@ async function getAllClassStudents(clientId: string, token: string, classId: str
     if (result.data.length === 0 || students.length >= result.total) return students;
     page += 1;
   }
-}
-
-function FeeTypeProgress({ collected, total, ariaLabel }: { collected: number; total: number; ariaLabel?: string }) {
-  const percentage = total > 0 ? Math.min(100, Math.max(0, (collected / total) * 100)) : 0;
-
-  return (
-    <div
-      className="size-[30px] shrink-0"
-      role="img"
-      aria-label={ariaLabel ?? (total > 0 ? `${Math.round(percentage)}% collected` : "No amount recorded")}
-    >
-      <ChartContainer
-        config={feeProgressChartConfig}
-        initialDimension={{ width: 30, height: 30 }}
-        className="!aspect-auto size-[30px]"
-        aria-hidden="true"
-      >
-        <RadialBarChart
-          data={[{ value: percentage, fill: "#059669" }]}
-          startAngle={90}
-          endAngle={-270}
-          innerRadius={10}
-          outerRadius={14}
-        >
-          <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
-          <RadialBar
-            dataKey="value"
-            background={{ fill: "#e5e7eb" }}
-            cornerRadius={3}
-            isAnimationActive={false}
-          />
-        </RadialBarChart>
-      </ChartContainer>
-    </div>
-  );
 }
 
 function CollectionProgress({ collected, total }: { collected: number; total: number }) {
@@ -257,152 +211,6 @@ function toLocalDateOnly(value: string): string {
   return `${year}-${month}-${day}`;
 }
 
-function FeeSemiCircle({
-  segments,
-  value,
-  label,
-  description,
-}: {
-  segments: { value: number; color: string }[];
-  value: string;
-  label: string;
-  description: string;
-}) {
-  const total = segments.reduce((sum, segment) => sum + segment.value, 0);
-  const chartData = [
-    {
-      ...Object.fromEntries(segments.map((segment, index) => [`segment${index}`, segment.value])),
-      empty: total === 0 ? 1 : 0,
-    },
-  ];
-
-  return (
-    <div className="relative mx-auto h-36 w-full max-w-72 sm:h-44" role="img" aria-label={description}>
-      <ChartContainer
-        config={feeStatusChartConfig}
-        initialDimension={{ width: 288, height: 176 }}
-        className="!aspect-auto h-full w-full"
-        aria-hidden="true"
-      >
-        <RadialBarChart
-          data={chartData}
-          startAngle={180}
-          endAngle={0}
-          cx="50%"
-          cy="92%"
-          innerRadius={88}
-          outerRadius={112}
-        >
-          <PolarAngleAxis type="number" domain={[0, Math.max(total, 1)]} tick={false} />
-          {segments.map((segment, index) => (
-            <RadialBar
-              key={index}
-              dataKey={`segment${index}`}
-              stackId="fees"
-              fill={segment.color}
-              isAnimationActive={false}
-            />
-          ))}
-          {total === 0 && (
-            <RadialBar dataKey="empty" fill="#e5e7eb" isAnimationActive={false} />
-          )}
-        </RadialBarChart>
-      </ChartContainer>
-      <div className="pointer-events-none absolute inset-x-0 bottom-3 text-center">
-        <div className="text-3xl font-semibold tabular-nums text-gray-950">{value}</div>
-        <div className="text-[16px] font-medium text-gray-500">{label}</div>
-      </div>
-    </div>
-  );
-}
-
-function FeeStats({
-  payments,
-  lang,
-}: {
-  payments: FeePayment[];
-  lang: Lang;
-}) {
-  const amountPaid = (payment: FeePayment) =>
-    Number(payment.paidAmount ?? (payment.status === "PAID" ? payment.dueAmount : 0));
-  const paid = payments.filter((payment) => payment.status === "PAID").length;
-  const overdue = payments.filter((payment) => payment.status === "OVERDUE").length;
-  const waived = payments.filter((payment) => payment.status === "WAIVED").length;
-  const pending = payments.length - paid - overdue - waived;
-  const collected = payments.reduce(
-    (sum, payment) =>
-      payment.status === "WAIVED" ? sum : sum + amountPaid(payment),
-    0,
-  );
-  const outstanding = payments.reduce(
-    (sum, payment) =>
-      payment.status === "WAIVED"
-        ? sum
-        : sum + Math.max(0, Number(payment.dueAmount) - amountPaid(payment)),
-    0,
-  );
-  const formatAmount = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
-  const stats = [
-    {
-      label: t("teacherPages", "feeStatsCollected", lang),
-      value: formatAmount(collected),
-      detail: t("teacherPages", "feeStatsAmount", lang),
-      icon: IndianRupee,
-      color: "text-primary-700",
-    },
-    {
-      label: t("teacherPages", "feeStatsToCollect", lang),
-      value: formatAmount(outstanding),
-      detail: t("teacherPages", "feeStatsAmount", lang),
-      icon: Clock3,
-      color: "text-amber-700",
-    },
-  ];
-
-  return (
-    <section className="mb-4 overflow-hidden rounded-2xl bg-gradient-to-br from-white to-sky-50">
-      <div className="bg-white/90 p-3 text-center sm:p-4">
-        <h3 className="text-sm font-semibold text-gray-700">{t("teacherPages", "feeStatsPaymentStatus", lang)}</h3>
-        <FeeSemiCircle
-          segments={[
-            { value: paid, color: "#059669" },
-            { value: overdue, color: "#dc2626" },
-            { value: pending, color: "#f59e0b" },
-            { value: waived, color: "#9ca3af" },
-          ]}
-          value={String(payments.length)}
-          label={t("teacherPages", "feeStatsPayments", lang)}
-          description={t("teacherPages", "feeStatsPaymentStatus", lang)}
-        />
-        <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-xs text-gray-600">
-          {[
-            [t("common", "paid", lang), "bg-emerald-600"],
-            [t("teacherPages", "feeStatsOverdue", lang), "bg-red-600"],
-            [t("teacherPages", "feeStatsPending", lang), "bg-amber-500"],
-            [t("teacherPages", "feeStatsWaived", lang), "bg-gray-400"],
-          ].map(([label, color]) => (
-            <span key={label}><span className={cn("mr-1 inline-block size-2 rounded-full", color)} />{label}</span>
-          ))}
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-px border-t border-gray-100 bg-gray-100">
-        {stats.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div key={stat.label} className="min-w-0 bg-white/90 p-3 sm:p-4">
-              <div className="flex items-center gap-1.5 text-sm font-medium text-gray-600">
-                <Icon aria-hidden="true" className={cn("h-4 w-4 shrink-0", stat.color)} />
-                <span>{stat.label}</span>
-              </div>
-              <div className="mt-2 text-xl font-bold tabular-nums text-gray-950 sm:text-2xl">{stat.value}</div>
-             </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
 function ReceiptModal({
   receipt,
   onClose,
@@ -488,19 +296,27 @@ function ReceiptModal({
   );
 }
 
-export default function TeacherFeesPage() {
+interface TeacherFeesContentProps {
+  classId?: string;
+  feeTypeId?: string | null;
+  inlineDetails?: boolean;
+  onPaymentChange?: () => void;
+}
+
+export function TeacherFeesContent({ classId, feeTypeId, inlineDetails = false, onPaymentChange }: TeacherFeesContentProps) {
   const { user, accessToken, activeClientId } = useAuthStore();
   const { lang } = useLanguageStore();
   const STATUS_META = getStatusMeta(lang);
   const cid = activeClientId ?? "";
   const token = accessToken ?? "";
-  const { activeClassId } = useActiveClass();
+  const { activeClassId: teacherClassId } = useActiveClass();
+  const activeClassId = classId === undefined ? teacherClassId : classId;
 
   const [feeTypes, setFeeTypes] = useState<FeeType[]>([]);
   const [payments, setPayments] = useState<FeePayment[]>([]);
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [payLoading, setPayLoading] = useState(true);
-  const [expandedFeeTypeId, setExpandedFeeTypeId] = useState<string | null>(null);
+  const [expandedFeeTypeId, setExpandedFeeTypeId] = useState<string | null>(inlineDetails ? feeTypeId ?? null : null);
   const [studentFilter, setStudentFilter] = useState<"all" | "paid" | "unpaid">("all");
   const [recurringStudentId, setRecurringStudentId] = useState<string | null>(null);
   const [recurringView, setRecurringView] = useState<"students" | "intervals">("students");
@@ -518,13 +334,15 @@ export default function TeacherFeesPage() {
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [cancellingNote, setCancellingNote] = useState("");
   const [cancellingSave, setCancellingSave] = useState(false);
+  const [adjusting, setAdjusting] = useState<string | null>(null);
+  const [adjustAmount, setAdjustAmount] = useState("");
 
   const [error, setError] = useState<string | null>(null);
   const paymentsRequest = useRef<AbortController | null>(null);
 
   const loadPayments = useCallback(async () => {
     paymentsRequest.current?.abort();
-    if (!cid || !token || !activeClassId) {
+    if (!cid || !token || (classId === undefined && !activeClassId)) {
       setFeeTypes([]);
       setPayments([]);
       setStudents([]);
@@ -537,14 +355,15 @@ export default function TeacherFeesPage() {
     setError(null);
     try {
       const params = {
-        classId: activeClassId,
+        classId: activeClassId || undefined,
+        feeTypeId: feeTypeId || undefined,
         take: 200,
         signal: controller.signal,
       };
       const [types, firstPage, classStudents] = await Promise.all([
         getFeeTypes(cid, token, user?.defaultAcademicYearId ?? undefined, controller.signal),
         getPayments(cid, token, { ...params, skip: 0 }),
-        getAllClassStudents(cid, token, activeClassId, controller.signal),
+        getAllClassStudents(cid, token, activeClassId || undefined, controller.signal),
       ]);
       const allPayments = [...firstPage.payments];
       while (allPayments.length < firstPage.total) {
@@ -558,15 +377,20 @@ export default function TeacherFeesPage() {
         allPayments.push(...nextPage.payments);
       }
       if (controller.signal.aborted) return;
-      setFeeTypes(types.filter((type) => type.targetClassIds.length === 0 || type.targetClassIds.includes(activeClassId)));
+      setFeeTypes(types.filter((type) =>
+        (!feeTypeId || type.id === feeTypeId) &&
+        (!activeClassId || type.targetClassIds.length === 0 || type.targetClassIds.includes(activeClassId)),
+      ));
       setPayments(allPayments);
-      setStudents(classStudents);
+      setStudents(classStudents.filter((student) =>
+        !activeClassId || student.classId === activeClassId,
+      ));
     } catch (e) {
       if (!controller.signal.aborted) setError((e as Error).message);
     } finally {
       if (paymentsRequest.current === controller) setPayLoading(false);
     }
-  }, [cid, token, activeClassId, user?.defaultAcademicYearId]);
+  }, [cid, token, activeClassId, classId, feeTypeId, user?.defaultAcademicYearId]);
 
   useEffect(() => {
     loadPayments();
@@ -606,7 +430,10 @@ export default function TeacherFeesPage() {
   const today = toLocalDateOnly(new Date().toISOString());
   const elapsedPeriodCount = Array.from(billingIntervals.values())
     .filter((interval) => toLocalDateOnly(interval.dueDate) <= today).length;
-  const studentRows = students.map((student) => {
+  const studentRows = students.filter((student) =>
+    !selectedFeeType || selectedFeeType.targetClassIds.length === 0 ||
+    (student.classId !== null && selectedFeeType.targetClassIds.includes(student.classId)),
+  ).map((student) => {
     const periods = selectedTypePayments
       .filter((payment) => payment.student.id === student.id)
       .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
@@ -735,6 +562,7 @@ export default function TeacherFeesPage() {
       setPayRef("");
       setDonationAmount("");
       loadPayments();
+      onPaymentChange?.();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -785,6 +613,7 @@ export default function TeacherFeesPage() {
       setCancellingNote("");
       setSelectedPayment(null);
       await loadPayments();
+      onPaymentChange?.();
       const dateKey = toLocalDateOnly;
       setPayments((current) =>
         current.map((payment) => {
@@ -812,6 +641,7 @@ export default function TeacherFeesPage() {
       await undoCancelPaymentApi(cid, token, p.id);
       setSelectedPayment(null);
       loadPayments();
+      onPaymentChange?.();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -819,124 +649,232 @@ export default function TeacherFeesPage() {
     }
   };
 
-  return (
-    <DashboardLayout>
-      <PageHeader title={t("teacherPages", "feesPaymentsTitle", lang)} />
+  const adjustFee = async (p: FeePayment) => {
+    const amount = Number(adjustAmount);
+    if (!Number.isFinite(amount) || amount < 0) {
+      setError("Enter a valid fee amount");
+      return;
+    }
+    if (amount < Number(p.paidAmount ?? 0)) {
+      setError("Adjusted fee cannot be less than the amount already paid");
+      return;
+    }
+    setCancellingSave(true);
+    setError(null);
+    try {
+      if (p.virtual) {
+        await recordPayment(cid, token, {
+          studentId: p.student.id,
+          feeTypeId: p.feeType.id,
+          paidAmount: 0,
+          dueAmount: amount,
+          dueDate: toLocalDateOnly(p.dueDate),
+          status: "PENDING",
+          academicYearId: p.academicYearId ?? user?.defaultAcademicYearId ?? undefined,
+        });
+      } else {
+        await updatePayment(cid, token, p.id, { dueAmount: amount });
+      }
+      setAdjusting(null);
+      setAdjustAmount("");
+      setSelectedPayment(null);
+      await loadPayments();
+      onPaymentChange?.();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setCancellingSave(false);
+    }
+  };
 
-      {error && <ApiErrorBanner message={error} onRetry={loadPayments} />}
-
-      {payLoading ? (
-            <div className="space-y-4" role="status" aria-label={t("common", "loading", lang)}>
-              <Skeleton className="h-44 rounded-2xl" />
-              <Skeleton className="h-5 w-28 rounded-lg" />
-              <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white">
-                {Array.from({ length: 4 }).map((_, index) => (
-                  <div key={index} className="flex items-center gap-3 px-4 py-4 sm:gap-4">
-                    <div className="min-w-0 flex-1 space-y-2">
-                      <Skeleton className="h-4 w-2/5" />
-                      <Skeleton className="h-3 w-3/5" />
-                    </div>
-                    <div className="space-y-2">
-                      <Skeleton className="h-4 w-20" />
-                      <Skeleton className="ml-auto h-3 w-14" />
-                    </div>
-                    <Skeleton className="size-[30px] shrink-0 rounded-full" />
-                    <Skeleton className="h-5 w-5 shrink-0 rounded-md" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : feeTypes.length === 0 && payments.length === 0 && !error ? (
-            <IllustratedEmptyState
-              image="/images/teacher/fees-empty.webp"
-              title={t("teacherPages", "noFeeTypes", lang)}
-              description={t("teacherPages", "feesEmptyDescription", lang)}
+  const paymentFooter = selectedPayment ? (
+    <div className="border-t bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      {error && <p role="alert" className="mb-3 text-sm text-red-700">{error}</p>}
+      {selectedPayment.status === "WAIVED" ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          className="w-full"
+          disabled={cancellingSave}
+          onClick={() => undoCancel(selectedPayment)}
+        >
+          Undo cancel
+        </Button>
+      ) : (
+      <div className="space-y-3 rounded-xl border p-3">
+        <h3 className="text-sm font-semibold">
+          {adjusting === selectedPayment.id
+            ? "Adjust fee amount"
+            : cancelling === selectedPayment.id
+            ? t("teacherPages", "cancelFeeTitle", lang)
+            : "Payment details"}
+        </h3>
+        {adjusting === selectedPayment.id ? (
+          <Input
+            type="number"
+            size="lg"
+            min={selectedPayment.paidAmount ?? "0"}
+            step="0.01"
+            value={adjustAmount}
+            onChange={(event) => setAdjustAmount(event.target.value)}
+            placeholder="Adjusted fee amount (₹)"
+          />
+        ) : cancelling === selectedPayment.id ? (
+          <Textarea
+            size="lg"
+            value={cancellingNote}
+            onChange={(event) => setCancellingNote(event.target.value)}
+            placeholder={t("teacherPages", "reasonForCancel", lang)}
+            rows={3}
+          />
+        ) : (
+          <>
+          {selectedPayment.status !== "PAID" &&
+            selectedPayment.feeType.isDonation &&
+            !cancelling && (
+              <Input
+                type="number"
+                size="lg"
+                min="0.01"
+                step="0.01"
+                value={donationAmount}
+                onChange={(event) => setDonationAmount(event.target.value)}
+                placeholder="Donation amount (₹)"
+              />
+            )}
+          <div className="space-y-3">
+            <PaymentMethodPicker
+              value={
+                selectedPayment.status === "PAID" ||
+                cancelling
+                  ? selectedPayment.method ?? ""
+                  : payMethod
+              }
+              onChange={setPayMethod}
+              disabled={
+                selectedPayment.status === "PAID" ||
+                !!cancelling
+              }
             />
-          ) : (
-            <>
-              <div className="p-0! px-4! pt-4!  ">
-                <FeeStats
-                  payments={payments}
-                  lang={lang}
-                />
-              </div>
-              <section className=" ">
-                <h2 className="mb-2 px-1 text-sm font-semibold text-gray-700">
-                  {t("teacherPages", "allFeeTypes", lang)}
-                </h2>
-                <div data-ui-style="classic" className="card divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white p-0! shadow-none">
-                  {feeTypeSummaries.length === 0 ? (
-                    <p className="px-4 py-10 text-center text-sm text-muted-foreground">
-                      {t("teacherPages", "noFeeTypes", lang)}
-                    </p>
-                  ) : feeTypeSummaries.map(({ feeType, collected, total }) => {
-                    const kind = feeType.kind === "ONE_TIME"
-                      ? t("parentPages", "frequencyOneTime", lang)
-                      : t("teacherPages", "feeTypeRecurring", lang);
-                    const frequency = feeType.kind === "RECURRING"
-                      ? getFrequencyLabel(feeType.frequency, lang)
-                      : null;
-                    const expanded = expandedFeeTypeId === feeType.id;
+            <Input
+              size="lg"
+              className="w-full"
+              value={
+                selectedPayment.status === "PAID" ||
+                cancelling
+                  ? selectedPayment.reference ?? ""
+                  : payRef
+              }
+              onChange={(event) => setPayRef(event.target.value)}
+              placeholder={t("teacherPages", "receiptRefPlc", lang)}
+              readOnly={
+                selectedPayment.status === "PAID" ||
+                !!cancelling
+              }
+            />
+          </div>
+          </>
+        )}
+          <ButtonGroup className="w-full [&>button]:flex-1">
+            {adjusting === selectedPayment.id ? (
+              <>
+                <Button type="button" variant="outline" size="lg" onClick={() => { setAdjusting(null); setAdjustAmount(""); }}>Back</Button>
+                <Button type="button" size="lg" disabled={cancellingSave} onClick={() => { void adjustFee(selectedPayment); }}>Save adjustment</Button>
+              </>
+            ) : cancelling === selectedPayment.id ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  onClick={() => {
+                    setCancelling(null);
+                    setCancellingNote("");
+                  }}
+                >
+                  {t("common", "back", lang)}
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="lg"
+                  disabled={cancellingSave}
+                  onClick={() => cancelPayment(selectedPayment)}
+                >
+                  {t("teacherPages", "confirmCancelBtn", lang)}
+                </Button>
+              </>
+            ) : selectedPayment.status === "PAID" ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  onClick={() => showReceiptFor(selectedPayment.id)}
+                  disabled={loadingReceipt === selectedPayment.id}
+                >
+                  {t("teacherPages", "viewReceiptTitle", lang)}
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="lg"
+                  onClick={() => {
+                    setCancelling(selectedPayment.id);
+                    setCancellingNote("");
+                  }}
+                >
+                  {t("teacherPages", "cancelFeeTitle", lang)}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  onClick={() => { setAdjusting(selectedPayment.id); setAdjustAmount(selectedPayment.dueAmount); setError(null); }}
+                >
+                  Adjust fee
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  onClick={() => {
+                    setCancelling(selectedPayment.id);
+                    setCancellingNote("");
+                  }}
+                >
+                  {t("teacherPages", "cancelFeeTitle", lang)}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  onClick={() => { setAdjusting(selectedPayment.id); setAdjustAmount(selectedPayment.dueAmount); setError(null); }}
+                >
+                  Adjust fee
+                </Button>
+                <Button
+                  type="button"
+                  size="lg"
+                  disabled={saving}
+                  onClick={() => markPaid(selectedPayment)}
+                >
+                  {t("teacherPages", "markPaidBtn", lang)}
+                </Button>
+              </>
+            )}
+          </ButtonGroup>
+      </div>
+      )}
+    </div>
+  ) : null;
 
-                    return (
-                      <button
-                        key={feeType.id}
-                        type="button"
-                        aria-haspopup="dialog"
-                        onClick={() => {
-                          setExpandedFeeTypeId(feeType.id);
-                          setStudentFilter("all");
-                          setRecurringStudentId(null);
-                          setRecurringView("students");
-                          setSelectedIntervalKey(null);
-                        }}
-                        className={cn(
-                          "flex w-full items-center gap-2 px-4 py-4 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500 sm:gap-4",
-                          expanded && "bg-primary-50/50",
-                        )}
-                      >
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-semibold text-gray-950 sm:text-base">{feeType.name}</span>
-                          <span className="mt-1 block text-xs text-gray-500">
-                            {kind}{frequency ? ` · ${frequency}` : ""} ·{" "}
-                            <span className="font-semibold tabular-nums text-gray-800">
-                              {feeType.isDonation
-                                ? t("teacherPages", "feeTypeDonation", lang)
-                                : `₹${Number(feeType.amount).toLocaleString("en-IN")}`}
-                            </span>
-                          </span>
-                        </span>
-                        <span className="  text-right text-xs font-semibold leading-tight   sm:text-2xl">
-                          <span className="block text-primary-700">₹{collected.toLocaleString("en-IN")}</span>
-                          <span className="block text-gray-500">/ ₹{total.toLocaleString("en-IN")}</span>
-                        </span>
-                        <FeeTypeProgress collected={collected} total={total} />
-                        <ChevronRight className="ml-1 text-gray-400" />
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-
-            </>
-          )}
-
-      <ResponsivePopover
-        open={selectedFeeType !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setExpandedFeeTypeId(null);
-            setRecurringStudentId(null);
-            setSelectedIntervalKey(null);
-            setSelectedPayment(null);
-          }
-        }}
-        title={selectedFeeType?.name}
-        description={selectedFeeType?.kind === "RECURRING"
-          ? t("teacherPages", "feeTypeRecurring", lang)
-          : t("parentPages", "frequencyOneTime", lang)}
-        fullHeight
-      >
+  const detailsContent = (
+    <>
         {selectedFeeType && (
           <div className="mx-auto w-full max-w-3xl space-y-5 px-4 pb-8 pt-2 sm:px-6">
             <div className="rounded-2xl border-2 border-white shadow-xs bg-linear-120 from-primary-400 to-primary-700 *:text-gray-100  p-4">
@@ -1243,7 +1181,7 @@ export default function TeacherFeesPage() {
         <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
       )}
 
-      <Drawer
+      <ResponsivePopover
         open={selectedPayment !== null}
         onOpenChange={(open) => {
           if (!open) {
@@ -1252,24 +1190,13 @@ export default function TeacherFeesPage() {
             setCancellingNote("");
           }
         }}
-        swipeDirection="down"
+        title={selectedPayment?.student.name}
+        description={selectedPayment ? `${selectedPayment.student.adno}${selectedPayment.student.class ? ` · ${selectedPayment.student.class.name}` : ""}` : undefined}
+        fullHeight
+        footer={paymentFooter}
       >
-        <DrawerContent className="max-h-[88dvh] bg-background">
           {selectedPayment && (
-            <>
-              <div className="shrink-0 border-b px-5 py-4">
-                <DrawerTitle className="text-lg font-semibold">
-                  {selectedPayment.student.name}
-                </DrawerTitle>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {selectedPayment.student.adno}
-                  {selectedPayment.student.class
-                    ? ` · ${selectedPayment.student.class.name}`
-                    : ""}
-                </p>
-              </div>
-
-              <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
+            <div className="space-y-5 p-5">
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
                   <div>
                     <dt className="text-muted-foreground">{t("parentPages", "feeTypeLabel", lang)}</dt>
@@ -1327,164 +1254,126 @@ export default function TeacherFeesPage() {
                   )}
                 </dl>
 
-              </div>
+            </div>
+          )}
+      </ResponsivePopover>
+    </>
+  );
 
-              <DrawerFooter className="shrink-0 bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-                {error && <p role="alert" className="mb-3 text-sm text-red-700">{error}</p>}
-                {selectedPayment.status === "WAIVED" ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="lg"
-                    className="w-full"
-                    disabled={cancellingSave}
-                    onClick={() => undoCancel(selectedPayment)}
-                  >
-                    Undo cancel
-                  </Button>
-                ) : (
-                <div className="space-y-3 rounded-xl border p-3">
-                  <h3 className="text-sm font-semibold">
-                    {cancelling === selectedPayment.id
-                      ? t("teacherPages", "cancelFeeTitle", lang)
-                      : "Payment details"}
-                  </h3>
-                  {cancelling === selectedPayment.id ? (
-                    <Textarea
-                      size="lg"
-                      value={cancellingNote}
-                      onChange={(event) => setCancellingNote(event.target.value)}
-                      placeholder={t("teacherPages", "reasonForCancel", lang)}
-                      rows={3}
-                    />
-                  ) : (
-                    <>
-                    {selectedPayment.status !== "PAID" &&
-                      selectedPayment.feeType.isDonation &&
-                      !cancelling && (
-                        <Input
-                          type="number"
-                          size="lg"
-                          min="0.01"
-                          step="0.01"
-                          value={donationAmount}
-                          onChange={(event) => setDonationAmount(event.target.value)}
-                          placeholder="Donation amount (₹)"
-                        />
-                      )}
-                    <div className="space-y-3">
-                      <PaymentMethodPicker
-                        value={
-                          selectedPayment.status === "PAID" ||
-                          cancelling
-                            ? selectedPayment.method ?? ""
-                            : payMethod
-                        }
-                        onChange={setPayMethod}
-                        disabled={
-                          selectedPayment.status === "PAID" ||
-                          !!cancelling
-                        }
-                      />
-                      <Input
-                        size="lg"
-                        className="w-full"
-                        value={
-                          selectedPayment.status === "PAID" ||
-                          cancelling
-                            ? selectedPayment.reference ?? ""
-                            : payRef
-                        }
-                        onChange={(event) => setPayRef(event.target.value)}
-                        placeholder={t("teacherPages", "receiptRefPlc", lang)}
-                        readOnly={
-                          selectedPayment.status === "PAID" ||
-                          !!cancelling
-                        }
-                      />
+  return (
+    <>
+
+      {error && <ApiErrorBanner message={error} onRetry={loadPayments} />}
+
+      {!inlineDetails && (payLoading ? (
+            <div className="space-y-4" role="status" aria-label={t("common", "loading", lang)}>
+              <Skeleton className="h-44 rounded-2xl" />
+              <Skeleton className="h-5 w-28 rounded-lg" />
+              <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="flex items-center gap-3 px-4 py-4 sm:gap-4">
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <Skeleton className="h-4 w-2/5" />
+                      <Skeleton className="h-3 w-3/5" />
                     </div>
-                    </>
-                  )}
-                    <ButtonGroup className="w-full [&>button]:flex-1">
-                      {cancelling === selectedPayment.id ? (
-                        <>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="lg"
-                            onClick={() => {
-                              setCancelling(null);
-                              setCancellingNote("");
-                            }}
-                          >
-                            {t("common", "back", lang)}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="lg"
-                            disabled={cancellingSave}
-                            onClick={() => cancelPayment(selectedPayment)}
-                          >
-                            {t("teacherPages", "confirmCancelBtn", lang)}
-                          </Button>
-                        </>
-                      ) : selectedPayment.status === "PAID" ? (
-                        <>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="lg"
-                            onClick={() => showReceiptFor(selectedPayment.id)}
-                            disabled={loadingReceipt === selectedPayment.id}
-                          >
-                            {t("teacherPages", "viewReceiptTitle", lang)}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="lg"
-                            onClick={() => {
-                              setCancelling(selectedPayment.id);
-                              setCancellingNote("");
-                            }}
-                          >
-                            {t("teacherPages", "cancelFeeTitle", lang)}
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="lg"
-                            onClick={() => {
-                              setCancelling(selectedPayment.id);
-                              setCancellingNote("");
-                            }}
-                          >
-                            {t("teacherPages", "cancelFeeTitle", lang)}
-                          </Button>
-                          <Button
-                            type="button"
-                            size="lg"
-                            disabled={saving}
-                            onClick={() => markPaid(selectedPayment)}
-                          >
-                            {t("teacherPages", "markPaidBtn", lang)}
-                          </Button>
-                        </>
-                      )}
-                    </ButtonGroup>
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="ml-auto h-3 w-14" />
+                    </div>
+                    <Skeleton className="size-[30px] shrink-0 rounded-full" />
+                    <Skeleton className="h-5 w-5 shrink-0 rounded-md" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : feeTypes.length === 0 && payments.length === 0 && !error ? (
+            <IllustratedEmptyState
+              image="/images/teacher/fees-empty.webp"
+              title={t("teacherPages", "noFeeTypes", lang)}
+              description={t("teacherPages", "feesEmptyDescription", lang)}
+            />
+          ) : (
+            <>
+              <div className="p-0! px-4! pt-4!  ">
+                <FeeStats
+                  payments={payments}
+                  lang={lang}
+                />
+              </div>
+              <FeeTypeList
+                items={feeTypeSummaries}
+                lang={lang}
+                selectedId={expandedFeeTypeId}
+                onSelect={(id) => {
+                  setExpandedFeeTypeId(id);
+                  setStudentFilter("all");
+                  setRecurringStudentId(null);
+                  setRecurringView("students");
+                  setSelectedIntervalKey(null);
+                }}
+              />
+
+            </>
+          ))}
+
+      {inlineDetails ? (
+        <>
+          {payLoading ? (
+            <div className="space-y-3" role="status" aria-label={t("common", "loading", lang)}>
+              <Skeleton className="h-40 rounded-2xl" />
+              <Skeleton className="h-12 rounded-xl" />
+              <Skeleton className="h-12 rounded-xl" />
+            </div>
+          ) : (
+            <>
+              {!feeTypeId && (
+                <div className="px-4 sm:px-6">
+                <DrawerSelector
+                  title="Fee type"
+                  value={expandedFeeTypeId ?? ""}
+                  options={feeTypes.map((feeType) => ({ value: feeType.id, label: feeType.name }))}
+                  onChange={(value) => {
+                    setExpandedFeeTypeId(value);
+                    setStudentFilter("all");
+                    setRecurringStudentId(null);
+                    setRecurringView("students");
+                    setSelectedIntervalKey(null);
+                  }}
+                  placeholder="Select fee type"
+                />
                 </div>
-                )}
-              </DrawerFooter>
+              )}
+              {!selectedFeeType && !error && <p className="px-4 py-8 text-center text-sm text-gray-500">{feeTypeId ? "No fee type found" : "Select a fee type to view payment records"}</p>}
+              {detailsContent}
             </>
           )}
-        </DrawerContent>
-      </Drawer>
+        </>
+      ) : (
+      <ResponsivePopover
+        open={selectedFeeType !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setExpandedFeeTypeId(null);
+            setRecurringStudentId(null);
+            setSelectedIntervalKey(null);
+            setSelectedPayment(null);
+          }
+        }}
+        title={selectedFeeType?.name}
+        description={selectedFeeType?.kind === "RECURRING"
+          ? t("teacherPages", "feeTypeRecurring", lang)
+          : t("parentPages", "frequencyOneTime", lang)}
+        fullHeight
+      >
+        {detailsContent}
       </ResponsivePopover>
+      )}
 
-    </DashboardLayout>
+    </>
   );
+}
+
+export default function TeacherFeesPage() {
+  const { lang } = useLanguageStore();
+  return <DashboardLayout><PageHeader title={t("teacherPages", "feesPaymentsTitle", lang)} /><TeacherFeesContent /></DashboardLayout>;
 }

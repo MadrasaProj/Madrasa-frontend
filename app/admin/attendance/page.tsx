@@ -4,6 +4,7 @@ import { CheckCircle2, Download, FileSpreadsheet, Loader2, MoreVertical, School,
 import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { DrawerSelector } from "@/components/DrawerSelector";
+import { ScrollableRangeNavigator } from "@/components/ScrollableRangeNavigator";
 import { ScrollableDateNavigator } from "@/components/ScrollableDateNavigator";
 import { AttendanceImportModal } from "@/components/attendance/AttendanceImportModal";
 import { AttendanceSemiCircle, StudentAttendanceRadial } from "@/components/attendance/AttendanceSummaryCharts";
@@ -17,7 +18,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { bulkDeleteAttendance, bulkUpsertAttendance, getClassAttendance, type AttendanceStatus } from "@/lib/attendance-api";
+import { bulkDeleteAttendance, bulkUpsertAttendance, getClassAttendance, type AttendanceStatus, type ClassAttendanceRecord } from "@/lib/attendance-api";
 import { downloadDailyAttendanceReport } from "@/lib/attendance-report";
 import { t } from "@/lib/i18n";
 import { queryKeys } from "@/lib/queryKeys";
@@ -26,6 +27,7 @@ import type { ClassAttendanceSummary } from "@/lib/reports-api";
 import { getStudents } from "@/lib/students-api";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
+import { ScrollableTabs } from "@/components/ui/ScrollableTabs";
 
 function todayISO() {
   const date = new Date();
@@ -74,6 +76,15 @@ export default function AdminAttendancePage() {
   } | null>(null);
   const [studentDrawerOpen, setStudentDrawerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
+  const [range, setRange] = useState({ from: "ALL", to: "ALL" });
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [dailyRecords, setDailyRecords] = useState<ClassAttendanceRecord[]>([]);
+  const [dailyLoading, setDailyLoading] = useState(false);
+  const [dailyError, setDailyError] = useState<string | null>(null);
+  const [dailyRefresh, setDailyRefresh] = useState(0);
+  const [rangeRecords, setRangeRecords] = useState<ClassAttendanceRecord[]>([]);
+  const [rangeLoading, setRangeLoading] = useState(false);
+  const [rangeError, setRangeError] = useState<string | null>(null);
   const saveSuccessTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => () => {
@@ -84,15 +95,81 @@ export default function AdminAttendancePage() {
   const classes = classesQuery.data ?? [];
   const activeClass = classes.find((cls) => cls.id === selectedClassId) ?? classes[0] ?? null;
   const activeClassId = activeClass?.id ?? "";
+  const summaryRange = range.from === "ALL" ? {} : range;
   const overallAttendance = useClassAttendanceSummary(
     { clientId: cid, token },
     activeClassId,
     { refetchOnMount: "always" },
   );
   const overall = overallAttendance.data;
-  const overallAbsent = overall?.byStatus.find((entry) => entry.status === "ABSENT")?._count.id ?? 0;
-  const overallOther = Math.max(0, (overall?.total ?? 0) - (overall?.present ?? 0) - overallAbsent);
-  const overallRate = Math.max(0, Math.min(100, overall?.rate ?? 0));
+  const rangeTotals = useMemo(() => {
+    const byStatus = new Map<string, number>();
+    const days = new Set<string>();
+    for (const record of rangeRecords) {
+      byStatus.set(record.status, (byStatus.get(record.status) ?? 0) + 1);
+      days.add(record.date.slice(0, 10));
+    }
+    const total = rangeRecords.length;
+    const present = byStatus.get("PRESENT") ?? 0;
+    const absent = byStatus.get("ABSENT") ?? 0;
+    return { total, present, absent, other: total - present - absent, totalDays: days.size, rate: total ? Math.round((present / total) * 100) : 0 };
+  }, [rangeRecords]);
+
+  useEffect(() => {
+    if (!cid || !token || !activeClassId) {
+      setRangeRecords([]);
+      return;
+    }
+    const controller = new AbortController();
+    setRangeLoading(true);
+    setRangeError(null);
+    getClassAttendance(cid, token, {
+      ...summaryRange,
+      classId: activeClassId,
+      ...(user?.defaultAcademicYearId ? { academicYearId: user.defaultAcademicYearId } : {}),
+      take: 1000,
+    }, controller.signal).then((result) => {
+      if (!controller.signal.aborted) setRangeRecords(result.records);
+    }).catch((cause) => {
+      if (!controller.signal.aborted) setRangeError((cause as Error).message);
+    }).finally(() => {
+      if (!controller.signal.aborted) setRangeLoading(false);
+    });
+    return () => controller.abort();
+  }, [cid, token, activeClassId, summaryRange, user?.defaultAcademicYearId, dailyRefresh]);
+  useEffect(() => {
+    if (!cid || !token || !activeClassId || activeTab !== "daily") {
+      setDailyRecords([]);
+      return;
+    }
+    const controller = new AbortController();
+    setDailyLoading(true);
+    setDailyError(null);
+    getClassAttendance(cid, token, {
+      date,
+      classId: activeClassId,
+      ...(user?.defaultAcademicYearId ? { academicYearId: user.defaultAcademicYearId } : {}),
+      take: 1000,
+    }, controller.signal).then((result) => {
+      if (!controller.signal.aborted) setDailyRecords(result.records);
+    }).catch((cause) => {
+      if (!controller.signal.aborted) setDailyError((cause as Error).message);
+    }).finally(() => {
+      if (!controller.signal.aborted) setDailyLoading(false);
+    });
+    return () => controller.abort();
+  }, [cid, token, activeClassId, date, activeTab, user?.defaultAcademicYearId, dailyRefresh]);
+
+  const attendanceStatusLabel = (status: AttendanceStatus) => {
+    switch (status) {
+      case "PRESENT": return t("common", "present", lang);
+      case "ABSENT": return t("common", "absent", lang);
+      case "LEAVE": return t("teacherPages", "attendanceStatusLeave", lang);
+      case "SICK": return t("teacherPages", "attendanceStatusSick", lang);
+      case "LATE": return t("teacherPages", "attendanceStatusLate", lang);
+      case "EXCUSED": return t("teacherPages", "attendanceStatusExcused", lang);
+    }
+  };
 
   const loadAttendance = useCallback(async (classId: string, dateStr: string, signal?: AbortSignal) => {
     if (!cid || !token || !classId) return;
@@ -384,12 +461,21 @@ export default function AdminAttendancePage() {
             <TabsTrigger value="daily">Daily</TabsTrigger>
           </TabsList>
           <TabsContent value="overview">
+        <div className="mb-3 rounded-2xl  ">
+          <ScrollableRangeNavigator
+            from={range.from}
+            to={range.to}
+            onChange={setRange}
+            allowAllTime
+            title="Attendance report date range"
+          />
+        </div>
 
         <section aria-labelledby="attendance-snapshot-title" className="overflow-hidden rounded-2xl bg-gradient-to-br from-white to-sky-50">
           <h2 id="attendance-snapshot-title" className="border-b border-gray-100 px-4 py-3 text-base font-semibold text-gray-900 sm:px-5">
             {t("teacherPages", "attendanceSnapshot", lang)}
           </h2>
-          {classesQuery.isLoading || (activeClassId && overallAttendance.isLoading) ? (
+          {classesQuery.isLoading || rangeLoading || (activeClassId && overallAttendance.isLoading) ? (
             <div className="space-y-4 bg-white/90 p-5" aria-busy="true">
               <Skeleton className="mx-auto h-24 w-full max-w-52 rounded-t-full" />
               <Skeleton className="mx-auto h-3 w-48" />
@@ -397,8 +483,8 @@ export default function AdminAttendancePage() {
                 <Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" />
               </div>
             </div>
-          ) : classesQuery.isError ? (
-            <div className="p-4"><ApiErrorBanner message={classesQuery.error.message} onRetry={() => { void classesQuery.refetch(); }} /></div>
+          ) : classesQuery.isError || rangeError ? (
+            <div className="p-4"><ApiErrorBanner message={classesQuery.error?.message ?? rangeError ?? "Could not load attendance report"} onRetry={() => { void classesQuery.refetch(); setDailyRefresh((count) => count + 1); }} /></div>
           ) : !activeClassId ? (
             <p className="p-5 text-sm text-gray-600">{t("teacherPages", "selectClassView", lang)}</p>
           ) : overallAttendance.isError ? (
@@ -408,13 +494,13 @@ export default function AdminAttendancePage() {
               <div className="px-4 py-4 text-center sm:py-5">
                 <AttendanceSemiCircle
                   segments={[
-                    { key: "present", value: overall?.present ?? 0 },
-                    { key: "absent", value: overallAbsent },
-                    { key: "other", value: overallOther },
+                    { key: "present", value: rangeTotals.present },
+                    { key: "absent", value: rangeTotals.absent },
+                    { key: "other", value: rangeTotals.other },
                   ]}
-                  value={String(overall?.total ?? 0)}
+                  value={String(rangeTotals.total)}
                   label={t("teacherPages", "totalRecords", lang)}
-                  description={`${t("teacherPages", "attendanceSnapshot", lang)}: ${overall?.total ?? 0} ${t("teacherPages", "totalRecords", lang)}, ${overall?.present ?? 0} ${t("common", "present", lang)}, ${overallAbsent} ${t("common", "absent", lang)}, ${overallOther} ${t("teacherPages", "otherAttendance", lang)}`}
+                  description={`${t("teacherPages", "attendanceSnapshot", lang)}: ${rangeTotals.total} ${t("teacherPages", "totalRecords", lang)}, ${rangeTotals.present} ${t("common", "present", lang)}, ${rangeTotals.absent} ${t("common", "absent", lang)}`}
                 />
                 <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-gray-600">
                   <span><span className="mr-1 inline-block size-2 rounded-full bg-emerald-600" />{t("common", "present", lang)}</span>
@@ -425,11 +511,11 @@ export default function AdminAttendancePage() {
               <div className="grid grid-cols-2 gap-px border-t border-gray-100 bg-gray-100">
                 <div className="bg-white/90 p-2.5 sm:p-3">
                   <p className="text-sm font-medium text-gray-600">{t("teacherPages", "attendanceTotalDays", lang)}</p>
-                  <strong className="block text-2xl font-semibold tabular-nums text-gray-950">{overall?.totalDays ?? "—"}</strong>
+                  <strong className="block text-2xl font-semibold tabular-nums text-gray-950">{rangeTotals.totalDays}</strong>
                 </div>
                 <div className="bg-white/90 p-2.5 sm:p-3">
                   <p className="text-sm font-medium text-gray-600">{t("teacherPages", "attendanceAverage", lang)}</p>
-                  <strong className="block text-2xl font-semibold tabular-nums text-gray-950">{overallRate}%</strong>
+                  <strong className="block text-2xl font-semibold tabular-nums text-gray-950">{rangeTotals.rate}%</strong>
                 </div>
               </div>
             </div>
@@ -482,10 +568,59 @@ export default function AdminAttendancePage() {
         </section>
           </TabsContent>
           <TabsContent value="daily">
-            <section aria-labelledby="daily-report-title" className="space-y-3 rounded-2xl bg-gray-50/70 p-3">
-              <h2 id="daily-report-title" className="text-sm font-semibold text-gray-900">Daily attendance</h2>
-              <ScrollableDateNavigator date={date} onDateChange={setDate} pickerTitle="Choose attendance date" disabled={saving || downloadingReport} />
-              <p className="text-sm text-gray-600">{activeClass?.name ?? "Select a class"}</p>
+            <section aria-labelledby="daily-report-title" className="space-y-4">
+              <div className="rounded-2xl ">
+                <h2 id="daily-report-title" className="mb-3 text-base font-semibold text-gray-900">Daily attendance</h2>
+                <ScrollableDateNavigator date={date} onDateChange={setDate} pickerTitle="Choose attendance date" disabled={saving || downloadingReport} />
+              </div>
+              <ScrollableTabs
+                ariaLabel="Filter daily attendance by status"
+                value={statusFilter}
+                onValueChange={setStatusFilter}
+                options={[
+                  { value: "ALL", label: "All" },
+                  { value: "PRESENT", label: t("common", "present", lang) },
+                  { value: "ABSENT", label: t("common", "absent", lang) },
+                  { value: "LEAVE", label: t("teacherPages", "attendanceStatusLeave", lang) },
+                  { value: "SICK", label: t("teacherPages", "attendanceStatusSick", lang) },
+                  { value: "LATE", label: t("teacherPages", "attendanceStatusLate", lang) },
+                  { value: "EXCUSED", label: t("teacherPages", "attendanceStatusExcused", lang) },
+                ]}
+              />
+              {dailyError && <ApiErrorBanner message={dailyError} onRetry={() => setDailyRefresh((count) => count + 1)} />}
+              {dailyLoading ? (
+                <div className="space-y-3 rounded-2xl bg-white p-4" aria-busy="true">
+                  <Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" />
+                </div>
+              ) : dailyRecords.length === 0 ? (
+                <div className="flex flex-col items-center rounded-3xl border border-amber-100 bg-[#FFF9F0] px-6 py-10 text-center">
+                  <img src="/images/attendance-empty-state.png" alt="An open attendance register, pencil, and calendar" className="mb-4 h-40 w-40 object-contain sm:h-48 sm:w-48" />
+                  <h3 className="text-lg font-semibold text-[#49352E]">No attendance recorded for this day</h3>
+                  <p className="mt-2 max-w-sm text-sm leading-6 text-[#49352E]/75">Once attendance is taken, each student’s status will appear here. You can record it now for {activeClass?.name ?? "this class"}.</p>
+                  <Button type="button" className="mt-5 rounded-full bg-[#E77757] text-white hover:bg-[#d9694a]" onClick={() => setEditorOpen(true)}>
+                    <UserCheck className="size-4" /> Take attendance
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {[...new Set(dailyRecords.map((record) => record.date.slice(0, 10)))].sort((a, b) => b.localeCompare(a)).map((day) => {
+                    const recordsForDay = dailyRecords.filter((record) => record.date.slice(0, 10) === day && (statusFilter === "ALL" || record.status === statusFilter));
+                    if (!recordsForDay.length) return null;
+                    const statuses: Record<string, string> = { PRESENT: "bg-emerald-50 text-emerald-800", ABSENT: "bg-red-50 text-red-800", LEAVE: "bg-amber-50 text-amber-800", SICK: "bg-orange-50 text-orange-800", LATE: "bg-yellow-50 text-yellow-800", EXCUSED: "bg-blue-50 text-blue-800" };
+                    return <section key={day} className="overflow-hidden rounded-2xl bg-white">
+                      <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+                        <h3 className="font-semibold text-gray-900">{new Date(`${day}T12:00:00`).toLocaleDateString(lang === "ml" ? "ml-IN" : "en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</h3>
+                        <Button size="sm" variant="outline" onClick={() => { setDate(day); setEditorOpen(true); }}>Edit</Button>
+                      </div>
+                      <div className="divide-y divide-gray-100">{recordsForDay.map((record) => <div key={record.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                        <div className="min-w-0"><p className="truncate text-sm font-medium text-gray-900">{record.student.name}</p><p className="text-xs text-gray-500">{record.student.adno}</p></div>
+                        <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${statuses[record.status] ?? "bg-gray-100 text-gray-700"}`}>{attendanceStatusLabel(record.status)}</span>
+                      </div>)}</div>
+                    </section>;
+                  })}
+                  {dailyRecords.every((record) => statusFilter !== "ALL" && record.status !== statusFilter) && <p className="rounded-2xl bg-white p-6 text-center text-sm text-gray-600">No students match this status.</p>}
+                </div>
+              )}
             </section>
           </TabsContent>
         </Tabs>

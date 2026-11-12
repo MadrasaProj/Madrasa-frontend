@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Download, Loader2, Search } from "lucide-react";
+import { Check, ChevronDown, Download, Loader2, Search } from "lucide-react";
 
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Input } from "@/components/ui/input";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { getClientConfig } from "@/lib/config-api";
 import { t } from "@/lib/i18n";
 import { getStudents, type StudentRecord } from "@/lib/students-api";
@@ -30,6 +32,7 @@ export default function AdminIdCardsPage() {
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [search, setSearch] = useState("");
+  const [selectorOpen, setSelectorOpen] = useState(false);
   const [classFilter, setClassFilter] = useState("All");
   const [genderFilter, setGenderFilter] = useState("All");
   const [madrasaName, setMadrasaName] = useState(user?.madrasaName ?? "Madrasa");
@@ -124,76 +127,45 @@ export default function AdminIdCardsPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader
-        title={t("adminPages", "idCardsTitle", lang)}
-        subtitle={`${students.length} ${t("common", "students", lang)}`}
-      />
+      <PageHeader title={t("adminPages", "idCardsTitle", lang)} />
 
-      <div className="grid gap-6 pt-8 lg:grid-cols-[320px_minmax(0,1fr)]">
-        <aside className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
-          <div className="border-b border-gray-100 p-4">
+      <div className="space-y-5 pt-8">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-gray-900">{t("common", "students", lang)}</p>
+            <p className="text-sm text-gray-500">{students.length} students</p>
+          </div>
+          <Button type="button" variant="outline" className="w-full justify-between sm:w-[320px]" onClick={() => setSelectorOpen(true)}>
+            <span className="truncate">{student?.name ?? (isLoading ? t("common", "loading", lang) : "Select a student")}</span>
+            <ChevronDown className="size-4 text-gray-500" />
+          </Button>
+        </div>
+
+        <ResponsivePopover open={selectorOpen} onOpenChange={setSelectorOpen} title="Select a student" contentClassName="p-0">
+          <div className="space-y-3 p-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder={t("common", "searchByName", lang)}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
-              />
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("common", "searchByName", lang)} className="pl-9" />
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <select
-                value={classFilter}
-                onChange={(event) => setClassFilter(event.target.value)}
-                className="min-w-0 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-primary-500"
-              >
-                {classNames.map((className) => (
-                  <option key={className} value={className}>{className === "All" ? "All Classes" : className}</option>
-                ))}
+            <div className="grid grid-cols-2 gap-2">
+              <select value={classFilter} onChange={(event) => setClassFilter(event.target.value)} className="h-10 min-w-0 rounded-md border border-input bg-background px-3 text-sm">
+                {classNames.map((className) => <option key={className} value={className}>{className === "All" ? "All Classes" : className}</option>)}
               </select>
-              <select
-                value={genderFilter}
-                onChange={(event) => setGenderFilter(event.target.value)}
-                className="min-w-0 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-primary-500"
-              >
-                <option value="All">All Genders</option>
-                <option value="MALE">Male</option>
-                <option value="FEMALE">Female</option>
+              <select value={genderFilter} onChange={(event) => setGenderFilter(event.target.value)} className="h-10 min-w-0 rounded-md border border-input bg-background px-3 text-sm">
+                <option value="All">All Genders</option><option value="MALE">Male</option><option value="FEMALE">Female</option>
               </select>
             </div>
           </div>
-
-          <div className="max-h-[590px] overflow-y-auto">
-            {isLoading ? (
-              <div className="p-8 text-center text-sm text-gray-400">{t("common", "loading", lang)}</div>
-            ) : filteredStudents.length === 0 ? (
-              <div className="p-8 text-center text-sm text-gray-400">{t("common", "noResults", lang)}</div>
-            ) : (
-              filteredStudents.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setSelectedId(item.id)}
-                  className={cn(
-                    "flex w-full items-center gap-3 border-b border-gray-50 px-4 py-3 text-left transition-colors hover:bg-gray-50",
-                    selectedId === item.id && "bg-primary-50",
-                  )}
-                >
-                  <div className={cn(
-                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white",
-                    selectedId === item.id ? "bg-primary-500" : "bg-gray-300",
-                  )}>
-                    {initials(item.name)}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-gray-900">{item.name}</p>
-                    <p className="truncate text-xs text-gray-400">{item.adno} · {item.class?.name || "—"}</p>
-                  </div>
-                </button>
-              ))
-            )}
+          <div className="max-h-[55dvh] overflow-y-auto border-t border-gray-100">
+            {isLoading ? <div className="p-8 text-center text-sm text-gray-500">{t("common", "loading", lang)}</div> : filteredStudents.length === 0 ? <div className="p-8 text-center text-sm text-gray-500">{t("common", "noResults", lang)}</div> : filteredStudents.map((item) => (
+              <button key={item.id} type="button" onClick={() => { setSelectedId(item.id); setSelectorOpen(false); }} className="flex w-full items-center gap-3 border-b border-gray-100 px-4 py-3 text-left transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{initials(item.name)}</div>
+                <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-gray-900">{item.name}</p><p className="truncate text-xs text-gray-500">{item.adno} · {item.class?.name || "—"}</p></div>
+                {selectedId === item.id && <Check className="size-4 shrink-0 text-primary" />}
+              </button>
+            ))}
           </div>
-        </aside>
+        </ResponsivePopover>
 
         <section className="flex min-h-[590px] flex-col items-center rounded-2xl border border-gray-200 bg-white p-6">
           {!student ? (
