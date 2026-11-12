@@ -185,6 +185,7 @@ export default function CrmLeadsPage() {
     "ALL" | "OVERDUE" | "TODAY" | "HOT_WARM" | "ACTIVE_TRIALS" | "NO_FOLLOWUP"
   >("ALL");
   const [selectedDistrict, setSelectedDistrict] = useState<string>("ALL");
+  const [selectedAssignee, setSelectedAssignee] = useState<string>("ALL");
   const [sortBy, setSortBy] = useState<"URGENT" | "NEWEST" | "STUDENTS" | "NAME">("URGENT");
   const [showMobileDetail, setShowMobileDetail] = useState(false);
 
@@ -203,6 +204,9 @@ export default function CrmLeadsPage() {
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [editLeadSaving, setEditLeadSaving] = useState(false);
+  const [showQuickAssignModal, setShowQuickAssignModal] = useState(false);
+  const [quickAssignUserId, setQuickAssignUserId] = useState("");
+  const [quickAssignLoading, setQuickAssignLoading] = useState(false);
 
   // Forms
   const [activityForm, setActivityForm] = useState({ type: "CALL", notes: "", followUpDate: "" });
@@ -228,6 +232,7 @@ export default function CrmLeadsPage() {
     districtId: "",
     district: "",
     place: "",
+    address: "",
     status: "NEW",
     studentCount: 150,
     teacherCount: 8,
@@ -239,7 +244,7 @@ export default function CrmLeadsPage() {
     contactRole: "",
     enableCommission: false,
     commissionPercentage: 20,
-    contributors: [{ userId: "", percentage: 20 }],
+    contributors: [{ userId: "", percentage: 20 }] as Array<{ userId: string; percentage: number; notes?: string }>,
   });
 
   const [editLeadForm, setEditLeadForm] = useState({
@@ -254,7 +259,10 @@ export default function CrmLeadsPage() {
     existingSoftware: "",
     source: "WHATSAPP",
     status: "NEW",
+    enableCommission: false,
     commissionPercentage: 20,
+    contributors: [{ userId: "", percentage: 20 }] as Array<{ userId: string; percentage: number; notes?: string }>,
+    primaryContactId: "",
     contactName: "",
     contactPhone: "",
     contactSecondaryPhone: "",
@@ -335,23 +343,21 @@ export default function CrmLeadsPage() {
     if (!accessToken) return;
     if (!silent) setLoading(true);
     try {
-      const [list, dList] = await Promise.all([
+      const [list, dList, users] = await Promise.all([
         listLeads(accessToken, { search }),
         listDistricts(accessToken),
+        listInternalUsers(accessToken).catch(() => []),
       ]);
       setLeads(list || []);
       setDistricts(dList || []);
-      if (isSuperOrManager) {
-        const users = await listInternalUsers(accessToken);
-        setTeamUsers(users || []);
-        if (users.length > 0 && !newLeadForm.contributors[0]?.userId) {
-          setNewLeadForm((prev) => ({
-            ...prev,
-            contributors: [
-              { userId: user?.id || users[0].id, percentage: prev.commissionPercentage },
-            ],
-          }));
-        }
+      setTeamUsers(users || []);
+      if (users && users.length > 0 && !newLeadForm.contributors[0]?.userId) {
+        setNewLeadForm((prev) => ({
+          ...prev,
+          contributors: [
+            { userId: user?.id || users[0].id, percentage: prev.commissionPercentage },
+          ],
+        }));
       }
     } catch (e) {
       setError((e as Error).message);
@@ -510,12 +516,25 @@ export default function CrmLeadsPage() {
 
   const handleStartEditLead = (lead: LeadDetail) => {
     const primaryContact = lead.contacts?.find((c) => c.isPrimary) || lead.contacts?.[0];
+    const initialContributors =
+      lead.contributors && lead.contributors.length > 0
+        ? lead.contributors.map((c) => ({
+            userId: c.userId,
+            percentage: Number(c.percentage || 0),
+            notes: c.notes || "",
+          }))
+        : [{ userId: user?.id || teamUsers[0]?.id || "", percentage: Number(lead.commissionPercentage ?? 20) }];
+
+    const hasCommission = Number(lead.commissionPercentage ?? 0) > 0;
+
     setEditLeadForm({
       name: lead.name || "",
       type: lead.type || "Samastha",
-      districtId: lead.district
-        ? districts.find((d) => d.name.toLowerCase() === lead.district.toLowerCase())?.id || ""
-        : "",
+      districtId:
+        lead.districtId ||
+        (lead.district
+          ? districts.find((d) => d.name.toLowerCase() === lead.district.toLowerCase())?.id || ""
+          : ""),
       district: lead.district || "",
       place: lead.place || "",
       address: lead.address || "",
@@ -524,7 +543,10 @@ export default function CrmLeadsPage() {
       existingSoftware: lead.existingSoftware || "",
       source: lead.source || "WHATSAPP",
       status: lead.status || "NEW",
-      commissionPercentage: lead.commissionPercentage ?? 20,
+      enableCommission: hasCommission,
+      commissionPercentage: Number(lead.commissionPercentage ?? 20),
+      contributors: initialContributors,
+      primaryContactId: primaryContact?.id || "",
       contactName: primaryContact?.name || "",
       contactPhone: primaryContact?.phone || "",
       contactSecondaryPhone: primaryContact?.secondaryPhone || "",
@@ -545,6 +567,24 @@ export default function CrmLeadsPage() {
       return;
     }
 
+    const commRate = editLeadForm.enableCommission
+      ? Number(editLeadForm.commissionPercentage) || 0
+      : 0;
+
+    if (editLeadForm.enableCommission && commRate > 0) {
+      const splitTotal = editLeadForm.contributors.reduce(
+        (sum, c) => sum + Number(c.percentage || 0),
+        0
+      );
+      if (Math.abs(splitTotal - commRate) > 0.01) {
+        toast(
+          `Contributor split total (${splitTotal}%) must equal the Commission percentage (${commRate}%).`,
+          true
+        );
+        return;
+      }
+    }
+
     setEditLeadSaving(true);
     try {
       const targetDist = editLeadForm.districtId
@@ -558,6 +598,7 @@ export default function CrmLeadsPage() {
         editLeadForm.contactSecondaryPhone.trim()
       ) {
         contacts.push({
+          id: editLeadForm.primaryContactId || undefined,
           name: editLeadForm.contactName.trim() || undefined,
           phone: editLeadForm.contactPhone.trim() || undefined,
           secondaryPhone: editLeadForm.contactSecondaryPhone.trim() || undefined,
@@ -566,12 +607,21 @@ export default function CrmLeadsPage() {
         });
       }
 
+      const contributors = editLeadForm.contributors
+        .filter((c) => c.userId)
+        .map((c) => ({
+          userId: c.userId,
+          percentage: editLeadForm.enableCommission ? Number(c.percentage || 0) : 0,
+          notes: c.notes,
+        }));
+
       await updateLead(
         selectedLead.id,
         {
           name: editLeadForm.name.trim(),
           type: editLeadForm.type,
           district: targetDist.trim(),
+          districtId: editLeadForm.districtId || undefined,
           place: editLeadForm.place.trim(),
           address: editLeadForm.address.trim() || undefined,
           studentCount: Number(editLeadForm.studentCount) || 0,
@@ -579,8 +629,9 @@ export default function CrmLeadsPage() {
           existingSoftware: editLeadForm.existingSoftware.trim() || undefined,
           source: editLeadForm.source as any,
           status: editLeadForm.status as any,
-          commissionPercentage: Number(editLeadForm.commissionPercentage) || 0,
+          commissionPercentage: commRate,
           contacts,
+          contributors,
         },
         accessToken
       );
@@ -593,6 +644,38 @@ export default function CrmLeadsPage() {
       toast((err as Error).message || "Failed to update lead", true);
     } finally {
       setEditLeadSaving(false);
+    }
+  };
+
+  const handleQuickAssign = async (userId: string) => {
+    if (!selectedLead || !accessToken) return;
+    if (!userId) {
+      toast("Please select a team member to assign", true);
+      return;
+    }
+    setQuickAssignLoading(true);
+    try {
+      await updateLead(
+        selectedLead.id,
+        {
+          contributors: [
+            {
+              userId,
+              percentage: Number(selectedLead.commissionPercentage ?? 0),
+            },
+          ],
+        },
+        accessToken
+      );
+      const targetUser = teamUsers.find((u) => u.id === userId);
+      toast(`Lead successfully assigned to ${targetUser?.name || "team member"}!`);
+      setShowQuickAssignModal(false);
+      loadLeadDetail(selectedLead.id);
+      loadData();
+    } catch (err: any) {
+      toast(err.message || "Failed to assign lead", true);
+    } finally {
+      setQuickAssignLoading(false);
     }
   };
 
@@ -743,20 +826,26 @@ export default function CrmLeadsPage() {
 
       const contributors = newLeadForm.enableCommission
         ? newLeadForm.contributors
-            .filter((c) => c.userId && c.percentage > 0)
+            .filter((c) => c.userId && Number(c.percentage) > 0)
             .map((c) => ({
               userId: c.userId,
               percentage: Number(c.percentage),
-              role: "Commission Split",
             }))
-        : [];
+        : newLeadForm.contributors
+            .filter((c) => c.userId)
+            .map((c) => ({
+              userId: c.userId,
+              percentage: 0,
+            }));
 
       const created = await createLead(
         {
           name: newLeadForm.name.trim(),
           type: newLeadForm.type,
           district: newLeadForm.district.trim(),
+          districtId: newLeadForm.districtId || undefined,
           place: newLeadForm.place.trim(),
+          address: newLeadForm.address.trim() || undefined,
           status: newLeadForm.status as any,
           studentCount: Number(newLeadForm.studentCount) || 0,
           teacherCount: Number(newLeadForm.teacherCount) || 0,
@@ -779,6 +868,7 @@ export default function CrmLeadsPage() {
         districtId: "",
         district: "",
         place: "",
+        address: "",
         status: "NEW",
         studentCount: 150,
         teacherCount: 8,
@@ -1000,6 +1090,12 @@ export default function CrmLeadsPage() {
           if (dName.toLowerCase() !== selectedDistrict.toLowerCase()) return false;
         }
 
+        if (selectedAssignee === "UNASSIGNED") {
+          if (l.contributors && l.contributors.length > 0) return false;
+        } else if (selectedAssignee !== "ALL") {
+          if (!l.contributors || !l.contributors.some((c) => c.userId === selectedAssignee)) return false;
+        }
+
         if (smartPreset === "OVERDUE") {
           if (l.status === "WON" || l.status === "LOST" || !l.nextFollowUpDate) return false;
           const d = new Date(l.nextFollowUpDate);
@@ -1050,7 +1146,7 @@ export default function CrmLeadsPage() {
         }
         return 0;
       });
-  }, [leads, activeStage, selectedDistrict, smartPreset, sortBy]);
+  }, [leads, activeStage, selectedDistrict, selectedAssignee, smartPreset, sortBy]);
 
   // Auto-select first lead on desktop / tablet (>= 768px) if none is currently selected
   useEffect(() => {
@@ -1259,9 +1355,54 @@ export default function CrmLeadsPage() {
                   </span>
                 )}
               </div>
+              <div className="flex items-center gap-3 text-xs text-gray-500 pt-1 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-primary-600 shrink-0" />
+                  <span className="font-medium text-gray-600">Assigned:</span>
+                  {lead.contributors && lead.contributors.length > 0 ? (
+                    <span className="font-bold text-gray-900 bg-gray-100 px-2 py-0.5 rounded-md">
+                      {lead.contributors.map((c) => c.user?.name).filter(Boolean).join(", ")}
+                    </span>
+                  ) : (
+                    <span className="font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                      ⚠️ Unassigned
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuickAssignUserId(lead.contributors?.[0]?.userId || teamUsers[0]?.id || "");
+                      setShowQuickAssignModal(true);
+                    }}
+                    className="text-primary-700 hover:text-primary-800 font-bold underline ml-1 cursor-pointer text-xs"
+                  >
+                    {lead.contributors && lead.contributors.length > 0 ? "Change" : "Assign Now"}
+                  </button>
+                </div>
+                {lead.createdBy && (
+                  <div className="flex items-center gap-1 text-gray-400">
+                    <span>•</span>
+                    <span>Created by <strong className="text-gray-700">{lead.createdBy}</strong></span>
+                    <span>on {new Date(lead.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex items-center gap-2 shrink-0 flex-wrap">
+              <button
+                type="button"
+                onClick={() => {
+                  setQuickAssignUserId(lead.contributors?.[0]?.userId || teamUsers[0]?.id || "");
+                  setShowQuickAssignModal(true);
+                }}
+                className="min-h-[40px] px-3.5 py-1.5 text-xs font-bold rounded-xl border border-primary-200 bg-primary-50 hover:bg-primary-100 text-primary-800 shadow-2xs transition-all flex items-center gap-1.5 active:scale-95"
+                title="Assign or reassign lead"
+              >
+                <Users className="w-3.5 h-3.5 text-primary-700" />
+                <span>{lead.contributors && lead.contributors.length > 0 ? "Reassign" : "Assign"}</span>
+              </button>
+
               <div className="flex items-center gap-1.5 bg-white border border-gray-200/90 rounded-xl px-3 py-1.5 shadow-2xs min-h-[40px]">
                 <span className="text-xs uppercase font-bold text-gray-500">Stage:</span>
                 <select
@@ -2799,7 +2940,7 @@ export default function CrmLeadsPage() {
         <div className="bg-white rounded-3xl border border-gray-200/90 p-4 sm:p-5 shadow-xs space-y-3.5 mb-5">
           {/* Top Row: Search Input + Selects */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5">
-            <div className="relative md:col-span-6 lg:col-span-6">
+            <div className="relative md:col-span-12 lg:col-span-4">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
@@ -2819,7 +2960,7 @@ export default function CrmLeadsPage() {
               )}
             </div>
 
-            <div className="md:col-span-3 lg:col-span-3">
+            <div className="md:col-span-4 lg:col-span-3">
               <select
                 value={selectedDistrict}
                 onChange={(e) => setSelectedDistrict(e.target.value)}
@@ -2834,16 +2975,32 @@ export default function CrmLeadsPage() {
               </select>
             </div>
 
-            <div className="md:col-span-3 lg:col-span-3">
+            <div className="md:col-span-4 lg:col-span-3">
+              <select
+                value={selectedAssignee}
+                onChange={(e) => setSelectedAssignee(e.target.value)}
+                className="w-full min-h-[44px] bg-gray-50 border border-gray-200 text-xs sm:text-sm font-semibold py-2.5 px-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 text-gray-800"
+              >
+                <option value="ALL">All Assignees</option>
+                <option value="UNASSIGNED">⚠️ Unassigned Leads</option>
+                {teamUsers.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    👤 {u.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="md:col-span-4 lg:col-span-2">
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
                 className="w-full min-h-[44px] bg-gray-50 border border-gray-200 text-xs sm:text-sm font-semibold py-2.5 px-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 text-gray-800"
               >
-                <option value="URGENT">Sort: Urgency / Deadline</option>
-                <option value="NEWEST">Sort: Newest First</option>
-                <option value="STUDENTS">Sort: Student Strength</option>
-                <option value="NAME">Sort: Name (A to Z)</option>
+                <option value="URGENT">Sort: Urgency</option>
+                <option value="NEWEST">Sort: Newest</option>
+                <option value="STUDENTS">Sort: Students</option>
+                <option value="NAME">Sort: Name (A-Z)</option>
               </select>
             </div>
           </div>
@@ -2897,6 +3054,7 @@ export default function CrmLeadsPage() {
             {(activeStage !== "ALL" ||
               smartPreset !== "ALL" ||
               selectedDistrict !== "ALL" ||
+              selectedAssignee !== "ALL" ||
               search !== "" ||
               sortBy !== "URGENT") && (
               <button
@@ -2905,6 +3063,7 @@ export default function CrmLeadsPage() {
                   setActiveStage("ALL");
                   setSmartPreset("ALL");
                   setSelectedDistrict("ALL");
+                  setSelectedAssignee("ALL");
                   setSearch("");
                   setSortBy("URGENT");
                 }}
@@ -3154,6 +3313,27 @@ export default function CrmLeadsPage() {
                           </div>
                         </div>
                       )}
+
+                      {/* Assignment & Created By Info */}
+                      <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2 text-[11px]">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <Users className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                          {l.contributors && l.contributors.length > 0 ? (
+                            <span className="font-semibold text-gray-800 truncate">
+                              {l.contributors.map((c) => c.user?.name).filter(Boolean).join(", ") || "Assigned"}
+                            </span>
+                          ) : (
+                            <span className="font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded text-[10px]">
+                              ⚠️ Unassigned
+                            </span>
+                          )}
+                        </div>
+                        {l.createdBy && (
+                          <span className="text-[10px] text-gray-400 shrink-0">
+                            Added by <strong className="text-gray-600 font-semibold">{l.createdBy}</strong>
+                          </span>
+                        )}
+                      </div>
 
                       {/* Footer Row: Status, Next Follow-up & Quick Schedule Trigger */}
                       <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2 flex-wrap">
@@ -3623,6 +3803,19 @@ export default function CrmLeadsPage() {
                     </div>
                   </div>
 
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      Full Address
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={newLeadForm.address}
+                      onChange={(e) => setNewLeadForm((p) => ({ ...p, address: e.target.value }))}
+                      placeholder="Complete postal address / landmark"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs sm:text-sm text-gray-900 focus:outline-none resize-none"
+                    />
+                  </div>
+
                   <div className="grid grid-cols-3 gap-2.5">
                     <div className="space-y-1">
                       <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
@@ -3750,15 +3943,58 @@ export default function CrmLeadsPage() {
                     />
                   </div>
 
-                  {/* Sales Commission (Toggleable) */}
-                  <div className="bg-emerald-50/50 p-4 rounded-2xl space-y-3 border border-emerald-200">
-                    <div className="flex items-center justify-between">
+                  {/* Lead Assignment & Sales Attribution Card */}
+                  <div className="bg-emerald-50/50 p-4 rounded-2xl space-y-3.5 border border-emerald-200">
+                    <div className="flex items-center justify-between pb-2 border-b border-emerald-200/70">
                       <div>
-                        <h4 className="text-xs font-bold text-emerald-950 uppercase tracking-wider">
-                          Sales Commission
+                        <h4 className="text-xs font-bold text-emerald-950 uppercase tracking-wider flex items-center gap-1.5">
+                          <Users className="w-4 h-4 text-emerald-700" />
+                          Lead Assignment &amp; Attribution
                         </h4>
-                        <p className="text-xs text-emerald-800">
-                          Enable performance commission and team attribution split
+                        <p className="text-xs text-emerald-800 mt-0.5">
+                          Assign lead ownership to sales team and manage commission splits
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Primary Assigned Team Member */}
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Assigned Sales Representative *
+                      </label>
+                      <select
+                        value={newLeadForm.contributors[0]?.userId || ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setNewLeadForm((p) => {
+                            const next = [...p.contributors];
+                            if (next.length === 0) {
+                              next.push({ userId: val, percentage: p.commissionPercentage });
+                            } else {
+                              next[0] = { ...next[0], userId: val };
+                            }
+                            return { ...p, contributors: next };
+                          });
+                        }}
+                        className="w-full min-h-[44px] bg-white border border-gray-200 rounded-xl px-3 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none"
+                      >
+                        <option value="">Select Team Member to Assign</option>
+                        {teamUsers.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.name} ({u.role?.replace(/_/g, " ")})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Sales Commission Toggle */}
+                    <div className="flex items-center justify-between pt-1">
+                      <div>
+                        <span className="text-xs font-bold text-gray-800">
+                          Enable Performance Commission
+                        </span>
+                        <p className="text-[11px] text-gray-500">
+                          Track commission rate &amp; multi-rep team splits
                         </p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
@@ -3807,109 +4043,108 @@ export default function CrmLeadsPage() {
                             className="w-full min-h-[44px] bg-white border border-gray-200 rounded-xl px-3 text-xs sm:text-sm font-bold text-gray-900 focus:outline-none"
                           />
                         </div>
-                        {isSuperOrManager && (
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="font-bold text-gray-700">Attribution Splits:</span>
-                              <span
-                                className={cn(
-                                  "font-bold",
-                                  Math.abs(
-                                    newLeadForm.contributors.reduce(
-                                      (s, c) => s + Number(c.percentage || 0),
-                                      0
-                                    ) - newLeadForm.commissionPercentage
-                                  ) < 0.01
-                                    ? "text-primary-700"
-                                    : "text-rose-600"
-                                )}
-                              >
-                                Split total:{" "}
-                                {newLeadForm.contributors.reduce(
-                                  (s, c) => s + Number(c.percentage || 0),
-                                  0
-                                )}
-                                % / {newLeadForm.commissionPercentage}%
-                              </span>
-                            </div>
 
-                            {newLeadForm.contributors.map((c, idx) => (
-                              <div key={idx} className="flex items-center gap-2">
-                                <select
-                                  value={c.userId}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-bold text-gray-700">Attribution Splits:</span>
+                            <span
+                              className={cn(
+                                "font-bold",
+                                Math.abs(
+                                  newLeadForm.contributors.reduce(
+                                    (s, c) => s + Number(c.percentage || 0),
+                                    0
+                                  ) - newLeadForm.commissionPercentage
+                                ) < 0.01
+                                  ? "text-primary-700"
+                                  : "text-rose-600"
+                              )}
+                            >
+                              Split total:{" "}
+                              {newLeadForm.contributors.reduce(
+                                (s, c) => s + Number(c.percentage || 0),
+                                0
+                              )}
+                              % / {newLeadForm.commissionPercentage}%
+                            </span>
+                          </div>
+
+                          {newLeadForm.contributors.map((c, idx) => (
+                            <div key={idx} className="flex items-center gap-2">
+                              <select
+                                value={c.userId}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setNewLeadForm((p) => {
+                                    const next = [...p.contributors];
+                                    next[idx].userId = val;
+                                    return { ...p, contributors: next };
+                                  });
+                                }}
+                                className="flex-1 min-h-[40px] bg-white border border-gray-200 rounded-xl px-2 text-xs font-semibold focus:outline-none"
+                              >
+                                <option value="">Select Team Member</option>
+                                {teamUsers.map((u) => (
+                                  <option key={u.id} value={u.id}>
+                                    {u.name} ({u.role?.replace(/_/g, " ")})
+                                  </option>
+                                ))}
+                              </select>
+                              <div className="relative w-24">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={100}
+                                  value={c.percentage}
                                   onChange={(e) => {
-                                    const val = e.target.value;
+                                    const val = Number(e.target.value);
                                     setNewLeadForm((p) => {
                                       const next = [...p.contributors];
-                                      next[idx].userId = val;
+                                      next[idx].percentage = val;
                                       return { ...p, contributors: next };
                                     });
                                   }}
-                                  className="flex-1 min-h-[40px] bg-white border border-gray-200 rounded-xl px-2 text-xs font-semibold focus:outline-none"
-                                >
-                                  <option value="">Select Team Member</option>
-                                  {teamUsers.map((u) => (
-                                    <option key={u.id} value={u.id}>
-                                      {u.name} ({u.role?.replace(/_/g, " ")})
-                                    </option>
-                                  ))}
-                                </select>
-                                <div className="relative w-24">
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    max={100}
-                                    value={c.percentage}
-                                    onChange={(e) => {
-                                      const val = Number(e.target.value);
-                                      setNewLeadForm((p) => {
-                                        const next = [...p.contributors];
-                                        next[idx].percentage = val;
-                                        return { ...p, contributors: next };
-                                      });
-                                    }}
-                                    className="w-full min-h-[40px] bg-white border border-gray-200 rounded-xl pr-6 pl-2 text-xs font-bold text-right focus:outline-none"
-                                  />
-                                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-bold">
-                                    %
-                                  </span>
-                                </div>
-                                {newLeadForm.contributors.length > 1 && (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setNewLeadForm((p) => ({
-                                        ...p,
-                                        contributors: p.contributors.filter((_, i) => i !== idx),
-                                      }))
-                                    }
-                                    className="p-2 text-gray-400 hover:text-rose-600 rounded-lg hover:bg-rose-50"
-                                  >
-                                    <Trash className="w-4 h-4" />
-                                  </button>
-                                )}
+                                  className="w-full min-h-[40px] bg-white border border-gray-200 rounded-xl pr-6 pl-2 text-xs font-bold text-right focus:outline-none"
+                                />
+                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-bold">
+                                  %
+                                </span>
                               </div>
-                            ))}
+                              {newLeadForm.contributors.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setNewLeadForm((p) => ({
+                                      ...p,
+                                      contributors: p.contributors.filter((_, i) => i !== idx),
+                                    }))
+                                  }
+                                  className="p-2 text-gray-400 hover:text-rose-600 rounded-lg hover:bg-rose-50"
+                                >
+                                  <Trash className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          ))}
 
-                            {newLeadForm.contributors.length < 3 && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setNewLeadForm((p) => ({
-                                    ...p,
-                                    contributors: [
-                                      ...p.contributors,
-                                      { userId: "", percentage: 0 },
-                                    ],
-                                  }))
-                                }
-                                className="text-xs font-bold text-primary-700 hover:underline pt-1 flex items-center gap-1"
-                              >
-                                <Plus className="w-3.5 h-3.5" /> Add Team Contributor
-                              </button>
-                            )}
-                          </div>
-                        )}
+                          {newLeadForm.contributors.length < 3 && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setNewLeadForm((p) => ({
+                                  ...p,
+                                  contributors: [
+                                    ...p.contributors,
+                                    { userId: "", percentage: 0 },
+                                  ],
+                                }))
+                              }
+                              className="text-xs font-bold text-primary-700 hover:underline pt-1 flex items-center gap-1"
+                            >
+                              <Plus className="w-3.5 h-3.5" /> Add Team Contributor
+                            </button>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -4110,39 +4345,20 @@ export default function CrmLeadsPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Existing Software
-                      </label>
-                      <input
-                        type="text"
-                        value={editLeadForm.existingSoftware}
-                        onChange={(e) =>
-                          setEditLeadForm((p) => ({ ...p, existingSoftware: e.target.value }))
-                        }
-                        placeholder="e.g. Excel, Custom, None"
-                        className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl px-3 text-xs sm:text-sm focus:outline-none"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Commission Rate (%)
-                      </label>
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        value={editLeadForm.commissionPercentage}
-                        onChange={(e) =>
-                          setEditLeadForm((p) => ({
-                            ...p,
-                            commissionPercentage: Number(e.target.value),
-                          }))
-                        }
-                        className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl px-3 text-xs sm:text-sm font-bold focus:outline-none"
-                      />
-                    </div>
+                  {/* Existing Software */}
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      Current Software / System
+                    </label>
+                    <input
+                      type="text"
+                      value={editLeadForm.existingSoftware}
+                      onChange={(e) =>
+                        setEditLeadForm((p) => ({ ...p, existingSoftware: e.target.value }))
+                      }
+                      placeholder="e.g. Excel, Registers, Custom software"
+                      className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl px-3 text-xs sm:text-sm focus:outline-none"
+                    />
                   </div>
 
                   {/* Primary Contact Person Edit */}
@@ -4215,6 +4431,212 @@ export default function CrmLeadsPage() {
                     </div>
                   </div>
 
+                  {/* Lead Assignment & Sales Attribution Card */}
+                  <div className="bg-emerald-50/50 p-4 rounded-2xl space-y-3.5 border border-emerald-200">
+                    <div className="flex items-center justify-between pb-2 border-b border-emerald-200/70">
+                      <div>
+                        <h4 className="text-xs font-bold text-emerald-950 uppercase tracking-wider flex items-center gap-1.5">
+                          <Users className="w-4 h-4 text-emerald-700" />
+                          Lead Assignment &amp; Attribution
+                        </h4>
+                        <p className="text-xs text-emerald-800 mt-0.5">
+                          Assign lead ownership to sales team and manage commission splits
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Primary Assigned Team Member */}
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Assigned Sales Representative *
+                      </label>
+                      <select
+                        value={editLeadForm.contributors[0]?.userId || ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEditLeadForm((p) => {
+                            const next = [...p.contributors];
+                            if (next.length === 0) {
+                              next.push({ userId: val, percentage: p.commissionPercentage });
+                            } else {
+                              next[0] = { ...next[0], userId: val };
+                            }
+                            return { ...p, contributors: next };
+                          });
+                        }}
+                        className="w-full min-h-[44px] bg-white border border-gray-200 rounded-xl px-3 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none"
+                      >
+                        <option value="">Select Team Member to Assign</option>
+                        {teamUsers.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.name} ({u.role?.replace(/_/g, " ")})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Sales Commission Toggle */}
+                    <div className="flex items-center justify-between pt-1">
+                      <div>
+                        <span className="text-xs font-bold text-gray-800">
+                          Enable Performance Commission
+                        </span>
+                        <p className="text-[11px] text-gray-500">
+                          Track commission rate &amp; multi-rep team splits
+                        </p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={editLeadForm.enableCommission}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            setEditLeadForm((p) => ({
+                              ...p,
+                              enableCommission: checked,
+                              contributors:
+                                checked && p.contributors.length === 0
+                                  ? [
+                                      {
+                                        userId: user?.id || teamUsers[0]?.id || "",
+                                        percentage: p.commissionPercentage,
+                                      },
+                                    ]
+                                  : p.contributors,
+                            }));
+                          }}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                      </label>
+                    </div>
+
+                    {editLeadForm.enableCommission && (
+                      <div className="space-y-3 pt-2 border-t border-emerald-200">
+                        <div>
+                          <label className="block text-xs text-gray-700 font-bold mb-1">
+                            Total Commission Rate (%)
+                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={100}
+                            value={editLeadForm.commissionPercentage}
+                            onChange={(e) =>
+                              setEditLeadForm((p) => ({
+                                ...p,
+                                commissionPercentage: Number(e.target.value),
+                              }))
+                            }
+                            className="w-full min-h-[44px] bg-white border border-gray-200 rounded-xl px-3 text-xs sm:text-sm font-bold text-gray-900 focus:outline-none"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-bold text-gray-700">Attribution Splits:</span>
+                            <span
+                              className={cn(
+                                "font-bold",
+                                Math.abs(
+                                  editLeadForm.contributors.reduce(
+                                    (s, c) => s + Number(c.percentage || 0),
+                                    0
+                                  ) - editLeadForm.commissionPercentage
+                                ) < 0.01
+                                  ? "text-primary-700"
+                                  : "text-rose-600"
+                              )}
+                            >
+                              Split total:{" "}
+                              {editLeadForm.contributors.reduce(
+                                (s, c) => s + Number(c.percentage || 0),
+                                0
+                              )}
+                              % / {editLeadForm.commissionPercentage}%
+                            </span>
+                          </div>
+
+                          {editLeadForm.contributors.map((c, idx) => (
+                            <div key={idx} className="flex items-center gap-2">
+                              <select
+                                value={c.userId}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setEditLeadForm((p) => {
+                                    const next = [...p.contributors];
+                                    next[idx].userId = val;
+                                    return { ...p, contributors: next };
+                                  });
+                                }}
+                                className="flex-1 min-h-[40px] bg-white border border-gray-200 rounded-xl px-2 text-xs font-semibold focus:outline-none"
+                              >
+                                <option value="">Select Team Member</option>
+                                {teamUsers.map((u) => (
+                                  <option key={u.id} value={u.id}>
+                                    {u.name} ({u.role?.replace(/_/g, " ")})
+                                  </option>
+                                ))}
+                              </select>
+                              <div className="relative w-24">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={100}
+                                  value={c.percentage}
+                                  onChange={(e) => {
+                                    const val = Number(e.target.value);
+                                    setEditLeadForm((p) => {
+                                      const next = [...p.contributors];
+                                      next[idx].percentage = val;
+                                      return { ...p, contributors: next };
+                                    });
+                                  }}
+                                  className="w-full min-h-[40px] bg-white border border-gray-200 rounded-xl pr-6 pl-2 text-xs font-bold text-right focus:outline-none"
+                                />
+                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-bold">
+                                  %
+                                </span>
+                              </div>
+                              {editLeadForm.contributors.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setEditLeadForm((p) => ({
+                                      ...p,
+                                      contributors: p.contributors.filter((_, i) => i !== idx),
+                                    }))
+                                  }
+                                  className="p-2 text-gray-400 hover:text-rose-600 rounded-lg hover:bg-rose-50"
+                                >
+                                  <Trash className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+
+                          {editLeadForm.contributors.length < 3 && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setEditLeadForm((p) => ({
+                                  ...p,
+                                  contributors: [
+                                    ...p.contributors,
+                                    { userId: "", percentage: 0 },
+                                  ],
+                                }))
+                              }
+                              className="text-xs font-bold text-primary-700 hover:underline pt-1 flex items-center gap-1"
+                            >
+                              <Plus className="w-3.5 h-3.5" /> Add Team Contributor
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="pt-2 flex items-center gap-3">
                     <button
                       type="button"
@@ -4233,6 +4655,98 @@ export default function CrmLeadsPage() {
                     </button>
                   </div>
                 </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Quick Assign / Reassign Modal */}
+        <AnimatePresence>
+          {showQuickAssignModal && selectedLead && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.5 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowQuickAssignModal(false)}
+                className="fixed inset-0 bg-black backdrop-blur-xs"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="relative bg-white w-full max-w-md rounded-3xl p-6 sm:p-7 shadow-2xl z-10 space-y-5"
+              >
+                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                  <div>
+                    <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
+                      <Users className="w-5 h-5 text-primary-600" />
+                      Assign Lead
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Assign ownership for <strong className="text-gray-700">{selectedLead.name}</strong>
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowQuickAssignModal(false)}
+                    className="p-1.5 text-gray-400 hover:bg-gray-100 rounded-xl"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Select Sales Representative *
+                    </label>
+                    <select
+                      value={quickAssignUserId}
+                      onChange={(e) => setQuickAssignUserId(e.target.value)}
+                      className="w-full min-h-[46px] bg-gray-50 border border-gray-200 rounded-xl px-3 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600"
+                    >
+                      <option value="">-- Choose Team Member --</option>
+                      {teamUsers.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.name} ({u.role?.replace(/_/g, " ")})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {selectedLead.contributors && selectedLead.contributors.length > 0 && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs text-gray-600 space-y-1">
+                      <span className="font-bold text-gray-700">Currently assigned to:</span>
+                      <p className="font-semibold text-gray-900">
+                        {selectedLead.contributors.map((c) => c.user?.name).filter(Boolean).join(", ")}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowQuickAssignModal(false)}
+                      className="min-h-[44px] flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs sm:text-sm rounded-xl transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={quickAssignLoading || !quickAssignUserId}
+                      onClick={() => handleQuickAssign(quickAssignUserId)}
+                      className="min-h-[44px] flex-1 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs active:scale-[0.98]"
+                    >
+                      {quickAssignLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="w-4 h-4" />
+                      )}
+                      <span>Confirm Assignment</span>
+                    </button>
+                  </div>
+                </div>
               </motion.div>
             </div>
           )}

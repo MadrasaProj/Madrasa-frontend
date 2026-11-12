@@ -107,8 +107,8 @@ export interface LeadContributor {
   userId: string;
   percentage: number;
   notes?: string;
-  role: string;
-  user?: { name: string };
+  role?: string;
+  user?: { id?: string; name: string; role?: string };
 }
 
 export interface LeadListItem {
@@ -116,6 +116,7 @@ export interface LeadListItem {
   name: string;
   type: string;
   district: string;
+  districtId?: string;
   place: string;
   address?: string;
   clientId?: string;
@@ -129,6 +130,7 @@ export interface LeadListItem {
   commissionPercentage?: number;
   contacts: LeadContact[];
   contributors: LeadContributor[];
+  createdBy?: string;
   timeline?: Array<{
     id?: string;
     type: string;
@@ -206,11 +208,15 @@ export interface LeadDetail extends LeadListItem {
   };
 }
 
-export function listLeads(token: string, params: { status?: string; search?: string; type?: string } = {}) {
+export function listLeads(
+  token: string,
+  params: { status?: string; search?: string; type?: string; assignedUserId?: string } = {}
+) {
   const q = new URLSearchParams();
   if (params.status) q.set("status", params.status);
   if (params.search) q.set("search", params.search);
   if (params.type) q.set("type", params.type);
+  if (params.assignedUserId) q.set("assignedUserId", params.assignedUserId);
   const qs = q.toString() ? `?${q}` : "";
   return getJson<LeadListItem[]>(`/crm/leads${qs}`, token);
 }
@@ -225,6 +231,14 @@ export function createLead(dto: Partial<LeadListItem>, token: string) {
 
 export function updateLead(id: string, dto: Partial<LeadListItem>, token: string) {
   return mutateJson<LeadListItem>("PATCH", `/crm/leads/${id}`, dto, token);
+}
+
+export function assignLead(
+  id: string,
+  contributors: Array<{ userId: string; percentage?: number; notes?: string }>,
+  token: string
+) {
+  return mutateJson<LeadListItem>("PATCH", `/crm/leads/${id}/assign`, { contributors }, token);
 }
 
 export interface BulkImportLeadItem {
