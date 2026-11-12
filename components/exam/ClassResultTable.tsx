@@ -71,6 +71,9 @@ function drawPdfText(
 
 function createReportPdf(report: ClassReport, teacherView: boolean, madrasaName: string) {
   const { subjects, students, config, stats } = report;
+  const teacherRanks = teacherView
+    ? new Map(getTeacherRows(report).map(({ row, rank }) => [row.student.id, rank]))
+    : null;
   const rows = students.map((row, index) => {
     const outcome = teacherView ? getTeacherOutcome(row, subjects) : null;
     const status = teacherView ? outcome?.status ?? "-" : row.summary.finalStatus
@@ -84,14 +87,14 @@ function createReportPdf(report: ClassReport, teacherView: boolean, madrasaName:
       name: row.student.name,
       marks: subjects.map((subject) => {
         const mark = row.marks[subject.id];
-        if (!mark) return "-";
+        if (!mark) return teacherView ? "0" : "-";
         return !teacherView && config.hideMarks ? mark.grade || "-" : String(mark.score);
       }),
       total: teacherView
         ? outcome ? `${outcome.totalScore}/${outcome.totalMaxMarks}` : "-"
         : !config.hideMarks && row.summary.totalScore != null ? `${row.summary.totalScore}/${row.summary.totalMaxMarks ?? 0}` : "-",
       percentage: teacherView ? outcome?.percentage ?? null : row.summary.totalPercentage,
-      rank: row.summary.rank?.toString() ?? "-",
+      rank: teacherView ? teacherRanks?.get(row.student.id)?.toString() ?? "-" : row.summary.rank?.toString() ?? "-",
       status,
       grade: teacherView ? outcome?.grade ?? "-" : row.summary.totalGrade ? TOTAL_GRADE_LABELS[row.summary.totalGrade] : "-",
     };
@@ -113,7 +116,7 @@ function createReportPdf(report: ClassReport, teacherView: boolean, madrasaName:
     ...subjects.map((subject) => ({ label: subject.name, width: 21, align: "center" as const })),
     { label: "Total", width: 24, align: "center" as const },
     { label: "%", width: 23, align: "center" as const },
-    ...(!teacherView ? [{ label: "Rank", width: 14, align: "center" as const }] : []),
+    { label: "Rank", width: 14, align: "center" as const },
     { label: "Status", width: 25, align: "center" as const },
     { label: "Grade", width: 25, align: "center" as const },
   ];
@@ -166,7 +169,7 @@ function createReportPdf(report: ClassReport, teacherView: boolean, madrasaName:
       pdf.rect(tableX, y, tableWidth, rowHeight, "F");
     }
     pdf.setTextColor(31, 41, 55);
-    const values = [row.number, row.registration, row.name, ...row.marks, row.total, row.percentage === null ? "-" : `${row.percentage.toFixed(1)}%`, ...(!teacherView ? [row.rank] : []), row.status, row.grade];
+    const values = [row.number, row.registration, row.name, ...row.marks, row.total, row.percentage === null ? "-" : `${row.percentage.toFixed(1)}%`, row.rank, row.status, row.grade];
     values.forEach((value, index) => {
       const column = columns[index];
       const x = column.align === "center" ? columnXs[index] + column.width / 2 : columnXs[index] + 2;
@@ -296,16 +299,17 @@ interface Props {
 }
 
 function getTeacherOutcome(row: ClassReportRow, subjects: SubjectMeta[]) {
-  const marks = subjects.map((subject) => row.marks[subject.id]);
-  if (!subjects.length || marks.some((mark) => !mark)) return null;
+  if (!subjects.length) return null;
 
-  const totalScore = marks.reduce((sum, mark) => sum + mark.score, 0);
-  const totalMaxMarks = marks.reduce((sum, mark) => sum + mark.maxMarks, 0);
-  const failed = subjects.some((subject, index) => {
-    const mark = marks[index];
+  const totalScore = subjects.reduce((sum, subject) => sum + (row.marks[subject.id]?.score ?? 0), 0);
+  const totalMaxMarks = subjects.reduce((sum, subject) => sum + (row.marks[subject.id]?.maxMarks ?? subject.maxMarks), 0);
+  const failed = subjects.some((subject) => {
+    const mark = row.marks[subject.id];
+    const score = mark?.score ?? 0;
+    const maxMarks = mark?.maxMarks ?? subject.maxMarks;
     return subject.passMarks != null
-      ? mark.score < subject.passMarks
-      : calcGradeFromConfig(mark.score, mark.maxMarks, subject.gradeConfig) === "D";
+      ? score < subject.passMarks
+      : calcGradeFromConfig(score, maxMarks, subject.gradeConfig) === "D";
   });
   return {
     totalScore,
@@ -314,6 +318,22 @@ function getTeacherOutcome(row: ClassReportRow, subjects: SubjectMeta[]) {
     status: failed ? "Failed" : "Passed",
     grade: failed ? "D" : calcGradeFromConfig(totalScore, totalMaxMarks, subjects.length === 1 ? subjects[0].gradeConfig : null),
   };
+}
+
+function getTeacherRows(report: ClassReport) {
+  const rows = report.students.map((row) => ({ row, outcome: getTeacherOutcome(row, report.subjects) }));
+  const ranked = rows
+    .filter((item) => item.outcome !== null)
+    .sort((a, b) => (b.outcome?.percentage ?? 0) - (a.outcome?.percentage ?? 0));
+  const ranks = new Map<string, number>();
+
+  ranked.forEach((item, index) => {
+    const previous = ranked[index - 1];
+    const tied = previous && Math.abs((previous.outcome?.percentage ?? 0) - (item.outcome?.percentage ?? 0)) < 1e-9;
+    ranks.set(item.row.student.id, tied ? ranks.get(previous.row.student.id)! : index + 1);
+  });
+
+  return rows.map((item) => ({ ...item, rank: ranks.get(item.row.student.id) ?? null }));
 }
 
 export function ClassResultTable({ report, madrasaName, hideReportHeader = false, teacherView = false, teacherControlsContainer }: Props) {
@@ -482,7 +502,7 @@ function PercentageRing({ percentage }: { percentage: number }) {
 
 function TeacherReportTable({ report }: { report: ClassReport }) {
   const { students, subjects } = report;
-  const rows = students.map((row) => ({ row, outcome: getTeacherOutcome(row, subjects) }));
+  const rows = getTeacherRows(report);
   const completed = rows.filter((item) => item.outcome !== null);
   const passed = completed.filter((item) => item.outcome?.status === "Passed").length;
   const failed = completed.length - passed;
@@ -517,19 +537,20 @@ function TeacherReportTable({ report }: { report: ClassReport }) {
               ))}
               <th scope="col" className="px-3 py-2 text-center font-medium">Total</th>
               <th scope="col" className="px-3 py-2 text-center font-medium">%</th>
+              <th scope="col" className="px-3 py-2 text-center font-medium">Rank</th>
               <th scope="col" className="px-3 py-2 text-center font-medium">Status</th>
               <th scope="col" className="px-3 py-2 text-center font-medium">Grade</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {rows.map(({ row, outcome }, index) => (
+            {rows.map(({ row, outcome, rank }, index) => (
               <tr key={row.student.id}>
                 <td className="px-3 py-2 text-gray-500">{index + 1}</td>
                 <td className="px-3 py-2 text-gray-600">{row.student.adno || "—"}</td>
                 <td className="px-3 py-2 font-medium text-gray-900">{row.student.name}</td>
                 {subjects.map((subject) => (
                   <td key={subject.id} className="px-3 py-2 text-center text-gray-700">
-                    {row.marks[subject.id]?.score ?? "—"}
+                    {row.marks[subject.id]?.score ?? 0}
                   </td>
                 ))}
                 <td className="px-3 py-2 text-center text-gray-700">
@@ -543,6 +564,7 @@ function TeacherReportTable({ report }: { report: ClassReport }) {
                     </span>
                   ) : "—"}
                 </td>
+                <td className="px-3 py-2 text-center text-gray-700">{rank ?? "—"}</td>
                 <td className="px-3 py-2 text-center text-gray-700">{outcome?.status ?? "—"}</td>
                 <td className="px-3 py-2 text-center">
                   {outcome ? (
@@ -554,7 +576,7 @@ function TeacherReportTable({ report }: { report: ClassReport }) {
               </tr>
             ))}
             {rows.length === 0 && (
-              <tr><td colSpan={subjects.length + 7} className="px-3 py-8 text-center text-gray-500">No students found.</td></tr>
+              <tr><td colSpan={subjects.length + 8} className="px-3 py-8 text-center text-gray-500">No students found.</td></tr>
             )}
           </tbody>
         </table>

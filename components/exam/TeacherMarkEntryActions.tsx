@@ -109,19 +109,16 @@ export function TeacherMarkEntryActions({
           const marks: ClassReportRow["marks"] = {};
           for (const subject of subjects) {
             const result = results.find((entry) => entry.subject?.id === subject.id);
-            if (result) {
-              marks[subject.id] = {
-                score: result.score,
-                maxMarks: result.totalMarks || subject.maxMarks,
-                grade: result.grade ?? null,
-                isPassed: result.isPassed ?? null,
-                percentage: result.percentage ?? null,
-              };
-            }
+            marks[subject.id] = {
+              score: result?.score ?? 0,
+              maxMarks: result?.totalMarks || subject.maxMarks,
+              grade: result?.grade ?? null,
+              isPassed: result?.isPassed ?? null,
+              percentage: result?.percentage ?? null,
+            };
           }
-          const complete = subjects.length > 0 && subjects.every((subject) => marks[subject.id]);
-          const totalScore = complete ? Object.values(marks).reduce((sum, mark) => sum + mark.score, 0) : null;
-          const totalMaxMarks = complete ? Object.values(marks).reduce((sum, mark) => sum + mark.maxMarks, 0) : null;
+          const totalScore = subjects.length ? Object.values(marks).reduce((sum, mark) => sum + mark.score, 0) : null;
+          const totalMaxMarks = subjects.length ? Object.values(marks).reduce((sum, mark) => sum + mark.maxMarks, 0) : null;
           return {
             student: { id: student.id, name: student.name, adno: student.adno, gender: student.gender ?? "" },
             marks,
