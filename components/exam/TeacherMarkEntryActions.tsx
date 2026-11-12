@@ -9,6 +9,19 @@ import { getStudents } from "@/lib/students-api";
 import { getSubjects } from "@/lib/subjects-api";
 import { t, type Lang } from "@/lib/i18n";
 
+async function getActiveClassStudents(clientId: string, token: string, classId: string) {
+  const limit = 200;
+  const firstPage = await getStudents(clientId, token, { classId, status: "ACTIVE", page: 1, limit });
+  const pageCount = Math.ceil(firstPage.total / (firstPage.limit || limit));
+  if (pageCount <= 1) return firstPage.data;
+  const remainingPages = await Promise.all(
+    Array.from({ length: pageCount - 1 }, (_, index) =>
+      getStudents(clientId, token, { classId, status: "ACTIVE", page: index + 2, limit }),
+    ),
+  );
+  return [firstPage, ...remainingPages].flatMap((page) => page.data);
+}
+
 interface TeacherMarkEntryActionsProps {
   clientId: string;
   token: string;
@@ -22,6 +35,7 @@ interface TeacherMarkEntryActionsProps {
   saving: boolean;
   saved: boolean;
   isLocked: boolean;
+  hasEnteredScores: boolean;
   saveDisabled: boolean;
   importDisabled: boolean;
   resetDisabled: boolean;
@@ -32,7 +46,7 @@ interface TeacherMarkEntryActionsProps {
 
 export function TeacherMarkEntryActions({
   clientId, token, examId, examName, examType, classId, className, subjectId, lang,
-  saving, saved, isLocked, saveDisabled, importDisabled, resetDisabled,
+  saving, saved, isLocked, hasEnteredScores, saveDisabled, importDisabled, resetDisabled,
   onSave, onImport, onReset,
 }: TeacherMarkEntryActionsProps) {
   const [moreOpen, setMoreOpen] = useState(false);
@@ -42,10 +56,11 @@ export function TeacherMarkEntryActions({
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
   const [reportRequest, setReportRequest] = useState(0);
+  const [reportControlsContainer, setReportControlsContainer] = useState<HTMLDivElement | null>(null);
 
   const openReport = async () => {
     if (reportSaving) return;
-    if (isLocked) {
+    if (isLocked || !hasEnteredScores) {
       setReportOpen(true);
       return;
     }
@@ -65,18 +80,10 @@ export function TeacherMarkEntryActions({
     setReportLoading(true);
     const loadReport = async () => {
       try {
-        // The class report contains rows only after summaries have been computed.
-        // Mark entry still needs a useful preview before that step.
-        const computedReport = await getClassReport(clientId, token, { examId, classId }).catch(() => null);
-        if (computedReport?.students.length) {
-          if (active) setReport(subjectId
-            ? { ...computedReport, subjects: computedReport.subjects.filter((subject) => subject.id === subjectId) }
-            : computedReport);
-          return;
-        }
-
-        const [studentResponse, resultResponse, subjectResponse] = await Promise.all([
-          getStudents(clientId, token, { classId, status: "ACTIVE", limit: 500 }),
+        // Summaries may contain only students with marks. Build every row from the class roster.
+        const [computedReport, classStudents, resultResponse, subjectResponse] = await Promise.all([
+          getClassReport(clientId, token, { examId, classId }).catch(() => null),
+          getActiveClassStudents(clientId, token, classId),
           getResults(clientId, token, { examId, classId, limit: 2000 }),
           getSubjects(clientId, token, { classId }),
         ]);
@@ -97,7 +104,7 @@ export function TeacherMarkEntryActions({
           current.push(result);
           resultsByStudent.set(result.student.id, current);
         }
-        const rows: ClassReportRow[] = studentResponse.data.map((student) => {
+        const rows: ClassReportRow[] = classStudents.map((student) => {
           const results = resultsByStudent.get(student.id) ?? [];
           const marks: ClassReportRow["marks"] = {};
           for (const subject of subjects) {
@@ -202,7 +209,10 @@ export function TeacherMarkEntryActions({
         onOpenChange={setReportOpen}
         fullHeight
         onBack={() => setReportOpen(false)}
-        title={<span className="sr-only">{`${examName} · ${t("teacherPages", "report", lang)}`}</span>}
+        title={`${examName} · ${t("teacherPages", "report", lang)}`}
+        footer={report && !reportLoading ? (
+          <div ref={setReportControlsContainer} className="flex justify-end border-t border-gray-100 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6" />
+        ) : undefined}
         className="z-[60] md:max-w-none"
       >
         <div className="mx-auto w-full max-w-[1400px] px-4 py-5 sm:px-6">
@@ -217,7 +227,7 @@ export function TeacherMarkEntryActions({
               <Button type="button" variant="outline" className="mt-3" onClick={() => setReportRequest((value) => value + 1)}>Retry</Button>
             </div>
           ) : report ? (
-            <ClassResultTable report={report} madrasaName={report.clientName ?? ""} hideReportHeader previewOutcomes />
+            <ClassResultTable report={report} madrasaName={report.clientName ?? ""} teacherView teacherControlsContainer={reportControlsContainer} />
           ) : null}
         </div>
       </ResponsivePopover>

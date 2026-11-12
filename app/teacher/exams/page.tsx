@@ -625,6 +625,7 @@ export default function TeacherExamsPage() {
               saving={saving}
               saved={saved}
               isLocked={isLocked}
+              hasEnteredScores={students.some((student) => scores[student.id] !== "" && scores[student.id] !== undefined)}
               saveDisabled={entryLoading || subjectLoading || saving || isLocked || hasInvalidMarks || students.length === 0}
               importDisabled={entryLoading || subjectLoading || !queryExamId || !queryClassId || !querySubjectId}
               resetDisabled={entryLoading || subjectLoading || saving || students.length === 0}

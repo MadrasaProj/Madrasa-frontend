@@ -791,6 +791,7 @@ export default function TeacherClassTestsPage() {
               saving={meSaving}
               saved={meSaved}
               isLocked={isLocked}
+              hasEnteredScores={meStudents.some((student) => meScores[student.id] !== "" && meScores[student.id] !== undefined)}
               saveDisabled={meSaving || isLocked || hasInvalidMarks || meStudents.length === 0}
               importDisabled={isLocked || !meSubjectId}
               resetDisabled={meSaving || meStudents.length === 0}
