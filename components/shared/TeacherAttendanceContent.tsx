@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { DrawerSelector } from "@/components/DrawerSelector";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { ScrollableDateNavigator } from "@/components/ScrollableDateNavigator";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
@@ -100,17 +100,29 @@ export function TeacherAttendanceContent() {
   const [dayLoading, setDayLoading]     = useState(true);
   const [dayError, setDayError]         = useState<string | null>(null);
 
-  const [teacherSessions, setTeacherSessions] = useState<TeacherSession[]>([]);
-  const [teacherLoading, setTeacherLoading]   = useState(false);
-  const [teacherError, setTeacherError]       = useState<string | null>(null);
-
   const [allTeachers, setAllTeachers] = useState<TeacherRecord[]>([]);
+  const [sessionsByTeacher, setSessionsByTeacher] = useState<Record<string, TeacherSession[]>>({});
+  const [teacherListLoading, setTeacherListLoading] = useState(true);
 
   useEffect(() => {
     if (!cid || !token) return;
+    setTeacherListLoading(true);
     getTeachers(cid, token, { limit: 200 })
-      .then((r) => setAllTeachers(r.data ?? []))
-      .catch(() => {});
+      .then(async (r) => {
+        const teachers = r.data ?? [];
+        setAllTeachers(teachers);
+        const summaries = await Promise.all(teachers.map(async (teacher) => {
+          try {
+            const sessions = await getSessionsByTeacher(cid, token, teacher.id);
+            return [teacher.id, sessions] as const;
+          } catch {
+            return [teacher.id, []] as const;
+          }
+        }));
+        setSessionsByTeacher(Object.fromEntries(summaries));
+      })
+      .catch(() => setAllTeachers([]))
+      .finally(() => setTeacherListLoading(false));
   }, [cid, token]);
 
   const filteredTeachers = useMemo(() => {
@@ -130,17 +142,6 @@ export function TeacherAttendanceContent() {
 
   useEffect(() => { loadDay(); }, [selectedDate, cid, token]); // eslint-disable-line
 
-  const loadTeacher = () => {
-    if (!cid || !token || !selectedTeacherId) return;
-    setTeacherLoading(true); setTeacherError(null);
-    getSessionsByTeacher(cid, token, selectedTeacherId)
-      .then((s) => setTeacherSessions(s))
-      .catch((e) => setTeacherError((e as Error).message))
-      .finally(() => setTeacherLoading(false));
-  };
-
-  useEffect(() => { loadTeacher(); }, [selectedTeacherId, cid, token]); // eslint-disable-line
-
   const dayByTeacher = useMemo(() => {
     const map = new Map<string, { teacher: TeacherSession["teacher"]; sessions: TeacherSession[] }>();
     for (const s of daySessions) {
@@ -155,12 +156,10 @@ export function TeacherAttendanceContent() {
     (a.teacher?.name ?? "").localeCompare(b.teacher?.name ?? "") || a.checkInTime.localeCompare(b.checkInTime),
   ), [daySessions]);
 
-  const teacherGrouped = useMemo(() => groupByDate(teacherSessions), [teacherSessions]);
   const selectedTeacherName = allTeachers.find((t) => t.id === selectedTeacherId)?.name ?? "";
-  const teacherOptions = [
-    ...allTeachers.filter((teacher) => teacher.id === selectedTeacherId && !filteredTeachers.some((item) => item.id === teacher.id)),
-    ...filteredTeachers,
-  ].map((teacher) => ({ value: teacher.id, label: teacher.name }));
+  const selectedTeacherSessions = sessionsByTeacher[selectedTeacherId] ?? [];
+  const selectedTeacherGrouped = useMemo(() => groupByDate(selectedTeacherSessions), [selectedTeacherSessions]);
+  const totalTrackedDays = useMemo(() => new Set(Object.values(sessionsByTeacher).flat().map((session) => dateKey(session.date))).size, [sessionsByTeacher]);
 
   return (
     <DashboardLayout>
@@ -209,7 +208,7 @@ export function TeacherAttendanceContent() {
         </TabsContent>
 
         <TabsContent value="by-teacher">
-          <div className="mb-5 space-y-3">
+          <div className="mb-5">
             <div className="relative">
               <Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
               <Input
@@ -220,50 +219,45 @@ export function TeacherAttendanceContent() {
                 className="h-11 pl-10"
               />
             </div>
-            <DrawerSelector
-              title="Choose teacher"
-              options={teacherOptions}
-              value={selectedTeacherId}
-              onChange={(value) => { setSelectedTeacherId(value); setTeacherSearch(""); }}
-              placeholder="Select a teacher"
-            />
-            {filteredTeachers.length === 0 && <p className="text-xs text-gray-500">No teachers found</p>}
           </div>
-
-          {!selectedTeacherId ? (
-            <div className="py-16 text-center text-sm text-gray-400">Select a teacher to view their attendance</div>
-          ) : teacherLoading ? (
-            <SkeletonList count={4} />
-          ) : teacherError ? (
-            <ApiErrorBanner message={teacherError} onRetry={loadTeacher} />
+          {teacherListLoading ? <SkeletonList count={5} /> : filteredTeachers.length === 0 ? (
+            <p className="py-10 text-center text-sm text-gray-500">No teachers found</p>
           ) : (
-            <div className="space-y-4">
-              <h2 className="text-base font-semibold text-gray-900">{selectedTeacherName}</h2>
-              <AttendanceStats
-                firstLabel="Attendance days"
-                firstValue={teacherGrouped.length}
-                secondLabel="Total sessions"
-                secondValue={teacherSessions.length}
-              />
-              <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white">
-                {teacherGrouped.length === 0 ? (
-                  <p className="px-4 py-10 text-center text-sm text-gray-500">No attendance records found</p>
-                ) : teacherGrouped.map(({ date, sessions }) => (
-                  <div key={date}>
-                    <p className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-400">{fmtDate(date)}</p>
-                    {sessions.map((session) => (
-                      <div key={session.id} className="flex items-center justify-between gap-3 border-t border-gray-100 px-4 py-4">
-                        <p className="text-sm text-gray-600">
-                          {fmtTime(session.checkInTime)} – {session.checkOutTime ? fmtTime(session.checkOutTime) : "Ongoing"}
-                        </p>
-                        <SessionStatus session={session} />
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
+            <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white">
+              {filteredTeachers.map((teacher) => {
+                const sessions = sessionsByTeacher[teacher.id] ?? [];
+                const days = new Set(sessions.map((session) => dateKey(session.date))).size;
+                return (
+                  <button key={teacher.id} type="button" onClick={() => setSelectedTeacherId(teacher.id)} className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left transition-colors hover:bg-gray-50">
+                    <span className="min-w-0 truncate text-sm font-semibold text-gray-900">{teacher.name}</span>
+                    <span className="shrink-0 text-right text-xs font-medium tabular-nums text-gray-500">{days} / {totalTrackedDays} days</span>
+                  </button>
+                );
+              })}
             </div>
           )}
+
+          <ResponsivePopover open={!!selectedTeacherId} onOpenChange={(open) => { if (!open) setSelectedTeacherId(""); }} title={selectedTeacherName} fullHeight contentClassName="space-y-4 p-4">
+            <AttendanceStats firstLabel="Attendance days" firstValue={selectedTeacherGrouped.length} secondLabel="Total sessions" secondValue={selectedTeacherSessions.length} />
+            <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white">
+              {selectedTeacherGrouped.length === 0 ? (
+                <p className="px-4 py-10 text-center text-sm text-gray-500">No attendance records found</p>
+              ) : selectedTeacherGrouped.map(({ date, sessions }) => (
+                <div key={date}>
+                  <p className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-400">{fmtDate(date)}</p>
+                  {sessions.map((session) => (
+                    <div key={session.id} className="flex items-center justify-between gap-3 border-t border-gray-100 px-4 py-4">
+                      <div className="text-sm text-gray-600">
+                        <p>Check-in: {fmtTime(session.checkInTime)}</p>
+                        <p className="mt-1">Check-out: {session.checkOutTime ? fmtTime(session.checkOutTime) : "Ongoing"}</p>
+                      </div>
+                      <SessionStatus session={session} />
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </ResponsivePopover>
         </TabsContent>
       </Tabs>
     </DashboardLayout>

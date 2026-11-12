@@ -6,6 +6,11 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader, SectionHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
+import {
+ Pagination, PaginationContent, PaginationEllipsis, PaginationItem,
+ PaginationLink, PaginationNext, PaginationPrevious,
+} from "@/components/ui/pagination";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
@@ -30,13 +35,26 @@ import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
- Users, Plus, Search, Loader2, Eye, EyeOff,
+ Users, Plus, Search, ArrowUpDown, Loader2, Eye, EyeOff,
  GraduationCap, CheckCircle2, ChevronDown, ChevronRight, Trash2, Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 
 const DEFAULT_PAGE_SIZE = 20;
-const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+
+function paginationItems(current: number, total: number): Array<number | "ellipsis"> {
+ const pages = [...new Set([1, total, current - 1, current, current + 1])]
+  .filter((value) => value >= 1 && value <= total)
+  .sort((a, b) => a - b);
+ const items: Array<number | "ellipsis"> = [];
+ pages.forEach((value, index) => {
+  const previous = pages[index - 1];
+  if (previous && value - previous === 2) items.push(previous + 1);
+  if (previous && value - previous > 2) items.push("ellipsis");
+  items.push(value);
+ });
+ return items;
+}
 
 export default function AdminTeachersPage() {
  const { user, accessToken, activeClientId } = useAuthStore();
@@ -49,7 +67,6 @@ export default function AdminTeachersPage() {
   const [teachers, setTeachers] = useState<TeacherRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -123,13 +140,13 @@ export default function AdminTeachersPage() {
  }, [cid, token]);
 
  useEffect(() => {
- load(search, page, pageSize, sortBy, sortDir);
- }, [page, pageSize, sortBy, sortDir, load]); // eslint-disable-line
+ load(search, page, DEFAULT_PAGE_SIZE, sortBy, sortDir);
+ }, [page, sortBy, sortDir, load]); // eslint-disable-line
 
  const handleSearch = (val: string) => {
  setSearch(val); setPage(1);
  if (searchTimer.current) clearTimeout(searchTimer.current);
- searchTimer.current = setTimeout(() => load(val, 1, pageSize, sortBy, sortDir), 400);
+ searchTimer.current = setTimeout(() => load(val, 1, DEFAULT_PAGE_SIZE, sortBy, sortDir), 400);
  };
 
  const handleSort = (key: string, dir: SortDir) => {
@@ -161,7 +178,7 @@ export default function AdminTeachersPage() {
       setShowDrawer(false);
       setSelectedTeacher(null);
       setPage(1);
-      load(search, 1, pageSize, sortBy, sortDir);
+      load(search, 1, DEFAULT_PAGE_SIZE, sortBy, sortDir);
     } catch (e) {
       setSaveError((e as Error).message);
       toast.error((e as Error).message || "Failed to delete teacher");
@@ -278,7 +295,7 @@ export default function AdminTeachersPage() {
   }
   setShowDrawer(false);
   setPage(1);
-  load(search, 1, pageSize, sortBy, sortDir);
+  load(search, 1, DEFAULT_PAGE_SIZE, sortBy, sortDir);
   } catch (e) {
   setSaveError((e as Error).message);
   toast.error((e as Error).message || "Failed to save teacher");
@@ -326,7 +343,7 @@ export default function AdminTeachersPage() {
   });
  };
 
- const totalPages = Math.ceil(total / pageSize);
+ const totalPages = Math.ceil(total / DEFAULT_PAGE_SIZE);
 
  // ── Import config (single bulk POST, upsert by username) ──────────────────
  const importConfig = useMemo<ImportConfig<BulkUpsertTeacherRow>>(
@@ -391,7 +408,6 @@ export default function AdminTeachersPage() {
  return next;
  });
 
- const pageCount = Math.max(1, totalPages);
  const stats = [
   { label: "Total teachers", value: total, icon: Users },
   { label: "On this page", value: teachers.length, icon: Users },
@@ -403,10 +419,10 @@ export default function AdminTeachersPage() {
   <DashboardLayout>
    <PageHeader title={t("adminPages", "teachersTitle", lang)} />
 
-   <div className="space-y-5">
-    {error && <ApiErrorBanner message={error} onRetry={() => load(search, page, pageSize, sortBy, sortDir)} />}
+   <div className="space-y-5 pb-20">
+    {error && <ApiErrorBanner message={error} onRetry={() => load(search, page, DEFAULT_PAGE_SIZE, sortBy, sortDir)} />}
 
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+    <div className="flex items-center gap-2">
      <div className="relative min-w-0 flex-1">
       <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
       <Input size="lg"
@@ -418,32 +434,6 @@ export default function AdminTeachersPage() {
        className="bg-white pl-10 shadow-none"
       />
      </div>
-     <div className="flex flex-wrap gap-2">
-      <Button type="button" variant="outline" onClick={() => setShowImport(true)} className="shadow-none">
-       <Upload className="size-4" /> {t("adminPages", "importBtn", lang)}
-      </Button>
-      <Button type="button" onClick={openAdd} className="shadow-none">
-       <Plus className="size-4" /> {t("adminPages", "addTeacher", lang)}
-      </Button>
-     </div>
-    </div>
-
-    {!loading && (
-     <div className="grid grid-cols-2 overflow-hidden rounded-2xl bg-gradient-to-br from-primary-50/60 via-white to-sky-50/60">
-      {stats.map(({ label, value, icon: Icon }, index) => (
-       <div key={label} className={"min-w-0 p-2.5 sm:p-3 " + (index % 2 === 0 ? "border-r border-gray-100 " : "") + (index < 2 ? "border-b border-gray-100" : "")}>
-        <div className="flex items-center gap-1.5 text-sm font-medium leading-4 text-gray-700">
-         <Icon aria-hidden="true" className="size-3.5 shrink-0" />
-         <span>{label}</span>
-        </div>
-        <span className="mt-1.5 block text-[22px] font-medium leading-none tabular-nums text-gray-950">{value}</span>
-       </div>
-      ))}
-     </div>
-    )}
-
-    <div className="flex flex-wrap items-center justify-between gap-2">
-     <h2 id="teachers-list-title" className="px-1 text-sm font-semibold text-gray-700">All teachers</h2>
      <DrawerSelector
       title="Sort teachers"
       options={[
@@ -464,9 +454,26 @@ export default function AdminTeachersPage() {
         handleSort(key, direction as SortDir);
        }
       }}
-      className="w-40 shadow-none"
+      triggerIcon={<ArrowUpDown className="size-4" />}
+      className="size-11 shadow-none"
      />
     </div>
+
+    {!loading && (
+     <div className="grid grid-cols-2 overflow-hidden rounded-2xl bg-gradient-to-br from-primary-50/60 via-white to-sky-50/60">
+      {stats.map(({ label, value, icon: Icon }, index) => (
+       <div key={label} className={"min-w-0 p-2.5 sm:p-3 " + (index % 2 === 0 ? "border-r border-gray-100 " : "") + (index < 2 ? "border-b border-gray-100" : "")}>
+        <div className="flex items-center gap-1.5 text-sm font-medium leading-4 text-gray-700">
+         <Icon aria-hidden="true" className="size-3.5 shrink-0" />
+         <span>{label}</span>
+        </div>
+        <span className="mt-1.5 block text-[22px] font-medium leading-none tabular-nums text-gray-950">{value}</span>
+       </div>
+      ))}
+     </div>
+    )}
+
+    <h2 id="teachers-list-title" className="px-1 text-sm font-semibold text-gray-700">All teachers</h2>
 
     <section aria-labelledby="teachers-list-title">
      <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white">
@@ -501,23 +508,62 @@ export default function AdminTeachersPage() {
      </div>
     </section>
 
-    {!loading && (
-     <div className="flex flex-wrap items-center justify-between gap-3 px-1">
-      <span className="text-xs text-gray-500">Page {page} of {pageCount} · {total} teachers</span>
-      <div className="flex items-center gap-2">
-       <DrawerSelector
-        title="Teachers per page"
-        options={PAGE_SIZE_OPTIONS.map((size) => ({ value: String(size), label: String(size) + " per page" }))}
-        value={String(pageSize)}
-        onChange={(value) => { setPageSize(Number(value)); setPage(1); }}
-        className="w-32 shadow-none"
-       />
-       <Button type="button" variant="outline" size="xs" disabled={page <= 1} onClick={() => setPage((current) => current - 1)} className="shadow-none">Previous</Button>
-       <Button type="button" variant="outline" size="xs" disabled={page >= totalPages} onClick={() => setPage((current) => current + 1)} className="shadow-none">Next</Button>
-      </div>
-     </div>
+    {!loading && totalPages > 1 && (
+     <Pagination aria-label="Teacher pages">
+      <PaginationContent className="gap-1">
+       <PaginationItem>
+        <PaginationPrevious
+         href="#"
+         aria-label="Previous teacher page"
+         aria-disabled={page <= 1}
+         tabIndex={page <= 1 ? -1 : undefined}
+         className={cn("rounded-lg", page <= 1 && "pointer-events-none opacity-40")}
+         onClick={(event) => { event.preventDefault(); if (page > 1) setPage(page - 1); }}
+        />
+       </PaginationItem>
+       {paginationItems(page, totalPages).map((item, index) => (
+        <PaginationItem key={item === "ellipsis" ? `ellipsis-${index}` : item}>
+         {item === "ellipsis" ? <PaginationEllipsis /> : (
+          <PaginationLink
+           href="#"
+           isActive={item === page}
+           aria-label={`Go to teacher page ${item}`}
+           className="rounded-lg"
+           onClick={(event) => { event.preventDefault(); setPage(item); }}
+          >
+           {item}
+          </PaginationLink>
+         )}
+        </PaginationItem>
+       ))}
+       <PaginationItem>
+        <PaginationNext
+         href="#"
+         aria-label="Next teacher page"
+         aria-disabled={page >= totalPages}
+         tabIndex={page >= totalPages ? -1 : undefined}
+         className={cn("rounded-lg", page >= totalPages && "pointer-events-none opacity-40")}
+         onClick={(event) => { event.preventDefault(); if (page < totalPages) setPage(page + 1); }}
+        />
+       </PaginationItem>
+      </PaginationContent>
+     </Pagination>
     )}
    </div>
+
+  <div className="p-0!">
+     <ButtonGroup aria-label="Teacher actions" className="fixed bottom-[92px] left-1/2 z-40 max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-xl bg-white p-1 shadow-lg lg:bottom-6">
+    <Button type="button" size="lg" variant="outline" className="border-gray-200 bg-white shadow-none" onClick={() => setShowImport(true)}>
+     <Upload aria-hidden="true" />
+     {t("adminPages", "importBtn", lang)}
+    </Button>
+    <Button type="button" size="lg" className="shadow-none" onClick={openAdd}>
+     <Plus aria-hidden="true" />
+     {t("adminPages", "addTeacher", lang)}
+    </Button>
+   </ButtonGroup>
+  </div>
+
 
    <ResponsivePopover
     open={selectedTeacher !== null}
@@ -554,19 +600,21 @@ export default function AdminTeachersPage() {
     className="shadow-none"
     contentClassName="p-0"
     footer={
-     <div className="flex flex-col gap-2 border-t border-gray-100 bg-white px-5 py-4">
-      {editTarget && (
-       <Button type="button" variant="destructive" onClick={() => { setShowDrawer(false); setShowDeleteConfirm(true); }} className="w-full shadow-none">Delete Teacher</Button>
-      )}
-      <Button
-       type="button"
-       onClick={handleSave}
-       disabled={saving || !fName.trim() || !fUsername.trim() || (!editTarget && !fPassword) || (editTarget !== null && loadingAssign)}
-       className="w-full shadow-none"
-      >
-       {saving && <Loader2 className="size-4 animate-spin" />}
-       {saving ? "Saving…" : editTarget ? "Save Changes" : "Add Teacher"}
-      </Button>
+     <div className="border-t border-gray-100 bg-white px-5 py-4">
+      <ButtonGroup aria-label={editTarget ? "Edit teacher actions" : "Add teacher actions"} className="w-full [&>button]:flex-1">
+       {editTarget && (
+        <Button type="button" variant="destructive" onClick={() => { setShowDrawer(false); setShowDeleteConfirm(true); }} className="shadow-none">Delete Teacher</Button>
+       )}
+       <Button
+        type="button"
+        onClick={handleSave}
+        disabled={saving || !fName.trim() || !fUsername.trim() || (!editTarget && !fPassword) || (editTarget !== null && loadingAssign)}
+        className="shadow-none"
+       >
+        {saving && <Loader2 className="size-4 animate-spin" />}
+        {saving ? "Saving…" : editTarget ? "Save Changes" : "Add Teacher"}
+       </Button>
+      </ButtonGroup>
      </div>
     }
    >
@@ -1031,7 +1079,7 @@ export default function AdminTeachersPage() {
     onComplete={() => {
      toast.success("Import completed successfully");
      setPage(1);
-     load(search, 1, pageSize, sortBy, sortDir);
+     load(search, 1, DEFAULT_PAGE_SIZE, sortBy, sortDir);
     }}
     onClose={() => setShowImport(false)}
    />

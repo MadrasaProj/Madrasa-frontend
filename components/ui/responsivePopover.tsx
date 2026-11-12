@@ -60,7 +60,7 @@ function useIsDesktop() {
   return isDesktop;
 }
 
-/** A controlled popover on desktop and drawer on mobile. fullHeight renders a fixed full-screen view. */
+/** A controlled popover on desktop and drawer on mobile. fullHeight uses a right drawer on desktop and a full-screen view on mobile. */
 export function ResponsivePopover({
   open,
   onOpenChange,
@@ -114,7 +114,7 @@ export function ResponsivePopover({
   }, [open, isDesktopPopover, popoverAnchor]);
 
   React.useEffect(() => {
-    if (!fullHeight || !open) return;
+    if (!fullHeight || !open || isDesktop) return;
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -128,20 +128,13 @@ export function ResponsivePopover({
       document.body.style.overflow = originalOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [fullHeight, open, onBack, onOpenChange]);
+  }, [fullHeight, open, isDesktop, onBack, onOpenChange]);
 
   if (fullHeight) {
-    if (!open) return null;
+    if (!open && !isDesktop) return null;
 
     const fullHeightContent = (
-      <div
-        role="dialog"
-        aria-modal="true"
-        className={cn(
-          "fixed inset-0 z-50 flex h-dvh max-h-dvh w-screen flex-col bg-white text-gray-900 shadow-2xl md:left-auto md:right-0 md:w-full md:max-w-[400px]",
-          className,
-        )}
-      >
+      <>
         {(title || headerAction || renderClose || showBackButton) && (
           <header
             className={cn(
@@ -159,9 +152,15 @@ export function ResponsivePopover({
               >
                 <div className="flex  min-w-0 my-auto items-center justify-between gap-3">
                   {title && (
-                    <h2 className={cn(" wrap-break-words w-full    text-base font-extrabold tracking-tight",showBackButton?"text-center":"")}>
-                      {title}
-                    </h2>
+                    isDesktop ? (
+                      <DrawerTitle className={cn("wrap-break-words w-full text-base font-extrabold tracking-tight", showBackButton && "text-center")}>
+                        {title}
+                      </DrawerTitle>
+                    ) : (
+                      <h2 className={cn("wrap-break-words w-full text-base font-extrabold tracking-tight", showBackButton && "text-center")}>
+                        {title}
+                      </h2>
+                    )
                   )}
                   {headerAction && <div className="shrink-0">{headerAction}</div>}
                 </div>
@@ -201,12 +200,35 @@ export function ResponsivePopover({
           {children}
         </div>
         {footer && <div className="shrink-0">{footer}</div>}
+      </>
+    );
+
+    if (isDesktop) {
+      return (
+        <BaseDrawer open={open} onOpenChange={onOpenChange} swipeDirection="right" showSwipeHandle={false}>
+          <DrawerContent
+            className={cn("h-full max-h-dvh w-full max-w-[400px] bg-white text-gray-900 shadow-2xl", className)}
+            style={{ "--drawer-content-width": "400px" } as React.CSSProperties}
+          >
+            {fullHeightContent}
+          </DrawerContent>
+        </BaseDrawer>
+      );
+    }
+
+    const mobileFullHeightContent = (
+      <div
+        role="dialog"
+        aria-modal="true"
+        className={cn("fixed inset-0 z-50 flex h-dvh max-h-dvh w-screen flex-col bg-white text-gray-900 shadow-2xl", className)}
+      >
+        {fullHeightContent}
       </div>
     );
 
     return typeof document !== "undefined"
-      ? createPortal(fullHeightContent, document.body)
-      : fullHeightContent;
+      ? createPortal(mobileFullHeightContent, document.body)
+      : mobileFullHeightContent;
   }
 
   if (isDesktopPopover) {

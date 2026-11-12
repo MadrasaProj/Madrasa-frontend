@@ -30,12 +30,18 @@ import {
   GraduationCap,
   Search,
   School,
+  ArrowUpDown,
+  FileText,
 } from "lucide-react";
 import { ExamStatusBadge, getExamStatusInfo, STATUS_LABELS } from "@/components/exam/ExamStatusBadge";
 import { TeacherMarkEntryView } from "@/components/exam/TeacherMarkEntryView";
+import { ClassResultTable } from "@/components/exam/ClassResultTable";
+import { loadLiveClassReport } from "@/lib/live-class-report";
+import type { ClassReport } from "@/lib/results-api";
 import { fmt } from "@/lib/exam-utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import {
   Pagination,
   PaginationContent,
@@ -64,6 +70,10 @@ function classTestPageItems(current: number, total: number): Array<number | "ell
 
   return items;
 }
+
+const PAGE_SIZE = 10;
+type ClassTestSortField = "startDate" | "name" | "examStatus";
+type ClassTestSortDirection = "asc" | "desc";
 
 async function getAllClassTests(clientId: string, token: string): Promise<ExamRecord[]> {
   const pageSize = 200;
@@ -140,6 +150,12 @@ export default function AdminClassTestsPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [meSaving, setMeSaving] = useState(false);
   const [meSaved, setMeSaved] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportData, setReportData] = useState<ClassReport | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [reportRequest, setReportRequest] = useState(0);
+  const [reportControlsContainer, setReportControlsContainer] = useState<HTMLDivElement | null>(null);
   const isMarkEntryView = searchParams.get("view") === "mark-entry";
   const markEntryExam = exams.find((exam) => exam.id === searchParams.get("examId"));
   const selectedExam = exams.find((exam) => exam.id === selectedExamId);
@@ -147,7 +163,8 @@ export default function AdminClassTestsPage() {
   const [searchText, setSearchText] = useState("");
   const [selectedClassId, setSelectedClassId] = useState("");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [sortBy, setSortBy] = useState<ClassTestSortField>("startDate");
+  const [sortDir, setSortDir] = useState<ClassTestSortDirection>("desc");
 
   const isPeriodBased = user?.attendanceMode === "PERIOD_BASED";
   const teacherId = user?.id ?? "";
@@ -164,27 +181,29 @@ export default function AdminClassTestsPage() {
   const sortedExams = useMemo(() => {
     const arr = [...searchFiltered];
     arr.sort((a, b) => {
-      const av = a.startDate;
-      const bv = b.startDate;
+      const av = a[sortBy];
+      const bv = b[sortBy];
       if (av == null && bv == null) return 0;
       if (av == null) return 1;
       if (bv == null) return -1;
-      if (av < bv) return 1;
-      if (av > bv) return -1;
-      return 0;
+      const comparison = String(av).localeCompare(String(bv), undefined, {
+        numeric: true,
+        sensitivity: "base",
+      });
+      return sortDir === "asc" ? comparison : -comparison;
     });
     return arr;
-  }, [searchFiltered]);
+  }, [searchFiltered, sortBy, sortDir]);
 
-  const totalPages = Math.max(1, Math.ceil(sortedExams.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(sortedExams.length / PAGE_SIZE));
   const pagedExams = useMemo(
-    () => sortedExams.slice((page - 1) * pageSize, page * pageSize),
-    [sortedExams, page, pageSize],
+    () => sortedExams.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [sortedExams, page],
   );
 
   useEffect(() => {
     setPage(1);
-  }, [searchText, selectedClassId, pageSize]);
+  }, [searchText, selectedClassId, sortBy, sortDir]);
 
   const openMarkEntry = (exam: ExamRecord) => {
     setSelectedExamId(null);
@@ -427,8 +446,8 @@ export default function AdminClassTestsPage() {
     setMeScores(scoreMap);
   };
 
-  const handleMeSave = async (submit = false) => {
-    if (!markEntryExam || !meSubjectId || markEntryExam.examStatus !== "MARK_ENTRY") return;
+  const handleMeSave = async (submit = false): Promise<boolean> => {
+    if (!markEntryExam || !meSubjectId || markEntryExam.examStatus !== "MARK_ENTRY") return false;
     const exam = markEntryExam;
     const currentSubject = meSubjects.find((s) => s.id === meSubjectId);
     const subjectMaxMarks = currentSubject?.classSubject?.maxMarks ?? exam?.maxMarks ?? 50;
@@ -442,7 +461,7 @@ export default function AdminClassTestsPage() {
       }));
     if (!items.length) {
       setMeError(t("teacherPages", "noScoresEntered", lang));
-      return;
+      return false;
     }
     setMeSaving(true);
     setMeError(null);
@@ -459,8 +478,10 @@ export default function AdminClassTestsPage() {
         setMeSaved(false);
         if (submit) closeMarkEntry();
       }, 1500);
+      return true;
     } catch (e) {
       setMeError((e as Error).message);
+      return false;
     } finally {
       setMeSaving(false);
     }
@@ -472,6 +493,41 @@ export default function AdminClassTestsPage() {
   );
   const isLocked = !markEntryExam || markEntryExam.examStatus !== "MARK_ENTRY" ||
     (!!markEntryExam.markEntryLastDate && new Date() > new Date(markEntryExam.markEntryLastDate));
+  const hasUnsavedScores = meStudents.some((student) => {
+    const saved = meResults.find((result) => result.student?.id === student.id);
+    return meScores[student.id] !== (saved ? String(saved.score) : "");
+  });
+
+  const openReport = async () => {
+    if (!markEntryExam || !meSubjectId || meSaving || hasInvalidMarks) return;
+    if (!isLocked && hasUnsavedScores && !(await handleMeSave(false))) return;
+    setReportOpen(true);
+  };
+
+  useEffect(() => {
+    if (!reportOpen || !markEntryExam || !cid || !token || !markEntryExam.classId) return;
+    let active = true;
+    setReportData(null);
+    setReportError(null);
+    setReportLoading(true);
+    void loadLiveClassReport({
+      clientId: cid,
+      token,
+      examId: markEntryExam.id,
+      examName: markEntryExam.name,
+      examType: "CLASS_TEST",
+      classId: markEntryExam.classId,
+      className: markEntryExam.class?.name ?? classes.find((cls) => cls.id === markEntryExam.classId)?.name ?? "Class",
+      subjectId: meSubjectId,
+    }).then(({ report }) => {
+      if (active) setReportData(report);
+    }).catch((cause) => {
+      if (active) setReportError(cause instanceof Error ? cause.message : "Could not load the class report.");
+    }).finally(() => {
+      if (active) setReportLoading(false);
+    });
+    return () => { active = false; };
+  }, [reportOpen, reportRequest, markEntryExam?.id, cid, token, meSubjectId]);
   const testSummary = [
     { label: "Tests", value: searchFiltered.length, icon: GraduationCap },
     { label: "Mark entry", value: searchFiltered.filter((exam) => exam.examStatus === "MARK_ENTRY").length, icon: ClipboardCheck },
@@ -481,24 +537,8 @@ export default function AdminClassTestsPage() {
 
   return (
     <DashboardLayout>
-      <div className="p-0! pb-8!">
+      <div className="p-0! pb-24! lg:pb-8!">
         <PageHeader title={t("nav", "classTests", lang)} />
-
-        <div className="flex flex-wrap items-center gap-2 px-3 pt-4">
-          <DrawerSelector
-            title="Filter by class"
-            options={[
-              { value: "", label: "All classes" },
-              ...[...classes].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" })).map((cls) => ({ value: cls.id, label: cls.name })),
-            ]}
-            value={selectedClassId}
-            onChange={setSelectedClassId}
-            className="w-44 shadow-none"
-          />
-          <Button type="button" onClick={openAdd} className="shadow-none">
-            <Plus className="size-4" /> {t("teacherPages", "newClassTestBtn", lang)}
-          </Button>
-        </div>
 
         {!loading && exams.length === 0 && !error ? (
           <IllustratedEmptyState
@@ -506,7 +546,7 @@ export default function AdminClassTestsPage() {
             title={t("teacherPages", "noClassTestsHeading", lang)}
             description={t("teacherPages", "noClassTestsDescription", lang)}
             action={
-              <Button type="button" size="lg" onClick={openAdd} className="rounded-full">
+              <Button type="button" size="lg" onClick={openAdd} className="hidden rounded-full sm:inline-flex">
                 <Plus className="h-5 w-5" />
                 {t("teacherPages", "createTestBtn", lang)}
               </Button>
@@ -515,9 +555,9 @@ export default function AdminClassTestsPage() {
         ) : (
           <>
 
-        <div className="px-3 pb-2 pt-6">
-          <div className="mx-auto flex w-full max-w-md items-center gap-2">
-            <div className="relative min-w-0 flex-1">
+        <div className="px-3 pb-3 pt-4">
+          <div className="flex w-full flex-wrap items-center gap-2">
+            <div className="relative min-w-48 flex-1">
               <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
                 type="search"
@@ -528,6 +568,38 @@ export default function AdminClassTestsPage() {
                 className="h-10 rounded-lg bg-white pl-9 text-sm"
               />
             </div>
+            <DrawerSelector
+              title="Sort class tests"
+              options={[
+                { value: "startDate:desc", label: "Newest first" },
+                { value: "startDate:asc", label: "Oldest first" },
+                { value: "name:asc", label: "Name A–Z" },
+                { value: "name:desc", label: "Name Z–A" },
+                { value: "examStatus:asc", label: "Status A–Z" },
+                { value: "examStatus:desc", label: "Status Z–A" },
+              ]}
+              value={`${sortBy}:${sortDir}`}
+              onChange={(value) => {
+                const [field, direction] = value.split(":");
+                setSortBy(field as ClassTestSortField);
+                setSortDir(direction as ClassTestSortDirection);
+              }}
+              triggerIcon={<ArrowUpDown className="size-4" />}
+              className="size-11 shadow-none"
+            />
+            <DrawerSelector
+              title="Filter by class"
+              options={[
+                { value: "", label: "All classes" },
+                ...[...classes].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" })).map((cls) => ({ value: cls.id, label: cls.name })),
+              ]}
+              value={selectedClassId}
+              onChange={setSelectedClassId}
+              className="w-44 shadow-none"
+            />
+            <Button type="button" onClick={openAdd} className="hidden shadow-none sm:inline-flex">
+              <Plus className="size-4" /> {t("teacherPages", "newClassTestBtn", lang)}
+            </Button>
           </div>
         </div>
 
@@ -589,81 +661,59 @@ export default function AdminClassTestsPage() {
               ))}
             </section>
 
-            {sortedExams.length > 0 && (
-              <div className="mx-3 mt-3 rounded-2xl border border-gray-100 px-3 py-3">
-                <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-gray-500">
-                  <span className="tabular-nums">
-                    {t("teacherPages", "pageOfTotal", lang)
-                      .replace("{start}", String((page - 1) * pageSize + 1))
-                      .replace("{end}", String(Math.min(page * pageSize, sortedExams.length)))
-                      .replace("{total}", String(sortedExams.length))}
-                  </span>
-                  <DrawerSelector
-                    title="Class tests per page"
-                    options={[10, 20, 50, 100].map((size) => ({ value: String(size), label: `${size} per page` }))}
-                    value={String(pageSize)}
-                    onChange={(value) => setPageSize(Number(value))}
-                    className="w-32 shadow-none"
-                  />
-                </div>
-                {totalPages > 1 && (
-                  <Pagination className="mt-2" aria-label="Class test pages">
-                    <PaginationContent className="gap-1">
-                      <PaginationItem>
-                        <PaginationPrevious
+            {totalPages > 1 && (
+              <Pagination className="mx-auto mt-3" aria-label="Class test pages">
+                <PaginationContent className="gap-1">
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      text={t("teacherPages", "prevBtn", lang)}
+                      aria-label="Go to previous class test page"
+                      aria-disabled={page === 1}
+                      tabIndex={page === 1 ? -1 : undefined}
+                      className={page === 1 ? "pointer-events-none rounded-lg opacity-40" : "rounded-lg"}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        if (page > 1) setPage(page - 1);
+                      }}
+                    />
+                  </PaginationItem>
+                  {classTestPageItems(page, totalPages).map((item, index) => (
+                    <PaginationItem key={item === "ellipsis" ? `ellipsis-${index}` : item}>
+                      {item === "ellipsis" ? (
+                        <PaginationEllipsis />
+                      ) : (
+                        <PaginationLink
                           href="#"
-                          text={t("teacherPages", "prevBtn", lang)}
-                          aria-label="Go to previous class test page"
-                          aria-disabled={page === 1}
-                          tabIndex={page === 1 ? -1 : undefined}
-                          className={page === 1 ? "pointer-events-none rounded-lg opacity-40" : "rounded-lg"}
+                          isActive={item === page}
+                          aria-label={`Go to class test page ${item}`}
+                          className={item === page ? "rounded-lg border-primary-200 bg-primary-50 text-primary-700" : "rounded-lg"}
                           onClick={(event) => {
                             event.preventDefault();
-                            if (page > 1) setPage(page - 1);
+                            setPage(item);
                           }}
-                        />
-                      </PaginationItem>
-                      {classTestPageItems(page, totalPages).map((item, index) => (
-                        <PaginationItem
-                          key={item === "ellipsis" ? `ellipsis-${index}` : item}
-                          className={item !== "ellipsis" && totalPages > 5 && item !== 1 && item !== page && item !== totalPages ? "hidden sm:block" : undefined}
                         >
-                          {item === "ellipsis" ? (
-                            <PaginationEllipsis />
-                          ) : (
-                            <PaginationLink
-                              href="#"
-                              isActive={item === page}
-                              aria-label={`Go to class test page ${item}`}
-                              className={item === page ? "rounded-lg border-primary-200 bg-primary-50 text-primary-700" : "rounded-lg"}
-                              onClick={(event) => {
-                                event.preventDefault();
-                                setPage(item);
-                              }}
-                            >
-                              {item}
-                            </PaginationLink>
-                          )}
-                        </PaginationItem>
-                      ))}
-                      <PaginationItem>
-                        <PaginationNext
-                          href="#"
-                          text={t("teacherPages", "nextBtn", lang)}
-                          aria-label="Go to next class test page"
-                          aria-disabled={page === totalPages}
-                          tabIndex={page === totalPages ? -1 : undefined}
-                          className={page === totalPages ? "pointer-events-none rounded-lg opacity-40" : "rounded-lg"}
-                          onClick={(event) => {
-                            event.preventDefault();
-                            if (page < totalPages) setPage(page + 1);
-                          }}
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
-                )}
-              </div>
+                          {item}
+                        </PaginationLink>
+                      )}
+                    </PaginationItem>
+                  ))}
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      text={t("teacherPages", "nextBtn", lang)}
+                      aria-label="Go to next class test page"
+                      aria-disabled={page === totalPages}
+                      tabIndex={page === totalPages ? -1 : undefined}
+                      className={page === totalPages ? "pointer-events-none rounded-lg opacity-40" : "rounded-lg"}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        if (page < totalPages) setPage(page + 1);
+                      }}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
             )}
           </>
         )}
@@ -711,7 +761,7 @@ export default function AdminClassTestsPage() {
                   </div>
                 ))}
               </dl>
-              <div className="flex flex-wrap gap-2">
+              <ButtonGroup aria-label="Class test actions" className="max-w-full overflow-x-auto">
                 {canEditExam(selectedExam) && (
                   <Button variant="outline" onClick={() => { setSelectedExamId(null); openEdit(selectedExam); }}>
                     {t("teacherPages", "editClassTestTitle", lang)}
@@ -728,7 +778,7 @@ export default function AdminClassTestsPage() {
                 {selectedExam.examStatus === "PUBLISHED" && (
                   <Button onClick={() => openMarkEntry(selectedExam)}>{t("teacherPages", "viewResultsDetail", lang)}</Button>
                 )}
-              </div>
+              </ButtonGroup>
             </div>
           )}
         </ResponsivePopover>
@@ -743,14 +793,17 @@ export default function AdminClassTestsPage() {
           contentClassName="min-w-0"
           footer={isMarkEntryView && (
             <div className="border-t border-gray-200 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
-              <div className="flex w-full flex-wrap justify-end gap-2">
-                <Button type="button" variant="outline" size="lg" className="rounded-xl" disabled={isLocked || !meSubjectId} onClick={() => setImportOpen(true)}>Import</Button>
-                <Button type="button" variant="outline" size="lg" className="rounded-xl" disabled={meSaving || meStudents.length === 0} onClick={resetScores}>Reset</Button>
-                <Button type="button" variant="outline" size="lg" className="rounded-xl" disabled={meSaving || isLocked || hasInvalidMarks || meStudents.length === 0} onClick={() => handleMeSave(false)}>Save as Draft</Button>
-                <Button type="button" size="lg" className="rounded-xl" disabled={meSaving || isLocked || hasInvalidMarks || meStudents.length === 0} onClick={() => handleMeSave(true)}>
+              <ButtonGroup aria-label="Mark entry actions" className="ml-auto max-w-full overflow-x-auto">
+                <Button type="button" variant="outline" size="lg" className="shrink-0 shadow-none" disabled={!meSubjectId || meLoading || meSaving || hasInvalidMarks} onClick={() => { void openReport(); }}>
+                  <FileText aria-hidden="true" className="size-4" /> {t("teacherPages", "report", lang)}
+                </Button>
+                <Button type="button" variant="outline" size="lg" className="shrink-0 shadow-none" disabled={isLocked || !meSubjectId} onClick={() => setImportOpen(true)}>Import</Button>
+                <Button type="button" variant="outline" size="lg" className="shrink-0 shadow-none" disabled={meSaving || meStudents.length === 0} onClick={resetScores}>Reset</Button>
+                <Button type="button" variant="outline" size="lg" className="shrink-0 shadow-none" disabled={meSaving || isLocked || hasInvalidMarks || meStudents.length === 0} onClick={() => handleMeSave(false)}>Save as Draft</Button>
+                <Button type="button" size="lg" className="shrink-0 shadow-none" disabled={meSaving || isLocked || hasInvalidMarks || meStudents.length === 0} onClick={() => handleMeSave(true)}>
                   {meSaving ? "Saving…" : meSaved ? "Saved" : "Save"}
                 </Button>
-              </div>
+              </ButtonGroup>
             </div>
           )}
         >
@@ -789,25 +842,67 @@ export default function AdminClassTestsPage() {
             />
           )}
         </ResponsivePopover>
+
+        <ResponsivePopover
+          open={reportOpen}
+          onOpenChange={setReportOpen}
+          fullHeight
+          onBack={() => setReportOpen(false)}
+          title={`${markEntryExam?.name ?? "Class test"} · ${t("teacherPages", "report", lang)}`}
+          footer={reportData && !reportLoading ? (
+            <div ref={setReportControlsContainer} className="flex justify-end border-t border-gray-100 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6" />
+          ) : undefined}
+          className="z-[60] md:max-w-none"
+        >
+          <div className="mx-auto w-full max-w-[1400px] px-4 py-5 sm:px-6">
+            {reportLoading ? (
+              <div role="status" className="flex items-center justify-center gap-2 py-16 text-sm text-gray-500">
+                <Loader2 aria-hidden="true" className="size-5 animate-spin" />
+                {t("common", "loading", lang)}
+              </div>
+            ) : reportError ? (
+              <div role="alert" className="rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-red-700">
+                <p>{reportError}</p>
+                <Button type="button" variant="outline" className="mt-3" onClick={() => setReportRequest((value) => value + 1)}>Retry</Button>
+              </div>
+            ) : reportData ? (
+              <ClassResultTable report={reportData} madrasaName={reportData.clientName ?? ""} teacherView teacherControlsContainer={reportControlsContainer} />
+            ) : null}
+          </div>
+        </ResponsivePopover>
       </div>
+
+      {!loading && !error && (
+        <Button
+          type="button"
+          size="lg"
+          onClick={openAdd}
+          className="fixed bottom-[92px] left-1/2 z-40 -translate-x-1/2 rounded-full px-5 shadow-lg sm:hidden"
+        >
+          <Plus className="size-5" /> {t("teacherPages", "newClassTestBtn", lang)}
+        </Button>
+      )}
 
       {/* Add/Edit Class Test */}
       <ResponsivePopover
         open={showDrawer}
         onOpenChange={(open) => { if (!saving) { setShowDrawer(open); if (!open) setActiveDateField(null); } }}
         side="bottom"
+        desktopView="right-drawer"
         title={editTarget ? t("teacherPages", "editClassTestTitle", lang) : t("teacherPages", "newClassTestTitle", lang)}
         className="mx-auto w-full max-w-xl rounded-t-2xl shadow-none"
         showCloseButton={!saving}
         footer={
-          <div className="flex w-full justify-end gap-2 border-t border-gray-100 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-            <Button type="button" variant="outline" size="lg" className="rounded-xl" disabled={saving} onClick={() => setShowDrawer(false)}>
-              {t("common", "cancel", lang)}
-            </Button>
-            <Button type="submit" form="class-test-form" size="lg" className="rounded-xl" disabled={saving}>
-              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-              {editTarget ? t("teacherPages", "saveChangesBtn", lang) : t("teacherPages", "createTestBtn", lang)}
-            </Button>
+          <div className="flex w-full justify-end border-t border-gray-100 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <ButtonGroup aria-label="Class test form actions">
+              <Button type="button" variant="outline" size="lg" className="shadow-none" disabled={saving} onClick={() => setShowDrawer(false)}>
+                {t("common", "cancel", lang)}
+              </Button>
+              <Button type="submit" form="class-test-form" size="lg" className="shadow-none" disabled={saving}>
+                {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+                {editTarget ? t("teacherPages", "saveChangesBtn", lang) : t("teacherPages", "createTestBtn", lang)}
+              </Button>
+            </ButtonGroup>
           </div>
         }
       >
@@ -938,14 +1033,16 @@ export default function AdminClassTestsPage() {
         className="shadow-none"
         contentClassName="px-5 py-4"
         footer={
-          <div className="flex gap-3 border-t border-gray-100 bg-white px-5 py-4">
-            <Button type="button" variant="outline" disabled={deleting !== null} onClick={() => setShowDeleteConfirm(false)} className="flex-1 shadow-none">
-              {t("common", "cancel", lang)}
-            </Button>
-            <Button type="button" variant="destructive" disabled={deleting !== null} onClick={handleDelete} className="flex-1 shadow-none">
-              {deleting !== null && <Loader2 className="size-4 animate-spin" />}
-              {t("common", "delete", lang)}
-            </Button>
+          <div className="border-t border-gray-100 bg-white px-5 py-4">
+            <ButtonGroup aria-label="Delete class test actions" className="w-full">
+              <Button type="button" variant="outline" disabled={deleting !== null} onClick={() => setShowDeleteConfirm(false)} className="flex-1 shadow-none">
+                {t("common", "cancel", lang)}
+              </Button>
+              <Button type="button" variant="destructive" disabled={deleting !== null} onClick={handleDelete} className="flex-1 shadow-none">
+                {deleting !== null && <Loader2 className="size-4 animate-spin" />}
+                {t("common", "delete", lang)}
+              </Button>
+            </ButtonGroup>
           </div>
         }
       >

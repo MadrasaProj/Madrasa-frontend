@@ -11,12 +11,11 @@ import {
   createClass, updateClass, deleteClass,
   type ClassRecord, type CreateClassPayload, type UpdateClassPayload,
 } from "@/lib/classes-api";
-import { useClasses, useGradeLevels, useTeachers } from "@/lib/queries";
+import { useClasses, useGradeLevels, useTeachers, useStudentsList } from "@/lib/queries";
 import { useAuthStore } from "@/store/auth";
-import { useNavigate } from "react-router-dom";
-import { useTenantPath } from "@/hooks/useTenantPath";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
+import { getSubjects } from "@/lib/subjects-api";
 import {
   School, Plus, Loader2, BookOpen, Users, Trash2, Search, ChevronRight, GraduationCap,
 } from "lucide-react";
@@ -45,11 +44,9 @@ function classToForm(c: ClassRecord): FormState {
 }
 
 export default function AdminClassesPage() {
-  const tenantPath = useTenantPath();
   const { user, accessToken, activeClientId } = useAuthStore();
   const cid   = activeClientId ?? "";
   const token = accessToken ?? "";
-  const navigate = useNavigate();
 
   const isAdmin = user?.actorType === "CLIENT_ADMIN" || user?.actorType === "SUPER_ADMIN";
 
@@ -57,6 +54,7 @@ export default function AdminClassesPage() {
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedClass, setSelectedClass] = useState<ClassRecord | null>(null);
+  const [studentPage, setStudentPage] = useState(1);
   const [showDrawer, setShowDrawer] = useState(false);
   const [editTarget, setEditTarget] = useState<ClassRecord | null>(null);
   const [form, setForm]             = useState<FormState>(EMPTY_FORM);
@@ -85,6 +83,18 @@ export default function AdminClassesPage() {
 
   // Load teachers using cached query hook
   const { data: teachersData } = useTeachers({ clientId: cid, token });
+
+  const selectedClassId = selectedClass?.id ?? "";
+  const { data: subjectsData, isPending: loadingSubjects, error: subjectsError, refetch: refetchSubjects } = useQuery({
+    queryKey: ["subjects", "class", cid, selectedClassId],
+    queryFn: ({ signal }) => getSubjects(cid, token, { classId: selectedClassId, signal }),
+    enabled: !!cid && !!token && !!selectedClassId,
+  });
+  const { data: studentsData, isPending: loadingStudents, error: studentsError, refetch: refetchStudents } = useStudentsList(
+    { clientId: cid, token },
+    { classId: selectedClassId, page: studentPage, limit: 20 },
+    { enabled: !!cid && !!token && !!selectedClassId },
+  );
 
   const classes = classesData ?? [];
   const gradeLevels = gradeLevelsData ?? [];
@@ -179,23 +189,20 @@ export default function AdminClassesPage() {
     <DashboardLayout>
       <PageHeader title="Classes" />
 
-      <div className="space-y-5">
+      <div className="space-y-5 pb-24 lg:pb-20">
         {error && <ApiErrorBanner message={error} onRetry={() => qc.invalidateQueries({ queryKey: queryKeys.classes.all })} />}
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative min-w-0 flex-1">
-            <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
-            <Input
-              type="search"
-              aria-label="Search classes"
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
-              placeholder="Search classes…"
-              size="lg"
-              className="bg-white pl-10 shadow-none"
-            />
-          </div>
-          {isAdmin && <Button type="button" onClick={openAdd} className="shadow-none"><Plus className="size-4" /> Add Class</Button>}
+        <div className="relative">
+          <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+          <Input
+            type="search"
+            aria-label="Search classes"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            placeholder="Search classes…"
+            size="lg"
+            className="bg-white pl-10 shadow-none"
+          />
         </div>
 
         {!loadingClasses && (
@@ -227,7 +234,7 @@ export default function AdminClassesPage() {
                 key={classRecord.id}
                 type="button"
                 aria-haspopup="dialog"
-                onClick={() => setSelectedClass(classRecord)}
+                onClick={() => { setStudentPage(1); setSelectedClass(classRecord); }}
                 className="flex w-full items-center gap-3 px-4 py-4 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500"
               >
                 <span className="min-w-0 flex-1">
@@ -245,26 +252,83 @@ export default function AdminClassesPage() {
         </section>
       </div>
 
+      {isAdmin && (
+        <Button type="button" size="lg" onClick={openAdd} className="fixed bottom-[92px] left-1/2 z-40 -translate-x-1/2 rounded-xl shadow-lg lg:bottom-6">
+          <Plus aria-hidden="true" className="size-4" /> Add Class
+        </Button>
+      )}
+
       <ResponsivePopover
         open={selectedClass !== null}
         onOpenChange={(open) => { if (!open) setSelectedClass(null); }}
         title={selectedClass?.name}
+        fullHeight
         side="bottom"
         desktopView="right-drawer"
-        className="shadow-none"
+        className="shadow-none md:w-[400px] md:max-w-[400px]"
         contentClassName="px-5 py-4"
       >
         {selectedClass && (
           <div className="space-y-5">
-            <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100 bg-white text-sm">
-              <div className="flex justify-between gap-4 px-4 py-3"><span className="text-gray-500">Class teacher</span><span className="text-right font-medium text-gray-900">{selectedClass.classTeacher?.name ?? "Unassigned"}</span></div>
-              <div className="flex justify-between gap-4 px-4 py-3"><span className="text-gray-500">Students</span><span className="font-medium tabular-nums text-gray-900">{selectedClass.studentCount ?? 0}</span></div>
-              <div className="flex justify-between gap-4 px-4 py-3"><span className="text-gray-500">Subjects</span><span className="font-medium tabular-nums text-gray-900">{selectedClass.subjectCount ?? 0}</span></div>
-              <div className="flex justify-between gap-4 px-4 py-3"><span className="text-gray-500">Status</span><span className="font-medium text-gray-900">{selectedClass.status === "INACTIVE" ? "Inactive" : "Active"}</span></div>
+            <div className="rounded-2xl border border-gray-100 bg-white px-4 py-3">
+              <p className="text-xs font-medium text-gray-500">Class teacher</p>
+              <p className="mt-1 text-base font-semibold text-gray-950">{selectedClass.classTeacher?.name ?? "Unassigned"}</p>
             </div>
-            <Button type="button" variant="outline" className="w-full justify-between shadow-none" onClick={() => navigate(tenantPath(`/admin/subjects?classId=${selectedClass.id}`))}>
-              <span className="flex items-center gap-2"><BookOpen className="size-4" /> View subjects</span><ChevronRight className="size-4" />
-            </Button>
+            <div className="grid grid-cols-3 overflow-hidden rounded-2xl border border-gray-100 bg-gradient-to-br from-primary-50/60 via-white to-sky-50/60">
+              <div className="min-w-0 border-r border-gray-100 px-2 py-3 text-center">
+                <p className="truncate text-[10px] font-medium text-gray-600 sm:text-xs">Status</p>
+                <p className="mt-1.5 truncate text-sm font-semibold text-gray-950" title={selectedClass.status === "INACTIVE" ? "Inactive" : "Active"}>{selectedClass.status === "INACTIVE" ? "Inactive" : "Active"}</p>
+              </div>
+              <div className="min-w-0 border-r border-gray-100 px-2 py-3 text-center">
+                <p className="truncate text-[10px] font-medium text-gray-600 sm:text-xs">Subjects</p>
+                <p className="mt-1.5 text-sm font-semibold tabular-nums text-gray-950">{selectedClass.subjectCount ?? 0}</p>
+              </div>
+              <div className="min-w-0 px-2 py-3 text-center">
+                <p className="truncate text-[10px] font-medium text-gray-600 sm:text-xs">Students</p>
+                <p className="mt-1.5 text-sm font-semibold tabular-nums text-gray-950">{selectedClass.studentCount ?? 0}</p>
+              </div>
+            </div>
+            <section aria-labelledby="class-subjects-title" className="space-y-2">
+              <h2 id="class-subjects-title" className="flex items-center gap-2 text-sm font-semibold text-gray-800"><BookOpen aria-hidden="true" className="size-4" /> Subjects ({selectedClass.subjectCount ?? 0})</h2>
+              {loadingSubjects ? <div className="space-y-2"><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div>
+                : subjectsError ? <ApiErrorBanner message={subjectsError.message} onRetry={() => void refetchSubjects()} />
+                : subjectsData?.data.length ? (
+                  <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100 bg-white">
+                    {subjectsData.data.map((subject) => (
+                      <div key={subject.id} className="px-4 py-3">
+                        <p className="font-medium text-gray-950">{subject.name}</p>
+                        <p className="mt-1 text-xs text-gray-500">{subject.teacher?.name ?? "No subject teacher"}{subject.status === "INACTIVE" ? " · Inactive" : ""}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : <p className="rounded-2xl border border-gray-100 px-4 py-6 text-center text-sm text-gray-500">No subjects in this class</p>}
+            </section>
+            <section aria-labelledby="class-students-title" className="space-y-2">
+              <h2 id="class-students-title" className="flex items-center gap-2 text-sm font-semibold text-gray-800"><Users aria-hidden="true" className="size-4" /> Students ({selectedClass.studentCount ?? 0})</h2>
+              {loadingStudents ? <div className="space-y-2"><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div>
+                : studentsError ? <ApiErrorBanner message={studentsError.message} onRetry={() => void refetchStudents()} />
+                : studentsData?.data.length ? (
+                  <div className="space-y-4">
+                    <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100 bg-white">
+                      {studentsData.data.map((student) => (
+                        <div key={student.id} className="px-4 py-3">
+                          <p className="font-medium text-gray-950">{student.name}</p>
+                          <p className="mt-1 text-xs text-gray-500">Admission no. {student.adno}{student.status !== "ACTIVE" ? ` · ${student.status.toLowerCase().replace(/_/g, " ")}` : ""}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {studentsData.total > 20 && (
+                      <div className="flex items-center justify-between gap-3 text-sm text-gray-600">
+                        <span>Page {studentPage} of {Math.ceil(studentsData.total / 20)}</span>
+                        <div className="flex gap-2">
+                          <Button type="button" variant="outline" size="sm" disabled={studentPage === 1} onClick={() => setStudentPage((page) => page - 1)}>Previous</Button>
+                          <Button type="button" variant="outline" size="sm" disabled={studentPage * 20 >= studentsData.total} onClick={() => setStudentPage((page) => page + 1)}>Next</Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : <p className="rounded-2xl border border-gray-100 px-4 py-6 text-center text-sm text-gray-500">No students in this class</p>}
+            </section>
             {isAdmin && (
               <div className="flex gap-2">
                 <Button type="button" variant="outline" className="flex-1 shadow-none" onClick={() => openEdit(selectedClass)}>Edit class</Button>

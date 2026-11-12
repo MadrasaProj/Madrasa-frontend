@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import { BookOpen, ChevronRight, GraduationCap, Loader2, Plus, Search, Users } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { ClassPicker } from "@/components/ui/ClassPicker";
 import { DrawerSelector } from "@/components/DrawerSelector";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Button } from "@/components/ui/button";
@@ -192,9 +193,21 @@ export default function AdminSubjectsPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Subjects" />
+      <PageHeader
+        title="Subjects"
+        switcher={
+          <ClassPicker
+            title="Filter by class"
+            options={[{ value: "", label: "All classes" }, ...classes.map((item) => ({ value: item.id, label: item.name }))]}
+            value={filterClassId}
+            onChange={setFilterClassId}
+            placeholder="All classes"
+            className="w-36 max-w-full sm:w-44"
+          />
+        }
+      />
 
-      <div className="space-y-5">
+      <div className="space-y-5 pb-24 lg:pb-20">
         {error && <ApiErrorBanner message={error} onRetry={() => void load(filterClassId, searchQuery)} />}
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -210,32 +223,22 @@ export default function AdminSubjectsPage() {
               className="bg-white pl-10 shadow-none"
             />
           </div>
-          <DrawerSelector
-            title="Filter by class"
-            options={[{ value: "", label: "All classes" }, ...classes.map((item) => ({ value: item.id, label: item.name }))]}
-            value={filterClassId}
-            onChange={setFilterClassId}
-            className="w-full shadow-none sm:w-44"
-          />
         </div>
 
-        {isAdmin && (
+        {isAdmin && isPeriodBased && (
           <div className="flex flex-wrap gap-2">
-            <Button type="button" onClick={openAdd} className="shadow-none"><Plus className="size-4" /> Add Subject</Button>
-            {isPeriodBased && (
-              <Button
-                type="button"
-                variant="outline"
-                className="shadow-none"
-                onClick={() => {
-                  setBulkError("");
-                  setBulkClassId(filterClassId);
-                  setShowBulkModal(true);
-                }}
-              >
-                <Users className="size-4" /> Sync Teacher
-              </Button>
-            )}
+            <Button
+              type="button"
+              variant="outline"
+              className="shadow-none"
+              onClick={() => {
+                setBulkError("");
+                setBulkClassId(filterClassId);
+                setShowBulkModal(true);
+              }}
+            >
+              <Users className="size-4" /> Sync Teacher
+            </Button>
           </div>
         )}
 
@@ -287,6 +290,20 @@ export default function AdminSubjectsPage() {
           </div>
         </section>
       </div>
+
+      {isAdmin && !showDrawer && (
+        <div className="fixed bottom-[92px] left-1/2 z-40 w-max -translate-x-1/2 lg:bottom-6">
+          <Button
+            type="button"
+            size="lg"
+            onClick={openAdd}
+            className="gap-2 rounded-full shadow-lg shadow-primary-900/20"
+          >
+            <Plus aria-hidden="true" className="size-5" />
+            Add Subject
+          </Button>
+        </div>
+      )}
 
       <ResponsivePopover
         open={selectedSubject !== null}

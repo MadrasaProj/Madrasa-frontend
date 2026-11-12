@@ -1,11 +1,22 @@
 import { Skeleton, SkeletonGrid, TableSkeleton } from "@/components/ui/Skeleton";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { IllustratedEmptyState } from "@/components/ui/IllustratedEmptyState";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
-import { DataTable, type SortDir } from "@/components/ui/DataTable";
+import type { SortDir } from "@/components/ui/DataTable";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
+import { ScrollableTabs } from "@/components/ui/ScrollableTabs";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
@@ -26,6 +37,7 @@ import { getSubjects, type SubjectRecord } from "@/lib/subjects-api";
 import { getStudents } from "@/lib/students-api";
 import { getClient } from "@/lib/super-admin-api";
 import { getClientCurrentAcademicYearId } from "@/lib/client-academic-year-api";
+import { loadLiveClassReport } from "@/lib/live-class-report";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -34,9 +46,7 @@ import {
   Loader2,
   Trash2,
   Search,
-  X,
   Calendar,
-  Edit2,
   AlertCircle,
   PenLine,
   Save,
@@ -49,27 +59,19 @@ import {
   RefreshCw,
   FileSpreadsheet,
   FileText,
-  SlidersHorizontal,
-  ChevronLeft,
+  ArrowUpDown,
   ChevronRight,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  ExamStatusBadge,
-  getExamStatusInfo,
-} from "@/components/exam/ExamStatusBadge";
+import { ExamStatusBadge } from "@/components/exam/ExamStatusBadge";
 import { MarkEntryGrid } from "@/components/exam/MarkEntryGrid";
 import { ClassResultTable } from "@/components/exam/ClassResultTable";
-import { RankPoster } from "@/components/exam/RankPoster";
-import { MarklistPoster } from "@/components/exam/MarklistPoster";
-import { ResultAnnouncementPoster } from "@/components/exam/ResultAnnouncementPoster";
+import { ReportMarklistTab, ReportStatusTab, ReportPostersTab } from "@/components/exam/AdminExamReportTabs";
 import { ExcelImportModal } from "@/components/exam/ExcelImportModal";
 import { useExamColumns } from "@/components/exam/ExamColumns";
-import { fmt, shortDate, getExamCategories, PAGE_SIZE_OPTIONS } from "@/lib/exam-utils";
+import { fmt, shortDate, getExamCategories } from "@/lib/exam-utils";
 import {
-  getClassReport, computeSummary, setFinalStatus,
+  computeSummary, setFinalStatus,
   type ClassReport, type ClassReportRow, type ResultStatus, type TotalGrade,
-  TOTAL_GRADE_LABELS,
 } from "@/lib/results-api";
 
 interface ExamForm {
@@ -110,16 +112,21 @@ interface MarkEntryState {
 
 type ReportTab = "table" | "marklist" | "status" | "posters";
 
-const TOTAL_GRADE_OPTIONS: { value: TotalGrade; label: string }[] = [
-  { value: "DISTINCTION", label: "Distinction" },
-  { value: "FIRST_CLASS", label: "First Class" },
-  { value: "SECOND_CLASS", label: "Second Class" },
-  { value: "THIRD_CLASS", label: "Third Class" },
-  { value: "TOP_PLUS", label: "Top Plus" },
-  { value: "FAILED", label: "Failed" },
-];
-
 const DEFAULT_PAGE_SIZE = 10;
+
+function paginationItems(current: number, total: number): Array<number | "ellipsis"> {
+  const pages = [...new Set([1, total, current - 1, current, current + 1])]
+    .filter((value) => value >= 1 && value <= total)
+    .sort((a, b) => a - b);
+  const items: Array<number | "ellipsis"> = [];
+  pages.forEach((value, index) => {
+    const previous = pages[index - 1];
+    if (previous && value - previous === 2) items.push(previous + 1);
+    if (previous && value - previous > 2) items.push("ellipsis");
+    items.push(value);
+  });
+  return items;
+}
 
 export default function AdminExamsPage() {
   const { user, accessToken, activeClientId } = useAuthStore();
@@ -140,7 +147,6 @@ export default function AdminExamsPage() {
   const [searchText, setSearchText] = useState("");
 
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [sortBy, setSortBy] = useState<string | undefined>("startDate");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
@@ -149,7 +155,6 @@ export default function AdminExamsPage() {
   );
   const [selectedClassTab, setSelectedClassTab] = useState<string | null>(null);
 
-  const [markEntryOpen, setMarkEntryOpen] = useState<string | null>(null);
   const [markEntry, setMarkEntry] = useState<MarkEntryState>({
     classId: "",
     subjectId: "",
@@ -161,6 +166,9 @@ export default function AdminExamsPage() {
     saved: false,
     error: null,
   });
+  const [marksDirty, setMarksDirty] = useState(false);
+  const classRequestRef = useRef(0);
+  const subjectRequestRef = useRef(0);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState<"create" | "edit">("create");
@@ -172,8 +180,11 @@ export default function AdminExamsPage() {
 
   const [contentTab, setContentTab] = useState<"markentry" | "report">("markentry");
   const [reportData, setReportData] = useState<ClassReport | null>(null);
+  const [resultSheetData, setResultSheetData] = useState<ClassReport | null>(null);
+  const [reportControlsContainer, setReportControlsContainer] = useState<HTMLDivElement | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
+  const reportRequestRef = useRef(0);
   const [computing, setComputing] = useState(false);
   const [computeMsg, setComputeMsg] = useState<string | null>(null);
 
@@ -361,9 +372,11 @@ export default function AdminExamsPage() {
 
   const openClassDrawer = (examId: string) => {
     const firstId = classes[0]?.id ?? null;
+    classRequestRef.current += 1;
+    subjectRequestRef.current += 1;
     setClassDrawerExamId(examId);
-    setMarkEntryOpen(firstId);
     setSelectedClassTab(firstId);
+    setContentTab("markentry");
     setMarkEntry({
       classId: "",
       subjectId: "",
@@ -375,17 +388,21 @@ export default function AdminExamsPage() {
       saved: false,
       error: null,
     });
+    setMarksDirty(false);
     if (firstId) {
       loadMarkEntryClass(examId, firstId);
     }
   };
 
   const closeClassDrawer = () => {
+    classRequestRef.current += 1;
+    subjectRequestRef.current += 1;
+    reportRequestRef.current += 1;
     setClassDrawerExamId(null);
-    setMarkEntryOpen(null);
     setSelectedClassTab(null);
     setContentTab("markentry");
     setReportData(null);
+    setResultSheetData(null);
     setReportError(null);
     setComputeMsg(null);
     setReportTab("table");
@@ -397,9 +414,12 @@ export default function AdminExamsPage() {
   };
 
   const selectClassTab = (classId: string) => {
+    if (classId === selectedClassTab) return;
+    reportRequestRef.current += 1;
     setSelectedClassTab(classId);
-    setContentTab("markentry");
+    setMarksDirty(false);
     setReportData(null);
+    setResultSheetData(null);
     setReportError(null);
     setComputeMsg(null);
     setReportTab("table");
@@ -417,7 +437,6 @@ export default function AdminExamsPage() {
       saved: false,
     }));
     if (classDrawerExamId) {
-      setMarkEntryOpen(classId);
       loadMarkEntryClass(classDrawerExamId, classId);
     }
   };
@@ -431,15 +450,19 @@ export default function AdminExamsPage() {
     () => classes.find((c) => c.id === selectedClassTab) ?? null,
     [classes, selectedClassTab],
   );
+  const selectedSubject = markEntry.subjects.find((subject) => subject.id === markEntry.subjectId);
+  const maxSubjectMarks = selectedSubject?.classSubject?.maxMarks ?? classDrawerExam?.maxMarks ?? 50;
+  const hasEnteredScores = Object.values(markEntry.scores).some((score) => score !== "");
+  const hasInvalidScores = Object.values(markEntry.scores).some(
+    (score) => score !== "" && (Number(score) < 0 || Number(score) > maxSubjectMarks),
+  );
 
   // ── Mark entry (admin) ─────────────────────────────────────────────────────
 
-  const openMarkEntry = async (examId: string, classId: string) => {
-    setMarkEntryOpen(classId);
-    await loadMarkEntryClass(examId, classId);
-  };
-
   const loadMarkEntryClass = async (examId: string, classId: string) => {
+    const request = ++classRequestRef.current;
+    subjectRequestRef.current += 1;
+    setMarksDirty(false);
     setMarkEntry((p) => ({
       ...p,
       classId,
@@ -457,6 +480,7 @@ export default function AdminExamsPage() {
       ]);
       const subs = subData.data ?? [];
       const stus = stuData.data ?? [];
+      if (request !== classRequestRef.current) return;
       setMarkEntry((p) => ({
         ...p,
         classId,
@@ -467,14 +491,23 @@ export default function AdminExamsPage() {
         loading: false,
       }));
     } catch (e: any) {
+      if (request !== classRequestRef.current) return;
       setMarkEntry((p) => ({ ...p, loading: false, error: e.message }));
     }
   };
 
-  const loadMarkEntrySubject = async (examId: string, subjectId: string) => {
+  useEffect(() => {
+    if (!classDrawerExamId || selectedClassTab || !classesData?.length) return;
+    const firstClassId = classesData[0].id;
+    setSelectedClassTab(firstClassId);
+    void loadMarkEntryClass(classDrawerExamId, firstClassId);
+  }, [classDrawerExamId, selectedClassTab, classesData]);
+
+  const loadMarkEntrySubject = async (examId: string, classId: string, subjectId: string, students: MarkEntryState["students"]) => {
+    const request = ++subjectRequestRef.current;
+    setMarksDirty(false);
     setMarkEntry((p) => ({
       ...p,
-      subjectId,
       scores: {},
       loading: true,
       error: null,
@@ -482,32 +515,33 @@ export default function AdminExamsPage() {
     try {
       const data = await getResults(cid, token, {
         examId,
-        classId: markEntry.classId,
+        classId,
         limit: 500,
       });
       const rows = data.data ?? [];
       const scoreMap: Record<string, string> = {};
-      markEntry.students.forEach((s) => {
+      students.forEach((s) => {
         const r = rows.find(
           (r) => r.student?.id === s.id && r.subject?.id === subjectId,
         );
         scoreMap[s.id] = r != null ? String(r.score) : "";
       });
+      if (request !== subjectRequestRef.current) return;
       setMarkEntry((p) => ({ ...p, scores: scoreMap, loading: false }));
     } catch (e: any) {
+      if (request !== subjectRequestRef.current) return;
       setMarkEntry((p) => ({ ...p, loading: false, error: e.message }));
     }
   };
 
   useEffect(() => {
-    if(classDrawerExamId && markEntry.subjectId){
-      
-      loadMarkEntrySubject(classDrawerExamId, markEntry.subjectId);
+    if (classDrawerExamId && markEntry.classId && markEntry.subjectId) {
+      void loadMarkEntrySubject(classDrawerExamId, markEntry.classId, markEntry.subjectId, markEntry.students);
     }
-  },[classDrawerExamId, markEntry.subjectId])
+  }, [classDrawerExamId, markEntry.classId, markEntry.subjectId, markEntry.students]);
 
-  const handleMarkEntrySave = async (examId: string) => {
-    if (!markEntry.classId || !markEntry.subjectId) return;
+  const handleMarkEntrySave = async (examId: string): Promise<boolean> => {
+    if (!markEntry.classId || !markEntry.subjectId) return false;
     setMarkEntry((p) => ({ ...p, saving: true, error: null, saved: false }));
     try {
       const currentSubject = markEntry.subjects.find((s) => s.id === markEntry.subjectId);
@@ -531,7 +565,7 @@ export default function AdminExamsPage() {
           saving: false,
           error: "No scores entered",
         }));
-        return;
+        return false;
       }
 
       await bulkUpsertResults(cid, token, {
@@ -542,32 +576,50 @@ export default function AdminExamsPage() {
       });
 
       setMarkEntry((p) => ({ ...p, saving: false, saved: true }));
+      setMarksDirty(false);
       toast.success("Marks saved successfully");
       setTimeout(() => setMarkEntry((p) => ({ ...p, saved: false })), 2000);
+      return true;
     } catch (e: any) {
       setMarkEntry((p) => ({ ...p, saving: false, error: e.message }));
       toast.error(e.message ?? "Failed to save marks");
+      return false;
     }
+  };
+
+  const openClassReport = async () => {
+    if (!classDrawerExamId || !selectedClassTab || markEntry.loading || markEntry.saving) return;
+    if (marksDirty && !(await handleMarkEntrySave(classDrawerExamId))) return;
+    setContentTab("report");
   };
 
   // ── Class Report Load ──────────────────────────────────────────────────────
 
   const loadClassReport = useCallback(async () => {
     if (!cid || !token || !classDrawerExamId || !selectedClassTab) return;
+    const request = ++reportRequestRef.current;
     setReportLoading(true);
     setReportError(null);
     try {
-      const rep = await getClassReport(cid, token, {
+      const { report, computedReport } = await loadLiveClassReport({
+        clientId: cid,
+        token,
         examId: classDrawerExamId,
+        examName: classDrawerExam?.name ?? "Exam",
+        examType: classDrawerExam?.type ?? "TERM_EXAM",
         classId: selectedClassTab,
+        className: selectedClass?.name ?? "Class",
       });
-      setReportData(rep);
+      if (request !== reportRequestRef.current) return;
+      setResultSheetData(report);
+      setReportData(computedReport ?? report);
     } catch (e: any) {
+      if (request !== reportRequestRef.current) return;
       setReportError(e.message ?? "Failed to load report");
     } finally {
-      setReportLoading(false);
+      if (request === reportRequestRef.current) setReportLoading(false);
     }
-  }, [cid, token, classDrawerExamId, selectedClassTab]);
+  }, [cid, token, classDrawerExamId, classDrawerExam?.name, classDrawerExam?.type, selectedClassTab, selectedClass?.name]);
 
   const handleCompute = async () => {
     if (!classDrawerExamId || !selectedClassTab || computing) return;
@@ -678,15 +730,15 @@ export default function AdminExamsPage() {
     return arr;
   }, [filteredExams, sortBy, sortDir]);
 
-  const totalPages = Math.max(1, Math.ceil(sortedExams.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(sortedExams.length / DEFAULT_PAGE_SIZE));
   const pagedExams = useMemo(
-    () => sortedExams.slice((page - 1) * pageSize, page * pageSize),
-    [sortedExams, page, pageSize],
+    () => sortedExams.slice((page - 1) * DEFAULT_PAGE_SIZE, page * DEFAULT_PAGE_SIZE),
+    [sortedExams, page],
   );
 
   useEffect(() => {
     setPage(1);
-  }, [searchText, pageSize]);
+  }, [searchText]);
 
   const { upcoming: upcomingExams, markEntryOpen: markEntryOpenExams, completed: completedExams, published: publishedExams } = getExamCategories(exams);
   const examSummary = [
@@ -720,7 +772,7 @@ export default function AdminExamsPage() {
               ? "Set a default academic year in madrasa settings to view or create exams."
               : "Create an exam to get started."}
             action={!missingAcademicYear ? (
-              <Button type="button" size="lg" onClick={openCreateDrawer} className="rounded-full">
+              <Button type="button" size="lg" onClick={openCreateDrawer} className="hidden rounded-full sm:inline-flex">
                 <Plus className="h-5 w-5" /> Create Exam
               </Button>
             ) : undefined}
@@ -765,9 +817,10 @@ export default function AdminExamsPage() {
                     setSortDir(direction as SortDir);
                     setPage(1);
                   }}
-                  className="w-40 shadow-none"
+                  triggerIcon={<ArrowUpDown className="size-4" />}
+                  className="size-11 shadow-none"
                 />
-                <Button type="button" onClick={openCreateDrawer} className="shadow-none">
+                <Button type="button" onClick={openCreateDrawer} className="hidden shadow-none sm:inline-flex">
                   <Plus className="size-4" /> Create Exam
                 </Button>
               </div>
@@ -826,92 +879,106 @@ export default function AdminExamsPage() {
                 ))}
               </div>
             </section>
-            {!loading && sortedExams.length > 0 && (
-              <div className="mx-3 mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-500">
-                <span className="tabular-nums">
-                  {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, sortedExams.length)} of {sortedExams.length}
-                </span>
-                <div className="flex flex-wrap items-center gap-2">
-                  <DrawerSelector
-                    title="Exams per page"
-                    options={PAGE_SIZE_OPTIONS.map((size) => ({ value: String(size), label: String(size) + " per page" }))}
-                    value={String(pageSize)}
-                    onChange={(value) => { setPageSize(Number(value)); setPage(1); }}
-                    className="w-32 shadow-none"
-                  />
-                  <Button type="button" variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(page - 1)} className="shadow-none">
-                    <ChevronLeft className="size-4" /> Previous
-                  </Button>
-                  <Button type="button" variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage(page + 1)} className="shadow-none">
-                    Next <ChevronRight className="size-4" />
-                  </Button>
-                </div>
-              </div>
+            {!loading && totalPages > 1 && (
+              <Pagination className="mx-auto mt-3" aria-label="Exam pages">
+                <PaginationContent className="gap-1">
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      aria-label="Previous exam page"
+                      aria-disabled={page <= 1}
+                      tabIndex={page <= 1 ? -1 : undefined}
+                      className={cn("rounded-lg", page <= 1 && "pointer-events-none opacity-40")}
+                      onClick={(event) => { event.preventDefault(); if (page > 1) setPage(page - 1); }}
+                    />
+                  </PaginationItem>
+                  {paginationItems(page, totalPages).map((item, index) => (
+                    <PaginationItem key={item === "ellipsis" ? `ellipsis-${index}` : item}>
+                      {item === "ellipsis" ? <PaginationEllipsis /> : (
+                        <PaginationLink
+                          href="#"
+                          isActive={item === page}
+                          aria-label={`Go to exam page ${item}`}
+                          className="rounded-lg"
+                          onClick={(event) => { event.preventDefault(); setPage(item); }}
+                        >
+                          {item}
+                        </PaginationLink>
+                      )}
+                    </PaginationItem>
+                  ))}
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      aria-label="Next exam page"
+                      aria-disabled={page >= totalPages}
+                      tabIndex={page >= totalPages ? -1 : undefined}
+                      className={cn("rounded-lg", page >= totalPages && "pointer-events-none opacity-40")}
+                      onClick={(event) => { event.preventDefault(); if (page < totalPages) setPage(page + 1); }}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
             )}
           </>
         )}
       </div>
 
+      {!loading && !missingAcademicYear && !pageError && (
+        <Button
+          type="button"
+          size="lg"
+          onClick={openCreateDrawer}
+          className="fixed bottom-[92px] left-1/2 z-40 -translate-x-1/2 rounded-full px-5 shadow-lg sm:hidden"
+        >
+          <Plus className="size-5" /> Create Exam
+        </Button>
+      )}
+
       <ResponsivePopover
         open={classDrawerExam !== null}
         onOpenChange={(open) => { if (!open) closeClassDrawer(); }}
         fullHeight
-        showBackButton={false}
-        title="Class Reports & Entry"
+        showBackButton={contentTab === "report"}
+        onBack={() => setContentTab("markentry")}
+        title={contentTab === "report" ? `${classDrawerExam?.name ?? "Exam"} · Report` : classDrawerExam?.name ?? "Exam details"}
         description={classDrawerExam?.name}
         className="shadow-none md:max-w-none"
         contentClassName="flex min-h-0 flex-col p-0"
+        footer={classDrawerExam && selectedClass && contentTab === "markentry" ? (
+          <div className="border-t border-gray-100 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
+            <ButtonGroup aria-label="Mark entry actions" className="ml-auto w-full sm:w-auto">
+              <Button type="button" variant="outline" size="lg" className="flex-1 shadow-none sm:flex-none" disabled={markEntry.loading || markEntry.saving || hasInvalidScores} onClick={() => { void openClassReport(); }}>
+                <FileText aria-hidden="true" /> Report
+              </Button>
+              <Button type="button" size="lg" className="flex-1 shadow-none sm:flex-none" disabled={markEntry.loading || markEntry.saving || !markEntry.subjectId || !hasEnteredScores || hasInvalidScores} onClick={() => { void handleMarkEntrySave(classDrawerExam.id); }}>
+                {markEntry.saving ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Save aria-hidden="true" />}
+                {markEntry.saving ? "Saving…" : markEntry.saved ? "Saved" : "Save marks"}
+              </Button>
+            </ButtonGroup>
+          </div>
+        ) : contentTab === "report" && reportTab === "table" && resultSheetData && !reportLoading ? (
+          <div ref={setReportControlsContainer} className="flex justify-end border-t border-gray-100 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6" />
+        ) : undefined}
       >
         {classDrawerExam && (
           <>
-            <div className="flex shrink-0 justify-end gap-2 border-b border-gray-100 px-5 py-3">
-              <Button type="button" variant="outline" className="shadow-none" onClick={() => { closeClassDrawer(); openEditDrawer(classDrawerExam); }}>Edit exam</Button>
-              <Button type="button" variant="destructive" className="shadow-none" onClick={() => { closeClassDrawer(); startDeleteExam(classDrawerExam); }}>Delete exam</Button>
+            <div className="flex shrink-0 justify-end border-b border-gray-100 px-4 py-3 sm:px-6">
+              <ButtonGroup aria-label="Exam actions">
+                <Button type="button" variant="outline" className="shadow-none" onClick={() => { closeClassDrawer(); openEditDrawer(classDrawerExam); }}>Edit exam</Button>
+                <Button type="button" variant="destructive" className="shadow-none" onClick={() => { closeClassDrawer(); startDeleteExam(classDrawerExam); }}>Delete exam</Button>
+              </ButtonGroup>
             </div>
               <div className="flex flex-1 overflow-hidden">
-                {/* Side tabs — desktop */}
-                <div className="hidden md:flex w-[200px] flex-col gap-1 pt-5 overflow-y-auto shrink-0 border-r border-b border-gray-100">
-                  {classes.map((cls) => (
-                    <Button variant="ghost"
-                      key={cls.id}
-                      onClick={() => {
-                        if (classDrawerExamId) {
-                          selectClassTab(cls.id);
-                        }
-                      }}
-                      className={cn(
-                        "px-6 py-3 text-base font-semibold text-left whitespace-nowrap transition-all border-r-[3px] -mr-px",
-                        selectedClassTab === cls.id
-                          ? "border-primary-600 text-primary-700 bg-primary-50/60"
-                          : "border-transparent text-gray-500 hover:text-gray-800 hover:border-gray-300",
-                      )}
-                    >
-                      {cls.name}
-                    </Button>
-                  ))}
-                </div>
-
-                <div className="flex-1 flex flex-col min-w-0 min-h-0 md:pl-4">
-                  {/* Top tabs — mobile */}
-                  <div className="flex overflow-x-auto gap-3 px-5 border-b border-gray-100 md:hidden">
-                    {classes.map((cls) => (
-                      <Button variant="ghost"
-                        key={cls.id}
-                        onClick={() => {
-                          if (classDrawerExamId) {
-                            selectClassTab(cls.id);
-                          }
-                        }}
-                        className={cn(
-                          "px-5 py-3 text-base font-semibold whitespace-nowrap shrink-0 transition-all border-b-[3px] -mb-px",
-                          selectedClassTab === cls.id
-                            ? "border-primary-600 text-primary-700"
-                            : "border-transparent text-gray-500 hover:text-gray-800 hover:border-gray-300",
-                        )}
-                      >
-                        {cls.name}
-                      </Button>
-                    ))}
+                <div className="flex-1 flex flex-col min-w-0 min-h-0">
+                  <div className="shrink-0 border-b border-gray-100 px-4 py-3 sm:px-6">
+                    <h3 className="mb-1 text-xs font-semibold text-gray-500">Class</h3>
+                    <ScrollableTabs
+                      ariaLabel="Choose class"
+                      options={classes.map((cls) => ({ value: cls.id, label: cls.name }))}
+                      value={selectedClassTab ?? ""}
+                      onValueChange={selectClassTab}
+                    />
                   </div>
 
                   {selectedClass ? (
@@ -927,35 +994,27 @@ export default function AdminExamsPage() {
                         )}
                       </div>
 
-                      {/* Contained tabs */}
-                      <div className="px-5 shrink-0">
-                        <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
-                          <Button variant="ghost"
-                            onClick={() => setContentTab("markentry")}
-                            className={cn(
-                              "px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-1.5",
-                              contentTab === "markentry"
-                                ? "bg-white text-primary-700 shadow-none"
-                                : "text-gray-500 hover:text-gray-700",
-                            )}
-                          >
-                            <PenLine className="w-4 h-4" />
-                            Mark Entry
-                          </Button>
-                          <Button variant="ghost"
-                            onClick={() => setContentTab("report")}
-                            className={cn(
-                              "px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-1.5",
-                              contentTab === "report"
-                                ? "bg-white text-primary-700 shadow-none"
-                                : "text-gray-500 hover:text-gray-700",
-                            )}
-                          >
-                            <BarChart2 className="w-4 h-4" />
-                            Report
-                          </Button>
+                      {contentTab === "markentry" && (
+                        <div className="shrink-0 px-4 pt-2 sm:px-6">
+                          <h3 className="mb-1 text-xs font-semibold text-gray-500">Subject</h3>
+                          {markEntry.subjects.length > 0 ? (
+                            <ScrollableTabs
+                              ariaLabel="Choose subject"
+                              options={markEntry.subjects.map((subject) => ({ value: subject.id, label: subject.name }))}
+                              value={markEntry.subjectId}
+                              onValueChange={(subjectId) => {
+                                if (subjectId === markEntry.subjectId) return;
+                                subjectRequestRef.current += 1;
+                                setMarksDirty(false);
+                                setMarkEntry((previous) => ({ ...previous, subjectId, scores: {}, saved: false }));
+                              }}
+                              disabled={markEntry.loading || markEntry.saving}
+                            />
+                          ) : (
+                            <p className="px-1 py-3 text-sm text-gray-500">{markEntry.loading ? "Loading subjects…" : "No subjects available"}</p>
+                          )}
                         </div>
-                      </div>
+                      )}
 
                       <div className="flex-1 overflow-y-auto overflow-x-hidden">
                         <div className="px-5 pt-4 pb-4">
@@ -977,23 +1036,25 @@ export default function AdminExamsPage() {
                               activeExam={classDrawerExam}
                               onExamChange={() => {}}
                               onClassChange={() => {}}
-                              onSubjectChange={(val) =>
-                                loadMarkEntrySubject(classDrawerExam.id, val)
-                              }
-                              onScoreChange={(sid, val) =>
+                              onSubjectChange={() => {}}
+                              onScoreChange={(sid, val) => {
+                                setMarksDirty(true);
                                 setMarkEntry((p) => ({
                                   ...p,
                                   scores: { ...p.scores, [sid]: val },
-                                }))
-                              }
-                              onSave={() => handleMarkEntrySave(classDrawerExam.id)}
+                                }));
+                              }}
+                              onSave={() => { void handleMarkEntrySave(classDrawerExam.id); }}
                               showExamSelector={false}
                               showClassSelector={false}
+                              showSubjectSelector={false}
                               showRemarks={false}
                               showExcelImport={false}
                               showDraftButton={false}
                               showResetButton={false}
                               showLockPeriod={false}
+                              showActionButtons={false}
+                              compactStudentRows
                             />
                           )}
 
@@ -1015,22 +1076,23 @@ export default function AdminExamsPage() {
                               )}
 
                               {/* Actions */}
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <Button variant="ghost"
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Button type="button"
                                   onClick={handleCompute}
                                   disabled={computing}
-                                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold disabled:opacity-50 transition-all shadow-none"
+                                  className="shadow-none"
                                 >
                                   {computing
-                                    ? <Loader2 className="w-4 h-4 animate-spin" />
-                                    : <RefreshCw className="w-4 h-4" />}
+                                    ? <Loader2 className="size-4 animate-spin" />
+                                    : <RefreshCw className="size-4" />}
                                   Compute Grades
                                 </Button>
-                                <Button variant="ghost"
+                                <Button type="button" variant="outline"
                                   onClick={() => setImportOpen(true)}
-                                  className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 bg-white hover:bg-gray-50 transition-colors shadow-none"
+                                  disabled={!reportData || reportLoading}
+                                  className="shadow-none"
                                 >
-                                  <FileSpreadsheet className="w-4 h-4 text-primary-600" />
+                                  <FileSpreadsheet className="size-4" />
                                   Import Excel
                                 </Button>
                               </div>
@@ -1039,50 +1101,39 @@ export default function AdminExamsPage() {
                               {reportLoading ? (
                                 <><SkeletonGrid count={4} className="mb-4 sm:grid-cols-2" /><TableSkeleton /></>
                               ) : reportError ? (
-                                <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm bg-red-50 text-red-700 border border-red-100">
-                                  <AlertCircle className="w-4 h-4" />
-                                  {reportError}
-                                </div>
+                                <ApiErrorBanner message={reportError} onRetry={() => { void loadClassReport(); }} />
                               ) : reportData ? (
                                 <div className="space-y-4">
-                                  <div className="grid grid-cols-2 overflow-hidden rounded-2xl bg-gradient-to-br from-primary-50/60 via-white to-sky-50/60">
+                                  {reportTab !== "table" && <div className="grid grid-cols-2 overflow-hidden rounded-2xl bg-gradient-to-br from-primary-50/60 via-white to-sky-50/60">
                                     {[
                                       { label: "Total students", value: reportData.stats.totalStudents, icon: GraduationCap },
                                       { label: "Passed", value: reportData.stats.passedCount, icon: CheckCircle2 },
                                       { label: "Failed", value: reportData.stats.failedCount, icon: AlertCircle },
-                                      { label: "Ranked", value: reportData.stats.rankedCount, icon: Trophy },
                                       { label: "Class average", value: `${reportData.stats.classAverage.toFixed(1)}%`, icon: BarChart2 },
                                     ].map(({ label, value, icon: Icon }, index) => (
-                                      <div key={label} className={cn("min-w-0 p-2.5 sm:p-3", index % 2 === 0 && "border-r border-gray-100", index < 4 && "border-b border-gray-100")}>
+                                      <div key={label} className={cn("min-w-0 p-2.5 sm:p-3", index % 2 === 0 && "border-r border-gray-100", index < 2 && "border-b border-gray-100")}>
                                         <div className="flex items-center gap-1.5 text-sm font-medium leading-4 text-gray-700"><Icon aria-hidden="true" className="size-3.5 shrink-0" />{label}</div>
                                         <span className="mt-1.5 block text-[22px] font-medium leading-none tabular-nums text-gray-950">{value}</span>
                                       </div>
                                     ))}
-                                  </div>
+                                  </div>}
 
                                   {/* Report sub-tabs */}
-                                  <div className="flex gap-1 border-b border-gray-200 overflow-x-auto">
-                                    {([
-                                      { key: "table" as ReportTab, label: "Result Sheet" },
-                                      { key: "marklist" as ReportTab, label: "Mark Cards" },
-                                      { key: "status" as ReportTab, label: "Final Status" },
-                                      { key: "posters" as ReportTab, label: "Rank Posters" },
-                                    ]).map(({ key, label }) => (
-                                      <Button variant="ghost" key={key} onClick={() => { setReportTab(key); setMarklistStudId(null); setPosterStudentId(null); }}
-                                        className={cn(
-                                          "px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap",
-                                          reportTab === key
-                                            ? "text-primary-600 border-primary-600"
-                                            : "text-gray-500 border-transparent hover:text-gray-700",
-                                        )}>
-                                        {label}
-                                      </Button>
-                                    ))}
-                                  </div>
+                                  <ScrollableTabs
+                                    ariaLabel="Report sections"
+                                    options={[
+                                      { value: "table", label: "Result Sheet" },
+                                      { value: "marklist", label: "Mark Cards" },
+                                      { value: "status", label: "Final Status" },
+                                      { value: "posters", label: "Rank Posters" },
+                                    ]}
+                                    value={reportTab}
+                                    onValueChange={(value) => { setReportTab(value as ReportTab); setMarklistStudId(null); setPosterStudentId(null); }}
+                                  />
 
                                   {/* Tab content */}
-                                  {reportTab === "table" && (
-                                    <ClassResultTable report={reportData} madrasaName={reportData.clientName ?? ""} />
+                                  {reportTab === "table" && resultSheetData && (
+                                    <ClassResultTable report={resultSheetData} madrasaName={resultSheetData.clientName ?? ""} teacherView teacherControlsContainer={reportControlsContainer} />
                                   )}
 
                                   {reportTab === "marklist" && (
@@ -1148,6 +1199,9 @@ export default function AdminExamsPage() {
                               onSuccess={async () => {
                                 setImportOpen(false);
                                 await loadClassReport();
+                                if (classDrawerExamId && markEntry.classId && markEntry.subjectId) {
+                                  await loadMarkEntrySubject(classDrawerExamId, markEntry.classId, markEntry.subjectId, markEntry.students);
+                                }
                               }}
                             />
                           )}
@@ -1177,6 +1231,7 @@ export default function AdminExamsPage() {
           if (!open) setActiveDateField(null);
         }}
         side="bottom"
+        desktopView="right-drawer"
         title={drawerMode === "create" ? "Create New Exam" : "Edit Exam"}
         description="Define dates and configuration for term exams"
         className="mx-auto w-full max-w-xl rounded-t-2xl shadow-none"
@@ -1315,247 +1370,5 @@ export default function AdminExamsPage() {
         <p className="text-sm text-gray-600">Delete <strong>{deleteExamTarget?.name}</strong>?</p>
       </ResponsivePopover>
     </DashboardLayout>
-  );
-}
-
-// ── Report sub-tab: Mark Cards ──────────────────────────────────────────────
-
-function ReportMarklistTab({ report, marklistStudId, setMarklistStudId, madrasaName, madrasaLogo, studentPhotoMap }: {
-  report: ClassReport;
-  marklistStudId: string | null;
-  setMarklistStudId: (id: string | null) => void;
-  madrasaName: string;
-  madrasaLogo?: string | null;
-  studentPhotoMap?: Record<string, string | null>;
-}) {
-  const { students } = report;
-  const activeRow = marklistStudId ? students.find((s) => s.student.id === marklistStudId) : null;
-
-  return (
-    <div className="space-y-6">
-      <div className="flex gap-2 flex-wrap">
-        {students.map((r) => (
-          <button key={r.student.id}
-            onClick={() => setMarklistStudId(r.student.id === marklistStudId ? null : r.student.id)}
-            className={cn(
-              "px-3 py-1.5 rounded-lg text-sm font-medium border transition-all",
-              marklistStudId === r.student.id
-                ? "border-primary-600 bg-primary-50 text-primary-700"
-                : "border-gray-200 bg-white text-gray-700 hover:border-primary-300",
-            )}
-          >
-            {r.summary.rank === 1 ? "🥇 " : r.summary.rank === 2 ? "🥈 " : r.summary.rank === 3 ? "🥉 " : ""}
-            {r.student.name}
-          </button>
-        ))}
-      </div>
-
-      {activeRow ? (
-        <motion.div
-          key={activeRow.student.id}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-sm mx-auto"
-        >
-          <MarklistPoster row={activeRow} report={report} madrasaName={madrasaName} madrasaLogo={madrasaLogo} studentPhotoMap={studentPhotoMap} />
-        </motion.div>
-      ) : (
-        <div className="flex flex-col items-center justify-center py-16 text-gray-400 gap-3">
-          <span className="text-5xl">📋</span>
-          <p className="text-sm">Select a student above to view their mark card</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Report sub-tab: Final Status ────────────────────────────────────────────
-
-function ReportStatusTab({ report, statusMap, setStatusMap, savingId, savingAll, statusMsg, onSave, onSaveAll }: {
-  report: ClassReport;
-  statusMap: Record<string, { finalStatus: ResultStatus; totalGrade?: TotalGrade | null }>;
-  setStatusMap: React.Dispatch<React.SetStateAction<typeof statusMap>>;
-  savingId: string | null;
-  savingAll: boolean;
-  statusMsg: string | null;
-  onSave: (row: ClassReportRow) => void;
-  onSaveAll: () => void;
-}) {
-  const { config } = report;
-
-  const statusOpts = [
-    { value: "PASSED", label: config.passedLabel },
-    { value: "FAILED", label: config.failedLabel },
-    { value: "PROMOTED", label: config.promotedLabel },
-    { value: "WITHHELD", label: config.withheldLabel },
-  ] as const;
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <p className="text-sm text-gray-500">Set final result status for each student. Grade is optional.</p>
-        <button
-          onClick={onSaveAll}
-          disabled={savingAll || !report.students.some((r) => statusMap[r.student.id]?.finalStatus)}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold disabled:opacity-40 transition-colors"
-        >
-          {savingAll ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-          Save All
-        </button>
-      </div>
-      {statusMsg && (
-        <div className={cn(
-          "px-4 py-3 rounded-xl text-sm flex items-center gap-2",
-          statusMsg.startsWith("Error") ? "bg-red-50 text-red-700 border border-red-100" : "bg-primary-50 text-primary-700 border border-primary-100",
-        )}>
-          {statusMsg.startsWith("Error") ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
-          {statusMsg}
-        </div>
-      )}
-      <div className="rounded-xl border border-gray-200 overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Student</th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Score</th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Rank</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Final Status</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Total Grade</th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Action</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {report.students.map((row) => {
-              const entry = statusMap[row.student.id];
-              const isSaving = savingId === row.student.id;
-              return (
-                <tr key={row.student.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">
-                    <div className="font-medium text-gray-900">{row.student.name}</div>
-                    <div className="text-xs text-gray-400 font-mono">{row.student.adno}</div>
-                  </td>
-                  <td className="px-4 py-3 text-center text-sm text-gray-700">
-                    {row.summary.totalPercentage != null ? `${row.summary.totalPercentage.toFixed(1)}%` : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-center font-bold text-gray-700">
-                    {row.summary.rank ?? "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <select
-                      value={entry?.finalStatus ?? ""}
-                      onChange={(e) => setStatusMap((m) => ({
-                        ...m,
-                        [row.student.id]: { ...(m[row.student.id] ?? {}), finalStatus: e.target.value as ResultStatus },
-                      }))}
-                      className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 w-full max-w-36"
-                    >
-                      <option value="">— Select —</option>
-                      {statusOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
-                  </td>
-                  <td className="px-4 py-3">
-                    <select
-                      value={entry?.totalGrade ?? ""}
-                      onChange={(e) => setStatusMap((m) => ({
-                        ...m,
-                        [row.student.id]: { ...(m[row.student.id] ?? {}), totalGrade: (e.target.value || null) as TotalGrade | null },
-                      }))}
-                      className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 w-full max-w-40"
-                    >
-                      <option value="">— Optional —</option>
-                      {TOTAL_GRADE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <button
-                      onClick={() => onSave(row)}
-                      disabled={!entry?.finalStatus || isSaving}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-xs font-medium disabled:opacity-40 transition-colors"
-                    >
-                      {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
-                      Save
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-// ── Report sub-tab: Rank Posters ────────────────────────────────────────────
-
-function ReportPostersTab({ report, posterStudentId, setPosterStudentId, madrasaName, madrasaLogo, studentPhotoMap }: {
-  report: ClassReport;
-  posterStudentId: string | null;
-  setPosterStudentId: (id: string | null) => void;
-  madrasaName: string;
-  madrasaLogo?: string | null;
-  studentPhotoMap?: Record<string, string | null>;
-}) {
-  const rankedStudents = report.students.filter((r) => r.summary.rank !== null && r.summary.rank <= 3);
-  const posterRow = posterStudentId ? report.students.find((r) => r.student.id === posterStudentId) : null;
-  const totalStudents = report.stats?.totalStudents ?? report.students.length;
-  const passCount = report.stats?.passedCount ?? undefined;
-
-  return (
-    <div className="space-y-8">
-      <div>
-        <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />
-          Result Announcement Poster
-        </h3>
-        <div className="max-w-sm mx-auto">
-          <ResultAnnouncementPoster
-            exam={report.exam}
-            madrasaName={madrasaName}
-            madrasaLogo={madrasaLogo}
-            stats={{
-              totalStudents,
-              passCount: passCount > 0 ? passCount : undefined,
-              className: report.class.name,
-            }}
-          />
-        </div>
-      </div>
-
-      {rankedStudents.length > 0 && (
-        <div>
-          <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-            Rank Posters
-          </h3>
-          <div className="flex gap-2 flex-wrap mb-4">
-            {rankedStudents.map((r) => (
-              <button key={r.student.id}
-                onClick={() => setPosterStudentId(r.student.id === posterStudentId ? null : r.student.id)}
-                className={cn(
-                  "px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all",
-                  posterStudentId === r.student.id
-                    ? "border-primary-600 bg-primary-50 text-primary-700"
-                    : "border-gray-200 bg-white text-gray-700 hover:border-primary-300",
-                )}
-              >
-                {r.summary.rank === 1 ? "🥇" : r.summary.rank === 2 ? "🥈" : "🥉"} {r.student.name}
-              </button>
-            ))}
-          </div>
-
-          {posterRow && (
-            <motion.div
-              key={posterRow.student.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="max-w-sm mx-auto"
-            >
-              <RankPoster row={posterRow} report={report} madrasaName={madrasaName} madrasaLogo={madrasaLogo} studentPhotoMap={studentPhotoMap} />
-            </motion.div>
-          )}
-        </div>
-      )}
-    </div>
   );
 }

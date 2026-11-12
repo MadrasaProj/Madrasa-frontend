@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Download, FileSpreadsheet, Loader2, School, UserCheck } from "lucide-react";
+import { CheckCircle2, Download, FileSpreadsheet, Loader2, MoreVertical, School, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { DrawerSelector } from "@/components/DrawerSelector";
-import { ScrollableClassNavigator } from "@/components/ScrollableClassNavigator";
 import { ScrollableDateNavigator } from "@/components/ScrollableDateNavigator";
 import { AttendanceImportModal } from "@/components/attendance/AttendanceImportModal";
 import { AttendanceSemiCircle, StudentAttendanceRadial } from "@/components/attendance/AttendanceSummaryCharts";
@@ -12,9 +11,12 @@ import { AttendanceEditorContent, type ActiveStatus } from "@/components/teacher
 import { StudentAttendanceDrawer } from "@/components/teacher/StudentAttendanceDrawer";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
+import { ClassPicker } from "@/components/ui/ClassPicker";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { bulkDeleteAttendance, bulkUpsertAttendance, getClassAttendance, type AttendanceStatus } from "@/lib/attendance-api";
 import { downloadDailyAttendanceReport } from "@/lib/attendance-report";
 import { t } from "@/lib/i18n";
@@ -50,6 +52,7 @@ export default function AdminAttendancePage() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [reportChoicesOpen, setReportChoicesOpen] = useState(false);
   const [downloadingReport, setDownloadingReport] = useState(false);
   const [students, setStudents] = useState<{
     id: string;
@@ -70,6 +73,7 @@ export default function AdminAttendancePage() {
     student: ClassAttendanceSummary["students"][number];
   } | null>(null);
   const [studentDrawerOpen, setStudentDrawerOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
   const saveSuccessTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => () => {
@@ -323,58 +327,63 @@ export default function AdminAttendancePage() {
     />
   );
 
+  const pageActions = (
+    <div className="flex items-center gap-2">
+      <Button type="button" size="sm" className="hidden gap-2 rounded-full sm:inline-flex" onClick={() => setEditorOpen(true)}>
+        <UserCheck aria-hidden="true" className="size-4" />
+        {t("teacherPages", "markAttendanceDesc", lang)}
+      </Button>
+      <ResponsivePopover open={reportOpen} onOpenChange={setReportOpen} title="Attendance options" compact>
+        <div className="space-y-1 p-2">
+          <Button type="button" variant="ghost" className="w-full justify-start shadow-none" disabled={!activeClassId || downloadingReport} onClick={() => {  setReportChoicesOpen(true); }}>
+            {downloadingReport ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4 " />}
+            {downloadingReport ? "Preparing report…" : "Download report"}
+          </Button>
+          <Button type="button" variant="ghost" className="w-full justify-start shadow-none" onClick={() => { setReportOpen(false); setShowImport(true); }}>
+            <FileSpreadsheet className="size-4 " /> Import previous month
+          </Button>
+        </div>
+      </ResponsivePopover>
+      <ResponsivePopover open={reportChoicesOpen} onOpenChange={setReportChoicesOpen} title="Download daily report" compact>
+        <div className="space-y-2 px-4 pb-5 pt-1">
+          <p className="mb-3 text-sm text-gray-600">
+            {new Date(`${date}T00:00:00`).toLocaleDateString(lang === "ml" ? "ml-IN" : "en-GB", { day: "numeric", month: "long", year: "numeric" })}
+            {" · "}Saved attendance
+          </p>
+          <Button type="button" variant="outline" className="w-full justify-start shadow-none" onClick={() => { void downloadReport("collective"); setReportChoicesOpen(false); }}>
+            <Download className="size-4" /> All classes
+          </Button>
+          <Button type="button" variant="outline" className="w-full justify-start shadow-none" onClick={() => { void downloadReport("class"); setReportChoicesOpen(false); }}>
+            <Download className="size-4" /> {activeClass?.name ?? "Selected class"}
+          </Button>
+        </div>
+      </ResponsivePopover>
+      <Button type="button" variant="outline" size="icon" aria-label="Attendance options" className="hidden rounded-full sm:inline-flex" onClick={() => setReportOpen(true)}>
+        <MoreVertical className="size-5" />
+      </Button>
+    </div>
+  );
+
   return (
     <DashboardLayout>
-      <PageHeader title="Attendance" />
+      <PageHeader title="Attendance" showActionOnMobile action={pageActions} switcher={
+        <ClassPicker
+          title="Select class"
+          options={classes.map((cls) => ({ value: cls.id, label: cls.name }))}
+          value={activeClassId}
+          onChange={setSelectedClassId}
+          placeholder={classesQuery.isLoading ? "Loading classes…" : "No classes found"}
+          disabled={saving || classesQuery.isLoading}
+        />
+      } />
 
       <div className="px-4! pt-4! pb-28! lg:pb-24!">
-        <div className="mb-4 space-y-3">
-          {classesQuery.isLoading ? (
-            <div className="flex gap-2" aria-busy="true">
-              {Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-11 w-24 shrink-0 rounded-xl" />)}
-            </div>
-          ) : (
-            <ScrollableClassNavigator
-              classes={classes}
-              value={activeClassId}
-              onChange={setSelectedClassId}
-              disabled={saving}
-            />
-          )}
-          <Button type="button" variant="outline" className="gap-2 shadow-none" onClick={() => setShowImport(true)}>
-            <FileSpreadsheet className="size-4 text-primary-600" />
-            Import Previous Month
-          </Button>
-          <section aria-labelledby="daily-report-title" className="space-y-3 rounded-2xl bg-gray-50/70 p-3">
-            <h2 id="daily-report-title" className="text-sm font-semibold text-gray-900">Daily report</h2>
-            <ScrollableDateNavigator date={date} onDateChange={setDate} pickerTitle="Choose attendance date" disabled={saving || downloadingReport} />
-            <Button
-              type="button"
-              variant="outline"
-              className="gap-2 shadow-none"
-              disabled={!activeClassId || downloadingReport}
-              onClick={() => setReportOpen(true)}
-            >
-              {downloadingReport ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4 text-primary-600" />}
-              {downloadingReport ? "Preparing report…" : "Download report"}
-            </Button>
-          </section>
-        </div>
-
-        <ResponsivePopover open={reportOpen} onOpenChange={setReportOpen} title="Download daily report" compact>
-          <div className="space-y-2 px-4 pb-5 pt-1">
-            <p className="mb-3 text-sm text-gray-600">
-              {new Date(`${date}T00:00:00`).toLocaleDateString(lang === "ml" ? "ml-IN" : "en-GB", { day: "numeric", month: "long", year: "numeric" })}
-              {" · "}Saved attendance
-            </p>
-            <Button type="button" variant="outline" className="w-full justify-start shadow-none" onClick={() => { void downloadReport("collective"); }}>
-              <Download className="size-4" /> All classes
-            </Button>
-            <Button type="button" variant="outline" className="w-full justify-start shadow-none" onClick={() => { void downloadReport("class"); }}>
-              <Download className="size-4" /> {activeClass?.name ?? "Selected class"}
-            </Button>
-          </div>
-        </ResponsivePopover>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="mb-4 w-max grid grid-cols-2">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="daily">Daily</TabsTrigger>
+          </TabsList>
+          <TabsContent value="overview">
 
         <section aria-labelledby="attendance-snapshot-title" className="overflow-hidden rounded-2xl bg-gradient-to-br from-white to-sky-50">
           <h2 id="attendance-snapshot-title" className="border-b border-gray-100 px-4 py-3 text-base font-semibold text-gray-900 sm:px-5">
@@ -471,6 +480,15 @@ export default function AdminAttendancePage() {
             </div>
           )}
         </section>
+          </TabsContent>
+          <TabsContent value="daily">
+            <section aria-labelledby="daily-report-title" className="space-y-3 rounded-2xl bg-gray-50/70 p-3">
+              <h2 id="daily-report-title" className="text-sm font-semibold text-gray-900">Daily attendance</h2>
+              <ScrollableDateNavigator date={date} onDateChange={setDate} pickerTitle="Choose attendance date" disabled={saving || downloadingReport} />
+              <p className="text-sm text-gray-600">{activeClass?.name ?? "Select a class"}</p>
+            </section>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {selectedStudent?.classId === activeClassId && (
@@ -486,12 +504,15 @@ export default function AdminAttendancePage() {
       )}
 
       {!editorOpen && (
-        <div className="fixed bottom-[92px] left-1/2 z-40 w-max -translate-x-1/2 lg:bottom-6">
+        <ButtonGroup aria-label="Attendance actions" className="fixed bottom-[92px]  left-1/2 z-40 w-max -translate-x-1/2   p-0!   lg:bottom-6 sm:hidden">
           <Button type="button" size="lg" className="gap-2 rounded-full shadow-lg shadow-primary-900/20" onClick={() => setEditorOpen(true)}>
             <UserCheck aria-hidden="true" className="size-4" />
             {t("teacherPages", "markAttendanceDesc", lang)}
           </Button>
-        </div>
+          <Button type="button" variant="outline" size="icon-lg" aria-label="Attendance options" className="rounded-r-full!  shadow-lg" onClick={() => setReportOpen(true)}>
+            <MoreVertical className="size-5" />
+          </Button>
+        </ButtonGroup>
       )}
 
       <ResponsivePopover
@@ -515,7 +536,7 @@ export default function AdminAttendancePage() {
           </div>
           {error && <ApiErrorBanner message={error} onRetry={() => { if (activeClassId) void loadAttendance(activeClassId, date); }} />}
           {classesQuery.isError && <ApiErrorBanner message={classesQuery.error.message} onRetry={() => { void classesQuery.refetch(); }} />}
-          {saveSuccess && <p role="status" className="mb-4 flex items-center gap-1 text-sm font-semibold text-primary-600"><CheckCircle2 className="size-4" />{t("teacherPages", "saved", lang)}</p>}
+          {saveSuccess && <p role="status" className="mb-4 flex items-center gap-1 text-sm font-semibold "><CheckCircle2 className="size-4" />{t("teacherPages", "saved", lang)}</p>}
           {activeClassId && !loading && students.length > 0 && (
             <div className="mb-3 rounded-lg bg-gradient-to-r from-primary-50/50 to-sky-50/50 px-4 py-3 text-sm">
               <div className="flex flex-wrap items-center gap-x-5 gap-y-1 font-semibold">

@@ -1,17 +1,18 @@
 import { cn } from "@/lib/utils";
-import { LucideIcon, ChevronLeft, ChevronDown, School, ChevronRight } from "lucide-react";
+import { LucideIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/auth";
 import { useActiveClass } from "@/store/activeClass";
 import { useLanguageStore } from "@/store/language";
 import { DrawerSelector } from "@/components/DrawerSelector";
+import { ClassPicker } from "@/components/ui/ClassPicker";
 import { StudentAvatar } from "@/components/teacher/StudentAvatar";
 
 export function PageHeaderSwitchers({ hideChevron = false }: { hideChevron?: boolean }) {
   const { pathname } = useLocation();
   const { user, activeStudentId, setActiveStudent } = useAuthStore();
   const { lang } = useLanguageStore();
-  const { classes, activeClass, activeClassId, setActiveClassId, isLoading } =
+  const { classes, activeClassId, setActiveClassId, isLoading } =
     useActiveClass();
 
   const isParentRoute = /^\/(?:m\/[^/]+\/)?parent(?:\/|$)/.test(pathname);
@@ -57,7 +58,7 @@ export function PageHeaderSwitchers({ hideChevron = false }: { hideChevron?: boo
 
   if (isTeacherRoute && user?.role === "teacher") {
     return (
-      <DrawerSelector
+      <ClassPicker
         title={lang === "ml" ? "സജീവ ക്ലാസ്" : "Active class"}
         options={[...classes]
           .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }))
@@ -66,16 +67,6 @@ export function PageHeaderSwitchers({ hideChevron = false }: { hideChevron?: boo
         onChange={setActiveClassId}
         placeholder={isLoading ? (lang === "ml" ? "ക്ലാസുകൾ ലോഡ് ചെയ്യുന്നു…" : "Loading classes…") : "Class"}
         disabled={isLoading}
-        triggerItem={
-          <button
-            type="button"
-            className="inline-flex max-w-40 shrink-0 items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-          >
-            <School className="size-4 shrink-0 text-primary-600" />
-            <span className="truncate">{activeClass?.name ?? "Class"}</span>
-            <ChevronDown className="size-4 shrink-0" />
-          </button>
-        }
       />
     );
   }

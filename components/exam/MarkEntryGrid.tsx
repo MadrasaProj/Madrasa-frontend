@@ -4,6 +4,7 @@ import type { ClassRecord } from "@/lib/classes-api";
 import type { SubjectRecord } from "@/lib/subjects-api";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
 import {
   GraduationCap,
   Save,
@@ -107,7 +108,7 @@ export function   MarkEntryGrid({
 }: MarkEntryGridProps) {
   const filled = Object.values(scores).filter((v) => v !== "").length;
   const currentSubject = subjects.find((s) => s.id === subjectId);
-  const effectiveMaxMarks = currentSubject?.classSubject?.maxMarks ?? 50;
+  const effectiveMaxMarks = currentSubject?.classSubject?.maxMarks ?? activeExam?.maxMarks ?? 50;
   const hasInvalidMarks = Object.values(scores).some(
     (v) => v !== "" && (Number(v) > effectiveMaxMarks || Number(v) < 0),
   );
@@ -231,11 +232,12 @@ export function   MarkEntryGrid({
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
-                    <input
+                    <Input
                       type="number"
                       min={0}
                       max={effectiveMaxMarks}
                       aria-label={`Marks for ${student.name} out of ${effectiveMaxMarks}`}
+                      aria-invalid={invalid}
                       disabled={isLocked || saving}
                       value={score}
                       onChange={(event) => onScoreChange(student.id, event.target.value)}
