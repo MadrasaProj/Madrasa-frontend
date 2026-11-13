@@ -375,7 +375,7 @@ export default function StudentEditDrawer({
         fullHeight
         showBackButton={false}
         className="md:max-w-[640px]"
-        contentClassName="bg-white"
+        
         footer={
           <div className="flex items-center gap-2 border-t border-gray-100 bg-white p-4">
             {isEditing && canWrite && onDelete && (

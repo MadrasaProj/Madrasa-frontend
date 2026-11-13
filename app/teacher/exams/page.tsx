@@ -635,7 +635,7 @@ export default function TeacherExamsPage() {
             />
           )}
           className="md:max-w-none"
-          contentClassName="min-w-0"
+          
         >
           {isMarkEntryView && (
             <div className="mx-auto w-full max-w-6xl py-4">

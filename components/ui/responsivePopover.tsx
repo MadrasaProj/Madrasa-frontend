@@ -243,7 +243,7 @@ export function ResponsivePopover({
           sideOffset={8}
           aria-label={typeof title === "string" ? title : "Details"}
           className={cn(
-            "    p-0 text-gray-900 shadow-2xl",
+            "   p-1   text-gray-900 shadow-2xl",
             className,
           )}
         >

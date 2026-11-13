@@ -790,7 +790,7 @@ export default function AdminClassTestsPage() {
           title={markEntryExam?.name ?? t("teacherPages", "enterMarksBreadcrumb", lang)}
           description={t("teacherPages", "enterMarksBreadcrumb", lang)}
           className="mx-auto w-full max-w-6xl rounded-t-2xl shadow-none"
-          contentClassName="min-w-0"
+          
           footer={isMarkEntryView && (
             <div className="border-t border-gray-200 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
               <ButtonGroup aria-label="Mark entry actions" className="ml-auto max-w-full overflow-x-auto">
@@ -1031,7 +1031,7 @@ export default function AdminClassTestsPage() {
         side="bottom"
         desktopView="right-drawer"
         className="shadow-none"
-        contentClassName="px-5 py-4"
+        
         footer={
           <div className="border-t border-gray-100 bg-white px-5 py-4">
             <ButtonGroup aria-label="Delete class test actions" className="w-full">

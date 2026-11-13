@@ -237,7 +237,7 @@ export function TeacherAttendanceContent() {
             </div>
           )}
 
-          <ResponsivePopover open={!!selectedTeacherId} onOpenChange={(open) => { if (!open) setSelectedTeacherId(""); }} title={selectedTeacherName} fullHeight contentClassName="space-y-4 p-4">
+          <ResponsivePopover open={!!selectedTeacherId} onOpenChange={(open) => { if (!open) setSelectedTeacherId(""); }} title={selectedTeacherName} fullHeight >
             <AttendanceStats firstLabel="Attendance days" firstValue={selectedTeacherGrouped.length} secondLabel="Total sessions" secondValue={selectedTeacherSessions.length} />
             <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white">
               {selectedTeacherGrouped.length === 0 ? (

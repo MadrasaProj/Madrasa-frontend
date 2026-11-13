@@ -403,7 +403,7 @@ export default function TeacherHomeworkPage() {
       <ResponsivePopover
         open={showAssessDrawer}
         fullHeight
-        contentClassName="flex min-h-0 flex-col overflow-hidden"
+        
         onOpenChange={(open) => { if (!open) { setShowAssessDrawer(false); setShowAssessOptions(false); setAssessHw(null); setDeleteTarget(null); } }}
         title={assessHw?.title ?? t("teacherPages", "assessHomeworkTitle", lang)}
         description={

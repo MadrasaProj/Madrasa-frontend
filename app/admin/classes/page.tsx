@@ -266,7 +266,7 @@ export default function AdminClassesPage() {
         side="bottom"
         desktopView="right-drawer"
         className="shadow-none md:w-[400px] md:max-w-[400px]"
-        contentClassName="px-5 py-4"
+        
       >
         {selectedClass && (
           <div className="space-y-5">
@@ -346,7 +346,7 @@ export default function AdminClassesPage() {
         side="bottom"
         desktopView="right-drawer"
         className="shadow-none"
-        contentClassName="space-y-4 px-5 py-4"
+        
         footer={
           <div className="flex gap-3 border-t border-gray-100 bg-white px-5 py-4">
             <Button type="button" variant="outline" disabled={saving} onClick={() => setShowDrawer(false)} className="flex-1 shadow-none">Cancel</Button>
@@ -421,7 +421,7 @@ export default function AdminClassesPage() {
         side="bottom"
         desktopView="right-drawer"
         className="shadow-none"
-        contentClassName="px-5 py-4"
+        
         footer={
           <div className="flex gap-3 border-t border-gray-100 bg-white px-5 py-4">
             <Button type="button" variant="outline" disabled={deleting !== null} onClick={() => setShowDeleteConfirm(false)} className="flex-1 shadow-none">Cancel</Button>

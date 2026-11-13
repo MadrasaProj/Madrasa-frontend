@@ -572,7 +572,7 @@ export default function AdminTeachersPage() {
     side="bottom"
     desktopView="right-drawer"
     className="shadow-none"
-    contentClassName="px-5 py-4"
+    
    >
     {selectedTeacher && (
      <div className="space-y-5">
@@ -598,7 +598,7 @@ export default function AdminTeachersPage() {
     side="bottom"
     desktopView="right-drawer"
     className="shadow-none"
-    contentClassName="p-0"
+    
     footer={
      <div className="border-t border-gray-100 bg-white px-5 py-4">
       <ButtonGroup aria-label={editTarget ? "Edit teacher actions" : "Add teacher actions"} className="w-full [&>button]:flex-1">
@@ -1060,7 +1060,7 @@ export default function AdminTeachersPage() {
     side="bottom"
     desktopView="right-drawer"
     className="shadow-none"
-    contentClassName="px-5 py-4"
+    
     footer={
      <div className="flex gap-3 border-t border-gray-100 bg-white px-5 py-4">
       <Button type="button" variant="outline" disabled={deleting} onClick={() => setShowDeleteConfirm(false)} className="flex-1 shadow-none">Cancel</Button>

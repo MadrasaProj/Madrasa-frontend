@@ -141,7 +141,7 @@ export default function AdminIdCardsPage() {
           </Button>
         </div>
 
-        <ResponsivePopover open={selectorOpen} onOpenChange={setSelectorOpen} title="Select a student" contentClassName="p-0">
+        <ResponsivePopover open={selectorOpen} onOpenChange={setSelectorOpen} title="Select a student" >
           <div className="space-y-3 p-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />

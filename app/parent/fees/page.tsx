@@ -787,7 +787,7 @@ export default function ParentFeesPage() {
         onOpenChange={(open) => { if (!open) setSelectedTypeId(null); }}
         title={selectedFeeType?.name}
         description={selectedFeeType ? getFrequencyLabel(selectedFeeType.frequency, selectedFeeType.kind, lang) : undefined}
-        contentClassName="px-4 pb-6"
+        
       >
         {selectedFeeType && (() => {
           const totals = selectedTypePayments.length === 0 && selectedFeeType.kind === "ONE_TIME"

@@ -755,7 +755,7 @@ export default function AdminStudentsPage() {
         title="Student profile"
         fullHeight
         className="md:max-w-[640px]"
-        contentClassName="bg-white"
+        
         footer={canWrite && profileStudent ? (
           <div className="flex gap-2 border-t border-gray-100 bg-white p-4">
             <Button type="button" variant="outline" size="lg" className="flex-1 shadow-none" onClick={() => {

@@ -776,7 +776,7 @@ export default function TeacherClassTestsPage() {
           title={markEntryExam?.name ?? t("teacherPages", "enterMarksBreadcrumb", lang)}
           description={t("teacherPages", "enterMarksBreadcrumb", lang)}
           className="mx-auto w-full max-w-6xl rounded-t-2xl"
-          contentClassName="min-w-0"
+          
           footer={isMarkEntryView && (
             <TeacherMarkEntryActions
               clientId={cid}

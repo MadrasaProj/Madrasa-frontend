@@ -90,7 +90,7 @@ export function StudentAttendanceDrawer({
       onOpenChange={(open) => { if (!open) onClose(); }}
       title={student.name}
       description={<span className="text-sm">{t("teacherPages", "studentAttendanceDetails", lang)} · {student.adno}</span>}
-      contentClassName="px-4 pb-6 sm:px-5"
+      
     >
  
       {attendance.isLoading ? (

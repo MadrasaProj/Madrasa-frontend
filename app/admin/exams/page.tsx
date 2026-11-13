@@ -944,7 +944,7 @@ export default function AdminExamsPage() {
         title={contentTab === "report" ? `${classDrawerExam?.name ?? "Exam"} · Report` : classDrawerExam?.name ?? "Exam details"}
         description={classDrawerExam?.name}
         className="shadow-none md:max-w-none"
-        contentClassName="flex min-h-0 flex-col p-0"
+        
         footer={classDrawerExam && selectedClass && contentTab === "markentry" ? (
           <div className="border-t border-gray-100 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
             <ButtonGroup aria-label="Mark entry actions" className="ml-auto w-full sm:w-auto">
@@ -1357,7 +1357,7 @@ export default function AdminExamsPage() {
         side="bottom"
         desktopView="right-drawer"
         className="shadow-none"
-        contentClassName="px-5 py-4"
+        
         footer={
           <div className="flex gap-3 border-t border-gray-100 bg-white px-5 py-4">
             <Button type="button" variant="outline" disabled={deletingId !== null} onClick={() => setShowDeleteExamConfirm(false)} className="flex-1 shadow-none">Cancel</Button>

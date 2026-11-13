@@ -83,7 +83,7 @@ export function PaymentMethodPicker({
         side="bottom"
         title="Payment method"
         showCloseButton={false}
-        contentClassName="p-2"
+        
       >
         <div className="grid gap-1">
           {PAYMENT_METHODS.map((option) => (

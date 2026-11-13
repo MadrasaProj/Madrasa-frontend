@@ -109,7 +109,7 @@ export function DrawerSelector({
         side="bottom"
         title={title}
         className="mx-auto w-full max-w-lg rounded-t-2xl"
-        contentClassName="p-2 pb-5"
+        
       >
         <div className="grid gap-1">
           {options.map((option) => (

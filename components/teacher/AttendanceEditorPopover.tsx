@@ -23,7 +23,7 @@ export function AttendanceEditorPopover({
       title={title}
       description={description}
       side="bottom"
-      contentClassName="p-4"
+      
     >
       {children}
     </ResponsivePopover>

@@ -452,7 +452,7 @@ export default function AdminFeesPage() {
             fullHeight
             fullHeightWidth="min(56rem, 100vw)"
             className="max-w-4xl"
-            contentClassName="flex flex-col overflow-hidden"
+            
           >
               <Tabs value={tab} onValueChange={(value) => setTab(value as typeof tab)} className="shrink-0 px-4 py-2 sm:px-6">
                 <TabsList className="max-w-full overflow-x-auto shadow-none">

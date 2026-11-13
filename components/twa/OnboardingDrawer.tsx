@@ -41,7 +41,7 @@ export default function OnboardingDrawer({
 }: OnboardingDrawerProps) {
   const effectiveSlug = activeSlug?.trim() || slug;
   return (
-    <ResponsivePopover open={open} onOpenChange={onOpenChange} side="bottom" showCloseButton contentClassName="bg-[#f8fbf7]" className="rounded-t-[2rem] bg-[#f8fbf7] px-4 pb-8 pt-3 shadow-[0_-18px_50px_rgba(15,67,45,0.18)]">
+    <ResponsivePopover open={open} onOpenChange={onOpenChange} side="bottom" showCloseButton  className="rounded-t-[2rem] bg-[#f8fbf7] px-4 pb-8 pt-3 shadow-[0_-18px_50px_rgba(15,67,45,0.18)]">
        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="mx-auto w-full max-w-md">
         {/* <div className="mb-8 text-center"><p className="mt-1 text-sm text-gray-500">Select your role to continue</p></div> */}
         {sessionsContent}

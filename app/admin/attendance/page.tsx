@@ -656,7 +656,7 @@ export default function AdminAttendancePage() {
         title={t("teacherPages", "markAttendanceDesc", lang)}
         fullHeight
         className="md:max-w-none shadow-none"
-        contentClassName="px-5 py-6 sm:px-6"
+        
       >
         <div className="mx-auto max-w-2xl pb-8">
           <div className="mb-6 space-y-3">

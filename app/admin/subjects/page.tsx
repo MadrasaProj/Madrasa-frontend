@@ -312,7 +312,7 @@ export default function AdminSubjectsPage() {
         side="bottom"
         desktopView="right-drawer"
         className="shadow-none"
-        contentClassName="px-5 py-4"
+        
       >
         {selectedSubject && (
           <div className="space-y-5">
@@ -334,7 +334,7 @@ export default function AdminSubjectsPage() {
         side="bottom"
         desktopView="right-drawer"
         className="shadow-none"
-        contentClassName="space-y-4 px-5 py-4"
+        
         footer={
           <div className="flex gap-3 border-t border-gray-100 bg-white px-5 py-4">
             <Button type="button" variant="outline" disabled={saving} onClick={() => setShowDrawer(false)} className="flex-1 shadow-none">Cancel</Button>
@@ -405,7 +405,7 @@ export default function AdminSubjectsPage() {
         side="bottom"
         desktopView="right-drawer"
         className="shadow-none"
-        contentClassName="space-y-4 px-5 py-4"
+        
         footer={
           <div className="flex gap-3 border-t border-gray-100 bg-white px-5 py-4">
             <Button type="button" variant="outline" disabled={bulkSaving} onClick={() => setShowBulkModal(false)} className="flex-1 shadow-none">Cancel</Button>

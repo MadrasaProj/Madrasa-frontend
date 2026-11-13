@@ -328,7 +328,7 @@ export function ParentStudentProfileContent({
         onOpenChange={setShowEdit}
         title={t("parentPages", "editStudent", lang)}
         description={student.name}
-        contentClassName="px-5 py-5"
+        
         footer={
           <div className="border-t border-gray-100 bg-white p-4">
             <ButtonGroup className="w-full [&>button]:flex-1">

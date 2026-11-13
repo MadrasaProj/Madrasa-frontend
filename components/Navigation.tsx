@@ -1213,7 +1213,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
         //   lang === "ml" ? "നാവിഗേഷൻ ഓപ്ഷനുകൾ" : "All navigation options"
         // }
 
-        contentClassName="p-4"
+        
       >
         <>
           <ButtonGroup

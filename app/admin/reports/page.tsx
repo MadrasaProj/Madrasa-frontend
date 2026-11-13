@@ -1291,7 +1291,7 @@ export default function AdminReportsPage() {
           title="Student Portal Access Roster"
           showCloseButton={false}
           className="mx-auto h-[92dvh] w-full max-w-4xl shadow-none sm:h-auto sm:max-h-[88dvh] [&_[data-slot=drawer-header]]:sr-only"
-          contentClassName="flex flex-col overflow-hidden p-0"
+          
         >
                 {/* Modal Header */}
                 <div className="p-4 sm:p-5 border-b border-gray-100 bg-gray-50/80 flex-shrink-0">
@@ -1886,7 +1886,7 @@ export default function AdminReportsPage() {
           title="Share Student Portal Roster"
           showCloseButton={false}
           className="mx-auto h-[92dvh] w-full max-w-2xl shadow-none sm:h-auto sm:max-h-[90dvh] [&_[data-slot=drawer-header]]:sr-only"
-          contentClassName="flex flex-col overflow-hidden p-0"
+          
         >
                 {/* Header */}
                 <div className="p-4 sm:p-5 border-b border-gray-100 bg-primary-50/70 flex-shrink-0">
@@ -2118,7 +2118,7 @@ export default function AdminReportsPage() {
           title="Class Attendance"
           showCloseButton={false}
           className="mx-auto h-[92dvh] w-full max-w-3xl shadow-none sm:h-auto sm:max-h-[85dvh] [&_[data-slot=drawer-header]]:sr-only"
-          contentClassName="flex flex-col overflow-hidden p-0"
+          
         >
                 {/* Header */}
                 <div className="p-4 sm:p-5 border-b border-gray-100 bg-gray-50/80 flex-shrink-0">
@@ -2368,7 +2368,7 @@ export default function AdminReportsPage() {
           title="Homework"
           showCloseButton={false}
           className="mx-auto h-[92dvh] w-full max-w-3xl shadow-none sm:h-auto sm:max-h-[85dvh] [&_[data-slot=drawer-header]]:sr-only"
-          contentClassName="flex flex-col overflow-hidden p-0"
+          
         >
                 {/* Header */}
                 <div className="p-4 sm:p-5 border-b border-gray-100 bg-gray-50/80 flex-shrink-0">
@@ -2628,7 +2628,7 @@ export default function AdminReportsPage() {
           title="Ibadah"
           showCloseButton={false}
           className="mx-auto h-[92dvh] w-full max-w-3xl shadow-none sm:h-auto sm:max-h-[85dvh] [&_[data-slot=drawer-header]]:sr-only"
-          contentClassName="flex flex-col overflow-hidden p-0"
+          
         >
                 {/* Header */}
                 <div className="p-4 sm:p-5 border-b border-gray-100 bg-gray-50/80 flex-shrink-0">
@@ -2875,7 +2875,7 @@ export default function AdminReportsPage() {
           title="Faculty"
           showCloseButton={false}
           className="mx-auto h-[92dvh] w-full max-w-4xl shadow-none sm:h-auto sm:max-h-[88dvh] [&_[data-slot=drawer-header]]:sr-only"
-          contentClassName="flex flex-col overflow-hidden p-0"
+          
         >
                 {/* Header */}
                 <div className="p-4 sm:p-5 border-b border-gray-100 bg-gray-50/80 flex-shrink-0">
