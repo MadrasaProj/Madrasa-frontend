@@ -1,3 +1,4 @@
+import { ScrollableStrip } from "@/components/ui/ScrollableStrip";
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
@@ -37,8 +38,9 @@ export function ScrollableTabs({
   }, [value]);
 
   return (
-    <div
-      ref={stripRef}
+    <ScrollableStrip
+      stripRef={stripRef}
+      disabled={disabled}
       role="group"
       aria-label={ariaLabel}
       className={cn(
@@ -78,6 +80,6 @@ export function ScrollableTabs({
           </button>
         );
       })}
-    </div>
+    </ScrollableStrip>
   );
 }

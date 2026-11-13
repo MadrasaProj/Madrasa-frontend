@@ -133,7 +133,15 @@ export default function ParentLeaveRequestsPage() {
   return (
     <DashboardLayout>
       <div className="mx-auto px-0 py-4 sm:py-6">
-        <PageHeader title={t("parentPages", "leaveRequestsTitle", lang)} />
+        <PageHeader
+          title={t("parentPages", "leaveRequestsTitle", lang)}
+          action={
+            <Button type="button" className="hidden lg:inline-flex" onClick={() => setShowForm(true)}>
+              <Plus className="size-4" />
+              {t("parentPages", "newRequest", lang)}
+            </Button>
+          }
+        />
 
         {errorMessage && <ApiErrorBanner message={errorMessage} />}
 
@@ -225,7 +233,7 @@ export default function ParentLeaveRequestsPage() {
         type="button"
         size="lg"
         onClick={() => setShowForm(true)}
-        className="fixed bottom-24 left-1/2 z-40 -translate-x-1/2  rounded-full   shadow-lg lg:bottom-6 lg:right-8"
+        className="fixed bottom-24 left-1/2 z-40 -translate-x-1/2  rounded-full   shadow-lg lg:hidden"
       >
         <Plus className="size-4" />
         {t("parentPages", "newRequest", lang)}

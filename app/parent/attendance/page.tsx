@@ -293,7 +293,7 @@ export default function ParentAttendancePage() {
       <PageHeader title={t("parentPages", "attendanceTitle", lang)} />
 
       {isLoading && (
-        <div className="mx-auto max-w-lg space-y-5">
+        <div className="  space-y-5">
           <Skeleton className="h-72 rounded-3xl" />
           <Skeleton className="h-80 rounded-2xl" />
         </div>
@@ -307,7 +307,7 @@ export default function ParentAttendancePage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="mx-auto max-w-lg space-y-5"
+          className="  space-y-5"
         >
           <section className="rounded-3xl relative  bg-white px-5 py-7 text-center sm:px-8">
             <ChartContainer

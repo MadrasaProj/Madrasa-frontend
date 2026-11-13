@@ -1,3 +1,4 @@
+import { ScrollableStrip } from "@/components/ui/ScrollableStrip";
 import { useEffect, useRef, useState } from "react";
 import { CalendarDays } from "lucide-react";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
@@ -68,7 +69,8 @@ export function ScrollableRangeNavigator({
   return (
     <div className={cn("min-w-0   ", className)}>
       <div className="flex min-w-0 items-center gap-2">
-        <div ref={stripRef} role="group" aria-label={title} className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto overscroll-x-contain py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <ScrollableStrip stripRef={stripRef}
+        disabled={disabled} role="group" aria-label={title} className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto overscroll-x-contain py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {allowAllTime && (
             <button
               ref={allTimeSelected ? selectedRef : undefined}
@@ -96,7 +98,7 @@ export function ScrollableRangeNavigator({
              } </button>
             );
           })}
-        </div>
+        </ScrollableStrip>
         {showCustomPicker && (
           <button type="button" aria-label="Custom date range" title="Custom date range" aria-expanded={pickerOpen} disabled={disabled}
             onClick={() => setPickerOpen((open) => !open)}

@@ -265,7 +265,14 @@ export default function ParentIbadahPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title={t("parentPages", "ibadahTitle", lang)} />
+      <PageHeader
+        title={t("parentPages", "ibadahTitle", lang)}
+        action={!isLoading && activeId && !errorMessage && ibadah ? (
+          <Button type="button" className="hidden lg:inline-flex" onClick={() => openRecord(fmt(new Date()))}>
+            <Plus /> {t("parentPages", "record", lang)}
+          </Button>
+        ) : undefined}
+      />
 
       <div className="px-4">
         {isLoading ? (
@@ -341,7 +348,7 @@ export default function ParentIbadahPage() {
           <h2 className="text-sm font-semibold text-gray-950">{t("parentPages", "historyLabel", lang)}</h2>
         </div>
 
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 lg:bottom-6">
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 lg:hidden">
           <Button className={"rounded-full"} type="button" size="lg" onClick={() => openRecord(fmt(new Date()))}>
             <Plus /> {t("parentPages", "record", lang)}
           </Button>
@@ -351,8 +358,8 @@ export default function ParentIbadahPage() {
           open={recordOpen}
           onOpenChange={onRecordOpenChange}
           fullHeight
-          className="w-screen!"
-          title={t("parentPages", "record", lang)}
+          
+           title={t("parentPages", "record", lang)}
           description={ibadah.student.name}
           
           footer={
@@ -365,7 +372,7 @@ export default function ParentIbadahPage() {
             </div>
           }
         >
-        <div className="mx-auto max-w-2xl space-y-4 pt-2">
+        <div className="mx-auto max-w-2xl space-y-4 pt-2 px-4">
           <ScrollableDateNavigator
             date={date}
             onDateChange={setDate}
@@ -749,6 +756,7 @@ export default function ParentIbadahPage() {
         <ResponsivePopover
           open={selectedLogId !== null}
           onOpenChange={(open) => { if (!open) setSelectedLogId(null); }}
+          desktopView="right-drawer"
           title={ibadah.student.name}
           description={selectedLog ? `${ibadah.student.adno} · ${new Date(`${selectedLog.date.split("T")[0]}T00:00:00`).toLocaleDateString(lang === "ml" ? "ml-IN" : "en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}` : undefined}
           

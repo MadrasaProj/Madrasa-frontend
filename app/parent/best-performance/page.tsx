@@ -119,24 +119,32 @@ export default function ParentBestPerformancePage() {
     ? (lang === "ml" ? "മികച്ച വിദ്യാർത്ഥികൾ" : "Best Students")
     : t("parentPages", "bestPerformers", lang);
 
+  const rankingTabs = (
+    <Tabs value={rankingCategory} onValueChange={(value) => setRankingCategory(value as "total" | "ibadah")}>
+      <TabsList aria-label={lang === "ml" ? "റാങ്കിംഗ് വിഭാഗം" : "Ranking category"}
+        className="h-auto shadow-lg  bg-primary-50 text-primary-300 p-1  border-[0.5px] border-white">
+        <TabsTrigger value="total" className="  px-5 py-2 text-sm data-[state=active]:bg-white data-[state=active]:text-gray-950 data-[state=active]:shadow-none">
+          {lang === "ml" ? "ആകെ സ്കോർ" : "Overall"}
+        </TabsTrigger>
+        <TabsTrigger value="ibadah" className="  px-5 py-2 text-sm data-[state=active]:bg-white data-[state=active]:text-gray-950 data-[state=active]:shadow-none">
+          {lang === "ml" ? "ഇബാദത്ത്" : "Ibadah"}
+        </TabsTrigger>
+      </TabsList>
+    </Tabs>
+  );
+
   return (
     <DashboardLayout>
       <PageHeader hideSwitcherChevron title={isOverall
         ? (lang === "ml" ? "ആകെ മികച്ച വിദ്യാർത്ഥി റാങ്കിംഗ്" : "Overall Best Student Ranking")
-        : t("parentPages", "bestIbadahPerf", lang)} />
+        : t("parentPages", "bestIbadahPerf", lang)}
+        action={<div className="hidden lg:block">{rankingTabs}</div>}
+      />
       <div className="mx-auto w-full max-w-4xl space-y-8 px-4 pb-28 pt-6 sm:px-6 sm:pt-8">
         <div className="space-y-5">
-          <Tabs className="fixed bottom-12 left-1/2 -translate-1/2  z-12 " value={rankingCategory} onValueChange={(value) => setRankingCategory(value as "total" | "ibadah")}>
-            <TabsList aria-label={lang === "ml" ? "റാങ്കിംഗ് വിഭാഗം" : "Ranking category"}
-              className="h-auto shadow-lg  bg-primary-50 text-primary-300 p-1  border-[0.5px] border-white">
-              <TabsTrigger value="total" className="  px-5 py-2 text-sm data-[state=active]:bg-white data-[state=active]:text-gray-950 data-[state=active]:shadow-none">
-                {lang === "ml" ? "ആകെ സ്കോർ" : "Overall"}
-              </TabsTrigger>
-              <TabsTrigger value="ibadah" className="  px-5 py-2 text-sm data-[state=active]:bg-white data-[state=active]:text-gray-950 data-[state=active]:shadow-none">
-                {lang === "ml" ? "ഇബാദത്ത്" : "Ibadah"}
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="fixed bottom-12 left-1/2 -translate-1/2 z-12 lg:hidden">
+            {rankingTabs}
+          </div>
           <div className="space-y-3">
             
             <ScrollableRangeNavigator

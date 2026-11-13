@@ -1,3 +1,4 @@
+import { ScrollableStrip } from "@/components/ui/ScrollableStrip";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays } from "lucide-react";
 import { DatePickerDrawer } from "@/components/DatePickerDrawer";
@@ -78,8 +79,9 @@ export function ScrollableDateNavigator({
         >
           <CalendarDays aria-hidden="true" className="h-5 w-5" />
         </button>}
-        <div
-          ref={stripRef}
+        <ScrollableStrip
+          stripRef={stripRef}
+          disabled={disabled}
           role="group"
           aria-label={pickerTitle}
           className="flex gap-1.5 overflow-x-auto overscroll-x-contain px-1 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -112,7 +114,7 @@ export function ScrollableDateNavigator({
               </button>
             );
           })}
-        </div>
+        </ScrollableStrip>
       </div>
       <DatePickerDrawer
         open={pickerOpen}
