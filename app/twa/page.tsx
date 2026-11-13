@@ -4,8 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { Swiper, SwiperSlide } from "swiper/react";
 import type { Swiper as SwiperInstance } from "swiper";
 import "swiper/css";
-import { ChevronRight, Plus } from "lucide-react";
-import OnboardingDrawer from "@/components/twa/OnboardingDrawer";
+import { ChevronRight } from "lucide-react";
+import OnboardingDrawer, { OnboardingContent } from "@/components/twa/OnboardingDrawer";
 import GridPattern from "@/components/patterns/GridPattern";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -147,7 +147,8 @@ export default function TwaLandingPage() {
     setRole(null);
   };
 
-  const drawer = <OnboardingDrawer open={drawerOpen} onOpenChange={setDrawerOpen} role={role} setRole={setRole} slug={slug} activeSlug={activeSlug} setSlug={setSlug} onSubmit={handleSubmit} onClearSlug={handleClearSlug} />;
+  const onboardingProps = { role, setRole, slug, activeSlug, setSlug, onSubmit: handleSubmit, onClearSlug: handleClearSlug };
+  const drawer = <OnboardingDrawer open={drawerOpen} onOpenChange={setDrawerOpen} {...onboardingProps} />;
 
   if (!hasHydrated) {
     return <main className="mx-auto min-h-[100dvh] max-w-md space-y-6 bg-[#f8fbf7] px-6 pt-16" role="status" aria-label="Loading home"><Skeleton className="mx-auto h-64 w-full rounded-3xl" /><Skeleton className="mx-auto h-7 w-3/4" /><Skeleton className="mx-auto h-12 w-full rounded-xl" /><Skeleton className="mx-auto h-12 w-full rounded-xl" /></main>;
@@ -202,7 +203,8 @@ export default function TwaLandingPage() {
   return (
     <main className="relative min-h-[100dvh] overflow-hidden bg-[#f8fbf7] text-slate-900">
       <GridPattern className="opacity-70" />
-      <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-md flex-col pb-7 pt-8 sm:px-8">
+      <div className="relative mx-auto min-h-[100dvh] w-full lg:grid lg:max-w-6xl lg:grid-cols-2 lg:items-center lg:gap-12 lg:px-10">
+      <section aria-label="About Smart Madrasa" className="mx-auto flex min-h-[100dvh] w-full min-w-0 max-w-md flex-col overflow-hidden pb-7 pt-8 sm:px-8 lg:mx-0 lg:max-w-none lg:px-0 lg:py-12">
         <Swiper onSwiper={setOnboardingSwiper} onSlideChange={(swiper) => setOnboardingStep(swiper.activeIndex)} spaceBetween={28} slidesPerView={1} className="flex w-full flex-1 !overflow-visible !px-2" allowTouchMove resistanceRatio={1}>
           {onboardingSlides.map((item) => (
             <SwiperSlide key={item.title} className="!flex flex-col items-center justify-center px-6 text-center">
@@ -217,8 +219,16 @@ export default function TwaLandingPage() {
           <div className="flex justify-center gap-2" aria-label="Onboarding progress">
             {onboardingSlides.map((item, index) => <button key={item.title} type="button" aria-label={`Go to slide ${index + 1}`} onClick={() => onboardingSwiper?.slideTo(index)} className={`h-1.5 rounded-full transition-all ${index === onboardingStep ? "w-8 bg-primary-700" : "w-1.5 bg-primary-700/20"}`} />)}
           </div>
-          <Button type="button" onClick={() => setDrawerOpen(true)} className="h-auto w-full rounded-2xl px-5 py-4 text-sm font-bold shadow-[0_10px_24px_rgba(16,111,76,0.22)] active:scale-[0.99]">Get started</Button>
+          <Button type="button" onClick={() => setDrawerOpen(true)} className="h-auto w-full rounded-2xl px-5 py-4 text-sm font-bold shadow-[0_10px_24px_rgba(16,111,76,0.22)] active:scale-[0.99] lg:hidden">Get started</Button>
         </div>
+      </section>
+      <section aria-labelledby="desktop-onboarding-title" className="hidden px-8 py-10 lg:block">
+        <div className="mb-8 text-center">
+          <h2 id="desktop-onboarding-title" className="text-2xl font-semibold tracking-tight text-primary-900">Get started</h2>
+          <p className="mt-2 text-sm text-slate-500">Select your role and enter your madrasa's slug to continue.</p>
+        </div>
+        <OnboardingContent {...onboardingProps} showSlugInput />
+      </section>
       </div>
       {drawer}
     </main>

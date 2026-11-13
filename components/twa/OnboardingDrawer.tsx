@@ -1,4 +1,4 @@
-import type { FormEvent, ReactNode } from "react";
+import { useId, type FormEvent, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
@@ -27,9 +27,11 @@ const roles = [
   ["teacher", "Teacher", "/imgs/onboarding/teacher_ico.webp"],
 ] as const;
 
-export default function OnboardingDrawer({
-  open,
-  onOpenChange,
+type OnboardingContentProps = Omit<OnboardingDrawerProps, "open" | "onOpenChange"> & {
+  showSlugInput?: boolean;
+};
+
+export function OnboardingContent({
   role,
   setRole,
   slug,
@@ -38,10 +40,11 @@ export default function OnboardingDrawer({
   onSubmit,
   onClearSlug,
   sessionsContent,
-}: OnboardingDrawerProps) {
+  showSlugInput = false,
+}: OnboardingContentProps) {
+  const slugInputId = useId();
   const effectiveSlug = activeSlug?.trim() || slug;
   return (
-    <ResponsivePopover open={open} onOpenChange={onOpenChange} side="bottom" showCloseButton  className="rounded-t-[2rem] bg-[#f8fbf7] px-4 pb-8 pt-3 shadow-[0_-18px_50px_rgba(15,67,45,0.18)]">
        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="mx-auto w-full max-w-md">
         {/* <div className="mb-8 text-center"><p className="mt-1 text-sm text-gray-500">Select your role to continue</p></div> */}
         {sessionsContent}
@@ -61,9 +64,9 @@ export default function OnboardingDrawer({
               );
             })}
           </div>
-          {role && <motion.div initial={{ opacity: 0, height: 0 }} className="px-1" animate={{ opacity: 1, height: "auto" }} transition={{ duration: 0.2 }}>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">Madrasa Slug</label>
-            <Input type="text" value={effectiveSlug} onChange={(event) => setSlug(event.target.value)} disabled={!!activeSlug?.trim()} placeholder="e.g. noorul-islam" className="h-auto rounded-xl px-4 py-3" autoFocus={!activeSlug} required />
+          {(showSlugInput || role) && <motion.div initial={{ opacity: 0, height: 0 }} className="px-1" animate={{ opacity: 1, height: "auto" }} transition={{ duration: 0.2 }}>
+            <label htmlFor={slugInputId} className="mb-1.5 block text-sm font-medium text-gray-700">Madrasa Slug</label>
+            <Input id={slugInputId} type="text" value={effectiveSlug} onChange={(event) => setSlug(event.target.value)} disabled={!!activeSlug?.trim()} placeholder="e.g. noorul-islam" className="h-auto rounded-xl px-4 py-3" autoFocus={!showSlugInput && !activeSlug} required />
             {/* <div className="mt-1.5 flex items-center justify-between"><p className="text-xs text-gray-400">Enter your madrasa's slug to proceed to login</p>{slug && <button type="button" onClick={onClearSlug} className="text-xs font-medium text-primary-600 hover:underline">Change</button>}</div> */}
           </motion.div>}
           {role && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -73,6 +76,13 @@ export default function OnboardingDrawer({
           </motion.div>}
         </form> 
       </motion.div>
+  );
+}
+
+export default function OnboardingDrawer({ open, onOpenChange, ...contentProps }: OnboardingDrawerProps) {
+  return (
+    <ResponsivePopover open={open} onOpenChange={onOpenChange} side="bottom" showCloseButton className="rounded-t-[2rem] bg-[#f8fbf7] px-4 pb-8 pt-3 shadow-[0_-18px_50px_rgba(15,67,45,0.18)]">
+      <OnboardingContent {...contentProps} />
     </ResponsivePopover>
   );
 }

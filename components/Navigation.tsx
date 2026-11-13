@@ -1219,7 +1219,7 @@ export function BottomNav({ onOpenMenu }: { onOpenMenu?: () => void }) {
           <ButtonGroup
             orientation="vertical"
             style={{ gap: 0 }}
-            className="w-full rounded-lg border border-gray-200"
+            className="w-full rounded-lg border mt-4 border-gray-200"
           >
             <div className="flex items-center gap-3 p-2 px-3">
               <Link
