@@ -201,6 +201,7 @@ export default function TeacherLeaveRequestsPage() {
           onOpenChange={(open) => {
             if (!open) setSelectedRequest(null);
           }}
+          desktopView="right-drawer"
           title={selectedRequest?.student.name}
           description={selectedRequest?.student.class?.name}
         >
@@ -208,7 +209,7 @@ export default function TeacherLeaveRequestsPage() {
             const request = selectedRequest;
             const reason = REASON_CONFIG[request.reasonType];
             return (
-              <div className="space-y-5 p-5">
+              <div className="space-y-5  ">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
                     #{request.student.adno}

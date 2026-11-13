@@ -70,7 +70,7 @@ export function ResponsivePopover({
   popoverAnchor,
   compact = false,
   fullHeight = false,
-  fullHeightWidth = "400px",
+  fullHeightWidth = "650px",
   title,
   headerAction,
   beforeHeader,
@@ -209,7 +209,7 @@ export function ResponsivePopover({
       return (
         <BaseDrawer open={open} onOpenChange={onOpenChange} swipeDirection="right" showSwipeHandle={false}>
           <DrawerContent
-            className={cn("h-full max-h-dvh w-full max-w-[400px] bg-white text-gray-900 shadow-2xl", className)}
+            className={cn("h-full max-h-dvh w-full max-w-[650px] bg-white text-gray-900 shadow-2xl", className)}
             style={{ "--drawer-content-width": fullHeightWidth } as React.CSSProperties}
           >
             {fullHeightContent}
@@ -238,7 +238,7 @@ export function ResponsivePopover({
       <Popover open={open} onOpenChange={onOpenChange}>
         <PopoverContent
           anchor={popoverAnchor ?? (lastInteraction.current?.isConnected ? lastInteraction.current : viewportAnchor)}
-          side="left"
+          side="bottom"
           align="start"
           sideOffset={8}
           aria-label={typeof title === "string" ? title : "Details"}
@@ -273,17 +273,17 @@ export function ResponsivePopover({
             {(title || description || headerAction) && (
               <div className={cn("min-w-0 space-y-0.5 text-left", showBackButton && "pl-8", renderClose && "pr-11")}>
                 <div className="flex min-w-0 items-center justify-between gap-3">
-                  {title && <DrawerTitle className="min-w-0 break-words text-base font-extrabold tracking-tight">{title}</DrawerTitle>}
+                  {title && <DrawerTitle className="min-w-0 break-words text-sm font-extrabold tracking-tight">{title}</DrawerTitle>}
                   {headerAction && <div className="shrink-0">{headerAction}</div>}
                 </div>
                 {description && <DrawerDescription className="text-xs">{description}</DrawerDescription>}
               </div>
             )}
             {showBackButton && <button type="button" aria-label="Back" onClick={onBack ?? (() => onOpenChange(false))} className="absolute left-2 top-4 flex size-11 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 md:size-9"><ChevronLeft className="size-6 md:size-5" /></button>}
-            {renderClose && <DrawerClose aria-label="Close" className="absolute right-2 top-2 flex size-11 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 md:size-9"><X className="size-6 md:size-5" /></DrawerClose>}
+            {renderClose && <DrawerClose aria-label="Close" className="absolute right-2 top-2 flex size-11 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 md:size-9"><X className="size-5.5 md:size-5" /></DrawerClose>}
           </DrawerHeader>
         )}
-        <div className={cn("min-h-0 overflow-y-auto overscroll-contain pb-[10px] md:pb-0", compact ? "flex-auto" : "flex-1", contentClassName)}>{children}</div>
+        <div className={cn("min-h-0 overflow-y-auto overscroll-contain pb-[26px] px-4 md:pb-0", compact ? "flex-auto" : "flex-1", contentClassName)}>{children}</div>
         {footer && <div className="shrink-0">{footer}</div>}
       </DrawerContent>
     </BaseDrawer>

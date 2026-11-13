@@ -89,6 +89,7 @@ export function StudentAttendanceDrawer({
       open={open}
       onOpenChange={(open) => { if (!open) onClose(); }}
       title={student.name}
+      desktopView="right-drawer"
       description={<span className="text-sm">{t("teacherPages", "studentAttendanceDetails", lang)} · {student.adno}</span>}
       
     >

@@ -33,24 +33,14 @@ import { useTenantPath } from "@/hooks/useTenantPath";
 import { t } from "@/lib/i18n";
 import {
   Moon,
-  BookOpen,
-  ChevronLeft,
-  ChevronRight,
-  Loader2,
-  AlertCircle,
-  CheckCircle2,
-  Calendar,
-  List,
-  Users,
+  BookOpen, Users,
   Check,
   Sun,
   Minus,
-  Download,
-  Hash,
-  Settings,
+  Download, Settings,
   School,
   ChevronDown,
-  X,
+  X
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -1210,7 +1200,7 @@ export default function TeacherIbadahPage({
             }}
             className="px-0 pb-2"
           >
-            <TabsList aria-label="Ibadah view" className="w-full bg-gray-100">
+            <TabsList aria-label="Ibadah view" className="w-max bg-gray-100">
               <TabsTrigger value="daily" className="flex-1 px-2 py-2 text-sm">
                 {t("teacherPages", "dailyView", lang)}
               </TabsTrigger>

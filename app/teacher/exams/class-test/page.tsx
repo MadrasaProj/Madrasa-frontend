@@ -481,7 +481,14 @@ export default function TeacherClassTestsPage() {
   return (
     <DashboardLayout>
       <div className="p-0! pb-8!">
-        <PageHeader title={t("nav", "classTests", lang)} />
+        <PageHeader title={t("nav", "classTests", lang)}
+          action={(loading || exams.length > 0 || !!error) && (
+            <Button onClick={openAdd} className="hidden lg:inline-flex">
+              <Plus className="h-5 w-5" />
+              {t("teacherPages", "newClassTestBtn", lang)}
+            </Button>
+          )}
+        />
 
         {!loading && exams.length === 0 && !error ? (
           <IllustratedEmptyState
@@ -699,7 +706,7 @@ export default function TeacherClassTestsPage() {
           type="button"
           size="lg"
           onClick={openAdd}
-          className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-1/2 z-30 max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-full  shadow-lg shadow-primary-900/20 lg:bottom-6 lg:left-[calc(50%+8rem)]"
+          className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-1/2 z-30 max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-full  shadow-lg shadow-primary-900/20 lg:hidden"
         >
           <Plus className="h-5 w-5" />
           {t("teacherPages", "newClassTestBtn", lang)}
@@ -711,6 +718,8 @@ export default function TeacherClassTestsPage() {
           open={!!selectedExam}
           onOpenChange={(open) => { if (!open) setSelectedExamId(null); }}
           side="bottom"
+                  desktopView="right-drawer"
+
           className="mx-auto w-full max-w-2xl rounded-t-2xl"
           title={selectedExam?.name}
           showCloseButton={false}
@@ -771,11 +780,13 @@ export default function TeacherClassTestsPage() {
 
         <ResponsivePopover
           open={isMarkEntryView}
+                  desktopView="right-drawer"
+fullHeight
           onOpenChange={(open) => { if (!open) closeMarkEntry(); }}
           side="bottom"
           title={markEntryExam?.name ?? t("teacherPages", "enterMarksBreadcrumb", lang)}
           description={t("teacherPages", "enterMarksBreadcrumb", lang)}
-          className="mx-auto w-full max-w-6xl rounded-t-2xl"
+          className="mx-auto w-full   rounded-t-2xl"
           
           footer={isMarkEntryView && (
             <TeacherMarkEntryActions
@@ -800,7 +811,7 @@ export default function TeacherClassTestsPage() {
               onReset={resetScores}
             />
           )}
-        >
+        > 
           {isMarkEntryView && markEntryExam && (
             <TeacherMarkEntryView
               gridProps={{
@@ -841,10 +852,11 @@ export default function TeacherClassTestsPage() {
       {/* Add/Edit Class Test */}
       <ResponsivePopover
         open={showDrawer}
+        desktopView="right-drawer"
         onOpenChange={(open) => { if (!saving) setShowDrawer(open); }}
         side="bottom"
         title={editTarget ? t("teacherPages", "editClassTestTitle", lang) : t("teacherPages", "newClassTestTitle", lang)}
-        className="mx-auto w-full max-w-xl rounded-t-2xl"
+        className="mx-auto w-full   rounded-t-2xl"
         showCloseButton={!saving}
         footer={
           <div className="flex w-full justify-end gap-2 border-t border-gray-100 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
@@ -860,7 +872,7 @@ export default function TeacherClassTestsPage() {
       >
         <form
           id="class-test-form"
-          className="space-y-3 p-4"
+          className="space-y-3 pb-4"
           onSubmit={(event) => {
             event.preventDefault();
             void handleSave();

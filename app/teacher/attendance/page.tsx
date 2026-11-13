@@ -51,6 +51,7 @@ import {
 } from "@/components/teacher/AttendanceEditorContent";
 import { StudentAttendanceDrawer } from "@/components/teacher/StudentAttendanceDrawer";
 import { AttendanceImportModal } from "@/components/attendance/AttendanceImportModal";
+import { TeacherAttendanceDrawer } from "@/components/teacher/TeacherAttendanceDrawer";
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -491,10 +492,12 @@ export default function TeacherAttendancePage() {
         title={t("teacherPages", "attendancePageTitle", lang)}
            
         backHref="/teacher"
-        showActionOnMobile
-        action={
-          <></>
-        }
+        action={!drawerOpen && (
+          <Button className="hidden lg:inline-flex" onClick={() => setDrawerOpen(true)}>
+            <UserCheck aria-hidden="true" className="size-4" />
+            {t("teacherPages", "markAttendanceDesc", lang)}
+          </Button>
+        )}
       />
 
       <div className="px-4! pt-4! pb-28! lg:pb-24!">
@@ -633,7 +636,7 @@ export default function TeacherAttendancePage() {
       )}
 
       {!drawerOpen && (
-        <div className="fixed bottom-[92px] left-1/2 z-40 w-max -translate-x-1/2 p-0! lg:bottom-6">
+        <div className="fixed bottom-[92px] left-1/2 z-40 w-max -translate-x-1/2 p-0! lg:hidden">
           <Button type="button" size="lg" className="w-max gap-2 rounded-full shadow-lg shadow-primary-900/20" onClick={() => setDrawerOpen(true)}>
             <UserCheck aria-hidden="true" className="size-4" />
             {t("teacherPages", "markAttendanceDesc", lang)}
@@ -641,146 +644,11 @@ export default function TeacherAttendancePage() {
         </div>
       )}
 
-      <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <DrawerContent
-          className="data-[swipe-direction=down]:rounded-none bg-white"
-          style={{
-            "--drawer-content-height": "100dvh",
-            "--drawer-content-max-height": "100dvh",
-          } as React.CSSProperties}
-        >
-          <DrawerHeader className="flex-row items-center justify-between border-b border-gray-100 px-5 py-3 text-left sm:px-6">
-              <DrawerTitle className="text-base font-bold">
-              {t("teacherPages", "markAttendanceDesc", lang)}
-            </DrawerTitle>
-            <DrawerClose
-              aria-label={t("common", "close", lang)}
-              className="rounded-lg p-2 text-gray-600 hover:bg-gray-100"
-            >
-              <X aria-hidden="true" className="size-5" />
-            </DrawerClose>
-          </DrawerHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-6 sm:px-6">
-            <div className="mx-auto max-w-2xl">
-              {error && (
-                <ApiErrorBanner
-                  message={error}
-                  onRetry={() =>
-                    activeClassId ? loadAttendance(activeClassId, date) : undefined
-                  }
-                />
-              )}
-
-              <div className="mb-6 space-y-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <ScrollableDateNavigator
-                    date={date}
-                    onDateChange={setDate}
-                    pickerTitle="Choose attendance date"
-                    disabled={saving}
-                    hideCalendarButton
-                  />
-                  <DrawerSelector
-                    title={t("teacherPages", "selectClassOpt", lang)}
-                    value={activeClassId}
-                    onChange={setSelectedClassId}
-                    options={classes.map((cls) => ({
-                      value: cls.id,
-                      label: `${cls.name}${cls.classTeacherId === user?.id ? ` · ${t("teacherPages", "mineBadge", lang)}` : ""}`,
-                    }))}
-                    placeholder={classesLoading ? t("common", "loading", lang) : t("teacherPages", "noClassesFound", lang)}
-                    disabled={saving || classesLoading}
-                    optionClassName="text-sm"
-                    triggerItem={
-                      <Button
-                        variant="outline"
-                        className="h-14 w-12 rounded-lg px-0 py-1           "
-                      >
-                        <School aria-hidden="true" className="size-5" />
-                      </Button>
-                    }
-                  />
-                </div>
-                <div className="flex items-center justify-between gap-3 text-sm font-medium text-gray-500">
-                  <span>{new Date(`${date}T00:00:00`).toLocaleDateString(lang === "ml" ? "ml-IN" : "en-GB", { day: "numeric", month: "long", year: "numeric" })}</span>
-                  <span className="truncate text-right">{activeClass?.name ?? t("teacherPages", "noClassesFound", lang)}</span>
-                </div>
-              </div>
-
-              {classesQuery.error && (
-                <ApiErrorBanner
-                  message={classesQuery.error.message}
-                  onRetry={() => { void classesQuery.refetch(); }}
-                />
-              )}
-
-              {saveSuccess && (
-                <p role="status" className="mb-4 flex items-center gap-1 text-sm font-semibold text-primary-600">
-                  <CheckCircle2 className="h-4 w-4" />
-                  {t("teacherPages", "saved", lang)}
-                </p>
-              )}
-
-              {activeClassId && !loading && students.length > 0 && (
-                <div className="mb-3 rounded-lg    bg-linear-120 from-primary-50/50 to-secondary/50 px-4 py-3 text-sm">
-                  <div className="flex flex-wrap items-center gap-x-5 gap-y-1 font-semibold">
-                    <span className="text-emerald-700">{t("teacherPages", "present", lang)}: {summary.PRESENT}</span>
-                    <span className="text-red-700">{t("teacherPages", "absent", lang)}: {summary.ABSENT + summary.LEAVE + summary.SICK}</span>
-                  </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    {t("teacherPages", "unapprovedAbsence", lang)} {summary.ABSENT} · {t("teacherPages", "approvedLeave", lang)} {summary.LEAVE} · {t("teacherPages", "sickLeave", lang)} {summary.SICK}
-                  </p>
-                </div>
-              )}
-
-              {leaveRequests.length > 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 mb-3 flex items-center justify-between gap-3 shadow-xs">
-                  <div className="flex items-center gap-2 text-xs text-amber-900 font-semibold">
-                    <FilePen className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span>
-                      {leaveRequests.length} {lang === "ml" ? "വിദ്യാർത്ഥികൾക്ക് ഈ തീയതിയിൽ ലീവ് അപേക്ഷയുണ്ട്" : "student(s) have leave requests for this date."}
-                    </span>
-                  </div>
-                  <a
-                    href="/teacher/leave-requests"
-                    className="text-xs font-bold text-amber-700 hover:text-amber-800 underline shrink-0"
-                  >
-                    {lang === "ml" ? "അവലോകനം ചെയ്യുക" : "Review"} &rarr;
-                  </a>
-                </div>
-              )}
-
-              <div aria-busy={loading || classesLoading}>
-                <AttendanceEditorContent
-                  isOwnClass={isOwnClass}
-                  activeClassId={activeClassId}
-                  classesLoading={classesLoading}
-                  records={records}
-                  summary={summary}
-                  pct={pct}
-                  confirmClear={confirmClear}
-                  setConfirmClear={setConfirmClear}
-                  activeClassName={activeClass?.name}
-                  date={date}
-                  clearAll={clearAll}
-                  saving={saving}
-                  markAll={markAll}
-                  saveError={saveError}
-                  loading={loading}
-                  error={error}
-                  students={students}
-                  setStatus={setStatus}
-                  setNotes={setNotes}
-                  setLateComing={setLateComing}
-                  hasDirty={hasDirty}
-                  hasExisting={hasExisting}
-                  handleSave={handleSave}
-                />
-              </div>
-            </div>
-          </div>
-        </DrawerContent>
-      </Drawer>
+       <TeacherAttendanceDrawer
+                open={drawerOpen}
+                onOpenChange={setDrawerOpen}
+                initialClassId={activeClassId}
+              />
       {showImport && (
         <AttendanceImportModal
           clientId={cid}

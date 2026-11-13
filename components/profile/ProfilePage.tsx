@@ -93,63 +93,6 @@ const strengthMeta: Record<Strength, { label: string; color: string; width: stri
   4: { label: "Strong", color: "bg-primary-500", width: "w-full" },
 };
 
-interface DrawerProps {
-  open: boolean;
-  onClose: () => void;
-  children: React.ReactNode;
-  title: string;
-  subtitle?: string;
-}
-
-function Drawer({ open, onClose, children, title, subtitle }: DrawerProps) {
-  const { lang } = useLanguageStore();
-  useEffect(() => {
-    if (!open) return;
-    document.body.style.overflow = "hidden";
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", handler);
-    return () => {
-      document.body.style.overflow = "";
-      window.removeEventListener("keydown", handler);
-    };
-  }, [open, onClose]);
-
-  return (
-    <AnimatePresence>
-      {open && (
-        <div className="fixed inset-0 z-50">
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-          />
-          <motion.div
-            initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
-            transition={{ type: "spring", stiffness: 350, damping: 36 }}
-            className="absolute right-0 top-0 bottom-0 w-full sm:max-w-lg bg-white shadow-2xl flex flex-col"
-          >
-            <div className="flex items-center justify-between gap-3 p-5 border-b border-gray-100 shrink-0">
-              <div className="min-w-0">
-                <h2 className="text-base font-bold text-gray-900 truncate">{title}</h2>
-                {subtitle && <p className="text-xs text-gray-500 mt-0.5 truncate">{subtitle}</p>}
-              </div>
-              <button
-                onClick={onClose}
-                className="p-2 rounded-xl hover:bg-gray-100 text-gray-500 transition-colors active:scale-95 shrink-0"
-                aria-label={t("common", "close", lang)}
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto">{children}</div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
-  );
-}
-
 export interface ProfileConfig {
   roleLabel: string;
   roleShort: string;
@@ -715,10 +658,28 @@ export default function ProfilePage({ config, layout }: ProfilePageProps) {
 
       {/* Edit Drawer */}
       <ResponsivePopover
+        fullHeight
         open={drawerOpen}
         onOpenChange={(open) => { if (!open) closeDrawer(); }}
         title={t("common", "updateProfile", lang)}
         description={t("common", "editInfo", lang)}
+        footer={
+          <div className="border-t border-gray-100 p-4 bg-gray-50/60 backdrop-blur-sm flex items-center gap-2">
+            <button onClick={closeDrawer} disabled={saving}
+              className="px-4 py-3 text-sm font-semibold border border-gray-200 rounded-2xl
+                         text-gray-600 bg-white hover:bg-gray-50 transition-all active:scale-95
+                         disabled:opacity-50">
+              {t("common", "cancel", lang)}
+            </button>
+            <button onClick={handleSave} disabled={saving}
+              className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-bold
+                         bg-primary-600 text-white rounded-2xl hover:bg-primary-700
+                         shadow-lg transition-colors active:scale-[0.98] disabled:opacity-60">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
+              {saving ? t("common", "updating", lang) : t("common", "updateProfile", lang)}
+            </button>
+          </div>
+        }
       >
         <div className="px-5 pt-4">
           <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-2xl">
@@ -1029,21 +990,7 @@ export default function ProfilePage({ config, layout }: ProfilePageProps) {
           )}
         </div>
 
-        <div className="border-t border-gray-100 p-4 bg-gray-50/60 backdrop-blur-sm flex items-center gap-2">
-          <button onClick={closeDrawer} disabled={saving}
-            className="px-4 py-3 text-sm font-semibold border border-gray-200 rounded-2xl
-                       text-gray-600 bg-white hover:bg-gray-50 transition-all active:scale-95
-                       disabled:opacity-50">
-            {t("common", "cancel", lang)}
-          </button>
-          <button onClick={handleSave} disabled={saving}
-            className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-bold
-                       bg-primary-600 text-white rounded-2xl hover:bg-primary-700
-                       shadow-lg transition-colors active:scale-[0.98] disabled:opacity-60">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
-            {saving ? t("common", "updating", lang) : t("common", "updateProfile", lang)}
-          </button>
-        </div>
+
       </ResponsivePopover>
     </DashboardLayout>
   );

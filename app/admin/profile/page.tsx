@@ -307,6 +307,7 @@ export default function AdminProfilePage() {
       </div>
 
       <ResponsivePopover
+        fullHeight
         open={drawerOpen}
         onOpenChange={(open) => { if (!open) closeDrawer(); }}
         desktopView="right-drawer"

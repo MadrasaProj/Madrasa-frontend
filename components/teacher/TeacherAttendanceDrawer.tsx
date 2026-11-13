@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, School, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, School } from "lucide-react";
 import { getStudents } from "@/lib/students-api";
 import {
   bulkDeleteAttendance,
@@ -18,13 +18,7 @@ import { Button } from "@/components/ui/button";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { DrawerSelector } from "@/components/DrawerSelector";
 import { ScrollableDateNavigator } from "@/components/ScrollableDateNavigator";
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import {
   AttendanceEditorContent,
   type ActiveStatus,
@@ -299,125 +293,116 @@ export function TeacherAttendanceDrawer({
   };
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent
-        className="data-[swipe-direction=down]:rounded-none bg-white"
-        style={{
-          "--drawer-content-height": "100dvh",
-          "--drawer-content-max-height": "100dvh",
-        } as React.CSSProperties}
-      >
-        <DrawerHeader className="flex-row items-center justify-between border-b border-gray-100 px-5 py-3 text-left sm:px-6">
-          <DrawerTitle className="text-base font-bold">
-            {t("teacherPages", "markAttendanceDesc", lang)}
-          </DrawerTitle>
-          <DrawerClose aria-label={t("common", "close", lang)} className="rounded-lg p-2 text-gray-600 hover:bg-gray-100">
-            <X aria-hidden="true" className="size-5" />
-          </DrawerClose>
-        </DrawerHeader>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-6 sm:px-6">
-          <div className="mx-auto max-w-2xl">
-            {error && (
-              <ApiErrorBanner
-                message={error}
-                onRetry={() => activeClassId ? void loadAttendance(activeClassId, date) : undefined}
-              />
-            )}
-            <div className="mb-6 space-y-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <ScrollableDateNavigator
-                  date={date}
-                  onDateChange={setDate}
-                  pickerTitle="Choose attendance date"
-                  disabled={saving}
-                  hideCalendarButton
-                />
-                <DrawerSelector
-                  title={t("teacherPages", "selectClassOpt", lang)}
-                  value={activeClassId}
-                  onChange={setSelectedClassId}
-                  options={classes.map((cls) => ({
-                    value: cls.id,
-                    label: `${cls.name}${cls.classTeacherId === user?.id ? ` · ${t("teacherPages", "mineBadge", lang)}` : ""}`,
-                  }))}
-                  placeholder={classesLoading ? t("common", "loading", lang) : t("teacherPages", "noClassesFound", lang)}
-                  disabled={saving || classesLoading}
-                  optionClassName="text-sm"
-                  triggerItem={
-                    <Button variant="outline" className="h-14 w-12 rounded-lg px-0 py-1">
-                      <School aria-hidden="true" className="size-5" />
-                    </Button>
-                  }
-                />
-              </div>
-              <div className="flex items-center justify-between gap-3 text-sm font-medium text-gray-500">
-                <span>{new Date(`${date}T00:00:00`).toLocaleDateString(lang === "ml" ? "ml-IN" : "en-GB", { day: "numeric", month: "long", year: "numeric" })}</span>
-                <span className="truncate text-right">{activeClass?.name ?? t("teacherPages", "noClassesFound", lang)}</span>
+    <ResponsivePopover
+      open={open}
+      onOpenChange={onOpenChange}
+      desktopView="right-drawer"
+      fullHeight
+       
+      showBackButton={false}
+      title={t("teacherPages", "markAttendanceDesc", lang)}
+      contentClassName="px-5 py-6 sm:px-6"
+    >
+      <div className="mx-auto max-w-2xl">
+        {error && (
+          <ApiErrorBanner
+            message={error}
+            onRetry={() => activeClassId ? void loadAttendance(activeClassId, date) : undefined}
+          />
+        )}
+        <div className="mb-6 space-y-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <ScrollableDateNavigator
+              date={date}
+              onDateChange={setDate}
+              pickerTitle="Choose attendance date"
+              disabled={saving}
+              hideCalendarButton
+            />
+            <DrawerSelector
+              title={t("teacherPages", "selectClassOpt", lang)}
+              value={activeClassId}
+              onChange={setSelectedClassId}
+              options={classes.map((cls) => ({
+                value: cls.id,
+                label: `${cls.name}${cls.classTeacherId === user?.id ? ` · ${t("teacherPages", "mineBadge", lang)}` : ""}`,
+              }))}
+              placeholder={classesLoading ? t("common", "loading", lang) : t("teacherPages", "noClassesFound", lang)}
+              disabled={saving || classesLoading}
+              optionClassName="text-sm"
+              triggerItem={
+                <Button variant="outline" className="h-14 w-12 rounded-lg px-0 py-1">
+                  <School aria-hidden="true" className="size-5" />
+                </Button>
+              }
+            />
+          </div>
+          <div className="flex items-center justify-between gap-3 text-sm font-medium text-gray-500">
+            <span>{new Date(`${date}T00:00:00`).toLocaleDateString(lang === "ml" ? "ml-IN" : "en-GB", { day: "numeric", month: "long", year: "numeric" })}</span>
+            <span className="truncate text-right">{activeClass?.name ?? t("teacherPages", "noClassesFound", lang)}</span>
+          </div>
+        </div>
+        {classesQuery.error && (
+          <ApiErrorBanner message={classesQuery.error.message} onRetry={() => { void classesQuery.refetch(); }} />
+        )}
+        {saveSuccess && (
+          <p role="status" className="mb-4 flex items-center gap-1 text-sm font-semibold text-primary-600">
+            <CheckCircle2 className="size-4" />
+            {t("teacherPages", "saved", lang)}
+          </p>
+        )}
+        <div aria-busy={loading || classesLoading}>
+          <AttendanceEditorContent
+            isOwnClass={isOwnClass}
+            activeClassId={activeClassId}
+            classesLoading={classesLoading}
+            records={records}
+            summary={summary}
+            pct={pct}
+            confirmClear={confirmClear}
+            setConfirmClear={setConfirmClear}
+            activeClassName={activeClass?.name}
+            date={date}
+            clearAll={() => { void clearAll(); }}
+            saving={saving}
+            markAll={markAll}
+            saveError={saveError}
+            loading={loading}
+            error={error}
+            students={students}
+            setStatus={setStatus}
+            setNotes={setNotes}
+            setLateComing={setLateComing}
+            hasDirty={hasDirty}
+            hasExisting={hasExisting}
+            handleSave={handleSave}
+          />
+        </div>
+      </div>
+      {confirmSave && activeClass && (
+        <div className="fixed inset-0 z-1050 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex items-center gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-100">
+                <AlertTriangle className="size-5 text-amber-600" />
+              </span>
+              <div>
+                <p className="font-bold text-gray-900">{t("teacherPages", "markingOtherClass", lang)}</p>
+                <p className="mt-0.5 text-sm text-gray-500">{activeClass.name}</p>
               </div>
             </div>
-            {classesQuery.error && (
-              <ApiErrorBanner message={classesQuery.error.message} onRetry={() => { void classesQuery.refetch(); }} />
-            )}
-            {saveSuccess && (
-              <p role="status" className="mb-4 flex items-center gap-1 text-sm font-semibold text-primary-600">
-                <CheckCircle2 className="size-4" />
-                {t("teacherPages", "saved", lang)}
-              </p>
-            )}
-            <div aria-busy={loading || classesLoading}>
-              <AttendanceEditorContent
-                isOwnClass={isOwnClass}
-                activeClassId={activeClassId}
-                classesLoading={classesLoading}
-                records={records}
-                summary={summary}
-                pct={pct}
-                confirmClear={confirmClear}
-                setConfirmClear={setConfirmClear}
-                activeClassName={activeClass?.name}
-                date={date}
-                clearAll={() => { void clearAll(); }}
-                saving={saving}
-                markAll={markAll}
-                saveError={saveError}
-                loading={loading}
-                error={error}
-                students={students}
-                setStatus={setStatus}
-                setNotes={setNotes}
-                setLateComing={setLateComing}
-                hasDirty={hasDirty}
-                hasExisting={hasExisting}
-                handleSave={handleSave}
-              />
+            <p className="mb-5 text-sm text-gray-600">{t("teacherPages", "markingOtherDesc", lang)}</p>
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => setConfirmSave(false)}>
+                {t("common", "cancel", lang)}
+              </Button>
+              <Button className="flex-1 bg-amber-500 hover:bg-amber-600" onClick={() => { setConfirmSave(false); void doSave(); }}>
+                {t("teacherPages", "yesSaveBtn", lang)}
+              </Button>
             </div>
           </div>
         </div>
-        {confirmSave && activeClass && (
-          <div className="fixed inset-0 z-1050 flex items-center justify-center bg-black/50 p-4">
-            <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
-              <div className="mb-4 flex items-center gap-3">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-100">
-                  <AlertTriangle className="size-5 text-amber-600" />
-                </span>
-                <div>
-                  <p className="font-bold text-gray-900">{t("teacherPages", "markingOtherClass", lang)}</p>
-                  <p className="mt-0.5 text-sm text-gray-500">{activeClass.name}</p>
-                </div>
-              </div>
-              <p className="mb-5 text-sm text-gray-600">{t("teacherPages", "markingOtherDesc", lang)}</p>
-              <div className="flex gap-3">
-                <Button variant="outline" className="flex-1" onClick={() => setConfirmSave(false)}>
-                  {t("common", "cancel", lang)}
-                </Button>
-                <Button className="flex-1 bg-amber-500 hover:bg-amber-600" onClick={() => { setConfirmSave(false); void doSave(); }}>
-                  {t("teacherPages", "yesSaveBtn", lang)}
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-      </DrawerContent>
-    </Drawer>
+      )}
+    </ResponsivePopover>
   );
 }

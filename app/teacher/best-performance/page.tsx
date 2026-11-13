@@ -190,7 +190,14 @@ export default function TeacherBestPerformancePage({ scope = "teacher" }: { scop
       <PageHeader
         title={isOverall ? (lang === "ml" ? "ആകെ മികച്ച വിദ്യാർത്ഥി റാങ്കിംഗ്" : "Overall Best Student Ranking") : (lang === "ml" ? "മികച്ച ഇബാദത്ത്" : "Best Ibadah Performance")}
         showActionOnMobile
-        action={isAdmin && <DrawerSelector
+        action={<div className="flex items-center gap-3">
+          <Tabs className="hidden lg:block" value={rankingCategory} onValueChange={selectCategory}>
+            <TabsList aria-label={lang === "ml" ? "റാങ്കിംഗ് വിഭാഗം" : "Ranking category"} className="h-auto bg-primary-50 p-1 text-primary-300 shadow-lg border-[0.5px] border-white">
+              <TabsTrigger value="total" className="px-5 py-2 text-sm data-[state=active]:bg-white data-[state=active]:text-gray-950 data-[state=active]:shadow-none">{lang === "ml" ? "ആകെ സ്കോർ" : "Overall"}</TabsTrigger>
+              <TabsTrigger value="ibadah" className="px-5 py-2 text-sm data-[state=active]:bg-white data-[state=active]:text-gray-950 data-[state=active]:shadow-none">{lang === "ml" ? "ഇബാദത്ത്" : "Ibadah"}</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          {isAdmin && <DrawerSelector
           title={lang === "ml" ? "ക്ലാസ് തിരഞ്ഞെടുക്കുക" : "Choose class"}
           options={[
             { value: "all", label: lang === "ml" ? "എല്ലാ ക്ലാസുകളും" : "All classes" },
@@ -206,10 +213,11 @@ export default function TeacherBestPerformancePage({ scope = "teacher" }: { scop
             <ChevronDown className="size-4 shrink-0" />
           </button>}
         />}
+        </div>}
       />
       <div className="mx-auto w-full max-w-4xl space-y-8 px-4 pb-28 pt-6 sm:px-6 sm:pt-8">
         <div className="space-y-5">
-          <Tabs className="fixed bottom-16 left-1/2 z-30 -translate-x-1/2 lg:bottom-6 lg:left-[calc(50%+8rem)]" value={rankingCategory} onValueChange={selectCategory}>
+          <Tabs className="fixed bottom-16 left-1/2 z-30 -translate-x-1/2 lg:hidden" value={rankingCategory} onValueChange={selectCategory}>
             <TabsList aria-label={lang === "ml" ? "റാങ്കിംഗ് വിഭാഗം" : "Ranking category"} className="h-auto bg-primary-50 p-1 text-primary-300 shadow-lg border-[0.5px] border-white">
               <TabsTrigger value="total" className="px-5 py-2 text-sm data-[state=active]:bg-white data-[state=active]:text-gray-950 data-[state=active]:shadow-none">{lang === "ml" ? "ആകെ സ്കോർ" : "Overall"}</TabsTrigger>
               <TabsTrigger value="ibadah" className="px-5 py-2 text-sm data-[state=active]:bg-white data-[state=active]:text-gray-950 data-[state=active]:shadow-none">{lang === "ml" ? "ഇബാദത്ത്" : "Ibadah"}</TabsTrigger>

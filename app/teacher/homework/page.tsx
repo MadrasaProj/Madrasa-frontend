@@ -1,3 +1,4 @@
+import { DrawerSelector } from "@/components/DrawerSelector";
 import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { HomeworkAssignmentDrawer } from "@/components/teacher/HomeworkAssignmentDrawer";
@@ -28,8 +29,8 @@ import { Skeleton, SkeletonList } from "@/components/ui/Skeleton";
 function useStatusConfig(lang: Lang) {
   return {
     NOT_SUBMITTED: { label: t("teacherPages", "notSubmittedStatus", lang) },
-    SUBMITTED:     { label: t("teacherPages", "submittedStatus", lang) },
-    CHECKED:       { label: t("teacherPages", "checkedStatus", lang) },
+    SUBMITTED: { label: t("teacherPages", "submittedStatus", lang) },
+    CHECKED: { label: t("teacherPages", "checkedStatus", lang) },
   };
 }
 
@@ -70,37 +71,37 @@ export default function TeacherHomeworkPage() {
     SUBMITTED: "mdi:check",
     CHECKED: "mdi:book-edit-outline",
   };
-  const cid          = user?.clientId ?? "";
-  const token        = accessToken ?? "";
-  const teacherId    = user?.id ?? "";
+  const cid = user?.clientId ?? "";
+  const token = accessToken ?? "";
+  const teacherId = user?.id ?? "";
   const isPeriodBased = user?.attendanceMode === "PERIOD_BASED";
 
-  const [homework, setHomework]       = useState<HomeworkAssignment[]>([]);
-  const [loading, setLoading]         = useState(true);
+  const [homework, setHomework] = useState<HomeworkAssignment[]>([]);
+  const [loading, setLoading] = useState(true);
   const [submissions, setSubmissions] = useState<Record<string, SubmissionsResponse>>({});
   const [loadingSubs, setLoadingSubs] = useState<string | null>(null);
-  const [savingSubs, setSavingSubs]   = useState(false);
+  const [savingSubs, setSavingSubs] = useState(false);
   const [localStatus, setLocalStatus] = useState<Record<string, Record<string, HomeworkStatus>>>({});
-  const [deletingId, setDeletingId]   = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<HomeworkAssignment | null>(null);
-  const [error, setError]             = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const [showHomeworkDrawer, setShowHomeworkDrawer] = useState(false);
   const { activeClassId } = useActiveClass();
   const classId = activeClassId;
-  const [title, setTitle]             = useState("");
-  const [desc, setDesc]               = useState("");
-  const [dueDate, setDueDate]         = useState(fmt(new Date(Date.now() + 86400_000)));
-  const [subjectId, setSubjectId]     = useState("");
+  const [title, setTitle] = useState("");
+  const [desc, setDesc] = useState("");
+  const [dueDate, setDueDate] = useState(fmt(new Date(Date.now() + 86400_000)));
+  const [subjectId, setSubjectId] = useState("");
   const [classSubjects, setClassSubjects] = useState<SubjectRecord[]>([]);
-  const [creating, setCreating]       = useState(false);
+  const [creating, setCreating] = useState(false);
 
-  const [editTarget, setEditTarget]         = useState<HomeworkAssignment | null>(null);
-  const [updating, setUpdating]             = useState(false);
+  const [editTarget, setEditTarget] = useState<HomeworkAssignment | null>(null);
+  const [updating, setUpdating] = useState(false);
 
   const [showAssessDrawer, setShowAssessDrawer] = useState(false);
   const [showAssessOptions, setShowAssessOptions] = useState(false);
-  const [assessHw, setAssessHw]                 = useState<HomeworkAssignment | null>(null);
+  const [assessHw, setAssessHw] = useState<HomeworkAssignment | null>(null);
 
   useEffect(() => {
     if (!cid || !token || !activeClassId) { setHomework([]); setLoading(false); return; }
@@ -131,7 +132,7 @@ export default function TeacherHomeworkPage() {
         setClassSubjects(r.data);
         if (r.data.length > 0) setSubjectId(r.data[0].id);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [classId, cid, token]); // eslint-disable-line
 
   const reload = useCallback(async () => {
@@ -222,7 +223,7 @@ export default function TeacherHomeworkPage() {
         : { classId: hw.classId };
       getSubjects(cid, token, params)
         .then((r) => { setClassSubjects(r.data); })
-        .catch(() => {});
+        .catch(() => { });
     }
     setShowHomeworkDrawer(true);
   };
@@ -269,7 +270,14 @@ export default function TeacherHomeworkPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title={t("teacherPages", "homeworkTitle", lang)} />
+      <PageHeader title={t("teacherPages", "homeworkTitle", lang)}
+          action={homework.length > 0 && (
+            <Button onClick={openCreate} className="hidden lg:inline-flex">
+              <Plus className="h-4 w-4" />
+              {t("teacherPages", "newHwBtn", lang)}
+            </Button>
+          )}
+        />
 
       {error && <ApiErrorBanner message={error} onRetry={() => { setError(null); }} />}
 
@@ -301,78 +309,78 @@ export default function TeacherHomeworkPage() {
       ) : (
         <div className="mt-5">
           <div className="divide-y card bg-background  !p-0  rounded-2xl overflow-hidden divide-gray-100     ">
-          <div className=" p-2 px-4 bg-linear-120 from-sky-100/50 via-primary-50/50 to-white/25 flex flex-wrap items-center gap-x-4 gap-y-2   text-xs text-gray-600">
-            {(["NOT_SUBMITTED", "SUBMITTED", "CHECKED"] as HomeworkStatus[]).map((status) => (
-              <span key={status} className="inline-flex items-center gap-1.5">
-                <Icon
-                  icon={STATUS_ICONS[status]}
-                  className={cn(
-                    "size-4",
-                    status === "NOT_SUBMITTED" && "text-red-500",
-                    status === "SUBMITTED" && "text-yellow-600",
-                    status === "CHECKED" && "text-primary-600",
-                  )}
-                  aria-hidden="true"
-                />
-                {STATUS_CONFIG[status].label}
-              </span>
-            ))}
-          </div>
-          {homework.map((hw) => {
-            const rows = submissions[hw.id]?.submissions ?? [];
-            const countByStatus = {
-              NOT_SUBMITTED: rows.filter((row) => row.status === "NOT_SUBMITTED").length,
-              SUBMITTED: rows.filter((row) => row.status === "SUBMITTED").length,
-              CHECKED: rows.filter((row) => row.status === "CHECKED").length,
-            };
+            <div className=" p-2 px-4 bg-linear-120 from-sky-100/50 via-primary-50/50 to-white/25 flex flex-wrap items-center gap-x-4 gap-y-2   text-xs text-gray-600">
+              {(["NOT_SUBMITTED", "SUBMITTED", "CHECKED"] as HomeworkStatus[]).map((status) => (
+                <span key={status} className="inline-flex items-center gap-1.5">
+                  <Icon
+                    icon={STATUS_ICONS[status]}
+                    className={cn(
+                      "size-4",
+                      status === "NOT_SUBMITTED" && "text-red-500",
+                      status === "SUBMITTED" && "text-yellow-600",
+                      status === "CHECKED" && "text-primary-600",
+                    )}
+                    aria-hidden="true"
+                  />
+                  {STATUS_CONFIG[status].label}
+                </span>
+              ))}
+            </div>
+            {homework.map((hw) => {
+              const rows = submissions[hw.id]?.submissions ?? [];
+              const countByStatus = {
+                NOT_SUBMITTED: rows.filter((row) => row.status === "NOT_SUBMITTED").length,
+                SUBMITTED: rows.filter((row) => row.status === "SUBMITTED").length,
+                CHECKED: rows.filter((row) => row.status === "CHECKED").length,
+              };
 
-            return (
-            <button key={hw.id} onClick={() => openAssess(hw)} className="flex px-4 py-3 flex-col w-full justify-start gap-2  text-left">
-                <div className="flex gap-4">
-                  <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-gray-900">{hw.title}</p>
-                  <p className="mt-1 truncate text-sm text-gray-500">
-                    {hw.class?.name ?? "—"} <span className="mx-1 text-gray-300">·</span> {hw.subject?.name ?? "—"}
-                  </p>
-                </div>
-                </div>
-                <div
-                  className="flex shrink-0 items-center text-xs tabular-nums text-gray-500"
-                >
-                  {(["NOT_SUBMITTED", "SUBMITTED", "CHECKED"] as HomeworkStatus[]).map((status) => {
-                    return (
-                      <span
-                        key={status}
-                        className="flex items-center gap-1 border-r border-gray-200 px-2 text-gray-500 last:border-r-0 last:pr-0 first:pl-0"
-                        aria-label={`${STATUS_CONFIG[status].label}: ${countByStatus[status]}`}
-                        title={STATUS_CONFIG[status].label}
-                      >
-                        <Icon
-                          icon={STATUS_ICONS[status]}
-                          className={cn(
-                            "h-3.5 w-3.5",
-                            status === "NOT_SUBMITTED" && "text-red-500",
-                            status === "SUBMITTED" && "text-yellow-600",
-                            status === "CHECKED" && "text-primary-600",
-                          )}
-                          aria-hidden="true"
-                        />
-                        <span className="font-semibold">{countByStatus[status]}</span>
-                      </span>
-                    );
-                  })}
-                </div>
-              </button>
-            );
-          })}
-        </div>
+              return (
+                <button key={hw.id} onClick={() => openAssess(hw)} className="flex px-4 py-3 flex-col w-full justify-start gap-2  text-left">
+                  <div className="flex gap-4">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-gray-900">{hw.title}</p>
+                      <p className="mt-1 truncate text-sm text-gray-500">
+                        {hw.class?.name ?? "—"} <span className="mx-1 text-gray-300">·</span> {hw.subject?.name ?? "—"}
+                      </p>
+                    </div>
+                  </div>
+                  <div
+                    className="flex shrink-0 items-center text-xs tabular-nums text-gray-500"
+                  >
+                    {(["NOT_SUBMITTED", "SUBMITTED", "CHECKED"] as HomeworkStatus[]).map((status) => {
+                      return (
+                        <span
+                          key={status}
+                          className="flex items-center gap-1 border-r border-gray-200 px-2 text-gray-500 last:border-r-0 last:pr-0 first:pl-0"
+                          aria-label={`${STATUS_CONFIG[status].label}: ${countByStatus[status]}`}
+                          title={STATUS_CONFIG[status].label}
+                        >
+                          <Icon
+                            icon={STATUS_ICONS[status]}
+                            className={cn(
+                              "h-3.5 w-3.5",
+                              status === "NOT_SUBMITTED" && "text-red-500",
+                              status === "SUBMITTED" && "text-yellow-600",
+                              status === "CHECKED" && "text-primary-600",
+                            )}
+                            aria-hidden="true"
+                          />
+                          <span className="font-semibold">{countByStatus[status]}</span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
       {homework.length > 0 && <Button
         size="lg"
         onClick={openCreate}
-        className="fixed bottom-22 left-1/2 z-30 -translate-x-1/2 rounded-full shadow-lg lg:bottom-6"
+        className="fixed bottom-22 left-1/2 z-30 -translate-x-1/2 rounded-full shadow-lg lg:hidden"
       >
         <Plus className="h-4 w-4" />
         {t("teacherPages", "newHwBtn", lang)}
@@ -403,7 +411,7 @@ export default function TeacherHomeworkPage() {
       <ResponsivePopover
         open={showAssessDrawer}
         fullHeight
-        
+        contentClassName="flex min-h-0 flex-col overflow-hidden"
         onOpenChange={(open) => { if (!open) { setShowAssessDrawer(false); setShowAssessOptions(false); setAssessHw(null); setDeleteTarget(null); } }}
         title={assessHw?.title ?? t("teacherPages", "assessHomeworkTitle", lang)}
         description={
@@ -415,135 +423,119 @@ export default function TeacherHomeworkPage() {
         {assessHw && (
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="shrink-0 px-5 pt-5">
-            <div className="mb-4 flex items-center justify-between">
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                {t("teacherPages", "submissionsCount", lang).replace("{n}", String(submissions[assessHw.id]?.submissions.length ?? 0))}
-              </p>
-            </div>
-            <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-600">
-              {(["NOT_SUBMITTED", "SUBMITTED", "CHECKED"] as HomeworkStatus[]).map((status) => (
-                <span key={status} className="inline-flex items-center gap-1.5">
-                  <Icon
-                    icon={STATUS_ICONS[status]}
-                    className={cn(
-                      "size-4",
-                      status === "NOT_SUBMITTED" && "text-red-500",
-                      status === "SUBMITTED" && "text-yellow-600",
-                      status === "CHECKED" && "text-primary-600",
-                    )}
-                    aria-hidden="true"
-                  />
-                  {STATUS_CONFIG[status].label}
-                </span>
-              ))}
-            </div>
+              <div className="mb-4 flex items-center justify-between">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                  {t("teacherPages", "submissionsCount", lang).replace("{n}", String(submissions[assessHw.id]?.submissions.length ?? 0))}
+                </p>
+              </div>
+              <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-600">
+                {(["NOT_SUBMITTED", "SUBMITTED", "CHECKED"] as HomeworkStatus[]).map((status) => (
+                  <span key={status} className="inline-flex items-center gap-1.5">
+                    <Icon
+                      icon={STATUS_ICONS[status]}
+                      className={cn(
+                        "size-4",
+                        status === "NOT_SUBMITTED" && "text-red-500",
+                        status === "SUBMITTED" && "text-yellow-600",
+                        status === "CHECKED" && "text-primary-600",
+                      )}
+                      aria-hidden="true"
+                    />
+                    {STATUS_CONFIG[status].label}
+                  </span>
+                ))}
+              </div>
             </div>
             {loadingSubs === assessHw.id && !submissions[assessHw.id] ? (
               <SkeletonList count={4} className="min-h-0 flex-1 overflow-y-auto px-5 py-3" />
             ) : (
-            <div className="min-h-0 flex-1 overflow-y-auto px-5">
-              {(submissions[assessHw.id]?.submissions ?? []).map((sub) => {
-                const curStatus = localStatus[assessHw.id]?.[sub.student!.id] ?? sub.status;
-                return (
-                  <div key={sub.id} className="flex items-center gap-3 border-b border-gray-100 py-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{sub.student!.name}</p>
-                      <p className="text-xs text-gray-400">{sub.student!.adno}</p>
+              <div className="min-h-0 flex-1 overflow-y-auto px-5">
+                {(submissions[assessHw.id]?.submissions ?? []).map((sub) => {
+                  const curStatus = localStatus[assessHw.id]?.[sub.student!.id] ?? sub.status;
+                  return (
+                    <div key={sub.id} className="flex items-center gap-3 border-b border-gray-100 py-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{sub.student!.name}</p>
+                        <p className="text-xs text-gray-400">{sub.student!.adno}</p>
+                      </div>
+                      <ButtonGroup className="shrink-0">
+                        {(["NOT_SUBMITTED", "SUBMITTED", "CHECKED"] as HomeworkStatus[]).map((s) => {
+                          return (
+                            <Button
+                              key={s}
+                              type="button"
+                              size="icon"
+                              variant={curStatus === s ? "default" : "outline"}
+                              className={STATUS_BUTTON_COLORS[s][curStatus === s ? "active" : "inactive"]}
+                              aria-label={STATUS_CONFIG[s].label}
+                              aria-pressed={curStatus === s}
+                              title={STATUS_CONFIG[s].label}
+                              onClick={() => setLocalStatus((prev) => ({
+                                ...prev,
+                                [assessHw.id]: { ...(prev[assessHw.id] ?? {}), [sub.student!.id]: s },
+                              }))}
+                            >
+                              <Icon icon={STATUS_ICONS[s]} aria-hidden="true" />
+                            </Button>
+                          );
+                        })}
+                      </ButtonGroup>
                     </div>
-                    <ButtonGroup className="shrink-0">
-                      {(["NOT_SUBMITTED", "SUBMITTED", "CHECKED"] as HomeworkStatus[]).map((s) => {
-                        return (
-                          <Button
-                            key={s}
-                            type="button"
-                            size="icon"
-                            variant={curStatus === s ? "default" : "outline"}
-                            className={STATUS_BUTTON_COLORS[s][curStatus === s ? "active" : "inactive"]}
-                            aria-label={STATUS_CONFIG[s].label}
-                            aria-pressed={curStatus === s}
-                            title={STATUS_CONFIG[s].label}
-                            onClick={() => setLocalStatus((prev) => ({
-                              ...prev,
-                              [assessHw.id]: { ...(prev[assessHw.id] ?? {}), [sub.student!.id]: s },
-                            }))}
-                          >
-                            <Icon icon={STATUS_ICONS[s]} aria-hidden="true" />
-                          </Button>
-                        );
-                      })}
-                    </ButtonGroup>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
             )}
             <div className="shrink-0 border-t border-gray-100 bg-white p-5">
-            <ButtonGroup className="flex gap-0 w-full">
-              <Button
-                type="button"
-                size="lg"
-                variant="outline"
-                className=" "
-                aria-label={t("common", "actions", lang)}
-                title={t("common", "actions", lang)}
-                onClick={() => setShowAssessOptions(true)}
-              >
-                <Ellipsis aria-hidden="true" />
-              </Button>
-              <Button
-                size="lg"
-                className="flex-1"
-                onClick={() => saveSubmissions(assessHw.id)}
-                disabled={savingSubs || !submissions[assessHw.id]}
-              >
-                {savingSubs ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                {t("common", "save", lang)}
-              </Button>
-            </ButtonGroup>
+              <ButtonGroup className="flex gap-0 w-full">
+                <Button
+                  type="button"
+                  size="lg"
+                  variant="outline"
+                  className=" "
+                  aria-label={t("common", "actions", lang)}
+                  title={t("common", "actions", lang)}
+                  onClick={() => setShowAssessOptions(true)}
+                >
+                  <Ellipsis aria-hidden="true" />
+                </Button>
+                <Button
+                  size="lg"
+                  className="flex-1"
+                  onClick={() => saveSubmissions(assessHw.id)}
+                  disabled={savingSubs || !submissions[assessHw.id]}
+                >
+                  {savingSubs ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                  {t("common", "save", lang)}
+                </Button>
+              </ButtonGroup>
             </div>
           </div>
         )}
       </ResponsivePopover>
 
-      <ResponsivePopover
+      <DrawerSelector
         open={showAssessOptions && assessHw !== null}
         onOpenChange={setShowAssessOptions}
-        side="bottom"
+        title=""
+
         showCloseButton={false}
-        className="mx-auto w-full max-w-md rounded-t-2xl"
       >
-        <div className="p-2">
-          <Item
-            render={<button type="button" />}
-            className="cursor-pointer text-left hover:bg-muted focus-visible:bg-muted"
-            onClick={() => {
-              if (!assessHw) return;
-              const homeworkToEdit = assessHw;
-              setShowAssessOptions(false);
-              setShowAssessDrawer(false);
-              setAssessHw(null);
-              setDeleteTarget(null);
-              void openEdit(homeworkToEdit);
-            }}
-          >
-            <ItemMedia variant="icon"><Pencil /></ItemMedia>
-            <ItemContent><ItemTitle>{t("common", "edit", lang)}</ItemTitle></ItemContent>
-          </Item>
-          <ItemSeparator className="my-0" />
-          <Item
-            render={<button type="button" disabled={!assessHw || deletingId === assessHw?.id} />}
-            className="cursor-pointer text-left text-destructive hover:bg-destructive/10 focus-visible:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={() => {
-              if (!assessHw) return;
-              setShowAssessOptions(false);
-              setDeleteTarget(assessHw);
-            }}
-          >
-            <ItemMedia variant="icon"><Trash2 /></ItemMedia>
-            <ItemContent><ItemTitle>{t("common", "delete", lang)}</ItemTitle></ItemContent>
-          </Item>
+        <div className=" flex flex-col mt-3 md:mt-0">
+          <Button
+            variant={"ghost"}
+            size="sm"
+            className={"w-full justify-left flex"}  >
+            <Pencil />
+            {t("common", "edit", lang)}
+          </Button>
+
+          <Button variant={"ghost"}
+            size="sm"
+            className={"w-full justify-left flex"} ><Trash2 />
+            {t("common", "delete", lang)}
+          </Button>
         </div>
-      </ResponsivePopover>
+      </DrawerSelector>
 
       <ResponsivePopover
         open={deleteTarget !== null}

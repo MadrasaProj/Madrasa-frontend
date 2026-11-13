@@ -163,6 +163,7 @@ function JournalList({ entries, openEdit, handleDelete, deletingId, lang }: {
     <ResponsivePopover
       open={commentViewId !== null}
       onOpenChange={(open) => { if (!open) setCommentViewId(null); }}
+      desktopView="right-drawer"
       title={t("teacherPages", "responsesTitle", lang)}
     >
       <div className="p-5">
@@ -416,7 +417,14 @@ export default function TeacherDiaryPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title={t("teacherPages", "classDiaryTitle", lang)} />
+      <PageHeader title={t("teacherPages", "classDiaryTitle", lang)}
+          action={(
+            <Button onClick={openCreate} className="hidden lg:inline-flex">
+              <Plus className="size-4" />
+              {t("teacherPages", "addDiaryBtn", lang)}
+            </Button>
+          )}
+        />
 
       {error && (
         <ApiErrorBanner
@@ -455,7 +463,7 @@ export default function TeacherDiaryPage() {
       <Button
         size="lg"
         onClick={openCreate}
-        className="fixed bottom-22 left-1/2 z-30 -translate-x-1/2 rounded-full shadow-lg lg:bottom-6"
+        className="fixed bottom-22 left-1/2 z-30 -translate-x-1/2 rounded-full shadow-lg lg:hidden"
       >
         <Plus className="size-4" />
         {t("teacherPages", "addDiaryBtn", lang)}
@@ -463,9 +471,10 @@ export default function TeacherDiaryPage() {
 
       <ResponsivePopover
         open={drawerOpen}
+ 
         onOpenChange={(open) => { if (!open) { closeDrawer(); setThemeOpen(false); } }}
         title={editingEntry ? t("teacherPages", "editDiaryTitle", lang) : t("teacherPages", "newEntryTitle", lang)}
-        fullHeight={step === 2 || !!editingEntry}
+        fullHeight={true}
         showBackButton={step === 2 && !editingEntry}
         onBack={() => setStep(1)}
         footer={step === 2 || editingEntry ? (
@@ -684,6 +693,8 @@ export default function TeacherDiaryPage() {
           open={themeOpen}
           onOpenChange={setThemeOpen}
           title={t("common", "themes", lang)}
+      desktopView="right-drawer"
+
         >
           <div className="grid grid-cols-2 gap-2 p-5">
             {Object.entries(themes).map(([key, themeOption]) => (

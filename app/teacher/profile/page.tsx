@@ -7,13 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerFooter,
-  DrawerTitle,
-} from "@/components/ui/drawer";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import {
   updateProfile,
   uploadProfilePhoto,
@@ -670,352 +664,17 @@ export default function TeacherProfilePage() {
         </div>
       </div>
 
-      {/* Edit Profile Drawer (Shadcn Drawer matching fees/page.tsx) */}
-      <Drawer
+      {/* Edit Profile Drawer */}
+      <ResponsivePopover
         open={drawerOpen}
-        onOpenChange={(open) => {
-          if (!open) closeDrawer();
-        }}
-        swipeDirection="down"
-      >
-        <DrawerContent className="max-h-[88dvh] bg-background">
-          <div className="shrink-0 border-b px-5 py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <DrawerTitle className="text-lg font-semibold">
-                  {drawerTab === "account" ? t("common", "updateProfile", lang) : t("common", "security", lang)}
-                </DrawerTitle>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {drawerTab === "account"
-                    ? "Manage your teacher account personal information"
-                    : "Update your account login password"}
-                </p>
-              </div>
-              <DrawerClose className="rounded-xl p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
-                <X className="h-5 w-5" />
-              </DrawerClose>
-            </div>
-          </div>
-
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
-            {/* Drawer Navigation Tabs */}
-            <Tabs
-              value={drawerTab}
-              onValueChange={(val) => {
-                setDrawerTab(val as "account" | "security");
-                setError(null);
-              }}
-              className="w-full"
-            >
-              <TabsList className="grid h-auto w-full grid-cols-2">
-                <TabsTrigger value="account" className="px-2 py-2 text-xs">
-                  {t("common", "accountDetails", lang)}
-                </TabsTrigger>
-                <TabsTrigger value="security" className="px-2 py-2 text-xs">
-                  {t("common", "security", lang)}
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-
-            {error && (
-              <ApiErrorBanner
-                message={error}
-                onRetry={() => setError(null)}
-              />
-            )}
-
-            {drawerTab === "account" ? (
-              <div className="space-y-4">
-                {/* Profile Photo Uploader */}
-                <div className="flex items-center gap-4 rounded-xl border border-gray-100 bg-gray-50/70 p-3.5">
-                  <div className="relative shrink-0">
-                    {uploadingPhoto ? (
-                      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-100">
-                        <Loader2 className="h-6 w-6 animate-spin text-primary-600" />
-                      </div>
-                    ) : picPreview ? (
-                      <img
-                        src={picPreview}
-                        alt={user?.name ?? "Teacher"}
-                        className="h-16 w-16 rounded-2xl border-2 border-white object-cover shadow-sm"
-                      />
-                    ) : (
-                      <div className="flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-white bg-primary-600 text-xl font-bold text-white shadow-sm">
-                        {user?.name?.charAt(0)?.toUpperCase() ?? "T"}
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-gray-900">{t("common", "profilePicture", lang)}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{t("common", "photoHint", lang)}</p>
-                    <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                      <label className="cursor-pointer">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={handlePicFile}
-                          disabled={uploadingPhoto}
-                        />
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="default"
-                          disabled={uploadingPhoto}
-                          onClick={(e) => {
-                            const input = (e.currentTarget.parentElement as HTMLElement)?.querySelector("input");
-                            input?.click();
-                          }}
-                        >
-                          <Camera className="mr-1.5 h-3.5 w-3.5" />
-                          {picPreview ? t("common", "changePhoto", lang) : t("common", "uploadPhoto", lang)}
-                        </Button>
-                      </label>
-                      {picPreview && (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={uploadingPhoto}
-                          onClick={handleRemovePhoto}
-                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        >
-                          {t("common", "remove", lang)}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Name Input using shadcn Input */}
-                <div>
-                  <label className="text-xs font-semibold text-gray-700 mb-1.5 block">
-                    {t("common", "displayName", lang)} <span className="text-destructive">*</span>
-                  </label>
-                  <Input
-                    size="lg"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Usthad Ahmed"
-                    className="w-full"
-                  />
-                </div>
-
-                {/* Phone & Email Inputs */}
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="text-xs font-semibold text-gray-700 mb-1.5 block">
-                      {t("common", "phone", lang)}
-                    </label>
-                    <Input
-                      size="lg"
-                      type="tel"
-                      inputMode="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="e.g. +91 98765 43210"
-                      className="w-full"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-gray-700 mb-1.5 block">
-                      {t("common", "email", lang)}
-                    </label>
-                    <Input
-                      size="lg"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="e.g. teacher@madrasa.com"
-                      className="w-full"
-                    />
-                  </div>
-                </div>
-
-                {/* Staff MSR ID Input */}
-                <div>
-                  <label className="text-xs font-semibold text-gray-700 mb-1.5 block">
-                    {t("common", "msrId", lang)}
-                  </label>
-                  <Input
-                    size="lg"
-                    value={msrId}
-                    onChange={(e) => setMsrId(e.target.value)}
-                    placeholder="e.g. MSR-1024"
-                    className="w-full font-mono"
-                  />
-                </div>
-
-                {/* Address using shadcn Textarea */}
-                <div>
-                  <label className="text-xs font-semibold text-gray-700 mb-1.5 block">
-                    {t("common", "address", lang)}
-                  </label>
-                  <Textarea
-                    size="lg"
-                    rows={3}
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder="House name, street, area, city, pincode"
-                    className="w-full"
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/60 p-3 text-xs text-amber-800">
-                  <Shield className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-                  <p>{t("common", "pwChangeHint", lang)}</p>
-                </div>
-
-                {/* Decoy trap to prevent browser auto-injection */}
-                <div style={{ position: "absolute", opacity: 0, height: 0, width: 0, overflow: "hidden", zIndex: -1 }}>
-                  <input type="text" name="fake_username_trap" tabIndex={-1} autoComplete="username" />
-                  <input type="password" name="fake_password_trap" tabIndex={-1} autoComplete="current-password" />
-                </div>
-
-                {/* Current Password Input */}
-                <div>
-                  <label className="text-xs font-semibold text-gray-700 mb-1.5 block">
-                    {t("common", "currentPassword", lang)} <span className="text-destructive">*</span>
-                  </label>
-                  <div className="relative">
-                    <Input
-                      size="lg"
-                      type={showCur ? "text" : "password"}
-                      name="teacher_profile_cur_pwd"
-                      autoComplete="new-password"
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      placeholder={t("common", "enterCurrentPassword", lang)}
-                      className="pr-10 w-full"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => setShowCur(!showCur)}
-                      className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      {showCur ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </div>
-
-                {/* New Password Input */}
-                <div>
-                  <label className="text-xs font-semibold text-gray-700 mb-1.5 block">
-                    {t("common", "newPassword", lang)} <span className="text-destructive">*</span>
-                  </label>
-                  <div className="relative">
-                    <Input
-                      size="lg"
-                      type={showNew ? "text" : "password"}
-                      name="teacher_profile_new_pwd"
-                      autoComplete="new-password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder={t("common", "min8Chars", lang)}
-                      className="pr-10 w-full"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => setShowNew(!showNew)}
-                      className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
-
-                  {newPassword && (
-                    <div className="mt-2.5">
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
-                        <div
-                          className={cn("h-full transition-all duration-300", strengthMeta[strength].color, strengthMeta[strength].width)}
-                        />
-                      </div>
-                      <div className="mt-1 flex items-center justify-between text-[11px] text-muted-foreground">
-                        <span>
-                          {t("common", "passwordStrength", lang)}:{" "}
-                          <strong className="text-foreground">{strengthMeta[strength].label}</strong>
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Confirm Password Input */}
-                <div>
-                  <label className="text-xs font-semibold text-gray-700 mb-1.5 block">
-                    {t("common", "confirmPassword", lang)} <span className="text-destructive">*</span>
-                  </label>
-                  <div className="relative">
-                    <Input
-                      size="lg"
-                      type={showCon ? "text" : "password"}
-                      name="teacher_profile_con_pwd"
-                      autoComplete="new-password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder={t("common", "repeatNewPassword", lang)}
-                      className={cn("pr-10 w-full", pwMismatch && "border-destructive focus-visible:ring-destructive/30")}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => setShowCon(!showCon)}
-                      className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      {showCon ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                  {pwMismatch && (
-                    <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-destructive">
-                      <AlertCircle className="h-3 w-3" /> {t("common", "passwordsMismatch", lang)}
-                    </p>
-                  )}
-                  {confirmPassword && !pwMismatch && (
-                    <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-primary">
-                      <CheckCircle2 className="h-3 w-3" /> {t("common", "passwordsMatch", lang)}
-                    </p>
-                  )}
-                </div>
-
-                {/* Password Rules Checklist */}
-                <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-3">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    {t("common", "passwordRules", lang)}
-                  </p>
-                  <ul className="grid grid-cols-2 gap-2 text-xs">
-                    {[
-                      { label: t("common", "char8plus", lang), done: newPassword.length >= 8 },
-                      { label: t("common", "upperLower", lang), done: /[a-z]/.test(newPassword) && /[A-Z]/.test(newPassword) },
-                      { label: t("common", "hasNumber", lang), done: /[0-9]/.test(newPassword) },
-                      { label: t("common", "hasSymbol", lang), done: /[^A-Za-z0-9]/.test(newPassword) },
-                    ].map((rule) => (
-                      <li key={rule.label} className="flex items-center gap-1.5">
-                        {rule.done ? (
-                          <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
-                        ) : (
-                          <Circle className="h-3.5 w-3.5 text-gray-300 shrink-0" />
-                        )}
-                        <span className={cn(rule.done ? "text-foreground font-medium" : "text-muted-foreground")}>
-                          {rule.label}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Drawer Footer using ButtonGroup and shadcn Button */}
-          <DrawerFooter className="shrink-0 bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        onOpenChange={(open) => { if (!open) closeDrawer(); }}
+        fullHeight
+        title={drawerTab === "account" ? t("common", "updateProfile", lang) : t("common", "security", lang)}
+        description={drawerTab === "account"
+          ? "Manage your teacher account personal information"
+          : "Update your account login password"}
+        footer={
+          <div className="shrink-0 bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <ButtonGroup className="w-full [&>button]:flex-1">
               <Button
                 type="button"
@@ -1042,9 +701,327 @@ export default function TeacherProfilePage() {
                 )}
               </Button>
             </ButtonGroup>
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
+          </div>
+        }
+      >
+        <div className="space-y-4 p-5">
+          {/* Drawer Navigation Tabs */}
+          <Tabs
+            value={drawerTab}
+            onValueChange={(val) => {
+              setDrawerTab(val as "account" | "security");
+              setError(null);
+            }}
+            className="w-full"
+          >
+            <TabsList className="grid h-auto w-full grid-cols-2">
+              <TabsTrigger value="account" className="px-2 py-2 text-xs">
+                {t("common", "accountDetails", lang)}
+              </TabsTrigger>
+              <TabsTrigger value="security" className="px-2 py-2 text-xs">
+                {t("common", "security", lang)}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {error && (
+            <ApiErrorBanner
+              message={error}
+              onRetry={() => setError(null)}
+            />
+          )}
+
+          {drawerTab === "account" ? (
+            <div className="space-y-4">
+              {/* Profile Photo Uploader */}
+              <div className="flex items-center gap-4 rounded-xl border border-gray-100 bg-gray-50/70 p-3.5">
+                <div className="relative shrink-0">
+                  {uploadingPhoto ? (
+                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-100">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary-600" />
+                    </div>
+                  ) : picPreview ? (
+                    <img
+                      src={picPreview}
+                      alt={user?.name ?? "Teacher"}
+                      className="h-16 w-16 rounded-2xl border-2 border-white object-cover shadow-sm"
+                    />
+                  ) : (
+                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-white bg-primary-600 text-xl font-bold text-white shadow-sm">
+                      {user?.name?.charAt(0)?.toUpperCase() ?? "T"}
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-gray-900">{t("common", "profilePicture", lang)}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t("common", "photoHint", lang)}</p>
+                  <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handlePicFile}
+                        disabled={uploadingPhoto}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="default"
+                        disabled={uploadingPhoto}
+                        onClick={(e) => {
+                          const input = (e.currentTarget.parentElement as HTMLElement)?.querySelector("input");
+                          input?.click();
+                        }}
+                      >
+                        <Camera className="mr-1.5 h-3.5 w-3.5" />
+                        {picPreview ? t("common", "changePhoto", lang) : t("common", "uploadPhoto", lang)}
+                      </Button>
+                    </label>
+                    {picPreview && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={uploadingPhoto}
+                        onClick={handleRemovePhoto}
+                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        {t("common", "remove", lang)}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Name Input using shadcn Input */}
+              <div>
+                <label className="text-xs font-semibold text-gray-700 mb-1.5 block">
+                  {t("common", "displayName", lang)} <span className="text-destructive">*</span>
+                </label>
+                <Input
+                  size="lg"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Usthad Ahmed"
+                  className="w-full"
+                />
+              </div>
+
+              {/* Phone & Email Inputs */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 mb-1.5 block">
+                    {t("common", "phone", lang)}
+                  </label>
+                  <Input
+                    size="lg"
+                    type="tel"
+                    inputMode="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="e.g. +91 98765 43210"
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 mb-1.5 block">
+                    {t("common", "email", lang)}
+                  </label>
+                  <Input
+                    size="lg"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="e.g. teacher@madrasa.com"
+                    className="w-full"
+                  />
+                </div>
+              </div>
+
+              {/* Staff MSR ID Input */}
+              <div>
+                <label className="text-xs font-semibold text-gray-700 mb-1.5 block">
+                  {t("common", "msrId", lang)}
+                </label>
+                <Input
+                  size="lg"
+                  value={msrId}
+                  onChange={(e) => setMsrId(e.target.value)}
+                  placeholder="e.g. MSR-1024"
+                  className="w-full font-mono"
+                />
+              </div>
+
+              {/* Address using shadcn Textarea */}
+              <div>
+                <label className="text-xs font-semibold text-gray-700 mb-1.5 block">
+                  {t("common", "address", lang)}
+                </label>
+                <Textarea
+                  size="lg"
+                  rows={3}
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="House name, street, area, city, pincode"
+                  className="w-full"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/60 p-3 text-xs text-amber-800">
+                <Shield className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                <p>{t("common", "pwChangeHint", lang)}</p>
+              </div>
+
+              {/* Decoy trap to prevent browser auto-injection */}
+              <div style={{ position: "absolute", opacity: 0, height: 0, width: 0, overflow: "hidden", zIndex: -1 }}>
+                <input type="text" name="fake_username_trap" tabIndex={-1} autoComplete="username" />
+                <input type="password" name="fake_password_trap" tabIndex={-1} autoComplete="current-password" />
+              </div>
+
+              {/* Current Password Input */}
+              <div>
+                <label className="text-xs font-semibold text-gray-700 mb-1.5 block">
+                  {t("common", "currentPassword", lang)} <span className="text-destructive">*</span>
+                </label>
+                <div className="relative">
+                  <Input
+                    size="lg"
+                    type={showCur ? "text" : "password"}
+                    name="teacher_profile_cur_pwd"
+                    autoComplete="new-password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder={t("common", "enterCurrentPassword", lang)}
+                    className="pr-10 w-full"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => setShowCur(!showCur)}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showCur ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+
+              {/* New Password Input */}
+              <div>
+                <label className="text-xs font-semibold text-gray-700 mb-1.5 block">
+                  {t("common", "newPassword", lang)} <span className="text-destructive">*</span>
+                </label>
+                <div className="relative">
+                  <Input
+                    size="lg"
+                    type={showNew ? "text" : "password"}
+                    name="teacher_profile_new_pwd"
+                    autoComplete="new-password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder={t("common", "min8Chars", lang)}
+                    className="pr-10 w-full"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => setShowNew(!showNew)}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+
+                {newPassword && (
+                  <div className="mt-2.5">
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                      <div
+                        className={cn("h-full transition-all duration-300", strengthMeta[strength].color, strengthMeta[strength].width)}
+                      />
+                    </div>
+                    <div className="mt-1 flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span>
+                        {t("common", "passwordStrength", lang)}:{" "}
+                        <strong className="text-foreground">{strengthMeta[strength].label}</strong>
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Confirm Password Input */}
+              <div>
+                <label className="text-xs font-semibold text-gray-700 mb-1.5 block">
+                  {t("common", "confirmPassword", lang)} <span className="text-destructive">*</span>
+                </label>
+                <div className="relative">
+                  <Input
+                    size="lg"
+                    type={showCon ? "text" : "password"}
+                    name="teacher_profile_con_pwd"
+                    autoComplete="new-password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder={t("common", "repeatNewPassword", lang)}
+                    className={cn("pr-10 w-full", pwMismatch && "border-destructive focus-visible:ring-destructive/30")}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => setShowCon(!showCon)}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showCon ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+                {pwMismatch && (
+                  <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-destructive">
+                    <AlertCircle className="h-3 w-3" /> {t("common", "passwordsMismatch", lang)}
+                  </p>
+                )}
+                {confirmPassword && !pwMismatch && (
+                  <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-primary">
+                    <CheckCircle2 className="h-3 w-3" /> {t("common", "passwordsMatch", lang)}
+                  </p>
+                )}
+              </div>
+
+              {/* Password Rules Checklist */}
+              <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-3">
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {t("common", "passwordRules", lang)}
+                </p>
+                <ul className="grid grid-cols-2 gap-2 text-xs">
+                  {[
+                    { label: t("common", "char8plus", lang), done: newPassword.length >= 8 },
+                    { label: t("common", "upperLower", lang), done: /[a-z]/.test(newPassword) && /[A-Z]/.test(newPassword) },
+                    { label: t("common", "hasNumber", lang), done: /[0-9]/.test(newPassword) },
+                    { label: t("common", "hasSymbol", lang), done: /[^A-Za-z0-9]/.test(newPassword) },
+                  ].map((rule) => (
+                    <li key={rule.label} className="flex items-center gap-1.5">
+                      {rule.done ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
+                      ) : (
+                        <Circle className="h-3.5 w-3.5 text-gray-300 shrink-0" />
+                      )}
+                      <span className={cn(rule.done ? "text-foreground font-medium" : "text-muted-foreground")}>
+                        {rule.label}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+        </div>
+
+      </ResponsivePopover>
     </DashboardLayout>
   );
 }

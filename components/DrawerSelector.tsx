@@ -12,11 +12,12 @@ export interface DrawerSelectorOption {
   disabled?: boolean;
 }
 
-export interface DrawerSelectorProps {
+interface DrawerSelectorBaseProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  description?: ReactNode;
+  showCloseButton?: boolean;
   title: string;
-  options: readonly DrawerSelectorOption[];
-  value: string;
-  onChange: (value: string) => void;
   placeholder?: string;
   placeholderImage?: string;
   triggerLabel?: string;
@@ -32,11 +33,33 @@ export interface DrawerSelectorProps {
   renderOption?: (option: DrawerSelectorOption, selected: boolean) => ReactNode;
 }
 
+export type DrawerSelectorProps = DrawerSelectorBaseProps & (
+  | {
+      options: readonly DrawerSelectorOption[];
+      value: string;
+      onChange: (value: string) => void;
+      children?: never;
+    }
+  | {
+      open: boolean;
+      onOpenChange: (open: boolean) => void;
+      children: ReactNode;
+      options?: never;
+      value?: never;
+      onChange?: never;
+    }
+);
+
 export function DrawerSelector({
   title,
-  options,
+  options = [],
   value,
   onChange,
+  open: controlledOpen,
+  onOpenChange,
+  description,
+  showCloseButton = true,
+  children,
   placeholder = "Select an option",
   placeholderImage,
   triggerLabel,
@@ -48,7 +71,12 @@ export function DrawerSelector({
   optionClassName,
   renderOption,
 }: DrawerSelectorProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = (nextOpen: boolean) => {
+    if (controlledOpen === undefined) setInternalOpen(nextOpen);
+    onOpenChange?.(nextOpen);
+  };
   const selected = options.find((option) => option.value === value);
   const triggerImage = selected ? selected.image : placeholderImage;
   const triggerDisabled = disabled || options.length === 0;
@@ -71,7 +99,7 @@ export function DrawerSelector({
 
   return (
     <>
-      {triggerItem != null ? customTrigger : (
+      {children != null && triggerItem == null ? null : triggerItem != null ? customTrigger : (
         <Button
           type="button"
           variant={triggerVariant}
@@ -108,10 +136,18 @@ export function DrawerSelector({
         onOpenChange={setOpen}
         side="bottom"
         title={title}
+        description={description}
+        showCloseButton={showCloseButton}
         className="mx-auto w-full max-w-lg rounded-t-2xl"
         
       >
-        <div className="grid gap-1">
+        {children != null && (title || description) && (
+          <div className="hidden px-4 pt-4 md:block">
+            <h2 className="text-sm font-bold">{title}</h2>
+            {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+          </div>
+        )}
+        {children ?? <div className="grid gap-1">
           {options.map((option) => (
             <Button
               key={option.value}
@@ -121,11 +157,11 @@ export function DrawerSelector({
               disabled={option.disabled}
               aria-pressed={option.value === value}
               onClick={() => {
-                onChange(option.value);
+                onChange?.(option.value);
                 setOpen(false);
               }}
               className={cn(
-                "h-auto w-full justify-start gap-3 px-3 py-3.5 text-left",
+                "h-auto w-full justify-start gap-3 px-3  py-1.5 text-left",
                 optionClassName,
                 option.value === value && "bg-accent",
               )}
@@ -142,7 +178,7 @@ export function DrawerSelector({
               {option.value === value && <Check className="h-4 w-4 shrink-0 text-primary" />}
             </Button>
           ))}
-        </div>
+        </div>}
       </ResponsivePopover>
     </>
   );

@@ -349,9 +349,60 @@ export default function TeacherCheckinPage() {
     }))
     .filter((group) => group.sessions.length > 0);
 
+  const renderSessionAction = (className: string) => (
+    !activeSession && todaySessions.length === 0 ? null : activeSession ? (
+            <Button
+              onClick={handleCheckOut}
+              disabled={actionLoading}
+              size="lg"
+              className={className}
+            >
+              {actionLoading && <Loader2 className="animate-spin" />}
+              {!actionLoading && <Icon icon="solar:logout-2-linear" className="h-4 w-4" />}
+              {t("teacherPages", "checkOutBtn", lang)}
+            </Button>
+          ) : (
+            <Button
+              onClick={() =>
+                location ? handleCheckIn() : setLocationDrawerOpen(true)
+              }
+              disabled={actionLoading || locLoading}
+              size={"lg"}
+              className={cn(
+                "group flex items-center gap-2 transition-all",
+                className,
+                location
+                  ? ""
+                  : "   bg-red-600 text-white ",
+              )}
+            >
+              {locLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {t("teacherPages", "gettingLocation", lang)}
+                </>
+              ) : location ? (
+                <>
+                  <Icon icon="solar:login-2-linear" className="h-4 w-4" />
+                  {t("teacherPages", "checkInBtn", lang)}
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="h-6 w-6 " />
+                  <span>{t("teacherPages", "locationRequired", lang)}</span>
+                  <ChevronRight className="h-5 w-5  " />
+                </>
+              )}
+            </Button>
+          )
+  );
+
   return (
     <DashboardLayout>
-      <PageHeader title={t("teacherPages", "checkInTitle", lang)} />
+      <PageHeader
+        title={t("teacherPages", "checkInTitle", lang)}
+        action={!loading && renderSessionAction("hidden lg:inline-flex")}
+      />
 
       {error && <ApiErrorBanner message={error} onRetry={load} />}
 
@@ -377,53 +428,11 @@ export default function TeacherCheckinPage() {
           </div>
         </div>
       ) : (
-        <div className="max-w-md mx-auto space-y-6 relative ">
+        <div className="  mx-auto space-y-6 relative ">
           {/* Status card */}
-          {activeSession ? (
-            <Button
-              onClick={handleCheckOut}
-              disabled={actionLoading}
-              size="lg"
-              className="fixed bottom-16 left-4 rounded-full right-4 z-30 mx-auto w-max max-w-md lg:bottom-6 lg:left-auto lg:right-6 lg:mx-0 lg:w-80"
-            >
-              {actionLoading && <Loader2 className="animate-spin" />}
-              {!actionLoading && <Icon icon="solar:logout-2-linear" className="h-4 w-4" />}
-              {t("teacherPages", "checkOutBtn", lang)}
-            </Button>
-          ) : (
-            <Button
-              onClick={() =>
-                location ? handleCheckIn() : setLocationDrawerOpen(true)
-              }
-              disabled={actionLoading || locLoading}
-              size={"lg"}
-              className={cn(
-                "group flex items-center gap-2 shadow-lg transition-all fixed bottom-16 left-4 right-4 z-30 mx-auto w-max max-w-full rounded-full   lg:bottom-6 lg:left-auto lg:right-6 lg:mx-0 lg:w-80",
-                location
-                  ? ""
-                  : "   bg-red-600 text-white ",
-                !activeSession && todaySessions.length === 0 && "hidden",
-              )}
-            >
-              {locLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  {t("teacherPages", "gettingLocation", lang)}
-                </>
-              ) : location ? (
-                <>
-                  <Icon icon="solar:login-2-linear" className="h-4 w-4" />
-                  {t("teacherPages", "checkInBtn", lang)}
-                </>
-              ) : (
-                <>
-                  <AlertTriangle className="h-6 w-6 " />
-                  <span>{t("teacherPages", "locationRequired", lang)}</span>
-                  <ChevronRight className="h-5 w-5  " />
-                </>
-              )}
-            </Button>
-          )}
+          <div className="lg:hidden">
+            {renderSessionAction("fixed bottom-16 left-4 right-4 z-30 mx-auto w-max max-w-full rounded-full shadow-lg")}
+          </div>
 
           <ResponsivePopover
             open={locationDrawerOpen}

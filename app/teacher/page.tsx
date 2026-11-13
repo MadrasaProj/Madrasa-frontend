@@ -7,13 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { TeacherAttendanceDrawer } from "@/components/teacher/TeacherAttendanceDrawer";
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { useAuthStore } from "@/store/auth";
 import { useActiveClass } from "@/store/activeClass";
 import { useLanguageStore } from "@/store/language";
@@ -42,7 +36,6 @@ import {
   MoonStar,
   NotebookPen,
   TrendingUp,
-  X,
   FilePen,
   Trophy,
   CheckCircle2,
@@ -701,43 +694,26 @@ export default function TeacherDashboard() {
           initialClassId={activeClassId}
         />
 
-        {/* Ibadah Details Drawer */}
-        <Drawer
+        {/* Ibadah Details */}
+        <ResponsivePopover
           open={ibadahDrawerOpen}
           onOpenChange={setIbadahDrawerOpen}
-          swipeDirection="down"
+          desktopView="right-drawer"
+           title={t("teacherPages", "ibadahRecordsTitle", lang)}
+          description={`${activeClass ? `${activeClass.name} · ` : ""}${dateLabel}`}
+          className="p-0"
+          contentClassName="px-0 pb-8 pt-3"
         >
-          <DrawerContent className="max-h-[90dvh] bg-white p-0">
-            <DrawerHeader className="flex flex-row items-center justify-between border-b border-gray-100 px-5 py-4 text-left">
-              <div>
-                <DrawerTitle className="text-base sm:text-lg font-bold text-gray-900">
-                  {t("teacherPages", "ibadahRecordsTitle", lang)}
-                </DrawerTitle>
-                <p className="mt-0.5 text-xs text-gray-500">
-                  {activeClass ? `${activeClass.name} · ` : ""}
-                  {dateLabel}
-                </p>
-              </div>
-              <DrawerClose
-                aria-label={t("common", "close", lang)}
-                className="rounded-xl border border-gray-200 p-2 text-gray-500 hover:bg-gray-100 active:scale-95"
-              >
-                <X className="size-4" />
-              </DrawerClose>
-            </DrawerHeader>
-            <div className="min-h-0 flex-1 overflow-y-auto px-0 pb-8 pt-3">
-              {ibadahDrawerOpen && (
-                <Suspense
-                  fallback={
-                    <PageSkeleton />
-                  }
-                >
-                  <TeacherIbadahPage initialDate={date} embedded />
-                </Suspense>
-              )}
-            </div>
-          </DrawerContent>
-        </Drawer>
+          {ibadahDrawerOpen && (
+            <Suspense
+              fallback={
+                <PageSkeleton />
+              }
+            >
+              <TeacherIbadahPage initialDate={date} embedded />
+            </Suspense>
+          )}
+        </ResponsivePopover>
       </div>
     </DashboardLayout>
   );

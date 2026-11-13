@@ -27,7 +27,7 @@ export function DateRangePicker({
 
   return (
     <ResponsivePopover open={open} onOpenChange={onOpenChange} side="bottom" title={title}>
-      <div className="w-full px-4 pb-8">
+      <div className="w-full   pb-8 md:pb-3">
         <Calendar
           mode="range"
           selected={draftRange}
@@ -35,7 +35,7 @@ export function DateRangePicker({
           numberOfMonths={1}
           className="w-full"
         />
-        <div className="mx-auto flex w-full max-w-sm  gap-2 ">
+        <div className="mx-auto flex w-full max-w-sm px-2  gap-2 ">
           <Button
             type="button"
             variant="outline"
