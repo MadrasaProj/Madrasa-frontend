@@ -1,3 +1,4 @@
+import { NotificationListItem } from "@/components/notifications/NotificationListItem";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -200,14 +201,14 @@ export default function TeacherNotificationsPage() {
             </Button>
           </div>
       </div>
-      <ResponsivePopover open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters" className="shadow-none" footer={<div className="border-t border-gray-100 p-4"><Button type="button" className="w-full" onClick={() => setFiltersOpen(false)}>Done</Button></div>}>
+      <ResponsivePopover desktopView="right-drawer" open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters" className="shadow-none" footer={<div className="border-t border-gray-100 p-4"><Button type="button" className="w-full" onClick={() => setFiltersOpen(false)}>Done</Button></div>}>
         <div className="px-5 pb-5 pt-2">
           <section className="mb-6">
             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
               Notification Type
             </h3>
             <div className="-mx-5 overflow-x-auto px-5">
-              <div className="flex w-max gap-2">
+              <div className="flex flex-wrap gap-2">
                 {NOTIFICATION_TYPES.map((type) => {
                   const isSelected = type.id === "ALL" ? activeTypeId === null : activeTypeId === type.id;
                   return (
@@ -329,92 +330,7 @@ export default function TeacherNotificationsPage() {
               </div>
             ) : (
               visibleNotifs.map((n) => {
-                const cfg = TYPE_CONFIG[n.type] ?? TYPE_CONFIG.GENERAL;
-                const Icon = cfg.icon;
-                return (
-                  <button
-                    type="button"
-                    key={n.id}
-                    aria-label={`${n.title}, ${cfg.label}, ${n.isRead ? "read" : "unread"}`}
-                    onClick={() => handleSelectNotification(n)}
-                    className={cn(
-                      "w-full rounded-none px-4 py-4 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500",
-                      !n.isRead && "bg-blue-50/40"
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3 min-w-0">
-                        <span
-                          className={cn(
-                            "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border",
-                            cfg.bg
-                          )}
-                        >
-                          <Icon className={cn("h-4 w-4", cfg.color)} />
-                        </span>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              className={cn(
-                                "truncate text-sm font-semibold",
-                                !n.isRead ? "text-gray-950 font-bold" : "text-gray-900"
-                              )}
-                            >
-                              {n.title}
-                            </span>
-                            {n.actionUrl && (
-                              <ExternalLink className="h-3.5 w-3.5 shrink-0 text-blue-500" />
-                            )}
-                          </div>
-                          <p className="mt-0.5 line-clamp-2 text-xs text-gray-500">
-                            {n.body}
-                          </p>
-                        </div>
-                      </div>
-                      <span
-                        className={cn(
-                          "inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium",
-                          n.isRead
-                            ? "bg-gray-100 text-gray-600"
-                            : "bg-blue-100 text-blue-700"
-                        )}
-                      >
-                        {!n.isRead && <span className="size-1.5 rounded-full bg-blue-600" />}
-                        {n.isRead
-                          ? (t("teacherPages", "notifRead", lang) || "Read")
-                          : (t("notif", "unread", lang) || "Unread")}
-                      </span>
-                    </div>
-
-                    <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 border-t border-gray-50 pt-2 text-xs text-gray-500">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-600">
-                          {n.creator?.name
-                            ? `${t("teacherPages", "notifFrom", lang) || "From"}: ${n.creator.name}`
-                            : "Madrasa"}
-                        </span>
-                        <span className="text-gray-300">·</span>
-                        <span
-                          className={cn(
-                            "inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider",
-                            cfg.bg,
-                            cfg.color
-                          )}
-                        >
-                          {cfg.label}
-                        </span>
-                      </div>
-                      <span className="text-[11px] tabular-nums text-gray-400">
-                        {new Date(n.createdAt).toLocaleDateString("en-GB", {
-                          day: "numeric",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                    </div>
-                  </button>
-                );
+              return <NotificationListItem key={n.id} notification={n} unread={!n.isRead} onClick={() => handleSelectNotification(n)} />;
               })
             )}
           </div>

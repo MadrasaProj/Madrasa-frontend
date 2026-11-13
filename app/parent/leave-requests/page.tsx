@@ -243,6 +243,7 @@ export default function ParentLeaveRequestsPage() {
         open={selectedRequest !== null}
         onOpenChange={(open) => { if (!open) setSelectedRequest(null); }}
         title={selectedRequest?.student.name}
+        desktopView="right-drawer"
         description={selectedRequest?.student.class?.name}
       >
         {selectedRequest && (() => {
@@ -251,7 +252,7 @@ export default function ParentLeaveRequestsPage() {
           const reason = REASON_CONFIG[request.reasonType];
           const StatusIcon = status.icon;
           return (
-            <div className="space-y-5 p-5">
+            <div className="space-y-5 py-2">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
                   #{request.student.adno}
@@ -304,6 +305,7 @@ export default function ParentLeaveRequestsPage() {
       </ResponsivePopover>
 
       <ResponsivePopover
+      desktopView="right-drawer"
         open={showForm}
         onOpenChange={setShowForm}
         title={t("parentPages", "applyForLeave", lang)}
@@ -322,7 +324,7 @@ export default function ParentLeaveRequestsPage() {
           </div>
         }
       >
-        <div className="space-y-5 p-5">
+        <div className="space-y-5 p-2">
           {createError && <ApiErrorBanner message={createError} />}
           <div className="space-y-2">
             <p className="text-sm font-medium">{t("parentPages", "reasonType", lang)}</p>

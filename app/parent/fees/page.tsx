@@ -14,13 +14,6 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { Button } from "@/components/ui/button";
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerFooter,
-  DrawerTitle,
-} from "@/components/ui/drawer";
 import { useStudentFeesBatch, usePaymentReceipt } from "@/lib/queries";
 import {
   IndianRupee,
@@ -31,7 +24,6 @@ import {
   CircleCheck,
   ChevronRight,
 } from "lucide-react";
-import { motion } from "framer-motion";
 
 const STATUS_META: Record<
   FeePaymentStatus,
@@ -103,16 +95,14 @@ function ReceiptModal({
   lang: "en" | "ml";
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <motion.div
-        initial={{ scale: 0.94, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        className="relative w-full max-w-sm overflow-hidden rounded-3xl bg-white shadow-2xl"
-      >
+    <ResponsivePopover
+      open
+      onOpenChange={(open) => { if (!open) onClose(); }}
+      title={t("parentPages", "feeReceipt", lang)}
+      fullHeight
+    >
+      <div className="mx-auto w-full max-w-2xl px-4 py-5 sm:px-6">
+        <div className="overflow-hidden rounded-3xl border border-gray-100 bg-white">
         <div className="bg-primary-600 px-6 py-5 text-center text-white">
           <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20">
             <Receipt className="h-6 w-6" />
@@ -183,8 +173,9 @@ function ReceiptModal({
             <Printer className="w-4 h-4" /> {t("parentPages", "printBtn", lang)}
           </Button>
         </div>
-      </motion.div>
-    </div>
+        </div>
+      </div>
+    </ResponsivePopover>
   );
 }
 
@@ -325,27 +316,17 @@ function OneTimePaymentDrawer({
   onReceipt: (id: string) => void;
 }) {
   return (
-      <Drawer
+      <ResponsivePopover
         open={payment !== null}
         onOpenChange={(open) => {
           if (!open) onClose();
         }}
-        swipeDirection="down"
+        title={payment?.feeType.name}
+        description={student ? [student.name, student.className].filter(Boolean).join(" · ") : undefined}
+        fullHeight
       >
-        <DrawerContent className="max-h-[88dvh] bg-background">
           {payment && (
             <>
-              <div className="shrink-0 border-b px-5 py-4">
-                <DrawerTitle className="text-lg font-semibold text-gray-950">
-                  {payment.feeType.name}
-                </DrawerTitle>
-                {student && (
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {student.name}
-                    {student.className ? " · " + student.className : ""}
-                  </p>
-                )}
-              </div>
               <div className="min-h-0 flex-1 overflow-y-auto p-5">
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-5 text-sm">
                   <div>
@@ -431,7 +412,7 @@ function OneTimePaymentDrawer({
                   )}
                 </dl>
               </div>
-              <DrawerFooter className="shrink-0 border-t bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              <div className="flex shrink-0 flex-col gap-2 border-t bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
                 {payment.status === "PAID" && (
                   <Button
                     type="button"
@@ -456,14 +437,13 @@ function OneTimePaymentDrawer({
                     {t("parentPages", "viewReceiptBtn", lang)}
                   </Button>
                 )}
-                <DrawerClose className="h-10 w-full rounded-xl border bg-white text-sm font-semibold text-gray-700">
+                <Button variant="outline" onClick={onClose} className="h-10 w-full rounded-xl border bg-white text-sm font-semibold text-gray-700">
                   {t("parentPages", "closeBtn", lang)}
-                </DrawerClose>
-              </DrawerFooter>
+                </Button>
+              </div>
             </>
           )}
-        </DrawerContent>
-      </Drawer>
+      </ResponsivePopover>
 
   );
 }
@@ -787,7 +767,7 @@ export default function ParentFeesPage() {
         onOpenChange={(open) => { if (!open) setSelectedTypeId(null); }}
         title={selectedFeeType?.name}
         description={selectedFeeType ? getFrequencyLabel(selectedFeeType.frequency, selectedFeeType.kind, lang) : undefined}
-        
+        fullHeight
       >
         {selectedFeeType && (() => {
           const totals = selectedTypePayments.length === 0 && selectedFeeType.kind === "ONE_TIME"
@@ -802,7 +782,7 @@ export default function ParentFeesPage() {
             else groups.set(key, { label, payments: [payment] });
           });
           return (
-            <div className="mx-auto max-w-2xl space-y-5 pt-4">
+            <div className="mx-auto w-full max-w-2xl space-y-5 px-4 pb-8 pt-4 sm:px-6">
               <div className={cn(
                 "rounded-2xl border bg-gradient-to-r p-4",
                 status === "OVERDUE" ? "from-white to-red-100/20 border-red-100 " :

@@ -1,3 +1,4 @@
+import { NotificationListItem } from "@/components/notifications/NotificationListItem";
 import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -15,10 +16,9 @@ import {
 } from "@/lib/notifications-api";
 import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
 import { useAuthStore } from "@/store/auth";
-import { cn } from "@/lib/utils";
 import {
   Bell, Plus, Send, Trash2, Loader2, Pencil, ExternalLink, CalendarDays,
-  BookOpen, ClipboardList, GraduationCap, CreditCard,
+  BookOpen, ClipboardList, GraduationCap, CreditCard, Search, SlidersHorizontal,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "sonner";
@@ -49,6 +49,13 @@ export default function AdminNotificationsPage() {
   const [editTarget, setEditTarget]   = useState<NotificationRecord | null>(null);
 
   const [eventDateOpen, setEventDateOpen] = useState(false);
+
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [filterType, setFilterType] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const selected = sent.find((n) => n.id === selectedId) ?? null;
+  const filtered = sent.filter((n) => (!filterType || n.type === filterType) && `${n.title} ${n.body}`.toLowerCase().includes(search.trim().toLowerCase()));
 
   // Compose form
   const [cTitle, setCTitle]       = useState("");
@@ -133,6 +140,7 @@ export default function AdminNotificationsPage() {
     try {
       await deleteNotification(cid, token, id);
       toast.success("Notification deleted successfully");
+      setSelectedId(null);
       loadSent();
     }
     catch (e) {
@@ -154,6 +162,22 @@ export default function AdminNotificationsPage() {
           <Plus className="size-4" /> Compose
         </Button>
       </div>
+
+      <div className="mx-auto mb-4 flex w-full max-w-md items-center gap-2 px-3">
+        <div className="relative min-w-0 flex-1">
+          <Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+          <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search notifications..." aria-label="Search notifications" className="h-10 bg-white pl-9" />
+        </div>
+        <Button type="button" variant="outline" size="icon-lg" onClick={() => setFiltersOpen(true)} aria-label="Open filters" className="size-10 shrink-0 rounded-xl"><SlidersHorizontal className="size-4" /></Button>
+      </div>
+      <ResponsivePopover open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters" desktopView="right-drawer" footer={<div className="border-t border-gray-100 p-4"><Button className="w-full" onClick={() => setFiltersOpen(false)}>Done</Button></div>}>
+        <div className="py-4">
+          <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-400">Notification type</h3>
+          <div className="flex flex-wrap gap-2">
+            {[{ value: "", label: "All types" }, ...Object.entries(TYPE_CONFIG).map(([value, config]) => ({ value, label: config.label }))].map((type) => <Button key={type.value} type="button" variant={filterType === type.value ? "default" : "outline"} className="rounded-full" onClick={() => setFilterType(type.value)}>{type.label}</Button>)}
+          </div>
+        </div>
+      </ResponsivePopover>
 
       {error && <ApiErrorBanner message={error} onRetry={loadSent} />}
 
@@ -180,40 +204,29 @@ export default function AdminNotificationsPage() {
         </div>
       ) : (
         <div className="mx-3 mb-20 divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white">
-              {sent.map((n) => {
-                const cfg = TYPE_CONFIG[n.type] ?? TYPE_CONFIG.GENERAL;
-                const Icon = cfg.icon;
-                return (
-                  <div key={n.id} className="flex items-start gap-3 px-4 py-4">
-                    <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl", cfg.bg)}>
-                      <Icon className={cn("size-4", cfg.color)} />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-gray-900">{n.title}</p>
-                      <p className="mt-0.5 line-clamp-2 text-sm text-gray-500">{n.body}</p>
-                      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
-                        <span className={cn("font-medium", cfg.color)}>{cfg.label}</span>
-                        <span aria-hidden="true">·</span>
-                        <span>{n.targetRoles.join(", ")}</span>
-                        <span aria-hidden="true">·</span>
-                        <span className="tabular-nums">{new Date(n.createdAt).toLocaleDateString("en-GB")}</span>
-                        {n._count && <span>· {n._count.reads} read</span>}
-                      </div>
-                      {n.actionUrl && <p className="mt-1 flex items-center gap-1 break-all text-xs text-blue-600"><ExternalLink className="size-3 shrink-0" />{n.actionUrl}</p>}
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <Button type="button" variant="ghost" size="icon-sm" onClick={() => handleEditClick(n)} aria-label={`Edit ${n.title}`}>
-                        <Pencil className="size-4" />
-                      </Button>
-                      <Button type="button" variant="ghost" size="icon-sm" onClick={() => handleDelete(n.id)} disabled={deletingId === n.id} aria-label={`Delete ${n.title}`} className="text-red-600 hover:bg-red-50">
-                        {deletingId === n.id ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
+          {filtered.length === 0 ? <p className="px-4 py-16 text-center text-sm text-gray-500">No matching notifications</p> : filtered.map((n) => (
+            <NotificationListItem key={n.id} notification={n} onClick={() => setSelectedId(n.id)} />
+          ))}
         </div>
       )}
+
+      <ResponsivePopover open={selected !== null} onOpenChange={(open) => { if (!open) setSelectedId(null); }} title={selected?.title} desktopView="right-drawer"
+        description={selected ? new Date(selected.createdAt).toLocaleString("en-GB") : undefined}
+        footer={selected && <div className="flex gap-3 border-t border-gray-100 p-4">
+          <Button variant="outline" className="flex-1" onClick={() => { setSelectedId(null); handleEditClick(selected); }}><Pencil className="size-4" />Edit</Button>
+          <Button variant="outline" className="flex-1 text-red-600" onClick={() => handleDelete(selected.id)} disabled={deletingId === selected.id}>{deletingId === selected.id ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}Delete</Button>
+        </div>}>
+        {selected && <div className="space-y-5 py-4">
+          <p className="whitespace-pre-wrap rounded-xl bg-gray-50 p-4 text-sm leading-relaxed text-gray-800">{selected.body}</p>
+          <dl className="grid grid-cols-2 gap-4 text-sm">
+            <div><dt className="text-gray-500">Category</dt><dd className="mt-1 font-medium">{TYPE_CONFIG[selected.type]?.label ?? "General"}</dd></div>
+            <div><dt className="text-gray-500">Target audience</dt><dd className="mt-1 font-medium">{selected.targetRoles.join(", ")}</dd></div>
+            {selected._count && <div><dt className="text-gray-500">Read</dt><dd className="mt-1 font-medium">{selected._count.reads}</dd></div>}
+            {selected.eventDate && <div><dt className="text-gray-500">Event date</dt><dd className="mt-1 font-medium">{new Date(selected.eventDate).toLocaleDateString("en-GB")}</dd></div>}
+          </dl>
+          {selected.actionUrl && <p className="flex items-center gap-2 break-all text-sm text-blue-600"><ExternalLink className="size-4 shrink-0" />{selected.actionUrl}</p>}
+        </div>}
+      </ResponsivePopover>
 
       <ResponsivePopover
         open={showCompose}

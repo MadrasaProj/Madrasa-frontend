@@ -70,7 +70,7 @@ export function FeeTypeList({ items, lang, selectedId, onSelect, title, action }
                   </span>
                 </span>
               </span>
-              <span className="  text-right text-xs font-semibold leading-tight   sm:text-2xl">
+              <span className="  text-right text-xs font-semibold leading-tight   sm:text-base">
                 <span className="block text-primary-700">₹{collected.toLocaleString("en-IN")}</span>
                 <span className="block text-gray-500">/ ₹{total.toLocaleString("en-IN")}</span>
               </span>

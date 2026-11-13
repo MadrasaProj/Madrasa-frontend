@@ -206,10 +206,11 @@ export default function ParentHomeworkPage() {
         open={!!selected}
         onOpenChange={(open) => { if (!open) closeDetails(); }}
         title={selected?.title}
+        desktopView="right-drawer"
         description={selected?.subject?.name}
       >
         {selected && (
-          <div className="space-y-6 p-5">
+          <div className="space-y-6 py-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span className={cn("rounded-full px-3 py-1 text-xs font-semibold ring-1", statusStyles[selected.submission.status])}>
                 {t("parentPages", statusLabelKeys[selected.submission.status], lang)}

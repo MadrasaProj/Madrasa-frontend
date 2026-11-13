@@ -1,3 +1,4 @@
+import { NotificationListItem } from "@/components/notifications/NotificationListItem";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -20,7 +21,7 @@ import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
   Bell, BookOpen, CheckCheck, ClipboardList, CreditCard, ExternalLink,
-  GraduationCap, Inbox, RefreshCw, Search, SlidersHorizontal,
+  GraduationCap, Inbox, Search, SlidersHorizontal,
 } from "lucide-react";
 
 const PAGE_SIZE = 20;
@@ -87,7 +88,7 @@ export default function ParentNotificationsPage() {
   const copy = COPY[lang];
   const navigate = useNavigate();
   const ctx = { clientId: user?.clientId ?? "", token: accessToken ?? "" };
-  const { data, isLoading, error, refetch, isRefetching } = useNotifications(ctx, { take: 100 });
+  const { data, isLoading, error, refetch } = useNotifications(ctx, { take: 100 });
   const notifs = data?.notifications ?? [];
   const markRead = useMarkNotificationRead(ctx);
   const markAll = useMarkAllNotificationsRead(ctx);
@@ -145,16 +146,17 @@ export default function ParentNotificationsPage() {
               <InputGroupInput value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder={copy.search} aria-label={copy.search} className="h-full text-sm" />
               <InputGroupAddon align="inline-start"><Search className="h-4 w-4 text-gray-400" /></InputGroupAddon>
             </InputGroup>
-            <Button variant="outline" type="button" size="icon-lg" onClick={() => setFiltersOpen(true)} className="h-10 w-10 shrink-0 rounded-xl text-gray-600 hover:bg-gray-100" aria-label={copy.openFilters}>
+            <Button variant="outline" type="button" size="icon-sm" onClick={() => setFiltersOpen(true)} aria-label={copy.openFilters}>
               <SlidersHorizontal className="h-4 w-4" />
             </Button>
+            {unread > 0 && <Button type="button" variant="outline" size="sm" onClick={markAllRead} disabled={markAll.isPending} aria-label={t("parentPages", "markAllReadBtn", lang)} title={t("parentPages", "markAllReadBtn", lang)}><CheckCheck className="size-4" /><span className="hidden sm:inline">{t("parentPages", "markAllReadBtn", lang)}</span></Button>}
           </div>
       </div>
-      <ResponsivePopover open={filtersOpen} onOpenChange={setFiltersOpen} title={copy.filters} className="shadow-none" footer={<div className="border-t border-gray-100 p-4"><Button type="button" className="w-full" onClick={() => setFiltersOpen(false)}>{copy.done}</Button></div>}>
+      <ResponsivePopover desktopView="right-drawer" open={filtersOpen} onOpenChange={setFiltersOpen} title={copy.filters} className="shadow-none" footer={<div className="border-t border-gray-100 p-4"><Button type="button" className="w-full" onClick={() => setFiltersOpen(false)}>{copy.done}</Button></div>}>
         <div className="px-5 pb-5 pt-2">
           <section className="mb-6">
             <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-400">{copy.notificationType}</h3>
-            <div className="-mx-5 overflow-x-auto px-5"><div className="flex w-max gap-2">
+            <div className="-mx-5 overflow-x-auto px-5"><div className="flex flex-wrap gap-2">
               {NOTIFICATION_TYPES.map((type) => {
                 const selected = type.id === "ALL" ? activeTypeId === null : activeTypeId === type.id;
                 return (
@@ -186,12 +188,6 @@ export default function ParentNotificationsPage() {
           <span className="mt-1.5 block text-[22px] font-medium leading-none tabular-nums text-gray-950">{unread}</span>
         </div>
       </div>}
-      <div className="mx-3 mb-3 flex flex-wrap items-center justify-end gap-2 text-xs text-gray-500">
-        <div className="flex items-center gap-2">
-          {unread > 0 && <Button type="button" variant="outline" size="sm" onClick={markAllRead} disabled={markAll.isPending} className="h-8 rounded-full px-3 text-xs text-primary-700" aria-label={t("parentPages", "markAllReadBtn", lang)}><CheckCheck className="mr-1 h-3.5 w-3.5" />{t("parentPages", "markAllReadBtn", lang)}</Button>}
-          <Button type="button" variant="outline" size="icon" onClick={() => refetch()} disabled={isRefetching} className="h-8 w-8 rounded-full text-gray-600" aria-label={t("parentPages", "notifRefresh", lang)}><RefreshCw className={cn("h-3.5 w-3.5", isRefetching && "animate-spin")} /></Button>
-        </div>
-      </div>
       {error instanceof Error && <ApiErrorBanner message={error.message} onRetry={() => refetch()} />}
       {isLoading ? (
         <div className="mx-3 mb-20 divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white">
@@ -207,23 +203,7 @@ export default function ParentNotificationsPage() {
                 {(search || activeTypeId || statusFilter !== "all") && <><p className="mt-1 text-xs text-gray-400">{copy.adjustFilters}</p><Button type="button" variant="outline" size="sm" onClick={resetFilters} className="mt-4 rounded-xl text-xs">{copy.resetFilters}</Button></>}
               </div>
             ) : visibleNotifs.map((n) => {
-              const cfg = TYPE_CONFIG[n.type] ?? TYPE_CONFIG.GENERAL;
-              const Icon = cfg.icon;
-              return (
-                <button type="button" key={n.id} aria-label={`${n.title}, ${copy.types[cfg.id]}, ${n.isRead ? t("parentPages", "notifRead", lang) : t("parentPages", "unreadLabel", lang)}`} onClick={() => selectNotification(n)} className={cn("w-full rounded-none px-4 py-4 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500", !n.isRead && "bg-blue-50/40")}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex min-w-0 items-start gap-3">
-                      <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border", cfg.bg)}><Icon className={cn("h-4 w-4", cfg.color)} /></span>
-                      <div className="min-w-0"><div className="flex items-center gap-1.5"><span className={cn("truncate text-sm font-semibold", !n.isRead ? "font-bold text-gray-950" : "text-gray-900")}>{n.title}</span>{n.actionUrl && <ExternalLink className="h-3.5 w-3.5 shrink-0 text-blue-500" />}</div><p className="mt-0.5 line-clamp-2 text-xs text-gray-500">{n.body}</p></div>
-                    </div>
-                    <span className={cn("inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium", n.isRead ? "bg-gray-100 text-gray-600" : "bg-blue-100 text-blue-700")}>{!n.isRead && <span className="size-1.5 rounded-full bg-blue-600" />}{n.isRead ? t("parentPages", "notifRead", lang) : t("parentPages", "unreadLabel", lang)}</span>
-                  </div>
-                  <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 border-t border-gray-50 pt-2 text-xs text-gray-500">
-                    <div className="flex items-center gap-2"><span className="font-medium text-gray-600">{n.creator?.name ? `${t("parentPages", "notifFrom", lang)}: ${n.creator.name}` : "Madrasa"}</span><span className="text-gray-300">·</span><span className={cn("inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider", cfg.bg, cfg.color)}>{copy.types[cfg.id]}</span></div>
-                    <span className="text-[11px] tabular-nums text-gray-400">{new Date(n.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
-                  </div>
-                </button>
-              );
+              return <NotificationListItem key={n.id} notification={n} unread={!n.isRead} onClick={() => selectNotification(n)} />;
             })}
           </div>
           {filtered.length > PAGE_SIZE && <div className="mx-3 mb-20 mt-4 rounded-2xl border border-gray-100 px-3 py-3">
