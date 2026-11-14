@@ -2,9 +2,14 @@ import * as React from "react"
 import { cn } from "cn"
 import {
   DayPicker,
+  DateLib,
+  defaultLocale,
   getDefaultClassNames,
+  useDayPicker,
   type DayButton,
   type Locale,
+  type MonthCaptionProps,
+  type RootProps,
 } from "react-day-picker"
 
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -14,6 +19,7 @@ function Calendar({
   className,
   classNames,
   showOutsideDays = true,
+  fixedWeeks = true,
   captionLayout = "label",
   buttonVariant = "ghost",
   locale,
@@ -28,6 +34,7 @@ function Calendar({
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
+      fixedWeeks={fixedWeeks}
       className={cn(
         "group/calendar bg-background p-2 [--cell-radius:var(--radius-md)] [--cell-size:--spacing(7)] in-data-[slot=card-content]:bg-transparent in-data-[slot=popover-content]:bg-transparent",
         String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`,
@@ -132,16 +139,8 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        Root: ({ className, rootRef, ...props }) => {
-          return (
-            <div
-              data-slot="calendar"
-              ref={rootRef}
-              className={cn(className)}
-              {...props}
-            />
-          )
-        },
+        Root: CalendarRoot,
+        MonthCaption: CalendarMonthCaption,
         Chevron: ({ className, orientation, ...props }) => {
           if (orientation === "left") {
             return (
@@ -175,6 +174,232 @@ function Calendar({
       }}
       {...props}
     />
+  )
+}
+
+type CalendarPicker = {
+  view: "months" | "years"
+  date: Date
+  offset: number
+  yearPage: number
+}
+
+const CalendarPickerContext = React.createContext<
+  ((picker: CalendarPicker) => void) | null
+>(null)
+
+const calendarCaptionButtonClassName = cn(
+  "h-(--cell-size) cursor-pointer rounded-lg border-gray-200/60 bg-linear-to-b from-white to-gray-50 px-2 text-sm text-gray-700",
+  "shadow-[inset_0_1px_0_#ffffffb3,0_1px_2px_#0000000a] hover:to-gray-100 active:shadow-none",
+  "dark:border-white/10 dark:from-neutral-800 dark:to-neutral-800 dark:text-neutral-100 dark:shadow-none dark:hover:to-neutral-700"
+)
+
+function CalendarMonthCaption({
+  calendarMonth,
+  displayIndex,
+  children: _children,
+  ...props
+}: MonthCaptionProps) {
+  const openPicker = React.useContext(CalendarPickerContext)
+  const { dayPickerProps, months, formatters } = useDayPicker()
+  const date = calendarMonth.date
+  const offset = dayPickerProps.reverseMonths
+    ? months.length - 1 - displayIndex
+    : displayIndex
+
+  return (
+    <div {...props}>
+      <div className="relative z-10 flex items-center gap-1">
+        {(["months", "years"] as const).map((view) => (
+          <Button
+            key={view}
+            type="button"
+            variant="ghost"
+            size="sm"
+            className={calendarCaptionButtonClassName}
+            aria-label={view === "months" ? "Choose month" : "Choose year"}
+            disabled={dayPickerProps.disableNavigation}
+            data-calendar-picker={`${offset}-${view}`}
+            onClick={() => openPicker?.({
+              view,
+              date,
+              offset,
+              yearPage: Math.floor(date.getFullYear() / 12) * 12,
+            })}
+          >
+            {view === "months"
+              ? date.toLocaleString(dayPickerProps.locale?.code, {
+                  month: "long",
+                  timeZone: dayPickerProps.timeZone,
+                })
+              : formatters.formatYearDropdown(date)}
+          </Button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function CalendarRoot({ rootRef, children, ...props }: RootProps) {
+  const { dayPickerProps, goToMonth, months, formatters } = useDayPicker()
+  const [picker, setPicker] = React.useState<CalendarPicker | null>(null)
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  const returnFocus = React.useRef<string | null>(null)
+  const dateLib = new DateLib({
+    locale: { ...defaultLocale, ...dayPickerProps.locale },
+    timeZone: dayPickerProps.timeZone,
+    numerals: dayPickerProps.numerals,
+  }, dayPickerProps.dateLib)
+  const start = dayPickerProps.startMonth
+    ? dateLib.startOfMonth(dayPickerProps.startMonth)
+    : undefined
+  const end = dayPickerProps.endMonth
+    ? dateLib.startOfMonth(dayPickerProps.endMonth)
+    : undefined
+  const activeDate = picker
+    ? months[dayPickerProps.reverseMonths ? months.length - 1 - picker.offset : picker.offset]?.date
+    : undefined
+
+  React.useEffect(() => {
+    if (!picker && returnFocus.current) {
+      containerRef.current?.querySelector<HTMLButtonElement>(
+        `[data-calendar-picker="${returnFocus.current}"]`
+      )?.focus()
+      returnFocus.current = null
+    }
+  }, [picker])
+
+  function closePicker(date?: Date) {
+    if (!picker) return
+    if (date) {
+      const boundedDate = start && date < start ? start : end && date > end ? end : date
+      goToMonth(dateLib.addMonths(boundedDate, -picker.offset))
+    }
+    returnFocus.current = `${picker.offset}-${picker.view}`
+    setPicker(null)
+  }
+
+  function pageDisabled(direction: number) {
+    if (!picker) return false
+    const year = picker.view === "years"
+      ? picker.yearPage + direction * 12
+      : picker.date.getFullYear() + direction
+    return direction < 0
+      ? !!start && year + (picker.view === "years" ? 11 : 0) < start.getFullYear()
+      : !!end && year > end.getFullYear()
+  }
+
+  function renderPageButton(direction: -1 | 1) {
+    if (!picker) return null
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="size-(--cell-size) p-0 rtl:rotate-180"
+        aria-label={`${direction < 0 ? "Previous" : "Next"} ${picker.view === "years" ? "years" : "year"}`}
+        disabled={pageDisabled(direction)}
+        onClick={() => setPicker(picker.view === "years"
+          ? { ...picker, yearPage: picker.yearPage + direction * 12 }
+          : { ...picker, date: dateLib.addYears(picker.date, direction) })}
+      >
+        {direction < 0 ? <ChevronLeftIcon className="size-4" /> : <ChevronRightIcon className="size-4" />}
+      </Button>
+    )
+  }
+
+  return (
+    <div
+      {...props}
+      data-slot="calendar"
+      ref={(node) => {
+        containerRef.current = node
+        if (typeof rootRef === "function") return rootRef(node)
+        if (rootRef) rootRef.current = node
+      }}
+    >
+      <CalendarPickerContext.Provider value={setPicker}>
+        <div className="relative">
+          <div
+            className={picker ? "invisible" : undefined}
+            aria-hidden={picker ? true : undefined}
+            inert={!!picker}
+          >
+            {children}
+          </div>
+          {picker && (
+            <div
+              className="absolute inset-0 flex min-w-[calc(var(--cell-size)*7)] flex-col gap-4"
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  closePicker()
+                }
+              }}
+            >
+              <div className="flex h-(--cell-size) shrink-0 items-center justify-between">
+                {renderPageButton(-1)}
+                <div className="flex items-center gap-1">
+                  <Button type="button" variant="ghost" size="sm" className={calendarCaptionButtonClassName} aria-label="Choose month" onClick={() => setPicker({ ...picker, view: "months" })}>
+                    {picker.date.toLocaleString(dayPickerProps.locale?.code, {
+                      month: "long",
+                      timeZone: dayPickerProps.timeZone,
+                    })}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className={calendarCaptionButtonClassName}
+                    aria-label="Choose year"
+                    onClick={() => setPicker({
+                      ...picker,
+                      view: "years",
+                      yearPage: Math.floor(picker.date.getFullYear() / 12) * 12,
+                    })}
+                  >
+                    {picker.view === "years"
+                      ? `${picker.yearPage} – ${picker.yearPage + 11}`
+                      : formatters.formatYearDropdown(picker.date)}
+                  </Button>
+                </div>
+                {renderPageButton(1)}
+              </div>
+              <div className="grid min-h-0 flex-1 grid-cols-3 grid-rows-4 justify-between gap-2" role="group" aria-label={picker.view === "years" ? "Choose year" : "Choose month"}>
+                {Array.from({ length: 12 }, (_, index) => {
+                  const date = picker.view === "years"
+                    ? dateLib.setYear(dateLib.startOfMonth(picker.date), picker.yearPage + index)
+                    : dateLib.setMonth(dateLib.startOfMonth(picker.date), index)
+                  const year = date.getFullYear()
+                  const disabled = picker.view === "years"
+                    ? (!!start && year < start.getFullYear()) || (!!end && year > end.getFullYear())
+                    : (!!start && date < start) || (!!end && date > end)
+                  const active = !!activeDate && (picker.view === "years"
+                    ? year === activeDate.getFullYear()
+                    : dateLib.isSameMonth(date, activeDate))
+
+                  return (
+                    <Button
+                      key={index}
+                      type="button"
+                      variant={active ? "default" : "ghost"}
+                      className="h-full w-full min-w-0 cursor-pointer px-2 text-sm inset-ring inset-ring-border/60"
+                      disabled={disabled}
+                      aria-pressed={active}
+                      autoFocus={!disabled && index === (picker.view === "years" ? picker.date.getFullYear() - picker.yearPage : picker.date.getMonth())}
+                      onClick={() => closePicker(date)}
+                    >
+                      {picker.view === "years" ? formatters.formatYearDropdown(date) : formatters.formatMonthDropdown(date)}
+                    </Button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </CalendarPickerContext.Provider>
+    </div>
   )
 }
 
