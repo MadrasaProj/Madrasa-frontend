@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import type { ExamRecord } from "@/lib/exams-api";
-import type { ResultRecord, ExamSummary, ClassReport } from "@/lib/results-api";
+import { getExams, type ExamRecord } from "@/lib/exams-api";
+import type { ResultRecord, ExamSummary } from "@/lib/results-api";
 import { getResults, getSummaries, GRADE_COLORS, TOTAL_GRADE_LABELS } from "@/lib/results-api";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
@@ -16,13 +16,13 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { downloadAsJPG, downloadAsPDF, shareAsJPG, downloadAsPNG } from "@/lib/poster-utils";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
-import { Bar, BarChart, CartesianGrid, PolarAngleAxis, RadialBar, RadialBarChart, XAxis, YAxis } from "recharts";
+import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
   Medal, Loader2, AlertCircle, RefreshCw, GraduationCap, Trophy,
   Download, Share2, FileText, ChevronRight, Printer, Calendar, Award, FileBadge2, BookOpen, Users, TrendingUp
 } from "lucide-react";
-import { useExams, useResults, useClassReport } from "@/lib/queries";
+import { useExams, useResults } from "@/lib/queries";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -46,29 +46,57 @@ function calcFallbackGrade(score: number, totalMarks: number): string {
 function gradeIsPassed(grade: string) { return grade !== "D"; }
 
 const resultChartConfig = {
-  score: { label: "Score", color: "var(--primary)" },
-  rate: { label: "Pass rate", color: "#0d9488" },
+  score: { label: "Score", color: "var(--chart-3)" },
 } satisfies ChartConfig;
 
-function HalfRadialChart({ value, label, color }: { value: number; label: string; color: string }) {
-  const safeValue = Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
+function examTimestamp(exam: ExamRecord) {
+  for (const date of [exam.startDate, exam.endDate, exam.publishedDate]) {
+    if (!date) continue;
+    const timestamp = new Date(date).getTime();
+    if (Number.isFinite(timestamp)) return timestamp;
+  }
+  return null;
+}
+
+function scorePercentage(score: number, max: number) {
+  return max > 0 ? Math.round((score / max) * 1000) / 10 : null;
+}
+
+type ScoreChartRow = {
+  subject: string;
+  score?: number | null;
+  previous?: number | null;
+  current?: number | null;
+  scoreMarks?: string;
+  previousMarks?: string;
+  currentMarks?: string;
+};
+
+function ScoreBarChart({ data, config, comparison = false }: {
+  data: ScoreChartRow[];
+  config: ChartConfig;
+  comparison?: boolean;
+}) {
   return (
-    <div className="relative h-16 w-24" role="img" aria-label={`${label}: ${safeValue.toFixed(0)}%`}>
-      <ChartContainer config={resultChartConfig} className="!aspect-auto h-16 w-24">
-        <RadialBarChart
-          data={[{ value: safeValue, fill: color }]}
-          startAngle={180}
-          endAngle={0}
-          cx="50%"
-          cy="95%"
-          innerRadius={30}
-          outerRadius={40}
-        >
-          <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
-          <RadialBar dataKey="value" background cornerRadius={5} isAnimationActive={false} />
-        </RadialBarChart>
+    <div className="overflow-x-auto p-3 sm:p-5">
+      <ChartContainer config={config} className="h-72 w-full !aspect-auto" style={{ minWidth: Math.max(280, data.length * (comparison ? 110 : 85)) }}>
+        <BarChart accessibilityLayer data={data} margin={{ top: 8, right: 8, left: -20 }}>
+          <CartesianGrid vertical={false} />
+          <XAxis dataKey="subject" tickLine={false} tickMargin={10} axisLine={false} interval={0} tickFormatter={(value: string) => value.length > 12 ? `${value.slice(0, 11)}…` : value} />
+          <YAxis domain={[0, 100]} tickLine={false} axisLine={false} tickFormatter={(value: number) => `${value}%`} />
+          <ChartTooltip cursor={false} content={<ChartTooltipContent formatter={(value, name, item) => (
+            <div className="flex w-full items-center gap-2">
+              <span className="size-2.5 shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />
+              <span className="text-muted-foreground">{config[String(name)]?.label}</span>
+              <span className="ml-auto font-medium tabular-nums">{item.payload[`${name}Marks`]} marks ({Number(value).toFixed(1)}%)</span>
+            </div>
+          )} />} />
+          {comparison && <ChartLegend content={<ChartLegendContent className="flex-wrap" />} />}
+          {(comparison ? ["previous", "current"] : ["score"]).map((key) => (
+            <Bar key={key} dataKey={key} fill={`var(--color-${key})`} radius={4} maxBarSize={48} />
+          ))}
+        </BarChart>
       </ChartContainer>
-      <span className="pointer-events-none absolute inset-x-0 bottom-0 text-center text-sm font-semibold tabular-nums text-gray-950">{safeValue.toFixed(0)}%</span>
     </div>
   );
 }
@@ -514,19 +542,6 @@ export default function ParentResultsPage() {
   });
   const summaries = summariesData?.data ?? [];
   const summariesByExam = new Map(summaries.map((item) => [item.examId, item]));
-  const { data: allResultsData, isLoading: loadingAllResults } = useQuery({
-    queryKey: queryKeys.results.list(cid, { studentId: effectiveId, limit: 1000 }),
-    queryFn: () => getResults(cid, token, { studentId: effectiveId, limit: 1000 }),
-    enabled: !!cid && !!token && !!effectiveId,
-  });
-  const resultTotalsByExam = new Map<string, { score: number; max: number }>();
-  for (const result of allResultsData?.data ?? []) {
-    if (!result.exam?.id) continue;
-    const totals = resultTotalsByExam.get(result.exam.id) ?? { score: 0, max: 0 };
-    totals.score += result.score;
-    totals.max += result.totalMarks;
-    resultTotalsByExam.set(result.exam.id, totals);
-  }
 
   const activeExamId = detailOpen && examSelection?.studentId === effectiveId && exams.some((exam) => exam.id === examSelection.examId)
     ? examSelection.examId
@@ -538,15 +553,7 @@ export default function ParentResultsPage() {
     { examId: activeExamId, studentId: effectiveId, limit: 50 },
   );
   const results: ResultRecord[] = resultsData?.data ?? [];
-  const summary: ExamSummary | null = summariesByExam.get(activeExamId) ?? null;
-
-  // ── Load class report (class-level stats) when exam changes ────────────────────
-  const activeExamForReport = exams.find((e) => e.id === activeExamId);
-  const { data: classReportData } = useClassReport(
-    { clientId: cid, token },
-    { examId: activeExamId, classId: activeExamForReport?.classId ?? "" },
-  );
-  const classReport: ClassReport | null = classReportData ?? null;
+  const summary: ExamSummary | null = resultsData?.summary ?? summariesByExam.get(activeExamId) ?? null;
 
   const activeExam   = exams.find((e) => e.id === activeExamId);
   const rank         = summary?.rank ?? null;
@@ -558,29 +565,84 @@ export default function ParentResultsPage() {
     const grade = result.grade ?? calcFallbackGrade(result.score, result.totalMarks);
     return result.isPassed ?? gradeIsPassed(grade);
   }).length;
-  const passRate = results.length > 0 ? (passedCount / results.length) * 100 : 0;
   const subjectChartData = results.map((result, index) => ({
     subject: result.subject?.name ?? `Subject ${index + 1}`,
-    score: result.totalMarks > 0 ? Math.max(0, Math.min(100, (result.score / result.totalMarks) * 100)) : 0,
+    score: scorePercentage(result.score ?? 0, result.totalMarks),
+    scoreMarks: `${result.score ?? 0}/${result.totalMarks}`,
   }));
 
-  // Class-level statistics — prefer the values stored on the student's
-  // summary (computed during the last `summaries/compute` run), fall back to
-  // the live class report if not yet computed.
-  const classAverage = summary?.classAverage
-    ?? classReport?.stats?.classAverage
-    ?? null;
-  const classHighest = summary?.classHighest
-    ?? (classReport?.students?.length
-      ? Math.max(...classReport.students.map((s) => s.summary.totalPercentage ?? 0))
-      : null);
-  const classLowest = summary?.classLowest
-    ?? (classReport?.students?.length
-      ? Math.min(...classReport.students.map((s) => s.summary.totalPercentage ?? 0))
-      : null);
-  const classSize = summary?.classSize
-    ?? classReport?.stats?.totalStudents
-    ?? null;
+  // Include earlier academic years, and never compare against class tests.
+  const comparisonEnabled = !!activeExam && activeExam.type !== "CLASS_TEST" && results.length > 0;
+  const { data: examHistory, isLoading: loadingHistory, isError: historyError, refetch: refetchHistory } = useQuery({
+    queryKey: queryKeys.exams.list(cid, { studentId: effectiveId, examStatus: "PUBLISHED", history: true }),
+    queryFn: async () => {
+      const history: ExamRecord[] = [];
+      for (let page = 1; ; page++) {
+        const response = await getExams(cid, token, { studentId: effectiveId, examStatus: "PUBLISHED", limit: 100, page });
+        history.push(...response.data);
+        if (response.data.length < 100 || (response.total != null && history.length >= response.total)) break;
+      }
+      return history;
+    },
+    enabled: !!cid && !!token && !!effectiveId && comparisonEnabled,
+  });
+  const activeTimestamp = activeExam ? examTimestamp(activeExam) : null;
+  const earlierExams = (examHistory ?? [])
+    .filter((exam) => {
+      const timestamp = examTimestamp(exam);
+      return exam.id !== activeExamId && exam.examStatus === "PUBLISHED" && exam.type !== "CLASS_TEST"
+        && timestamp != null && activeTimestamp != null && timestamp < activeTimestamp;
+    })
+    .sort((a, b) => examTimestamp(b)! - examTimestamp(a)! || a.id.localeCompare(b.id));
+  const { data: previousResult, isLoading: loadingPrevious, isError: previousError, refetch: refetchPrevious } = useQuery({
+    queryKey: queryKeys.results.list(cid, { studentId: effectiveId, comparisonExamIds: earlierExams.map((exam) => exam.id) }),
+    queryFn: async () => {
+      for (const exam of earlierExams) {
+        const response = await getResults(cid, token, { examId: exam.id, studentId: effectiveId, limit: 1000 });
+        if (response.data.some((result) => result.hasMark !== false)) return { exam, results: response.data };
+      }
+      return null;
+    },
+    enabled: !!cid && !!token && !!effectiveId && comparisonEnabled && earlierExams.length > 0,
+  });
+  const previousScore = previousResult?.results.reduce((sum, result) => sum + result.score, 0) ?? 0;
+  const previousMax = previousResult?.results.reduce((sum, result) => sum + result.totalMarks, 0) ?? 0;
+  const previousPct = scorePercentage(previousScore, previousMax);
+  const comparisonConfig = {
+    previous: { label: previousResult?.exam.name ?? "Previous exam", color: "var(--chart-1)" },
+    current: { label: activeExam?.name ?? "Current exam", color: "var(--chart-3)" },
+  } satisfies ChartConfig;
+  const comparisonBySubject = new Map<string, ScoreChartRow>();
+  for (const [key, records] of [["previous", previousResult?.results ?? []], ["current", results]] as const) {
+    for (const result of records) {
+      const subjectKey = result.subject?.id ?? `${key}-${result.id}`;
+      const row = comparisonBySubject.get(subjectKey) ?? {
+        subject: result.subject?.name ?? "Subject",
+        previous: 0,
+        current: 0,
+        previousMarks: "0",
+        currentMarks: "0",
+      };
+      row[key] = scorePercentage(result.score ?? 0, result.totalMarks);
+      row[`${key}Marks`] = `${result.score ?? 0}/${result.totalMarks}`;
+      comparisonBySubject.set(subjectKey, row);
+    }
+  }
+  const comparisonChartData: ScoreChartRow[] = [
+    {
+      subject: "Overall",
+      previous: previousPct,
+      current: totalMax > 0 ? overallPct : null,
+      previousMarks: `${previousScore}/${previousMax}`,
+      currentMarks: `${totalObtained}/${totalMax}`,
+    },
+    ...comparisonBySubject.values(),
+  ];
+
+  const classAverage = summary?.classAverage ?? null;
+  const classHighest = summary?.classHighest ?? null;
+  const classLowest = summary?.classLowest ?? null;
+  const classSize = summary?.classSize ?? null;
 
   return (
     <DashboardLayout>
@@ -611,10 +673,7 @@ export default function ParentResultsPage() {
               <div className="space-y-0 divide-y divide-primary-100 overflow-hidden rounded-2xl mt-3">
                 {exams.map((exam) => {
                   const examSummary = summariesByExam.get(exam.id);
-                  const totals = resultTotalsByExam.get(exam.id);
-                  const percentage = examSummary?.totalPercentage != null
-                    ? examSummary.totalPercentage
-                    : totals && totals.max > 0 ? (totals.score / totals.max) * 100 : null;
+                  const percentage = examSummary?.totalPercentage ?? null;
                   const displayPercentage = percentage != null && Number.isFinite(percentage)
                     ? Math.max(0, Math.min(100, percentage)) : null;
                   return (
@@ -633,7 +692,7 @@ export default function ParentResultsPage() {
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
                           <span className="text-base font-semibold tabular-nums text-primary-700 sm:text-lg">
-                            {displayPercentage != null ? `${displayPercentage.toFixed(1)}%` : loadingSummaries || loadingAllResults ? "…" : "—"}
+                            {displayPercentage != null ? `${displayPercentage.toFixed(1)}%` : loadingSummaries ? "…" : "—"}
                           </span>
                           <ChevronRight className="size-4 text-gray-400" />
                         </div>
@@ -695,7 +754,6 @@ export default function ParentResultsPage() {
                 <div className="rounded-xl border border-gray-100 bg-white p-8 text-center text-sm text-gray-500">No marks records available for this exam.</div>
               ) : (
                 <div className="space-y-5">
-                {/* Results overview follows the compact statistics layout used on the fees page. */}
                 <section className="overflow-hidden rounded-2xl border border-gray-100 bg-gradient-to-br from-white to-sky-50 print:hidden">
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-3 sm:px-5">
                     <div>
@@ -711,13 +769,13 @@ export default function ParentResultsPage() {
                   <div className="grid grid-cols-2 gap-px bg-gray-100 sm:grid-cols-3 lg:grid-cols-4">
                     <div className="min-w-0 bg-white/90 p-3 sm:p-4">
                       <h4 className="text-[11px] font-medium text-gray-600">Overall score</h4>
-                      <HalfRadialChart value={overallPct} label="of total marks" color="var(--primary)" />
-                      <p className="text-[11px] text-gray-500">{totalObtained.toFixed(0)} / {totalMax} marks</p>
+                      <div className="mt-2 text-base font-semibold tabular-nums text-gray-950 sm:text-lg">{overallPct.toFixed(1)}%</div>
+                      <p className="mt-1 text-[11px] text-gray-500">{totalObtained.toFixed(0)} / {totalMax} marks</p>
                     </div>
                     <div className="min-w-0 bg-white/90 p-3 sm:p-4">
                       <h4 className="text-[11px] font-medium text-gray-600">Subjects passed</h4>
-                      <HalfRadialChart value={passRate} label="pass rate" color="#0d9488" />
-                      <p className="text-[11px] text-gray-500">{passedCount} of {results.length} subjects</p>
+                      <div className="mt-2 text-base font-semibold tabular-nums text-gray-950 sm:text-lg">{passedCount} / {results.length}</div>
+                      <p className="mt-1 text-[11px] text-gray-500">Subjects passed</p>
                     </div>
                     {[
                       { label: "Grade", value: summary?.totalGrade ? TOTAL_GRADE_LABELS[summary.totalGrade] : calcFallbackGrade(totalObtained, totalMax), detail: "Overall result", icon: Award },
@@ -749,24 +807,32 @@ export default function ParentResultsPage() {
                     <h3 className="text-sm font-semibold text-gray-950">Subject performance</h3>
                     <p className="mt-0.5 text-xs text-gray-500">Score as a percentage of each subject's full marks</p>
                   </div>
-                  <div className="p-3 sm:p-5">
-                    <ChartContainer
-                      config={resultChartConfig}
-                      className="w-full"
-                      style={{ height: Math.max(220, subjectChartData.length * 42) }}
-                      role="img"
-                      aria-label="Score percentage by subject"
-                    >
-                      <BarChart accessibilityLayer data={subjectChartData} layout="vertical" margin={{ top: 4, right: 18, bottom: 4, left: 0 }}>
-                        <CartesianGrid horizontal={false} stroke="#e5e7eb" />
-                        <XAxis type="number" domain={[0, 100]} tickLine={false} axisLine={false} tickFormatter={(value: number) => `${value}%`} />
-                        <YAxis dataKey="subject" type="category" width={110} tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
-                        <ChartTooltip content={<ChartTooltipContent hideLabel formatter={(value) => `${Number(value).toFixed(1)}%`} />} />
-                        <Bar dataKey="score" fill="var(--color-score)" radius={[0, 5, 5, 0]} maxBarSize={22} />
-                      </BarChart>
-                    </ChartContainer>
-                  </div>
+                  <ScoreBarChart data={subjectChartData} config={resultChartConfig} />
                 </section>
+
+                {comparisonEnabled && (loadingHistory || loadingPrevious) ? (
+                  <Skeleton className="h-80 rounded-2xl" />
+                ) : comparisonEnabled && (historyError || previousError) ? (
+                  <div className="rounded-xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-600">
+                    Unable to load the previous exam comparison.
+                    <button type="button" onClick={() => historyError ? refetchHistory() : refetchPrevious()} className="ml-2 font-semibold underline">Try again</button>
+                  </div>
+                ) : comparisonEnabled && previousResult ? (
+                  <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white print:hidden">
+                    <div className="border-b border-gray-100 px-4 py-3 sm:px-5">
+                      <h3 className="text-sm font-semibold text-gray-950">Comparison with previous exam</h3>
+                      <p className="mt-0.5 text-xs text-gray-500">{previousResult.exam.name} ({fmt(previousResult.exam.startDate ?? previousResult.exam.publishedDate)}) and {activeExam.name}. Bars show percentages; hover for marks.</p>
+                      <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-xs">
+                        <p className="text-gray-500">Previous: <span className="font-semibold tabular-nums text-gray-900">{previousScore}/{previousMax} marks{previousPct != null ? ` · ${previousPct.toFixed(1)}%` : ""}</span></p>
+                        <p className="text-gray-500">Current: <span className="font-semibold tabular-nums text-gray-900">{totalObtained}/{totalMax} marks · {overallPct.toFixed(1)}%</span></p>
+                        {previousPct != null && totalMax > 0 && (
+                          <p className="font-semibold tabular-nums text-gray-900">{overallPct > previousPct ? "+" : ""}{(overallPct - previousPct).toFixed(1)} percentage points</p>
+                        )}
+                      </div>
+                    </div>
+                    <ScoreBarChart data={comparisonChartData} config={comparisonConfig} comparison />
+                  </section>
+                ) : null}
 
                 {/* Subject wise marks — simple elegant table */}
                 <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
@@ -801,7 +867,7 @@ export default function ParentResultsPage() {
                                 <p className="font-medium text-gray-800 leading-tight">{r.subject?.name ?? "Subject"}</p>
                               </td>
                               <td className="px-3 py-2.5 text-center text-gray-500 tabular-nums">{r.totalMarks}</td>
-                              <td className="px-3 py-2.5 text-center text-gray-500 tabular-nums">{activeExam?.passMarks ?? 40}</td>
+                              <td className="px-3 py-2.5 text-center text-gray-500 tabular-nums">{r.passMarks ?? activeExam?.passMarks ?? "—"}</td>
                               <td className="px-3 py-2.5 text-center">
                                 <span className={cn("font-semibold tabular-nums", isPassed ? "text-gray-900" : "text-rose-600")}>
                                   {r.score}
@@ -838,7 +904,6 @@ export default function ParentResultsPage() {
                       const grade = r.grade ?? calcFallbackGrade(r.score, r.totalMarks);
                       const isPassed = r.isPassed ?? gradeIsPassed(grade);
                       const gClass = GRADE_COLORS[grade] ?? "text-gray-600 bg-gray-50 border-gray-200";
-                      const pct = r.totalMarks > 0 ? (r.score / r.totalMarks) * 100 : 0;
 
                       return (
                         <div key={r.id} className="px-4 py-3">
@@ -855,17 +920,6 @@ export default function ParentResultsPage() {
                               </span>
                             </div>
                           </div>
-                          {/* Progress bar */}
-                          <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
-                            <div
-                              className={cn("h-full rounded-full transition-all",
-                                pct >= 80 ? "bg-primary-500" :
-                                pct >= 60 ? "bg-teal-500" :
-                                pct >= 40 ? "bg-amber-500" : "bg-red-400"
-                              )}
-                              style={{ width: `${Math.min(pct, 100)}%` }}
-                            />
-                          </div>
                         </div>
                       );
                     })}
@@ -875,16 +929,6 @@ export default function ParentResultsPage() {
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-semibold text-gray-700">Total · {results.length} subjects</span>
                         <span className="text-sm font-bold text-primary-700 tabular-nums">{overallPct.toFixed(1)}%</span>
-                      </div>
-                      <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                        <div
-                          className={cn("h-full rounded-full",
-                            overallPct >= 80 ? "bg-primary-500" :
-                            overallPct >= 60 ? "bg-teal-500" :
-                            overallPct >= 40 ? "bg-amber-500" : "bg-red-400"
-                          )}
-                          style={{ width: `${Math.min(overallPct, 100)}%` }}
-                        />
                       </div>
                       <div className="flex items-center justify-between mt-1.5">
                         <span className="text-[11px] text-gray-500 tabular-nums">{totalObtained.toFixed(0)}/{totalMax} marks</span>

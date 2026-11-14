@@ -10,6 +10,8 @@ export interface ResultRecord {
   score: number;
   remarks?: string | null;
   totalMarks: number;
+  passMarks?: number | null;
+  hasMark?: boolean;
   grade?: string | null;
   rank?: number | null;
   isPassed?: boolean | null;
@@ -31,6 +33,7 @@ export interface ResultRecord {
 export interface ResultListResponse {
   data: ResultRecord[];
   total?: number;
+  summary?: ExamSummary | null;
 }
 
 // ── Summary (per student per exam) ───────────────────────────────────────────
