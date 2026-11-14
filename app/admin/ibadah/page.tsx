@@ -29,7 +29,7 @@ export default function AdminIbadahPage() {
         if (controller.signal.aborted) return;
         setClasses(nextClasses);
         setActiveClassId((current) =>
-          nextClasses.some((cls) => cls.id === current) ? current : (nextClasses[0]?.id ?? null),
+          nextClasses.some((cls) => cls.id === current) ? current : null,
         );
       })
       .catch((error: Error) => {

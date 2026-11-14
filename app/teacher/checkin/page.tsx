@@ -430,8 +430,8 @@ export default function TeacherCheckinPage() {
       ) : (
         <div className="  mx-auto space-y-6 relative ">
           {/* Status card */}
-          <div className="lg:hidden">
-            {renderSessionAction("fixed bottom-16 left-4 right-4 z-30 mx-auto w-max max-w-full rounded-full shadow-lg")}
+          <div className="pointer-events-none fixed inset-x-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 flex justify-center lg:hidden">
+            {renderSessionAction("pointer-events-auto h-auto min-h-12 max-w-full whitespace-normal rounded-full py-3 shadow-lg")}
           </div>
 
           <ResponsivePopover

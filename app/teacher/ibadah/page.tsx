@@ -7,7 +7,6 @@ import { ScrollableWeekNavigator } from "@/components/ScrollableWeekNavigator";
 import { ScrollableMonthlyNavigator } from "@/components/ScrollableMonthlyNavigator";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Button } from "@/components/ui/button";
-import { DrawerSelector } from "@/components/DrawerSelector";
 import {
   Drawer,
   DrawerClose,
@@ -38,8 +37,6 @@ import {
   Sun,
   Minus,
   Download, Settings,
-  School,
-  ChevronDown,
   X
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -48,6 +45,8 @@ import { jsPDF } from "jspdf";
 import { Bar, BarChart, Cell } from "recharts";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Icon } from "@iconify/react";
+import { IbadahOverview } from "@/components/admin/IbadahOverview";
+import { ClassPicker } from "@/components/ui/ClassPicker";
 
 type Section = "prayers" | "quran" | "custom";
 type ViewMode = "daily" | "weekly" | "monthly" | "custom";
@@ -676,7 +675,7 @@ interface IbadahClassContext {
   isLoading: boolean;
   error: string | null;
   onRetry: () => void;
-  onClassChange: (classId: string) => void;
+  onClassChange: (classId: string | null) => void;
 }
 
 export default function TeacherIbadahPage({
@@ -800,9 +799,16 @@ export default function TeacherIbadahPage({
   }, [cid, token, activeClassId, periodFrom, periodTo]);
 
   useEffect(() => {
+    if (!activeClassId) {
+      requestIdRef.current++;
+      setLoadingIbadah(false);
+      setError(null);
+      return;
+    }
     if (viewMode === "daily") loadDailyIbadah();
     else loadPeriodIbadah();
-  }, [viewMode, loadDailyIbadah, loadPeriodIbadah]);
+    return () => { requestIdRef.current++; };
+  }, [activeClassId, viewMode, loadDailyIbadah, loadPeriodIbadah]);
 
   const activePrayers = useMemo(
     () =>
@@ -1120,25 +1126,15 @@ export default function TeacherIbadahPage({
           title={t("teacherPages", "ibadahRecordsTitle", lang)}
           backHref={adminClassContext ? tenantPath("/admin") : "/teacher"}
           switcher={adminClassContext ? (
-            <DrawerSelector
+            <ClassPicker
               title={lang === "ml" ? "സജീവ ക്ലാസ്" : "Active class"}
-              options={[...classes]
+              options={[{ value: "all", label: lang === "ml" ? "എല്ലാ ക്ലാസുകളും" : "All classes" }, ...[...classes]
                 .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }))
-                .map((cls) => ({ value: cls.id, label: cls.name, disabled: loadingClasses }))}
-              value={activeClassId}
-              onChange={adminClassContext.onClassChange}
+                .map((cls) => ({ value: cls.id, label: cls.name, disabled: loadingClasses }))]}
+              value={activeClassId || "all"}
+              onChange={(classId) => adminClassContext.onClassChange(classId === "all" ? null : classId)}
               placeholder={loadingClasses ? (lang === "ml" ? "ക്ലാസുകൾ ലോഡ് ചെയ്യുന്നു…" : "Loading classes…") : "Class"}
               disabled={loadingClasses}
-              triggerItem={
-                <button
-                  type="button"
-                  className="inline-flex max-w-40 shrink-0 items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-                >
-                  <School className="size-4 shrink-0 text-primary-600" />
-                  <span className="truncate">{activeClass?.name ?? "Class"}</span>
-                  <ChevronDown className="size-4 shrink-0" />
-                </button>
-              }
             />
           ) : undefined}
           action={
@@ -1187,6 +1183,10 @@ export default function TeacherIbadahPage({
       ) : classes.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm">
           {adminClassContext ? "No classes found" : t("teacherPages", "noClassesAssigned", lang)}
+        </div>
+      ) : adminClassContext && !activeClassId ? (
+        <div className="p-4 pb-24">
+          <IbadahOverview classes={classes} clientId={cid} token={token} academicYearId={user?.defaultAcademicYearId} date={date} onDateChange={setDate} onClassChange={(classId) => { setViewMode("daily"); adminClassContext.onClassChange(classId); }} />
         </div>
       ) : (
         <>

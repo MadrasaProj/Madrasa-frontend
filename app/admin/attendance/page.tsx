@@ -28,6 +28,7 @@ import { getStudents } from "@/lib/students-api";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { ScrollableTabs } from "@/components/ui/ScrollableTabs";
+import { AttendanceOverview } from "@/components/admin/AttendanceOverview";
 
 function todayISO() {
   const date = new Date();
@@ -47,7 +48,7 @@ export default function AdminAttendancePage() {
   const { user, accessToken, activeClientId } = useAuthStore();
   const { lang } = useLanguageStore();
   const queryClient = useQueryClient();
-  const cid = activeClientId ?? "";
+  const cid = activeClientId ?? user?.clientId ?? "";
   const token = accessToken ?? "";
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [date, setDate] = useState(todayISO());
@@ -93,9 +94,12 @@ export default function AdminAttendancePage() {
 
   const classesQuery = useClasses({ clientId: cid, token });
   const classes = classesQuery.data ?? [];
-  const activeClass = classes.find((cls) => cls.id === selectedClassId) ?? classes[0] ?? null;
+  const activeClass = classes.find((cls) => cls.id === selectedClassId) ?? null;
   const activeClassId = activeClass?.id ?? "";
-  const summaryRange = range.from === "ALL" ? {} : range;
+  const selectClass = (classId: string) => {
+    setSelectedClassId(classId === "all" ? null : classId);
+  };
+  const summaryRange = useMemo(() => range.from === "ALL" ? {} : range, [range]);
   const overallAttendance = useClassAttendanceSummary(
     { clientId: cid, token },
     activeClassId,
@@ -123,13 +127,22 @@ export default function AdminAttendancePage() {
     const controller = new AbortController();
     setRangeLoading(true);
     setRangeError(null);
-    getClassAttendance(cid, token, {
-      ...summaryRange,
-      classId: activeClassId,
-      ...(user?.defaultAcademicYearId ? { academicYearId: user.defaultAcademicYearId } : {}),
-      take: 1000,
-    }, controller.signal).then((result) => {
-      if (!controller.signal.aborted) setRangeRecords(result.records);
+    const loadRangeAttendance = async () => {
+      const records: ClassAttendanceRecord[] = [];
+      while (true) {
+        const result = await getClassAttendance(cid, token, {
+          ...summaryRange,
+          classId: activeClassId,
+          ...(user?.defaultAcademicYearId ? { academicYearId: user.defaultAcademicYearId } : {}),
+          skip: records.length,
+          take: 1000,
+        }, controller.signal);
+        records.push(...result.records);
+        if (result.records.length === 0 || records.length >= result.total) return records;
+      }
+    };
+    loadRangeAttendance().then((records) => {
+      if (!controller.signal.aborted) setRangeRecords(records);
     }).catch((cause) => {
       if (!controller.signal.aborted) setRangeError((cause as Error).message);
     }).finally(() => {
@@ -371,7 +384,7 @@ export default function AdminAttendancePage() {
   };
 
   const downloadReport = async (scope: "collective" | "class") => {
-    if (!cid || !token || !activeClass) return;
+    if (!cid || !token || !classes.length || (scope === "class" && !activeClass)) return;
     setReportOpen(false);
     setDownloadingReport(true);
     try {
@@ -379,7 +392,7 @@ export default function AdminAttendancePage() {
         clientId: cid,
         token,
         date,
-        classes: scope === "collective" ? classes : [activeClass],
+        classes: scope === "collective" ? classes : activeClass ? [activeClass] : [],
         academicYearId: user?.defaultAcademicYearId,
         scope,
       });
@@ -397,7 +410,7 @@ export default function AdminAttendancePage() {
       value={activeClassId}
       onChange={setSelectedClassId}
       options={classes.map((cls) => ({ value: cls.id, label: cls.name }))}
-      placeholder={classesQuery.isLoading ? "Loading classes…" : "No classes found"}
+      placeholder={classesQuery.isLoading ? "Loading classes…" : classes.length ? "Select class" : "No classes found"}
       disabled={saving || classesQuery.isLoading}
       triggerIcon={iconOnly ? <School className="size-5" /> : undefined}
       className={iconOnly ? "h-14 w-12" : "h-11 min-w-40 max-w-64"}
@@ -412,7 +425,7 @@ export default function AdminAttendancePage() {
       </Button>
       <ResponsivePopover open={reportOpen} onOpenChange={setReportOpen} title="Attendance options" compact>
         <div className="space-y-1 p-2">
-          <Button type="button" variant="ghost" className="w-full justify-start shadow-none" disabled={!activeClassId || downloadingReport} onClick={() => {  setReportChoicesOpen(true); }}>
+          <Button type="button" variant="ghost" className="w-full justify-start shadow-none" disabled={!classes.length || downloadingReport} onClick={() => {  setReportChoicesOpen(true); }}>
             {downloadingReport ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4 " />}
             {downloadingReport ? "Preparing report…" : "Download report"}
           </Button>
@@ -430,9 +443,9 @@ export default function AdminAttendancePage() {
           <Button type="button" variant="outline" className="w-full justify-start shadow-none" onClick={() => { void downloadReport("collective"); setReportChoicesOpen(false); }}>
             <Download className="size-4" /> All classes
           </Button>
-          <Button type="button" variant="outline" className="w-full justify-start shadow-none" onClick={() => { void downloadReport("class"); setReportChoicesOpen(false); }}>
+          {activeClass && <Button type="button" variant="outline" className="w-full justify-start shadow-none" onClick={() => { void downloadReport("class"); setReportChoicesOpen(false); }}>
             <Download className="size-4" /> {activeClass?.name ?? "Selected class"}
-          </Button>
+          </Button>}
         </div>
       </ResponsivePopover>
       <Button type="button" variant="outline" size="icon" aria-label="Attendance options" className="hidden rounded-full sm:inline-flex" onClick={() => setReportOpen(true)}>
@@ -446,16 +459,39 @@ export default function AdminAttendancePage() {
       <PageHeader title="Attendance" showActionOnMobile action={pageActions} switcher={
         <ClassPicker
           title="Select class"
-          options={classes.map((cls) => ({ value: cls.id, label: cls.name }))}
-          value={activeClassId}
-          onChange={setSelectedClassId}
+          options={[{ value: "all", label: "All classes" }, ...classes.map((cls) => ({ value: cls.id, label: cls.name }))]}
+          value={activeClassId || "all"}
+          onChange={selectClass}
           placeholder={classesQuery.isLoading ? "Loading classes…" : "No classes found"}
           disabled={saving || classesQuery.isLoading}
         />
       } />
 
       <div className="px-4! pt-4! pb-28! lg:pb-24!">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        {!activeClassId ? (
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="mb-4 grid w-max grid-cols-2">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="daily">Daily</TabsTrigger>
+            </TabsList>
+            <div className="mb-4">
+              {activeTab === "daily" ? (
+                <ScrollableDateNavigator date={date} onDateChange={setDate} pickerTitle="Choose attendance date" />
+              ) : (
+                <ScrollableRangeNavigator from={range.from} to={range.to} onChange={setRange} allowAllTime title="Attendance overview date range" />
+              )}
+            </div>
+            {classesQuery.isError ? (
+              <ApiErrorBanner message={classesQuery.error.message} onRetry={() => { void classesQuery.refetch(); }} />
+            ) : classesQuery.isLoading ? (
+              <Skeleton className="h-80 rounded-2xl" />
+            ) : (
+              <TabsContent value={activeTab}>
+                <AttendanceOverview classes={classes} clientId={cid} token={token} academicYearId={user?.defaultAcademicYearId} range={range} date={activeTab === "daily" ? date : undefined} onClassChange={selectClass} />
+              </TabsContent>
+            )}
+          </Tabs>
+        ) : <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-4 w-max grid grid-cols-2">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="daily">Daily</TabsTrigger>
@@ -623,7 +659,7 @@ export default function AdminAttendancePage() {
               )}
             </section>
           </TabsContent>
-        </Tabs>
+        </Tabs>}
       </div>
 
       {selectedStudent?.classId === activeClassId && (
@@ -666,7 +702,7 @@ export default function AdminAttendancePage() {
             </div>
             <div className="flex items-center justify-between gap-3 text-sm font-medium text-gray-500">
               <span>{new Date(`${date}T00:00:00`).toLocaleDateString(lang === "ml" ? "ml-IN" : "en-GB", { day: "numeric", month: "long", year: "numeric" })}</span>
-              <span className="truncate text-right">{activeClass?.name ?? "No classes found"}</span>
+              <span className="truncate text-right">{activeClass?.name ?? (classes.length ? "Select a class" : "No classes found")}</span>
             </div>
           </div>
           {error && <ApiErrorBanner message={error} onRetry={() => { if (activeClassId) void loadAttendance(activeClassId, date); }} />}
@@ -722,9 +758,9 @@ export default function AdminAttendancePage() {
           initialClassId={activeClassId}
           onClose={() => setShowImport(false)}
           onSuccess={() => {
+            void invalidateAttendance(activeClassId);
             if (activeClassId) {
               void loadAttendance(activeClassId, date);
-              void invalidateAttendance(activeClassId);
             }
           }}
         />
