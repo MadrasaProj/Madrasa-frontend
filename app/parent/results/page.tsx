@@ -16,8 +16,8 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { downloadAsJPG, downloadAsPDF, shareAsJPG, downloadAsPNG } from "@/lib/poster-utils";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
-import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from "recharts";
 import {
   Medal, Loader2, AlertCircle, RefreshCw, GraduationCap, Trophy,
   Download, Share2, FileText, ChevronRight, Printer, Calendar, Award, FileBadge2, BookOpen, Users, TrendingUp
@@ -45,10 +45,6 @@ function calcFallbackGrade(score: number, totalMarks: number): string {
 
 function gradeIsPassed(grade: string) { return grade !== "D"; }
 
-const resultChartConfig = {
-  score: { label: "Score", color: "var(--chart-3)" },
-} satisfies ChartConfig;
-
 function examTimestamp(exam: ExamRecord) {
   for (const date of [exam.startDate, exam.endDate, exam.publishedDate]) {
     if (!date) continue;
@@ -62,41 +58,69 @@ function scorePercentage(score: number, max: number) {
   return max > 0 ? Math.round((score / max) * 1000) / 10 : null;
 }
 
-type ScoreChartRow = {
+type ComparisonRow = {
   subject: string;
-  score?: number | null;
   previous?: number | null;
   current?: number | null;
-  scoreMarks?: string;
   previousMarks?: string;
   currentMarks?: string;
 };
 
-function ScoreBarChart({ data, config, comparison = false }: {
-  data: ScoreChartRow[];
-  config: ChartConfig;
-  comparison?: boolean;
+function ComparisonGroupedChart({ rows, previousExam, currentExam }: {
+  rows: ComparisonRow[];
+  previousExam: string;
+  currentExam: string;
 }) {
+  const config = {
+    previous: { label: previousExam, color: "#6366f1" },
+    current: { label: currentExam, color: "#0d9488" },
+  };
+  const chartData = rows.map((row) => ({
+    ...row,
+    previousLabel: row.previous != null ? `${row.previousMarks} · ${row.previous.toFixed(1)}%` : "",
+    currentLabel: row.current != null ? `${row.currentMarks} · ${row.current.toFixed(1)}%` : "",
+  }));
+
   return (
-    <div className="overflow-x-auto p-3 sm:p-5">
-      <ChartContainer config={config} className="h-72 w-full !aspect-auto" style={{ minWidth: Math.max(280, data.length * (comparison ? 110 : 85)) }}>
-        <BarChart accessibilityLayer data={data} margin={{ top: 8, right: 8, left: -20 }}>
-          <CartesianGrid vertical={false} />
-          <XAxis dataKey="subject" tickLine={false} tickMargin={10} axisLine={false} interval={0} tickFormatter={(value: string) => value.length > 12 ? `${value.slice(0, 11)}…` : value} />
-          <YAxis domain={[0, 100]} tickLine={false} axisLine={false} tickFormatter={(value: number) => `${value}%`} />
-          <ChartTooltip cursor={false} content={<ChartTooltipContent formatter={(value, name, item) => (
-            <div className="flex w-full items-center gap-2">
-              <span className="size-2.5 shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />
-              <span className="text-muted-foreground">{config[String(name)]?.label}</span>
-              <span className="ml-auto font-medium tabular-nums">{item.payload[`${name}Marks`]} marks ({Number(value).toFixed(1)}%)</span>
-            </div>
-          )} />} />
-          {comparison && <ChartLegend content={<ChartLegendContent className="flex-wrap" />} />}
-          {(comparison ? ["previous", "current"] : ["score"]).map((key) => (
-            <Bar key={key} dataKey={key} fill={`var(--color-${key})`} radius={4} maxBarSize={48} />
-          ))}
-        </BarChart>
-      </ChartContainer>
+    <div className="px-3 py-2 sm:px-4">
+      <div className="mb-1 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+        {Object.entries(config).map(([key, series]) => (
+          <span key={key} className="inline-flex items-center gap-1.5 text-gray-600">
+            <span aria-hidden="true" className="size-2.5 shrink-0 rounded-sm" style={{ backgroundColor: series.color }} />
+            {series.label}
+          </span>
+        ))}
+      </div>
+      <div className="overflow-x-auto">
+        <ChartContainer config={config} className="w-full min-w-[480px] !aspect-auto" style={{ height: rows.length * 60 + 44 }}>
+          <BarChart
+            accessibilityLayer
+            data={chartData}
+            layout="vertical"
+            barGap={3}
+            barCategoryGap={10}
+            margin={{ top: 4, right: 126, bottom: 0, left: 0 }}
+          >
+            <CartesianGrid horizontal={false} stroke="#e2e8f0" strokeDasharray="3 3" />
+            <XAxis type="number" domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tickFormatter={(value: number) => `${value}%`} tickLine={false} axisLine={false} fontSize={10} />
+            <YAxis type="category" dataKey="subject" width={90} tickLine={false} axisLine={false} fontSize={11} tickFormatter={(value: string) => value.length > 14 ? `${value.slice(0, 13)}…` : value} />
+            <ChartTooltip cursor={{ fill: "#f8fafc" }} content={<ChartTooltipContent formatter={(value, name, item) => (
+              <div className="flex w-full items-center gap-2">
+                <span className="size-2 shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />
+                <span className="text-gray-500">{config[name as keyof typeof config]?.label}</span>
+                <span className="ml-auto font-medium tabular-nums">{item.payload[`${name}Marks`]} marks · {Number(value).toFixed(1)}%</span>
+              </div>
+            )} />} />
+            <Bar dataKey="previous" fill="var(--color-previous)" radius={4} maxBarSize={14} isAnimationActive={false}>
+              <LabelList dataKey="previousLabel" position="right" offset={6} fontSize={10} fill="#4338ca" />
+            </Bar>
+            <Bar dataKey="current" fill="var(--color-current)" radius={4} maxBarSize={14} isAnimationActive={false}>
+              <LabelList dataKey="currentLabel" position="right" offset={6} fontSize={10} fill="#0f766e" />
+            </Bar>
+          </BarChart>
+        </ChartContainer>
+      </div>
+      <p className="mt-1 text-[10px] text-gray-500">Labels show obtained/full marks and percentage. Missing results have no bar.</p>
     </div>
   );
 }
@@ -565,12 +589,6 @@ export default function ParentResultsPage() {
     const grade = result.grade ?? calcFallbackGrade(result.score, result.totalMarks);
     return result.isPassed ?? gradeIsPassed(grade);
   }).length;
-  const subjectChartData = results.map((result, index) => ({
-    subject: result.subject?.name ?? `Subject ${index + 1}`,
-    score: scorePercentage(result.score ?? 0, result.totalMarks),
-    scoreMarks: `${result.score ?? 0}/${result.totalMarks}`,
-  }));
-
   // Include earlier academic years, and never compare against class tests.
   const comparisonEnabled = !!activeExam && activeExam.type !== "CLASS_TEST" && results.length > 0;
   const { data: examHistory, isLoading: loadingHistory, isError: historyError, refetch: refetchHistory } = useQuery({
@@ -608,27 +626,21 @@ export default function ParentResultsPage() {
   const previousScore = previousResult?.results.reduce((sum, result) => sum + result.score, 0) ?? 0;
   const previousMax = previousResult?.results.reduce((sum, result) => sum + result.totalMarks, 0) ?? 0;
   const previousPct = scorePercentage(previousScore, previousMax);
-  const comparisonConfig = {
-    previous: { label: previousResult?.exam.name ?? "Previous exam", color: "var(--chart-1)" },
-    current: { label: activeExam?.name ?? "Current exam", color: "var(--chart-3)" },
-  } satisfies ChartConfig;
-  const comparisonBySubject = new Map<string, ScoreChartRow>();
+  const comparisonBySubject = new Map<string, ComparisonRow>();
   for (const [key, records] of [["previous", previousResult?.results ?? []], ["current", results]] as const) {
     for (const result of records) {
       const subjectKey = result.subject?.id ?? `${key}-${result.id}`;
-      const row = comparisonBySubject.get(subjectKey) ?? {
+      const row: ComparisonRow = comparisonBySubject.get(subjectKey) ?? {
         subject: result.subject?.name ?? "Subject",
-        previous: 0,
-        current: 0,
-        previousMarks: "0",
-        currentMarks: "0",
+        previous: null,
+        current: null,
       };
-      row[key] = scorePercentage(result.score ?? 0, result.totalMarks);
-      row[`${key}Marks`] = `${result.score ?? 0}/${result.totalMarks}`;
+      row[key] = result.hasMark === false ? null : scorePercentage(result.score ?? 0, result.totalMarks);
+      row[`${key}Marks`] = result.hasMark === false ? undefined : `${result.score ?? 0}/${result.totalMarks}`;
       comparisonBySubject.set(subjectKey, row);
     }
   }
-  const comparisonChartData: ScoreChartRow[] = [
+  const comparisonRows: ComparisonRow[] = [
     {
       subject: "Overall",
       previous: previousPct,
@@ -727,7 +739,7 @@ export default function ParentResultsPage() {
           description={activeStudent ? `${activeStudent.name} · ${fmt(activeExam?.startDate)}${activeExam?.endDate ? ` – ${fmt(activeExam.endDate)}` : ""}` : undefined}
         >
           {activeExam && (
-            <div className="mx-auto w-full max-w-5xl space-y-5 p-4 pb-8 sm:p-6">
+            <div className="mx-auto w-full max-w-5xl space-y-3 p-3 pb-5 sm:p-4">
               <div className="flex flex-wrap items-center gap-2 print:hidden">
                 <button onClick={() => setCardOpen(true)} disabled={loadingResults || results.length === 0}
                   className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-2 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-50">
@@ -753,9 +765,9 @@ export default function ParentResultsPage() {
               ) : results.length === 0 ? (
                 <div className="rounded-xl border border-gray-100 bg-white p-8 text-center text-sm text-gray-500">No marks records available for this exam.</div>
               ) : (
-                <div className="space-y-5">
-                <section className="overflow-hidden rounded-2xl border border-gray-100 bg-gradient-to-br from-white to-sky-50 print:hidden">
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-3 sm:px-5">
+                <div className="space-y-3">
+                <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white print:hidden">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-3 py-2 sm:px-4">
                     <div>
                       <h3 className="text-sm font-semibold text-gray-950">Performance overview</h3>
                       <p className="mt-0.5 text-xs text-gray-500">{results.length} subjects · {totalObtained.toFixed(0)} of {totalMax} marks</p>
@@ -766,76 +778,34 @@ export default function ParentResultsPage() {
                       </span>
                     )}
                   </div>
-                  <div className="grid grid-cols-2 gap-px bg-gray-100 sm:grid-cols-3 lg:grid-cols-4">
-                    <div className="min-w-0 bg-white/90 p-3 sm:p-4">
-                      <h4 className="text-[11px] font-medium text-gray-600">Overall score</h4>
-                      <div className="mt-2 text-base font-semibold tabular-nums text-gray-950 sm:text-lg">{overallPct.toFixed(1)}%</div>
-                      <p className="mt-1 text-[11px] text-gray-500">{totalObtained.toFixed(0)} / {totalMax} marks</p>
-                    </div>
-                    <div className="min-w-0 bg-white/90 p-3 sm:p-4">
-                      <h4 className="text-[11px] font-medium text-gray-600">Subjects passed</h4>
-                      <div className="mt-2 text-base font-semibold tabular-nums text-gray-950 sm:text-lg">{passedCount} / {results.length}</div>
-                      <p className="mt-1 text-[11px] text-gray-500">Subjects passed</p>
-                    </div>
+                  <dl className="divide-y divide-gray-100 bg-white">
                     {[
-                      { label: "Grade", value: summary?.totalGrade ? TOTAL_GRADE_LABELS[summary.totalGrade] : calcFallbackGrade(totalObtained, totalMax), detail: "Overall result", icon: Award },
-                      { label: "Class rank", value: rank ? `#${rank}` : "—", detail: classSize != null ? `of ${classSize} students` : "Class standing", icon: Trophy },
-                      { label: "Class average", value: classAverage != null ? `${classAverage.toFixed(1)}%` : "—", detail: classAverage != null ? `${Math.abs(overallPct - classAverage).toFixed(1)} points ${overallPct >= classAverage ? "above" : "below"}` : "Not available", icon: TrendingUp },
-                      { label: "Subjects", value: results.length, detail: `${passedCount} passed`, icon: BookOpen },
-                      { label: "Highest", value: classHighest != null ? `${classHighest.toFixed(1)}%` : "—", detail: "Class score", icon: Medal },
-                      { label: "Lowest", value: classLowest != null ? `${classLowest.toFixed(1)}%` : "—", detail: "Class score", icon: Medal },
-                      { label: "Class size", value: classSize ?? "—", detail: "Students", icon: Users },
-                      { label: "Total marks", value: `${totalObtained.toFixed(0)}/${totalMax}`, detail: "Obtained / maximum", icon: FileText },
+                      { label: "Overall score", value: `${overallPct.toFixed(1)}%`, icon: TrendingUp },
+                      { label: "Total marks", value: `${totalObtained.toFixed(0)} / ${totalMax}`, icon: FileText },
+                      { label: "Subjects passed", value: `${passedCount} / ${results.length}`, icon: BookOpen },
+                      { label: "Grade", value: summary?.totalGrade ? TOTAL_GRADE_LABELS[summary.totalGrade] : calcFallbackGrade(totalObtained, totalMax), icon: Award },
+                      { label: "Class rank", value: rank ? `#${rank}${classSize != null ? ` of ${classSize}` : ""}` : "—", icon: Trophy },
+                      { label: "Class average", value: classAverage != null ? `${classAverage.toFixed(1)}%` : "—", icon: TrendingUp },
+                      { label: "Highest", value: classHighest != null ? `${classHighest.toFixed(1)}%` : "—", icon: Medal },
+                      { label: "Lowest", value: classLowest != null ? `${classLowest.toFixed(1)}%` : "—", icon: Medal },
+                      { label: "Class size", value: classSize ?? "—", icon: Users },
                     ].map((stat) => {
                       const Icon = stat.icon;
                       return (
-                        <div key={stat.label} className="min-w-0 bg-white/90 p-3 sm:p-4">
-                          <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-600">
-                            <Icon aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-primary-700" />
-                            <span>{stat.label}</span>
-                          </div>
-                          <div className="mt-2 text-base font-semibold tabular-nums text-gray-950 sm:text-lg">{stat.value}</div>
-                          <div className="mt-1 text-[11px] text-gray-500">{stat.detail}</div>
+                        <div key={stat.label} className="flex items-center justify-between gap-3 px-3 py-2 sm:px-4">
+                          <dt className="flex shrink-0 items-center gap-2 text-xs text-gray-500">
+                            <Icon aria-hidden="true" className="size-3.5 text-primary-700" />
+                            {stat.label}
+                          </dt>
+                          <dd className="whitespace-nowrap text-right text-xs font-semibold tabular-nums text-gray-950">{stat.value}</dd>
                         </div>
                       );
                     })}
-                  </div>
+                  </dl>
                 </section>
-
-                <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white print:hidden">
-                  <div className="border-b border-gray-100 px-4 py-3 sm:px-5">
-                    <h3 className="text-sm font-semibold text-gray-950">Subject performance</h3>
-                    <p className="mt-0.5 text-xs text-gray-500">Score as a percentage of each subject's full marks</p>
-                  </div>
-                  <ScoreBarChart data={subjectChartData} config={resultChartConfig} />
-                </section>
-
-                {comparisonEnabled && (loadingHistory || loadingPrevious) ? (
-                  <Skeleton className="h-80 rounded-2xl" />
-                ) : comparisonEnabled && (historyError || previousError) ? (
-                  <div className="rounded-xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-600">
-                    Unable to load the previous exam comparison.
-                    <button type="button" onClick={() => historyError ? refetchHistory() : refetchPrevious()} className="ml-2 font-semibold underline">Try again</button>
-                  </div>
-                ) : comparisonEnabled && previousResult ? (
-                  <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white print:hidden">
-                    <div className="border-b border-gray-100 px-4 py-3 sm:px-5">
-                      <h3 className="text-sm font-semibold text-gray-950">Comparison with previous exam</h3>
-                      <p className="mt-0.5 text-xs text-gray-500">{previousResult.exam.name} ({fmt(previousResult.exam.startDate ?? previousResult.exam.publishedDate)}) and {activeExam.name}. Bars show percentages; hover for marks.</p>
-                      <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-xs">
-                        <p className="text-gray-500">Previous: <span className="font-semibold tabular-nums text-gray-900">{previousScore}/{previousMax} marks{previousPct != null ? ` · ${previousPct.toFixed(1)}%` : ""}</span></p>
-                        <p className="text-gray-500">Current: <span className="font-semibold tabular-nums text-gray-900">{totalObtained}/{totalMax} marks · {overallPct.toFixed(1)}%</span></p>
-                        {previousPct != null && totalMax > 0 && (
-                          <p className="font-semibold tabular-nums text-gray-900">{overallPct > previousPct ? "+" : ""}{(overallPct - previousPct).toFixed(1)} percentage points</p>
-                        )}
-                      </div>
-                    </div>
-                    <ScoreBarChart data={comparisonChartData} config={comparisonConfig} comparison />
-                  </section>
-                ) : null}
 
                 {/* Subject wise marks — simple elegant table */}
-                <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+                <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
                   {/* Table header */}
                   <div className="px-4 sm:px-5 py-3 border-b border-gray-100 print:hidden">
                     <h3 className="font-semibold text-gray-900 text-sm">Subject Wise Marks</h3>
@@ -940,10 +910,32 @@ export default function ParentResultsPage() {
                   </div>
                 </div>
 
+                {comparisonEnabled && (loadingHistory || loadingPrevious) ? (
+                  <Skeleton className="h-64 rounded-2xl" />
+                ) : comparisonEnabled && (historyError || previousError) ? (
+                  <div className="rounded-xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-600">
+                    Unable to load the previous exam comparison.
+                    <button type="button" onClick={() => historyError ? refetchHistory() : refetchPrevious()} className="ml-2 font-semibold underline">Try again</button>
+                  </div>
+                ) : comparisonEnabled && previousResult ? (
+                  <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white print:hidden">
+                    <div className="border-b border-gray-100 px-3 py-2 sm:px-4">
+                      <h3 className="text-sm font-semibold text-gray-950">Comparison with previous exam</h3>
+                      <p className="mt-0.5 text-xs text-gray-500">{previousResult.exam.name} ({fmt(previousResult.exam.startDate ?? previousResult.exam.publishedDate)}) and {activeExam.name}</p>
+                      {previousPct != null && totalMax > 0 && (
+                        <p className={cn("mt-2 text-xs font-semibold tabular-nums", overallPct >= previousPct ? "text-primary-700" : "text-rose-600")}>
+                          {overallPct > previousPct ? "+" : ""}{(overallPct - previousPct).toFixed(1)} percentage points overall
+                        </p>
+                      )}
+                    </div>
+                    <ComparisonGroupedChart rows={comparisonRows} previousExam={previousResult.exam.name} currentExam={activeExam.name} />
+                  </section>
+                ) : null}
+
                 </div>
               )}
 
-              <section className="rounded-2xl border border-gray-100 bg-white p-4 sm:p-5">
+              <section className="rounded-2xl border border-gray-200 bg-white p-3 sm:p-4">
                 <h3 className="text-sm font-semibold text-gray-950">Exam information</h3>
                 <dl className="mt-3 grid grid-cols-2 gap-3 text-xs sm:grid-cols-3">
                   <div><dt className="text-gray-500">Exam period</dt><dd className="mt-1 font-semibold text-gray-900">{fmt(activeExam.startDate)} – {fmt(activeExam.endDate)}</dd></div>

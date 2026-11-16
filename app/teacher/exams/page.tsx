@@ -36,6 +36,16 @@ import { TeacherMarkEntryView } from "@/components/exam/TeacherMarkEntryView";
 import { TeacherMarkEntryActions } from "@/components/exam/TeacherMarkEntryActions";
 import { fmt, shortDate } from "@/lib/exam-utils";
 
+function isMarkEntryOpen(exam?: ExamRecord) {
+  if (!exam || exam.examStatus !== "MARK_ENTRY") return false;
+  if (!exam.markEntryLastDate) return true;
+
+  // The deadline is inclusive of the full day in the local timezone.
+  const deadline = new Date(exam.markEntryLastDate);
+  deadline.setHours(23, 59, 59, 999);
+  return Date.now() <= deadline.getTime();
+}
+
 export default function TeacherExamsPage() {
   const { user, accessToken } = useAuthStore();
   const { lang } = useLanguageStore();
@@ -90,11 +100,7 @@ export default function TeacherExamsPage() {
   // Derived arrays
   const activeExam = exams.find((e) => e.id === queryExamId);
   const selectedExam = exams.find((e) => e.id === selectedExamId);
-  const isLocked =
-    !activeExam ||
-    activeExam.examStatus !== "MARK_ENTRY" ||
-    (!!activeExam.markEntryLastDate &&
-      new Date() > new Date(activeExam.markEntryLastDate));
+  const isLocked = !isMarkEntryOpen(activeExam);
   const currentSubject = classSubjects.find((subject) => subject.id === querySubjectId);
   const maxMarks = currentSubject?.classSubject?.maxMarks ?? 50;
   const hasInvalidMarks = Object.values(scores).some(
@@ -273,7 +279,7 @@ export default function TeacherExamsPage() {
   // ── Save Marks ───────────────────────────────────────────────────────────────
 
   const handleSave = async () => {
-    if (!queryExamId || !querySubjectId || !queryClassId || isLocked) return false;
+    if (!queryExamId || !querySubjectId || !queryClassId || !isMarkEntryOpen(activeExam)) return false;
     setSaving(true);
     setEntryError(null);
     try {
@@ -556,8 +562,7 @@ export default function TeacherExamsPage() {
           className="mx-auto w-full max-w-2xl rounded-t-2xl"
           title={selectedExam?.name}
           showCloseButton={false}
-          headerAction={selectedExam?.examStatus === "MARK_ENTRY" &&
-            (!selectedExam.markEntryLastDate || new Date(selectedExam.markEntryLastDate) >= new Date()) ? (
+          headerAction={selectedExam && isMarkEntryOpen(selectedExam) ? (
               <Button size="sm" onClick={() => openMarkEntry(selectedExam)}>
                 {t("teacherPages", "markEntryBreadcrumb", lang)}
               </Button>
