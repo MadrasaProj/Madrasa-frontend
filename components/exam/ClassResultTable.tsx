@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { Download, Printer, Loader2 } from "lucide-react";
+import { Download, Printer, Loader2, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { jsPDF } from "jspdf";
@@ -9,6 +10,15 @@ import type {
   ClassReport, ClassReportRow, SubjectMeta, ClassReportConfig,
 } from "@/lib/results-api";
 import { calcGradeFromConfig, GRADE_COLORS, TOTAL_GRADE_LABELS } from "@/lib/results-api";
+import { useAuthStore } from "@/store/auth";
+import { queryKeys } from "@/lib/queryKeys";
+import { loadPreviousResultComparison, percentagePointChange, type PreviousResultComparison } from "@/lib/previous-result-comparison";
+
+interface ComparisonState {
+  data?: PreviousResultComparison | null;
+  loading: boolean;
+  error: boolean;
+}
 
 function fmt(d?: string | null) {
   if (!d) return "—";
@@ -69,7 +79,7 @@ function drawPdfText(
   pdf.text(fitted, x, y, { align });
 }
 
-function createReportPdf(report: ClassReport, teacherView: boolean, madrasaName: string) {
+function createReportPdf(report: ClassReport, teacherView: boolean, madrasaName: string, comparison?: ComparisonState) {
   const { subjects, students, config, stats } = report;
   const teacherRanks = teacherView
     ? new Map(getTeacherRows(report).map(({ row, rank }) => [row.student.id, rank]))
@@ -81,6 +91,9 @@ function createReportPdf(report: ClassReport, teacherView: boolean, madrasaName:
         : row.summary.finalStatus === "FAILED" ? config.failedLabel
           : row.summary.finalStatus === "PROMOTED" ? config.promotedLabel : config.withheldLabel
       : "-";
+    const percentage = teacherView ? outcome?.percentage ?? null : row.summary.totalPercentage;
+    const previous = comparison?.data?.percentages[row.student.id];
+    const change = previous != null && percentage != null ? percentagePointChange(percentage, previous) : null;
     return {
       number: String(index + 1),
       registration: row.student.adno || "-",
@@ -93,7 +106,10 @@ function createReportPdf(report: ClassReport, teacherView: boolean, madrasaName:
       total: teacherView
         ? outcome ? `${outcome.totalScore}/${outcome.totalMaxMarks}` : "-"
         : !config.hideMarks && row.summary.totalScore != null ? `${row.summary.totalScore}/${row.summary.totalMaxMarks ?? 0}` : "-",
-      percentage: teacherView ? outcome?.percentage ?? null : row.summary.totalPercentage,
+      percentage,
+      progress: previous != null && change != null
+        ? `${previous.toFixed(1)}% | ${change > 0 ? "+" : ""}${change.toFixed(1)} pp`
+        : comparison?.loading ? "Loading..." : comparison?.error ? "Unavailable" : "No previous result",
       rank: teacherView ? teacherRanks?.get(row.student.id)?.toString() ?? "-" : row.summary.rank?.toString() ?? "-",
       status,
       grade: teacherView ? outcome?.grade ?? "-" : row.summary.totalGrade ? TOTAL_GRADE_LABELS[row.summary.totalGrade] : "-",
@@ -116,6 +132,7 @@ function createReportPdf(report: ClassReport, teacherView: boolean, madrasaName:
     ...subjects.map((subject) => ({ label: subject.name, width: 21, align: "center" as const })),
     { label: "Total", width: 24, align: "center" as const },
     { label: "%", width: 23, align: "center" as const },
+    ...(comparison ? [{ label: `Progress${comparison.data ? ` vs ${comparison.data.examName}` : ""}`, width: 42, align: "center" as const }] : []),
     { label: "Rank", width: 14, align: "center" as const },
     { label: "Status", width: 25, align: "center" as const },
     { label: "Grade", width: 25, align: "center" as const },
@@ -169,7 +186,7 @@ function createReportPdf(report: ClassReport, teacherView: boolean, madrasaName:
       pdf.rect(tableX, y, tableWidth, rowHeight, "F");
     }
     pdf.setTextColor(31, 41, 55);
-    const values = [row.number, row.registration, row.name, ...row.marks, row.total, row.percentage === null ? "-" : `${row.percentage.toFixed(1)}%`, row.rank, row.status, row.grade];
+    const values = [row.number, row.registration, row.name, ...row.marks, row.total, row.percentage === null ? "-" : `${row.percentage.toFixed(1)}%`, ...(comparison ? [row.progress] : []), row.rank, row.status, row.grade];
     values.forEach((value, index) => {
       const column = columns[index];
       const x = column.align === "center" ? columnXs[index] + column.width / 2 : columnXs[index] + 2;
@@ -295,6 +312,7 @@ interface Props {
   madrasaName?: string;
   hideReportHeader?: boolean;
   teacherView?: boolean;
+  comparePrevious?: boolean;
   teacherControlsContainer?: HTMLElement | null;
 }
 
@@ -336,10 +354,23 @@ function getTeacherRows(report: ClassReport) {
   return rows.map((item) => ({ ...item, rank: ranks.get(item.row.student.id) ?? null }));
 }
 
-export function ClassResultTable({ report, madrasaName, hideReportHeader = false, teacherView = false, teacherControlsContainer }: Props) {
+export function ClassResultTable({ report, madrasaName, hideReportHeader = false, teacherView = false, comparePrevious = teacherView, teacherControlsContainer }: Props) {
   const { exam, class: cls, subjects, config, students, stats } = report;
   const tableRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState<"pdf" | "png" | "print" | null>(null);
+  const { user, accessToken, activeClientId } = useAuthStore();
+  const clientId = activeClientId ?? user?.clientId ?? "";
+  const previousQuery = useQuery({
+    queryKey: queryKeys.results.classReport(clientId, {
+      comparisonForExamId: exam.id, classId: cls.id, startDate: exam.startDate,
+      publishedDate: exam.publishedDate, studentIds: students.map((row) => row.student.id),
+    }),
+    queryFn: () => loadPreviousResultComparison(clientId, accessToken!, report),
+    enabled: comparePrevious && exam.type !== "CLASS_TEST" && !!clientId && !!accessToken,
+  });
+  const comparison: ComparisonState | undefined = comparePrevious && exam.type !== "CLASS_TEST" ? {
+    data: previousQuery.data, loading: previousQuery.isLoading, error: previousQuery.isError,
+  } : undefined;
 
   const filename = `${madrasaName ? madrasaName + " - " : ""}${cls.name} - ${exam.name}`;
   const doExport = useCallback(async (type: "pdf" | "png" | "print") => {
@@ -349,14 +380,14 @@ export function ClassResultTable({ report, madrasaName, hideReportHeader = false
       if (type === "print") {
         printTable(tableRef.current, filename, document.head.innerHTML, teacherView);
       } else {
-        const pdf = createReportPdf(report, teacherView, madrasaName ?? "");
+        const pdf = createReportPdf(report, teacherView, madrasaName ?? "", comparison);
         if (type === "pdf") pdf.save(`${filename}.pdf`);
         else await downloadPdfAsPng(pdf, filename);
       }
     } finally {
       setExporting(null);
     }
-  }, [filename, teacherView, report, madrasaName]);
+  }, [filename, teacherView, report, madrasaName, comparison]);
 
   const teacherControls = (
     <ButtonGroup aria-label="Report export controls" className="w-full sm:w-auto [&>button]:flex-1">
@@ -391,7 +422,7 @@ export function ClassResultTable({ report, madrasaName, hideReportHeader = false
       )}
 
       <div ref={tableRef} className={teacherView ? "space-y-3 bg-transparent" : "bg-white rounded-xl border border-gray-200 overflow-hidden"} style={{ fontFamily: "'Segoe UI', Arial, sans-serif" }}>
-        {teacherView ? <TeacherReportTable report={report} /> : <>
+        {teacherView ? <TeacherReportTable report={report} comparison={comparison} onRetry={() => { void previousQuery.refetch(); }} /> : <>
         {!hideReportHeader && <div className="text-center px-6 pt-6 pb-4 border-b-4 border-primary-700">
           <div className="w-16 h-0.5 bg-primary-300 mx-auto mb-3" />
           {madrasaName && (
@@ -439,6 +470,7 @@ export function ClassResultTable({ report, madrasaName, hideReportHeader = false
                 ))}
                 <th className="px-2 py-2.5 text-center">Total</th>
                 <th className="px-2 py-2.5 text-center">%</th>
+                {comparison && <th className="px-2 py-2.5 text-center"><ProgressHeading comparison={comparison} onRetry={() => { void previousQuery.refetch(); }} /></th>}
                 <th className="px-2 py-2.5 text-center">Rank</th>
                 <th className="px-2 py-2.5 text-center">Status</th>
                 <th className="px-2 py-2.5 text-center">Grade</th>
@@ -446,11 +478,11 @@ export function ClassResultTable({ report, madrasaName, hideReportHeader = false
             </thead>
             <tbody className="divide-y divide-gray-100">
               {students.map((row, idx) => (
-                <StudentRow key={row.student.id} row={row} idx={idx} subjects={subjects} config={config} />
+                <StudentRow key={row.student.id} row={row} idx={idx} subjects={subjects} config={config} comparison={comparison} />
               ))}
               {students.length === 0 && (
                 <tr>
-                  <td colSpan={subjects.length + 8} className="py-12 text-center text-sm text-gray-400">
+                  <td colSpan={subjects.length + 8 + (comparison ? 1 : 0)} className="py-12 text-center text-sm text-gray-400">
                     No results computed yet. Run "Compute Grades" first.
                   </td>
                 </tr>
@@ -473,7 +505,7 @@ export function ClassResultTable({ report, madrasaName, hideReportHeader = false
                       : "—"}
                   </td>
                   <td className="px-2 py-2.5 text-center">{stats.classAverage.toFixed(1)}%</td>
-                  <td colSpan={3} />
+                  <td colSpan={comparison ? 4 : 3} />
                 </tr>
               </tfoot>
             )}
@@ -500,7 +532,45 @@ function PercentageRing({ percentage }: { percentage: number }) {
   );
 }
 
-function TeacherReportTable({ report }: { report: ClassReport }) {
+function ProgressHeading({ comparison, onRetry }: { comparison: ComparisonState; onRetry: () => void }) {
+  return (
+    <div className="min-w-28">
+      <div>Progress</div>
+      {comparison.data && <div className="mt-0.5 max-w-44 text-[10px] font-normal normal-case opacity-80">vs {comparison.data.examName}</div>}
+      {comparison.error && <button type="button" onClick={onRetry} className="mt-0.5 text-[10px] font-normal underline">Retry comparison</button>}
+    </div>
+  );
+}
+
+function ResultProgress({ percentage, studentId, comparison }: {
+  percentage: number | null;
+  studentId: string;
+  comparison: ComparisonState;
+}) {
+  if (comparison.loading) return <span className="text-xs opacity-60">Loading…</span>;
+  if (comparison.error) return <span className="text-xs opacity-60">Unavailable</span>;
+  const previous = comparison.data?.percentages[studentId];
+  if (previous == null) return <span className="text-xs text-gray-400">No previous result</span>;
+  const change = percentage != null ? percentagePointChange(percentage, previous) : null;
+  const Icon = change == null || change === 0 ? Minus : change > 0 ? ArrowUpRight : ArrowDownRight;
+  return (
+    <div className="space-y-0.5 text-xs tabular-nums">
+      <div className="text-gray-500">Previous {previous.toFixed(1)}%</div>
+      {change != null && (
+        <div
+          className={cn("inline-flex items-center gap-0.5 font-semibold", change > 0 ? "text-emerald-700" : change < 0 ? "text-rose-600" : "text-gray-500")}
+          aria-label={`${change > 0 ? "Up" : change < 0 ? "Down" : "No change,"} ${Math.abs(change).toFixed(1)} percentage points`}
+          title="Change in percentage points"
+        >
+          <Icon aria-hidden="true" className="size-3.5" />
+          {change > 0 ? "+" : ""}{change.toFixed(1)} pp
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TeacherReportTable({ report, comparison, onRetry }: { report: ClassReport; comparison?: ComparisonState; onRetry: () => void }) {
   const { students, subjects } = report;
   const rows = getTeacherRows(report);
   const completed = rows.filter((item) => item.outcome !== null);
@@ -537,6 +607,7 @@ function TeacherReportTable({ report }: { report: ClassReport }) {
               ))}
               <th scope="col" className="px-3 py-2 text-center font-medium">Total</th>
               <th scope="col" className="px-3 py-2 text-center font-medium">%</th>
+              {comparison && <th scope="col" className="px-3 py-2 text-center font-medium"><ProgressHeading comparison={comparison} onRetry={onRetry} /></th>}
               <th scope="col" className="px-3 py-2 text-center font-medium">Rank</th>
               <th scope="col" className="px-3 py-2 text-center font-medium">Status</th>
               <th scope="col" className="px-3 py-2 text-center font-medium">Grade</th>
@@ -564,6 +635,7 @@ function TeacherReportTable({ report }: { report: ClassReport }) {
                     </span>
                   ) : "—"}
                 </td>
+                {comparison && <td className="px-3 py-2 text-center"><ResultProgress percentage={outcome?.percentage ?? null} studentId={row.student.id} comparison={comparison} /></td>}
                 <td className="px-3 py-2 text-center text-gray-700">{rank ?? "—"}</td>
                 <td className="px-3 py-2 text-center text-gray-700">{outcome?.status ?? "—"}</td>
                 <td className="px-3 py-2 text-center">
@@ -576,7 +648,7 @@ function TeacherReportTable({ report }: { report: ClassReport }) {
               </tr>
             ))}
             {rows.length === 0 && (
-              <tr><td colSpan={subjects.length + 8} className="px-3 py-8 text-center text-gray-500">No students found.</td></tr>
+              <tr><td colSpan={subjects.length + (comparison ? 9 : 8)} className="px-3 py-8 text-center text-gray-500">No students found.</td></tr>
             )}
           </tbody>
         </table>
@@ -585,11 +657,12 @@ function TeacherReportTable({ report }: { report: ClassReport }) {
   );
 }
 
-function StudentRow({ row, idx, subjects, config }: {
+function StudentRow({ row, idx, subjects, config, comparison }: {
   row: ClassReportRow;
   idx: number;
   subjects: SubjectMeta[];
   config: ClassReportConfig;
+  comparison?: ComparisonState;
 }) {
   const { summary, student, marks } = row;
   const status = summary.finalStatus;
@@ -635,6 +708,7 @@ function StudentRow({ row, idx, subjects, config }: {
       <td className="px-2 py-2.5 text-center font-semibold">
         {summary.totalPercentage !== null ? `${summary.totalPercentage.toFixed(1)}%` : "—"}
       </td>
+      {comparison && <td className="px-2 py-2.5 text-center"><ResultProgress percentage={summary.totalPercentage} studentId={student.id} comparison={comparison} /></td>}
       <td className="px-2 py-2.5 text-center font-bold text-gray-700">
         {summary.rank ?? "—"}
       </td>

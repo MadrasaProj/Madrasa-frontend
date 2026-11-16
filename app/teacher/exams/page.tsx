@@ -599,7 +599,7 @@ export default function TeacherExamsPage() {
               {selectedExam.examStatus === "PUBLISHED" ? (
                 <Button className="w-full" onClick={() => {
                   setSelectedExamId(null);
-                  goToClassReport(selectedExam.id, teacherClasses[0]?.id || "");
+                  goToClassReport(selectedExam.id, queryClassId || teacherClasses[0]?.id || "");
                 }}>
                   {t("teacherPages", "viewResultsDetail", lang)}
                 </Button>

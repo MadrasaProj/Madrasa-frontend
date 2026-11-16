@@ -295,7 +295,7 @@ export default function ClassReportPage() {
 
  {/* Tab content */}
  {tab === "table" && (
- <ClassResultTable report={report} madrasaName={madrasaName} />
+ <ClassResultTable report={report} madrasaName={madrasaName} comparePrevious={isTeacher} />
  )}
 
  {tab === "marklist" && (
