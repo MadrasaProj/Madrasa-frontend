@@ -11,6 +11,7 @@ import TwaLandingPage from "../app/twa/page";
 import TenantAdminLoginPage from "../app/m/[slug]/admin/login/page";
 import TenantTeacherLoginPage from "../app/m/[slug]/teacher/login/page";
 import TenantParentLoginPage from "../app/m/[slug]/parent/login/page";
+import TeacherOAuthAuthorizePage from "../app/oauth/authorize/page";
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
 import AdminAbsentPage from "../app/admin/absent/page";
@@ -136,6 +137,9 @@ export default function App() {
         {/* TWA Landing */}
         <Route path="/" element={<TwaLandingPage />} />
         <Route path="/twa" element={<TwaLandingPage />} />
+        <Route path="/oauth/authorize" element={<TeacherOAuthAuthorizePage />} />
+        <Route path="/teacher/oauth/authorize" element={<TeacherOAuthAuthorizePage />} />
+        <Route path="/m/:slug/teacher/oauth/authorize" element={<TeacherOAuthAuthorizePage />} />
         <Route path="/m/:slug/admin/login" element={<TenantAdminLoginPage />} />
         <Route path="/m/:slug/teacher/login" element={<TenantTeacherLoginPage />} />
         <Route path="/m/:slug/parent/login" element={<TenantParentLoginPage />} />
