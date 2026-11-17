@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { IllustratedEmptyState } from "@/components/ui/IllustratedEmptyState";
@@ -34,6 +34,7 @@ import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { ExamStatusBadge, getExamStatusInfo } from "@/components/exam/ExamStatusBadge";
 import { TeacherMarkEntryView } from "@/components/exam/TeacherMarkEntryView";
 import { TeacherMarkEntryActions } from "@/components/exam/TeacherMarkEntryActions";
+import { TeacherClassReportPopover } from "@/components/exam/TeacherClassReportPopover";
 import { fmt, shortDate } from "@/lib/exam-utils";
 
 function isMarkEntryOpen(exam?: ExamRecord) {
@@ -49,8 +50,6 @@ function isMarkEntryOpen(exam?: ExamRecord) {
 export default function TeacherExamsPage() {
   const { user, accessToken } = useAuthStore();
   const { lang } = useLanguageStore();
-  const navigate = useNavigate();
-  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const cid = user?.clientId ?? "";
   const token = accessToken ?? "";
@@ -91,6 +90,7 @@ export default function TeacherExamsPage() {
 
   const [searchText, setSearchText] = useState("");
   const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
+  const [reportExam, setReportExam] = useState<ExamRecord | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -106,13 +106,6 @@ export default function TeacherExamsPage() {
   const hasInvalidMarks = Object.values(scores).some(
     (value) => value !== "" && (Number(value) < 0 || Number(value) > maxMarks),
   );
-
-  const goToClassReport = (examId: string, classId: string) => {
-    const back = location.pathname + location.search;
-    navigate(
-      `/teacher/exams/class-report?examId=${examId}&classId=${classId}&ayId=${ayId}&back=${encodeURIComponent(back)}`,
-    );
-  };
 
   const openMarkEntry = (exam: ExamRecord) => {
     setSelectedExamId(null);
@@ -596,10 +589,10 @@ export default function TeacherExamsPage() {
                 ))}
               </dl>
 
-              {selectedExam.examStatus === "PUBLISHED" ? (
-                <Button className="w-full" onClick={() => {
+              {selectedExam.examStatus === "PUBLISHED" || getExamStatusInfo(selectedExam).statusLabel === "Completed" ? (
+                <Button className="w-full" disabled={!queryClassId && teacherClasses.length === 0} onClick={() => {
+                  setReportExam(selectedExam);
                   setSelectedExamId(null);
-                  goToClassReport(selectedExam.id, queryClassId || teacherClasses[0]?.id || "");
                 }}>
                   {t("teacherPages", "viewResultsDetail", lang)}
                 </Button>
@@ -607,6 +600,21 @@ export default function TeacherExamsPage() {
             </div>
           )}
         </ResponsivePopover>
+
+        {reportExam && (
+          <TeacherClassReportPopover
+            open
+            onOpenChange={(open) => { if (!open) setReportExam(null); }}
+            clientId={cid}
+            token={token}
+            examId={reportExam.id}
+            examName={reportExam.name}
+            examType={reportExam.type ?? "TERM_EXAM"}
+            classId={queryClassId || teacherClasses[0]?.id || ""}
+            className={teacherClasses.find((cls) => cls.id === (queryClassId || teacherClasses[0]?.id))?.name ?? "Class"}
+            lang={lang}
+          />
+        )}
 
         <ResponsivePopover
           open={isMarkEntryView}
