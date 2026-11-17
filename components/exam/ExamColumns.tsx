@@ -45,7 +45,7 @@ export function useExamColumns(options: UseExamColumnsOptions = {}) {
         ),
       },
       {
-        key: "examStatus",
+        key: "status",
         header: "Status",
         sortable: true,
         render: (exam) => <ExamStatusBadge exam={exam} />,
@@ -113,7 +113,7 @@ export function useExamColumns(options: UseExamColumnsOptions = {}) {
                       <span className="hidden sm:inline">Edit</span>
                     </button>
                   )}
-                  {exam.examStatus === "PUBLISHED" && onViewResults ? (
+                  {exam.status === "ACTIVE" && exam.publishedDate && new Date(exam.publishedDate) <= new Date() && onViewResults ? (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -125,9 +125,9 @@ export function useExamColumns(options: UseExamColumnsOptions = {}) {
                       <Eye className="w-3.5 h-3.5" />
                       <span className="hidden md:inline">Results</span>
                     </button>
-                  ) : exam.examStatus === "MARK_ENTRY" &&
-                    (!exam.markEntryLastDate ||
-                      new Date(exam.markEntryLastDate) >= new Date()) &&
+                  ) : exam.status === "ACTIVE" &&
+                    (!exam.startDate || new Date(exam.startDate) <= new Date()) &&
+                    (!exam.markEntryLastDate || new Date(exam.markEntryLastDate) >= new Date()) &&
                     onEnterMarks ? (
                     <button
                       onClick={(e) => {

@@ -37,13 +37,13 @@ export async function loadPreviousResultComparison(
 
   const history: ExamRecord[] = [];
   for (let page = 1; ; page++) {
-    const response = await getExams(clientId, token, { examStatus: "PUBLISHED", limit: 100, page });
+    const response = await getExams(clientId, token, { limit: 100, page });
     history.push(...response.data);
     if (response.data.length < 100 || (response.total != null && history.length >= response.total)) break;
   }
   const earlierExams = history.filter((exam) => {
     const timestamp = examTimestamp(exam);
-    return exam.id !== report.exam.id && exam.examStatus === "PUBLISHED" && exam.type !== "CLASS_TEST"
+    return exam.id !== report.exam.id && exam.status === "ACTIVE" && !!exam.publishedDate && new Date(exam.publishedDate) <= new Date() && exam.type !== "CLASS_TEST"
       && timestamp != null && timestamp < currentTimestamp;
   }).sort((a, b) => examTimestamp(b)! - examTimestamp(a)! || a.id.localeCompare(b.id));
 

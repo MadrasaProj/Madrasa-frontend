@@ -213,8 +213,8 @@ export default function ClassReportPage() {
  title={`${cls.name} — ${exam.name}`}
  subtitle={
  cls.classTeacher
- ? `Class Teacher: ${cls.classTeacher.name} · ${exam.publishedDate ? `Published: ${fmt(exam.publishedDate)}` : exam.examStatus}`
- : exam.publishedDate ? `Published: ${fmt(exam.publishedDate)}` : exam.examStatus
+ ? `Class Teacher: ${cls.classTeacher.name} · ${exam.publishedDate ? `Published: ${fmt(exam.publishedDate)}` : exam.status}`
+ : exam.publishedDate ? `Published: ${fmt(exam.publishedDate)}` : exam.status
  }
  icon={GraduationCap}
  back

@@ -19,16 +19,17 @@ import {
 } from "@/components/ui/pagination";
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { ResponsivePopover } from "@/components/ui/responsivePopover";
-import { DrawerSelector } from "@/components/DrawerSelector";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";import { DrawerSelector } from "@/components/DrawerSelector";
+
 import { DatePickerDrawer } from "@/components/DatePickerDrawer";
+import { Switch } from "@/components/ui/switch";
 import {
   getExams,
   createExam,
   updateExam,
   deleteExam,
   type ExamRecord,
-  type ExamStatus,
+  type ExamRecordStatus,
 } from "@/lib/exams-api";
 import { getResults, bulkUpsertResults } from "@/lib/results-api";
 import { type ClassRecord } from "@/lib/classes-api";
@@ -80,7 +81,7 @@ interface ExamForm {
   endDate: string;
   markEntryLastDate: string;
   publishedDate: string;
-  examStatus: ExamStatus;
+  status: ExamRecordStatus;
   maxMarks: number;
   passMarks: number;
 }
@@ -93,7 +94,7 @@ const EMPTY_FORM: ExamForm = {
   endDate: "",
   markEntryLastDate: "",
   publishedDate: "",
-  examStatus: "DRAFT",
+  status: "ACTIVE",
   maxMarks: 100,
   passMarks: 36,
 };
@@ -282,7 +283,7 @@ export default function AdminExamsPage() {
       publishedDate: exam.publishedDate
         ? new Date(exam.publishedDate).toISOString().split("T")[0]
         : "",
-      examStatus: exam.examStatus,
+      status: exam.status,
       maxMarks: exam.maxMarks ?? 100,
       passMarks: exam.passMarks ?? 36,
     });
@@ -317,7 +318,7 @@ export default function AdminExamsPage() {
       endDate: form.endDate || undefined,
       markEntryLastDate: form.markEntryLastDate || undefined,
       publishedDate: form.publishedDate || undefined,
-      examStatus: form.examStatus,
+      status: form.status,
       maxMarks: Number(form.maxMarks) || 100,
       passMarks: Number(form.passMarks) || undefined,
       accademicYearId: academicYearId,
@@ -621,6 +622,18 @@ export default function AdminExamsPage() {
     }
   }, [cid, token, classDrawerExamId, classDrawerExam?.name, classDrawerExam?.type, selectedClassTab, selectedClass?.name]);
 
+  const handleUnpublishResults = async () => {
+    if (!classDrawerExam || !cid || !token || !classDrawerExam.publishedDate) return;
+    try {
+      const updated = await updateExam(cid, token, classDrawerExam.id, { publishedDate: null });
+      setExams((current) => current.map((exam) => exam.id === updated.id ? { ...exam, ...updated } : exam));
+      toast.success("Results unpublished");
+      await loadClassReport();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not unpublish results");
+    }
+  };
+
   const handleCompute = async () => {
     if (!classDrawerExamId || !selectedClassTab || computing) return;
     setComputing(true);
@@ -803,8 +816,8 @@ export default function AdminExamsPage() {
                     { value: "startDate:asc", label: "Oldest first" },
                     { value: "name:asc", label: "Name A–Z" },
                     { value: "name:desc", label: "Name Z–A" },
-                    { value: "examStatus:asc", label: "Status A–Z" },
-                    { value: "examStatus:desc", label: "Status Z–A" },
+                    { value: "status:asc", label: "Status A–Z" },
+                    { value: "status:desc", label: "Status Z–A" },
                     { value: "markEntryLastDate:asc", label: "Mark entry: earliest" },
                     { value: "markEntryLastDate:desc", label: "Mark entry: latest" },
                     { value: "publishedDate:asc", label: "Published: earliest" },
@@ -942,7 +955,7 @@ export default function AdminExamsPage() {
         showBackButton={contentTab === "report"}
         onBack={() => setContentTab("markentry")}
         title={contentTab === "report" ? `${classDrawerExam?.name ?? "Exam"} · Report` : classDrawerExam?.name ?? "Exam details"}
-        description={classDrawerExam?.name}
+        // description={classDrawerExam?.name}
         className="shadow-none md:max-w-none"
         
         footer={classDrawerExam && selectedClass && contentTab === "markentry" ? (
@@ -965,6 +978,11 @@ export default function AdminExamsPage() {
           <>
             <div className="flex shrink-0 justify-end border-b border-gray-100 px-4 py-3 sm:px-6">
               <ButtonGroup aria-label="Exam actions">
+                {contentTab === "report" && classDrawerExam.publishedDate && (
+                  <Button type="button" variant="outline" className="shadow-none" onClick={() => { void handleUnpublishResults(); }}>
+                    Unpublish results
+                  </Button>
+                )}
                 <Button type="button" variant="outline" className="shadow-none" onClick={() => { closeClassDrawer(); openEditDrawer(classDrawerExam); }}>Edit exam</Button>
                 <Button type="button" variant="destructive" className="shadow-none" onClick={() => { closeClassDrawer(); startDeleteExam(classDrawerExam); }}>Delete exam</Button>
               </ButtonGroup>
@@ -1233,8 +1251,7 @@ export default function AdminExamsPage() {
         side="bottom"
         desktopView="right-drawer"
         title={drawerMode === "create" ? "Create New Exam" : "Edit Exam"}
-        description="Define dates and configuration for term exams"
-        className="mx-auto w-full max-w-xl rounded-t-2xl shadow-none"
+         className="mx-auto w-full max-w-xl rounded-t-2xl shadow-none"
         showCloseButton={!submitting}
         footer={
           <div className="flex justify-end gap-2 border-t border-gray-100 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
@@ -1248,11 +1265,10 @@ export default function AdminExamsPage() {
           </div>
         }
       >
-        <form id="admin-exam-form" onSubmit={handleFormSubmit} className="space-y-5 p-4">
+        <form id="admin-exam-form" onSubmit={handleFormSubmit} className="space-y-5 ">
           {formError && <p role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">{formError}</p>}
 
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold text-gray-700">Basic Information</h3>
             <div>
               <label htmlFor="admin-exam-name" className="mb-1.5 block text-sm font-medium text-gray-700">Exam Name *</label>
               <Input
@@ -1268,7 +1284,6 @@ export default function AdminExamsPage() {
           </section>
 
           <section className="space-y-3 border-t border-gray-100 pt-4">
-            <h3 className="text-sm font-semibold text-gray-700">Exam Period</h3>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <p className="mb-1.5 text-sm font-medium text-gray-700">Exam Start Date *</p>
@@ -1288,7 +1303,6 @@ export default function AdminExamsPage() {
           </section>
 
           <section className="space-y-3 border-t border-gray-100 pt-4">
-            <h3 className="text-sm font-semibold text-gray-700">Mark Entry Period</h3>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label htmlFor="admin-exam-mark-entry-opens" className="mb-1.5 block text-sm font-medium text-gray-700">Mark Entry Opens On *</label>
@@ -1297,8 +1311,8 @@ export default function AdminExamsPage() {
                   type="text"
                   size="lg"
                   disabled
-                  value={form.endDate ? fmt(new Date(new Date(`${form.endDate}T00:00:00`).getTime() + 86400000).toISOString()) : ""}
-                  placeholder="After exam ends"
+                  value={form.startDate ? fmt(form.startDate) : ""}
+                  placeholder="Same as exam start date"
                 />
               </div>
               <div>
@@ -1312,7 +1326,6 @@ export default function AdminExamsPage() {
           </section>
 
           <section className="space-y-3 border-t border-gray-100 pt-4">
-            <h3 className="text-sm font-semibold text-gray-700">Result Publication</h3>
             <div>
               <p className="mb-1.5 text-sm font-medium text-gray-700">Result Publish Date *</p>
               <Button type="button" variant="outline" size="lg" aria-haspopup="dialog" aria-expanded={activeDateField === "publishedDate"} aria-label={`Result Publish Date: ${form.publishedDate ? fmt(form.publishedDate) : "Select date"}`} onClick={() => setActiveDateField("publishedDate")} className="w-full justify-start gap-2 px-3 font-normal shadow-none!">
@@ -1321,18 +1334,18 @@ export default function AdminExamsPage() {
               </Button>
             </div>
             <div>
-              <p className="mb-1.5 text-sm font-medium text-gray-700">Initial Status</p>
-              <DrawerSelector
-                title="Initial Status"
-                options={[
-                  { value: "DRAFT", label: "Draft" },
-                  { value: "MARK_ENTRY", label: "Mark Entry Open" },
-                  { value: "PUBLISHED", label: "Published" },
-                  { value: "CANCELLED", label: "Cancelled" },
-                ]}
-                value={form.examStatus}
-                onChange={(value) => setForm((current) => ({ ...current, examStatus: value as ExamStatus }))}
-              />
+              <label htmlFor="admin-exam-status" className="mb-1.5 block text-sm font-medium text-gray-700">Status</label>
+              <div className="flex h-11 items-center gap-3">
+                <Switch
+                  id="admin-exam-status"
+                  checked={form.status === "ACTIVE"}
+                  onCheckedChange={(checked) => setForm((current) => ({ ...current, status: checked ? "ACTIVE" : "INACTIVE" }))}
+                  aria-label="Exam status"
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  {form.status === "ACTIVE" ? "Active" : "Inactive"}
+                </span>
+              </div>
             </div>
           </section>
           <DatePickerDrawer

@@ -23,16 +23,16 @@ export function getExamCategories(exams: ExamRecord[]) {
   );
   const markEntryOpen = exams.filter(
     (e) =>
-      e.examStatus === "MARK_ENTRY" &&
+      e.status === "ACTIVE" && (!e.startDate || new Date(e.startDate) <= new Date()) &&
       (!e.markEntryLastDate || new Date(e.markEntryLastDate) >= new Date()),
   );
   const completed = exams.filter((e) => {
-    if (e.examStatus === "PUBLISHED") return false;
+    if (e.status !== "ACTIVE" || (e.publishedDate && new Date(e.publishedDate) <= new Date())) return false;
     if (e.markEntryLastDate && new Date(e.markEntryLastDate) < new Date())
       return true;
     return false;
   });
-  const published = exams.filter((e) => e.examStatus === "PUBLISHED");
+  const published = exams.filter((e) => e.publishedDate && new Date(e.publishedDate) <= new Date());
 
   return { upcoming, markEntryOpen, completed, published };
 }

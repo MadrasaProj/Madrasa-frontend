@@ -3,15 +3,14 @@ import { apiFetch } from "@/lib/fetch";
 const API_ORIGIN = import.meta.env.VITE_API_ORIGIN ?? "http://localhost:3000";
 const V2_BASE    = `${API_ORIGIN}/api/v2`;
 
-export type ExamStatus = "DRAFT" | "MARK_ENTRY" | "PUBLISHED" | "CANCELLED";
+export type ExamRecordStatus = "ACTIVE" | "INACTIVE";
 
 export type ExamType = "TERM_EXAM" | "CLASS_TEST" | "UNIT_TEST";
 
 export interface ExamRecord {
   id: string;
   name: string;
-  status: string;
-  examStatus: ExamStatus;
+  status: ExamRecordStatus;
   type?: ExamType;
   classId?: string | null;
   subjectId?: string | null;
@@ -38,11 +37,10 @@ export interface ExamListResponse {
 
 export const getExams = (
   clientId: string, token: string,
-  params?: { accademicYearId?: string; examStatus?: ExamStatus; type?: ExamType; classId?: string; studentId?: string; page?: number; limit?: number; signal?: AbortSignal },
+  params?: { accademicYearId?: string; type?: ExamType; classId?: string; studentId?: string; page?: number; limit?: number; signal?: AbortSignal },
 ) => {
   const q = new URLSearchParams();
   if (params?.accademicYearId) q.set("accademicYearId", params.accademicYearId);
-  if (params?.examStatus)      q.set("examStatus", params.examStatus);
   if (params?.type)            q.set("type", params.type);
   if (params?.classId)         q.set("classId", params.classId);
   if (params?.studentId)       q.set("studentId", params.studentId);
@@ -60,7 +58,7 @@ export const createExam = (
     name: string; accademicYearId: string;
     type?: ExamType; classId?: string; subjectId?: string;
     startDate?: string; endDate?: string;
-    markEntryLastDate?: string; publishedDate?: string; examStatus?: ExamStatus;
+    markEntryLastDate?: string; publishedDate?: string | null; status?: ExamRecordStatus;
     maxMarks?: number; passMarks?: number;
   },
 ) => {
@@ -76,7 +74,7 @@ export const createExam = (
 
 export const updateExam = (
   clientId: string, token: string, id: string,
-  data: Partial<{ name: string; startDate: string | null; endDate: string | null; markEntryLastDate: string | null; publishedDate: string | null; examStatus: ExamStatus; maxMarks: number; passMarks: number }>,
+  data: Partial<{ name: string; startDate: string | null; endDate: string | null; markEntryLastDate: string | null; publishedDate: string | null; status: ExamRecordStatus; maxMarks: number; passMarks: number }>,
 ) =>
   apiFetch<ExamRecord>(`${V2_BASE}/${clientId}/exams/${id}`, token, {
     method: "PATCH", body: JSON.stringify(data),

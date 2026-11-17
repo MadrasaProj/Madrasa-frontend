@@ -89,7 +89,7 @@ export async function loadLiveClassReport({
   return {
     computedReport,
     report: {
-      exam: computedReport?.exam ?? { id: examId, name: examName, type: examType, examStatus: "MARK_ENTRY" },
+      exam: computedReport?.exam ?? { id: examId, name: examName, type: examType, status: "ACTIVE" },
       class: computedReport?.class ?? { id: classId, name: className },
       clientName: computedReport?.clientName,
       clientLogo: computedReport?.clientLogo,

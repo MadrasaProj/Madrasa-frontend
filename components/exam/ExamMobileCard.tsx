@@ -74,7 +74,7 @@ export function ExamMobileCard({
             <Edit2 className="w-3.5 h-3.5" /> Edit
           </button>
         )}
-        {exam.examStatus === "PUBLISHED" && onViewResults ? (
+        {exam.status === "ACTIVE" && exam.publishedDate && new Date(exam.publishedDate) <= new Date() && onViewResults ? (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -84,9 +84,9 @@ export function ExamMobileCard({
           >
             <Eye className="w-3.5 h-3.5" /> View Results
           </button>
-        ) : exam.examStatus === "MARK_ENTRY" &&
-          (!exam.markEntryLastDate ||
-            new Date(exam.markEntryLastDate) >= new Date()) &&
+        ) : exam.status === "ACTIVE" &&
+          (!exam.startDate || new Date(exam.startDate) <= new Date()) &&
+          (!exam.markEntryLastDate || new Date(exam.markEntryLastDate) >= new Date()) &&
           onEnterMarks ? (
           <button
             onClick={(e) => {

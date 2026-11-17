@@ -1,6 +1,6 @@
 import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
-import { getExams, type ExamListResponse, type ExamStatus, type ExamType } from "@/lib/exams-api";
+import { getExams, type ExamListResponse, type ExamType } from "@/lib/exams-api";
 import {
   getClassReport,
   getResults,
@@ -15,7 +15,6 @@ export function useExams(
   ctx: AuthCtx,
   params?: {
     accademicYearId?: string;
-    examStatus?: ExamStatus;
     type?: ExamType;
     classId?: string;
     studentId?: string;

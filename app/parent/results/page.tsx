@@ -555,7 +555,7 @@ export default function ParentResultsPage() {
     { clientId: cid, token },
     { accademicYearId: ayId || undefined, studentId: effectiveId, limit: 100 },
   );
-  const exams: ExamRecord[] = (examData?.data ?? []).filter((e) => e.examStatus === "PUBLISHED");
+  const exams: ExamRecord[] = (examData?.data ?? []).filter((e) => e.status === "ACTIVE" && e.publishedDate && new Date(e.publishedDate) <= new Date());
   const loading = loadingExams;
   const error = examError instanceof Error ? examError.message : null;
 
@@ -592,11 +592,11 @@ export default function ParentResultsPage() {
   // Include earlier academic years, and never compare against class tests.
   const comparisonEnabled = !!activeExam && activeExam.type !== "CLASS_TEST" && results.length > 0;
   const { data: examHistory, isLoading: loadingHistory, isError: historyError, refetch: refetchHistory } = useQuery({
-    queryKey: queryKeys.exams.list(cid, { studentId: effectiveId, examStatus: "PUBLISHED", history: true }),
+    queryKey: queryKeys.exams.list(cid, { studentId: effectiveId, history: true }),
     queryFn: async () => {
       const history: ExamRecord[] = [];
       for (let page = 1; ; page++) {
-        const response = await getExams(cid, token, { studentId: effectiveId, examStatus: "PUBLISHED", limit: 100, page });
+        const response = await getExams(cid, token, { studentId: effectiveId, limit: 100, page });
         history.push(...response.data);
         if (response.data.length < 100 || (response.total != null && history.length >= response.total)) break;
       }
@@ -608,7 +608,7 @@ export default function ParentResultsPage() {
   const earlierExams = (examHistory ?? [])
     .filter((exam) => {
       const timestamp = examTimestamp(exam);
-      return exam.id !== activeExamId && exam.examStatus === "PUBLISHED" && exam.type !== "CLASS_TEST"
+      return exam.id !== activeExamId && exam.status === "ACTIVE" && !!exam.publishedDate && new Date(exam.publishedDate) <= new Date() && exam.type !== "CLASS_TEST"
         && timestamp != null && activeTimestamp != null && timestamp < activeTimestamp;
     })
     .sort((a, b) => examTimestamp(b)! - examTimestamp(a)! || a.id.localeCompare(b.id));

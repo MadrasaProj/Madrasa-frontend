@@ -38,7 +38,7 @@ import { TeacherClassReportPopover } from "@/components/exam/TeacherClassReportP
 import { fmt, shortDate } from "@/lib/exam-utils";
 
 function isMarkEntryOpen(exam?: ExamRecord) {
-  if (!exam || exam.examStatus !== "MARK_ENTRY") return false;
+  if (!exam || exam.status !== "ACTIVE" || (exam.startDate && new Date(exam.startDate) > new Date())) return false;
   if (!exam.markEntryLastDate) return true;
 
   // The deadline is inclusive of the full day in the local timezone.
@@ -348,9 +348,9 @@ export default function TeacherExamsPage() {
 
   const examSummary = [
     { label: "Total exams", value: searchFiltered.length, icon: GraduationCap, color: "text-primary-700" },
-    { label: "Mark entry", value: searchFiltered.filter((exam) => exam.examStatus === "MARK_ENTRY").length, icon: ClipboardCheck, color: "text-primary-700" },
-    { label: "Published", value: searchFiltered.filter((exam) => exam.examStatus === "PUBLISHED").length, icon: CalendarDays, color: "text-blue-700" },
-    { label: "Draft", value: searchFiltered.filter((exam) => exam.examStatus === "DRAFT").length, icon: Clock3, color: "text-amber-700" },
+    { label: "Mark entry", value: searchFiltered.filter((exam) => exam.status === "ACTIVE" && (!exam.startDate || new Date(exam.startDate) <= new Date()) && (!exam.markEntryLastDate || new Date(exam.markEntryLastDate) >= new Date())).length, icon: ClipboardCheck, color: "text-primary-700" },
+    { label: "Published", value: searchFiltered.filter((exam) => exam.publishedDate && new Date(exam.publishedDate) <= new Date()).length, icon: CalendarDays, color: "text-blue-700" },
+    { label: "Inactive", value: searchFiltered.filter((exam) => exam.status === "INACTIVE").length, icon: Clock3, color: "text-amber-700" },
   ];
 
   // ── Render Loading ───────────────────────────────────────────────────────────
@@ -440,8 +440,8 @@ export default function TeacherExamsPage() {
                 <option value="startDate:asc">Oldest first</option>
                 <option value="name:asc">Name A–Z</option>
                 <option value="name:desc">Name Z–A</option>
-                <option value="examStatus:asc">Status A–Z</option>
-                <option value="examStatus:desc">Status Z–A</option>
+                <option value="status:asc">Status A–Z</option>
+                <option value="status:desc">Status Z–A</option>
                 <option value="markEntryLastDate:asc">Mark entry: earliest</option>
                 <option value="markEntryLastDate:desc">Mark entry: latest</option>
                 <option value="publishedDate:asc">Published: earliest</option>
@@ -589,7 +589,7 @@ export default function TeacherExamsPage() {
                 ))}
               </dl>
 
-              {selectedExam.examStatus === "PUBLISHED" || getExamStatusInfo(selectedExam).statusLabel === "Completed" ? (
+              {selectedExam.publishedDate && new Date(selectedExam.publishedDate) <= new Date() || getExamStatusInfo(selectedExam).statusLabel === "Completed" ? (
                 <Button className="w-full" disabled={!queryClassId && teacherClasses.length === 0} onClick={() => {
                   setReportExam(selectedExam);
                   setSelectedExamId(null);

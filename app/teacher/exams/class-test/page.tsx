@@ -12,7 +12,7 @@ import {
   updateExam,
   deleteExam,
   type ExamRecord,
-  type ExamStatus,
+  type ExamRecordStatus,
 } from "@/lib/exams-api";
 import { getResults, bulkUpsertResults, type ResultRecord } from "@/lib/results-api";
 import { getMyClasses, type ClassRecord } from "@/lib/classes-api";
@@ -123,7 +123,7 @@ export default function TeacherClassTestsPage() {
   const [formSubjectId, setFormSubjectId] = useState("");
   const [formStartDate, setFormStartDate] = useState("");
   const [formEndDate, setFormEndDate] = useState("");
-  const [formStatus, setFormStatus] = useState<ExamStatus>("MARK_ENTRY");
+  const [formStatus, setFormStatus] = useState<ExamRecordStatus>("ACTIVE");
   const [formMaxMarks, setFormMaxMarks] = useState("100");
   const [formPassMarks, setFormPassMarks] = useState("");
   const [saving, setSaving] = useState(false);
@@ -287,7 +287,7 @@ export default function TeacherClassTestsPage() {
     setFormSubjectId("");
     setFormStartDate("");
     setFormEndDate("");
-    setFormStatus("MARK_ENTRY");
+    setFormStatus("ACTIVE");
     setFormMaxMarks("100");
     setFormPassMarks("");
     setSaveError("");
@@ -302,9 +302,7 @@ export default function TeacherClassTestsPage() {
     setFormStartDate(exam.startDate?.slice(0, 10) ?? "");
     setFormEndDate(exam.endDate?.slice(0, 10) ?? "");
     setFormStatus(
-      exam.examStatus === "MARK_ENTRY" || exam.examStatus === "PUBLISHED"
-        ? exam.examStatus
-        : "MARK_ENTRY"
+      exam.status
     );
     setFormMaxMarks(String(exam.maxMarks ?? 100));
     setFormPassMarks(exam.passMarks != null ? String(exam.passMarks) : "");
@@ -351,7 +349,7 @@ export default function TeacherClassTestsPage() {
           name: formName.trim(),
           startDate: formStartDate || null,
           endDate: formEndDate || null,
-          examStatus: formStatus,
+          status: formStatus,
           maxMarks,
           passMarks,
         });
@@ -367,7 +365,7 @@ export default function TeacherClassTestsPage() {
           subjectId: formSubjectId,
           startDate: formStartDate || undefined,
           endDate: formEndDate || undefined,
-          examStatus: formStatus,
+          status: formStatus,
           maxMarks,
           passMarks,
         });
@@ -406,7 +404,6 @@ export default function TeacherClassTestsPage() {
       return;
     try {
       const updated = await updateExam(cid, token, exam.id, {
-        examStatus: "PUBLISHED",
         publishedDate: new Date().toISOString(),
       });
       setExams((prev) =>
@@ -428,7 +425,7 @@ export default function TeacherClassTestsPage() {
   };
 
   const handleMeSave = async () => {
-    if (!markEntryExam || !meSubjectId || markEntryExam.examStatus !== "MARK_ENTRY") return false;
+    if (!markEntryExam || !meSubjectId || markEntryExam.status !== "ACTIVE") return false;
     const exam = markEntryExam;
     const currentSubject = meSubjects.find((s) => s.id === meSubjectId);
     const subjectMaxMarks = currentSubject?.classSubject?.maxMarks ?? exam?.maxMarks ?? 50;
@@ -469,13 +466,13 @@ export default function TeacherClassTestsPage() {
   const hasInvalidMarks = Object.values(meScores).some((value) =>
     value !== "" && (!Number.isFinite(Number(value)) || Number(value) < 0 || Number(value) > maxMarks),
   );
-  const isLocked = !markEntryExam || markEntryExam.examStatus !== "MARK_ENTRY" ||
+  const isLocked = !markEntryExam || markEntryExam.status !== "ACTIVE" ||
     (!!markEntryExam.markEntryLastDate && new Date() > new Date(markEntryExam.markEntryLastDate));
   const testSummary = [
     { label: "Total tests", value: searchFiltered.length, icon: GraduationCap, color: "text-primary-700" },
-    { label: "Mark entry", value: searchFiltered.filter((exam) => exam.examStatus === "MARK_ENTRY").length, icon: ClipboardCheck, color: "text-primary-700" },
-    { label: "Published", value: searchFiltered.filter((exam) => exam.examStatus === "PUBLISHED").length, icon: CalendarDays, color: "text-blue-700" },
-    { label: "Draft", value: searchFiltered.filter((exam) => exam.examStatus === "DRAFT").length, icon: Clock3, color: "text-amber-700" },
+    { label: "Mark entry", value: searchFiltered.filter((exam) => exam.status === "ACTIVE").length, icon: ClipboardCheck, color: "text-primary-700" },
+    { label: "Published", value: searchFiltered.filter((exam) => exam.publishedDate && new Date(exam.publishedDate) <= new Date()).length, icon: CalendarDays, color: "text-blue-700" },
+    { label: "Draft", value: searchFiltered.filter((exam) => exam.status === "INACTIVE").length, icon: Clock3, color: "text-amber-700" },
   ];
 
   return (
@@ -537,8 +534,8 @@ export default function TeacherClassTestsPage() {
                 <option value="startDate:asc">Oldest first</option>
                 <option value="name:asc">Name A–Z</option>
                 <option value="name:desc">Name Z–A</option>
-                <option value="examStatus:asc">Status A–Z</option>
-                <option value="examStatus:desc">Status Z–A</option>
+                <option value="status:asc">Status A–Z</option>
+                <option value="status:desc">Status Z–A</option>
                 <option value="markEntryLastDate:asc">Mark entry: earliest</option>
                 <option value="markEntryLastDate:desc">Mark entry: latest</option>
                 <option value="publishedDate:asc">Published: earliest</option>
@@ -723,7 +720,7 @@ export default function TeacherClassTestsPage() {
           className="mx-auto w-full max-w-2xl rounded-t-2xl"
           title={selectedExam?.name}
           showCloseButton={false}
-          headerAction={selectedExam?.examStatus === "MARK_ENTRY" &&
+          headerAction={selectedExam?.status === "ACTIVE" &&
             (!selectedExam.markEntryLastDate || new Date(selectedExam.markEntryLastDate) >= new Date()) ? (
               <Button size="sm" onClick={() => openMarkEntry(selectedExam)}>
                 {t("teacherPages", "markEntryBreadcrumb", lang)}
@@ -767,10 +764,10 @@ export default function TeacherClassTestsPage() {
                     {t("common", "delete", lang)}
                   </Button>
                 )}
-                {selectedExam.examStatus === "MARK_ENTRY" && (selectedExam._count?.results ?? 0) > 0 && canEditExam(selectedExam) && (
+                {selectedExam.status === "ACTIVE" && (selectedExam._count?.results ?? 0) > 0 && canEditExam(selectedExam) && (
                   <Button onClick={() => handlePublish(selectedExam)}>{t("teacherPages", "publishBtn", lang)}</Button>
                 )}
-                {selectedExam.examStatus === "PUBLISHED" && (
+                {selectedExam.publishedDate && new Date(selectedExam.publishedDate) <= new Date() && (
                   <Button onClick={() => openMarkEntry(selectedExam)}>{t("teacherPages", "viewResultsDetail", lang)}</Button>
                 )}
               </div>
@@ -970,12 +967,12 @@ fullHeight
               </p>
               <DrawerSelector
                 title={t("common", "status", lang)}
-                options={(["MARK_ENTRY", "PUBLISHED"] as ExamStatus[]).map((status) => ({
+                options={(["ACTIVE", "INACTIVE"] as ExamRecordStatus[]).map((status) => ({
                   value: status,
                   label: STATUS_LABELS[status],
                 }))}
                 value={formStatus}
-                onChange={(value) => setFormStatus(value as ExamStatus)}
+                onChange={(value) => setFormStatus(value as ExamRecordStatus)}
               />
             </div>
           )}

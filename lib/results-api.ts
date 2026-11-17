@@ -23,7 +23,7 @@ export interface ResultRecord {
   createdAt?: string;
   updatedAt?: string;
   subject?:  { id: string; name: string } | null;
-  exam?:     { id: string; name: string; examStatus: string } | null;
+  exam?:     { id: string; name: string; status: "ACTIVE" | "INACTIVE" } | null;
   student?:  { id: string; name: string; adno: string } | null;
   class?:    { id: string; name: string } | null;
   markedBy?: { id: string; name: string } | null;
@@ -95,7 +95,7 @@ export interface ClassReportConfig {
 
 export interface ClassReport {
   exam: {
-    id: string; name: string; type: string; examStatus: string;
+    id: string; name: string; type: string; status: "ACTIVE" | "INACTIVE";
     startDate?: string | null; endDate?: string | null; publishedDate?: string | null;
   };
   class: { id: string; name: string; classTeacher?: { id: string; name: string } | null };
