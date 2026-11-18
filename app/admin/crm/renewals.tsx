@@ -125,24 +125,28 @@ export default function RenewalsDashboard() {
   const fmtDate = (d: string) =>
     new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 
-  const filteredRenewals = renewals.filter((r) => {
+  // Context-aware renewals (matching active search)
+  const contextRenewals = renewals.filter((r) => {
     const q = searchQuery.toLowerCase().trim();
-    const matchesSearch =
+    return (
       !q ||
       r.name.toLowerCase().includes(q) ||
-      (r.subdomain && r.subdomain.toLowerCase().includes(q));
-    const matchesStatus = statusFilter === "ALL" || r.status === statusFilter;
-    return matchesSearch && matchesStatus;
+      (r.subdomain && r.subdomain.toLowerCase().includes(q))
+    );
   });
+
+  const filteredRenewals = contextRenewals.filter(
+    (r) => statusFilter === "ALL" || r.status === statusFilter
+  );
 
   const totalPages = Math.ceil(filteredRenewals.length / pageSize) || 1;
   const paginatedRenewals = filteredRenewals.slice((page - 1) * pageSize, page * pageSize);
 
   const filterCounts = {
-    ALL: renewals.length,
-    URGENT: renewals.filter((r) => r.status === "URGENT").length,
-    ATTENTION: renewals.filter((r) => r.status === "ATTENTION").length,
-    SAFE: renewals.filter((r) => r.status === "SAFE").length,
+    ALL: contextRenewals.length,
+    URGENT: contextRenewals.filter((r) => r.status === "URGENT").length,
+    ATTENTION: contextRenewals.filter((r) => r.status === "ATTENTION").length,
+    SAFE: contextRenewals.filter((r) => r.status === "SAFE").length,
   };
 
   return (

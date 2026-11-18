@@ -154,28 +154,30 @@ export default function ExpensesPage() {
     .filter((e) => e.status === "REJECTED")
     .reduce((sum, e) => sum + Number(e.amount), 0);
 
-  // Filters & Pagination calculations
-  const filteredExpenses = expenses.filter((exp) => {
+  // Filters & Pagination calculations (search context-aware)
+  const contextExpenses = expenses.filter((exp) => {
     const q = searchQuery.toLowerCase().trim();
-    const matchesSearch =
+    return (
       !q ||
       exp.title.toLowerCase().includes(q) ||
       exp.category.toLowerCase().includes(q) ||
       exp.submittedBy.name.toLowerCase().includes(q) ||
-      (exp.description && exp.description.toLowerCase().includes(q));
-
-    const matchesStatus = statusFilter === "ALL" || exp.status === statusFilter;
-    return matchesSearch && matchesStatus;
+      (exp.description && exp.description.toLowerCase().includes(q))
+    );
   });
+
+  const filteredExpenses = contextExpenses.filter(
+    (exp) => statusFilter === "ALL" || exp.status === statusFilter
+  );
 
   const totalPages = Math.ceil(filteredExpenses.length / pageSize) || 1;
   const paginatedExpenses = filteredExpenses.slice((page - 1) * pageSize, page * pageSize);
 
   const filterCounts = {
-    ALL: expenses.length,
-    PENDING: expenses.filter((e) => e.status === "PENDING").length,
-    APPROVED: expenses.filter((e) => e.status === "APPROVED").length,
-    REJECTED: expenses.filter((e) => e.status === "REJECTED").length,
+    ALL: contextExpenses.length,
+    PENDING: contextExpenses.filter((e) => e.status === "PENDING").length,
+    APPROVED: contextExpenses.filter((e) => e.status === "APPROVED").length,
+    REJECTED: contextExpenses.filter((e) => e.status === "REJECTED").length,
   };
 
   const fmtCurrency = (val: number | string) => {

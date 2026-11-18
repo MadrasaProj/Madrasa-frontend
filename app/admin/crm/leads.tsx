@@ -17,11 +17,13 @@ import {
   deleteActivity,
   updateFollowUpDate,
   listInternalUsers,
+  bulkLeadAction,
   type LeadListItem,
   type LeadDetail,
   type DistrictItem,
   type BulkImportLeadItem,
   type InternalUserItem,
+  type BulkLeadActionPayload,
 } from "@/lib/crm-api";
 import { useAuthStore } from "@/store/auth";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -105,6 +107,33 @@ export const LEAD_STATUSES = [
 
 export type LeadStatus = (typeof LEAD_STATUSES)[number];
 
+export function formatLocalDateForInput(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function normalizeLeadStatus(status?: string | null): string {
+  if (!status) return "NEW";
+  if (status === "TRIAL_CREATED") return "TRIAL_SHARED";
+  if (status === "DEMO_SCHEDULED") return "OFFLINE_DEMO_SCHEDULED";
+  if (status === "DEMO_COMPLETED") return "OFFLINE_DEMO_COMPLETED";
+  return status;
+}
+
+export function getLeadFollowUpCategory(dateStr?: string | null): "OVERDUE" | "TODAY" | "FUTURE" | "NONE" {
+  if (!dateStr) return "NONE";
+  const target = new Date(dateStr);
+  target.setHours(0, 0, 0, 0);
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) return "OVERDUE";
+  if (diffDays === 0) return "TODAY";
+  return "FUTURE";
+}
+
 const PIPELINE_STEPS = [
   { key: "intake", label: "Follow-up", statuses: ["NEW", "CONTACTED", "INTERESTED", "FOLLOW_UP"] },
   { key: "qualified", label: "Quality Lead", statuses: ["QUALITY_LEAD"] },
@@ -180,6 +209,9 @@ export default function CrmLeadsPage() {
   const [selectedLead, setSelectedLead] = useState<LeadDetail | null>(null);
 
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const staticDataLoaded = useRef(false);
+
   const [activeStage, setActiveStage] = useState<string>("ALL");
   const [smartPreset, setSmartPreset] = useState<
     "ALL" | "OVERDUE" | "TODAY" | "HOT_WARM" | "ACTIVE_TRIALS" | "NO_FOLLOWUP"
@@ -188,6 +220,34 @@ export default function CrmLeadsPage() {
   const [selectedAssignee, setSelectedAssignee] = useState<string>("ALL");
   const [sortBy, setSortBy] = useState<"URGENT" | "NEWEST" | "STUDENTS" | "NAME">("URGENT");
   const [showMobileDetail, setShowMobileDetail] = useState(false);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+
+  // Bulk Actions State
+  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
+  const [bulkModalType, setBulkModalType] = useState<"ASSIGN" | "STATUS" | "FOLLOW_UP" | "DELETE" | null>(null);
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  const [bulkSelectedUserId, setBulkSelectedUserId] = useState<string>("");
+  const [bulkSelectedStatus, setBulkSelectedStatus] = useState<string>("FOLLOW_UP");
+  const [bulkFollowUpDate, setBulkFollowUpDate] = useState<string>("");
+  const [bulkRemarks, setBulkRemarks] = useState<string>("");
+
+  const currentUserId = user?.id || "";
+
+  // 350ms search debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Reset pagination to page 1 on any filter or search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, activeStage, smartPreset, selectedDistrict, selectedAssignee, sortBy]);
 
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -244,7 +304,7 @@ export default function CrmLeadsPage() {
     contactRole: "",
     enableCommission: false,
     commissionPercentage: 20,
-    contributors: [{ userId: "", percentage: 20 }] as Array<{ userId: string; percentage: number; notes?: string }>,
+    contributors: [{ userId: currentUserId, percentage: 20 }] as Array<{ userId: string; percentage: number; notes?: string }>,
   });
 
   const [editLeadForm, setEditLeadForm] = useState({
@@ -261,7 +321,7 @@ export default function CrmLeadsPage() {
     status: "NEW",
     enableCommission: false,
     commissionPercentage: 20,
-    contributors: [{ userId: "", percentage: 20 }] as Array<{ userId: string; percentage: number; notes?: string }>,
+    contributors: [{ userId: currentUserId, percentage: 20 }] as Array<{ userId: string; percentage: number; notes?: string }>,
     primaryContactId: "",
     contactName: "",
     contactPhone: "",
@@ -339,25 +399,31 @@ export default function CrmLeadsPage() {
     setTimeout(() => setCopiedText(null), 2000);
   };
 
-  const loadData = async (silent = false) => {
+  const loadData = async (silent = false, reloadStatic = false) => {
     if (!accessToken) return;
     if (!silent) setLoading(true);
     try {
-      const [list, dList, users] = await Promise.all([
-        listLeads(accessToken, { search }),
-        listDistricts(accessToken),
-        listInternalUsers(accessToken).catch(() => []),
-      ]);
-      setLeads(list || []);
-      setDistricts(dList || []);
-      setTeamUsers(users || []);
-      if (users && users.length > 0 && !newLeadForm.contributors[0]?.userId) {
-        setNewLeadForm((prev) => ({
-          ...prev,
-          contributors: [
-            { userId: user?.id || users[0].id, percentage: prev.commissionPercentage },
-          ],
-        }));
+      if (!staticDataLoaded.current || reloadStatic) {
+        const [list, dList, users] = await Promise.all([
+          listLeads(accessToken, { search: debouncedSearch }),
+          listDistricts(accessToken),
+          listInternalUsers(accessToken).catch(() => []),
+        ]);
+        setLeads(list || []);
+        setDistricts(dList || []);
+        setTeamUsers(users || []);
+        staticDataLoaded.current = true;
+        if (users && users.length > 0 && !newLeadForm.contributors[0]?.userId) {
+          setNewLeadForm((prev) => ({
+            ...prev,
+            contributors: [
+              { userId: currentUserId || users[0].id, percentage: prev.commissionPercentage },
+            ],
+          }));
+        }
+      } else {
+        const list = await listLeads(accessToken, { search: debouncedSearch });
+        setLeads(list || []);
       }
     } catch (e) {
       setError((e as Error).message);
@@ -392,7 +458,7 @@ export default function CrmLeadsPage() {
 
   useEffect(() => {
     loadData();
-  }, [accessToken, search]); // eslint-disable-line
+  }, [accessToken, debouncedSearch]); // eslint-disable-line
 
   useEffect(() => {
     const idParam = searchParams.get("id");
@@ -679,6 +745,52 @@ export default function CrmLeadsPage() {
     }
   };
 
+  const handleExecuteBulkAction = async () => {
+    if (!bulkModalType || selectedLeadIds.size === 0 || !accessToken) return;
+    setBulkActionLoading(true);
+    try {
+      const leadIds = Array.from(selectedLeadIds);
+      const payload: BulkLeadActionPayload = {
+        leadIds,
+        action: bulkModalType,
+      };
+
+      if (bulkModalType === "ASSIGN") {
+        if (!bulkSelectedUserId) {
+          toast("Please choose a team member to assign", true);
+          setBulkActionLoading(false);
+          return;
+        }
+        payload.contributors = [{ userId: bulkSelectedUserId, percentage: 20 }];
+      } else if (bulkModalType === "STATUS") {
+        payload.status = bulkSelectedStatus;
+        if (bulkRemarks.trim()) payload.remarks = bulkRemarks.trim();
+      } else if (bulkModalType === "FOLLOW_UP") {
+        payload.followUpDate = bulkFollowUpDate || null;
+        if (bulkRemarks.trim()) payload.remarks = bulkRemarks.trim();
+      }
+
+      const res = await bulkLeadAction(payload, accessToken);
+      toast(`Successfully updated ${res.count ?? leadIds.length} lead(s)!`);
+      setSelectedLeadIds(new Set());
+      setBulkModalType(null);
+      setBulkRemarks("");
+      loadData(true);
+      if (selectedLeadId && leadIds.includes(selectedLeadId)) {
+        if (bulkModalType === "DELETE") {
+          setSelectedLeadId(null);
+          setSelectedLead(null);
+        } else {
+          loadLeadDetail(selectedLeadId);
+        }
+      }
+    } catch (e) {
+      toast((e as Error).message, true);
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
   // Bulk import configuration
   const importConfig: ImportConfig<BulkImportLeadItem> = useMemo(() => {
     return {
@@ -880,7 +992,7 @@ export default function CrmLeadsPage() {
         contactRole: "",
         enableCommission: false,
         commissionPercentage: 20,
-        contributors: [{ userId: user?.id || teamUsers[0]?.id || "", percentage: 20 }],
+        contributors: [{ userId: currentUserId || teamUsers[0]?.id || "", percentage: 20 }],
       });
       loadData();
       selectLead(created.id);
@@ -1148,13 +1260,26 @@ export default function CrmLeadsPage() {
       });
   }, [leads, activeStage, selectedDistrict, selectedAssignee, smartPreset, sortBy]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredLeads.length / pageSize));
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
+  const paginatedLeads = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredLeads.slice(start, start + pageSize);
+  }, [filteredLeads, currentPage, pageSize]);
+
   // Auto-select first lead on desktop / tablet (>= 768px) if none is currently selected
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (window.innerWidth >= 768 && !selectedLeadId && filteredLeads.length > 0) {
-      setSelectedLeadId(filteredLeads[0].id);
+    if (window.innerWidth >= 768 && !selectedLeadId && paginatedLeads.length > 0) {
+      setSelectedLeadId(paginatedLeads[0].id);
     }
-  }, [filteredLeads, selectedLeadId]);
+  }, [paginatedLeads, selectedLeadId]);
 
   const getSmartSuggestion = (lead: LeadDetail) => {
     const isWon = lead.status === "WON";
@@ -2984,12 +3109,17 @@ export default function CrmLeadsPage() {
                 className="w-full min-h-[44px] bg-gray-50 border border-gray-200 text-xs sm:text-sm font-semibold py-2.5 px-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 text-gray-800"
               >
                 <option value="ALL">All Assignees</option>
+                {currentUserId && (
+                  <option value={currentUserId}>⭐ Assigned to Me ({user?.name || "You"})</option>
+                )}
                 <option value="UNASSIGNED">⚠️ Unassigned Leads</option>
-                {teamUsers.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    👤 {u.name}
-                  </option>
-                ))}
+                {teamUsers
+                  .filter((u) => u.id !== currentUserId)
+                  .map((u) => (
+                    <option key={u.id} value={u.id}>
+                      👤 {u.name}
+                    </option>
+                  ))}
               </select>
             </div>
 
@@ -3156,16 +3286,40 @@ export default function CrmLeadsPage() {
               )}
             >
               <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 flex items-center justify-between shrink-0">
-                <span className="text-xs font-black text-gray-700 uppercase tracking-wider">
-                  {smartPreset !== "ALL"
-                    ? smartPreset.replace(/_/g, " ")
-                    : activeStage === "ALL"
-                    ? "All Leads"
-                    : activeStage.replace(/_/g, " ")}
-                </span>
-                <span className="text-xs font-bold bg-primary-100 text-primary-800 px-2.5 py-0.5 rounded-full border border-primary-200">
-                  {filteredLeads.length} records
-                </span>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <input
+                    type="checkbox"
+                    checked={paginatedLeads.length > 0 && paginatedLeads.every((l) => selectedLeadIds.has(l.id))}
+                    onChange={(e) => {
+                      const next = new Set(selectedLeadIds);
+                      if (e.target.checked) {
+                        paginatedLeads.forEach((l) => next.add(l.id));
+                      } else {
+                        paginatedLeads.forEach((l) => next.delete(l.id));
+                      }
+                      setSelectedLeadIds(next);
+                    }}
+                    className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500 border-gray-300 cursor-pointer"
+                    title="Select all on this page"
+                  />
+                  <span className="text-xs font-black text-gray-700 uppercase tracking-wider truncate">
+                    {smartPreset !== "ALL"
+                      ? smartPreset.replace(/_/g, " ")
+                      : activeStage === "ALL"
+                      ? "All Leads"
+                      : activeStage.replace(/_/g, " ")}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {selectedLeadIds.size > 0 && (
+                    <span className="text-xs font-black bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full border border-amber-200">
+                      {selectedLeadIds.size} selected
+                    </span>
+                  )}
+                  <span className="text-xs font-bold bg-primary-100 text-primary-800 px-2.5 py-0.5 rounded-full border border-primary-200">
+                    {filteredLeads.length} records
+                  </span>
+                </div>
               </div>
 
               <div className="flex-1 min-h-0 overflow-y-auto p-3.5 space-y-3 scrollbar-thin">
@@ -3182,8 +3336,9 @@ export default function CrmLeadsPage() {
                   </div>
                 )}
 
-                {filteredLeads.map((l) => {
+                {paginatedLeads.map((l) => {
                   const isSelected = selectedLeadId === l.id;
+                  const isChecked = selectedLeadIds.has(l.id);
                   const primaryC = l.contacts?.find((c) => c.isPrimary) || l.contacts?.[0];
                   const cleanPhone = primaryC?.phone?.replace(/[^0-9]/g, "") || "";
                   const waPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
@@ -3194,25 +3349,41 @@ export default function CrmLeadsPage() {
                       key={l.id}
                       onClick={() => selectLead(l.id)}
                       className={cn(
-                        "p-4 rounded-2xl border cursor-pointer transition-all space-y-3 select-none",
+                        "p-4 rounded-2xl border cursor-pointer transition-all space-y-3 select-none relative",
                         isSelected
                           ? "bg-primary-50/50 border-primary-500 shadow-sm ring-1 ring-primary-500/30"
+                          : isChecked
+                          ? "bg-amber-50/40 border-amber-300 hover:shadow-xs"
                           : "bg-white border-gray-200/90 hover:border-primary-300 hover:shadow-xs"
                       )}
                     >
-                      {/* Top Row: Name, Score & Location */}
-                      <div className="flex justify-between items-start gap-2">
-                        <div className="min-w-0">
-                          <h3 className="text-base font-bold text-gray-900 truncate leading-snug">
-                            {l.name}
-                          </h3>
+                      {/* Top Row: Checkbox, Name, Score & Location */}
+                      <div className="flex items-start gap-2.5">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => {
+                            const next = new Set(selectedLeadIds);
+                            if (e.target.checked) next.add(l.id);
+                            else next.delete(l.id);
+                            setSelectedLeadIds(next);
+                          }}
+                          className="mt-1 w-4 h-4 rounded text-primary-600 focus:ring-primary-500 border-gray-300 cursor-pointer shrink-0"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex justify-between items-start gap-2">
+                            <h3 className="text-base font-bold text-gray-900 truncate leading-snug">
+                              {l.name}
+                            </h3>
+                            {renderScoreBadge(l.score)}
+                          </div>
                           <p className="text-xs text-gray-500 mt-0.5 truncate">
                             📍 {l.place || "Place"}
                             {l.district ? `, ${l.district}` : ""} • {l.studentCount || 0} students
                             {l.createdBy ? ` • by ${l.createdBy}` : ""}
                           </p>
                         </div>
-                        {renderScoreBadge(l.score)}
                       </div>
 
                       {/* Middle: Contact Person & Quick 1-Tap Call/WA Buttons */}
@@ -3534,6 +3705,149 @@ export default function CrmLeadsPage() {
                   );
                 })}
               </div>
+
+              {/* Pagination Controls */}
+              {filteredLeads.length > 0 && (
+                <div className="p-3 border-t border-gray-100 bg-gray-50/90 flex flex-wrap items-center justify-between gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium">
+                    <span>Rows:</span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        setPageSize(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                      className="bg-white border border-gray-200 text-xs font-bold text-gray-700 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    >
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                    <span className="ml-1 font-semibold text-gray-600">
+                      {`${(currentPage - 1) * pageSize + 1}-${Math.min(currentPage * pageSize, filteredLeads.length)} of ${filteredLeads.length}`}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      disabled={currentPage <= 1}
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-100 disabled:opacity-30 disabled:pointer-events-none text-gray-700 transition-all active:scale-95"
+                      title="Previous page"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="text-xs font-bold text-gray-700 px-2">
+                      {currentPage} / {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={currentPage >= totalPages}
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-100 disabled:opacity-30 disabled:pointer-events-none text-gray-700 transition-all active:scale-95"
+                      title="Next page"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Floating / Docked Bulk Actions Bar */}
+              <AnimatePresence>
+                {selectedLeadIds.size > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 20 }}
+                    className="fixed bottom-4 left-4 right-4 md:absolute md:bottom-14 md:left-3 md:right-3 z-40 bg-gray-900/95 backdrop-blur-md text-white p-2.5 rounded-2xl shadow-2xl border border-gray-700 flex flex-wrap items-center justify-between gap-2"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-extrabold bg-primary-600 text-white px-2 py-0.5 rounded-full">
+                        {selectedLeadIds.size}
+                      </span>
+                      <span className="text-xs font-semibold text-gray-200 hidden sm:inline">selected</span>
+                      {selectedLeadIds.size < filteredLeads.length && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedLeadIds(new Set(filteredLeads.map((l) => l.id)));
+                          }}
+                          className="text-[11px] font-bold text-primary-400 hover:text-primary-300 underline underline-offset-2 ml-1"
+                        >
+                          All ({filteredLeads.length})
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1.5 ml-auto">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBulkSelectedUserId(teamUsers[0]?.id || "");
+                          setBulkModalType("ASSIGN");
+                        }}
+                        className="min-h-[32px] px-2.5 py-1 bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-bold rounded-xl transition-all flex items-center gap-1"
+                        title="Assign to sales representative"
+                      >
+                        <Users className="w-3.5 h-3.5 text-blue-400" />
+                        <span>Assign</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBulkSelectedStatus("FOLLOW_UP");
+                          setBulkRemarks("");
+                          setBulkModalType("STATUS");
+                        }}
+                        className="min-h-[32px] px-2.5 py-1 bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-bold rounded-xl transition-all flex items-center gap-1"
+                        title="Move to new pipeline stage"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Stage</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBulkFollowUpDate(formatLocalDateForInput(new Date()));
+                          setBulkRemarks("");
+                          setBulkModalType("FOLLOW_UP");
+                        }}
+                        className="min-h-[32px] px-2.5 py-1 bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-bold rounded-xl transition-all flex items-center gap-1"
+                        title="Schedule follow-up date"
+                      >
+                        <CalendarClock className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Follow-up</span>
+                      </button>
+
+                      {canDelete && (
+                        <button
+                          type="button"
+                          onClick={() => setBulkModalType("DELETE")}
+                          className="min-h-[32px] px-2.5 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 active:scale-95 text-xs font-bold rounded-xl transition-all flex items-center gap-1"
+                          title="Delete selected leads"
+                        >
+                          <Trash className="w-3.5 h-3.5 text-rose-400" />
+                          <span className="hidden sm:inline">Delete</span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedLeadIds(new Set())}
+                        className="p-1 hover:bg-white/10 text-gray-400 hover:text-white rounded-lg transition-all ml-1"
+                        title="Clear selection"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Right Column: Lead Detail (Desktop & Tablet Split View) */}
@@ -4743,6 +5057,223 @@ export default function CrmLeadsPage() {
                         <CheckCircle2 className="w-4 h-4" />
                       )}
                       <span>Confirm Assignment</span>
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Bulk Lead Action Modal */}
+        <AnimatePresence>
+          {bulkModalType && selectedLeadIds.size > 0 && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.5 }}
+                exit={{ opacity: 0 }}
+                onClick={() => !bulkActionLoading && setBulkModalType(null)}
+                className="fixed inset-0 bg-black backdrop-blur-xs"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="relative bg-white w-full max-w-lg rounded-3xl p-6 sm:p-7 shadow-2xl z-10 space-y-5"
+              >
+                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                  <div>
+                    <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
+                      {bulkModalType === "ASSIGN" && <Users className="w-5 h-5 text-blue-600" />}
+                      {bulkModalType === "STATUS" && <Sparkles className="w-5 h-5 text-amber-600" />}
+                      {bulkModalType === "FOLLOW_UP" && <CalendarClock className="w-5 h-5 text-emerald-600" />}
+                      {bulkModalType === "DELETE" && <Trash className="w-5 h-5 text-rose-600" />}
+                      <span>
+                        {bulkModalType === "ASSIGN" && "Bulk Assign Leads"}
+                        {bulkModalType === "STATUS" && "Bulk Move Pipeline Stage"}
+                        {bulkModalType === "FOLLOW_UP" && "Bulk Schedule Follow-up"}
+                        {bulkModalType === "DELETE" && "Bulk Delete Leads"}
+                      </span>
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Applying changes to <strong className="text-gray-800">{selectedLeadIds.size}</strong> selected lead(s)
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={bulkActionLoading}
+                    onClick={() => setBulkModalType(null)}
+                    className="p-1.5 text-gray-400 hover:bg-gray-100 rounded-xl disabled:opacity-50"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {/* ASSIGN MODE */}
+                  {bulkModalType === "ASSIGN" && (
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Select Sales Representative *
+                      </label>
+                      <select
+                        value={bulkSelectedUserId}
+                        onChange={(e) => setBulkSelectedUserId(e.target.value)}
+                        className="w-full min-h-[46px] bg-gray-50 border border-gray-200 rounded-xl px-3 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600"
+                      >
+                        <option value="">-- Choose Team Member --</option>
+                        {teamUsers.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.name} ({u.role?.replace(/_/g, " ")})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* STATUS MODE */}
+                  {bulkModalType === "STATUS" && (
+                    <div className="space-y-3">
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          Target Pipeline Stage *
+                        </label>
+                        <select
+                          value={bulkSelectedStatus}
+                          onChange={(e) => setBulkSelectedStatus(e.target.value)}
+                          className="w-full min-h-[46px] bg-gray-50 border border-gray-200 rounded-xl px-3 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600"
+                        >
+                          {LEAD_STATUSES.map((s) => (
+                            <option key={s} value={s}>
+                              {LEAD_STATUS_LABELS[s] || s}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          Activity Remarks / Notes (Optional)
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={bulkRemarks}
+                          onChange={(e) => setBulkRemarks(e.target.value)}
+                          placeholder="Reason or activity note (e.g., Campaign outreach, status migration)..."
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs sm:text-sm font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* FOLLOW_UP MODE */}
+                  {bulkModalType === "FOLLOW_UP" && (
+                    <div className="space-y-3">
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          Next Follow-up Date
+                        </label>
+                        <input
+                          type="date"
+                          value={bulkFollowUpDate}
+                          onChange={(e) => setBulkFollowUpDate(e.target.value)}
+                          className="w-full min-h-[46px] bg-gray-50 border border-gray-200 rounded-xl px-3 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600"
+                        />
+                      </div>
+
+                      {/* Quick Date Shortcuts */}
+                      <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                        {[
+                          { label: "Today", days: 0 },
+                          { label: "Tomorrow", days: 1 },
+                          { label: "+3 Days", days: 3 },
+                          { label: "+1 Week", days: 7 },
+                        ].map((q) => (
+                          <button
+                            key={q.label}
+                            type="button"
+                            onClick={() => {
+                              const d = new Date();
+                              d.setDate(d.getDate() + q.days);
+                              setBulkFollowUpDate(formatLocalDateForInput(d));
+                            }}
+                            className="px-2.5 py-1 text-xs font-bold rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 transition-all active:scale-95"
+                          >
+                            {q.label}
+                          </button>
+                        ))}
+                        {bulkFollowUpDate && (
+                          <button
+                            type="button"
+                            onClick={() => setBulkFollowUpDate("")}
+                            className="px-2.5 py-1 text-xs font-bold rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 transition-all ml-auto active:scale-95"
+                          >
+                            Clear Date
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          Follow-up Agenda / Remarks (Optional)
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={bulkRemarks}
+                          onChange={(e) => setBulkRemarks(e.target.value)}
+                          placeholder="Discussion agenda, questions to ask, or note..."
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs sm:text-sm font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* DELETE MODE */}
+                  {bulkModalType === "DELETE" && (
+                    <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 space-y-2 text-rose-900">
+                      <div className="flex items-center gap-2 font-bold text-sm text-rose-700">
+                        <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+                        <span>Irreversible Danger Action</span>
+                      </div>
+                      <p className="text-xs text-rose-800 leading-relaxed">
+                        Are you sure you want to permanently delete these <strong>{selectedLeadIds.size}</strong> leads? All associated activities, follow-up timeline entries, and contact info will be erased immediately.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-3 pt-3">
+                    <button
+                      type="button"
+                      disabled={bulkActionLoading}
+                      onClick={() => setBulkModalType(null)}
+                      className="min-h-[44px] flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs sm:text-sm rounded-xl transition-all disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={bulkActionLoading || (bulkModalType === "ASSIGN" && !bulkSelectedUserId)}
+                      onClick={handleExecuteBulkAction}
+                      className={cn(
+                        "min-h-[44px] flex-1 text-white font-bold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs active:scale-[0.98] disabled:opacity-50",
+                        bulkModalType === "DELETE"
+                          ? "bg-rose-600 hover:bg-rose-700"
+                          : "bg-primary-600 hover:bg-primary-700"
+                      )}
+                    >
+                      {bulkActionLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : bulkModalType === "DELETE" ? (
+                        <Trash className="w-4 h-4" />
+                      ) : (
+                        <CheckCircle2 className="w-4 h-4" />
+                      )}
+                      <span>
+                        {bulkModalType === "DELETE"
+                          ? `Delete ${selectedLeadIds.size} Leads`
+                          : `Apply to ${selectedLeadIds.size} Leads`}
+                      </span>
                     </button>
                   </div>
                 </div>

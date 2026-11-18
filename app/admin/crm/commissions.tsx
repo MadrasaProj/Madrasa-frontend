@@ -115,25 +115,28 @@ export default function CommissionsDashboard() {
     user?.actorType ?? ""
   );
 
-  // Filtered & Paginated records
-  const filteredRecords = records.filter((r) => {
+  // Filtered & Paginated records (search context-aware)
+  const contextRecords = records.filter((r) => {
     const q = searchQuery.toLowerCase().trim();
-    const matchesSearch =
+    return (
       !q ||
       r.client.name.toLowerCase().includes(q) ||
       (r.lead?.name && r.lead.name.toLowerCase().includes(q)) ||
-      (r.user?.name && r.user.name.toLowerCase().includes(q));
-    const matchesStatus = statusFilter === "ALL" || r.paymentStatus === statusFilter;
-    return matchesSearch && matchesStatus;
+      (r.user?.name && r.user.name.toLowerCase().includes(q))
+    );
   });
+
+  const filteredRecords = contextRecords.filter(
+    (r) => statusFilter === "ALL" || r.paymentStatus === statusFilter
+  );
 
   const totalPages = Math.ceil(filteredRecords.length / pageSize) || 1;
   const paginatedRecords = filteredRecords.slice((page - 1) * pageSize, page * pageSize);
 
   const filterCounts = {
-    ALL: records.length,
-    UNPAID: records.filter((r) => r.paymentStatus === "UNPAID").length,
-    PAID: records.filter((r) => r.paymentStatus === "PAID").length,
+    ALL: contextRecords.length,
+    UNPAID: contextRecords.filter((r) => r.paymentStatus === "UNPAID").length,
+    PAID: contextRecords.filter((r) => r.paymentStatus === "PAID").length,
   };
 
   const fmtCurrency = (val: number | string) => {

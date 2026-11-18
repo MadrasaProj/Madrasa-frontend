@@ -270,6 +270,19 @@ export function bulkImportLeads(
   }>("POST", "/crm/leads/bulk-import", { leads }, token);
 }
 
+export interface BulkLeadActionPayload {
+  leadIds: string[];
+  action: "ASSIGN" | "STATUS" | "FOLLOW_UP" | "DELETE";
+  contributors?: Array<{ userId: string; percentage?: number; role?: string; notes?: string }>;
+  status?: string;
+  followUpDate?: string | null;
+  remarks?: string;
+}
+
+export function bulkLeadAction(payload: BulkLeadActionPayload, token: string) {
+  return mutateJson<{ success: boolean; count: number }>("POST", "/crm/leads/bulk-action", payload, token);
+}
+
 export function deleteLead(id: string, token: string) {
   return mutateJson<{ success: boolean }>("DELETE", `/crm/leads/${id}`, null, token);
 }
