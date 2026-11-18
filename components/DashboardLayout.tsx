@@ -549,7 +549,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </div>
         </header> */}
 
-        <main className="w-full max-w-3xl lg:max-w-7xl mx-auto *:p-4 pb-28 lg:pb-8 flex-1">{children}</main>
+        <main className="w-full max-w-7xl 2xl:max-w-[1720px] mx-auto *:p-3 sm:*:p-4 lg:*:p-6 pb-28 lg:pb-8 flex-1 transition-all">{children}</main>
       </div>
     </div>
       <BottomNav onOpenMenu={() => setIsMobileSidebarOpen(true)} />

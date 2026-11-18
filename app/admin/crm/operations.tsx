@@ -198,7 +198,7 @@ export default function OperationsDashboard() {
 
         {/* ── Key Metrics Grid ── */}
         <section aria-label="Key CRM Metrics">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             {statCards.map((c) => {
               const Icon = c.icon;
               return (
@@ -223,7 +223,7 @@ export default function OperationsDashboard() {
           </div>
 
           {showFinancials && (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-3 sm:mt-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mt-3 sm:mt-4">
               {financialCards.map((c) => {
                 const Icon = c.icon;
                 return (

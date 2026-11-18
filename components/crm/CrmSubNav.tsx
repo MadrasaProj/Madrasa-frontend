@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Briefcase,
@@ -7,7 +8,7 @@ import {
   RefreshCw,
   MapPin,
   Receipt,
-  Sparkles,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -71,16 +72,32 @@ interface CrmSubNavProps {
 export function CrmSubNav({ className }: CrmSubNavProps) {
   const location = useLocation();
   const currentPath = location.pathname;
+  const activeTabRef = useRef<HTMLAnchorElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll active module tab into view on mobile
+  useEffect(() => {
+    if (activeTabRef.current && containerRef.current) {
+      activeTabRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "center",
+      });
+    }
+  }, [currentPath]);
 
   return (
     <nav
       aria-label="CRM Modules Navigation"
       className={cn(
-        "bg-white/95 backdrop-blur-md border border-gray-200/80 rounded-2xl p-1.5 shadow-xs mb-6",
+        "relative bg-white/95 backdrop-blur-md border border-gray-200/90 rounded-2xl p-1.5 shadow-xs mb-5 select-none",
         className
       )}
     >
-      <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-0.5 px-0.5 -mx-0.5">
+      <div
+        ref={containerRef}
+        className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto scroll-smooth scrollbar-none py-0.5 px-0.5 -mx-0.5 touch-pan-x"
+      >
         {CRM_NAV_ITEMS.map((item) => {
           const isActive =
             currentPath === item.href ||
@@ -90,18 +107,19 @@ export function CrmSubNav({ className }: CrmSubNavProps) {
           return (
             <Link
               key={item.href}
+              ref={isActive ? activeTabRef : undefined}
               to={item.href}
               className={cn(
-                "group shrink-0 inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-150 select-none",
-                "min-h-[42px] touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
+                "group shrink-0 inline-flex items-center gap-2 px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-150",
+                "min-h-[40px] sm:min-h-[42px] touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
                 isActive
-                  ? "bg-emerald-600 text-white shadow-sm font-extrabold"
+                  ? "bg-emerald-600 text-white shadow-xs font-black ring-1 ring-emerald-700/20"
                   : "text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 active:bg-gray-200/60"
               )}
             >
               <Icon
                 className={cn(
-                  "w-4 h-4 shrink-0 transition-transform group-hover:scale-110",
+                  "w-4 h-4 shrink-0 transition-transform duration-150 group-hover:scale-110",
                   isActive ? "text-white" : "text-emerald-600"
                 )}
               />

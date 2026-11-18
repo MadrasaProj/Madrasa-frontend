@@ -513,7 +513,7 @@ export default function SupportDashboard() {
                 animate={{ x: 0 }}
                 exit={{ x: "100%" }}
                 transition={{ type: "spring", damping: 28, stiffness: 260 }}
-                className="relative bg-white w-full max-w-lg h-full max-h-screen overflow-y-auto p-6 sm:p-8 space-y-6 shadow-2xl z-10 flex flex-col"
+                className="relative bg-white w-full max-w-lg h-full max-h-screen overflow-y-auto p-4 sm:p-7 space-y-5 sm:space-y-6 shadow-2xl z-10 flex flex-col"
               >
                 <div className="flex items-center justify-between border-b border-gray-100 pb-4">
                   <div className="space-y-1">

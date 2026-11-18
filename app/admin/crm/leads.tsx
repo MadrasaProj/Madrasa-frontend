@@ -1568,10 +1568,10 @@ export default function CrmLeadsPage() {
     return filteredLeads.slice(start, start + pageSize);
   }, [filteredLeads, currentPage, pageSize]);
 
-  // Auto-select first lead on desktop / tablet (>= 768px) if none is currently selected
+  // Auto-select first lead on desktop (>= 1024px) if none is currently selected
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (window.innerWidth >= 768 && !selectedLeadId && paginatedLeads.length > 0) {
+    if (window.innerWidth >= 1024 && !selectedLeadId && paginatedLeads.length > 0) {
       setSelectedLeadId(paginatedLeads[0].id);
     }
   }, [paginatedLeads, selectedLeadId]);
@@ -2170,15 +2170,16 @@ export default function CrmLeadsPage() {
             type="button"
             onClick={() => setActiveLeadTab("activity")}
             className={cn(
-              "flex-1 min-h-[44px] py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-2",
+              "flex-1 min-h-[44px] py-2.5 px-2 sm:px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 sm:gap-2",
               activeLeadTab === "activity"
                 ? "bg-white text-gray-900 shadow-xs font-black border border-gray-200"
                 : "text-gray-600 hover:text-gray-900"
             )}
           >
-            <Clock className="w-4 h-4 text-blue-600" />
-            <span>Activity &amp; Notes</span>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 font-bold">
+            <Clock className="w-4 h-4 text-blue-600 shrink-0" />
+            <span className="hidden sm:inline">Activity &amp; Notes</span>
+            <span className="sm:hidden text-xs font-bold">Activity</span>
+            <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-800 font-bold shrink-0">
               {lead.timeline?.length ?? 0}
             </span>
           </button>
@@ -2187,15 +2188,16 @@ export default function CrmLeadsPage() {
             type="button"
             onClick={() => setActiveLeadTab("details")}
             className={cn(
-              "flex-1 min-h-[44px] py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-2",
+              "flex-1 min-h-[44px] py-2.5 px-2 sm:px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 sm:gap-2",
               activeLeadTab === "details"
                 ? "bg-white text-gray-900 shadow-xs font-black border border-gray-200"
                 : "text-gray-600 hover:text-gray-900"
             )}
           >
-            <Building2 className="w-4 h-4 text-emerald-600" />
-            <span>Institution Profile</span>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-bold">
+            <Building2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span className="hidden sm:inline">Institution Profile</span>
+            <span className="sm:hidden text-xs font-bold">Profile</span>
+            <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-bold shrink-0">
               {lead.contacts?.length ?? 0}
             </span>
           </button>
@@ -2204,14 +2206,15 @@ export default function CrmLeadsPage() {
             type="button"
             onClick={() => setActiveLeadTab("pipeline")}
             className={cn(
-              "flex-1 min-h-[44px] py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-2",
+              "flex-1 min-h-[44px] py-2.5 px-2 sm:px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 sm:gap-2",
               activeLeadTab === "pipeline"
                 ? "bg-white text-gray-900 shadow-xs font-black border border-gray-200"
                 : "text-gray-600 hover:text-gray-900"
             )}
           >
-            <TrendingUp className="w-4 h-4 text-violet-600" />
-            <span>Pipeline &amp; Setup</span>
+            <TrendingUp className="w-4 h-4 text-violet-600 shrink-0" />
+            <span className="hidden sm:inline">Pipeline &amp; Setup</span>
+            <span className="sm:hidden text-xs font-bold">Pipeline</span>
           </button>
         </div>
 
@@ -3434,8 +3437,8 @@ export default function CrmLeadsPage() {
             </div>
           </div>
 
-          {/* Quick Presets Segmented Bar (Thumb-friendly 44px touch targets on mobile, wrapping on desktop) */}
-          <div className="flex items-center gap-2 overflow-x-auto lg:overflow-visible scrollbar-none pt-1 pb-0.5 flex-nowrap lg:flex-wrap">
+          {/* Quick Presets Segmented Bar (Smooth scrolling on mobile & desktop) */}
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pt-1 pb-0.5 flex-nowrap touch-pan-x">
             <span className="text-xs uppercase font-black tracking-wider text-gray-400 shrink-0 flex items-center gap-1.5 mr-1">
               <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Presets:
             </span>
@@ -3457,7 +3460,7 @@ export default function CrmLeadsPage() {
                     setSmartPreset((prev) => (prev === pill.key ? "ALL" : (pill.key as any)));
                   }}
                   className={cn(
-                    "min-h-[40px] shrink-0 px-3.5 py-2 text-xs font-bold rounded-xl border transition-all flex items-center gap-2",
+                    "min-h-[38px] shrink-0 px-3.5 py-1.5 text-xs font-bold rounded-xl border transition-all flex items-center gap-2",
                     isSelected
                       ? cn(pill.activeColor, "shadow-2xs scale-[1.02]")
                       : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
@@ -3503,7 +3506,7 @@ export default function CrmLeadsPage() {
           </div>
 
           {/* Pipeline Stages Dedicated Filter Bar (Sales Team Primary Pipeline View) */}
-          <div className="flex items-center gap-1.5 overflow-x-auto lg:overflow-visible scrollbar-none pt-2.5 border-t border-gray-100 flex-nowrap lg:flex-wrap">
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-2.5 border-t border-gray-100 flex-nowrap touch-pan-x">
             <span className="text-xs uppercase font-black tracking-wider text-gray-400 shrink-0 flex items-center gap-1.5 mr-1">
               <TrendingUp className="w-3.5 h-3.5 text-emerald-600" /> Stages:
             </span>
@@ -3565,17 +3568,20 @@ export default function CrmLeadsPage() {
 
         {/* Loading Indicator */}
         {loading && (
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-12"><SkeletonList count={5} className="md:col-span-5" /><DetailSkeleton className="hidden md:col-span-7 md:block" /></div>
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+            <SkeletonList count={5} className="lg:col-span-5 xl:col-span-4" />
+            <DetailSkeleton className="hidden lg:col-span-7 xl:col-span-8 lg:block" />
+          </div>
         )}
 
         {/* ── Split Workspace (List + Detail) ── */}
         {!loading && (
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
             {/* Left Column: Lead List Cards */}
             <div
               className={cn(
-                "md:col-span-5 lg:col-span-5 xl:col-span-4 relative flex flex-col bg-white border border-gray-200/90 rounded-3xl shadow-xs overflow-hidden",
-                "md:sticky md:top-6 md:max-h-[calc(100vh-2.5rem)]"
+                "w-full lg:col-span-5 xl:col-span-4 2xl:col-span-4 relative flex flex-col bg-white border border-gray-200/90 rounded-3xl shadow-xs overflow-hidden",
+                "lg:sticky lg:top-6 lg:max-h-[calc(100vh-2.5rem)]"
               )}
             >
               <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 flex items-center justify-between shrink-0">
@@ -3700,22 +3706,22 @@ export default function CrmLeadsPage() {
                                 <a
                                   href={`tel:${primaryC.phone}`}
                                   onClick={(e) => e.stopPropagation()}
-                                  className="min-h-[38px] px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1 border border-blue-200 active:scale-95"
+                                  className="min-h-[36px] px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1 border border-blue-200 active:scale-95"
                                   title={`Call: ${primaryC.phone}`}
                                 >
                                   <Phone className="w-3.5 h-3.5" />
-                                  <span className="hidden sm:inline">Call</span>
+                                  <span>Call</span>
                                 </a>
                                 <a
                                   href={`https://wa.me/${waPhone}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   onClick={(e) => e.stopPropagation()}
-                                  className="min-h-[38px] px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1 border border-emerald-200 active:scale-95"
+                                  className="min-h-[36px] px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1 border border-emerald-200 active:scale-95"
                                   title="WhatsApp chat"
                                 >
                                   <MessageSquare className="w-3.5 h-3.5" />
-                                  <span className="hidden sm:inline">WA</span>
+                                  <span>WA</span>
                                 </a>
                               </div>
                             )}
@@ -3797,27 +3803,27 @@ export default function CrmLeadsPage() {
                                 setCardStatusPickerId(l.id);
                               }}
                               className={cn(
-                                "min-h-[32px] px-2.5 py-1 rounded-xl border text-[11px] font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1 active:scale-95",
+                                "min-h-[30px] px-2.5 py-1 rounded-xl border text-[11px] font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1 active:scale-95",
                                 STATUS_COLORS[l.status] || "bg-gray-100 text-gray-700 border-gray-200"
                               )}
                               title="Change pipeline stage"
                             >
-                              <span>{LEAD_STATUS_LABELS[l.status] ?? l.status}</span>
-                              <ChevronDown className="w-3 h-3 opacity-60 text-current" />
+                              <span className="truncate max-w-[110px]">{LEAD_STATUS_LABELS[l.status] ?? l.status}</span>
+                              <ChevronDown className="w-3 h-3 opacity-60 text-current shrink-0" />
                             </button>
                           </div>
 
                           {/* Assignee Badge */}
                           {l.contributors && l.contributors.length > 0 ? (
                             <span
-                              className="min-h-[32px] px-2 py-1 rounded-xl bg-gray-100 text-gray-700 border border-gray-200/80 text-[11px] font-semibold flex items-center gap-1 max-w-[120px] shrink-0"
+                              className="min-h-[30px] px-2 py-0.5 rounded-xl bg-gray-100 text-gray-700 border border-gray-200/80 text-[11px] font-semibold flex items-center gap-1 max-w-[110px] shrink-0"
                               title={`Assigned to: ${l.contributors.map((c) => c.user?.name).filter(Boolean).join(", ")}`}
                             >
                               <Users className="w-3 h-3 text-gray-500 shrink-0" />
                               <span className="truncate">{l.contributors[0]?.user?.name || "Assigned"}</span>
                             </span>
                           ) : (
-                            <span className="min-h-[32px] px-2 py-1 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold flex items-center gap-0.5 shrink-0">
+                            <span className="min-h-[30px] px-2 py-0.5 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold flex items-center gap-0.5 shrink-0">
                               ⚠️ Unassigned
                             </span>
                           )}
@@ -3847,7 +3853,7 @@ export default function CrmLeadsPage() {
                               {fuStatus.label}
                             </span>
                           ) : (
-                            <span className="text-xs text-gray-400 italic">No date set</span>
+                            <span className="text-[11px] text-gray-400 italic">No date</span>
                           )}
 
                           <button
@@ -3863,10 +3869,10 @@ export default function CrmLeadsPage() {
                                 setCardRemarks("");
                               }
                             }}
-                            className="min-h-[32px] px-2.5 py-1 text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg flex items-center gap-1 transition-all active:scale-95"
+                            className="min-h-[30px] p-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg flex items-center gap-1 transition-all active:scale-95"
                             title="Schedule next follow-up directly"
                           >
-                            <CalendarClock className="w-3.5 h-3.5" />
+                            <CalendarClock className="w-3.5 h-3.5 text-emerald-600" />
                             <span>{l.nextFollowUpDate ? "Change" : "+ Date"}</span>
                           </button>
                         </div>
@@ -4069,7 +4075,7 @@ export default function CrmLeadsPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 20 }}
-                    className="fixed bottom-4 left-4 right-4 md:absolute md:bottom-14 md:left-3 md:right-3 z-40 bg-gray-900/95 backdrop-blur-md text-white p-2.5 rounded-2xl shadow-2xl border border-gray-700 flex flex-wrap items-center justify-between gap-2"
+                    className="fixed bottom-20 left-3 right-3 lg:absolute lg:bottom-14 lg:left-3 lg:right-3 z-40 bg-gray-900/95 backdrop-blur-md text-white p-2.5 sm:p-3 rounded-2xl shadow-2xl border border-gray-700 flex flex-wrap items-center justify-between gap-2"
                   >
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-extrabold bg-primary-600 text-white px-2 py-0.5 rounded-full">
@@ -4157,11 +4163,11 @@ export default function CrmLeadsPage() {
               </AnimatePresence>
             </div>
 
-            {/* Right Column: Lead Detail (Desktop & Tablet Split View) */}
+            {/* Right Column: Lead Detail (Desktop Split View) */}
             <div
               className={cn(
-                "hidden md:flex md:col-span-7 lg:col-span-7 xl:col-span-8 relative flex-col bg-white border border-gray-200/90 rounded-3xl shadow-xs overflow-hidden",
-                "md:sticky md:top-6 md:max-h-[calc(100vh-2.5rem)]"
+                "hidden lg:flex lg:col-span-7 xl:col-span-8 2xl:col-span-8 relative flex-col bg-white border border-gray-200/90 rounded-3xl shadow-xs overflow-hidden",
+                "lg:sticky lg:top-6 lg:max-h-[calc(100vh-2.5rem)]"
               )}
             >
               {selectedLeadId && detailLoading && (
@@ -4205,23 +4211,23 @@ export default function CrmLeadsPage() {
           </div>
         )}
 
-        {/* ── Mobile Full-Screen Detail Sheet (Mobile-First Experience!) ── */}
+        {/* ── Mobile & Tablet Full-Screen Detail Sheet (Clean & Non-overlapping) ── */}
         <AnimatePresence>
           {showMobileDetail && selectedLeadId && (
-            <div className="fixed inset-0 z-50 md:hidden flex flex-col bg-slate-900/60 backdrop-blur-xs">
+            <div className="fixed inset-0 z-50 lg:hidden flex flex-col bg-slate-900/60 backdrop-blur-xs">
               <motion.div
                 initial={{ y: "100%" }}
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", damping: 30, stiffness: 300 }}
-                className="bg-white flex-1 mt-10 rounded-t-3xl overflow-hidden flex flex-col shadow-2xl relative"
+                className="bg-white flex-1 mt-6 sm:mt-10 rounded-t-3xl overflow-hidden flex flex-col shadow-2xl relative"
               >
                 {/* Mobile Header Bar */}
-                <div className="px-5 py-4 border-b border-gray-200/90 flex items-center justify-between shrink-0 bg-white">
+                <div className="px-4 sm:px-5 py-3.5 sm:py-4 border-b border-gray-200/90 flex items-center justify-between shrink-0 bg-white">
                   <button
                     type="button"
                     onClick={closeLead}
-                    className="min-h-[44px] flex items-center gap-1.5 text-xs font-bold text-gray-700 hover:text-gray-900 px-2 rounded-xl"
+                    className="min-h-[44px] flex items-center gap-1.5 text-xs sm:text-sm font-bold text-gray-700 hover:text-gray-900 px-2 rounded-xl"
                   >
                     <ArrowLeft className="w-4 h-4" />
                     <span>Back to Leads</span>
@@ -4231,7 +4237,7 @@ export default function CrmLeadsPage() {
                     <button
                       type="button"
                       onClick={() => handleStartEditLead(selectedLead)}
-                      className="min-h-[40px] px-3 py-1 text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 rounded-xl flex items-center gap-1.5"
+                      className="min-h-[40px] px-3.5 py-1 text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 rounded-xl flex items-center gap-1.5 active:scale-95 transition-all"
                     >
                       <Pencil className="w-3.5 h-3.5 text-blue-600" />
                       <span>Edit</span>
@@ -4240,7 +4246,7 @@ export default function CrmLeadsPage() {
                 </div>
 
                 {/* Mobile Body Content */}
-                <div className="flex-1 overflow-y-auto p-4 pb-28">
+                <div className="flex-1 overflow-y-auto p-3 sm:p-5 pb-4 overscroll-contain scrollbar-thin">
                   {detailLoading ? (
                     <DetailSkeleton />
                   ) : (
@@ -4248,9 +4254,9 @@ export default function CrmLeadsPage() {
                   )}
                 </div>
 
-                {/* Mobile Sticky Bottom Action Bar (Native App Ergonomics!) */}
+                {/* Mobile Bottom Action Bar (Docked naturally inside sheet, above BottomNav) */}
                 {selectedLead && (
-                  <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 p-3 px-4 flex items-center gap-2 z-20 shadow-lg">
+                  <div className="shrink-0 bg-white/95 backdrop-blur-md border-t border-gray-200 p-3 px-4 flex items-center gap-2 shadow-lg z-30 pb-safe">
                     {(() => {
                       const pContact = selectedLead.contacts?.find((c) => c.isPrimary) || selectedLead.contacts?.[0];
                       const clPhone = pContact?.phone?.replace(/[^0-9]/g, "") || "";
@@ -4262,7 +4268,7 @@ export default function CrmLeadsPage() {
                             <>
                               <a
                                 href={`tel:${pContact.phone}`}
-                                className="min-h-[48px] flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm rounded-xl flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
+                                className="min-h-[44px] flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm rounded-xl flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
                               >
                                 <Phone className="w-4 h-4" />
                                 <span>Call Now</span>
@@ -4271,7 +4277,7 @@ export default function CrmLeadsPage() {
                                 href={`https://wa.me/${wPhone}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="min-h-[48px] flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
+                                className="min-h-[44px] flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
                               >
                                 <MessageSquare className="w-4 h-4" />
                                 <span>WhatsApp</span>
@@ -4284,7 +4290,7 @@ export default function CrmLeadsPage() {
                               setActiveLeadTab("activity");
                               setActiveSection("followup");
                             }}
-                            className="min-h-[48px] px-4 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs rounded-xl flex items-center justify-center gap-1"
+                            className="min-h-[44px] px-4 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs rounded-xl flex items-center justify-center gap-1"
                           >
                             <Clock className="w-4 h-4" />
                             <span>Log</span>
@@ -4315,7 +4321,7 @@ export default function CrmLeadsPage() {
                 animate={{ x: 0 }}
                 exit={{ x: "100%" }}
                 transition={{ type: "spring", damping: 28, stiffness: 260 }}
-                className="relative bg-white w-full max-w-lg h-full max-h-screen overflow-y-auto p-6 sm:p-8 space-y-6 shadow-2xl z-10 flex flex-col"
+                className="relative bg-white w-full max-w-lg h-full max-h-screen overflow-y-auto p-4 sm:p-7 space-y-5 sm:space-y-6 shadow-2xl z-10 flex flex-col"
               >
                 <div className="flex items-center justify-between border-b border-gray-100 pb-4">
                   <div>
@@ -4769,7 +4775,7 @@ export default function CrmLeadsPage() {
                     )}
                   </div>
 
-                  <div className="pt-2">
+                  <div className="sticky bottom-0 bg-white/95 backdrop-blur-md pt-3 pb-2 border-t border-gray-100 mt-4 z-10">
                     <button
                       type="submit"
                       disabled={actionLoading}
@@ -4801,7 +4807,7 @@ export default function CrmLeadsPage() {
                 animate={{ x: 0 }}
                 exit={{ x: "100%" }}
                 transition={{ type: "spring", damping: 28, stiffness: 260 }}
-                className="relative bg-white w-full max-w-lg h-full max-h-screen overflow-y-auto p-6 sm:p-8 space-y-6 shadow-2xl z-10 flex flex-col"
+                className="relative bg-white w-full max-w-lg h-full max-h-screen overflow-y-auto p-4 sm:p-7 space-y-5 sm:space-y-6 shadow-2xl z-10 flex flex-col"
               >
                 <div className="flex items-center justify-between border-b border-gray-100 pb-4">
                   <div>
@@ -5257,7 +5263,7 @@ export default function CrmLeadsPage() {
                     )}
                   </div>
 
-                  <div className="pt-2 flex items-center gap-3">
+                  <div className="sticky bottom-0 bg-white/95 backdrop-blur-md pt-3 pb-2 border-t border-gray-100 mt-4 z-10 flex items-center gap-3">
                     <button
                       type="button"
                       onClick={() => setShowEditDrawer(false)}
