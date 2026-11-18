@@ -402,7 +402,7 @@ export default function CrmLeadsPage() {
   // Detail tab
   const [activeLeadTab, setActiveLeadTab] = useState<"activity" | "details" | "pipeline">("activity");
 
-  // Close card popovers on click outside or Escape (no aggressive focusin listener so date/remarks inputs remain stable)
+  // Close card popovers on click outside or Escape (exempts date picker dialogs and form elements)
   useEffect(() => {
     if (!cardStatusPickerId && !cardFollowUpPickerId) return;
 
@@ -415,10 +415,22 @@ export default function CrmLeadsPage() {
 
     const handlePointerDown = (e: MouseEvent | TouchEvent) => {
       const target = e.target as HTMLElement | null;
-      if (!target?.closest("[data-popover-container]")) {
-        setCardStatusPickerId(null);
-        setCardFollowUpPickerId(null);
+      if (!target) return;
+      if (
+        target.closest("[data-popover-container]") ||
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.tagName === "SELECT" ||
+        target.tagName === "BUTTON" ||
+        target.closest("input") ||
+        target.closest("textarea") ||
+        target.closest("select") ||
+        target.closest("button")
+      ) {
+        return;
       }
+      setCardStatusPickerId(null);
+      setCardFollowUpPickerId(null);
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -1212,6 +1224,43 @@ export default function CrmLeadsPage() {
     return Array.from(set).sort();
   }, [districts, leads]);
 
+  // Base filtered leads: applies district, assignee, and text search (without preset or stage constraints)
+  const baseFilteredLeads = useMemo(() => {
+    return leads.filter((l) => {
+      if (selectedDistrict !== "ALL") {
+        const dName = l.district || "";
+        if (dName.toLowerCase() !== selectedDistrict.toLowerCase()) return false;
+      }
+
+      if (selectedAssignee === "UNASSIGNED") {
+        if (l.contributors && l.contributors.length > 0) return false;
+      } else if (selectedAssignee === "ME") {
+        const isMyLead = l.contributors && l.contributors.some((c) => {
+          if (effectiveUserId && (c.userId === effectiveUserId || c.user?.id === effectiveUserId)) return true;
+          if (user?.id && (c.userId === user.id || c.user?.id === user.id)) return true;
+          if (user?.name && c.user?.name && c.user.name.trim().toLowerCase() === user.name.trim().toLowerCase()) return true;
+          return false;
+        });
+        if (!isMyLead) return false;
+      } else if (selectedAssignee !== "ALL") {
+        if (!l.contributors || !l.contributors.some((c) => c.userId === selectedAssignee || c.user?.id === selectedAssignee)) return false;
+      }
+
+      if (debouncedSearch.trim()) {
+        const term = debouncedSearch.toLowerCase().trim();
+        const nameMatch = l.name?.toLowerCase().includes(term);
+        const placeMatch = l.place?.toLowerCase().includes(term);
+        const distMatch = l.district?.toLowerCase().includes(term);
+        const contactMatch = l.contacts?.some(
+          (c) => c.name?.toLowerCase().includes(term) || c.phone?.includes(term)
+        );
+        if (!nameMatch && !placeMatch && !distMatch && !contactMatch) return false;
+      }
+
+      return true;
+    });
+  }, [leads, selectedDistrict, selectedAssignee, debouncedSearch, effectiveUserId, user]);
+
   const smartCounts = useMemo(() => {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
@@ -1222,7 +1271,7 @@ export default function CrmLeadsPage() {
     let activeTrials = 0;
     let noFollowup = 0;
 
-    for (const l of leads) {
+    for (const l of baseFilteredLeads) {
       if (l.score === "HOT" || l.score === "WARM") hotWarm++;
       if (l.status === "TRIAL_SHARED" || l.status === "TRIAL_CREATED" || l.status.includes("TRIAL"))
         activeTrials++;
@@ -1233,29 +1282,28 @@ export default function CrmLeadsPage() {
         } else {
           const d = new Date(l.nextFollowUpDate);
           d.setHours(0, 0, 0, 0);
-          const diff = Math.round((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-          if (diff < 0) overdue++;
-          else if (diff === 0) today++;
+          if (d.getTime() < now.getTime()) overdue++;
+          else if (d.getTime() === now.getTime()) today++;
         }
       }
     }
 
     return {
-      all: leads.length,
+      all: baseFilteredLeads.length,
       overdue,
       today,
       hotWarm,
       activeTrials,
       noFollowup,
     };
-  }, [leads]);
+  }, [baseFilteredLeads]);
 
   const stageCounts = useMemo(() => {
-    const counts: Record<string, number> = { ALL: leads.length };
+    const counts: Record<string, number> = { ALL: baseFilteredLeads.length };
     LEAD_STATUSES.forEach((s) => {
       counts[s] = 0;
     });
-    leads.forEach((l) => {
+    baseFilteredLeads.forEach((l) => {
       if (counts[l.status] !== undefined) {
         counts[l.status]++;
       } else {
@@ -1263,34 +1311,15 @@ export default function CrmLeadsPage() {
       }
     });
     return counts;
-  }, [leads]);
+  }, [baseFilteredLeads]);
 
   const filteredLeads = useMemo(() => {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
 
-    return leads
+    return baseFilteredLeads
       .filter((l) => {
         if (activeStage !== "ALL" && l.status !== activeStage) return false;
-
-        if (selectedDistrict !== "ALL") {
-          const dName = l.district || "";
-          if (dName.toLowerCase() !== selectedDistrict.toLowerCase()) return false;
-        }
-
-        if (selectedAssignee === "UNASSIGNED") {
-          if (l.contributors && l.contributors.length > 0) return false;
-        } else if (selectedAssignee === "ME") {
-          const isMyLead = l.contributors && l.contributors.some((c) => {
-            if (effectiveUserId && (c.userId === effectiveUserId || c.user?.id === effectiveUserId)) return true;
-            if (user?.id && (c.userId === user.id || c.user?.id === user.id)) return true;
-            if (user?.name && c.user?.name && c.user.name.trim().toLowerCase() === user.name.trim().toLowerCase()) return true;
-            return false;
-          });
-          if (!isMyLead) return false;
-        } else if (selectedAssignee !== "ALL") {
-          if (!l.contributors || !l.contributors.some((c) => c.userId === selectedAssignee || c.user?.id === selectedAssignee)) return false;
-        }
 
         if (smartPreset === "OVERDUE") {
           if (l.status === "WON" || l.status === "LOST" || !l.nextFollowUpDate) return false;
@@ -3008,22 +3037,22 @@ export default function CrmLeadsPage() {
   return (
     <DashboardLayout>
       <div>
-        {/* Mobile/Tablet Native Action Sheet for Stage Change (True native mobile app feel) */}
+        {/* Responsive Mobile Sheet & Desktop Dialog for Stage Change */}
         <AnimatePresence>
           {cardStatusPickerId && (
             <div
-              className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/60 backdrop-blur-xs md:hidden"
+              className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-xs p-0 sm:p-4"
               onClick={() => setCardStatusPickerId(null)}
             >
               <motion.div
-                initial={{ y: "100%" }}
-                animate={{ y: 0 }}
-                exit={{ y: "100%" }}
+                initial={{ y: "100%", opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: "100%", opacity: 0 }}
                 transition={{ type: "spring", damping: 26, stiffness: 320 }}
                 onClick={(e) => e.stopPropagation()}
-                className="w-full bg-white rounded-t-3xl p-5 shadow-2xl max-h-[85vh] flex flex-col"
+                className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl max-h-[85vh] flex flex-col"
               >
-                <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-4" />
+                <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-4 sm:hidden" />
                 <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                   <div>
                     <h3 className="text-base font-black text-gray-900">Change Pipeline Stage</h3>
@@ -3039,7 +3068,7 @@ export default function CrmLeadsPage() {
                     <X className="w-5 h-5" />
                   </button>
                 </div>
-                <div className="overflow-y-auto py-2 space-y-1.5 max-h-[55vh]">
+                <div className="overflow-y-auto py-2 space-y-1.5 max-h-[55vh] scrollbar-thin">
                   {LEAD_STATUSES.map((st) => {
                     const activeLead = leads.find((l) => l.id === cardStatusPickerId);
                     const isCur = activeLead?.status === st;
@@ -3053,7 +3082,7 @@ export default function CrmLeadsPage() {
                           await handleUpdateStage(st, targetId);
                         }}
                         className={cn(
-                          "w-full min-h-[48px] px-4 py-3 rounded-2xl text-sm font-bold flex items-center justify-between transition-all",
+                          "w-full min-h-[46px] px-4 py-2.5 rounded-2xl text-sm font-bold flex items-center justify-between transition-all",
                           isCur
                             ? "bg-emerald-50 text-emerald-800 border-2 border-emerald-500 shadow-2xs"
                             : "hover:bg-gray-50 text-gray-700 border border-gray-100"
@@ -3077,7 +3106,7 @@ export default function CrmLeadsPage() {
                 <button
                   type="button"
                   onClick={() => setCardStatusPickerId(null)}
-                  className="w-full min-h-[48px] mt-2 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm rounded-2xl transition-all"
+                  className="w-full min-h-[44px] mt-2 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm rounded-2xl transition-all"
                 >
                   Cancel
                 </button>
@@ -3219,8 +3248,8 @@ export default function CrmLeadsPage() {
             </div>
           </div>
 
-          {/* Quick Presets Segmented Bar (Thumb-friendly 44px touch targets!) */}
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pt-1 pb-0.5">
+          {/* Quick Presets Segmented Bar (Thumb-friendly 44px touch targets on mobile, wrapping on desktop) */}
+          <div className="flex items-center gap-2 overflow-x-auto lg:overflow-visible scrollbar-none pt-1 pb-0.5 flex-nowrap lg:flex-wrap">
             <span className="text-xs uppercase font-black tracking-wider text-gray-400 shrink-0 flex items-center gap-1.5 mr-1">
               <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Presets:
             </span>
@@ -3291,7 +3320,7 @@ export default function CrmLeadsPage() {
           </div>
 
           {/* Pipeline Stages Dedicated Filter Bar (Sales Team Primary Pipeline View) */}
-          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-2.5 border-t border-gray-100">
+          <div className="flex items-center gap-1.5 overflow-x-auto lg:overflow-visible scrollbar-none pt-2.5 border-t border-gray-100 flex-nowrap lg:flex-wrap">
             <span className="text-xs uppercase font-black tracking-wider text-gray-400 shrink-0 flex items-center gap-1.5 mr-1">
               <TrendingUp className="w-3.5 h-3.5 text-emerald-600" /> Stages:
             </span>
@@ -3315,7 +3344,7 @@ export default function CrmLeadsPage() {
                   activeStage === "ALL" ? "bg-white/20 text-white" : "bg-gray-100 text-gray-600"
                 )}
               >
-                {leads.length}
+                {stageCounts.ALL ?? baseFilteredLeads.length}
               </span>
             </button>
 
@@ -3363,8 +3392,8 @@ export default function CrmLeadsPage() {
             {/* Left Column: Lead List Cards */}
             <div
               className={cn(
-                "md:col-span-5 lg:col-span-5 xl:col-span-4 flex flex-col bg-white border border-gray-200/90 rounded-3xl shadow-xs overflow-hidden",
-                "md:sticky md:top-20 md:h-[calc(100vh-100px)] md:min-h-[580px]"
+                "md:col-span-5 lg:col-span-5 xl:col-span-4 relative flex flex-col bg-white border border-gray-200/90 rounded-3xl shadow-xs overflow-hidden",
+                "md:sticky md:top-6 md:max-h-[calc(100vh-2.5rem)]"
               )}
             >
               <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50/80 flex items-center justify-between shrink-0">
@@ -3404,7 +3433,7 @@ export default function CrmLeadsPage() {
                 </div>
               </div>
 
-              <div className="flex-1 min-h-0 overflow-y-auto p-3.5 space-y-3 scrollbar-thin">
+              <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3.5 space-y-3 scrollbar-thin">
                 {filteredLeads.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-20 gap-2 text-center px-4">
                     <p className="text-sm text-gray-500 font-medium">No leads match current filters.</p>
@@ -3573,30 +3602,27 @@ export default function CrmLeadsPage() {
                       {/* Footer Row: Status, Assignee, Next Follow-up & Quick Schedule Trigger */}
                       <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-1.5 flex-wrap">
                         <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                          {/* Interactive 1-Tap Status Switcher (Without opening main drawer!) */}
+                          {/* Interactive 1-Tap Status Switcher */}
                           <div
                             className="relative shrink-0 inline-flex items-center"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <select
-                              value={l.status}
-                              onChange={async (e) => {
+                            <button
+                              type="button"
+                              onClick={(e) => {
                                 e.stopPropagation();
-                                await handleUpdateStage(e.target.value, l.id);
+                                setCardFollowUpPickerId(null);
+                                setCardStatusPickerId(l.id);
                               }}
                               className={cn(
-                                "min-h-[32px] appearance-none pl-2 pr-5 py-1 rounded-xl border text-[11px] font-bold transition-all shadow-2xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/30 hover:ring-2 hover:ring-emerald-500/20 active:scale-95",
+                                "min-h-[32px] px-2.5 py-1 rounded-xl border text-[11px] font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1 active:scale-95",
                                 STATUS_COLORS[l.status] || "bg-gray-100 text-gray-700 border-gray-200"
                               )}
-                              title="Change pipeline stage directly without opening drawer"
+                              title="Change pipeline stage"
                             >
-                              {LEAD_STATUSES.map((st) => (
-                                <option key={st} value={st} className="bg-white text-gray-900 font-semibold py-1">
-                                  {LEAD_STATUS_LABELS[st] ?? st}
-                                </option>
-                              ))}
-                            </select>
-                            <ChevronDown className="w-3 h-3 opacity-60 absolute right-1 pointer-events-none text-current" />
+                              <span>{LEAD_STATUS_LABELS[l.status] ?? l.status}</span>
+                              <ChevronDown className="w-3 h-3 opacity-60 text-current" />
+                            </button>
                           </div>
 
                           {/* Assignee Badge */}
@@ -3692,6 +3718,17 @@ export default function CrmLeadsPage() {
                                 </button>
                               </div>
 
+                              {/* Latest Activity Remark Context */}
+                              {l.timeline && l.timeline.length > 0 && l.timeline[0]?.notes && (
+                                <div className="p-2 bg-white/95 border border-emerald-200/90 rounded-lg text-xs space-y-0.5 shadow-2xs">
+                                  <div className="flex items-center justify-between text-[10px] font-bold text-gray-500">
+                                    <span>Latest Note {l.timeline[0].user?.name ? `(${l.timeline[0].user.name})` : ""}:</span>
+                                    <span>{new Date(l.timeline[0].createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span>
+                                  </div>
+                                  <p className="text-gray-800 italic line-clamp-2 leading-relaxed">{l.timeline[0].notes}</p>
+                                </div>
+                              )}
+
                               <div className="flex flex-wrap gap-1.5">
                                 {[
                                   { label: "Today", days: 0 },
@@ -3702,16 +3739,22 @@ export default function CrmLeadsPage() {
                                   const target = new Date();
                                   target.setDate(target.getDate() + p.days);
                                   const isoDate = target.toISOString().split("T")[0];
+                                  const isSelected = cardCustomDate === isoDate;
                                   return (
                                     <button
                                       key={p.label}
                                       type="button"
                                       disabled={followUpSaving}
-                                      onClick={async (e) => {
+                                      onClick={(e) => {
                                         e.stopPropagation();
-                                        await handleQuickUpdateFollowUp(isoDate, l.id, cardRemarks);
+                                        setCardCustomDate(isoDate);
                                       }}
-                                      className="px-2.5 py-1 text-xs font-bold rounded-lg bg-white hover:bg-emerald-600 hover:text-white text-gray-700 border border-gray-200 transition-all shadow-2xs active:scale-95 disabled:opacity-50"
+                                      className={cn(
+                                        "px-2.5 py-1 text-xs font-bold rounded-lg border transition-all shadow-2xs active:scale-95 disabled:opacity-50",
+                                        isSelected
+                                          ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                                          : "bg-white hover:bg-emerald-50 text-gray-700 border-gray-200"
+                                      )}
                                     >
                                       {p.label}
                                     </button>
@@ -3737,7 +3780,7 @@ export default function CrmLeadsPage() {
                               <div>
                                 <input
                                   type="text"
-                                  placeholder="Add remarks or notes (optional)..."
+                                  placeholder="Add remarks or notes for this follow-up..."
                                   value={cardRemarks}
                                   onChange={(e) => setCardRemarks(e.target.value)}
                                   onMouseDown={(e) => e.stopPropagation()}
@@ -3769,14 +3812,14 @@ export default function CrmLeadsPage() {
                                     e.stopPropagation();
                                     await handleQuickUpdateFollowUp(cardCustomDate || l.nextFollowUpDate || null, l.id, cardRemarks);
                                   }}
-                                  className="min-h-[34px] px-3 py-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg shadow-xs transition-all flex items-center gap-1 shrink-0 active:scale-95"
+                                  className="min-h-[34px] px-3.5 py-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg shadow-xs transition-all flex items-center gap-1 shrink-0 active:scale-95"
                                 >
                                   {followUpSaving ? (
                                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                                   ) : (
                                     <Check className="w-3.5 h-3.5" />
                                   )}
-                                  Save
+                                  Save Follow-up
                                 </button>
                               </div>
                             </div>
@@ -3935,8 +3978,8 @@ export default function CrmLeadsPage() {
             {/* Right Column: Lead Detail (Desktop & Tablet Split View) */}
             <div
               className={cn(
-                "hidden md:flex md:col-span-7 lg:col-span-7 xl:col-span-8 flex-col bg-white border border-gray-200/90 rounded-3xl shadow-xs overflow-hidden",
-                "md:sticky md:top-20 md:h-[calc(100vh-100px)] md:min-h-[580px]"
+                "hidden md:flex md:col-span-7 lg:col-span-7 xl:col-span-8 relative flex-col bg-white border border-gray-200/90 rounded-3xl shadow-xs overflow-hidden",
+                "md:sticky md:top-6 md:max-h-[calc(100vh-2.5rem)]"
               )}
             >
               {selectedLeadId && detailLoading && (
@@ -3944,7 +3987,7 @@ export default function CrmLeadsPage() {
               )}
 
               {selectedLeadId && !detailLoading && selectedLead && (
-                <div className="overflow-y-auto flex-1 p-5 sm:p-6 scrollbar-thin">
+                <div className="overflow-y-auto overscroll-contain flex-1 p-5 sm:p-6 scrollbar-thin">
                   {renderDetailContent()}
                 </div>
               )}
