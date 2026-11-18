@@ -32,6 +32,7 @@ import AdminIbadahPage from "../app/admin/ibadah/page";
 import AdminLogsPage from "../app/admin/logs/page";
 import AdminMadrasasPage from "../app/admin/madrasas/page";
 import AdminNotificationsPage from "../app/admin/notifications/page";
+import AdminHolidaysPage from "../app/admin/holidays/page";
 import AdminOtherPaymentsPage from "../app/admin/other-payments/page";
 import AdminDashboard from "../app/admin/page";
 import AdminPlatformReportsPage from "../app/admin/platform-reports/page";
@@ -187,6 +188,7 @@ export default function App() {
           path="/admin/notifications"
           element={<AdminNotificationsPage />}
         />
+        <Route path="/admin/holidays" element={<AdminHolidaysPage />} />
         <Route path="/admin/reports" element={<AdminReportsPage />} />
         <Route path="/admin/config" element={<AdminConfigPage />} />
         <Route path="/admin/ibadah" element={<AdminIbadahPage />} />
@@ -306,6 +308,7 @@ export default function App() {
           path="/m/:slug/admin/notifications"
           element={<AdminNotificationsPage />}
         />
+        <Route path="/m/:slug/admin/holidays" element={<AdminHolidaysPage />} />
         <Route path="/m/:slug/admin/reports" element={<AdminReportsPage />} />
         <Route path="/m/:slug/admin/ibadah" element={<AdminIbadahPage />} />
         <Route

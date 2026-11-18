@@ -46,6 +46,7 @@ import {
   Target,
   LifeBuoy,
   RefreshCw,
+  CalendarDays,
 } from "lucide-react";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import OnboardingDrawer from "@/components/twa/OnboardingDrawer";
@@ -88,6 +89,7 @@ type NavKey =
   | "finance"
   | "announcements"
   | "notifications"
+  | "holidays"
   | "madrasas"
   | "superUsers"
   | "platformReports"
@@ -156,6 +158,7 @@ const adminLinks = [
   { href: "/admin/reports", icon: BarChart3, key: "reports" as NavKey },
   { href: "/admin/logs", icon: Activity, key: "logs" as NavKey },
   { href: "/admin/notifications", icon: Bell, key: "notifications" as NavKey },
+  { href: "/admin/holidays", icon: CalendarDays, key: "holidays" as NavKey },
   { href: "/admin/config", icon: Settings, key: "config" as NavKey },
   {
     href: "/admin/best-performance",
@@ -456,7 +459,7 @@ const getAdminCategories = (role: string, actorType?: string) => {
       id: "settings",
       titleKey: "settings" as NavKey,
       icon: Settings,
-      links: links.filter((l) => ["config", "profile"].includes(l.key)),
+      links: links.filter((l) => ["config", "profile","holidays"].includes(l.key)),
     },
   ];
 };

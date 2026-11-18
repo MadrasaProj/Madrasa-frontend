@@ -262,6 +262,7 @@ const translations = {
     classes: { en: "Classes", ml: "ക്ലാസുകൾ" },
     subjects: { en: "Subjects", ml: "വിഷയങ്ങൾ" },
     notifications: { en: "Notifications", ml: "അറിയിപ്പുകൾ" },
+    holidays: { en: "Holidays", ml: "അവധി ദിവസങ്ങൾ" },
     madrasas: { en: "Madrasas", ml: "മദ്‌റസകൾ" },
     superUsers: { en: "Admin Users", ml: "അഡ്‌മിൻ യൂസേഴ്സ്" },
     platformReports: { en: "Platform Reports", ml: "പ്ലാറ്റ്ഫോം റിപ്പോർട്ടുകൾ" },

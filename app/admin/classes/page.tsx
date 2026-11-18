@@ -269,7 +269,7 @@ export default function AdminClassesPage() {
         
       >
         {selectedClass && (
-          <div className="space-y-5">
+          <div className="space-y-5 px-4 py-2">
             <div className="rounded-2xl border border-gray-100 bg-white px-4 py-3">
               <p className="text-xs font-medium text-gray-500">Class teacher</p>
               <p className="mt-1 text-base font-semibold text-gray-950">{selectedClass.classTeacher?.name ?? "Unassigned"}</p>
