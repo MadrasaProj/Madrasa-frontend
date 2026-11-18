@@ -2,6 +2,7 @@ import { createPortal } from "react-dom";
 import { ExcelImportModal } from "@/components/exam/ExcelImportModal";
 import { MarkEntryGrid, type MarkEntryGridProps } from "@/components/exam/MarkEntryGrid";
 import { ScrollableSubjectNavigator } from "@/components/ScrollableSubjectNavigator";
+import { getEffectiveMaxMarks } from "@/lib/exam-utils";
 
 interface TeacherMarkEntryViewProps {
   gridProps: Omit<MarkEntryGridProps, "onReset" | "onImportOpen">;
@@ -26,12 +27,21 @@ export function TeacherMarkEntryView({
 }: TeacherMarkEntryViewProps) {
   const { examId, classId, subjectId, subjects, students, activeExam } = gridProps;
   const currentSubject = subjects.find((subject) => subject.id === subjectId);
+  const currentClass = gridProps.classes.find((c) => c.id === classId);
+
+  const subjectTabs = subjects.map((s) => {
+    const effMax = getEffectiveMaxMarks(activeExam, currentClass, s, activeExam?.maxMarks ?? 50);
+    return {
+      ...s,
+      label: `${s.name} (${effMax})`,
+    };
+  });
 
   return (
     <div className="space-y-4 px-2 sm:px-6">
       {showSelectors && (
         <ScrollableSubjectNavigator
-          subjects={subjects}
+          subjects={subjectTabs}
           value={subjectId}
           onChange={gridProps.onSubjectChange}
           disabled={!classId}
@@ -56,7 +66,7 @@ export function TeacherMarkEntryView({
           subjects={[{
             id: subjectId,
             name: currentSubject.name,
-            maxMarks: currentSubject.classSubject?.maxMarks ?? activeExam?.maxMarks ?? 50,
+            maxMarks: getEffectiveMaxMarks(activeExam, gridProps.classes.find((c) => c.id === classId), currentSubject, activeExam?.maxMarks ?? 50),
             passMarks: currentSubject.classSubject?.passMarks ?? null,
             gradeConfig: null,
           }]}

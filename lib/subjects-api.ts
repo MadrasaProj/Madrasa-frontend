@@ -19,6 +19,7 @@ export interface SubjectRecord {
   name: string;
   classId: string;
   teacherId: string | null;
+  classSubjectGlobalId?: string | null;
   status: string;
   class?: { id: string; name: string } | null;
   teacher?: { id: string; name: string } | null;

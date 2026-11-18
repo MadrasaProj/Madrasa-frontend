@@ -17,13 +17,20 @@ import {
   deleteClassSubject,
   syncEducationSystemSubjects,
   syncGradeLevelSubjects,
+  listEducationSystemYearlyExams,
+  createEducationSystemYearlyExam,
+  updateEducationSystemYearlyExam,
+  deleteEducationSystemYearlyExam,
   type EducationSystemInfo,
   type GradeLevelDetail,
   type ClassSubjectInfo,
+  type YearlyExamConfig,
+  type YearlyExamRecord,
+  type YearlyExamSubjectOverride,
 } from "@/lib/super-admin-api";
 import { useAuthStore } from "@/store/auth";
 import {
-  BookOpen, GraduationCap, Plus, Pencil, Trash2, X, Loader2, ArrowUpRight, RefreshCw,
+  BookOpen, GraduationCap, Plus, Pencil, Trash2, X, Loader2, ArrowUpRight, RefreshCw, FileText, Check, Settings2, RotateCcw,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -92,6 +99,34 @@ export default function AdminGlobalClassSubjectsPage() {
   const [subjSaving, setSubjSaving] = useState(false);
   const [deletingSubjId, setDeletingSubjId] = useState<string | null>(null);
 
+  // System Drawer Tabs & Yearly Exam State
+  const [activeTab, setActiveTab] = useState<"classSubjects" | "exams">("classSubjects");
+  const [yearlyExamsList, setYearlyExamsList] = useState<YearlyExamRecord[]>([]);
+  const [activeExamId, setActiveExamId] = useState<string | null>(null);
+  const [activeExamClassId, setActiveExamClassId] = useState<string | null>(null);
+  const [yearlyExamConfig, setYearlyExamConfig] = useState<YearlyExamConfig>({});
+  const [yearlyExamLoading, setYearlyExamLoading] = useState(false);
+  const [yearlyExamSaving, setYearlyExamSaving] = useState(false);
+  const [showTermModal, setShowTermModal] = useState(false);
+  const [termFormName, setTermFormName] = useState("");
+  const [termFormTerm, setTermFormTerm] = useState("");
+  const [termModalSaving, setTermModalSaving] = useState(false);
+  const [editingTermId, setEditingTermId] = useState<string | null>(null);
+  const [examSubjectsByGl, setExamSubjectsByGl] = useState<Record<string, ClassSubjectInfo[]>>({});
+  const [examSubjectsLoading, setExamSubjectsLoading] = useState(false);
+  const [editingOverride, setEditingOverride] = useState<{
+    classKey: string;
+    subjKey: string;
+    subjectName: string;
+    className: string;
+    form: {
+      maxMarks: string;
+      passMarks: string;
+      annualPassMarks: string;
+      grades: GradeEntry[];
+    };
+  } | null>(null);
+
   // ── Systems ───────────────────────────────────────────────────────────────────
 
   const loadSystems = useCallback(async () => {
@@ -141,21 +176,279 @@ export default function AdminGlobalClassSubjectsPage() {
     } catch (e) { toast.error((e as Error).message); }
   };
 
-  // ── Main Drawer ──────────────────────────────────────────────────────────────
+  // ── Main Drawer & Yearly Exams (Multiple Terms) ───────────────────────────────
+
+  const loadYearlyExamData = useCallback(async (sysId: string, glList: GradeLevelDetail[]) => {
+    if (!token) return;
+    setYearlyExamLoading(true);
+    setExamSubjectsLoading(true);
+    try {
+      const [yearlyRes, ...subjectsRes] = await Promise.all([
+        listEducationSystemYearlyExams(sysId, token).catch(() => ({ data: [] as YearlyExamRecord[] })),
+        ...glList.map((gl) =>
+          getGradeLevelSubjects(gl.id, token)
+            .then((res) => ({ glId: gl.id, subjects: res.data }))
+            .catch(() => ({ glId: gl.id, subjects: [] as ClassSubjectInfo[] })),
+        ),
+      ]);
+
+      const exams = yearlyRes?.data || [];
+      setYearlyExamsList(exams);
+      if (exams.length > 0) {
+        // Default to first exam if not selected or current selection missing
+        setActiveExamId((curr) => {
+          const exists = exams.some((e) => e.id === curr);
+          const nextId = exists ? curr : exams[0].id;
+          const chosen = exams.find((e) => e.id === nextId);
+          setYearlyExamConfig(chosen?.config || {});
+          return nextId;
+        });
+      } else {
+        setActiveExamId(null);
+        setYearlyExamConfig({});
+      }
+
+      const map: Record<string, ClassSubjectInfo[]> = {};
+      for (const item of subjectsRes) {
+        if ("glId" in item) {
+          map[item.glId] = item.subjects;
+        }
+      }
+      setExamSubjectsByGl(map);
+    } catch {
+      /* ignore */
+    } finally {
+      setYearlyExamLoading(false);
+      setExamSubjectsLoading(false);
+    }
+  }, [token]);
 
   const openDrawer = async (sys: EducationSystemInfo) => {
     setDrawerSys(sys);
     setActiveGlId(null);
+    setActiveExamClassId(null);
     setSubjects([]);
+    setActiveTab("classSubjects");
     setGlLoading(true);
     try {
       const res = await listEducationSystems(token);
       const found = res.data.find((s) => s.id === sys.id);
-      setGradeLevels(found?.gradeLevels ?? []);
+      const gls = found?.gradeLevels ?? [];
+      setGradeLevels(gls);
+      if (gls.length > 0) {
+        setActiveExamClassId(gls[0].id);
+      }
+      loadYearlyExamData(sys.id, gls);
     } catch { /* ignore */ }
     finally { setGlLoading(false); }
     setGlFormDrawer(false);
     setShowSubjForm(false);
+  };
+
+  const selectExamTerm = (exam: YearlyExamRecord) => {
+    setActiveExamId(exam.id);
+    setYearlyExamConfig(exam.config || {});
+  };
+
+  const openAddTermModal = () => {
+    setEditingTermId(null);
+    setTermFormName("");
+    setTermFormTerm("");
+    setShowTermModal(true);
+  };
+
+  const openEditTermModal = (exam: YearlyExamRecord) => {
+    setEditingTermId(exam.id);
+    setTermFormName(exam.name);
+    setTermFormTerm(exam.term || "");
+    setShowTermModal(true);
+  };
+
+  const handleSaveTermModal = async () => {
+    if (!termFormName.trim()) {
+      toast.error("Term / Exam name is required (e.g. Mid-Term Exam)");
+      return;
+    }
+    if (!drawerSys) return;
+
+    setTermModalSaving(true);
+    try {
+      if (editingTermId) {
+        const res = await updateEducationSystemYearlyExam(
+          editingTermId,
+          { name: termFormName.trim(), term: termFormTerm.trim() || undefined },
+          token,
+        );
+        if (res?.data) {
+          setYearlyExamsList((prev) =>
+            prev.map((e) => (e.id === editingTermId ? { ...e, ...res.data } : e)),
+          );
+          toast.success("Exam term updated");
+        }
+      } else {
+        const res = await createEducationSystemYearlyExam(
+          drawerSys.id,
+          {
+            name: termFormName.trim(),
+            term: termFormTerm.trim() || undefined,
+            config: {},
+          },
+          token,
+        );
+        if (res?.data) {
+          setYearlyExamsList((prev) => [res.data, ...prev]);
+          setActiveExamId(res.data.id);
+          setYearlyExamConfig(res.data.config || {});
+          toast.success("New exam term created");
+        }
+      }
+      setShowTermModal(false);
+    } catch (e) {
+      toast.error((e as Error).message || "Failed to save exam term");
+    } finally {
+      setTermModalSaving(false);
+    }
+  };
+
+  const handleDeleteTerm = async (examId: string, examName: string) => {
+    if (!confirm(`Are you sure you want to delete "${examName}"?`)) return;
+    try {
+      await deleteEducationSystemYearlyExam(examId, token);
+      setYearlyExamsList((prev) => {
+        const filtered = prev.filter((e) => e.id !== examId);
+        if (activeExamId === examId) {
+          if (filtered.length > 0) {
+            setActiveExamId(filtered[0].id);
+            setYearlyExamConfig(filtered[0].config || {});
+          } else {
+            setActiveExamId(null);
+            setYearlyExamConfig({});
+          }
+        }
+        return filtered;
+      });
+      toast.success("Exam term deleted");
+    } catch (e) {
+      toast.error((e as Error).message || "Failed to delete exam term");
+    }
+  };
+
+  const handleToggleSubjectExam = (classKey: string, subjKey: string, currentlyEnabled: boolean) => {
+    setYearlyExamConfig((prev) => {
+      const classCfg = { ...(prev[classKey] || {}) };
+      if (currentlyEnabled) {
+        classCfg[subjKey] = false;
+      } else {
+        classCfg[subjKey] = true;
+      }
+      return { ...prev, [classKey]: classCfg };
+    });
+  };
+
+  const handleOpenOverrideModal = (
+    classKey: string,
+    subjKey: string,
+    subject: ClassSubjectInfo,
+    className: string,
+  ) => {
+    const currentVal = yearlyExamConfig[classKey]?.[subjKey];
+    const isObj = currentVal && typeof currentVal === "object";
+    const currentOverride: YearlyExamSubjectOverride = isObj ? currentVal : {};
+
+    // Load grade config from override first, else fallback to standard classSubject gradeConfig
+    const effectiveGradeConfig = currentOverride.gradeConfig || subject.gradeConfig;
+    const grades: GradeEntry[] = [];
+    if (effectiveGradeConfig && typeof effectiveGradeConfig === "object") {
+      for (const [grade, val] of Object.entries(effectiveGradeConfig)) {
+        const entry = val as { min?: number };
+        grades.push({ grade, min: entry.min ?? 0 });
+      }
+      grades.sort((a, b) => b.min - a.min);
+    }
+
+    setEditingOverride({
+      classKey,
+      subjKey,
+      subjectName: subject.subjectName,
+      className,
+      form: {
+        maxMarks: currentOverride.maxMarks !== undefined ? String(currentOverride.maxMarks) : (subject.maxMarks !== null && subject.maxMarks !== undefined ? String(subject.maxMarks) : ""),
+        passMarks: currentOverride.passMarks !== undefined ? String(currentOverride.passMarks) : (subject.passMarks !== null && subject.passMarks !== undefined ? String(subject.passMarks) : ""),
+        annualPassMarks: currentOverride.annualPassMarks !== undefined ? String(currentOverride.annualPassMarks) : (subject.annualPassMarks !== null && subject.annualPassMarks !== undefined ? String(subject.annualPassMarks) : ""),
+        grades,
+      },
+    });
+  };
+
+  const handleSaveOverride = () => {
+    if (!editingOverride) return;
+    const { classKey, subjKey, form } = editingOverride;
+
+    const overrideObj: YearlyExamSubjectOverride = {};
+    if (form.maxMarks.trim()) overrideObj.maxMarks = parseInt(form.maxMarks, 10);
+    if (form.passMarks.trim()) overrideObj.passMarks = parseInt(form.passMarks, 10);
+    if (form.annualPassMarks.trim()) overrideObj.annualPassMarks = parseInt(form.annualPassMarks, 10);
+
+    if (form.grades && form.grades.length > 0) {
+      const gradeConfig: Record<string, { min: number }> = {};
+      for (const g of form.grades) {
+        if (g.grade.trim()) {
+          gradeConfig[g.grade.trim()] = { min: g.min };
+        }
+      }
+      if (Object.keys(gradeConfig).length > 0) {
+        overrideObj.gradeConfig = gradeConfig;
+      }
+    }
+
+    setYearlyExamConfig((prev) => {
+      const classCfg = { ...(prev[classKey] || {}) };
+      if (Object.keys(overrideObj).length === 0) {
+        classCfg[subjKey] = true;
+      } else {
+        classCfg[subjKey] = overrideObj;
+      }
+      return { ...prev, [classKey]: classCfg };
+    });
+
+    setEditingOverride(null);
+    toast.success("Exam config updated in draft");
+  };
+
+  const handleResetOverride = (classKey: string, subjKey: string) => {
+    setYearlyExamConfig((prev) => {
+      const classCfg = { ...(prev[classKey] || {}) };
+      classCfg[subjKey] = true;
+      return { ...prev, [classKey]: classCfg };
+    });
+    setEditingOverride(null);
+    toast.info("Subject reset to default settings");
+  };
+
+  const handleSaveYearlyExam = async () => {
+    if (!activeExamId) {
+      toast.error("Please create or select an exam term first.");
+      return;
+    }
+    setYearlyExamSaving(true);
+    try {
+      const res = await updateEducationSystemYearlyExam(
+        activeExamId,
+        { config: yearlyExamConfig },
+        token,
+      );
+      if (res?.data) {
+        setYearlyExamsList((prev) =>
+          prev.map((e) => (e.id === activeExamId ? { ...e, config: res.data.config } : e)),
+        );
+        setYearlyExamConfig(res.data.config || {});
+      }
+      toast.success("Yearly exam configuration saved successfully!");
+    } catch (e) {
+      toast.error((e as Error).message || "Failed to save yearly exam configuration");
+    } finally {
+      setYearlyExamSaving(false);
+    }
   };
 
   const selectGl = async (gl: GradeLevelDetail) => {
@@ -513,148 +806,571 @@ export default function AdminGlobalClassSubjectsPage() {
                   </button>
                 </div>
 
-                {/* Body: split layout */}
-                <div className="flex-1 flex overflow-hidden">
-                  {/* Left panel: Class list */}
-                  <div className="w-72 border-r border-gray-200 flex flex-col shrink-0">
-                    <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                      <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Classes</span>
-                      <button onClick={() => openGlFormDrawer()}
-                        className="p-1 rounded-lg hover:bg-primary-100 text-primary-600 hover:text-primary-700">
-                        <Plus className="w-4 h-4" />
-                      </button>
+                {/* Tabs bar */}
+                <div className="flex items-center gap-2 px-6 border-b border-gray-200 bg-gray-50/70 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("classSubjects")}
+                    className={cn(
+                      "flex items-center gap-2 py-3 px-4 text-sm font-semibold border-b-2 transition-all",
+                      activeTab === "classSubjects"
+                        ? "border-primary-600 text-primary-700 bg-white shadow-xs rounded-t-lg -mb-px"
+                        : "border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-100/50 rounded-t-lg",
+                    )}
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    <span>Class Subjects</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("exams")}
+                    className={cn(
+                      "flex items-center gap-2 py-3 px-4 text-sm font-semibold border-b-2 transition-all",
+                      activeTab === "exams"
+                        ? "border-primary-600 text-primary-700 bg-white shadow-xs rounded-t-lg -mb-px"
+                        : "border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-100/50 rounded-t-lg",
+                    )}
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span>Exams (Terms)</span>
+                    {yearlyExamsList.length > 0 && (
+                      <span className="text-[11px] bg-primary-100 text-primary-700 px-1.5 py-0.2 rounded-full font-bold">
+                        {yearlyExamsList.length}
+                      </span>
+                    )}
+                  </button>
+                </div>
+
+                {/* Tab content */}
+                {activeTab === "classSubjects" ? (
+                  /* Body: split layout */
+                  <div className="flex-1 flex overflow-hidden">
+                    {/* Left panel: Class list */}
+                    <div className="w-72 border-r border-gray-200 flex flex-col shrink-0">
+                      <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Classes</span>
+                        <button onClick={() => openGlFormDrawer()}
+                          className="p-1 rounded-lg hover:bg-primary-100 text-primary-600 hover:text-primary-700">
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <div className="flex-1 overflow-y-auto">
+                        {glLoading ? (
+                          <SkeletonList count={4} className="p-3" />
+                        ) : gradeLevels.length === 0 ? (
+                          <p className="text-sm text-gray-400 italic text-center py-8">No classes yet</p>
+                        ) : (
+                          <div className="py-1">
+                            {gradeLevels.map((gl) => (
+                              <div key={gl.id}
+                                onClick={() => selectGl(gl)}
+                                className={cn(
+                                  "group flex items-center justify-between px-4 py-3 mx-2 rounded-xl cursor-pointer transition-colors",
+                                  activeGlId === gl.id
+                                    ? "bg-primary-50 text-primary-700"
+                                    : "hover:bg-gray-50 text-gray-700",
+                                )}
+                              >
+                                <div>
+                                  <span className="text-sm font-medium">{gl.name}</span>
+                                  <span className="text-xs text-gray-400 ml-2">Lvl {gl.level}</span>
+                                </div>
+                                <div className="flex items-center gap-0.5">
+                                  <button onClick={(e) => { e.stopPropagation(); openGlFormDrawer(gl); }}
+                                    className="p-1 rounded-lg hover:bg-gray-200 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button onClick={(e) => { e.stopPropagation(); deleteGl(gl.id); }}
+                                    className="p-1 rounded-lg hover:bg-red-100 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex-1 overflow-y-auto">
-                      {glLoading ? (
-                        <SkeletonList count={4} className="p-3" />
-                      ) : gradeLevels.length === 0 ? (
-                        <p className="text-sm text-gray-400 italic text-center py-8">No classes yet</p>
+
+                    {/* Right panel: Subjects */}
+                    <div className="flex-1 flex flex-col overflow-hidden">
+                      {!activeGlId ? (
+                        <div className="flex-1 flex items-center justify-center text-gray-400">
+                          <div className="text-center">
+                            <GraduationCap className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                            <p className="text-sm font-medium">Select a class to manage subjects</p>
+                          </div>
+                        </div>
+                      ) : subjLoading ? (
+                        <DetailSkeleton className="flex-1" />
                       ) : (
-                        <div className="py-1">
-                          {gradeLevels.map((gl) => (
-                            <div key={gl.id}
-                              onClick={() => selectGl(gl)}
-                              className={cn(
-                                "group flex items-center justify-between px-4 py-3 mx-2 rounded-xl cursor-pointer transition-colors",
-                                activeGlId === gl.id
-                                  ? "bg-primary-50 text-primary-700"
-                                  : "hover:bg-gray-50 text-gray-700",
-                              )}
-                            >
-                              <div>
-                                <span className="text-sm font-medium">{gl.name}</span>
-                                <span className="text-xs text-gray-400 ml-2">Lvl {gl.level}</span>
-                              </div>
-                              <div className="flex items-center gap-0.5">
-                                <button onClick={(e) => { e.stopPropagation(); openGlFormDrawer(gl); }}
-                                  className="p-1 rounded-lg hover:bg-gray-200 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Pencil className="w-3.5 h-3.5" />
-                                </button>
-                                <button onClick={(e) => { e.stopPropagation(); deleteGl(gl.id); }}
-                                  className="p-1 rounded-lg hover:bg-red-100 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
+                        <div className="flex-1 overflow-y-auto px-6 py-4">
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="font-bold text-gray-900">
+                              Subjects — <span className="text-primary-600">{gradeLevels.find((g) => g.id === activeGlId)?.name}</span>
+                            </h3>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={handleSyncGradeLevel}
+                                disabled={syncingGl}
+                                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                                title="Sync this class's subjects to all enrolled madrasas"
+                              >
+                                <RefreshCw className={cn("w-3.5 h-3.5", syncingGl && "animate-spin text-primary-600")} />
+                                <span>{syncingGl ? "Syncing..." : "Sync Class"}</span>
+                              </button>
+                              <button onClick={openAddSubjForm}
+                                className="flex items-center gap-1 px-3 py-2 rounded-xl bg-primary-100 text-primary-700 text-sm font-semibold hover:bg-primary-200 transition-colors">
+                                <Plus className="w-4 h-4" /> Add Subject
+                              </button>
                             </div>
-                          ))}
+                          </div>
+
+                          {/* Subjects table */}
+                          <div className="rounded-xl border border-gray-200 overflow-hidden">
+                            <table className="w-full">
+                              <thead>
+                                <tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                                  <th className="text-left px-4 py-3">Subject</th>
+                                  <th className="text-left px-4 py-3">Max Marks</th>
+                                  <th className="text-left px-4 py-3">Pass Marks</th>
+                                  <th className="text-left px-4 py-3">Annual Pass</th>
+                                  <th className="text-left px-4 py-3">Grade Config</th>
+                                  <th className="text-right px-4 py-3"></th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100">
+                                {subjects.map((s) => (
+                                    <tr key={s.id} className="hover:bg-gray-50 transition-colors">
+                                    <td className="px-4 py-3.5 text-sm font-medium text-gray-900">{s.subjectName}</td>
+                                    <td className="px-4 py-3.5 text-sm text-gray-600">{s.maxMarks ?? "—"}</td>
+                                    <td className="px-4 py-3.5 text-sm text-gray-600">{s.passMarks ?? "—"}</td>
+                                    <td className="px-4 py-3.5 text-sm text-gray-600">{s.annualPassMarks ?? "—"}</td>
+                                    <td className="px-4 py-3.5">
+                                      {s.gradeConfig ? (
+                                        <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">Set</span>
+                                      ) : (
+                                        <span className="text-xs text-gray-400">—</span>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3.5 text-right">
+                                      <button onClick={() => editSubj(s)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 mr-1">
+                                        <Pencil className="w-4 h-4" />
+                                      </button>
+                                      <button
+                                        onClick={() => deleteSubj(s.id)}
+                                        disabled={deletingSubjId === s.id}
+                                        className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 disabled:opacity-50 transition-colors"
+                                        title="Delete subject"
+                                      >
+                                        {deletingSubjId === s.id ? (
+                                          <Loader2 className="w-4 h-4 animate-spin text-red-500" />
+                                        ) : (
+                                          <Trash2 className="w-4 h-4" />
+                                        )}
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                                {subjects.length === 0 && (
+                                  <tr>
+                                    <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-400 italic">No subjects yet</td>
+                                  </tr>
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+
                         </div>
                       )}
                     </div>
                   </div>
-
-                  {/* Right panel: Subjects */}
-                  <div className="flex-1 flex flex-col overflow-hidden">
-                    {!activeGlId ? (
-                      <div className="flex-1 flex items-center justify-center text-gray-400">
-                        <div className="text-center">
-                          <GraduationCap className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                          <p className="text-sm font-medium">Select a class to manage subjects</p>
+                ) : (
+                  /* Exams Tab Content - Split into Term list & Term Subject Config */
+                  <div className="flex-1 flex overflow-hidden">
+                    {/* Left sub-panel: Terms list */}
+                    <div className="w-80 border-r border-gray-200 flex flex-col shrink-0 bg-gray-50/40">
+                      <div className="px-4 py-3.5 border-b border-gray-200 flex items-center justify-between bg-white">
+                        <div>
+                          <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">Exam Terms</span>
+                          <p className="text-[11px] text-gray-400">Mid-term, Final, etc.</p>
                         </div>
+                        <button
+                          type="button"
+                          onClick={openAddTermModal}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-primary-50 text-primary-700 hover:bg-primary-100 text-xs font-semibold transition-colors"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add Term</span>
+                        </button>
                       </div>
-                    ) : subjLoading ? (
-                      <DetailSkeleton className="flex-1" />
-                    ) : (
-                      <div className="flex-1 overflow-y-auto px-6 py-4">
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="font-bold text-gray-900">
-                            Subjects — <span className="text-primary-600">{gradeLevels.find((g) => g.id === activeGlId)?.name}</span>
-                          </h3>
-                          <div className="flex items-center gap-2">
+
+                      <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                        {yearlyExamLoading ? (
+                          <SkeletonList count={3} className="p-2" />
+                        ) : yearlyExamsList.length === 0 ? (
+                          <div className="text-center py-12 px-4">
+                            <FileText className="w-10 h-10 mx-auto mb-2 text-gray-300" />
+                            <p className="text-sm font-medium text-gray-600">No terms yet</p>
+                            <p className="text-xs text-gray-400 mt-1">
+                              Add terms like Mid-term, Half-Yearly, or Final Annual Exam.
+                            </p>
                             <button
-                              onClick={handleSyncGradeLevel}
-                              disabled={syncingGl}
-                              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 disabled:opacity-50 transition-colors"
-                              title="Sync this class's subjects to all enrolled madrasas"
+                              type="button"
+                              onClick={openAddTermModal}
+                              className="mt-4 px-3 py-1.5 text-xs font-semibold rounded-xl bg-primary-600 text-white hover:bg-primary-700 inline-flex items-center gap-1.5 shadow-xs"
                             >
-                              <RefreshCw className={cn("w-3.5 h-3.5", syncingGl && "animate-spin text-primary-600")} />
-                              <span>{syncingGl ? "Syncing..." : "Sync Class"}</span>
-                            </button>
-                            <button onClick={openAddSubjForm}
-                              className="flex items-center gap-1 px-3 py-2 rounded-xl bg-primary-100 text-primary-700 text-sm font-semibold hover:bg-primary-200 transition-colors">
-                              <Plus className="w-4 h-4" /> Add Subject
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>Create First Term</span>
                             </button>
                           </div>
-                        </div>
+                        ) : (
+                          yearlyExamsList.map((exam) => {
+                            const isSelected = activeExamId === exam.id;
+                            const configuredClassesCount = Object.keys(exam.config || {}).length;
 
-                        {/* Subjects table */}
-                        <div className="rounded-xl border border-gray-200 overflow-hidden">
-                          <table className="w-full">
-                            <thead>
-                              <tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                                <th className="text-left px-4 py-3">Subject</th>
-                                <th className="text-left px-4 py-3">Max Marks</th>
-                                <th className="text-left px-4 py-3">Pass Marks</th>
-                                <th className="text-left px-4 py-3">Annual Pass</th>
-                                <th className="text-left px-4 py-3">Grade Config</th>
-                                <th className="text-right px-4 py-3"></th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                              {subjects.map((s) => (
-                                  <tr key={s.id} className="hover:bg-gray-50 transition-colors">
-                                  <td className="px-4 py-3.5 text-sm font-medium text-gray-900">{s.subjectName}</td>
-                                  <td className="px-4 py-3.5 text-sm text-gray-600">{s.maxMarks ?? "—"}</td>
-                                  <td className="px-4 py-3.5 text-sm text-gray-600">{s.passMarks ?? "—"}</td>
-                                  <td className="px-4 py-3.5 text-sm text-gray-600">{s.annualPassMarks ?? "—"}</td>
-                                  <td className="px-4 py-3.5">
-                                    {s.gradeConfig ? (
-                                      <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">Set</span>
-                                    ) : (
-                                      <span className="text-xs text-gray-400">—</span>
+                            return (
+                              <div
+                                key={exam.id}
+                                onClick={() => selectExamTerm(exam)}
+                                className={cn(
+                                  "group flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all border",
+                                  isSelected
+                                    ? "bg-white border-primary-300 shadow-xs text-primary-900"
+                                    : "bg-transparent border-transparent hover:bg-white/80 hover:border-gray-200 text-gray-700",
+                                )}
+                              >
+                                <div className="min-w-0 flex-1 pr-2">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-sm font-semibold truncate">{exam.name}</span>
+                                    {isSelected && (
+                                      <span className="w-1.5 h-1.5 rounded-full bg-primary-600 shrink-0" />
                                     )}
-                                  </td>
-                                  <td className="px-4 py-3.5 text-right">
-                                    <button onClick={() => editSubj(s)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 mr-1">
-                                      <Pencil className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                      onClick={() => deleteSubj(s.id)}
-                                      disabled={deletingSubjId === s.id}
-                                      className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 disabled:opacity-50 transition-colors"
-                                      title="Delete subject"
-                                    >
-                                      {deletingSubjId === s.id ? (
-                                        <Loader2 className="w-4 h-4 animate-spin text-red-500" />
-                                      ) : (
-                                        <Trash2 className="w-4 h-4" />
-                                      )}
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
-                              {subjects.length === 0 && (
-                                <tr>
-                                  <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-400 italic">No subjects yet</td>
-                                </tr>
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    {exam.term && (
+                                      <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
+                                        {exam.term}
+                                      </span>
+                                    )}
+                                    <span className="text-[11px] text-gray-400">
+                                      {configuredClassesCount} class{configuredClassesCount !== 1 ? "es" : ""} tuned
+                                    </span>
+                                  </div>
+                                </div>
 
+                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openEditTermModal(exam);
+                                    }}
+                                    className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+                                    title="Edit term name"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteTerm(exam.id, exam.name);
+                                    }}
+                                    className="p-1 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500"
+                                    title="Delete term"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
                       </div>
-                    )}
+                    </div>
+
+                    {/* Right sub-panel: Selected Term's Subject Config */}
+                    <div className="flex-1 flex flex-col overflow-hidden bg-gray-50/50">
+                      {!activeExamId ? (
+                        <div className="flex-1 flex items-center justify-center text-gray-400">
+                          <div className="text-center p-6">
+                            <FileText className="w-12 h-12 mx-auto mb-3 opacity-40" />
+                            <p className="text-sm font-medium text-gray-600">Select or add an exam term</p>
+                            <p className="text-xs text-gray-400 mt-1 max-w-sm">
+                              Create multiple terms like Mid-term, Second Term, or Final Exam and customize their class-subject configs.
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Config Header */}
+                          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h3 className="text-base font-bold text-gray-900">
+                                  {yearlyExamsList.find((e) => e.id === activeExamId)?.name}
+                                </h3>
+                                {yearlyExamsList.find((e) => e.id === activeExamId)?.term && (
+                                  <span className="text-xs bg-primary-50 text-primary-700 font-semibold px-2 py-0.5 rounded-full">
+                                    {yearlyExamsList.find((e) => e.id === activeExamId)?.term}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                Set exam subject participation and custom marks for this term. Format: <code className="text-primary-700 bg-primary-50 px-1 py-0.5 rounded font-mono text-[11px]">{"{[class]:[subject]:[boolean|{updatedConfig}]}"}</code>
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => drawerSys && loadYearlyExamData(drawerSys.id, gradeLevels)}
+                                disabled={yearlyExamLoading}
+                                className="px-3 py-2 text-xs font-semibold rounded-xl border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 inline-flex items-center gap-1.5"
+                              >
+                                <RefreshCw className={cn("w-3.5 h-3.5", yearlyExamLoading && "animate-spin text-primary-600")} />
+                                <span>Reload</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleSaveYearlyExam}
+                                disabled={yearlyExamSaving || yearlyExamLoading}
+                                className="px-4 py-2 text-xs font-bold rounded-xl bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 inline-flex items-center gap-1.5 shadow-sm"
+                              >
+                                {yearlyExamSaving ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <Check className="w-3.5 h-3.5" />
+                                )}
+                                <span>{yearlyExamSaving ? "Saving..." : "Save Term Config"}</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Classes Horizontal Tabs */}
+                          {gradeLevels.length > 0 && (
+                            <div className="flex items-center gap-1.5 px-6 pt-3 pb-2 border-b border-gray-200 bg-white overflow-x-auto shrink-0 scrollbar-thin">
+                              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mr-2 shrink-0">
+                                Class:
+                              </span>
+                              {gradeLevels.map((gl) => {
+                                const isGlActive = (activeExamClassId || gradeLevels[0]?.id) === gl.id;
+                                const subjs = examSubjectsByGl[gl.id] || [];
+                                const classCfg = yearlyExamConfig[gl.id] || {};
+                                const includedCount = subjs.filter((s) => classCfg[s.id] !== false).length;
+
+                                return (
+                                  <button
+                                    key={gl.id}
+                                    type="button"
+                                    onClick={() => setActiveExamClassId(gl.id)}
+                                    className={cn(
+                                      "flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-xl transition-all whitespace-nowrap shrink-0 border",
+                                      isGlActive
+                                        ? "bg-primary-50 border-primary-300 text-primary-700 shadow-xs"
+                                        : "bg-gray-50/70 border-gray-200 text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+                                    )}
+                                  >
+                                    <span>{gl.name}</span>
+                                    <span
+                                      className={cn(
+                                        "text-[10px] px-1.5 py-0.2 rounded-full font-bold",
+                                        isGlActive
+                                          ? "bg-primary-200/80 text-primary-800"
+                                          : "bg-gray-200 text-gray-600",
+                                      )}
+                                    >
+                                      {includedCount}/{subjs.length}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* Selected Class Subjects Content */}
+                          <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+                            {examSubjectsLoading ? (
+                              <div className="space-y-4">
+                                <SkeletonList count={3} />
+                              </div>
+                            ) : gradeLevels.length === 0 ? (
+                              <div className="text-center py-12 text-gray-400">
+                                <GraduationCap className="w-12 h-12 mx-auto mb-3 opacity-40" />
+                                <p className="text-sm font-medium">No classes configured in this education system yet.</p>
+                                <p className="text-xs text-gray-400 mt-1">Add classes in the Class Subjects tab first.</p>
+                              </div>
+                            ) : (() => {
+                              const activeGl =
+                                gradeLevels.find((g) => g.id === (activeExamClassId || gradeLevels[0]?.id)) ||
+                                gradeLevels[0];
+                              if (!activeGl) return null;
+
+                              const glSubjs = examSubjectsByGl[activeGl.id] || [];
+                              const classCfg = yearlyExamConfig[activeGl.id] || {};
+
+                              return (
+                                <div className="rounded-2xl border border-gray-200 bg-white shadow-xs overflow-hidden">
+                                  <div className="flex items-center justify-between px-5 py-3.5 bg-gray-50/80 border-b border-gray-100">
+                                    <div className="flex items-center gap-2.5">
+                                      <span className="font-bold text-gray-900 text-sm">{activeGl.name}</span>
+                                      <span className="text-xs text-gray-400 font-medium">Level {activeGl.level}</span>
+                                      <span className="text-[11px] bg-primary-50 text-primary-700 px-2 py-0.5 rounded-full font-semibold">
+                                        {glSubjs.length} subject{glSubjs.length !== 1 ? "s" : ""}
+                                      </span>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const updatedClassCfg = { ...classCfg };
+                                          glSubjs.forEach((s) => {
+                                            if (updatedClassCfg[s.id] === undefined || updatedClassCfg[s.id] === false) {
+                                              updatedClassCfg[s.id] = true;
+                                            }
+                                          });
+                                          setYearlyExamConfig((prev) => ({ ...prev, [activeGl.id]: updatedClassCfg }));
+                                          toast.success(`Included all subjects for ${activeGl.name}`);
+                                        }}
+                                        className="text-[11px] font-semibold text-primary-600 hover:text-primary-700 hover:underline"
+                                      >
+                                        Include All
+                                      </button>
+                                      <span className="text-gray-300">·</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const updatedClassCfg = { ...classCfg };
+                                          glSubjs.forEach((s) => {
+                                            updatedClassCfg[s.id] = false;
+                                          });
+                                          setYearlyExamConfig((prev) => ({ ...prev, [activeGl.id]: updatedClassCfg }));
+                                          toast.info(`Excluded all subjects for ${activeGl.name}`);
+                                        }}
+                                        className="text-[11px] font-semibold text-gray-500 hover:text-gray-700 hover:underline"
+                                      >
+                                        Exclude All
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {glSubjs.length === 0 ? (
+                                    <div className="p-8 text-center text-xs text-gray-400 italic">
+                                      No subjects defined for this class. Add subjects in the Class Subjects tab.
+                                    </div>
+                                  ) : (
+                                    <div className="divide-y divide-gray-100">
+                                      {glSubjs.map((s) => {
+                                        const val = classCfg[s.id];
+                                        const isIncluded = val !== false; // defaults to active/included
+                                        const isOverride = val && typeof val === "object";
+                                        const overrideObj = isOverride ? (val as YearlyExamSubjectOverride) : null;
+
+                                        return (
+                                          <div
+                                            key={s.id}
+                                            className={cn(
+                                              "flex items-center justify-between px-5 py-3 transition-colors",
+                                              isIncluded ? "bg-white" : "bg-gray-50/60 opacity-60",
+                                            )}
+                                          >
+                                            <div className="flex items-center gap-3">
+                                              <input
+                                                type="checkbox"
+                                                checked={isIncluded}
+                                                onChange={() => handleToggleSubjectExam(activeGl.id, s.id, isIncluded)}
+                                                className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500 border-gray-300 cursor-pointer"
+                                                id={`exam-toggle-${activeExamId}-${activeGl.id}-${s.id}`}
+                                              />
+                                              <label
+                                                htmlFor={`exam-toggle-${activeExamId}-${activeGl.id}-${s.id}`}
+                                                className={cn(
+                                                  "text-sm font-medium cursor-pointer",
+                                                  isIncluded ? "text-gray-900" : "text-gray-500 line-through",
+                                                )}
+                                              >
+                                                {s.subjectName}
+                                              </label>
+
+                                              {isOverride && (
+                                                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                                                  Custom Config
+                                                </span>
+                                              )}
+                                            </div>
+
+                                            <div className="flex items-center gap-4 text-xs">
+                                              <div className="flex items-center gap-3 text-gray-500">
+                                                <span>
+                                                  Max:{" "}
+                                                  <strong className="text-gray-800">
+                                                    {overrideObj?.maxMarks ?? s.maxMarks ?? "—"}
+                                                  </strong>
+                                                </span>
+                                                <span>
+                                                  Pass:{" "}
+                                                  <strong className="text-gray-800">
+                                                    {overrideObj?.passMarks ?? s.passMarks ?? "—"}
+                                                  </strong>
+                                                </span>
+                                                <span>
+                                                  Annual Pass:{" "}
+                                                  <strong className="text-gray-800">
+                                                    {overrideObj?.annualPassMarks ?? s.annualPassMarks ?? "—"}
+                                                  </strong>
+                                                </span>
+                                                <span>
+                                                  Grades:{" "}
+                                                  <strong className="text-gray-800">
+                                                    {overrideObj?.gradeConfig
+                                                      ? `${Object.keys(overrideObj.gradeConfig).length} custom`
+                                                      : s.gradeConfig
+                                                      ? "Class default"
+                                                      : "—"}
+                                                  </strong>
+                                                </span>
+                                              </div>
+
+                                              <div className="flex items-center gap-1.5 ml-2">
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleOpenOverrideModal(activeGl.id, s.id, s, activeGl.name)}
+                                                  disabled={!isIncluded}
+                                                  className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 text-gray-600 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                                                  title="Configure custom marks for this term"
+                                                >
+                                                  <Settings2 className="w-3.5 h-3.5" />
+                                                </button>
+
+                                                {isOverride && (
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => handleResetOverride(activeGl.id, s.id)}
+                                                    className="p-1.5 rounded-lg border border-gray-200 hover:bg-red-50 text-gray-500 hover:text-red-600 transition-colors"
+                                                    title="Reset to default class subject marks"
+                                                  >
+                                                    <RotateCcw className="w-3.5 h-3.5" />
+                                                  </button>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </motion.div>
             </div>
           </>
@@ -765,6 +1481,307 @@ export default function AdminGlobalClassSubjectsPage() {
                   <button onClick={cancelSubjForm} className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-gray-100 hover:bg-gray-200">Cancel</button>
                   <button onClick={saveSubj} disabled={subjSaving} className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-xl bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50">
                     {subjSaving && <Loader2 className="w-4 h-4 animate-spin" />}{editingSubj ? "Save" : "Add"}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Yearly Exam Custom Override Modal */}
+      <AnimatePresence>
+        {editingOverride && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setEditingOverride(null)}
+              className="fixed inset-0 bg-black/30 z-50 backdrop-blur-xs"
+            />
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 pointer-events-auto overflow-hidden flex flex-col"
+              >
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                  <div>
+                    <h3 className="font-bold text-gray-900 text-sm">Custom Yearly Exam Marks</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {editingOverride.subjectName} · {editingOverride.className}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setEditingOverride(null)}
+                    className="p-1.5 rounded-lg hover:bg-gray-200/60 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-4">
+                  <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 text-xs text-amber-800 leading-relaxed">
+                    Set customized marks for this subject for the yearly exam. Leave empty or click reset to inherit default class subject settings.
+                  </div>
+
+                  <div>
+                    <label className={labelCls}>Max Marks</label>
+                    <input
+                      type="number"
+                      value={editingOverride.form.maxMarks}
+                      onChange={(e) =>
+                        setEditingOverride((prev) =>
+                          prev
+                            ? { ...prev, form: { ...prev.form, maxMarks: e.target.value } }
+                            : null,
+                        )
+                      }
+                      className={inputCls}
+                      placeholder="e.g. 100"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelCls}>Pass Marks</label>
+                      <input
+                        type="number"
+                        value={editingOverride.form.passMarks}
+                        onChange={(e) =>
+                          setEditingOverride((prev) =>
+                            prev
+                              ? { ...prev, form: { ...prev.form, passMarks: e.target.value } }
+                              : null,
+                          )
+                        }
+                        className={inputCls}
+                        placeholder="e.g. 35"
+                      />
+                    </div>
+
+                    <div>
+                      <label className={labelCls}>Annual Pass Marks</label>
+                      <input
+                        type="number"
+                        value={editingOverride.form.annualPassMarks}
+                        onChange={(e) =>
+                          setEditingOverride((prev) =>
+                            prev
+                              ? { ...prev, form: { ...prev.form, annualPassMarks: e.target.value } }
+                              : null,
+                          )
+                        }
+                        className={inputCls}
+                        placeholder="e.g. 35"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className={labelCls}>
+                      Grade Configuration for this Term <span className="text-gray-400 font-normal">(optional)</span>
+                    </label>
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                      {editingOverride.form.grades.map((g, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <input
+                            value={g.grade}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setEditingOverride((prev) => {
+                                if (!prev) return null;
+                                const nextGrades = [...prev.form.grades];
+                                nextGrades[i] = { ...nextGrades[i], grade: val };
+                                return { ...prev, form: { ...prev.form, grades: nextGrades } };
+                              });
+                            }}
+                            className="w-20 px-2.5 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-primary-400"
+                            placeholder="A+"
+                          />
+                          <span className="text-xs text-gray-400">≥</span>
+                          <input
+                            type="number"
+                            value={g.min}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value, 10) || 0;
+                              setEditingOverride((prev) => {
+                                if (!prev) return null;
+                                const nextGrades = [...prev.form.grades];
+                                nextGrades[i] = { ...nextGrades[i], min: val };
+                                return { ...prev, form: { ...prev.form, grades: nextGrades } };
+                              });
+                            }}
+                            className="w-24 px-2.5 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-primary-400"
+                            placeholder="90"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingOverride((prev) => {
+                                if (!prev) return null;
+                                return {
+                                  ...prev,
+                                  form: {
+                                    ...prev.form,
+                                    grades: prev.form.grades.filter((_, idx) => idx !== i),
+                                  },
+                                };
+                              });
+                            }}
+                            className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingOverride((prev) => {
+                            if (!prev) return null;
+                            return {
+                              ...prev,
+                              form: {
+                                ...prev.form,
+                                grades: [...prev.form.grades, { grade: "", min: 0 }],
+                              },
+                            };
+                          });
+                        }}
+                        className="flex items-center gap-1 text-xs font-semibold text-primary-600 hover:text-primary-700 transition-colors pt-1"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Add Grade Row
+                      </button>
+                    </div>
+                    {editingOverride.form.grades.length > 0 && (
+                      <p className="text-[11px] text-gray-400 mt-1.5">
+                        Custom grades configured here will be saved in the term's config JSON.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleResetOverride(editingOverride.classKey, editingOverride.subjKey)
+                    }
+                    className="text-xs font-semibold text-gray-500 hover:text-red-600 transition-colors"
+                  >
+                    Reset to Default
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingOverride(null)}
+                      className="px-4 py-2 text-xs font-semibold rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveOverride}
+                      className="px-4 py-2 text-xs font-bold rounded-xl bg-primary-600 text-white hover:bg-primary-700 shadow-xs"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Add / Edit Exam Term Modal */}
+      <AnimatePresence>
+        {showTermModal && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowTermModal(false)}
+              className="fixed inset-0 bg-black/40 z-50 backdrop-blur-xs"
+            />
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-100 pointer-events-auto overflow-hidden flex flex-col"
+              >
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                  <h3 className="font-bold text-gray-900 text-base">
+                    {editingTermId ? "Edit Exam Term" : "Add New Exam Term"}
+                  </h3>
+                  <button
+                    onClick={() => setShowTermModal(false)}
+                    className="p-1.5 rounded-lg hover:bg-gray-200/60 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-4">
+                  <div>
+                    <label className={labelCls}>Exam Name *</label>
+                    <input
+                      value={termFormName}
+                      onChange={(e) => setTermFormName(e.target.value)}
+                      className={inputCls}
+                      placeholder="e.g. Mid-Term Examination 2026, Final Board Exam"
+                    />
+                  </div>
+
+                  <div>
+                    <label className={labelCls}>Term Label / Category <span className="text-gray-400 font-normal">(optional)</span></label>
+                    <input
+                      value={termFormTerm}
+                      onChange={(e) => setTermFormTerm(e.target.value)}
+                      className={inputCls}
+                      placeholder="e.g. TERM 1, MID-TERM, FINAL"
+                    />
+                    <div className="flex items-center gap-1.5 mt-2">
+                      <span className="text-[11px] text-gray-400">Quick suggestions:</span>
+                      {["Mid-Term", "Term 1", "Term 2", "Final"].map((sug) => (
+                        <button
+                          key={sug}
+                          type="button"
+                          onClick={() => {
+                            setTermFormTerm(sug);
+                            if (!termFormName) setTermFormName(`${sug} Exam`);
+                          }}
+                          className="text-[11px] font-medium bg-gray-100 hover:bg-primary-50 hover:text-primary-700 px-2 py-0.5 rounded-md text-gray-600 transition-colors"
+                        >
+                          {sug}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+                  <button
+                    type="button"
+                    onClick={() => setShowTermModal(false)}
+                    className="px-4 py-2 text-xs font-semibold rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveTermModal}
+                    disabled={termModalSaving}
+                    className="px-4 py-2 text-xs font-bold rounded-xl bg-primary-600 text-white hover:bg-primary-700 shadow-xs inline-flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {termModalSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    <span>{editingTermId ? "Update Term" : "Create Term"}</span>
                   </button>
                 </div>
               </motion.div>

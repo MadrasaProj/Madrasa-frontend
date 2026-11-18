@@ -19,12 +19,14 @@ import {
 } from "@/components/ui/pagination";
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { ResponsivePopover } from "@/components/ui/responsivePopover";import { DrawerSelector } from "@/components/DrawerSelector";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
+import { DrawerSelector } from "@/components/DrawerSelector";
 
 import { DatePickerDrawer } from "@/components/DatePickerDrawer";
 import { Switch } from "@/components/ui/switch";
 import {
   getExams,
+  getExamTerms,
   createExam,
   updateExam,
   deleteExam,
@@ -36,9 +38,15 @@ import { type ClassRecord } from "@/lib/classes-api";
 import { useClasses } from "@/lib/queries";
 import { getSubjects, type SubjectRecord } from "@/lib/subjects-api";
 import { getStudents } from "@/lib/students-api";
-import { getClient } from "@/lib/super-admin-api";
+import { apiFetch } from "@/lib/fetch";
+import {
+  getClient,
+  listEducationSystemExamTerms,
+  type ExamTermRecord,
+} from "@/lib/super-admin-api";
 import { getClientCurrentAcademicYearId } from "@/lib/client-academic-year-api";
 import { loadLiveClassReport } from "@/lib/live-class-report";
+import { resolveTermSubjectOverride, getEffectiveMaxMarks } from "@/lib/exam-utils";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -77,6 +85,7 @@ import {
 
 interface ExamForm {
   name: string;
+  termId: string;
   startDate: string;
   endDate: string;
   markEntryLastDate: string;
@@ -90,6 +99,7 @@ type ExamDateField = "startDate" | "endDate" | "markEntryLastDate" | "publishedD
 
 const EMPTY_FORM: ExamForm = {
   name: "",
+  termId: "",
   startDate: "",
   endDate: "",
   markEntryLastDate: "",
@@ -142,6 +152,7 @@ export default function AdminExamsPage() {
     : sessionAcademicYearId || selectedClientAcademicYearId;
 
   const [exams, setExams] = useState<ExamRecord[]>([]);
+  const [examTerms, setExamTerms] = useState<ExamTermRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
 
@@ -228,6 +239,15 @@ export default function AdminExamsPage() {
         if (signal?.aborted) return;
         setSelectedClientAcademicYearId(academicYearId);
       }
+
+      try {
+        const termsRes = await getExamTerms(cid, token, signal);
+        if (!signal?.aborted) {
+          setExamTerms(termsRes.data ?? []);
+        }
+      } catch {
+        // Non-blocking if exam terms fail to load
+      }
       if (!academicYearId) {
         setExams([]);
         setMissingAcademicYear(true);
@@ -271,6 +291,7 @@ export default function AdminExamsPage() {
     setFormError(null);
     setForm({
       name: exam.name,
+      termId: exam.termId ?? exam.term?.id ?? "",
       startDate: exam.startDate
         ? new Date(exam.startDate).toISOString().split("T")[0]
         : "",
@@ -314,6 +335,7 @@ export default function AdminExamsPage() {
     const payload = {
       name: form.name,
       type: "TERM_EXAM" as const,
+      termId: form.termId || null,
       startDate: form.startDate || undefined,
       endDate: form.endDate || undefined,
       markEntryLastDate: form.markEntryLastDate || undefined,
@@ -452,7 +474,8 @@ export default function AdminExamsPage() {
     [classes, selectedClassTab],
   );
   const selectedSubject = markEntry.subjects.find((subject) => subject.id === markEntry.subjectId);
-  const maxSubjectMarks = selectedSubject?.classSubject?.maxMarks ?? classDrawerExam?.maxMarks ?? 50;
+
+  const maxSubjectMarks = getEffectiveMaxMarks(classDrawerExam, selectedClass, selectedSubject, classDrawerExam?.maxMarks ?? 50);
   const hasEnteredScores = Object.values(markEntry.scores).some((score) => score !== "");
   const hasInvalidScores = Object.values(markEntry.scores).some(
     (score) => score !== "" && (Number(score) < 0 || Number(score) > maxSubjectMarks),
@@ -479,7 +502,13 @@ export default function AdminExamsPage() {
         getSubjects(cid, token, { classId, limit: 200 }),
         getStudents(cid, token, { classId, status: "ACTIVE", limit: 500 }),
       ]);
-      const subs = subData.data ?? [];
+      const currentExam = exams.find((e) => e.id === examId);
+      const currentCls = classes.find((c) => c.id === classId);
+      const rawSubs = subData.data ?? [];
+      const subs = rawSubs.filter((s) => {
+        const setting = resolveTermSubjectOverride(currentExam, currentCls, s);
+        return setting !== false;
+      });
       const stus = stuData.data ?? [];
       if (request !== classRequestRef.current) return;
       setMarkEntry((p) => ({
@@ -546,7 +575,7 @@ export default function AdminExamsPage() {
     setMarkEntry((p) => ({ ...p, saving: true, error: null, saved: false }));
     try {
       const currentSubject = markEntry.subjects.find((s) => s.id === markEntry.subjectId);
-      const subjectMaxMarks = currentSubject?.classSubject?.maxMarks ?? classDrawerExam?.maxMarks ?? 50;
+      const subjectMaxMarks = maxSubjectMarks;
       const items = markEntry.students
         .filter(
           (s) =>
@@ -884,7 +913,14 @@ export default function AdminExamsPage() {
                   >
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-semibold text-gray-950 sm:text-base">{exam.name}</span>
-                      <span className="mt-1 block text-xs text-gray-500">{shortDate(exam.startDate)} – {shortDate(exam.endDate)}</span>
+                      <span className="mt-1 flex items-center gap-1.5 text-xs text-gray-500">
+                        {exam.term && (
+                          <span className="inline-flex items-center rounded-md bg-sky-50 px-1.5 py-0.5 text-[10px] font-medium text-sky-700">
+                            {exam.term.term ? `${exam.term.name} (${exam.term.term})` : exam.term.name}
+                          </span>
+                        )}
+                        <span>{shortDate(exam.startDate)} – {shortDate(exam.endDate)}</span>
+                      </span>
                     </span>
                     <ExamStatusBadge exam={exam} className="shrink-0 rounded-full border px-2.5 py-1 text-xs font-medium normal-case tracking-normal" />
                     <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-gray-400" />
@@ -1018,7 +1054,13 @@ export default function AdminExamsPage() {
                           {markEntry.subjects.length > 0 ? (
                             <ScrollableTabs
                               ariaLabel="Choose subject"
-                              options={markEntry.subjects.map((subject) => ({ value: subject.id, label: subject.name }))}
+                              options={markEntry.subjects.map((subject) => {
+                                const effMax = getEffectiveMaxMarks(classDrawerExam, selectedClass, subject, classDrawerExam?.maxMarks ?? 50);
+                                return {
+                                  value: subject.id,
+                                  label: `${subject.name} (${effMax})`,
+                                };
+                              })}
                               value={markEntry.subjectId}
                               onValueChange={(subjectId) => {
                                 if (subjectId === markEntry.subjectId) return;
@@ -1279,6 +1321,33 @@ export default function AdminExamsPage() {
                 value={form.name}
                 onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
                 placeholder="e.g. First Term Exam 2026"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">Exam Term</label>
+              <DrawerSelector
+                title="Select Exam Term"
+                placeholder="Select exam term (optional)"
+                value={form.termId}
+                options={[
+                  { value: "", label: "None / Standalone" },
+                  ...examTerms.map((t) => ({
+                    value: t.id,
+                    label: t.term ? `${t.name} (${t.term})` : t.name,
+                  })),
+                ]}
+                onChange={(val) => {
+                  setForm((current) => {
+                    const next = { ...current, termId: val };
+                    // If exam name is empty and a term was selected, suggest the term name
+                    if (!current.name && val) {
+                      const selected = examTerms.find((t) => t.id === val);
+                      if (selected) next.name = selected.name;
+                    }
+                    return next;
+                  });
+                }}
               />
             </div>
           </section>
