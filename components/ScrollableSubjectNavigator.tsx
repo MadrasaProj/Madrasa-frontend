@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 interface SubjectTab {
   id: string;
   name: string;
+  label?: string;
 }
 
 interface ScrollableSubjectNavigatorProps {
@@ -73,7 +74,7 @@ export function ScrollableSubjectNavigator({
                 : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50",
             )}
           >
-            {subject.name}
+            {subject.label ?? subject.name}
           </button>
         );
       })}

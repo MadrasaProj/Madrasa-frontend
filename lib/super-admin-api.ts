@@ -471,3 +471,74 @@ export function getActivityLogs(
     token,
   );
 }
+
+// ── Yearly Exams (Terms) ────────────────────────────────────────────────────
+
+export interface YearlyExamSubjectOverride {
+  maxMarks?: number;
+  passMarks?: number;
+  annualPassMarks?: number;
+  gradeConfig?: Record<string, { min: number }>;
+  [key: string]: any;
+}
+
+export type YearlyExamConfig = Record<string, Record<string, boolean | YearlyExamSubjectOverride>>;
+
+// ── Exam Terms (formerly Yearly Exams) ──────────────────────────────────────
+
+export interface ExamTermRecord {
+  id: string;
+  systemId: string;
+  name: string;
+  term?: string | null;
+  config: YearlyExamConfig;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Backward-compatible alias
+export type YearlyExamRecord = ExamTermRecord;
+
+export function listEducationSystemExamTerms(systemId: string, token: string) {
+  return getJson<{ data: ExamTermRecord[] }>(
+    `/super-admin/education-systems/${systemId}/exam-terms`,
+    token,
+  );
+}
+
+export function createEducationSystemExamTerm(
+  systemId: string,
+  dto: { name: string; term?: string; config?: YearlyExamConfig },
+  token: string,
+) {
+  return mutateJson<{ data: ExamTermRecord }>(
+    "POST",
+    `/super-admin/education-systems/${systemId}/exam-terms`,
+    dto,
+    token,
+  );
+}
+
+export function updateEducationSystemExamTerm(
+  termId: string,
+  dto: { name?: string; term?: string; config?: YearlyExamConfig },
+  token: string,
+) {
+  return mutateJson<{ data: ExamTermRecord }>(
+    "PATCH",
+    `/super-admin/exam-terms/${termId}`,
+    dto,
+    token,
+  );
+}
+
+export function deleteEducationSystemExamTerm(termId: string, token: string) {
+  return deleteJson(`/super-admin/exam-terms/${termId}`, token);
+}
+
+// Aliases for backward compatibility
+export const listEducationSystemYearlyExams = listEducationSystemExamTerms;
+export const createEducationSystemYearlyExam = createEducationSystemExamTerm;
+export const updateEducationSystemYearlyExam = updateEducationSystemExamTerm;
+export const deleteEducationSystemYearlyExam = deleteEducationSystemExamTerm;
+
