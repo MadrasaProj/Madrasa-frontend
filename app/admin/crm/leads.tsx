@@ -67,6 +67,16 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 // ─── Pipeline stage config ────────────────────────────────────────────────────
+export type LeadSortOption =
+  | "URGENT"
+  | "FOLLOWUP_ASC"
+  | "FOLLOWUP_DESC"
+  | "LAST_FOLLOWUP_ASC"
+  | "LAST_FOLLOWUP_DESC"
+  | "NEWEST"
+  | "STUDENTS"
+  | "NAME";
+
 export const LEAD_STATUS_LABELS: Record<string, string> = {
   NEW: "New Lead",
   CONTACTED: "Contacted",
@@ -218,7 +228,7 @@ export default function CrmLeadsPage() {
   >("ALL");
   const [selectedDistrict, setSelectedDistrict] = useState<string>("ALL");
   const [selectedAssignee, setSelectedAssignee] = useState<string>("ALL");
-  const [sortBy, setSortBy] = useState<"URGENT" | "NEWEST" | "STUDENTS" | "NAME">("URGENT");
+  const [sortBy, setSortBy] = useState<LeadSortOption>("URGENT");
   const [showMobileDetail, setShowMobileDetail] = useState(false);
 
   // Pagination State
@@ -258,18 +268,43 @@ export default function CrmLeadsPage() {
   const effectiveUserId = myTeamUser?.id || user?.id || "";
   const currentUserId = effectiveUserId;
 
-  // Guaranteed list of assignable users that ALWAYS includes the current logged-in user
+  // Guaranteed list of assignable users that includes current user, teamUsers, and any active lead assignees
   const assigneeOptions = useMemo(() => {
-    const list = [...teamUsers];
-    if (effectiveUserId && !list.some((u) => u.id === effectiveUserId)) {
-      list.unshift({
+    const map = new Map<string, InternalUserItem>();
+
+    // 1. Current logged-in user
+    if (effectiveUserId) {
+      map.set(effectiveUserId, {
         id: effectiveUserId,
         name: user?.name || "Current User",
         role: user?.actorType || "STAFF",
       } as InternalUserItem);
     }
-    return list;
-  }, [teamUsers, user, effectiveUserId]);
+
+    // 2. Team users fetched from backend
+    teamUsers.forEach((u) => {
+      if (u.id && !map.has(u.id)) {
+        map.set(u.id, u);
+      }
+    });
+
+    // 3. Any assignees found on leads
+    leads.forEach((l) => {
+      l.contributors?.forEach((c) => {
+        const cId = c.userId || c.user?.id;
+        const cName = c.user?.name;
+        if (cId && !map.has(cId)) {
+          map.set(cId, {
+            id: cId,
+            name: cName || "Team Member",
+            role: c.role || c.user?.role || "STAFF",
+          } as InternalUserItem);
+        }
+      });
+    });
+
+    return Array.from(map.values());
+  }, [teamUsers, user, effectiveUserId, leads]);
 
   // Synchronize newLeadForm with default assignee when teamUsers or user loads
   useEffect(() => {
@@ -559,6 +594,24 @@ export default function CrmLeadsPage() {
       const upper = filterParam.toUpperCase();
       if (["ALL", "OVERDUE", "TODAY", "HOT_WARM", "ACTIVE_TRIALS", "NO_FOLLOWUP"].includes(upper)) {
         setSmartPreset(upper as any);
+      }
+    }
+    const sortParam = searchParams.get("sort");
+    if (sortParam) {
+      const upper = sortParam.toUpperCase();
+      if (
+        [
+          "URGENT",
+          "FOLLOWUP_ASC",
+          "FOLLOWUP_DESC",
+          "LAST_FOLLOWUP_ASC",
+          "LAST_FOLLOWUP_DESC",
+          "NEWEST",
+          "STUDENTS",
+          "NAME",
+        ].includes(upper)
+      ) {
+        setSortBy(upper as LeadSortOption);
       }
     }
   }, [searchParams]); // eslint-disable-line
@@ -1224,7 +1277,53 @@ export default function CrmLeadsPage() {
     return Array.from(set).sort();
   }, [districts, leads]);
 
-  // Base filtered leads: applies district, assignee, and text search (without preset or stage constraints)
+  // Helper to reliably test if a lead matches an assignee filter
+  const isLeadAssignedTo = (l: LeadListItem, targetAssigneeId: string) => {
+    if (targetAssigneeId === "ALL") return true;
+
+    const hasContributors = Boolean(l.contributors && l.contributors.length > 0);
+
+    if (targetAssigneeId === "UNASSIGNED") {
+      return !hasContributors;
+    }
+
+    const targetUser = assigneeOptions.find((u) => u.id === targetAssigneeId);
+    const targetName = targetUser?.name?.trim().toLowerCase() || "";
+    const isMe =
+      targetAssigneeId === "ME" ||
+      targetAssigneeId === effectiveUserId ||
+      (user?.id && targetAssigneeId === user.id);
+
+    // 1. Check contributors list
+    if (hasContributors) {
+      const match = l.contributors.some((c) => {
+        const cId = c.userId || c.user?.id;
+        const cName = c.user?.name?.trim().toLowerCase() || "";
+
+        if (isMe) {
+          if (effectiveUserId && cId === effectiveUserId) return true;
+          if (user?.id && cId === user.id) return true;
+          if (user?.name && cName === user.name.trim().toLowerCase()) return true;
+        }
+
+        if (cId === targetAssigneeId) return true;
+        if (targetName && cName === targetName) return true;
+        return false;
+      });
+      if (match) return true;
+    }
+
+    // 2. If unassigned or contributor didn't match, check createdBy fallback
+    if (l.createdBy) {
+      const createdByLower = l.createdBy.trim().toLowerCase();
+      if (isMe && user?.name && createdByLower === user.name.trim().toLowerCase()) return true;
+      if (targetName && createdByLower === targetName) return true;
+    }
+
+    return false;
+  };
+
+  // Base filtered leads: applies district, assignee, and text search
   const baseFilteredLeads = useMemo(() => {
     return leads.filter((l) => {
       if (selectedDistrict !== "ALL") {
@@ -1232,18 +1331,8 @@ export default function CrmLeadsPage() {
         if (dName.toLowerCase() !== selectedDistrict.toLowerCase()) return false;
       }
 
-      if (selectedAssignee === "UNASSIGNED") {
-        if (l.contributors && l.contributors.length > 0) return false;
-      } else if (selectedAssignee === "ME") {
-        const isMyLead = l.contributors && l.contributors.some((c) => {
-          if (effectiveUserId && (c.userId === effectiveUserId || c.user?.id === effectiveUserId)) return true;
-          if (user?.id && (c.userId === user.id || c.user?.id === user.id)) return true;
-          if (user?.name && c.user?.name && c.user.name.trim().toLowerCase() === user.name.trim().toLowerCase()) return true;
-          return false;
-        });
-        if (!isMyLead) return false;
-      } else if (selectedAssignee !== "ALL") {
-        if (!l.contributors || !l.contributors.some((c) => c.userId === selectedAssignee || c.user?.id === selectedAssignee)) return false;
+      if (!isLeadAssignedTo(l, selectedAssignee)) {
+        return false;
       }
 
       if (debouncedSearch.trim()) {
@@ -1259,11 +1348,17 @@ export default function CrmLeadsPage() {
 
       return true;
     });
-  }, [leads, selectedDistrict, selectedAssignee, debouncedSearch, effectiveUserId, user]);
+  }, [leads, selectedDistrict, selectedAssignee, debouncedSearch, effectiveUserId, user, assigneeOptions]);
 
+  // Counts for the Preset Chips (Overdue, Due Today, etc.)
+  // Evaluated on baseFilteredLeads + activeStage (so if a stage is active, presets show counts for that stage!)
   const smartCounts = useMemo(() => {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
+
+    const pool = activeStage === "ALL"
+      ? baseFilteredLeads
+      : baseFilteredLeads.filter((l) => l.status === activeStage);
 
     let overdue = 0;
     let today = 0;
@@ -1271,7 +1366,7 @@ export default function CrmLeadsPage() {
     let activeTrials = 0;
     let noFollowup = 0;
 
-    for (const l of baseFilteredLeads) {
+    for (const l of pool) {
       if (l.score === "HOT" || l.score === "WARM") hotWarm++;
       if (l.status === "TRIAL_SHARED" || l.status === "TRIAL_CREATED" || l.status.includes("TRIAL"))
         activeTrials++;
@@ -1289,21 +1384,56 @@ export default function CrmLeadsPage() {
     }
 
     return {
-      all: baseFilteredLeads.length,
+      all: pool.length,
       overdue,
       today,
       hotWarm,
       activeTrials,
       noFollowup,
     };
-  }, [baseFilteredLeads]);
+  }, [baseFilteredLeads, activeStage]);
 
+  // Counts for the Stage Chips (New, Follow-up, Quality Lead, etc.)
+  // Evaluated on baseFilteredLeads + smartPreset (so if a preset is active, stage chips show counts for that preset!)
   const stageCounts = useMemo(() => {
-    const counts: Record<string, number> = { ALL: baseFilteredLeads.length };
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    const pool = baseFilteredLeads.filter((l) => {
+      if (smartPreset === "ALL") return true;
+      if (smartPreset === "OVERDUE") {
+        if (l.status === "WON" || l.status === "LOST" || !l.nextFollowUpDate) return false;
+        const d = new Date(l.nextFollowUpDate);
+        d.setHours(0, 0, 0, 0);
+        return d.getTime() < now.getTime();
+      }
+      if (smartPreset === "TODAY") {
+        if (l.status === "WON" || l.status === "LOST" || !l.nextFollowUpDate) return false;
+        const d = new Date(l.nextFollowUpDate);
+        d.setHours(0, 0, 0, 0);
+        return d.getTime() === now.getTime();
+      }
+      if (smartPreset === "HOT_WARM") {
+        return l.score === "HOT" || l.score === "WARM";
+      }
+      if (smartPreset === "ACTIVE_TRIALS") {
+        return (
+          l.status === "TRIAL_SHARED" ||
+          l.status === "TRIAL_CREATED" ||
+          l.status.includes("TRIAL")
+        );
+      }
+      if (smartPreset === "NO_FOLLOWUP") {
+        return !l.nextFollowUpDate && l.status !== "WON" && l.status !== "LOST";
+      }
+      return true;
+    });
+
+    const counts: Record<string, number> = { ALL: pool.length };
     LEAD_STATUSES.forEach((s) => {
       counts[s] = 0;
     });
-    baseFilteredLeads.forEach((l) => {
+    pool.forEach((l) => {
       if (counts[l.status] !== undefined) {
         counts[l.status]++;
       } else {
@@ -1311,7 +1441,7 @@ export default function CrmLeadsPage() {
       }
     });
     return counts;
-  }, [baseFilteredLeads]);
+  }, [baseFilteredLeads, smartPreset]);
 
   const filteredLeads = useMemo(() => {
     const now = new Date();
@@ -1359,6 +1489,58 @@ export default function CrmLeadsPage() {
           const dateA = a.nextFollowUpDate ? new Date(a.nextFollowUpDate).getTime() : Infinity;
           const dateB = b.nextFollowUpDate ? new Date(b.nextFollowUpDate).getTime() : Infinity;
           return dateA - dateB;
+        }
+        if (sortBy === "FOLLOWUP_ASC") {
+          const isAClosed = a.status === "WON" || a.status === "LOST";
+          const isBClosed = b.status === "WON" || b.status === "LOST";
+          if (isAClosed && !isBClosed) return 1;
+          if (!isAClosed && isBClosed) return -1;
+
+          const dateA = a.nextFollowUpDate ? new Date(a.nextFollowUpDate).getTime() : Infinity;
+          const dateB = b.nextFollowUpDate ? new Date(b.nextFollowUpDate).getTime() : Infinity;
+          if (dateA !== dateB) return dateA - dateB;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+        if (sortBy === "FOLLOWUP_DESC") {
+          const isAClosed = a.status === "WON" || a.status === "LOST";
+          const isBClosed = b.status === "WON" || b.status === "LOST";
+          if (isAClosed && !isBClosed) return 1;
+          if (!isAClosed && isBClosed) return -1;
+
+          const dateA = a.nextFollowUpDate ? new Date(a.nextFollowUpDate).getTime() : -Infinity;
+          const dateB = b.nextFollowUpDate ? new Date(b.nextFollowUpDate).getTime() : -Infinity;
+          if (dateA !== dateB) return dateB - dateA;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+        if (sortBy === "LAST_FOLLOWUP_ASC") {
+          const isAClosed = a.status === "WON" || a.status === "LOST";
+          const isBClosed = b.status === "WON" || b.status === "LOST";
+          if (isAClosed && !isBClosed) return 1;
+          if (!isAClosed && isBClosed) return -1;
+
+          const lastTouchA = a.timeline && a.timeline.length > 0
+            ? new Date(a.timeline[0].createdAt).getTime()
+            : new Date(a.createdAt).getTime();
+          const lastTouchB = b.timeline && b.timeline.length > 0
+            ? new Date(b.timeline[0].createdAt).getTime()
+            : new Date(b.createdAt).getTime();
+          if (lastTouchA !== lastTouchB) return lastTouchA - lastTouchB;
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        }
+        if (sortBy === "LAST_FOLLOWUP_DESC") {
+          const isAClosed = a.status === "WON" || a.status === "LOST";
+          const isBClosed = b.status === "WON" || b.status === "LOST";
+          if (isAClosed && !isBClosed) return 1;
+          if (!isAClosed && isBClosed) return -1;
+
+          const lastTouchA = a.timeline && a.timeline.length > 0
+            ? new Date(a.timeline[0].createdAt).getTime()
+            : new Date(a.createdAt).getTime();
+          const lastTouchB = b.timeline && b.timeline.length > 0
+            ? new Date(b.timeline[0].createdAt).getTime()
+            : new Date(b.createdAt).getTime();
+          if (lastTouchA !== lastTouchB) return lastTouchB - lastTouchA;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         }
         if (sortBy === "NEWEST") {
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -3240,9 +3422,13 @@ export default function CrmLeadsPage() {
                 onChange={(e) => setSortBy(e.target.value as any)}
                 className="w-full min-h-[44px] bg-gray-50 border border-gray-200 text-xs sm:text-sm font-semibold py-2.5 px-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 text-gray-800"
               >
-                <option value="URGENT">Sort: Urgency</option>
-                <option value="NEWEST">Sort: Newest</option>
-                <option value="STUDENTS">Sort: Students</option>
+                <option value="URGENT">Sort: Urgency (Default)</option>
+                <option value="FOLLOWUP_ASC">Sort: Follow-up Date (Oldest First)</option>
+                <option value="FOLLOWUP_DESC">Sort: Follow-up Date (Newest First)</option>
+                <option value="LAST_FOLLOWUP_ASC">Sort: Last Followed Up (Oldest First)</option>
+                <option value="LAST_FOLLOWUP_DESC">Sort: Last Followed Up (Recent First)</option>
+                <option value="NEWEST">Sort: Newest Lead</option>
+                <option value="STUDENTS">Sort: Students (High to Low)</option>
                 <option value="NAME">Sort: Name (A-Z)</option>
               </select>
             </div>
@@ -3268,10 +3454,7 @@ export default function CrmLeadsPage() {
                   key={pill.key}
                   type="button"
                   onClick={() => {
-                    setSmartPreset(pill.key as any);
-                    if (pill.key !== "ALL") {
-                      setActiveStage("ALL");
-                    }
+                    setSmartPreset((prev) => (prev === pill.key ? "ALL" : (pill.key as any)));
                   }}
                   className={cn(
                     "min-h-[40px] shrink-0 px-3.5 py-2 text-xs font-bold rounded-xl border transition-all flex items-center gap-2",
@@ -3356,8 +3539,7 @@ export default function CrmLeadsPage() {
                   key={st}
                   type="button"
                   onClick={() => {
-                    setActiveStage(st);
-                    setSmartPreset("ALL");
+                    setActiveStage((prev) => (prev === st ? "ALL" : st));
                   }}
                   className={cn(
                     "min-h-[36px] shrink-0 px-3 py-1.5 text-xs font-bold rounded-xl border transition-all flex items-center gap-1.5 active:scale-95",
