@@ -234,7 +234,58 @@ export default function CrmLeadsPage() {
   const [bulkFollowUpDate, setBulkFollowUpDate] = useState<string>("");
   const [bulkRemarks, setBulkRemarks] = useState<string>("");
 
-  const currentUserId = user?.id || "";
+  // Find current user in teamUsers by ID, Name, or Username/Email
+  const myTeamUser = useMemo(() => {
+    if (!user) return null;
+    const byId = teamUsers.find((u) => u.id === user.id);
+    if (byId) return byId;
+    if (user.name) {
+      const byName = teamUsers.find(
+        (u) => u.name && u.name.trim().toLowerCase() === user.name.trim().toLowerCase()
+      );
+      if (byName) return byName;
+    }
+    const ident = ((user as any).username || (user as any).email || "").toLowerCase();
+    if (ident) {
+      const byIdent = teamUsers.find(
+        (u) => (u as any).username?.toLowerCase() === ident || (u as any).email?.toLowerCase() === ident
+      );
+      if (byIdent) return byIdent;
+    }
+    return null;
+  }, [teamUsers, user]);
+
+  const effectiveUserId = myTeamUser?.id || user?.id || "";
+  const currentUserId = effectiveUserId;
+
+  // Guaranteed list of assignable users that ALWAYS includes the current logged-in user
+  const assigneeOptions = useMemo(() => {
+    const list = [...teamUsers];
+    if (effectiveUserId && !list.some((u) => u.id === effectiveUserId)) {
+      list.unshift({
+        id: effectiveUserId,
+        name: user?.name || "Current User",
+        role: user?.actorType || "STAFF",
+      } as InternalUserItem);
+    }
+    return list;
+  }, [teamUsers, user, effectiveUserId]);
+
+  // Synchronize newLeadForm with default assignee when teamUsers or user loads
+  useEffect(() => {
+    const targetId = effectiveUserId || (assigneeOptions.length > 0 ? assigneeOptions[0].id : "");
+    if (!targetId) return;
+
+    setNewLeadForm((prev) => {
+      if (!prev.contributors[0]?.userId || !assigneeOptions.some((u) => u.id === prev.contributors[0]?.userId)) {
+        return {
+          ...prev,
+          contributors: [{ userId: targetId, percentage: prev.commissionPercentage || 20 }],
+        };
+      }
+      return prev;
+    });
+  }, [effectiveUserId, assigneeOptions]);
 
   // 350ms search debounce
   useEffect(() => {
@@ -399,6 +450,31 @@ export default function CrmLeadsPage() {
     setTimeout(() => setCopiedText(null), 2000);
   };
 
+  const handleOpenAddLead = () => {
+    const targetId = effectiveUserId || (assigneeOptions.length > 0 ? assigneeOptions[0].id : "");
+    setNewLeadForm({
+      name: "",
+      type: "Samastha",
+      districtId: "",
+      district: "",
+      place: "",
+      address: "",
+      status: "NEW",
+      studentCount: 150,
+      teacherCount: 8,
+      existingSoftware: "",
+      source: "WHATSAPP",
+      contactName: "",
+      contactPhone: "",
+      contactSecondaryPhone: "",
+      contactRole: "",
+      enableCommission: false,
+      commissionPercentage: 20,
+      contributors: [{ userId: targetId, percentage: 20 }],
+    });
+    setShowAddDrawer(true);
+  };
+
   const loadData = async (silent = false, reloadStatic = false) => {
     if (!accessToken) return;
     if (!silent) setLoading(true);
@@ -417,7 +493,7 @@ export default function CrmLeadsPage() {
           setNewLeadForm((prev) => ({
             ...prev,
             contributors: [
-              { userId: currentUserId || users[0].id, percentage: prev.commissionPercentage },
+              { userId: effectiveUserId || users[0].id, percentage: prev.commissionPercentage },
             ],
           }));
         }
@@ -589,7 +665,7 @@ export default function CrmLeadsPage() {
             percentage: Number(c.percentage || 0),
             notes: c.notes || "",
           }))
-        : [{ userId: user?.id || teamUsers[0]?.id || "", percentage: Number(lead.commissionPercentage ?? 20) }];
+        : [{ userId: effectiveUserId || assigneeOptions[0]?.id || "", percentage: Number(lead.commissionPercentage ?? 20) }];
 
     const hasCommission = Number(lead.commissionPercentage ?? 0) > 0;
 
@@ -992,7 +1068,7 @@ export default function CrmLeadsPage() {
         contactRole: "",
         enableCommission: false,
         commissionPercentage: 20,
-        contributors: [{ userId: currentUserId || teamUsers[0]?.id || "", percentage: 20 }],
+        contributors: [{ userId: effectiveUserId || assigneeOptions[0]?.id || "", percentage: 20 }],
       });
       loadData();
       selectLead(created.id);
@@ -1204,8 +1280,16 @@ export default function CrmLeadsPage() {
 
         if (selectedAssignee === "UNASSIGNED") {
           if (l.contributors && l.contributors.length > 0) return false;
+        } else if (selectedAssignee === "ME") {
+          const isMyLead = l.contributors && l.contributors.some((c) => {
+            if (effectiveUserId && (c.userId === effectiveUserId || c.user?.id === effectiveUserId)) return true;
+            if (user?.id && (c.userId === user.id || c.user?.id === user.id)) return true;
+            if (user?.name && c.user?.name && c.user.name.trim().toLowerCase() === user.name.trim().toLowerCase()) return true;
+            return false;
+          });
+          if (!isMyLead) return false;
         } else if (selectedAssignee !== "ALL") {
-          if (!l.contributors || !l.contributors.some((c) => c.userId === selectedAssignee)) return false;
+          if (!l.contributors || !l.contributors.some((c) => c.userId === selectedAssignee || c.user?.id === selectedAssignee)) return false;
         }
 
         if (smartPreset === "OVERDUE") {
@@ -1258,7 +1342,7 @@ export default function CrmLeadsPage() {
         }
         return 0;
       });
-  }, [leads, activeStage, selectedDistrict, selectedAssignee, smartPreset, sortBy]);
+  }, [leads, activeStage, selectedDistrict, selectedAssignee, smartPreset, sortBy, effectiveUserId, user]);
 
   const totalPages = Math.max(1, Math.ceil(filteredLeads.length / pageSize));
 
@@ -1534,7 +1618,7 @@ export default function CrmLeadsPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setQuickAssignUserId(lead.contributors?.[0]?.userId || teamUsers[0]?.id || "");
+                  setQuickAssignUserId(lead.contributors?.[0]?.userId || effectiveUserId || assigneeOptions[0]?.id || "");
                   setShowQuickAssignModal(true);
                 }}
                 className="min-h-[28px] px-2.5 py-0.5 text-xs font-bold rounded-lg border border-primary-200 bg-white hover:bg-primary-50 text-primary-700 transition-all flex items-center gap-1 shadow-2xs active:scale-95"
@@ -3026,7 +3110,7 @@ export default function CrmLeadsPage() {
             </button>
             <button
               type="button"
-              onClick={() => setShowAddDrawer(true)}
+              onClick={handleOpenAddLead}
               className="flex-1 sm:flex-none min-h-[44px] inline-flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs sm:text-sm px-5 py-2.5 rounded-2xl transition-all shadow-sm active:scale-[0.98]"
             >
               <Plus className="w-4 h-4" />
@@ -3109,12 +3193,10 @@ export default function CrmLeadsPage() {
                 className="w-full min-h-[44px] bg-gray-50 border border-gray-200 text-xs sm:text-sm font-semibold py-2.5 px-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 text-gray-800"
               >
                 <option value="ALL">All Assignees</option>
-                {currentUserId && (
-                  <option value={currentUserId}>⭐ Assigned to Me ({user?.name || "You"})</option>
-                )}
+                <option value="ME">⭐ Assigned to Me ({user?.name || "You"})</option>
                 <option value="UNASSIGNED">⚠️ Unassigned Leads</option>
-                {teamUsers
-                  .filter((u) => u.id !== currentUserId)
+                {assigneeOptions
+                  .filter((u) => u.id !== effectiveUserId)
                   .map((u) => (
                     <option key={u.id} value={u.id}>
                       👤 {u.name}
@@ -3328,7 +3410,7 @@ export default function CrmLeadsPage() {
                     <p className="text-sm text-gray-500 font-medium">No leads match current filters.</p>
                     <button
                       type="button"
-                      onClick={() => setShowAddDrawer(true)}
+                      onClick={handleOpenAddLead}
                       className="text-xs font-bold text-primary-700 hover:underline mt-1"
                     >
                       + Add a new prospect
@@ -3786,7 +3868,7 @@ export default function CrmLeadsPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          setBulkSelectedUserId(teamUsers[0]?.id || "");
+                          setBulkSelectedUserId(effectiveUserId || assigneeOptions[0]?.id || "");
                           setBulkModalType("ASSIGN");
                         }}
                         className="min-h-[32px] px-2.5 py-1 bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-bold rounded-xl transition-all flex items-center gap-1"
@@ -4292,9 +4374,9 @@ export default function CrmLeadsPage() {
                         className="w-full min-h-[44px] bg-white border border-gray-200 rounded-xl px-3 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none"
                       >
                         <option value="">Select Team Member to Assign</option>
-                        {teamUsers.map((u) => (
+                        {assigneeOptions.map((u) => (
                           <option key={u.id} value={u.id}>
-                            {u.name} ({u.role?.replace(/_/g, " ")})
+                            {u.id === effectiveUserId ? `⭐ ${u.name} (You)` : `${u.name} (${u.role?.replace(/_/g, " ")})`}
                           </option>
                         ))}
                       </select>
@@ -4323,7 +4405,7 @@ export default function CrmLeadsPage() {
                                 checked && p.contributors.length === 0
                                   ? [
                                       {
-                                        userId: user?.id || teamUsers[0]?.id || "",
+                                        userId: effectiveUserId || assigneeOptions[0]?.id || "",
                                         percentage: p.commissionPercentage,
                                       },
                                     ]
@@ -4397,9 +4479,9 @@ export default function CrmLeadsPage() {
                                 className="flex-1 min-h-[40px] bg-white border border-gray-200 rounded-xl px-2 text-xs font-semibold focus:outline-none"
                               >
                                 <option value="">Select Team Member</option>
-                                {teamUsers.map((u) => (
+                                {assigneeOptions.map((u) => (
                                   <option key={u.id} value={u.id}>
-                                    {u.name} ({u.role?.replace(/_/g, " ")})
+                                    {u.id === effectiveUserId ? `⭐ ${u.name} (You)` : `${u.name} (${u.role?.replace(/_/g, " ")})`}
                                   </option>
                                 ))}
                               </select>
@@ -4780,9 +4862,9 @@ export default function CrmLeadsPage() {
                         className="w-full min-h-[44px] bg-white border border-gray-200 rounded-xl px-3 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none"
                       >
                         <option value="">Select Team Member to Assign</option>
-                        {teamUsers.map((u) => (
+                        {assigneeOptions.map((u) => (
                           <option key={u.id} value={u.id}>
-                            {u.name} ({u.role?.replace(/_/g, " ")})
+                            {u.id === effectiveUserId ? `⭐ ${u.name} (You)` : `${u.name} (${u.role?.replace(/_/g, " ")})`}
                           </option>
                         ))}
                       </select>
@@ -4811,7 +4893,7 @@ export default function CrmLeadsPage() {
                                 checked && p.contributors.length === 0
                                   ? [
                                       {
-                                        userId: user?.id || teamUsers[0]?.id || "",
+                                        userId: effectiveUserId || assigneeOptions[0]?.id || "",
                                         percentage: p.commissionPercentage,
                                       },
                                     ]
@@ -4885,9 +4967,9 @@ export default function CrmLeadsPage() {
                                 className="flex-1 min-h-[40px] bg-white border border-gray-200 rounded-xl px-2 text-xs font-semibold focus:outline-none"
                               >
                                 <option value="">Select Team Member</option>
-                                {teamUsers.map((u) => (
+                                {assigneeOptions.map((u) => (
                                   <option key={u.id} value={u.id}>
-                                    {u.name} ({u.role?.replace(/_/g, " ")})
+                                    {u.id === effectiveUserId ? `⭐ ${u.name} (You)` : `${u.name} (${u.role?.replace(/_/g, " ")})`}
                                   </option>
                                 ))}
                               </select>
@@ -5020,9 +5102,9 @@ export default function CrmLeadsPage() {
                       className="w-full min-h-[46px] bg-gray-50 border border-gray-200 rounded-xl px-3 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600"
                     >
                       <option value="">-- Choose Team Member --</option>
-                      {teamUsers.map((u) => (
+                      {assigneeOptions.map((u) => (
                         <option key={u.id} value={u.id}>
-                          {u.name} ({u.role?.replace(/_/g, " ")})
+                          {u.id === effectiveUserId ? `⭐ ${u.name} (You)` : `${u.name} (${u.role?.replace(/_/g, " ")})`}
                         </option>
                       ))}
                     </select>
@@ -5123,9 +5205,9 @@ export default function CrmLeadsPage() {
                         className="w-full min-h-[46px] bg-gray-50 border border-gray-200 rounded-xl px-3 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600"
                       >
                         <option value="">-- Choose Team Member --</option>
-                        {teamUsers.map((u) => (
+                        {assigneeOptions.map((u) => (
                           <option key={u.id} value={u.id}>
-                            {u.name} ({u.role?.replace(/_/g, " ")})
+                            {u.id === effectiveUserId ? `⭐ ${u.name} (You)` : `${u.name} (${u.role?.replace(/_/g, " ")})`}
                           </option>
                         ))}
                       </select>
