@@ -28,11 +28,11 @@ import { useActiveClass } from "@/store/activeClass";
 import { useLanguageStore } from "@/store/language";
 import { t, type Lang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { getStudents, type StudentRecord } from "@/lib/students-api";
-import { getStudentHomework, listHomework, type StudentHomeworkItem, type HomeworkAssignment } from "@/lib/homework-api";
-import { getStudentIbadah, type StudentIbadahLog } from "@/lib/ibadah-api";
-import { getStudentAttendance, type AttendanceRecord } from "@/lib/attendance-api";
-import { getAttendanceSummary, type AttendanceSummary } from "@/lib/reports-api";
+import type { StudentHomeworkItem } from "@/lib/homework-api";
+import type { StudentIbadahLog } from "@/lib/ibadah-api";
+import type { AttendanceRecord } from "@/lib/attendance-api";
+import { getIndividualStudentReport, type AttendanceSummary, type IndividualReportStudent } from "@/lib/reports-api";
+import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
 import type { DateRange } from "react-day-picker";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import {
@@ -56,6 +56,7 @@ import {
   X,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { Label, PolarRadiusAxis, RadialBar, RadialBarChart } from "recharts";
 
 // ── Date Helpers ─────────────────────────────────────────────────────────────
 
@@ -93,53 +94,67 @@ function reportPageItems(current: number, total: number): Array<number | "ellips
   return items;
 }
 
-// ── SVG Semi-Circle Chart (Identical style to fees/page.tsx) ──────────────────
+const reportMetricColors = ["#059669", "#dc2626", "#f59e0b", "#2563eb", "#7c3aed", "#0891b2"];
 
-function ReportSemiCircle({
-  segments,
-  value,
-  label,
+function ReportRadialChart({
+  metrics,
   description,
+  centerLabel,
 }: {
-  segments: { value: number; color: string }[];
-  value: string;
-  label: string;
+  metrics: { label: string; value: number; color?: string }[];
   description: string;
+  centerLabel: string;
 }) {
-  const total = segments.reduce((sum, segment) => sum + segment.value, 0);
-  let position = 0;
-  const point = (fraction: number) => {
-    const angle = Math.PI * (1 - fraction);
-    return [100 + 78 * Math.cos(angle), 94 - 78 * Math.sin(angle)];
-  };
+  const config = Object.fromEntries(
+    metrics.map((metric, index) => [
+      `metric${index}`,
+      { label: metric.label, color: metric.color ?? reportMetricColors[index % reportMetricColors.length] },
+    ]),
+  ) satisfies ChartConfig;
+  const chartData = Object.fromEntries([
+    ["name", "metrics"],
+    ...metrics.map((metric, index) => [`metric${index}`, Math.max(0, metric.value)]),
+  ]);
 
   return (
-    <svg viewBox="0 0 200 108" role="img" aria-label={description} className="mx-auto h-24 w-full max-w-52 sm:h-28">
-      <path d="M 22 94 A 78 78 0 0 1 178 94" fill="none" stroke="#e5e7eb" strokeWidth="17" strokeLinecap="round" />
-      {total > 0 &&
-        segments.map((segment, index) => {
-          const start = position;
-          position += segment.value / total;
-          if (segment.value <= 0) return null;
-          const [x1, y1] = point(start);
-          const [x2, y2] = point(position);
-          return (
-            <path
-              key={index}
-              d={`M ${x1} ${y1} A 78 78 0 0 1 ${x2} ${y2}`}
-              fill="none"
-              stroke={segment.color}
-              strokeWidth="17"
+    <div className="mx-auto w-full max-w-64" role="img" aria-label={description}>
+      <ChartContainer config={config} initialDimension={{ width: 256, height: 256 }} className="mx-auto aspect-square w-full" aria-hidden="true">
+        <RadialBarChart data={[chartData]} startAngle={90} endAngle={-270} innerRadius={48} outerRadius={112}>
+          {metrics.map((metric, index) => (
+            <RadialBar
+              key={metric.label}
+              dataKey={`metric${index}`}
+              stackId="a"
+              fill={`var(--color-metric${index})`}
+              cornerRadius={4}
+              className="stroke-transparent stroke-1"
+              isAnimationActive={false}
             />
-          );
-        })}
-      <text x="100" y="72" textAnchor="middle" className="fill-gray-950 text-[23px] font-semibold">
-        {value}
-      </text>
-      <text x="100" y="89" textAnchor="middle" className="fill-gray-500 text-[10px] font-medium">
-        {label}
-      </text>
-    </svg>
+          ))}
+          <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
+            <Label
+              content={({ viewBox }) => {
+                if (!viewBox || !("cx" in viewBox) || !("cy" in viewBox)) return null;
+                return (
+                  <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle">
+                    <tspan x={viewBox.cx} y={(viewBox.cy ?? 0) - 5} className="fill-gray-950 text-sm font-semibold">{centerLabel}</tspan>
+                    <tspan x={viewBox.cx} y={(viewBox.cy ?? 0) + 15} className="fill-gray-500 text-[10px]">{metrics.reduce((total, metric) => total + metric.value, 0)}</tspan>
+                  </text>
+                );
+              }}
+            />
+          </PolarRadiusAxis>
+        </RadialBarChart>
+      </ChartContainer>
+      <div className="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[11px] text-gray-600">
+        {metrics.map((metric, index) => (
+          <span key={metric.label} className="inline-flex items-center gap-1">
+            <span className="size-2 rounded-full" style={{ backgroundColor: metric.color ?? reportMetricColors[index % reportMetricColors.length] }} />
+            {metric.label}: <strong className="tabular-nums">{metric.value}</strong>
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -166,7 +181,9 @@ function ReportStats({
 }) {
   const presentCount = attSummary?.present ?? 0;
   const totalAttendance = attSummary?.total ?? 0;
-  const absentCount = attSummary ? Math.max(0, totalAttendance - presentCount) : 0;
+  const attendanceByStatus = Object.fromEntries(
+    (attSummary?.byStatus ?? []).map(({ status, _count }) => [status, _count.id]),
+  );
   const attendanceRate = attSummary?.rate ?? (totalAttendance > 0 ? Math.round((presentCount / totalAttendance) * 100) : 0);
 
   const stats = [
@@ -179,7 +196,7 @@ function ReportStats({
     },
     {
       label: t("common", "absent", lang),
-      value: absentCount,
+      value: attendanceByStatus.ABSENT ?? 0,
       detail: "Total absent records",
       icon: UserX,
       color: "text-red-700",
@@ -241,48 +258,21 @@ function ReportStats({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-px bg-gray-100">
-        <div className="min-w-0 bg-white/90 p-3 text-center sm:p-4">
-          <h3 className="text-xs font-semibold text-gray-700">Class Attendance</h3>
-          <ReportSemiCircle
-            segments={[
-              { value: presentCount, color: "#059669" },
-              { value: absentCount, color: "#dc2626" },
-            ]}
-            value={`${attendanceRate}%`}
-            label={t("common", "present", lang)}
-            description={`Attendance: ${attendanceRate}%`}
-          />
-          <div className="flex justify-center gap-3 text-[11px] text-gray-600">
-            <span>
-              <span className="mr-1 inline-block size-2 rounded-full bg-emerald-600" />
-              {t("common", "present", lang)}
-            </span>
-            <span>
-              <span className="mr-1 inline-block size-2 rounded-full bg-red-600" />
-              {t("common", "absent", lang)}
-            </span>
-          </div>
-        </div>
-
-        <div className="min-w-0 bg-white/90 p-3 text-center sm:p-4">
-          <h3 className="text-xs font-semibold text-gray-700">Assignments & Activity</h3>
-          <ReportSemiCircle
-            segments={[
-              { value: hwCount > 0 ? hwCount : 1, color: "#2563eb" },
-              { value: Math.max(0, totalStudents - hwCount), color: "#9ca3af" },
-            ]}
-            value={String(hwCount)}
-            label="Assignments"
-            description={`Homework: ${hwCount} items`}
-          />
-          <div className="flex justify-center gap-3 text-[11px] text-gray-600">
-            <span>
-              <span className="mr-1 inline-block size-2 rounded-full bg-blue-600" />
-              Active Tasks
-            </span>
-          </div>
-        </div>
+      <div className="bg-white/90 p-3 text-center sm:p-4">
+        <h3 className="text-xs font-semibold text-gray-700">Class Overview</h3>
+        <ReportRadialChart
+          centerLabel="Class"
+          description="Class attendance and assignment metrics"
+          metrics={[
+            { label: t("common", "present", lang), value: attendanceByStatus.PRESENT ?? presentCount, color: "#059669" },
+            { label: t("common", "absent", lang), value: attendanceByStatus.ABSENT ?? 0, color: "#dc2626" },
+            { label: "Late", value: attendanceByStatus.LATE ?? 0, color: "#f59e0b" },
+            { label: "Leave / Sick", value: (attendanceByStatus.LEAVE ?? 0) + (attendanceByStatus.SICK ?? 0), color: "#7c3aed" },
+            { label: "Excused", value: attendanceByStatus.EXCUSED ?? 0, color: "#0891b2" },
+            { label: "Assignments", value: hwCount, color: "#2563eb" },
+          ]}
+        />
+        <p className="mt-2 text-[11px] text-gray-500">Attendance rate: {attendanceRate}%</p>
       </div>
 
       <div className="grid grid-cols-2 gap-px border-t border-gray-100 bg-gray-100 sm:grid-cols-3">
@@ -313,25 +303,27 @@ function ReportPrintModal({
   from,
   to,
   attendance,
+  workingDays,
   homework,
   ibadah,
   onClose,
   schoolName,
 }: {
-  student: StudentRecord;
+  student: IndividualReportStudent;
   from: string;
   to: string;
   attendance: AttendanceRecord[];
+  workingDays: number | null;
   homework: StudentHomeworkItem[];
   ibadah: StudentIbadahLog[];
   onClose: () => void;
   schoolName: string;
 }) {
   const { lang } = useLanguageStore();
-  const presentCount = attendance.filter((a) => a.status === "PRESENT").length;
+  const presentCount = attendance.filter((a) => a.status === "PRESENT" || a.status === "LATE" || a.status === "EXCUSED").length;
   const absentCount = attendance.filter((a) => a.status === "ABSENT").length;
   const leaveCount = attendance.filter((a) => a.status === "LEAVE" || a.status === "SICK").length;
-  const totalDays = attendance.length;
+  const totalDays = workingDays ?? attendance.length;
   const attendanceRate = totalDays > 0 ? Math.round((presentCount / totalDays) * 100) : 0;
 
   const totalQuranPages = ibadah.reduce((sum, item) => sum + (item.quranPages || 0), 0);
@@ -465,7 +457,7 @@ async function downloadReportAsPdf({
   hwMetrics,
   ibadahMetrics,
 }: {
-  student: StudentRecord;
+  student: IndividualReportStudent;
   from: string;
   to: string;
   attendance: AttendanceRecord[];
@@ -887,18 +879,19 @@ export default function TeacherIndividualReportPage() {
     }
   };
 
-  const [students, setStudents] = useState<StudentRecord[]>([]);
+  const [students, setStudents] = useState<IndividualReportStudent[]>([]);
   const [studentsLoading, setStudentsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [pageSkip, setPageSkip] = useState(0);
 
   const [attSummary, setAttSummary] = useState<AttendanceSummary | null>(null);
-  const [classHomework, setClassHomework] = useState<HomeworkAssignment[]>([]);
+  const [classHomeworkCount, setClassHomeworkCount] = useState(0);
 
-  const [selectedStudent, setSelectedStudent] = useState<StudentRecord | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<IndividualReportStudent | null>(null);
   const [studentHomework, setStudentHomework] = useState<StudentHomeworkItem[]>([]);
   const [studentIbadah, setStudentIbadah] = useState<StudentIbadahLog[]>([]);
   const [studentAttendance, setStudentAttendance] = useState<AttendanceRecord[]>([]);
+  const [studentWorkingDays, setStudentWorkingDays] = useState<number | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
 
@@ -906,10 +899,10 @@ export default function TeacherIndividualReportPage() {
   const [printModalOpen, setPrintModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ── Load Students in Class ─────────────────────────────────────────────────
+  // ── Load the combined class report ─────────────────────────────────────────
 
-  const loadStudents = useCallback(async () => {
-    if (!cid || !token || !activeClassId) {
+  const loadClassSummaries = useCallback(async () => {
+    if (!cid || !token || !activeClassId || from > to) {
       setStudents([]);
       setStudentsLoading(false);
       return;
@@ -917,36 +910,22 @@ export default function TeacherIndividualReportPage() {
     setStudentsLoading(true);
     setError(null);
     try {
-      const res = await getStudents(cid, token, {
-        classId: activeClassId,
-        limit: 1000,
-        status: "ACTIVE",
+      const report = await getIndividualStudentReport(cid, token, { classId: activeClassId, from, to });
+      setStudents(report.students);
+      setAttSummary({
+        byStatus: report.classAttendance.byStatus,
+        byClass: [],
+        total: report.classAttendance.total,
+        totalDays: report.classAttendance.workingDays,
+        present: report.classAttendance.present,
+        rate: report.classAttendance.rate,
       });
-      setStudents(res.data || []);
+      setClassHomeworkCount(report.homework.totalAssignments);
     } catch (e) {
       setError((e as Error).message);
+      setStudents([]);
     } finally {
       setStudentsLoading(false);
-    }
-  }, [cid, token, activeClassId]);
-
-  useEffect(() => {
-    loadStudents();
-  }, [loadStudents]);
-
-  // ── Load Class Summaries (Attendance & Homework) ───────────────────────────
-
-  const loadClassSummaries = useCallback(async () => {
-    if (!cid || !token || !activeClassId || from > to) return;
-    try {
-      const [attRes, hwRes] = await Promise.all([
-        getAttendanceSummary(cid, token, from, to).catch(() => null),
-        listHomework(cid, token, { classId: activeClassId, from, to }).catch(() => []),
-      ]);
-      setAttSummary(attRes);
-      setClassHomework(hwRes);
-    } catch {
-      // Non-blocking for list view
     }
   }, [cid, token, activeClassId, from, to]);
 
@@ -960,30 +939,34 @@ export default function TeacherIndividualReportPage() {
     async (studentId: string) => {
       if (!cid || !token || !studentId || from > to) return;
       setReportLoading(true);
+      setError(null);
+      setStudentHomework([]);
+      setStudentIbadah([]);
+      setStudentAttendance([]);
+      setStudentWorkingDays(null);
       try {
-        const [hwRes, ibRes, attRes] = await Promise.all([
-          getStudentHomework(cid, token, studentId),
-          getStudentIbadah(cid, token, studentId, { from, to, limit: 90 }),
-          getStudentAttendance(cid, token, studentId, { from, to, take: 500 }),
-        ]);
-        const filteredHw = hwRes.homework.filter(
-          (item) => item.dueDate.slice(0, 10) >= from && item.dueDate.slice(0, 10) <= to,
-        );
-        setStudentHomework(filteredHw);
-        setStudentIbadah(ibRes.logs || []);
-        setStudentAttendance(attRes.records || []);
+        const report = await getIndividualStudentReport(cid, token, {
+          classId: activeClassId,
+          studentId,
+          from,
+          to,
+        });
+        if (!report.student) throw new Error("Student report was not returned by the server.");
+        setStudentAttendance(report.student.attendance);
+        setStudentWorkingDays(report.student.attendanceWorkingDays);
+        setStudentHomework(report.student.homework);
+        setStudentIbadah(report.student.ibadah);
       } catch (e) {
         setError((e as Error).message);
       } finally {
         setReportLoading(false);
       }
     },
-    [cid, token, from, to],
+    [cid, token, activeClassId, from, to],
   );
 
-  const selectStudent = (student: StudentRecord) => {
+  const selectStudent = (student: IndividualReportStudent) => {
     setSelectedStudent(student);
-    loadStudentReport(student.id);
   };
 
   // Re-fetch report if date range changed while drawer is open
@@ -1042,14 +1025,14 @@ export default function TeacherIndividualReportPage() {
   // ── Student Report Metrics Calculation ─────────────────────────────────────
 
   const studentAttMetrics = useMemo(() => {
-    const present = studentAttendance.filter((a) => a.status === "PRESENT").length;
+    const present = studentAttendance.filter((a) => a.status === "PRESENT" || a.status === "LATE" || a.status === "EXCUSED").length;
     const absent = studentAttendance.filter((a) => a.status === "ABSENT").length;
     const leave = studentAttendance.filter((a) => a.status === "LEAVE" || a.status === "SICK").length;
     const late = studentAttendance.filter((a) => a.status === "LATE").length;
-    const total = studentAttendance.length;
-    const rate = total > 0 ? Math.round((present / total) * 100) : 0;
-    return { present, absent, leave, late, total, rate };
-  }, [studentAttendance]);
+    const workingDays = studentWorkingDays ?? studentAttendance.length;
+    const rate = workingDays > 0 ? Math.round((present / workingDays) * 100) : 0;
+    return { present, absent, leave, late, total: studentAttendance.length, workingDays, rate };
+  }, [studentAttendance, studentWorkingDays]);
 
   const studentHwMetrics = useMemo(() => {
     const total = studentHomework.length;
@@ -1208,7 +1191,7 @@ export default function TeacherIndividualReportPage() {
         title="Select Report Date Range"
       />
 
-      {error && <ApiErrorBanner message={error} onRetry={loadStudents} />}
+      {error && <ApiErrorBanner message={error} onRetry={loadClassSummaries} />}
 
       {/* ── Content View ── */}
       {studentsLoading ? (
@@ -1237,7 +1220,7 @@ export default function TeacherIndividualReportPage() {
               to={to}
               lang={lang}
               attSummary={attSummary}
-              hwCount={classHomework.length}
+              hwCount={classHomeworkCount}
             />
           </div>
 
@@ -1407,6 +1390,19 @@ export default function TeacherIndividualReportPage() {
 
                     {/* ── Overview Tab ── */}
                     <TabsContent value="overview" className="space-y-4">
+                      <section className="rounded-2xl border border-gray-100 bg-white p-4 text-center">
+                        <h4 className="mb-2 text-sm font-semibold text-gray-800">Student Metrics</h4>
+                        <ReportRadialChart
+                          centerLabel="Metrics"
+                          description="Student attendance, homework, Quran pages, and prayer days"
+                          metrics={[
+                            { label: "Attendance %", value: studentAttMetrics.rate, color: "#059669" },
+                            { label: "Homework %", value: studentHwMetrics.rate, color: "#2563eb" },
+                            { label: "Quran pages", value: studentIbadahMetrics.quranPages, color: "#d97706" },
+                            { label: "Prayer days", value: studentIbadahMetrics.prayerDays, color: "#7c3aed" },
+                          ]}
+                        />
+                      </section>
                       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                         <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3">
                           <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-800">
@@ -1416,7 +1412,7 @@ export default function TeacherIndividualReportPage() {
                             {studentAttMetrics.rate}%
                           </p>
                           <p className="mt-0.5 text-[11px] text-emerald-700">
-                            {studentAttMetrics.present}/{studentAttMetrics.total} days present
+                            {studentAttMetrics.present}/{studentAttMetrics.workingDays} working days present
                           </p>
                         </div>
 
@@ -1675,6 +1671,7 @@ export default function TeacherIndividualReportPage() {
           from={from}
           to={to}
           attendance={studentAttendance}
+          workingDays={studentWorkingDays}
           homework={studentHomework}
           ibadah={studentIbadah}
           schoolName={user?.name ?? ""}

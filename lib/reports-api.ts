@@ -1,4 +1,50 @@
 import { apiFetch } from "@/lib/fetch";
+import type { AttendanceRecord } from "@/lib/attendance-api";
+import type { StudentHomeworkItem } from "@/lib/homework-api";
+import type { StudentIbadahLog } from "@/lib/ibadah-api";
+
+export interface IndividualReportStudent {
+  id: string;
+  name: string;
+  adno: string;
+  gender: "MALE" | "FEMALE" | null;
+  parentPhone: string | null;
+  classId: string | null;
+  class: { id: string; name: string } | null;
+}
+
+export interface IndividualStudentReportResponse {
+  classId: string;
+  from: string;
+  to: string;
+  students: IndividualReportStudent[];
+  classAttendance: {
+    byStatus: { status: string; _count: { id: number } }[];
+    total: number;
+    workingDays: number;
+    present: number;
+    rate: number;
+  };
+  homework: {
+    totalAssignments: number;
+    total?: number;
+    submitted?: number;
+    checked?: number;
+  };
+  student: null | {
+    id: string;
+    name: string;
+    adno: string;
+    gender: "MALE" | "FEMALE" | null;
+    parentPhone: string | null;
+    classId: string | null;
+    class: { id: string; name: string } | null;
+    attendance: AttendanceRecord[];
+    homework: StudentHomeworkItem[];
+    ibadah: StudentIbadahLog[];
+    attendanceWorkingDays: number;
+  };
+}
 
 const API_ORIGIN = import.meta.env.VITE_API_ORIGIN ?? "http://localhost:3000";
 const API_BASE   = `${API_ORIGIN}${import.meta.env.VITE_API_BASE_PATH ?? "/api/v2"}`;
@@ -188,6 +234,19 @@ export const getAttendanceSummary = (cid: string, token: string, from?: string, 
 export const getClassAttendanceSummary = (cid: string, token: string, classId: string) => {
   const query = new URLSearchParams({ classId });
   return apiFetch<ClassAttendanceSummary>(`${API_BASE}/${cid}/reports/class-attendance-summary?${query}`, token);
+};
+
+export const getIndividualStudentReport = (
+  cid: string,
+  token: string,
+  params: { classId: string; from: string; to: string; studentId?: string },
+) => {
+  const query = new URLSearchParams({ classId: params.classId, from: params.from, to: params.to });
+  if (params.studentId) query.set("studentId", params.studentId);
+  return apiFetch<IndividualStudentReportResponse>(
+    `${API_BASE}/${cid}/reports/individual-student?${query}`,
+    token,
+  );
 };
 
 export const getHomeworkSummary   = (cid: string, token: string, from?: string, to?: string) => {

@@ -435,7 +435,7 @@ export default function TeacherNotificationsPage() {
       >
         {selectedNotif && (() => {
           const cfg = TYPE_CONFIG[selectedNotif.type] ?? TYPE_CONFIG.GENERAL;
-          return <div className="space-y-5 p-5 pt-2">
+          return <div className="space-y-5   py-3">
             <div className="whitespace-pre-wrap rounded-xl border border-gray-100 bg-gray-50/70 p-4 text-sm leading-relaxed text-gray-800">{selectedNotif.body}</div>
             <dl className="grid grid-cols-2 gap-4 text-sm">
               <div><dt className="text-gray-500">Category</dt><dd className={cn("mt-1 font-medium", cfg.color)}>{cfg.label}</dd></div>
