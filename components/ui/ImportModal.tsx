@@ -685,6 +685,11 @@ export function ImportModal<TPayload>({ show, config, onComplete, onClose }: Imp
     const valid = rows.filter(r => r.status === "valid")
     const nameField = config.columns[0]?.field ?? ""
     const updated = rows.map(r => ({ ...r }))
+    // High-performance O(1) index map for large datasets at production scale
+    const rowMap = new Map<number, (typeof updated)[number]>()
+    for (const r of updated) {
+      rowMap.set(r.index, r)
+    }
     const failed: typeof failedRows = []
 
     setProgress({ done: 0, total: valid.length })
@@ -705,10 +710,10 @@ export function ImportModal<TPayload>({ show, config, onComplete, onClose }: Imp
           const rawKey = config.groupBy ? config.groupBy(sample.parsed as TPayload) : "";
           const msg = `Cannot import: ${chunk.length} rows share the key "${rawKey}", which exceeds the maximum allowed batch size of 500.`;
           chunk.forEach((row) => {
-            const idx = updated.findIndex((r) => r.index === row.index);
-            if (idx >= 0) {
-              updated[idx].status = "failed";
-              updated[idx].failMessage = msg;
+            const targetRow = rowMap.get(row.index);
+            if (targetRow) {
+              targetRow.status = "failed";
+              targetRow.failMessage = msg;
             }
             failed.push({
               index: row.index,
@@ -735,20 +740,20 @@ export function ImportModal<TPayload>({ show, config, onComplete, onClose }: Imp
           );
 
           chunk.forEach((row, localIdx) => {
-            const idx = updated.findIndex((r) => r.index === row.index);
-            if (idx >= 0) {
+            const targetRow = rowMap.get(row.index);
+            if (targetRow) {
               const isLocalFailed = failedMap.has(localIdx + 1);
               if (isLocalFailed) {
                 const msg = failedMap.get(localIdx + 1) || "Failed";
-                updated[idx].status = "failed";
-                updated[idx].failMessage = msg;
+                targetRow.status = "failed";
+                targetRow.failMessage = msg;
                 failed.push({
                   index: row.index,
                   name: String(row.raw[nameField] ?? `Row ${row.index}`),
                   error: msg,
                 });
               } else {
-                updated[idx].status = "imported";
+                targetRow.status = "imported";
               }
             }
           });
@@ -756,10 +761,10 @@ export function ImportModal<TPayload>({ show, config, onComplete, onClose }: Imp
           // Whole-chunk failure: mark all rows in this chunk as failed.
           const msg = (e as Error).message || "Import failed";
           chunk.forEach((row) => {
-            const idx = updated.findIndex((r) => r.index === row.index);
-            if (idx >= 0) {
-              updated[idx].status = "failed";
-              updated[idx].failMessage = msg;
+            const targetRow = rowMap.get(row.index);
+            if (targetRow) {
+              targetRow.status = "failed";
+              targetRow.failMessage = msg;
             }
             failed.push({
               index: row.index,
@@ -778,13 +783,16 @@ export function ImportModal<TPayload>({ show, config, onComplete, onClose }: Imp
       // Per-row fallback loop.
       for (let i = 0; i < valid.length; i++) {
         const row = valid[i]
-        const idx = updated.findIndex(r => r.index === row.index)
+        const targetRow = rowMap.get(row.index)
         try {
           await config.createRow(row.parsed as TPayload)
-          if (idx >= 0) updated[idx].status = "imported"
+          if (targetRow) targetRow.status = "imported"
         } catch (e) {
           const msg = (e as Error).message || "Failed"
-          if (idx >= 0) { updated[idx].status = "failed"; updated[idx].failMessage = msg }
+          if (targetRow) {
+            targetRow.status = "failed"
+            targetRow.failMessage = msg
+          }
           failed.push({ index: row.index, name: String(row.raw[nameField] ?? `Row ${row.index}`), error: msg })
         }
         setProgress({ done: i + 1, total: valid.length })
