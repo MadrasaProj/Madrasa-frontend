@@ -1,8 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { useTenantPath } from "@/hooks/useTenantPath";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
+import { PageSkeleton } from "@/components/ui/Skeleton";
+import { IconifyPicker } from "@/components/ui/IconifyPicker";
+import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
 import {
   getIbadahConfig,
   updateIbadahConfig,
@@ -12,14 +21,13 @@ import {
 import { useAuthStore } from "@/store/auth";
 import { Icon } from "@iconify/react";
 import {
-  Moon,
+  ChevronLeft,
   Save,
-  CheckCircle2,
   Loader2,
   AlertCircle,
   Plus,
   Trash2,
-  GripVertical,
+  Pencil,
   ToggleLeft,
   Hash,
   List,
@@ -36,10 +44,9 @@ import {
   ArrowRight,
   Building2,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import type { LucideIcon } from "lucide-react";
+import { Bar, BarChart, Cell } from "recharts";
 import { cn } from "@/lib/utils";
-import { PageSkeleton } from "@/components/ui/Skeleton";
-import { IconifyPicker } from "@/components/ui/IconifyPicker";
 
 type CustomItem = IbadahConfig["customItems"][number];
 
@@ -104,6 +111,140 @@ function validateKey(key: string): string | null {
   return null;
 }
 
+// ── Compact configuration stats (pattern from teacher ibadah daily stats) ──
+
+const miniChartConfig = {
+  value: { label: "Count" },
+} satisfies ChartConfig;
+
+function MiniBarChart({ data }: { data: { value: number; color: string }[] }) {
+  return (
+    <ChartContainer
+      config={miniChartConfig}
+      initialDimension={{ width: 32, height: 28 }}
+      className="h-7 w-8 shrink-0 sm:h-8 sm:w-14"
+      aria-hidden="true"
+    >
+      <BarChart data={data} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
+        <Bar dataKey="value" radius={[2, 2, 0, 0]} isAnimationActive={false}>
+          {data.map((item, index) => (
+            <Cell key={index} fill={item.color} />
+          ))}
+        </Bar>
+      </BarChart>
+    </ChartContainer>
+  );
+}
+
+interface Stat {
+  label: string;
+  value: number | string;
+}
+
+interface ChartStat extends Stat {
+  bars: { value: number; color: string }[];
+}
+
+interface IconStat extends Stat {
+  icon: LucideIcon;
+}
+
+function ConfigStats({
+  chartStats,
+  iconStats,
+}: {
+  chartStats: ChartStat[];
+  iconStats: IconStat[];
+}) {
+  return (
+    <div className="grid grid-cols-2 overflow-hidden rounded-2xl bg-gradient-to-br from-primary-50/60 via-white to-sky-50/60">
+      {chartStats.map((stat, index) => (
+        <div
+          key={stat.label}
+          className={cn(
+            "min-w-0 border-b border-gray-100 p-2.5 sm:p-3",
+            index % 2 === 0 && "border-r",
+          )}
+        >
+          <span className="block text-sm font-medium leading-4 text-gray-700">
+            {stat.label}
+          </span>
+          <div className="mt-1.5 flex items-end justify-between gap-1">
+            <span className="text-xl font-medium leading-none tabular-nums text-gray-950 sm:text-[22px]">
+              {stat.value}
+            </span>
+            <MiniBarChart data={stat.bars} />
+          </div>
+        </div>
+      ))}
+      {iconStats.map((stat, index) => {
+        const Icon = stat.icon;
+        return (
+          <div
+            key={stat.label}
+            className={cn(
+              "min-w-0 p-2.5 sm:p-3",
+              index < 2 && "border-b border-gray-100",
+              index === 1 && "border-r border-gray-100",
+            )}
+          >
+            <div className="flex gap-1.5">
+              <Icon aria-hidden="true" className="h-3.5 w-3.5 text-gray-800" />
+              <span className="block text-sm font-medium leading-4 text-gray-700">
+                {stat.label}
+              </span>
+            </div>
+            <span className="mt-1.5 block text-[22px] font-medium leading-none tabular-nums text-gray-950">
+              {stat.value}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Scoring input tile ──────────────────────────────────────────────────────
+
+function ScoreField({
+  label,
+  hint,
+  icon: Icon,
+  value,
+  onChange,
+  tint,
+  max = 100,
+}: {
+  label: string;
+  hint: string;
+  icon: LucideIcon;
+  value: number;
+  onChange: (value: number) => void;
+  tint: string;
+  max?: number;
+}) {
+  return (
+    <div className={cn("rounded-xl border p-3", tint)}>
+      <div className="mb-2 flex items-center gap-1.5 text-xs font-bold">
+        <Icon aria-hidden="true" className="size-3.5" />
+        {label}
+      </div>
+      <div className="flex items-center gap-2">
+        <Input
+          type="number"
+          min={0}
+          max={max}
+          value={value}
+          onChange={(event) => onChange(Math.max(0, Number(event.target.value)))}
+          className="bg-white tabular-nums"
+        />
+        <span className="shrink-0 text-xs font-semibold text-gray-500">pts</span>
+      </div>
+      <p className="mt-1.5 text-[10px] text-gray-400">{hint}</p>
+    </div>
+  );
+}
+
 export default function IbadahConfigPage() {
   const tenantPath = useTenantPath();
   const { accessToken, user, activeClientId, hasHydrated } = useAuthStore();
@@ -119,7 +260,6 @@ export default function IbadahConfigPage() {
   const [config, setConfig] = useState<IbadahConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toggles, setToggles] =
     useState<Partial<Record<keyof IbadahConfig, boolean>>>(DEFAULT_TOGGLES);
@@ -223,14 +363,24 @@ export default function IbadahConfigPage() {
         targetCid,
       );
       setConfig(updated);
-      setCustomItems(Array.isArray(updated.customItems) ? updated.customItems : []);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      setCustomItems(
+        Array.isArray(updated.customItems) ? updated.customItems : [],
+      );
+      toast.success("Ibadah configuration saved successfully");
     } catch (e) {
-      setError((e as Error).message);
+      toast.error(
+        (e as Error).message || "Failed to save ibadah configuration",
+      );
     } finally {
       setSaving(false);
     }
+  };
+
+  const closeItemForm = () => {
+    setAddingItem(false);
+    setEditingIdx(null);
+    setNewItemError(null);
+    setEditItemError(null);
   };
 
   const handleAddItem = () => {
@@ -262,9 +412,7 @@ export default function IbadahConfigPage() {
       }),
     };
     setCustomItems((prev) => [...prev, item]);
-    setNewItem({ ...EMPTY_ITEM });
-    setAddingItem(false);
-    setNewItemError(null);
+    closeItemForm();
   };
 
   const handleDeleteItem = (idx: number) => {
@@ -272,6 +420,7 @@ export default function IbadahConfigPage() {
   };
 
   const startEdit = (idx: number) => {
+    setAddingItem(false);
     setEditingIdx(idx);
     setEditItem({ ...customItems[idx] });
     setEditItemError(null);
@@ -311,20 +460,15 @@ export default function IbadahConfigPage() {
     setCustomItems((prev) =>
       prev.map((ci, i) => (i === editingIdx ? item : ci)),
     );
-    setEditingIdx(null);
-    setEditItemError(null);
+    closeItemForm();
   };
 
   if (hasHydrated && !isAdmin) {
     return (
       <DashboardLayout>
-        <PageHeader
-          title="Ibadah Configuration"
-          subtitle="Settings & Performance Scoring"
-          icon={Moon}
-        />
-        <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl flex items-center gap-2 mt-4">
-          <AlertCircle className="w-4 h-4 shrink-0" /> Admin access required.
+        <PageHeader title="Ibadah Configuration" />
+        <div className="mt-4 flex items-center gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+          <AlertCircle className="size-4 shrink-0" /> Admin access required.
         </div>
       </DashboardLayout>
     );
@@ -341,34 +485,75 @@ export default function IbadahConfigPage() {
       scoring.adaPoints ?? 7,
       scoring.excusedPoints ?? 7,
     );
-  const maxQuranDaily =
-    (toggles.enableQuranPages !== false
-      ? (scoring.maxQuranPagesPerDay ?? 20) * (scoring.quranPointsPerPage ?? 2)
-      : 0);
+  const quranEnabled = toggles.enableQuranPages !== false;
+  const maxQuranDaily = quranEnabled
+    ? (scoring.maxQuranPagesPerDay ?? 20) * (scoring.quranPointsPerPage ?? 2)
+    : 0;
   const maxCustomDaily = customItems.reduce(
     (sum, ci) => sum + (Number(ci.points ?? 0) || 0),
     0,
   );
   const totalDailyMax = maxPrayerDaily + maxQuranDaily + maxCustomDaily;
+  const topPrayerPoints = Math.max(
+    scoring.jamaPoints ?? 10,
+    scoring.adaPoints ?? 7,
+    scoring.excusedPoints ?? 7,
+  );
+
+  const chartStats: ChartStat[] = [
+    {
+      label: "Active prayers",
+      value: activePrayerCount,
+      bars: [
+        { value: activePrayerCount, color: "#059669" },
+        { value: PRAYER_FIELDS.length - 1 - activePrayerCount, color: "#a7f3d0" },
+      ],
+    },
+    {
+      label: "Max daily points",
+      value: totalDailyMax,
+      bars: [
+        { value: maxPrayerDaily, color: "#059669" },
+        { value: maxQuranDaily, color: "#60a5fa" },
+        { value: maxCustomDaily, color: "#bfdbfe" },
+      ],
+    },
+    {
+      label: "Activities enabled",
+      value: activePrayerCount + (quranEnabled ? 1 : 0) + customItems.length,
+      bars: [
+        { value: activePrayerCount, color: "#059669" },
+        { value: quranEnabled ? 1 : 0, color: "#60a5fa" },
+        { value: customItems.length, color: "#bfdbfe" },
+      ],
+    },
+  ];
+  const iconStats: IconStat[] = [
+    {
+      label: "Quran pages cap",
+      value: quranEnabled ? scoring.maxQuranPagesPerDay ?? 20 : 0,
+      icon: BookOpen,
+    },
+    { label: "Custom activities", value: customItems.length, icon: Sparkles },
+    { label: "Top prayer weight", value: `${topPrayerPoints} pts`, icon: Trophy },
+  ];
+
+  const backHref = isSuperAdmin ? "/admin" : tenantPath("/admin/ibadah");
 
   return (
     <DashboardLayout>
-      <PageHeader
-        title="Ibadah Configuration"
-        subtitle="Tracking settings and performance scoring rules"
-        icon={Moon}
-        back
-        backHref={isSuperAdmin ? "/admin" : tenantPath("/admin/ibadah")}
-      />
+      <PageHeader title="Ibadah Configuration" />
 
       {loading ? (
         <PageSkeleton />
       ) : !clientId ? (
-        <div className="bg-white border border-gray-100 rounded-3xl p-8 text-center max-w-lg mx-auto space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto">
-            <Building2 className="w-6 h-6" />
+        <div className="mx-auto max-w-lg space-y-3 rounded-2xl border border-gray-100 bg-white p-8 text-center">
+          <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
+            <Building2 className="size-6" />
           </div>
-          <h3 className="text-base font-bold text-gray-900">No Madrasa Selected</h3>
+          <h3 className="text-base font-bold text-gray-900">
+            No Madrasa Selected
+          </h3>
           <p className="text-xs text-gray-500">
             {isSuperAdmin
               ? "Please enter a madrasa from the Madrasas list to configure its ibadah tracking settings."
@@ -378,7 +563,7 @@ export default function IbadahConfigPage() {
             <div className="pt-2">
               <Link
                 to="/admin/madrasas"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
+                className={buttonVariants({ size: "sm" })}
               >
                 Go to Madrasas
               </Link>
@@ -386,468 +571,390 @@ export default function IbadahConfigPage() {
           )}
         </div>
       ) : (
-        <div className="space-y-6 pb-28">
+        <div className="space-y-5 pb-28">
+          <Link
+            to={backHref}
+            className="inline-flex items-center gap-1 text-xs font-semibold text-primary-700 hover:text-primary-900 hover:underline"
+          >
+            <ChevronLeft className="size-4" /> Back
+          </Link>
+
           {error && (
-            <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" /> {error}
+            <div className="flex items-center gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+              <AlertCircle className="size-4 shrink-0" /> {error}
             </div>
           )}
 
-          {/* Ibadah Night Notification Settings Banner */}
-          <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-100/80 rounded-3xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+          {/* Night alert notification banner */}
+          <div className="flex flex-col gap-4 rounded-2xl border border-emerald-100/80 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3.5">
-              <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                <Bell className="w-5 h-5" />
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-white">
+                <Bell className="size-5" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-gray-900">
                   Night Alert Notification for Ibadah Tracking
                 </h3>
-                <p className="text-xs text-gray-600 mt-0.5 max-w-xl">
-                  Configure automated nightly push notifications sent to parents to remind them to log their child&apos;s daily prayers and good deeds.
+                <p className="mt-0.5 max-w-xl text-xs text-gray-600">
+                  Configure automated nightly push notifications sent to
+                  parents to remind them to log their child&apos;s daily prayers
+                  and good deeds.
                 </p>
               </div>
             </div>
             <Link
               to={tenantPath("/admin/config?tab=ibadah")}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors shrink-0 shadow-xs self-start sm:self-auto"
+              className={cn(
+                buttonVariants({ size: "sm" }),
+                "shrink-0 self-start sm:self-auto",
+              )}
             >
-              <span>Configure Alert</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              Configure Alert
+              <ArrowRight className="size-3.5" />
             </Link>
           </div>
 
-          {/* ──────────────────────────────────────────────────────── */}
-          {/* SECTION 1: Performance Scoring Configuration            */}
-          {/* ──────────────────────────────────────────────────────── */}
-          <motion.div
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-3xl border border-gray-100 p-5 lg:p-6 shadow-xs space-y-5"
-          >
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+          {/* Configuration overview stats */}
+          <ConfigStats chartStats={chartStats} iconStats={iconStats} />
+
+          {/* ── Performance scoring rules ─────────────────────────────── */}
+          <section className="space-y-5 rounded-2xl border border-gray-100 bg-white p-5 sm:p-6">
+            <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                  <Trophy className="w-5 h-5" />
+                <div className="flex size-9 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                  <Trophy className="size-5" />
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-gray-900">
                     Performance Scoring Rules
                   </h2>
                   <p className="text-xs text-gray-400">
-                    Set point weights for prayers, excused ruqsa, Quran reading, and custom activities
+                    Point weights for prayers, Quran reading, and custom
+                    activities
                   </p>
                 </div>
               </div>
-              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-primary-50 text-primary-700">
+              <span className="shrink-0 rounded-full bg-primary-50 px-2.5 py-1 text-[11px] font-bold text-primary-700">
                 Max {totalDailyMax} pts/day
               </span>
             </div>
 
-            {/* Prayer Scoring Inputs */}
             <div>
-              <p className="text-xs font-bold text-primary-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                <Award className="w-3.5 h-3.5" /> Prayer Status Points
+              <p className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-primary-700">
+                <Award className="size-3.5" /> Prayer Status Points
               </p>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                {/* Jama'a */}
-                <div className="p-3.5 rounded-2xl bg-blue-50/60 border border-blue-100/80">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="flex items-center gap-1 text-xs font-bold text-blue-700">
-                      <Users className="w-3.5 h-3.5" /> Jama'a (Group)
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={scoring.jamaPoints ?? 10}
-                      onChange={(e) =>
-                        setScoring((prev) => ({
-                          ...prev,
-                          jamaPoints: Math.max(0, Number(e.target.value)),
-                        }))
-                      }
-                      className="w-full px-3 py-2 bg-white border border-blue-200 rounded-xl text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <span className="text-xs font-semibold text-blue-600 shrink-0">pts</span>
-                  </div>
-                  <p className="text-[10px] text-gray-400 mt-1.5">Congregational prayer</p>
-                </div>
-
-                {/* Ada' */}
-                <div className="p-3.5 rounded-2xl bg-primary-50/60 border border-primary-100/80">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="flex items-center gap-1 text-xs font-bold text-primary-700">
-                      <Check className="w-3.5 h-3.5" /> Ada' (On Time)
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={scoring.adaPoints ?? 7}
-                      onChange={(e) =>
-                        setScoring((prev) => ({
-                          ...prev,
-                          adaPoints: Math.max(0, Number(e.target.value)),
-                        }))
-                      }
-                      className="w-full px-3 py-2 bg-white border border-primary-200 rounded-xl text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
-                    <span className="text-xs font-semibold text-primary-600 shrink-0">pts</span>
-                  </div>
-                  <p className="text-[10px] text-gray-400 mt-1.5">Individual on-time prayer</p>
-                </div>
-
-                {/* Excused / Ruqsa */}
-                <div className="p-3.5 rounded-2xl bg-primary-50/60 border border-primary-100/80">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="flex items-center gap-1 text-xs font-bold text-primary-700">
-                      <Check className="w-3.5 h-3.5 text-primary-600" /> Excused (Done)
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={scoring.excusedPoints ?? 7}
-                      onChange={(e) =>
-                        setScoring((prev) => ({
-                          ...prev,
-                          excusedPoints: Math.max(0, Number(e.target.value)),
-                        }))
-                      }
-                      className="w-full px-3 py-2 bg-white border border-primary-200 rounded-xl text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
-                    <span className="text-xs font-semibold text-primary-600 shrink-0">pts</span>
-                  </div>
-                  <p className="text-[10px] text-gray-400 mt-1.5">Ruqsa / Valid reason (done)</p>
-                </div>
-
-                {/* Qala' */}
-                <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-100/80">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="flex items-center gap-1 text-xs font-bold text-amber-700">
-                      <Sun className="w-3.5 h-3.5" /> Qala' (Make Up)
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={scoring.qalaPoints ?? 3}
-                      onChange={(e) =>
-                        setScoring((prev) => ({
-                          ...prev,
-                          qalaPoints: Math.max(0, Number(e.target.value)),
-                        }))
-                      }
-                      className="w-full px-3 py-2 bg-white border border-amber-200 rounded-xl text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                    />
-                    <span className="text-xs font-semibold text-amber-600 shrink-0">pts</span>
-                  </div>
-                  <p className="text-[10px] text-gray-400 mt-1.5">Off-time make-up prayer</p>
-                </div>
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <ScoreField
+                  label="Jama'a (Group)"
+                  hint="Congregational prayer"
+                  icon={Users}
+                  value={scoring.jamaPoints ?? 10}
+                  onChange={(value) =>
+                    setScoring((prev) => ({ ...prev, jamaPoints: value }))
+                  }
+                  tint="border-blue-100/80 bg-blue-50/60 text-blue-700"
+                />
+                <ScoreField
+                  label="Ada' (On Time)"
+                  hint="Individual on-time prayer"
+                  icon={Check}
+                  value={scoring.adaPoints ?? 7}
+                  onChange={(value) =>
+                    setScoring((prev) => ({ ...prev, adaPoints: value }))
+                  }
+                  tint="border-primary-100/80 bg-primary-50/60 text-primary-700"
+                />
+                <ScoreField
+                  label="Excused (Done)"
+                  hint="Ruqsa / valid reason (done)"
+                  icon={Check}
+                  value={scoring.excusedPoints ?? 7}
+                  onChange={(value) =>
+                    setScoring((prev) => ({ ...prev, excusedPoints: value }))
+                  }
+                  tint="border-primary-100/80 bg-primary-50/60 text-primary-700"
+                />
+                <ScoreField
+                  label="Qala' (Make Up)"
+                  hint="Off-time make-up prayer"
+                  icon={Sun}
+                  value={scoring.qalaPoints ?? 3}
+                  onChange={(value) =>
+                    setScoring((prev) => ({ ...prev, qalaPoints: value }))
+                  }
+                  tint="border-amber-100/80 bg-amber-50/60 text-amber-700"
+                />
               </div>
             </div>
 
-            {/* Quran Reading Scoring */}
             <div>
-              <p className="text-xs font-bold text-blue-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                <BookOpen className="w-3.5 h-3.5" /> Quran Reading Scoring
+              <p className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-blue-700">
+                <BookOpen className="size-3.5" /> Quran Reading Scoring
               </p>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                <div className="p-3.5 rounded-2xl bg-gray-50 border border-gray-100">
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                  <label className="mb-1.5 block text-xs font-semibold text-gray-700">
                     Points per Quran Page
                   </label>
                   <div className="flex items-center gap-2">
-                    <input
+                    <Input
                       type="number"
                       min={0}
                       max={50}
                       value={scoring.quranPointsPerPage ?? 2}
-                      onChange={(e) =>
+                      onChange={(event) =>
                         setScoring((prev) => ({
                           ...prev,
-                          quranPointsPerPage: Math.max(0, Number(e.target.value)),
+                          quranPointsPerPage: Math.max(
+                            0,
+                            Number(event.target.value),
+                          ),
                         }))
                       }
-                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="bg-white tabular-nums"
                     />
-                    <span className="text-xs font-semibold text-gray-500 shrink-0">pts / page</span>
+                    <span className="shrink-0 text-xs font-semibold text-gray-500">
+                      pts / page
+                    </span>
                   </div>
                 </div>
-
-                <div className="p-3.5 rounded-2xl bg-gray-50 border border-gray-100">
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                  <label className="mb-1.5 block text-xs font-semibold text-gray-700">
                     Max Daily Tracked Pages
                   </label>
                   <div className="flex items-center gap-2">
-                    <input
+                    <Input
                       type="number"
                       min={1}
                       max={100}
                       value={scoring.maxQuranPagesPerDay ?? 20}
-                      onChange={(e) =>
+                      onChange={(event) =>
                         setScoring((prev) => ({
                           ...prev,
-                          maxQuranPagesPerDay: Math.max(1, Number(e.target.value)),
+                          maxQuranPagesPerDay: Math.max(
+                            1,
+                            Number(event.target.value),
+                          ),
                         }))
                       }
-                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="bg-white tabular-nums"
                     />
-                    <span className="text-xs font-semibold text-gray-500 shrink-0">pages max/day</span>
+                    <span className="shrink-0 text-xs font-semibold text-gray-500">
+                      pages max/day
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Live scoring explanation */}
-            <div className="p-3.5 rounded-2xl bg-primary-50/50 border border-primary-100/60 text-xs text-primary-800 flex items-start gap-2.5">
-              <Calculator className="w-4 h-4 text-primary-600 shrink-0 mt-0.5" />
+            <div className="flex items-start gap-2.5 rounded-xl border border-primary-100/60 bg-primary-50/50 p-3.5 text-xs text-primary-800">
+              <Calculator className="mt-0.5 size-4 shrink-0 text-primary-600" />
               <div>
                 <p className="font-bold">How Performance Score is Computed:</p>
-                <p className="text-primary-700/90 mt-0.5 leading-relaxed">
-                  Total student earned points divided by the maximum possible points across the selected period, multiplied by 100 to yield a percentage score. Excused prayers are scored as completed.
+                <p className="mt-0.5 leading-relaxed text-primary-700/90">
+                  Total student earned points divided by the maximum possible
+                  points across the selected period, multiplied by 100 to yield
+                  a percentage score. Excused prayers are scored as completed.
                 </p>
               </div>
             </div>
-          </motion.div>
+          </section>
 
-          {/* ──────────────────────────────────────────────────────── */}
-          {/* SECTION 2: Standard Ibadah Items                         */}
-          {/* ──────────────────────────────────────────────────────── */}
-          <motion.div
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-3xl border border-gray-100 p-5 lg:p-6 shadow-xs"
-          >
-            <p className="text-xs font-bold text-primary-700 uppercase tracking-wider mb-4">
-              Standard Ibadah Tracking Toggles
-            </p>
-            <div className="space-y-3">
+          {/* ── Standard ibadah toggles ───────────────────────────────── */}
+          <section>
+            <h2 className="mb-2 px-1 text-sm font-semibold text-gray-700">
+              Standard Ibadah Tracking
+            </h2>
+            <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100 bg-white">
               {PRAYER_FIELDS.map(({ key, label, desc }) => (
-                <div
+                <label
                   key={key}
-                  className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0"
+                  className="flex w-full cursor-pointer items-center justify-between gap-3 px-4 py-4 text-left transition-colors hover:bg-gray-50 focus-within:outline-2 focus-within:outline-offset-[-2px] focus-within:outline-primary-500"
                 >
-                  <div>
-                    <p className="text-sm font-semibold text-gray-800">
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-gray-900">
                       {label}
-                    </p>
-                    <p className="text-xs text-gray-400">{desc}</p>
-                  </div>
-                  <button
-                    onClick={() =>
-                      setToggles((prev) => ({ ...prev, [key]: !prev[key] }))
+                    </span>
+                    <span className="block text-xs text-gray-500">{desc}</span>
+                  </span>
+                  <Switch
+                    checked={!!toggles[key]}
+                    onCheckedChange={(checked) =>
+                      setToggles((prev) => ({ ...prev, [key]: checked }))
                     }
-                    className={cn(
-                      "relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none",
-                      toggles[key] ? "bg-primary-500" : "bg-gray-200",
-                    )}
-                    aria-pressed={!!toggles[key]}
-                  >
-                    <span
-                      className={cn(
-                        "absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200",
-                        toggles[key] ? "translate-x-6" : "translate-x-0",
-                      )}
-                    />
-                  </button>
-                </div>
+                    aria-label={`Enable ${label}`}
+                  />
+                </label>
               ))}
             </div>
-          </motion.div>
+          </section>
 
-          {/* ──────────────────────────────────────────────────────── */}
-          {/* SECTION 3: Custom Items                                 */}
-          {/* ──────────────────────────────────────────────────────── */}
-          <motion.div
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-3xl border border-gray-100 p-5 lg:p-6 shadow-xs"
-          >
-            <div className="flex items-center justify-between mb-4">
+          {/* ── Custom activities ─────────────────────────────────────── */}
+          <section>
+            <div className="mb-2 flex items-center justify-between gap-3 px-1">
               <div>
-                <p className="text-xs font-bold text-primary-700 uppercase tracking-wider">
+                <h2 className="text-sm font-semibold text-gray-700">
                   Custom Ibadah Activities
-                </p>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  Track additional sunnah, adhkar, or good deeds with dedicated scoring points
+                </h2>
+                <p className="mt-0.5 text-xs text-gray-500">
+                  Additional sunnah, adhkar, or good deeds with scoring points
                 </p>
               </div>
-              {!addingItem && (
-                <button
-                  onClick={() => {
-                    setAddingItem(true);
-                    setNewItem({ ...EMPTY_ITEM });
-                    setNewItemError(null);
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 text-primary-700 rounded-xl text-xs font-semibold hover:bg-primary-100 transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Add Item
-                </button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setEditingIdx(null);
+                  setNewItem({ ...EMPTY_ITEM });
+                  setNewItemError(null);
+                  setAddingItem(true);
+                }}
+              >
+                <Plus className="size-3.5" /> Add Item
+              </Button>
+            </div>
+            <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100 bg-white">
+              {customItems.length === 0 ? (
+                <p className="px-4 py-10 text-center text-sm text-gray-500">
+                  No custom items. Add one to track additional ibadah with
+                  custom score points.
+                </p>
+              ) : (
+                customItems.map((item, idx) => (
+                  <div
+                    key={item.key}
+                    className="group flex items-center gap-3 px-4 py-4 transition-colors hover:bg-gray-50"
+                  >
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600">
+                      {item.icon ? (
+                        <Icon icon={item.icon} className="size-4" />
+                      ) : item.type === "boolean" ? (
+                        <ToggleLeft className="size-4" />
+                      ) : item.type === "enum" ? (
+                        <List className="size-4" />
+                      ) : (
+                        <Hash className="size-4" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-gray-900">
+                        {item.label}
+                      </p>
+                      <p className="mt-0.5 truncate text-xs text-gray-500">
+                        <span className="font-mono">{item.key}</span>
+                        {item.type === "number" &&
+                          ` · ${item.min ?? 0}–${item.max ?? "∞"}`}
+                        {item.type === "enum" &&
+                          ` · ${item.options?.map((o) => o.label).join(", ") ?? "—"}`}
+                      </p>
+                    </div>
+                    {(item.points ?? 0) > 0 && (
+                      <span className="shrink-0 text-sm font-semibold tabular-nums text-amber-700">
+                        +{item.points} pts
+                      </span>
+                    )}
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`Edit ${item.label}`}
+                        onClick={() => startEdit(idx)}
+                      >
+                        <Pencil className="size-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`Delete ${item.label}`}
+                        onClick={() => handleDeleteItem(idx)}
+                        className="text-gray-400 hover:text-red-600"
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
-
-            {customItems.length === 0 && !addingItem && (
-              <p className="text-sm text-gray-400 text-center py-6">
-                No custom items. Add one to track additional ibadah with custom score points.
-              </p>
-            )}
-
-            <div className="space-y-3">
-              <AnimatePresence initial={false}>
-                {customItems.map((item, idx) => (
-                  <motion.div
-                    key={item.key}
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="overflow-hidden"
-                  >
-                    {editingIdx === idx ? (
-                      <CustomItemForm
-                        item={editItem}
-                        onChange={setEditItem}
-                        error={editItemError}
-                        onSave={handleSaveEdit}
-                        onCancel={() => {
-                          setEditingIdx(null);
-                          setEditItemError(null);
-                        }}
-                        mode="edit"
-                      />
-                    ) : (
-                      <div className="flex items-center gap-3 p-3.5 bg-gray-50 rounded-2xl group border border-gray-100">
-                        <GripVertical className="w-4 h-4 text-gray-300 shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            {item.icon ? (
-                              <Icon icon={item.icon} className="w-4 h-4 text-primary-600 shrink-0" />
-                            ) : item.type === "boolean" ? (
-                              <ToggleLeft className="w-4 h-4 text-primary-500 shrink-0" />
-                            ) : item.type === "enum" ? (
-                              <List className="w-4 h-4 text-purple-500 shrink-0" />
-                            ) : (
-                              <Hash className="w-4 h-4 text-blue-500 shrink-0" />
-                            )}
-                            <p className="text-sm font-semibold text-gray-900 truncate">
-                              {item.label}
-                            </p>
-                            <span className="text-[10px] font-mono text-gray-400 bg-gray-200/60 px-1.5 py-0.5 rounded shrink-0">
-                              {item.key}
-                            </span>
-                            {(item.points ?? 0) > 0 && (
-                              <span className="text-[10px] font-bold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-full shrink-0">
-                                +{item.points} pts
-                              </span>
-                            )}
-                          </div>
-                          {item.type === "number" && (
-                            <p className="text-xs text-gray-400 mt-0.5 ml-6">
-                              Range: {item.min ?? 0}–{item.max ?? "∞"}
-                            </p>
-                          )}
-                          {item.type === "enum" && (
-                            <p className="text-xs text-gray-400 mt-0.5 ml-6">
-                              Options: {item.options?.map((o) => o.label).join(", ") ?? "—"}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => startEdit(idx)}
-                            className="px-2.5 py-1.5 rounded-xl hover:bg-white text-gray-500 hover:text-gray-900 transition-colors text-xs font-semibold"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteItem(idx)}
-                            className="p-1.5 rounded-xl hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-
-              {/* Add new item form */}
-              <AnimatePresence>
-                {addingItem && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="overflow-hidden"
-                  >
-                    <CustomItemForm
-                      item={newItem}
-                      onChange={(item) => {
-                        if (
-                          !newItem.key ||
-                          newItem.key === generateKey(newItem.label)
-                        ) {
-                          setNewItem({ ...item, key: generateKey(item.label) });
-                        } else {
-                          setNewItem(item);
-                        }
-                      }}
-                      error={newItemError}
-                      onSave={handleAddItem}
-                      onCancel={() => {
-                        setAddingItem(false);
-                        setNewItemError(null);
-                      }}
-                      mode="add"
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </motion.div>
+          </section>
 
           {/* Sticky save */}
           <div className="sticky bottom-20 lg:bottom-6">
-            <button
-              onClick={handleSave}
+            <Button
+              type="button"
+              size="lg"
+              className="w-full"
               disabled={saving}
-              className={cn(
-                "w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl font-bold text-sm transition-all shadow-lg",
-                saved
-                  ? "bg-primary-100 text-primary-700"
-                  : "bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60",
-              )}
+              onClick={handleSave}
             >
               {saving ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : saved ? (
-                <>
-                  <CheckCircle2 className="w-5 h-5" /> Saved Successfully!
-                </>
+                <Loader2 className="size-5 animate-spin" />
               ) : (
                 <>
-                  <Save className="w-5 h-5" /> Save Configuration & Scoring
+                  <Save className="size-5" /> Save Configuration &amp; Scoring
                 </>
               )}
-            </button>
+            </Button>
           </div>
         </div>
       )}
+
+      {/* Add / edit custom item panel */}
+      <ResponsivePopover
+        open={addingItem || editingIdx !== null}
+        onOpenChange={(open) => {
+          if (!open) closeItemForm();
+        }}
+        title={editingIdx !== null ? "Edit custom activity" : "New custom activity"}
+        description="Track additional sunnah, adhkar, or good deeds with dedicated scoring points."
+        fullHeight
+        fullHeightWidth="520px"
+        footer={
+          <div className="border-t border-gray-100 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="lg"
+                className="flex-1"
+                onClick={editingIdx !== null ? handleSaveEdit : handleAddItem}
+              >
+                {editingIdx !== null ? "Save changes" : "Add item"}
+              </Button>
+              <Button type="button" size="lg" variant="outline" onClick={closeItemForm}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        }
+      >
+        {editingIdx !== null ? (
+          <CustomItemForm
+            item={editItem}
+            onChange={setEditItem}
+            error={editItemError}
+          />
+        ) : (
+          <CustomItemForm
+            item={newItem}
+            onChange={(item) => {
+              if (!newItem.key || newItem.key === generateKey(newItem.label)) {
+                setNewItem({ ...item, key: generateKey(item.label) });
+              } else {
+                setNewItem(item);
+              }
+            }}
+            error={newItemError}
+          />
+        )}
+      </ResponsivePopover>
     </DashboardLayout>
   );
 }
 
-// ── Enum Options Editor ─────────────────────────────────────────────────────
+// ── Enum options editor ─────────────────────────────────────────────────────
 
 const ICON_COLORS = [
   { label: "Emerald", value: "emerald" },
@@ -869,29 +976,11 @@ function EnumOptionsEditor({
 }) {
   const options = item.options ?? [];
   const [adding, setAdding] = useState(false);
-  const [search, setSearch] = useState("");
-  const [results, setResults] = useState<string[]>([]);
   const [newOpt, setNewOpt] = useState({
     icon: "mdi:moon",
     label: "",
     color: "emerald",
   });
-
-  const searchIconify = async (q: string) => {
-    if (q.length < 2) {
-      setResults([]);
-      return;
-    }
-    try {
-      const res = await fetch(
-        `https://api.iconify.design/search?query=${encodeURIComponent(q)}&limit=12`,
-      );
-      const data = await res.json();
-      setResults(data.icons ?? []);
-    } catch {
-      setResults([]);
-    }
-  };
 
   const addOption = () => {
     if (!newOpt.label.trim()) return;
@@ -901,8 +990,6 @@ function EnumOptionsEditor({
     });
     setNewOpt({ icon: "mdi:moon", label: "", color: "emerald" });
     setAdding(false);
-    setSearch("");
-    setResults([]);
   };
 
   const removeOption = (idx: number) => {
@@ -922,95 +1009,76 @@ function EnumOptionsEditor({
 
   return (
     <div>
-      <label className="block text-xs font-semibold text-gray-500 mb-2">
+      <label className="mb-2 block text-xs font-semibold text-gray-500">
         Options
       </label>
 
-      <div className="space-y-1.5 mb-3">
+      <div className="mb-3 space-y-1.5">
         {options.map((opt, idx) => (
           <div
             key={idx}
-            className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl"
+            className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2"
           >
             <div
-              className={`w-7 h-7 rounded-lg ${colorMap[opt.color] ?? "bg-gray-400"} flex items-center justify-center text-white shrink-0`}
+              className={`flex size-7 shrink-0 items-center justify-center rounded-lg text-white ${colorMap[opt.color] ?? "bg-gray-400"}`}
             >
-              <Icon icon={opt.icon} className="w-4 h-4" />
+              <Icon icon={opt.icon} className="size-4" />
             </div>
-            <span className="text-sm font-medium text-gray-800 flex-1">
+            <span className="flex-1 text-sm font-medium text-gray-800">
               {opt.label}
             </span>
-            <button
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label={`Remove ${opt.label}`}
               onClick={() => removeOption(idx)}
-              className="p-1 rounded-lg hover:bg-white text-gray-400 hover:text-red-500 transition-colors"
+              className="text-gray-400 hover:text-red-500"
             >
-              <X className="w-3.5 h-3.5" />
-            </button>
+              <X className="size-3.5" />
+            </Button>
           </div>
         ))}
       </div>
 
       {adding ? (
-        <div className="border border-primary-200 bg-primary-50/50 rounded-xl p-3 space-y-2.5">
-          <div className="flex gap-2 items-start">
-            <div className="flex flex-col items-center gap-1 shrink-0">
+        <div className="space-y-2.5 rounded-xl border border-primary-200 bg-primary-50/50 p-3">
+          <div className="flex items-start gap-2">
+            <div className="shrink-0">
               <div
-                className={`w-10 h-10 rounded-xl ${colorMap[newOpt.color] ?? "bg-gray-400"} flex items-center justify-center text-white`}
+                className={`flex size-10 items-center justify-center rounded-xl text-white ${colorMap[newOpt.color] ?? "bg-gray-400"}`}
               >
-                <Icon icon={newOpt.icon} className="w-5 h-5" />
+                <Icon icon={newOpt.icon} className="size-5" />
               </div>
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  searchIconify(e.target.value);
-                }}
-                placeholder="Search icons..."
-                className="w-24 px-2 py-1 text-[10px] border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 bg-white text-center"
-              />
-              {results.length > 0 && (
-                <div className="absolute mt-16 z-10 bg-white border border-gray-200 rounded-xl shadow-lg p-2 grid grid-cols-4 gap-1 w-48">
-                  {results.map((ic) => (
-                    <button
-                      key={ic}
-                      onClick={() => {
-                        setNewOpt({ ...newOpt, icon: ic });
-                        setResults([]);
-                        setSearch("");
-                      }}
-                      className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-600"
-                    >
-                      <Icon icon={ic} className="w-4 h-4" />
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
-
-            <div className="flex-1 space-y-2">
-              <input
-                type="text"
+            <div className="min-w-0 flex-1 space-y-2">
+              <IconifyPicker
+                value={newOpt.icon}
+                onChange={(icon) => setNewOpt({ ...newOpt, icon })}
+              />
+              <Input
                 value={newOpt.label}
-                onChange={(e) =>
-                  setNewOpt({ ...newOpt, label: e.target.value })
+                onChange={(event) =>
+                  setNewOpt({ ...newOpt, label: event.target.value })
                 }
                 placeholder="Option label"
-                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
               />
-              <div className="flex gap-1.5 flex-wrap">
+              <div className="flex flex-wrap gap-1.5">
                 {ICON_COLORS.map((c) => (
                   <button
                     key={c.value}
+                    type="button"
+                    title={c.label}
+                    aria-label={c.label}
+                    aria-pressed={newOpt.color === c.value}
                     onClick={() => setNewOpt({ ...newOpt, color: c.value })}
                     className={cn(
-                      "w-6 h-6 rounded-full transition-all",
+                      "size-6 rounded-full transition-all",
                       colorMap[c.value],
                       newOpt.color === c.value
-                        ? "ring-2 ring-offset-1 ring-gray-400 scale-110"
+                        ? "scale-110 ring-2 ring-offset-1 ring-gray-400"
                         : "opacity-60 hover:opacity-100",
                     )}
-                    title={c.label}
                   />
                 ))}
               </div>
@@ -1018,213 +1086,177 @@ function EnumOptionsEditor({
           </div>
 
           <div className="flex gap-2">
-            <button
-              onClick={addOption}
-              className="flex-1 py-2 bg-primary-600 text-white rounded-xl text-sm font-bold hover:bg-primary-700 transition-colors"
-            >
+            <Button type="button" className="flex-1" onClick={addOption}>
               Add Option
-            </button>
-            <button
-              onClick={() => {
-                setAdding(false);
-                setResults([]);
-                setSearch("");
-              }}
-              className="px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setAdding(false)}
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
-        <button
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="text-primary-600 hover:text-primary-800"
           onClick={() => setAdding(true)}
-          className="flex items-center gap-1.5 text-xs font-semibold text-primary-600 hover:text-primary-800 transition-colors"
         >
-          <Plus className="w-3.5 h-3.5" /> Add Option
-        </button>
+          <Plus className="size-3.5" /> Add Option
+        </Button>
       )}
     </div>
   );
 }
 
-// ── Custom Item Form ─────────────────────────────────────────────────────────
-
-interface CustomItemFormProps {
-  item: CustomItem;
-  onChange: (item: CustomItem) => void;
-  error: string | null;
-  onSave: () => void;
-  onCancel: () => void;
-  mode: "add" | "edit";
-}
+// ── Custom item form ────────────────────────────────────────────────────────
 
 function CustomItemForm({
   item,
   onChange,
   error,
-  onSave,
-  onCancel,
-  mode,
-}: CustomItemFormProps) {
+}: {
+  item: CustomItem;
+  onChange: (item: CustomItem) => void;
+  error: string | null;
+}) {
   return (
-    <div className="border border-primary-200 bg-primary-50/50 rounded-2xl p-4 space-y-3">
-      <p className="text-xs font-bold text-primary-700 uppercase tracking-wide">
-        {mode === "add" ? "New Custom Item" : "Edit Item"}
-      </p>
-
-      <div className="grid grid-cols-2 gap-3">
+    <div className="mx-auto w-full max-w-xl space-y-5 p-4 sm:p-5">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label className="block text-xs font-semibold text-gray-500 mb-1">
+          <label className="mb-1 block text-xs font-semibold text-gray-500">
             Label *
           </label>
-          <input
-            type="text"
+          <Input
             value={item.label}
-            onChange={(e) => onChange({ ...item, label: e.target.value })}
+            onChange={(event) => onChange({ ...item, label: event.target.value })}
             placeholder="e.g. Tahajjud"
-            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
           />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-gray-500 mb-1">
+          <label className="mb-1 block text-xs font-semibold text-gray-500">
             Key *
           </label>
-          <input
-            type="text"
+          <Input
             value={item.key}
-            onChange={(e) =>
+            onChange={(event) =>
               onChange({
                 ...item,
-                key: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""),
+                key: event.target.value
+                  .toLowerCase()
+                  .replace(/[^a-z0-9_]/g, ""),
               })
             }
             placeholder="e.g. tahajjud"
-            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+            className="font-mono"
           />
         </div>
       </div>
 
-      <IconifyPicker
-        value={item.icon ?? "lucide:sparkles"}
-        onChange={(icon) => onChange({ ...item, icon })}
-      />
+      <div>
+        <label className="mb-1 block text-xs font-semibold text-gray-500">
+          Icon
+        </label>
+        <IconifyPicker
+          value={item.icon ?? "lucide:sparkles"}
+          onChange={(icon) => onChange({ ...item, icon })}
+        />
+      </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-semibold text-gray-500 mb-1">
-            Type
-          </label>
-          <div className="flex gap-1.5">
-            {(["boolean", "number", "enum"] as const).map((t) => (
-              <label
-                key={t}
-                className={cn(
-                  "flex-1 flex items-center justify-center gap-1.5 py-2 px-1 rounded-xl border-2 cursor-pointer text-xs font-semibold transition-all",
-                  item.type === t
-                    ? "border-primary-500 bg-primary-50 text-primary-700"
-                    : "border-gray-200 text-gray-600 bg-white",
-                )}
-              >
-                <input
-                  type="radio"
-                  name={`type-${mode}`}
-                  value={t}
-                  checked={item.type === t}
-                  onChange={() => onChange({ ...item, type: t })}
-                  className="sr-only"
-                />
-                {t === "boolean" ? (
-                  <ToggleLeft className="w-3.5 h-3.5" />
-                ) : t === "enum" ? (
-                  <List className="w-3.5 h-3.5" />
-                ) : (
-                  <Hash className="w-3.5 h-3.5" />
-                )}
-                {t === "boolean" ? "Yes/No" : t === "enum" ? "Enum" : "Num"}
-              </label>
-            ))}
-          </div>
-        </div>
+      <div>
+        <label className="mb-1.5 block text-xs font-semibold text-gray-500">
+          Type
+        </label>
+        <Tabs
+          value={item.type}
+          onValueChange={(value) =>
+            onChange({ ...item, type: value as CustomItem["type"] })
+          }
+        >
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="boolean">
+              <ToggleLeft className="size-3.5" /> Yes/No
+            </TabsTrigger>
+            <TabsTrigger value="number">
+              <Hash className="size-3.5" /> Number
+            </TabsTrigger>
+            <TabsTrigger value="enum">
+              <List className="size-3.5" /> Enum
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
 
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label className="block text-xs font-semibold text-gray-500 mb-1">
+          <label className="mb-1 block text-xs font-semibold text-gray-500">
             Scoring Points Awarded
           </label>
-          <input
+          <Input
             type="number"
             min={0}
             max={100}
             value={item.points ?? 0}
-            onChange={(e) =>
-              onChange({ ...item, points: Math.max(0, Number(e.target.value)) })
+            onChange={(event) =>
+              onChange({
+                ...item,
+                points: Math.max(0, Number(event.target.value)),
+              })
             }
             placeholder="e.g. 5"
-            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+            className="tabular-nums"
           />
         </div>
+        {item.type === "number" && (
+          <>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-gray-500">
+                Min value
+              </label>
+              <Input
+                type="number"
+                min={0}
+                value={item.min ?? 0}
+                onChange={(event) =>
+                  onChange({
+                    ...item,
+                    min: Math.max(0, Number(event.target.value)),
+                  })
+                }
+                className="tabular-nums"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-gray-500">
+                Max value
+              </label>
+              <Input
+                type="number"
+                min={1}
+                value={item.max ?? 100}
+                onChange={(event) =>
+                  onChange({ ...item, max: Number(event.target.value) })
+                }
+                className="tabular-nums"
+              />
+            </div>
+          </>
+        )}
       </div>
-
-      {item.type === "number" && (
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1">
-              Min value
-            </label>
-            <input
-              type="number"
-              value={item.min ?? 0}
-              min={0}
-              onChange={(e) =>
-                onChange({ ...item, min: Math.max(0, Number(e.target.value)) })
-              }
-              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1">
-              Max value
-            </label>
-            <input
-              type="number"
-              value={item.max ?? 100}
-              min={1}
-              onChange={(e) =>
-                onChange({
-                  ...item,
-                  max: Number(e.target.value),
-                })
-              }
-              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
-            />
-          </div>
-        </div>
-      )}
 
       {item.type === "enum" && (
         <EnumOptionsEditor item={item} onChange={onChange} />
       )}
 
       {error && (
-        <div className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-xl flex items-center gap-1.5">
-          <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {error}
+        <div className="flex items-center gap-1.5 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-600">
+          <AlertCircle className="size-3.5 shrink-0" /> {error}
         </div>
       )}
-
-      <div className="flex gap-2 pt-1">
-        <button
-          onClick={onSave}
-          className="flex-1 py-2.5 bg-primary-600 text-white rounded-xl text-sm font-bold hover:bg-primary-700 transition-colors"
-        >
-          {mode === "add" ? "Add Item" : "Save Changes"}
-        </button>
-        <button
-          onClick={onCancel}
-          className="px-4 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
-        >
-          Cancel
-        </button>
-      </div>
     </div>
   );
 }

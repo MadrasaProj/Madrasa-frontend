@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguageStore } from "@/store/language";
@@ -25,7 +26,6 @@ export default function ParentElectionsPage() {
   const [activeElection, setActiveElection] = useState<Election | null>(null);
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
   const [confirmStep, setConfirmStep] = useState(false);
-  const [successEl, setSuccessEl] = useState<string | null>(null);
 
   // Only parent_vote type elections
   const parentElections = elections.filter((e) => e.type === "parent_vote");
@@ -49,11 +49,10 @@ export default function ParentElectionsPage() {
   const submitVote = () => {
     if (!activeElection || !selectedCandidate) return;
     setVotedMap((prev) => ({ ...prev, [activeElection.id]: selectedCandidate }));
-    setSuccessEl(activeElection.id);
+    toast.success(t("elections", "voteSubmitted", lang));
     setActiveElection(null);
     setSelectedCandidate(null);
     setConfirmStep(false);
-    setTimeout(() => setSuccessEl(null), 3000);
   };
 
   const openVote = (el: Election) => {
@@ -87,19 +86,6 @@ export default function ParentElectionsPage() {
           </div>
         </div>
       </motion.div>
-
-      {/* ── Success Toast ── */}
-      <AnimatePresence>
-        {successEl && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-            className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-primary-600 text-white px-6 py-3 rounded-2xl shadow-lg flex items-center gap-2 text-sm font-semibold"
-          >
-            <CheckCircle2 className="w-4 h-4" />
-            {t("elections", "voteSubmitted", lang)}
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* ── My Children Info ── */}
       <motion.div

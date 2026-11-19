@@ -105,7 +105,6 @@ function EditMadrasaDrawer({
     committiePassword: "",
   });
   const [saving, setSaving] = useState(false);
-  const [success, setSuccess] = useState(false);
   const [editDivisions, setEditDivisions] = useState<Record<string, string[]>>({});
   const [existingClasses, setExistingClasses] = useState<ClassRecord[]>([]);
   const [classesLoading, setClassesLoading] = useState(true);
@@ -151,7 +150,6 @@ function EditMadrasaDrawer({
       return;
     }
     setSaving(true);
-    setSuccess(false);
     try {
       const gradeLevelIds = Object.keys(editDivisions)
         .filter((id) => (editDivisions[id]?.length ?? 0) > 0);
@@ -176,7 +174,6 @@ function EditMadrasaDrawer({
       };
       const updated = await updateClient(client.id, dto, token);
       const merged: ClientListItem = { ...client, ...updated };
-      setSuccess(true);
       toast.success("Madrasa updated successfully");
       onSaved(merged);
       setTimeout(onClose, 800);
@@ -233,13 +230,6 @@ function EditMadrasaDrawer({
 
         {/* Body */}
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-3 pb-6">
-          {success && (
-            <div className="flex items-center gap-2 p-3 bg-primary-50 border border-primary-200 rounded-xl text-xs text-primary-700">
-              <CheckCircle className="w-4 h-4 shrink-0" />
-              Changes saved successfully.
-            </div>
-          )}
-
           {/* Basic info */}
           <p className={cn(sectionCls, "border-t-0 mt-0")}>Madrasa Info</p>
           <div>
@@ -438,16 +428,12 @@ function EditMadrasaDrawer({
           </button>
           <button
             onClick={handleSave}
-            disabled={saving || success}
+            disabled={saving}
             className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-primary-600 text-white rounded-2xl hover:bg-primary-700 disabled:opacity-60 transition-all"
           >
             {saving ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" /> Saving…
-              </>
-            ) : success ? (
-              <>
-                <CheckCircle className="w-4 h-4" /> Saved
               </>
             ) : (
               <>

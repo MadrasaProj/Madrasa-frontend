@@ -15,6 +15,7 @@ import {
 } from "@/lib/results-api";
 import { getStudents, type StudentRecord } from "@/lib/students-api";
 import { useAuthStore } from "@/store/auth";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
  RefreshCw, Loader2, Trophy, FileSpreadsheet,
@@ -67,7 +68,6 @@ export default function ClassReportPage() {
 
  // Compute
  const [computing, setComputing] = useState(false);
- const [computeMsg, setComputeMsg] = useState<string | null>(null);
 
  // Import modal
  const [importOpen, setImportOpen] = useState(false);
@@ -75,7 +75,6 @@ export default function ClassReportPage() {
  // Status editing
  const [statusMap, setStatusMap] = useState<Record<string, { finalStatus: ResultStatus; totalGrade?: TotalGrade | null }>>({});
  const [savingId, setSavingId] = useState<string | null>(null);
- const [statusMsg, setStatusMsg] = useState<string | null>(null);
 
  // Rank posters
  const [posterStudentId, setPosterStudentId] = useState<string | null>(null);
@@ -121,13 +120,12 @@ export default function ClassReportPage() {
  const handleCompute = async () => {
  if (!report || computing) return;
  setComputing(true);
- setComputeMsg(null);
  try {
  const res = await computeSummary(cid, token, { examId, classId, accademicYearId: ayId || undefined });
- setComputeMsg(`Computed ${res.computed} results · ${res.ranked} students ranked`);
+ toast.success(`Computed ${res.computed} results · ${res.ranked} students ranked`);
  await load(true);
  } catch (e: any) {
- setComputeMsg(`Error: ${e.message}`);
+ toast.error(e.message ?? "Failed to compute results");
  } finally {
  setComputing(false);
  }
@@ -138,7 +136,6 @@ export default function ClassReportPage() {
  const handleSaveAll = async () => {
  if (!report || savingAll) return;
  setSavingAll(true);
- setStatusMsg(null);
  let saved = 0;
  try {
  for (const row of report.students) {
@@ -150,10 +147,10 @@ export default function ClassReportPage() {
  });
  saved++;
  }
- setStatusMsg(`Saved status for ${saved} student${saved !== 1 ? "s" : ""}`);
+ toast.success(`Saved status for ${saved} student${saved !== 1 ? "s" : ""}`);
  await load(true);
  } catch (e: any) {
- setStatusMsg(`Error: ${e.message}`);
+ toast.error(e.message ?? "Failed to save status");
  } finally {
  setSavingAll(false);
  }
@@ -163,16 +160,15 @@ export default function ClassReportPage() {
  const entry = statusMap[row.student.id];
  if (!entry?.finalStatus) return;
  setSavingId(row.student.id);
- setStatusMsg(null);
  try {
  await setFinalStatus(cid, token, row.student.id, examId, {
  finalStatus: entry.finalStatus,
  totalGrade: entry.totalGrade ?? null,
  });
- setStatusMsg(`Status saved for ${row.student.name}`);
+ toast.success(`Status saved for ${row.student.name}`);
  await load(true);
  } catch (e: any) {
- setStatusMsg(`Error: ${e.message}`);
+ toast.error(e.message ?? "Failed to save status");
  } finally {
  setSavingId(null);
  }
@@ -237,26 +233,6 @@ export default function ClassReportPage() {
  }
  />
 
- {/* Compute feedback */}
- <AnimatePresence>
- {computeMsg && (
- <motion.div
- initial={{ opacity: 0, y: -8 }}
- animate={{ opacity: 1, y: 0 }}
- exit={{ opacity: 0 }}
- className={cn(
- "flex items-center gap-2 px-4 py-3 rounded-xl text-sm",
- computeMsg.startsWith("Error")
- ? "bg-red-50 text-red-700 border border-red-100"
- : "bg-primary-50 text-primary-700 border border-primary-100",
- )}
- >
- {computeMsg.startsWith("Error") ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
- {computeMsg}
- </motion.div>
- )}
- </AnimatePresence>
-
  {/* Stats cards */}
  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
  {[
@@ -316,7 +292,6 @@ export default function ClassReportPage() {
  setStatusMap={setStatusMap}
  savingId={savingId}
  savingAll={savingAll}
- statusMsg={statusMsg}
  onSave={handleSaveStatus}
  onSaveAll={handleSaveAll}
  />
@@ -411,13 +386,12 @@ function MarklistTab({ report, marklistStudId, setMarklistStudId, madrasaName, m
 
 // ── Status tab ────────────────────────────────────────────────────────────────
 
-function StatusTab({ report, statusMap, setStatusMap, savingId, savingAll, statusMsg, onSave, onSaveAll }: {
+function StatusTab({ report, statusMap, setStatusMap, savingId, savingAll, onSave, onSaveAll }: {
  report: ClassReport;
  statusMap: Record<string, { finalStatus: ResultStatus; totalGrade?: TotalGrade | null }>;
  setStatusMap: React.Dispatch<React.SetStateAction<typeof statusMap>>;
  savingId: string | null;
  savingAll: boolean;
- statusMsg: string | null;
  onSave: (row: ClassReportRow) => void;
  onSaveAll: () => void;
 }) {
@@ -443,15 +417,6 @@ function StatusTab({ report, statusMap, setStatusMap, savingId, savingAll, statu
  Save All
  </button>
  </div>
- {statusMsg && (
- <div className={cn(
- "px-4 py-3 rounded-xl text-sm flex items-center gap-2",
- statusMsg.startsWith("Error") ? "bg-red-50 text-red-700 border border-red-100" : "bg-primary-50 text-primary-700 border border-primary-100",
- )}>
- {statusMsg.startsWith("Error") ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
- {statusMsg}
- </div>
- )}
  <div className="rounded-xl border border-gray-200 overflow-x-auto">
  <table className="w-full text-sm">
  <thead className="bg-gray-50 border-b border-gray-200">

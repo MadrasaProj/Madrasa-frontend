@@ -17,7 +17,6 @@ interface TeacherMarkEntryActionsProps {
   subjectId?: string;
   lang: Lang;
   saving: boolean;
-  saved: boolean;
   isLocked: boolean;
   hasEnteredScores: boolean;
   saveDisabled: boolean;
@@ -30,7 +29,7 @@ interface TeacherMarkEntryActionsProps {
 
 export function TeacherMarkEntryActions({
   clientId, token, examId, examName, examType, classId, className, subjectId, lang,
-  saving, saved, isLocked, hasEnteredScores, saveDisabled, importDisabled, resetDisabled,
+  saving, isLocked, hasEnteredScores, saveDisabled, importDisabled, resetDisabled,
   onSave, onImport, onReset,
 }: TeacherMarkEntryActionsProps) {
   const [moreOpen, setMoreOpen] = useState(false);
@@ -64,7 +63,7 @@ export function TeacherMarkEntryActions({
           </Button>
           <Button type="button" size="lg" className="flex-1 sm:flex-none" disabled={saveDisabled || reportSaving} onClick={() => { void onSave(); }}>
             {saving && <Loader2 aria-hidden="true" className="animate-spin" />}
-            {saving ? "Saving…" : saved ? "Saved" : t("common", "save", lang)}
+            {saving ? "Saving…" : t("common", "save", lang)}
           </Button>
         </ButtonGroup>
       </div>

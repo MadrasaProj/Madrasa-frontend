@@ -89,7 +89,7 @@ export default function ParentDashboard() {
       : { take: 365 },
     { enabled: !!cid && !!token && !!activeId },
   );
-  const attTotal = attendance?.total ?? 0;
+  const attTotal = attendance?.workingDays ?? attendance?.total ?? 0;
   const attPresent = attendance?.summary?.PRESENT ?? 0;
   const attAbsent = attendance?.summary?.ABSENT ?? 0;
   const attendancePercent =

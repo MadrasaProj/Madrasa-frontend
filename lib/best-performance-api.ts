@@ -61,6 +61,7 @@ export interface AttendancePillar extends PillarScore {
   rate: number;
   presentDays: number;
   totalDays: number;
+  totalWorkingDaytillToday?: number;
 }
 
 export interface HomeworkPillar extends PillarScore {

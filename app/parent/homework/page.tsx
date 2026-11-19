@@ -1,18 +1,21 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import type { DateRange } from "react-day-picker";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { HomeworkFilterBar } from "@/components/homework/HomeworkFilterBar";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { SkeletonList } from "@/components/ui/Skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { isWithinDueDateFilter, type DueDatePreset } from "@/lib/homework-filter";
 import type { HomeworkStatus, StudentHomeworkItem } from "@/lib/homework-api";
 import { useParentSubmitHomework, useStudentHomework } from "@/lib/queries";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { AlertCircle, BookOpen, CalendarDays, CheckCircle2, Loader2, RefreshCw, Search, User } from "lucide-react";
+import { AlertCircle, BookOpen, CalendarDays, CheckCircle2, Loader2, RefreshCw, User } from "lucide-react";
 
 const statuses = ["all", "NOT_SUBMITTED", "SUBMITTED", "CHECKED"] as const;
 type StatusFilter = (typeof statuses)[number];
@@ -51,6 +54,9 @@ export default function ParentHomeworkPage() {
   const studentId = activeStudentId ?? user?.accessibleStudentIds?.[0] ?? "";
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
+  const [dueDatePreset, setDueDatePreset] = useState<DueDatePreset>("all");
+  const [customRange, setCustomRange] = useState<DateRange | undefined>();
+  const [subjectFilter, setSubjectFilter] = useState("all");
   const [selected, setSelected] = useState<StudentHomeworkItem | null>(null);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
 
@@ -60,18 +66,32 @@ export default function ParentHomeworkPage() {
   );
   const submitMutation = useParentSubmitHomework({ clientId, token });
   const homework = data?.homework ?? [];
-  const statusFiltered = filter === "all"
-    ? homework
-    : homework.filter((item) => item.submission.status === filter);
+  const subjectOptions = useMemo(
+    () => Array.from(
+      new Map(
+        homework
+          .filter((item) => item.subject)
+          .map((item) => [item.subject!.id, { id: item.subject!.id, name: item.subject!.name }]),
+      ).values(),
+    ),
+    [homework],
+  );
   const query = search.trim().toLocaleLowerCase();
-  const filtered = query
-    ? statusFiltered.filter((item) =>
-        [item.title, item.subject?.name ?? "", item.description ?? ""].some((value) =>
-          value.toLocaleLowerCase().includes(query),
-        ),
-      )
-    : statusFiltered;
+  const filtered = homework.filter((item) =>
+    (filter === "all" || item.submission.status === filter) &&
+    isWithinDueDateFilter(item.dueDate, dueDatePreset, customRange) &&
+    (subjectFilter === "all" || item.subject?.id === subjectFilter) &&
+    (!query ||
+      [item.title, item.subject?.name ?? "", item.description ?? ""].some((value) =>
+        value.toLocaleLowerCase().includes(query),
+      )),
+  );
   const pendingCount = homework.filter((item) => item.submission.status === "NOT_SUBMITTED").length;
+  const hasActiveFilters =
+    filter !== "all" ||
+    dueDatePreset !== "all" ||
+    subjectFilter !== "all" ||
+    !!query;
 
   const closeDetails = () => {
     setSelected(null);
@@ -124,7 +144,7 @@ export default function ParentHomeworkPage() {
               </Alert>
             )}
 
-            <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="space-y-3">
               <Tabs
                 value={filter}
                 onValueChange={(value) => {
@@ -143,17 +163,19 @@ export default function ParentHomeworkPage() {
                   ))}
                 </TabsList>
               </Tabs>
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="search"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder={t("parentPages", "searchHomework", lang)}
-                  aria-label={t("parentPages", "searchHomework", lang)}
-                  className="w-full rounded-xl border border-gray-200 py-2.5 pl-10 pr-4 text-sm transition-all focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/30"
-                />
-              </div>
+              <HomeworkFilterBar
+                lang={lang}
+                search={search}
+                onSearchChange={setSearch}
+                searchPlaceholder={t("parentPages", "searchHomework", lang)}
+                dueDatePreset={dueDatePreset}
+                onDueDatePresetChange={setDueDatePreset}
+                customRange={customRange}
+                onCustomRangeChange={setCustomRange}
+                subjects={subjectOptions}
+                subjectId={subjectFilter}
+                onSubjectChange={setSubjectFilter}
+              />
             </div>
 
             {isLoading ? (
@@ -162,9 +184,11 @@ export default function ParentHomeworkPage() {
               <div className="rounded-2xl border border-border/70 bg-card px-6 py-16 text-center text-muted-foreground">
                 <BookOpen className="mx-auto mb-3 size-9 opacity-40" />
                 <p className="font-medium">
-                  {homework.length === 0 && filter === "all" && !query
+                  {homework.length === 0 && !hasActiveFilters
                     ? t("parentPages", "noHomeworkFound", lang)
-                    : t("parentPages", "noHomeworkCategory", lang)}
+                    : hasActiveFilters
+                      ? t("hwFilter", "noResults", lang)
+                      : t("parentPages", "noHomeworkCategory", lang)}
                 </p>
               </div>
             ) : (

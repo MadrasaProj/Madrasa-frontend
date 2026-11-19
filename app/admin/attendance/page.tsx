@@ -68,8 +68,6 @@ export default function AdminAttendancePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<{
     classId: string;
@@ -86,11 +84,6 @@ export default function AdminAttendancePage() {
   const [rangeRecords, setRangeRecords] = useState<ClassAttendanceRecord[]>([]);
   const [rangeLoading, setRangeLoading] = useState(false);
   const [rangeError, setRangeError] = useState<string | null>(null);
-  const saveSuccessTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => () => {
-    if (saveSuccessTimer.current) clearTimeout(saveSuccessTimer.current);
-  }, []);
 
   const classesQuery = useClasses({ clientId: cid, token });
   const classes = classesQuery.data ?? [];
@@ -108,16 +101,27 @@ export default function AdminAttendancePage() {
   const overall = overallAttendance.data;
   const rangeTotals = useMemo(() => {
     const byStatus = new Map<string, number>();
-    const days = new Set<string>();
     for (const record of rangeRecords) {
       byStatus.set(record.status, (byStatus.get(record.status) ?? 0) + 1);
-      days.add(record.date.slice(0, 10));
     }
     const total = rangeRecords.length;
     const present = byStatus.get("PRESENT") ?? 0;
     const absent = byStatus.get("ABSENT") ?? 0;
-    return { total, present, absent, other: total - present - absent, totalDays: days.size, rate: total ? Math.round((present / total) * 100) : 0 };
-  }, [rangeRecords]);
+    // Working days come from the academic year calendar (minus holidays),
+    // intersected with the selected range — not from marked dates only.
+    const from = range.from === "ALL" ? "" : range.from.slice(0, 10);
+    const to = range.to === "ALL" ? "" : range.to.slice(0, 10);
+    const marked = new Set(overall?.markedDates ?? []);
+    const workingDatesInRange = (overall?.workingDates ?? []).filter(
+      (date) => (!from || date >= from) && (!to || date <= to),
+    );
+    const totalDays = workingDatesInRange.length;
+    const pendingDays = workingDatesInRange.filter((date) => !marked.has(date)).length;
+    return {
+      total, present, absent, other: total - present - absent, totalDays, pendingDays,
+      rate: totalDays > 0 ? Math.min(100, Math.round((present / totalDays) * 100)) : 0,
+    };
+  }, [rangeRecords, range.from, range.to, overall?.workingDates, overall?.markedDates]);
 
   useEffect(() => {
     if (!cid || !token || !activeClassId) {
@@ -239,8 +243,6 @@ export default function AdminAttendancePage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    setSaveError(null);
-    setSaveSuccess(false);
     setConfirmClear(false);
     if (activeClassId) void loadAttendance(activeClassId, date, controller.signal);
     else {
@@ -266,7 +268,6 @@ export default function AdminAttendancePage() {
       });
       return next;
     });
-    setSaveSuccess(false);
   };
 
   const setNotes = (studentId: string, notes: string) => {
@@ -276,7 +277,6 @@ export default function AdminAttendancePage() {
       if (current) next.set(studentId, { ...current, notes, dirty: true });
       return next;
     });
-    setSaveSuccess(false);
   };
 
   const setLateComing = (studentId: string, lateComing: boolean, lateComingTime?: string) => {
@@ -291,7 +291,6 @@ export default function AdminAttendancePage() {
       });
       return next;
     });
-    setSaveSuccess(false);
   };
 
   const markAll = (status: ActiveStatus) => {
@@ -309,7 +308,6 @@ export default function AdminAttendancePage() {
       }
       return next;
     });
-    setSaveSuccess(false);
   };
 
   const hasDirty = useMemo(() => [...records.values()].some((record) => record.dirty), [records]);
@@ -335,14 +333,12 @@ export default function AdminAttendancePage() {
   const clearAll = async () => {
     if (!activeClassId || !cid || !token) return;
     setSaving(true);
-    setSaveError(null);
     try {
       await bulkDeleteAttendance(cid, token, { date, classId: activeClassId });
       toast.success("Attendance cleared successfully");
       await Promise.all([loadAttendance(activeClassId, date), invalidateAttendance(activeClassId)]);
     } catch (cause) {
       const message = (cause as Error).message || "Failed to clear attendance";
-      setSaveError(message);
       toast.error(message);
     } finally {
       setSaving(false);
@@ -361,7 +357,6 @@ export default function AdminAttendancePage() {
     }));
     if (entries.length === 0) return;
     setSaving(true);
-    setSaveError(null);
     try {
       await bulkUpsertAttendance(cid, token, {
         classId: activeClassId,
@@ -369,14 +364,10 @@ export default function AdminAttendancePage() {
         ...(user?.defaultAcademicYearId ? { academicYearId: user.defaultAcademicYearId } : {}),
         records: entries,
       });
-      setSaveSuccess(true);
       toast.success("Attendance saved successfully");
-      if (saveSuccessTimer.current) clearTimeout(saveSuccessTimer.current);
-      saveSuccessTimer.current = setTimeout(() => setSaveSuccess(false), 3000);
       await Promise.all([loadAttendance(activeClassId, date), invalidateAttendance(activeClassId)]);
     } catch (cause) {
       const message = (cause as Error).message || "Failed to save attendance";
-      setSaveError(message);
       toast.error(message);
     } finally {
       setSaving(false);
@@ -515,8 +506,8 @@ export default function AdminAttendancePage() {
             <div className="space-y-4 bg-white/90 p-5" aria-busy="true">
               <Skeleton className="mx-auto h-24 w-full max-w-52 rounded-t-full" />
               <Skeleton className="mx-auto h-3 w-48" />
-              <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4">
-                <Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" />
+              <div className="grid grid-cols-3 gap-3 border-t border-gray-100 pt-4">
+                <Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" />
               </div>
             </div>
           ) : classesQuery.isError || rangeError ? (
@@ -544,14 +535,20 @@ export default function AdminAttendancePage() {
                   <span><span className="mr-1 inline-block size-2 rounded-full bg-amber-500" />{t("teacherPages", "otherAttendance", lang)}</span>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-px border-t border-gray-100 bg-gray-100">
+              <div className="grid grid-cols-3 gap-px border-t border-gray-100 bg-gray-100">
                 <div className="bg-white/90 p-2.5 sm:p-3">
-                  <p className="text-sm font-medium text-gray-600">{t("teacherPages", "attendanceTotalDays", lang)}</p>
-                  <strong className="block text-2xl font-semibold tabular-nums text-gray-950">{rangeTotals.totalDays}</strong>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">{t("teacherPages", "attendanceTotalDays", lang)}</p>
+                  <strong className="block text-xl sm:text-2xl font-semibold tabular-nums text-gray-950">{rangeTotals.totalDays}</strong>
                 </div>
                 <div className="bg-white/90 p-2.5 sm:p-3">
-                  <p className="text-sm font-medium text-gray-600">{t("teacherPages", "attendanceAverage", lang)}</p>
-                  <strong className="block text-2xl font-semibold tabular-nums text-gray-950">{rangeTotals.rate}%</strong>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">{t("teacherPages", "attendancePendingDays", lang)}</p>
+                  <strong className={`block text-xl sm:text-2xl font-semibold tabular-nums ${rangeTotals.pendingDays > 0 ? "text-amber-600" : "text-gray-950"}`}>
+                    {rangeTotals.pendingDays}
+                  </strong>
+                </div>
+                <div className="bg-white/90 p-2.5 sm:p-3">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">{t("teacherPages", "attendanceAverage", lang)}</p>
+                  <strong className="block text-xl sm:text-2xl font-semibold tabular-nums text-gray-950">{rangeTotals.rate}%</strong>
                 </div>
               </div>
             </div>
@@ -591,7 +588,7 @@ export default function AdminAttendancePage() {
                     {student.name} <span className="text-xs font-normal text-gray-500">· {student.adno}</span>
                   </p>
                   <span className="shrink-0 text-sm font-medium tabular-nums text-gray-600">
-                    {student.presentDays}/{student.totalDays}<span className="hidden sm:inline"> {t("teacherPages", "daysLabel", lang)}</span>
+                    {student.presentDays}/{student.totalWorkingDaytillToday ?? student.totalDays}<span className="hidden sm:inline"> {t("teacherPages", "daysLabel", lang)}</span>
                   </span>
                   <StudentAttendanceRadial
                     rate={student.rate}
@@ -707,7 +704,6 @@ export default function AdminAttendancePage() {
           </div>
           {error && <ApiErrorBanner message={error} onRetry={() => { if (activeClassId) void loadAttendance(activeClassId, date); }} />}
           {classesQuery.isError && <ApiErrorBanner message={classesQuery.error.message} onRetry={() => { void classesQuery.refetch(); }} />}
-          {saveSuccess && <p role="status" className="mb-4 flex items-center gap-1 text-sm font-semibold "><CheckCircle2 className="size-4" />{t("teacherPages", "saved", lang)}</p>}
           {activeClassId && !loading && students.length > 0 && (
             <div className="mb-3 rounded-lg bg-gradient-to-r from-primary-50/50 to-sky-50/50 px-4 py-3 text-sm">
               <div className="flex flex-wrap items-center gap-x-5 gap-y-1 font-semibold">
@@ -734,7 +730,6 @@ export default function AdminAttendancePage() {
               clearAll={clearAll}
               saving={saving}
               markAll={markAll}
-              saveError={saveError}
               loading={loading}
               error={error}
               students={students}

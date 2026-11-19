@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguageStore } from "@/store/language";
 import {
@@ -643,7 +644,6 @@ function CreateElectionModal({
   lang: string;
 }) {
   const [wizard, setWizard] = useState<CreateElectionWizard>(defaultWizard());
-  const [toast, setToast] = useState(false);
 
   const setW = (patch: Partial<CreateElectionWizard>) =>
     setWizard((w) => ({ ...w, ...patch }));
@@ -734,7 +734,11 @@ function CreateElectionModal({
       classVotes: [],
     };
     onCreate(newElection);
-    setToast(true);
+    toast.success(
+      lang === "ml"
+        ? "തിരഞ്ഞെടുപ്പ് വിജയകരമായി സൃഷ്‌ടിച്ചു!"
+        : "Election created successfully!",
+    );
     setTimeout(onClose, 1800);
   };
 
@@ -1246,27 +1250,13 @@ function CreateElectionModal({
                 </p>
               </div>
 
-              <AnimatePresence>
-                {toast && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="bg-primary-500 text-white rounded-2xl p-4 text-center font-bold text-sm"
-                  >
-                    ✅{" "}
-                    {lang === "ml"
-                      ? "തിരഞ്ഞെടുപ്പ് വിജയകരമായി സൃഷ്‌ടിച്ചു!"
-                      : "Election created successfully!"}
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
           )}
         </div>
 
         {/* Modal Footer */}
         <div className="p-4 border-t border-gray-100 flex items-center gap-3 shrink-0">
-          {wizard.step > 1 && !toast && (
+          {wizard.step > 1 && (
             <button
               onClick={() => setW({ step: (wizard.step - 1) as 1 | 2 | 3 | 4 })}
               className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all"
@@ -1288,17 +1278,15 @@ function CreateElectionModal({
               <ChevronRight className="w-4 h-4" />
             </button>
           ) : (
-            !toast && (
-              <button
-                onClick={handleCreate}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold bg-primary-600 hover:bg-primary-700 text-white transition-all"
-              >
-                <Vote className="w-4 h-4" />
-                {lang === "ml"
-                  ? "✅ തിരഞ്ഞെടുപ്പ് ആരംഭിക്കുക"
-                  : "✅ Create Election"}
-              </button>
-            )
+            <button
+              onClick={handleCreate}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold bg-primary-600 hover:bg-primary-700 text-white transition-all"
+            >
+              <Vote className="w-4 h-4" />
+              {lang === "ml"
+                ? "✅ തിരഞ്ഞെടുപ്പ് ആരംഭിക്കുക"
+                : "✅ Create Election"}
+            </button>
           )}
         </div>
       </motion.div>

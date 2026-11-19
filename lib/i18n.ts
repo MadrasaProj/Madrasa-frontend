@@ -146,6 +146,28 @@ const translations = {
     helloYourAccount: { en: "Hello, {name} — your account at a glance", ml: "ഹലോ, {name} — നിങ്ങളുടെ അക്കൗണ്ട് ഒറ്റനോട്ടത്തിൽ" },
   },
 
+  // ── Homework filter (shared by parent & teacher) ─────────────────────────
+  hwFilter: {
+    title: { en: "Filter homework", ml: "ഹോംവർക്ക് ഫിൽട്ടർ" },
+    filter: { en: "Filter", ml: "ഫിൽട്ടർ" },
+    dueDate: { en: "Due date", ml: "അവസാന തീയതി" },
+    subject: { en: "Subject", ml: "വിഷയം" },
+    customRange: { en: "Custom range", ml: "ഇഷ്ടാനുസൃത പരിധി" },
+    all: { en: "All", ml: "എല്ലാം" },
+    today: { en: "Today", ml: "ഇന്ന്" },
+    yesterday: { en: "Yesterday", ml: "ഇന്നലെ" },
+    thisWeek: { en: "This week", ml: "ഈ ആഴ്ച" },
+    lastWeek: { en: "Last week", ml: "കഴിഞ്ഞ ആഴ്ച" },
+    thisMonth: { en: "This month", ml: "ഈ മാസം" },
+    lastMonth: { en: "Last month", ml: "കഴിഞ്ഞ മാസം" },
+    reset: { en: "Reset filters", ml: "ഫിൽട്ടറുകൾ മായ്ക്കുക" },
+    noRange: {
+      en: "Pick a start and end date",
+      ml: "ആരംഭ, അവസാന തീയതികൾ തിരഞ്ഞെടുക്കുക",
+    },
+    noResults: { en: "No homework matches your filters", ml: "ഫിൽട്ടറിന് അനുയോജ്യമായ ഹോംവർക്ക് ഇല്ല" },
+  },
+
   // ── Login Page ────────────────────────────────────────────────────────────
   login: {
     welcomeBack: { en: "Welcome back", ml: "തിരികെ സ്വാഗതം" },
@@ -262,6 +284,7 @@ const translations = {
     classes: { en: "Classes", ml: "ക്ലാസുകൾ" },
     subjects: { en: "Subjects", ml: "വിഷയങ്ങൾ" },
     notifications: { en: "Notifications", ml: "അറിയിപ്പുകൾ" },
+    holidays: { en: "Holidays", ml: "അവധി ദിവസങ്ങൾ" },
     madrasas: { en: "Madrasas", ml: "മദ്‌റസകൾ" },
     superUsers: { en: "Admin Users", ml: "അഡ്‌മിൻ യൂസേഴ്സ്" },
     platformReports: { en: "Platform Reports", ml: "പ്ലാറ്റ്ഫോം റിപ്പോർട്ടുകൾ" },
@@ -282,6 +305,71 @@ const translations = {
     contentMedia: { en: "Content & Media", ml: "കണ്ടന്റ് & മീഡിയ" },
     coreManagement: { en: "Core Management", ml: "പ്രധാന മാനേജ്‌മെന്റ്" },
     ibadahConfig: { en: "Ibadah Setup", ml: "ഇബാദത്ത് ക്രമീകരണം" },
+    academicYears: { en: "Academic Years", ml: "അക്കാദമിക് വർഷങ്ങൾ" },
+  },
+
+  // ── Academic Years ────────────────────────────────────────────────────────
+  academicYears: {
+    title: { en: "Academic Years", ml: "അക്കാദമിക് വർഷങ്ങൾ" },
+    allYears: { en: "All academic years", ml: "എല്ലാ അക്കാദമിക് വർഷങ്ങളും" },
+    addYear: { en: "Add academic year", ml: "അക്കാദമിക് വർഷം ചേർക്കുക" },
+    editYear: { en: "Edit academic year", ml: "അക്കാദമിക് വർഷം എഡിറ്റ് ചെയ്യുക" },
+    deleteTitle: { en: "Delete academic year", ml: "അക്കാദമിക് വർഷം ഇല്ലാതാക്കുക" },
+    addDesc: {
+      en: "Academic years scope students, classes, exams and fees.",
+      ml: "വിദ്യാർത്ഥികൾ, ക്ലാസുകൾ, പരീക്ഷകൾ, ഫീസ് എന്നിവ അക്കാദമിക് വർഷത്തോട് ബന്ധപ്പെട്ടിരിക്കുന്നു.",
+    },
+    editDesc: {
+      en: "Rename this year or make it the current academic year.",
+      ml: "ഈ വർഷത്തിന്റെ പേര് മാറ്റുകയോ നിലവിലെ അക്കാദമിക് വർഷമാക്കുകയോ ചെയ്യുക.",
+    },
+    searchPlaceholder: { en: "Search by year name", ml: "വർഷത്തിന്റെ പേര് തിരയുക" },
+    nameLabel: { en: "Year name", ml: "വർഷത്തിന്റെ പേര്" },
+    nameHint: { en: "For example: 2026-27", ml: "ഉദാഹരണം: 2026-27" },
+    nameRequired: { en: "Enter the year name", ml: "വർഷത്തിന്റെ പേര് നൽകുക" },
+    duplicateName: {
+      en: "An academic year with this name already exists",
+      ml: "ഈ പേരിൽ ഒരു അക്കാദമിക് വർഷം ഇതിനകം ഉണ്ട്",
+    },
+    totalYears: { en: "Total years", ml: "ആകെ വർഷങ്ങൾ" },
+    currentYear: { en: "Current year", ml: "നിലവിലെ വർഷം" },
+    pastYears: { en: "Past years", ml: "കഴിഞ്ഞ വർഷങ്ങൾ" },
+    upcomingYears: { en: "Upcoming years", ml: "വരാനിരിക്കുന്ന വർഷങ്ങൾ" },
+    currentYearBadge: { en: "Current", ml: "നിലവിലെ" },
+    setCurrent: { en: "Set as current", ml: "നിലവിലെയാക്കുക" },
+    currentSet: {
+      en: "Current academic year updated",
+      ml: "നിലവിലെ അക്കാദമിക് വർഷം മാറ്റി",
+    },
+    startDate: { en: "Start date", ml: "ആരംഭ തീയതി" },
+    endDate: { en: "End date", ml: "അവസാന തീയതി" },
+    chooseStartDate: { en: "Choose start date", ml: "ആരംഭ തീയതി തിരഞ്ഞെടുക്കുക" },
+    chooseEndDate: { en: "Choose end date", ml: "അവസാന തീയതി തിരഞ്ഞെടുക്കുക" },
+    clearStartDate: { en: "Clear start date", ml: "ആരംഭ തീയതി നീക്കം ചെയ്യുക" },
+    clearEndDate: { en: "Clear end date", ml: "അവസാന തീയതി നീക്കം ചെയ്യുക" },
+    invalidDateRange: {
+      en: "The start date must be before the end date",
+      ml: "ആരംഭ തീയതി അവസാന തീയതിക്ക് മുമ്പായിരിക്കണം",
+    },
+    startsOn: { en: "Starts", ml: "ആരംഭം" },
+    endsOn: { en: "Ends", ml: "അവസാനം" },
+    noDateRange: { en: "No date range set", ml: "തീയതി പരിധി ഇല്ല" },
+    noYears: { en: "No academic years yet", ml: "ഇതുവരെ അക്കാദമിക് വർഷങ്ങളില്ല" },
+    noResults: {
+      en: "No academic years match your search",
+      ml: "തിരയലിന് അനുയോജ്യമായ അക്കാദമിക് വർഷങ്ങളില്ല",
+    },
+    deleteConfirm: {
+      en: "Delete {name}? This cannot be undone.",
+      ml: "{name} ഇല്ലാതാക്കണോ? ഇത് പഴയപടിയാക്കാനാകില്ല.",
+    },
+    deleteBlockedCurrent: {
+      en: "Set another year as current before deleting this one",
+      ml: "ഇത് ഇല്ലാതാക്കുന്നതിന് മുമ്പ് മറ്റൊരു വർഷം നിലവിലെയാക്കുക",
+    },
+    created: { en: "Academic year added", ml: "അക്കാദമിക് വർഷം ചേർത്തു" },
+    updated: { en: "Academic year updated", ml: "അക്കാദമിക് വർഷം അപ് ഡേറ്റ് ചെയ്തു" },
+    deleted: { en: "Academic year deleted", ml: "അക്കാദമിക് വർഷം ഇല്ലാതാക്കി" },
   },
 
   // ── Admin Dashboard ───────────────────────────────────────────────────────
@@ -1526,10 +1614,18 @@ const translations = {
     // Attendance page
     attendancePageTitle: { en: "Attendance", ml: "ഹാജർ" },
     attendanceTotalDays: { en: "Total days", ml: "ആകെ ദിവസങ്ങൾ" },
+    attendancePendingDays: { en: "Pending attendance", ml: "ബാക്കിയുള്ള ഹാജർ" },
+    attendancePendingCardDesc: { en: "{count} days pending ", ml: "{count} ദിവസം ബാക്കിയുണ്ട്  " },
+    attendancePendingDrawerDesc: { en: "{count} working day(s) without attendance for {className}", ml: "{className} ക്ലാസിന് ഹാജർ രേഖപ്പെടുത്താത്ത {count} പ്രവർത്തി ദിവസങ്ങൾ" },
     attendanceAverage: { en: "Average", ml: "ശരാശരി ഹാജർ" },
     studentAttendanceTitle: { en: "Student attendance", ml: "വിദ്യാർത്ഥികളുടെ ഹാജർ" },
     studentAttendanceDetails: { en: "Attendance details", ml: "ഹാജർ വിശദാംശങ്ങൾ" },
     attendanceWorkingDays: { en: "Working days", ml: "പ്രവർത്തി ദിവസങ്ങൾ" },
+    attendanceHolidays: { en: "Holidays", ml: "അവധികൾ" },
+    attendanceHolidayLabel: { en: "Holiday", ml: "അവധി" },
+    attendanceWeeklyHoliday: { en: "Weekly off", ml: "പ്രതിവാര അവധി" },
+    attendanceHolidayNoControl: { en: "Attendance is not taken on holidays. Select another date to mark attendance.", ml: "അവധി ദിവസങ്ങളിൽ ഹാജർ രേഖപ്പെടുത്തില്ല. ഹാജർ രേഖപ്പെടുത്താൻ മറ്റൊരു തീയതി തിരഞ്ഞെടുക്കുക." },
+    attendanceHolidaysNote: { en: "Holidays in this calendar: {count} days (weekly offs included)", ml: "ഈ കലണ്ടറിലെ അവധികൾ: {count} ദിവസങ്ങൾ (പ്രതിവാര അവധികൾ ഉൾപ്പെടെ)" },
     attendanceThisMonth: { en: "Attendance", ml: "ഹാജർ" },
     attendanceMonthEmpty: { en: "No attendance recorded this month", ml: "ഈ മാസം ഹാജർ രേഖപ്പെടുത്തിയിട്ടില്ല" },
     attendanceUnmarkedDay: { en: "No record", ml: "രേഖയില്ല" },
@@ -2584,6 +2680,161 @@ const translations = {
       en: "No elections found",
       ml: "തിരഞ്ഞെടുപ്പൊന്നും കണ്ടെത്തിയില്ല",
     },
+  },
+
+  // ── Holidays ──────────────────────────────────────────────────────────────
+  holidays: {
+    title: { en: "Holidays", ml: "അവധി ദിവസങ്ങൾ" },
+    addHoliday: { en: "Add holiday", ml: "അവധി ചേർക്കുക" },
+    editHoliday: { en: "Edit holiday", ml: "അവധി എഡിറ്റ് ചെയ്യുക" },
+    editHolidayDesc: {
+      en: "Update or remove this holiday.",
+      ml: "ഈ അവധി അപ്‌ഡേറ്റ് ചെയ്യുക അല്ലെങ്കിൽ നീക്കം ചെയ്യുക.",
+    },
+    addHolidayDesc: {
+      en: "Pick a start date, an optional end date, and give the holiday a title.",
+      ml: "ആരംഭ തീയതിയും ആവശ്യമെങ്കിൽ അവസാന തീയതിയും തിരഞ്ഞെടുത്ത് അവധിക്ക് ഒരു പേര് നൽകുക.",
+    },
+    weeklyHolidays: { en: "Weekly holidays", ml: "പ്രതിവാര അവധികൾ" },
+    weeklyHolidaysDesc: {
+      en: "Select the regular days when the madrasa is closed.",
+      ml: "മദ്‌റസ അടച്ചിരിക്കുന്ന സ്ഥിരം ദിവസങ്ങൾ തിരഞ്ഞെടുക്കുക.",
+    },
+    daysSelected: {
+      en: "days selected · Changes save automatically",
+      ml: "ദിവസങ്ങൾ തിരഞ്ഞെടുത്തു · മാറ്റങ്ങൾ സ്വയമേവ സേവ് ചെയ്യും",
+    },
+    daySelected: {
+      en: "day selected · Changes save automatically",
+      ml: "ദിവസം തിരഞ്ഞെടുത്തു · മാറ്റങ്ങൾ സ്വയമേവ സേവ് ചെയ്യും",
+    },
+    noWeeklySelected: {
+      en: "No weekly holidays selected · Changes save automatically",
+      ml: "പ്രതിവാര അവധികൾ തിരഞ്ഞെടുത്തിട്ടില്ല · മാറ്റങ്ങൾ സ്വയമേവ സേവ് ചെയ്യും",
+    },
+    calendar: { en: "Calendar", ml: "കലണ്ടർ" },
+    list: { en: "List", ml: "പട്ടിക" },
+    noHolidaysThisMonth: {
+      en: "No holidays this month. Tap any date to add one.",
+      ml: "ഈ മാസം അവധികളില്ല. ചേർക്കാൻ ഏതെങ്കിലും തീയതി ടാപ്പ് ചെയ്യുക.",
+    },
+    howItWorks: { en: "How it works", ml: "ഇത് എങ്ങനെ പ്രവർത്തിക്കുന്നു" },
+    howItWorksDesc: {
+      en: "Tap a date to add a holiday. Tap a highlighted date to edit it.",
+      ml: "അവധി ചേർക്കാൻ തീയതി ടാപ്പ് ചെയ്യുക. എഡിറ്റ് ചെയ്യാൻ ഹൈലൈറ്റ് ചെയ്ത തീയതി ടാപ്പ് ചെയ്യുക.",
+    },
+    holidayAllClasses: {
+      en: "Holiday (all classes)",
+      ml: "അവധി (എല്ലാ ക്ലാസുകൾക്കും)",
+    },
+    classSpecificHoliday: {
+      en: "Class-specific holiday",
+      ml: "ക്ലാസ് അനുസരിച്ചുള്ള അവധി",
+    },
+    weeklyOff: { en: "Weekly off", ml: "പ്രതിവാര അവധി" },
+    noHolidaysYet: { en: "No holidays yet", ml: "അവധികളൊന്നുമില്ല" },
+    noHolidaysDesc: {
+      en: "Add a holiday or tap a date in the calendar view.",
+      ml: "അവധി ചേർക്കുക അല്ലെങ്കിൽ കലണ്ടറിൽ ഒരു തീയതി ടാപ്പ് ചെയ്യുക.",
+    },
+    saveChanges: { en: "Save changes", ml: "മാറ്റങ്ങൾ സേവ് ചെയ്യുക" },
+    chooseDateError: {
+      en: "Choose a date for the holiday.",
+      ml: "അവധിക്ക് ഒരു തീയതി തിരഞ്ഞെടുക്കുക.",
+    },
+    enterTitleError: {
+      en: "Enter a holiday title.",
+      ml: "അവധിക്ക് ഒരു പേര് നൽകുക.",
+    },
+    duplicateAll: {
+      en: "A holiday already exists on this date for all classes.",
+      ml: "ഈ തീയതിയിൽ എല്ലാ ക്ലാസുകൾക്കും അവധി ഇതിനകം നിലവിലുണ്ട്.",
+    },
+    duplicateClasses: {
+      en: "A holiday already exists on this date for one of the selected classes.",
+      ml: "തിരഞ്ഞെടുത്ത ക്ലാസുകളിലൊന്നിന് ഈ തീയതിയിൽ അവധി ഇതിനകം നിലവിലുണ്ട്.",
+    },
+    holidayUpdated: { en: "Holiday updated", ml: "അവധി അപ്‌ഡേറ്റ് ചെയ്‌തു" },
+    holidayAdded: { en: "Holiday added", ml: "അവധി ചേർത്തു" },
+    holidayRemoved: { en: "Holiday removed", ml: "അവധി നീക്കം ചെയ്‌തു" },
+    quickPresets: { en: "Quick presets", ml: "ദ്രുത പ്രീസെറ്റുകൾ" },
+    presetRainLabel: { en: "Rain · Red Alert", ml: "മഴ · റെഡ് അലർട്ട്" },
+    presetRainTitle: { en: "Rain – Red Alert", ml: "മഴ – റെഡ് അലർട്ട്" },
+    presetRainDesc: {
+      en: "Heavy rain and a red alert have been declared in the area. The madrasa will remain closed.",
+      ml: "പ്രദേശത്ത് കനത്ത മഴയും റെഡ് അലർട്ടും പ്രഖ്യാപിച്ചു. മദ്‌റസ അടച്ചിരിക്കും.",
+    },
+    presetRangeLabel: { en: "Range Meeting", ml: "റേഞ്ച് മീറ്റിംഗ്" },
+    presetRangeTitle: { en: "Range Meeting", ml: "റേഞ്ച് മീറ്റിംഗ്" },
+    presetRangeDesc: {
+      en: "The madrasa will remain closed for the range meeting.",
+      ml: "റേഞ്ച് മീറ്റിംഗിനായി മദ്‌റസ അടച്ചിരിക്കും.",
+    },
+    presetsAria: {
+      en: "Holiday title and description presets",
+      ml: "അവധി പേരിനും വിവരണത്തിനുമുള്ള പ്രീസെറ്റുകൾ",
+    },
+    chooseDate: { en: "Choose date", ml: "തീയതി തിരഞ്ഞെടുക്കുക" },
+    chooseHolidayDate: {
+      en: "Choose holiday date",
+      ml: "അവധി തീയതി തിരഞ്ഞെടുക്കുക",
+    },
+    startDate: { en: "Start date", ml: "ആരംഭ തീയതി" },
+    endDate: { en: "End date", ml: "അവസാന തീയതി" },
+    chooseEndDate: { en: "Choose end date", ml: "അവസാന തീയതി തിരഞ്ഞെടുക്കുക" },
+    invalidDateRange: {
+      en: "The end date must be on or after the start date.",
+      ml: "അവസാന തീയതി ആരംഭ തീയതിക്ക് ശേഷമോ തുല്യമോ ആയിരിക്കണം.",
+    },
+    rangeHint: {
+      en: "Leave the end date empty for a single-day holiday.",
+      ml: "ഒരു ദിവസത്തെ അവധിക്ക് അവസാന തീയതി ഒഴിച്ചിടുക.",
+    },
+    clearEndDate: { en: "Clear end date", ml: "അവസാന തീയതി നീക്കം ചെയ്യുക" },
+    titleLabel: { en: "Title", ml: "പേര്" },
+    titlePlaceholder: { en: "e.g. Eid al-Fitr", ml: "ഉദാ: ഈദുൽ ഫിത്ർ" },
+    descLabel: { en: "Description (optional)", ml: "വിവരണം (ഓപ്ഷണൽ)" },
+    descPlaceholder: {
+      en: "Add a note about this holiday…",
+      ml: "ഈ അവധിയെക്കുറിച്ച് ഒരു കുറിപ്പ് ചേർക്കുക…",
+    },
+    appliesTo: { en: "Applies to", ml: "ബാധകമാകുന്നത്" },
+    allClasses: { en: "All classes", ml: "എല്ലാ ക്ലാസുകൾ" },
+    classesCount: { en: "Classes", ml: "ക്ലാസുകൾ" },
+    appliesOnlyTo: { en: "Applies only to", ml: "ബാധകമാകുന്നത് ഇവർക്ക് മാത്രം" },
+    appliesAllClasses: {
+      en: "Applies to all classes",
+      ml: "എല്ലാ ക്ലാസുകൾക്കും ബാധകമാണ്",
+    },
+    selectClasses: { en: "Select classes", ml: "ക്ലാസുകൾ തിരഞ്ഞെടുക്കുക" },
+    deleteHoliday: {
+      en: "Delete this holiday",
+      ml: "ഈ അവധി ഇല്ലാതാക്കുക",
+    },
+    saving: { en: "Saving…", ml: "സേവ് ചെയ്യുന്നു…" },
+    notSavedRetry: {
+      en: "Not saved · Retry",
+      ml: "സേവ് ചെയ്‌തിട്ടില്ല · വീണ്ടും ശ്രമിക്കുക",
+    },
+    setAcademicYearFirst: {
+      en: "Set a current academic year first",
+      ml: "ആദ്യം നിലവിലെ അക്കാദമിക് വർഷം സെറ്റ് ചെയ്യുക",
+    },
+    saveFailed: {
+      en: "Could not save holiday calendar",
+      ml: "അവധി കലണ്ടർ സേവ് ചെയ്യാനായില്ല",
+    },
+    loadFailed: {
+      en: "Could not load holidays",
+      ml: "അവധികൾ ലോഡ് ചെയ്യാനായില്ല",
+    },
+    weekdayMonday: { en: "Monday", ml: "തിങ്കളാഴ്ച" },
+    weekdayTuesday: { en: "Tuesday", ml: "ചൊവ്വാഴ്ച" },
+    weekdayWednesday: { en: "Wednesday", ml: "ബുധനാഴ്ച" },
+    weekdayThursday: { en: "Thursday", ml: "വ്യാഴാഴ്ച" },
+    weekdayFriday: { en: "Friday", ml: "വെള്ളിയാഴ്ച" },
+    weekdaySaturday: { en: "Saturday", ml: "ശനിയാഴ്ച" },
+    weekdaySunday: { en: "Sunday", ml: "ഞായറാഴ്ച" },
   },
 } as const;
 

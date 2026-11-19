@@ -20,6 +20,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronRight,
   School,
   UserCheck,
   X,
@@ -131,6 +132,8 @@ export default function TeacherAttendancePage() {
   const token = accessToken ?? "";
 
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerDate, setDrawerDate] = useState<string | undefined>(undefined);
+  const [drawerDays, setDrawerDays] = useState<string[] | undefined>(undefined);
   const [date, setDate] = useState(todayISO());
   const [students, setStudents] = useState<
     { id: string; name: string; adno: string; gender?: string; photoUrl?: string | null }[]
@@ -140,8 +143,6 @@ export default function TeacherAttendancePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
   const [confirmSave, setConfirmSave] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -151,14 +152,6 @@ export default function TeacherAttendancePage() {
     student: ClassAttendanceSummary["students"][number];
   } | null>(null);
   const [studentDrawerOpen, setStudentDrawerOpen] = useState(false);
-
-  const saveSuccessTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(
-    () => () => {
-      if (saveSuccessTimer.current) clearTimeout(saveSuccessTimer.current);
-    },
-    [],
-  );
 
   const { activeClass: defaultClass, isLoading: activeClassLoading } = useActiveClass();
   const classesQuery = useClasses({ clientId: cid, token });
@@ -179,6 +172,18 @@ export default function TeacherAttendancePage() {
     overall?.byStatus.find((entry) => entry.status === "ABSENT")?._count.id ?? 0;
   const overallRate = Math.max(0, Math.min(100, overall?.rate ?? 0));
   const overallOther = Math.max(0, (overall?.total ?? 0) - (overall?.present ?? 0) - overallAbsent);
+  // Working days on which attendance has not been taken for this class yet.
+  const pendingDates = useMemo(() => {
+    const marked = new Set(overall?.markedDates ?? []);
+    return (overall?.workingDates ?? []).filter((date) => !marked.has(date));
+  }, [overall?.workingDates, overall?.markedDates]);
+  const pendingDays = pendingDates.length;
+
+  const openAttendanceDrawer = useCallback((date?: string, days?: string[]) => {
+    setDrawerDays(days);
+    setDrawerDate(days ? undefined : date ?? todayISO());
+    setDrawerOpen(true);
+  }, []);
 
   // Load students + existing attendance whenever class or date changes
   const loadAttendance = useCallback(
@@ -278,8 +283,6 @@ export default function TeacherAttendancePage() {
 
   useEffect(() => {
     const ac = new AbortController();
-    setSaveError(null);
-    setSaveSuccess(false);
     setConfirmSave(false);
     setConfirmClear(false);
     if (activeClassId) loadAttendance(activeClassId, date, ac.signal);
@@ -304,7 +307,6 @@ export default function TeacherAttendancePage() {
       next.set(studentId, { ...existing, status, notes: status === "PRESENT" ? "" : existing.notes, lateComing: status === "PRESENT" ? existing.lateComing : false, lateComingTime: status === "PRESENT" ? existing.lateComingTime : "", dirty: true });
       return next;
     });
-    setSaveSuccess(false);
   };
 
   const setNotes = (studentId: string, notes: string) => {
@@ -320,7 +322,6 @@ export default function TeacherAttendancePage() {
       next.set(studentId, { ...existing, notes, dirty: true });
       return next;
     });
-    setSaveSuccess(false);
   };
 
   const setLateComing = (studentId: string, lateComing: boolean, lateComingTime?: string) => {
@@ -330,7 +331,6 @@ export default function TeacherAttendancePage() {
       if (record) next.set(studentId, { ...record, lateComing, lateComingTime: lateComing ? (lateComingTime ?? record.lateComingTime) : "", dirty: true });
       return next;
     });
-    setSaveSuccess(false);
   };
 
   const clearAll = useCallback(async () => {
@@ -346,7 +346,6 @@ export default function TeacherAttendancePage() {
         queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all }),
       ]);
     } catch (e) {
-      setSaveError((e as Error).message);
       toast.error((e as Error).message || "Failed to clear attendance");
     } finally {
       setSaving(false);
@@ -361,7 +360,6 @@ export default function TeacherAttendancePage() {
         next.set(sid, { ...next.get(sid)!, status, notes: status === "PRESENT" ? "" : next.get(sid)!.notes, lateComing: false, lateComingTime: "", dirty: true });
       return next;
     });
-    setSaveSuccess(false);
   };
 
   const isOwnClass = activeClass?.classTeacherId === user?.id;
@@ -397,7 +395,6 @@ export default function TeacherAttendancePage() {
   const doSave = useCallback(async () => {
     if (!activeClassId || !cid || !token) return;
     setSaving(true);
-    setSaveError(null);
     try {
       const entries: {
         studentId: string;
@@ -436,10 +433,7 @@ export default function TeacherAttendancePage() {
         for (const [sid, rec] of next) next.set(sid, { ...rec, dirty: false });
         return next;
       });
-      setSaveSuccess(true);
       toast.success("Attendance saved successfully");
-      if (saveSuccessTimer.current) clearTimeout(saveSuccessTimer.current);
-      saveSuccessTimer.current = setTimeout(() => setSaveSuccess(false), 3000);
       await Promise.all([
         loadAttendance(activeClassId, date),
         queryClient.invalidateQueries({ queryKey: queryKeys.reports.attendanceSummary(cid) }),
@@ -447,7 +441,6 @@ export default function TeacherAttendancePage() {
         queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all }),
       ]);
     } catch (e) {
-      setSaveError((e as Error).message);
       toast.error((e as Error).message || "Failed to save attendance");
     } finally {
       setSaving(false);
@@ -493,7 +486,7 @@ export default function TeacherAttendancePage() {
            
         backHref="/teacher"
         action={!drawerOpen && (
-          <Button className="hidden lg:inline-flex" onClick={() => setDrawerOpen(true)}>
+          <Button className="hidden lg:inline-flex" onClick={() => openAttendanceDrawer()}>
             <UserCheck aria-hidden="true" className="size-4" />
             {t("teacherPages", "markAttendanceDesc", lang)}
           </Button>
@@ -509,7 +502,8 @@ export default function TeacherAttendancePage() {
             <div className="space-y-4 bg-white/90 p-5" aria-busy="true">
               <Skeleton className="mx-auto h-24 w-full max-w-52 rounded-t-full sm:h-28 sm:max-w-56" />
               <Skeleton className="mx-auto h-3 w-48" />
-              <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4">
+              <div className="grid grid-cols-3 gap-3 border-t border-gray-100 pt-4">
+                <Skeleton className="h-10 w-full" />
                 <Skeleton className="h-10 w-full" />
                 <Skeleton className="h-10 w-full" />
               </div>
@@ -543,20 +537,56 @@ export default function TeacherAttendancePage() {
                   <span><span className="mr-1 inline-block size-2 rounded-full bg-amber-500" />{t("teacherPages", "otherAttendance", lang)}</span>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-px border-t border-gray-100 bg-gray-100">
-                <div className="bg-white/90 p-3 sm:p-4">
-                  <p className="text-sm font-medium text-gray-600">{t("teacherPages", "attendanceTotalDays", lang)}</p>
-                  <strong className="mt-0 block text-2xl font-semibold tabular-nums text-gray-950">{overall?.totalDays ?? "—"}</strong>
+              <div className="grid grid-cols-3 gap-px border-t border-gray-100 bg-gray-100">
+                <div className="bg-white/90 p-2.5 sm:p-4">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">{t("teacherPages", "attendanceTotalDays", lang)}</p>
+                  <strong className="mt-0 block text-xl sm:text-2xl font-semibold tabular-nums text-gray-950">{overall?.totalWorkingDaytillToday ?? "—"}</strong>
                 </div>
-                <div className="bg-white/90 p-3 sm:p-4">
-                  <p className="text-sm font-medium text-gray-600">{t("teacherPages", "attendanceAverage", lang)}</p>
-                  <strong className="mt-0 block text-2xl font-semibold tabular-nums text-gray-950">{overallRate}%</strong>
+                <div className="bg-white/90 p-2.5 sm:p-4">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">{t("teacherPages", "attendancePendingDays", lang)}</p>
+                  <strong className={`mt-0 block text-xl sm:text-2xl font-semibold tabular-nums ${pendingDays > 0 ? "text-amber-600" : "text-gray-950"}`}>
+                    {pendingDays}
+                  </strong>
+                </div>
+                <div className="bg-white/90 p-2.5 sm:p-4">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">{t("teacherPages", "attendanceAverage", lang)}</p>
+                  <strong className="mt-0 block text-xl sm:text-2xl font-semibold tabular-nums text-gray-950">{overallRate}%</strong>
                 </div>
               </div>
             </div>
           )}
         </section>
-
+{pendingDays > 0 && (
+          <section
+            aria-labelledby="pending-attendance-card-heading"
+            role="button"
+            tabIndex={0}
+            onClick={() => openAttendanceDrawer(undefined, pendingDates)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                openAttendanceDrawer(undefined, pendingDates);
+              }
+            }}
+            className="mt-4 flex cursor-pointer items-center gap-3 rounded-2xl bg-linear-120 from-white via-amber-50 border-2 border-white to-white p-3 shadow-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 sm:gap-4 sm:p-4"
+          >
+            <img
+              src="/imgs/attendance/attendance-checklist.png"
+              alt=""
+              className="size-14 shrink-0 object-contain sm:size-16"
+              loading="lazy"
+            />
+            <div className="min-w-0 flex-1">
+              <h2 id="pending-attendance-card-heading" className="text-sm font-bold text-gray-950 sm:text-base">
+                {t("teacherPages", "attendancePendingDays", lang)}
+              </h2>
+              <p className="mt-0.5 text-xs text-gray-600 sm:text-sm">
+                {t("teacherPages", "attendancePendingCardDesc", lang).replace("{count}", String(pendingDays))}
+              </p>
+            </div>
+            <ChevronRight aria-hidden="true" className="size-5 shrink-0 text-amber-600" />
+          </section>
+        )}
         <section aria-labelledby="student-attendance-title" className="mt-4 overflow-hidden rounded-2xl bg-white">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-3 sm:px-5">
             <h2 id="student-attendance-title" className="text-base font-semibold text-gray-900">
@@ -603,13 +633,13 @@ export default function TeacherAttendancePage() {
                   </p>
                   <span
                     className="shrink-0 text-sm font-medium tabular-nums text-gray-600"
-                    aria-label={student.totalDays > 0
+                    aria-label={(student.totalWorkingDaytillToday ?? student.totalDays) > 0
                       ? t("teacherPages", "attendanceDaysCount", lang)
                         .replace("{present}", String(student.presentDays))
-                        .replace("{total}", String(student.totalDays))
+                        .replace("{total}", String(student.totalWorkingDaytillToday ?? student.totalDays))
                       : t("teacherPages", "noAttendanceRecords", lang)}
                   >
-                    {student.presentDays}/{student.totalDays}
+                    {student.presentDays}/{student.totalWorkingDaytillToday ?? student.totalDays}
                     <span className="hidden sm:inline"> {t("teacherPages", "daysLabel", lang)}</span>
                   </span>
                   <StudentAttendanceRadial
@@ -621,6 +651,8 @@ export default function TeacherAttendancePage() {
             </div>
           )}
         </section>
+
+        
       </div>
 
       {selectedStudent?.classId === activeClassId && (
@@ -637,7 +669,7 @@ export default function TeacherAttendancePage() {
 
       {!drawerOpen && (
         <div className="fixed bottom-[92px] left-1/2 z-40 w-max -translate-x-1/2 p-0! lg:hidden">
-          <Button type="button" size="lg" className="w-max gap-2 rounded-full shadow-lg shadow-primary-900/20" onClick={() => setDrawerOpen(true)}>
+          <Button type="button" size="lg" className="w-max gap-2 rounded-full shadow-lg shadow-primary-900/20" onClick={() => openAttendanceDrawer()}>
             <UserCheck aria-hidden="true" className="size-4" />
             {t("teacherPages", "markAttendanceDesc", lang)}
           </Button>
@@ -645,9 +677,12 @@ export default function TeacherAttendancePage() {
       )}
 
        <TeacherAttendanceDrawer
+                key={drawerDays ? "pending" : drawerDate ?? "default"}
                 open={drawerOpen}
                 onOpenChange={setDrawerOpen}
                 initialClassId={activeClassId}
+                initialDate={drawerDate}
+                days={drawerDays}
               />
       {showImport && (
         <AttendanceImportModal

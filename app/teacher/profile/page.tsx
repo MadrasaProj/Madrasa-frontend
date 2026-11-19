@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
@@ -19,7 +20,6 @@ import { useActiveClass } from "@/store/activeClass";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   User,
   Phone,
@@ -138,7 +138,6 @@ export default function TeacherProfilePage() {
   // Action status
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   useEffect(() => {
@@ -169,7 +168,6 @@ export default function TeacherProfilePage() {
   const openDrawer = (tab: "account" | "security" = "account") => {
     resetForm();
     setDrawerTab(tab);
-    setSuccess(null);
     setDrawerOpen(true);
   };
 
@@ -199,9 +197,9 @@ export default function TeacherProfilePage() {
       const result = await uploadProfilePhoto(accessToken, file);
       updateUser({ photo: result.photo, photoUrl: result.photoUrl });
       setPicPreview(result.photoUrl);
-      setSuccess("Profile picture updated successfully.");
+      toast.success("Profile picture updated successfully.");
     } catch (err: any) {
-      setError(err?.message ?? "Failed to upload photo");
+      toast.error(err?.message ?? "Failed to upload photo");
     } finally {
       setUploadingPhoto(false);
     }
@@ -215,9 +213,9 @@ export default function TeacherProfilePage() {
       await deleteProfilePhoto(accessToken);
       updateUser({ photo: null, photoUrl: null });
       setPicPreview(null);
-      setSuccess("Profile picture removed successfully.");
+      toast.success("Profile picture removed successfully.");
     } catch (err: any) {
-      setError(err?.message ?? "Failed to remove photo");
+      toast.error(err?.message ?? "Failed to remove photo");
     } finally {
       setUploadingPhoto(false);
     }
@@ -297,14 +295,14 @@ export default function TeacherProfilePage() {
       if (dto.address !== undefined) updateUser({ address: dto.address });
       if (dto.msrId !== undefined) updateUser({ msrId: dto.msrId });
 
-      setSuccess(
+      toast.success(
         drawerTab === "security"
           ? "Password updated successfully."
           : t("parentPages", "profileUpdated", lang)
       );
       closeDrawer();
     } catch (e: any) {
-      setError(e?.message ?? "Failed to update profile.");
+      toast.error(e?.message ?? "Failed to update profile.");
     } finally {
       setSaving(false);
     }
@@ -325,32 +323,6 @@ export default function TeacherProfilePage() {
         />
 
       <div className="pt-6 pb-24">
-        {/* Success Alert */}
-        <AnimatePresence>
-          {success && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              className="mx-3 mb-4 flex items-center justify-between gap-2 rounded-2xl border border-primary-200 bg-primary-50 p-3 text-sm text-primary-800"
-            >
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 shrink-0 text-primary-600" />
-                <span>{success}</span>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-xs"
-                onClick={() => setSuccess(null)}
-                className="text-primary-700 hover:bg-primary-100"
-              >
-                <X className="h-3.5 w-3.5" />
-              </Button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {/* Hero Identity & Stats Card (Referencing FeeStats from fees/page.tsx) */}
         <div className="py-3">
           <section className="mb-4 overflow-hidden rounded-2xl bg-gradient-to-br from-white to-sky-50 shadow-none">

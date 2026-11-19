@@ -1,4 +1,5 @@
 import { TableSkeleton } from "@/components/ui/Skeleton";
+import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { listLeads } from "@/lib/crm-api";
 import { useAuthStore } from "@/store/auth";
@@ -35,7 +36,6 @@ export default function RenewalsDashboard() {
   const [renewals, setRenewals] = useState<RenewalRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [triggerLoading, setTriggerLoading] = useState<string | null>(null);
 
   // Filters & Pagination
@@ -90,9 +90,8 @@ export default function RenewalsDashboard() {
   const handleSendReminder = (id: string, days: number) => {
     setTriggerLoading(id);
     setTimeout(() => {
-      setSuccessMsg(`In-app renewal reminder triggered for madrasa admin (${days} days countdown).`);
+      toast.success(`In-app renewal reminder triggered for madrasa admin (${days} days countdown).`);
       setTriggerLoading(null);
-      setTimeout(() => setSuccessMsg(null), 3500);
     }, 700);
   };
 
@@ -176,21 +175,7 @@ export default function RenewalsDashboard() {
           </button>
         </div>
 
-        {/* Feedback Alert */}
-        {successMsg && (
-          <div className="bg-primary-50 border border-primary-200 text-primary-900 rounded-2xl p-4 text-sm flex justify-between items-center shadow-xs">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-primary-600 shrink-0" />
-              <span className="font-semibold">{successMsg}</span>
-            </div>
-            <button
-              onClick={() => setSuccessMsg(null)}
-              className="font-bold underline text-xs text-primary-800"
-            >
-              Dismiss
-            </button>
-          </div>
-        )}
+        {/* Load error */}
         {error && (
           <div className="bg-rose-50 border border-rose-200 text-rose-900 rounded-2xl p-4 text-sm flex justify-between items-center shadow-xs">
             <div className="flex items-center gap-2">

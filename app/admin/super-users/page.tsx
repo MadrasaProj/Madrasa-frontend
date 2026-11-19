@@ -63,7 +63,6 @@ function UserDrawer({
       onSaved(saved);
       onClose();
     } catch (e: any) {
-      setError(e?.message ?? "Operation failed.");
       toast.error(e?.message ?? "Operation failed.");
     } finally {
       setSaving(false);
@@ -224,7 +223,6 @@ export default function AdminSuperUsersPage() {
       setUsers((prev) => prev.filter((u) => u.id !== userId));
       toast.success("User deleted successfully");
     } catch (e: any) {
-      setError(e?.message ?? "Delete failed.");
       toast.error(e?.message ?? "Delete failed.");
     } finally {
       setDeleting(null);

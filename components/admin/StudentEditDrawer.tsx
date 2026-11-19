@@ -138,7 +138,6 @@ export default function StudentEditDrawer({
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [tab, setTab] = useState<"personal" | "parent" | "emergency">("personal");
   const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string | null>(null);
@@ -156,7 +155,6 @@ export default function StudentEditDrawer({
     if (!open) return;
     setForm(isEditing && student ? studentToForm(student) : EMPTY_FORM);
     setTab("personal");
-    setSubmitError(null);
     setFieldErrors({});
     setAvatarPreview(null);
     setUploadedPhotoUrl(null);
@@ -194,10 +192,9 @@ export default function StudentEditDrawer({
     if (!form.adno.trim()) errs.adno = "Admission number is required";
     setFieldErrors(errs);
     if (Object.keys(errs).length > 0) {
-      setSubmitError("Please fill all required fields before proceeding.");
+      toast.error("Please fill all required fields before proceeding.");
       return false;
     }
-    setSubmitError(null);
     return true;
   };
 
@@ -220,10 +217,9 @@ export default function StudentEditDrawer({
     }
     setFieldErrors(errs);
     if (Object.keys(errs).length > 0) {
-      setSubmitError("Please fix the errors in Parent details before proceeding.");
+      toast.error("Please fix the errors in Parent details before proceeding.");
       return false;
     }
-    setSubmitError(null);
     return true;
   };
 
@@ -235,7 +231,6 @@ export default function StudentEditDrawer({
       if (!validateTab2()) return;
     }
     setTab(t);
-    setSubmitError(null);
     setFieldErrors({});
   };
 
@@ -268,7 +263,6 @@ export default function StudentEditDrawer({
   const executeSave = async (confirmSiblingUpdate: boolean) => {
     if (!activeClientId || !accessToken) return;
     setSubmitting(true);
-    setSubmitError(null);
     try {
       const payload: CreateStudentPayload = {
         name: form.name.trim(),
@@ -314,7 +308,6 @@ export default function StudentEditDrawer({
       if (apiErr.statusCode === 409) {
         setShowPasswordConfirmModal(true);
       } else {
-        setSubmitError(apiErr.message);
         if (apiErr.fieldErrors) setFieldErrors(apiErr.fieldErrors);
         toast.error(apiErr.message || "Failed to save student");
       }
@@ -327,7 +320,7 @@ export default function StudentEditDrawer({
     if (!activeClientId || !accessToken) return;
     const errors = validateAll();
     if (Object.keys(errors).length > 0) {
-      setSubmitError("Please fix the highlighted errors before saving.");
+      toast.error("Please fix the highlighted errors before saving.");
       if (errors.name || errors.adno) setTab("personal");
       else if (errors.parentPhone || errors.parentAltPhone || errors.parentPassword) setTab("parent");
       else if (errors.emergencyContactPhone) setTab("emergency");
@@ -353,7 +346,6 @@ export default function StudentEditDrawer({
       toast.success("Photo uploaded successfully");
     } catch (e) {
       setAvatarPreview(null);
-      setSubmitError((e as Error).message);
       toast.error((e as Error).message || "Failed to upload photo");
     } finally {
       setUploadingPhoto(false);
@@ -420,12 +412,6 @@ export default function StudentEditDrawer({
               <TabsTrigger value="parent">Parent</TabsTrigger>
               <TabsTrigger value="emergency">Emergency</TabsTrigger>
             </TabsList>
-
-            {submitError && (
-              <div role="alert" className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-                {submitError}
-              </div>
-            )}
 
             <TabsContent value="personal" className="mt-5 space-y-5">
               <div className="flex items-center gap-4 rounded-xl bg-gray-50 p-4">

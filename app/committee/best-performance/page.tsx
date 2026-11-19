@@ -1003,7 +1003,7 @@ export default function BestPerformancePage({ variant }: { variant?: "teacher" }
                             <span>{performer.attendance.score}/{performer.attendance.maxScore}</span>
                           </div>
                           <p className="text-[11px] font-semibold text-emerald-900">{performer.attendance.rate}% rate</p>
-                          <p className="text-[10px] text-emerald-600/90">{performer.attendance.presentDays}/{performer.attendance.totalDays} days present</p>
+                          <p className="text-[10px] text-emerald-600/90">{performer.attendance.presentDays}/{performer.attendance.totalWorkingDaytillToday ?? performer.attendance.totalDays} days present</p>
                         </div>
 
                         {/* Pillar 2: Homework */}

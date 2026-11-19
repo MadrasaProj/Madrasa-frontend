@@ -1,4 +1,5 @@
 import { SkeletonGrid } from "@/components/ui/Skeleton";
+import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/auth";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -35,7 +36,6 @@ export default function DistrictsPage() {
   const [staffList, setStaffList] = useState<InternalUserItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
   // Modal / Drawer state
@@ -100,20 +100,19 @@ export default function DistrictsPage() {
     try {
       if (modalMode === "add") {
         await createDistrict({ name: name.trim(), headUserId: headUserId || undefined }, accessToken);
-        setSuccess("District registered successfully!");
+        toast.success("District registered successfully!");
       } else if (modalMode === "edit" && selectedDistrict) {
         await updateDistrict(
           selectedDistrict.id,
           { name: name.trim(), headUserId: headUserId || null },
           accessToken
         );
-        setSuccess("District updated successfully!");
+        toast.success("District updated successfully!");
       }
       setShowModal(false);
       loadData();
-      setTimeout(() => setSuccess(null), 3500);
     } catch (err) {
-      setError((err as Error).message ?? "An error occurred.");
+      toast.error((err as Error).message ?? "An error occurred.");
     } finally {
       setSubmitting(false);
     }
@@ -124,14 +123,12 @@ export default function DistrictsPage() {
     if (!window.confirm(`Are you sure you want to delete the district "${distName}"?`)) return;
 
     setDeletingId(id);
-    setError(null);
     try {
       await deleteDistrict(id, accessToken);
-      setSuccess("District deleted successfully!");
+      toast.success("District deleted successfully!");
       loadData();
-      setTimeout(() => setSuccess(null), 3500);
     } catch (err) {
-      setError((err as Error).message ?? "Failed to delete district.");
+      toast.error((err as Error).message ?? "Failed to delete district.");
     } finally {
       setDeletingId(null);
     }
@@ -182,21 +179,6 @@ export default function DistrictsPage() {
             <button
               onClick={() => setError(null)}
               className="text-xs font-bold text-rose-800 underline"
-            >
-              Dismiss
-            </button>
-          </div>
-        )}
-
-        {success && (
-          <div className="flex items-center justify-between gap-2 p-4 bg-primary-50 border border-primary-200 rounded-2xl text-sm text-primary-900 shadow-xs">
-            <div className="flex items-center gap-2.5">
-              <CheckCircle2 className="w-4 h-4 text-primary-600 shrink-0" />
-              <p className="font-semibold">{success}</p>
-            </div>
-            <button
-              onClick={() => setSuccess(null)}
-              className="text-xs font-bold text-primary-800 underline"
             >
               Dismiss
             </button>

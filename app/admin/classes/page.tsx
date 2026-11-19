@@ -59,7 +59,6 @@ export default function AdminClassesPage() {
   const [editTarget, setEditTarget] = useState<ClassRecord | null>(null);
   const [form, setForm]             = useState<FormState>(EMPTY_FORM);
   const [saving, setSaving]         = useState(false);
-  const [saveError, setSaveError]   = useState("");
   const [deleting, setDeleting]     = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget]           = useState<ClassRecord | null>(null);
@@ -118,18 +117,18 @@ export default function AdminClassesPage() {
   const openAdd = () => {
     setEditTarget(null);
     setForm(EMPTY_FORM);
-    setSaveError(""); setShowDrawer(true);
+    setShowDrawer(true);
   };
 
   const openEdit = (c: ClassRecord) => {
     setSelectedClass(null);
-    setEditTarget(c); setForm(classToForm(c)); setSaveError(""); setShowDrawer(true);
+    setEditTarget(c); setForm(classToForm(c)); setShowDrawer(true);
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) { setSaveError("Display name is required"); return; }
+    if (!form.name.trim()) { toast.error("Display name is required"); return; }
     const divisionVal = form.division;
-    setSaving(true); setSaveError("");
+    setSaving(true);
     try {
       if (editTarget) {
         await updateClass(cid, token, editTarget.id, {
@@ -153,7 +152,6 @@ export default function AdminClassesPage() {
       qc.invalidateQueries({ queryKey: queryKeys.classes.all });
       setShowDrawer(false);
     } catch (e) {
-      setSaveError((e as Error).message);
       toast.error((e as Error).message || "Failed to save class");
     } finally {
       setSaving(false);
@@ -269,7 +267,7 @@ export default function AdminClassesPage() {
         
       >
         {selectedClass && (
-          <div className="space-y-5">
+          <div className="space-y-5 px-4 py-2">
             <div className="rounded-2xl border border-gray-100 bg-white px-4 py-3">
               <p className="text-xs font-medium text-gray-500">Class teacher</p>
               <p className="mt-1 text-base font-semibold text-gray-950">{selectedClass.classTeacher?.name ?? "Unassigned"}</p>
@@ -357,8 +355,6 @@ export default function AdminClassesPage() {
           </div>
         }
       >
-        {saveError && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{saveError}</p>}
-
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-600">Class</label>
           <DrawerSelector

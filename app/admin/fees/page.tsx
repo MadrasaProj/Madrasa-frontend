@@ -1,4 +1,5 @@
 import { SkeletonList } from "@/components/ui/Skeleton";
+import { toast } from "sonner";
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useTenantPath } from "@/hooks/useTenantPath";
@@ -369,8 +370,9 @@ export default function AdminFeesPage() {
       setDeletingTx(null);
       loadTransactions();
       loadTxSummary();
+      toast.success("Fee transaction deleted successfully");
     } catch (e) {
-      setError((e as Error).message);
+      toast.error((e as Error).message);
     } finally {
       setDeletingTxSave(false);
     }

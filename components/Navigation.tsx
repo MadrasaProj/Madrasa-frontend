@@ -46,6 +46,8 @@ import {
   Target,
   LifeBuoy,
   RefreshCw,
+  CalendarDays,
+  CalendarRange,
 } from "lucide-react";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import OnboardingDrawer from "@/components/twa/OnboardingDrawer";
@@ -88,6 +90,7 @@ type NavKey =
   | "finance"
   | "announcements"
   | "notifications"
+  | "holidays"
   | "madrasas"
   | "superUsers"
   | "platformReports"
@@ -113,11 +116,13 @@ type NavKey =
   | "crmSales"
   | "contentMedia"
   | "coreManagement"
-  | "ibadahConfig";
+  | "ibadahConfig"
+  | "academicYears";
 
 const adminLinks = [
   { href: "/admin", icon: LayoutDashboard, key: "dashboard" as NavKey },
   { href: "/admin/students", icon: Users, key: "students" as NavKey },
+  
   { href: "/admin/classes", icon: School, key: "classes" as NavKey },
   { href: "/admin/subjects", icon: BookOpen, key: "subjects" as NavKey },
   { href: "/admin/teachers", icon: UserCog, key: "teachers" as NavKey },
@@ -156,11 +161,17 @@ const adminLinks = [
   { href: "/admin/reports", icon: BarChart3, key: "reports" as NavKey },
   { href: "/admin/logs", icon: Activity, key: "logs" as NavKey },
   { href: "/admin/notifications", icon: Bell, key: "notifications" as NavKey },
+  { href: "/admin/holidays", icon: CalendarDays, key: "holidays" as NavKey },
   { href: "/admin/config", icon: Settings, key: "config" as NavKey },
   {
     href: "/admin/best-performance",
     icon: Trophy,
     key: "bestPerformance" as NavKey,
+  },
+  {
+    href: "/admin/academic-year",
+    icon: CalendarRange,
+    key: "academicYears" as NavKey,
   },
   { href: "/admin/profile", icon: UserCircle2, key: "profile" as NavKey },
 ];
@@ -456,7 +467,7 @@ const getAdminCategories = (role: string, actorType?: string) => {
       id: "settings",
       titleKey: "settings" as NavKey,
       icon: Settings,
-      links: links.filter((l) => ["config", "profile"].includes(l.key)),
+      links: links.filter((l) => ["config", "profile","holidays","academicYears"].includes(l.key)),
     },
   ];
 };

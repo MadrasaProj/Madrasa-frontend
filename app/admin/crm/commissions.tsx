@@ -1,4 +1,5 @@
 import { TableSkeleton } from "@/components/ui/Skeleton";
+import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import {
   getCommissions,
@@ -38,7 +39,6 @@ export default function CommissionsDashboard() {
   const [loading, setLoading] = useState(true);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   // Filters & Pagination
   const [searchQuery, setSearchQuery] = useState("");
@@ -70,11 +70,10 @@ export default function CommissionsDashboard() {
     setActionLoadingId(id);
     try {
       await payCommission(id, accessToken);
-      setSuccessMsg("Commission payment approved and recorded successfully!");
+      toast.success("Commission payment approved and recorded successfully!");
       loadData();
-      setTimeout(() => setSuccessMsg(null), 3500);
     } catch (e) {
-      setError("Failed to process payment: " + (e as Error).message);
+      toast.error("Failed to process payment: " + (e as Error).message);
     } finally {
       setActionLoadingId(null);
     }
@@ -174,21 +173,7 @@ export default function CommissionsDashboard() {
           </button>
         </div>
 
-        {/* Feedback Alerts */}
-        {successMsg && (
-          <div className="bg-primary-50 border border-primary-200 text-primary-900 rounded-2xl p-4 text-sm flex justify-between items-center shadow-xs">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-primary-600 shrink-0" />
-              <span className="font-semibold">{successMsg}</span>
-            </div>
-            <button
-              onClick={() => setSuccessMsg(null)}
-              className="font-bold underline text-xs text-primary-800"
-            >
-              Dismiss
-            </button>
-          </div>
-        )}
+        {/* Load error */}
         {error && (
           <div className="bg-rose-50 border border-rose-200 text-rose-900 rounded-2xl p-4 text-sm flex justify-between items-center shadow-xs">
             <div className="flex items-center gap-2">

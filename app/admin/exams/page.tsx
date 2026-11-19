@@ -117,7 +117,6 @@ interface MarkEntryState {
   scores: Record<string, string>;
   loading: boolean;
   saving: boolean;
-  saved: boolean;
   error: string | null;
 }
 
@@ -175,7 +174,6 @@ export default function AdminExamsPage() {
     scores: {},
     loading: false,
     saving: false,
-    saved: false,
     error: null,
   });
   const [marksDirty, setMarksDirty] = useState(false);
@@ -198,14 +196,12 @@ export default function AdminExamsPage() {
   const [reportError, setReportError] = useState<string | null>(null);
   const reportRequestRef = useRef(0);
   const [computing, setComputing] = useState(false);
-  const [computeMsg, setComputeMsg] = useState<string | null>(null);
 
   // Report sub-tabs (inside the drawer)
   const [reportTab, setReportTab] = useState<ReportTab>("table");
   const [marklistStudId, setMarklistStudId] = useState<string | null>(null);
   const [statusMap, setStatusMap] = useState<Record<string, { finalStatus: ResultStatus; totalGrade?: TotalGrade | null }>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [savingAll, setSavingAll] = useState(false);
   const [posterStudentId, setPosterStudentId] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
@@ -408,7 +404,6 @@ export default function AdminExamsPage() {
       scores: {},
       loading: false,
       saving: false,
-      saved: false,
       error: null,
     });
     setMarksDirty(false);
@@ -427,11 +422,9 @@ export default function AdminExamsPage() {
     setReportData(null);
     setResultSheetData(null);
     setReportError(null);
-    setComputeMsg(null);
     setReportTab("table");
     setMarklistStudId(null);
     setStatusMap({});
-    setStatusMsg(null);
     setPosterStudentId(null);
     setImportOpen(false);
   };
@@ -444,11 +437,9 @@ export default function AdminExamsPage() {
     setReportData(null);
     setResultSheetData(null);
     setReportError(null);
-    setComputeMsg(null);
     setReportTab("table");
     setMarklistStudId(null);
     setStatusMap({});
-    setStatusMsg(null);
     setPosterStudentId(null);
     setImportOpen(false);
     setMarkEntry((p) => ({
@@ -457,7 +448,6 @@ export default function AdminExamsPage() {
       subjectId: "",
       scores: {},
       error: null,
-      saved: false,
     }));
     if (classDrawerExamId) {
       loadMarkEntryClass(classDrawerExamId, classId);
@@ -572,7 +562,7 @@ export default function AdminExamsPage() {
 
   const handleMarkEntrySave = async (examId: string): Promise<boolean> => {
     if (!markEntry.classId || !markEntry.subjectId) return false;
-    setMarkEntry((p) => ({ ...p, saving: true, error: null, saved: false }));
+    setMarkEntry((p) => ({ ...p, saving: true, error: null }));
     try {
       const currentSubject = markEntry.subjects.find((s) => s.id === markEntry.subjectId);
       const subjectMaxMarks = maxSubjectMarks;
@@ -605,10 +595,9 @@ export default function AdminExamsPage() {
         results: items,
       });
 
-      setMarkEntry((p) => ({ ...p, saving: false, saved: true }));
+      setMarkEntry((p) => ({ ...p, saving: false }));
       setMarksDirty(false);
       toast.success("Marks saved successfully");
-      setTimeout(() => setMarkEntry((p) => ({ ...p, saved: false })), 2000);
       return true;
     } catch (e: any) {
       setMarkEntry((p) => ({ ...p, saving: false, error: e.message }));
@@ -666,17 +655,16 @@ export default function AdminExamsPage() {
   const handleCompute = async () => {
     if (!classDrawerExamId || !selectedClassTab || computing) return;
     setComputing(true);
-    setComputeMsg(null);
     try {
       const res = await computeSummary(cid, token, {
         examId: classDrawerExamId,
         classId: selectedClassTab,
         accademicYearId: ayId || undefined,
       });
-      setComputeMsg(`Computed ${res.computed} results · ${res.ranked} students ranked`);
+      toast.success(`Computed ${res.computed} results · ${res.ranked} students ranked`);
       await loadClassReport();
     } catch (e: any) {
-      setComputeMsg(`Error: ${e.message}`);
+      toast.error(e.message ?? "Failed to compute results");
     } finally {
       setComputing(false);
     }
@@ -706,7 +694,6 @@ export default function AdminExamsPage() {
   const handleSaveAll = async () => {
     if (!reportData || savingAll || !classDrawerExamId) return;
     setSavingAll(true);
-    setStatusMsg(null);
     let saved = 0;
     try {
       for (const row of reportData.students) {
@@ -718,10 +705,10 @@ export default function AdminExamsPage() {
         });
         saved++;
       }
-      setStatusMsg(`Saved status for ${saved} student${saved !== 1 ? "s" : ""}`);
+      toast.success(`Saved status for ${saved} student${saved !== 1 ? "s" : ""}`);
       await loadClassReport();
     } catch (e: any) {
-      setStatusMsg(`Error: ${e.message}`);
+      toast.error(e.message ?? "Failed to save status");
     } finally {
       setSavingAll(false);
     }
@@ -731,16 +718,15 @@ export default function AdminExamsPage() {
     const entry = statusMap[row.student.id];
     if (!entry?.finalStatus || !classDrawerExamId) return;
     setSavingId(row.student.id);
-    setStatusMsg(null);
     try {
       await setFinalStatus(cid, token, row.student.id, classDrawerExamId, {
         finalStatus: entry.finalStatus,
         totalGrade: entry.totalGrade ?? null,
       });
-      setStatusMsg(`Status saved for ${row.student.name}`);
+      toast.success(`Status saved for ${row.student.name}`);
       await loadClassReport();
     } catch (e: any) {
-      setStatusMsg(`Error: ${e.message}`);
+      toast.error(e.message ?? "Failed to save status");
     } finally {
       setSavingId(null);
     }
@@ -1002,7 +988,7 @@ export default function AdminExamsPage() {
               </Button>
               <Button type="button" size="lg" className="flex-1 shadow-none sm:flex-none" disabled={markEntry.loading || markEntry.saving || !markEntry.subjectId || !hasEnteredScores || hasInvalidScores} onClick={() => { void handleMarkEntrySave(classDrawerExam.id); }}>
                 {markEntry.saving ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Save aria-hidden="true" />}
-                {markEntry.saving ? "Saving…" : markEntry.saved ? "Saved" : "Save marks"}
+                {markEntry.saving ? "Saving…" : "Save marks"}
               </Button>
             </ButtonGroup>
           </div>
@@ -1066,7 +1052,7 @@ export default function AdminExamsPage() {
                                 if (subjectId === markEntry.subjectId) return;
                                 subjectRequestRef.current += 1;
                                 setMarksDirty(false);
-                                setMarkEntry((previous) => ({ ...previous, subjectId, scores: {}, saved: false }));
+                                setMarkEntry((previous) => ({ ...previous, subjectId, scores: {} }));
                               }}
                               disabled={markEntry.loading || markEntry.saving}
                             />
@@ -1090,7 +1076,6 @@ export default function AdminExamsPage() {
                               scores={markEntry.scores}
                               isLocked={false}
                               saving={markEntry.saving}
-                              saved={markEntry.saved}
                               error={markEntry.error}
                               loading={markEntry.loading}
                               activeExam={classDrawerExam}
@@ -1120,21 +1105,6 @@ export default function AdminExamsPage() {
 
                           {contentTab === "report" && (
                             <div className="space-y-4">
-                              {/* Compute feedback */}
-                              {computeMsg && (
-                                <div className={cn(
-                                  "flex items-center gap-2 px-4 py-3 rounded-xl text-sm",
-                                  computeMsg.startsWith("Error")
-                                    ? "bg-red-50 text-red-700 border border-red-100"
-                                    : "bg-primary-50 text-primary-700 border border-primary-100",
-                                )}>
-                                  {computeMsg.startsWith("Error")
-                                    ? <AlertCircle className="w-4 h-4" />
-                                    : <CheckCircle2 className="w-4 h-4" />}
-                                  {computeMsg}
-                                </div>
-                              )}
-
                               {/* Actions */}
                               <div className="flex flex-wrap items-center gap-2">
                                 <Button type="button"
@@ -1214,7 +1184,6 @@ export default function AdminExamsPage() {
                                       setStatusMap={setStatusMap}
                                       savingId={savingId}
                                       savingAll={savingAll}
-                                      statusMsg={statusMsg}
                                       onSave={handleSaveStatus}
                                       onSaveAll={handleSaveAll}
                                     />
@@ -1308,8 +1277,6 @@ export default function AdminExamsPage() {
         }
       >
         <form id="admin-exam-form" onSubmit={handleFormSubmit} className="space-y-5 ">
-          {formError && <p role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">{formError}</p>}
-
           <section className="space-y-3">
             <div>
               <label htmlFor="admin-exam-name" className="mb-1.5 block text-sm font-medium text-gray-700">Exam Name *</label>

@@ -12,6 +12,7 @@ import {
   Users, CreditCard, BookOpen, BarChart3, Settings, GraduationCap,
   BookMarked, ClipboardList, Building2, ShieldCheck,
   Briefcase, Target, LifeBuoy, CheckCircle2, ClipboardCheck,
+  CalendarRange,
   type LucideIcon,
 } from "lucide-react";
 import PwaInstallButton from "@/components/PwaInstallButton";
@@ -197,6 +198,7 @@ function MadrasaAdminDashboard() {
   ];
 
   const quickActions = [
+    { title: "Academic Years", icon: CalendarRange, href: `${slugPrefix}/admin/academic-year`, desc: "Manage academic years" },
     { title: "Students",      icon: GraduationCap, href: `${slugPrefix}/admin/students`,      desc: "Manage student records" },
     { title: "Teachers",      icon: Users,         href: `${slugPrefix}/admin/teachers`,      desc: "Staff management" },
     { title: "Attendance",    icon: ClipboardList, href: `${slugPrefix}/admin/present`,       desc: "Today's attendance" },

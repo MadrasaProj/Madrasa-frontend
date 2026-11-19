@@ -1,4 +1,5 @@
 import { SkeletonList, DetailSkeleton } from "@/components/ui/Skeleton";
+import { toast as sonnerToast } from "sonner";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import {
@@ -666,8 +667,6 @@ export default function CrmLeadsPage() {
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [copiedText, setCopiedText] = useState<string | null>(null);
 
   // Inline forms in lead detail
@@ -839,12 +838,8 @@ export default function CrmLeadsPage() {
   const canDelete = ["SUPER_ADMIN", "SALES_MANAGER"].includes(user?.actorType ?? "");
 
   const toast = (msg: string, isErr = false) => {
-    if (isErr) setError(msg);
-    else setSuccessMsg(msg);
-    setTimeout(() => {
-      setError(null);
-      setSuccessMsg(null);
-    }, 3500);
+    if (isErr) sonnerToast.error(msg);
+    else sonnerToast.success(msg);
   };
 
   const copyToClipboard = (text: string, label: string) => {
@@ -905,7 +900,7 @@ export default function CrmLeadsPage() {
         setLeads(list || []);
       }
     } catch (e) {
-      setError((e as Error).message);
+      sonnerToast.error((e as Error).message);
     } finally {
       if (!silent) setLoading(false);
     }
@@ -929,7 +924,7 @@ export default function CrmLeadsPage() {
         commissionPercentage: detail.commissionPercentage ?? 20,
       }));
     } catch (e) {
-      setError("Could not load lead: " + (e as Error).message);
+      sonnerToast.error("Could not load lead: " + (e as Error).message);
     } finally {
       setDetailLoading(false);
     }
@@ -4046,34 +4041,6 @@ export default function CrmLeadsPage() {
           </div>
         </div>
 
-        {/* Toast Feedback */}
-        <AnimatePresence>
-          {(successMsg || error) && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              className={cn(
-                "rounded-2xl p-4 mb-4 text-sm font-semibold flex items-center justify-between gap-3 shadow-xs",
-                error
-                  ? "bg-rose-50 border border-rose-200 text-rose-900"
-                  : "bg-primary-50 border border-primary-200 text-primary-900"
-              )}
-            >
-              <span>{error || successMsg}</span>
-              <button
-                onClick={() => {
-                  setError(null);
-                  setSuccessMsg(null);
-                }}
-                className="p-1 text-gray-400 hover:text-gray-700"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {/* ── Search & Filter Suite (Desktop & Mobile Friendly) ── */}
         <div className="bg-white rounded-3xl border border-gray-200/90 p-4 sm:p-5 shadow-xs space-y-3.5 mb-5">
           {/* ── Assignee Quick Switcher (Me, All, Unassigned) ── */}
@@ -6802,6 +6769,7 @@ export default function CrmLeadsPage() {
           show={showImportModal}
           onClose={() => setShowImportModal(false)}
           onComplete={() => {
+            toast("Import completed successfully");
             setShowImportModal(false);
             loadData();
           }}

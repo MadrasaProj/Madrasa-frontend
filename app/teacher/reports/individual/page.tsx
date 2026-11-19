@@ -313,7 +313,7 @@ function ReportPrintModal({
   from: string;
   to: string;
   attendance: AttendanceRecord[];
-  workingDays: number | null;
+   workingDays: number | null;
   homework: StudentHomeworkItem[];
   ibadah: StudentIbadahLog[];
   onClose: () => void;
@@ -323,8 +323,8 @@ function ReportPrintModal({
   const presentCount = attendance.filter((a) => a.status === "PRESENT" || a.status === "LATE" || a.status === "EXCUSED").length;
   const absentCount = attendance.filter((a) => a.status === "ABSENT").length;
   const leaveCount = attendance.filter((a) => a.status === "LEAVE" || a.status === "SICK").length;
-  const totalDays = workingDays ?? attendance.length;
-  const attendanceRate = totalDays > 0 ? Math.round((presentCount / totalDays) * 100) : 0;
+  const totalDays = workingDays || attendance.length;
+  const attendanceRate = totalDays > 0 ? Math.min(100, Math.round((presentCount / totalDays) * 100)) : 0;
 
   const totalQuranPages = ibadah.reduce((sum, item) => sum + (item.quranPages || 0), 0);
   const prayerDays = ibadah.filter((l) => l.fajr || l.dhuhr || l.asr || l.maghrib || l.isha).length;
@@ -891,7 +891,7 @@ export default function TeacherIndividualReportPage() {
   const [studentHomework, setStudentHomework] = useState<StudentHomeworkItem[]>([]);
   const [studentIbadah, setStudentIbadah] = useState<StudentIbadahLog[]>([]);
   const [studentAttendance, setStudentAttendance] = useState<AttendanceRecord[]>([]);
-  const [studentWorkingDays, setStudentWorkingDays] = useState<number | null>(null);
+   const [studentWorkingDays, setStudentWorkingDays] = useState<number | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
 
@@ -962,7 +962,7 @@ export default function TeacherIndividualReportPage() {
         setReportLoading(false);
       }
     },
-    [cid, token, activeClassId, from, to],
+    [cid, token, from, to, selectedStudent?.classId],
   );
 
   const selectStudent = (student: IndividualReportStudent) => {

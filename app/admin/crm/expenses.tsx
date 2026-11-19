@@ -1,4 +1,5 @@
 import { TableSkeleton } from "@/components/ui/Skeleton";
+import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/auth";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -38,7 +39,6 @@ export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<ExpenseItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   // Filters & Pagination
   const [searchQuery, setSearchQuery] = useState("");
@@ -83,7 +83,6 @@ export default function ExpensesPage() {
     if (!title.trim() || isNaN(amt) || amt <= 0 || !accessToken) return;
 
     setSubmitting(true);
-    setError(null);
     try {
       await createExpense(
         {
@@ -94,16 +93,15 @@ export default function ExpensesPage() {
         },
         accessToken
       );
-      setSuccess("Expense request submitted successfully!");
+      toast.success("Expense request submitted successfully!");
       setShowModal(false);
       setTitle("");
       setAmount("");
       setCategory("MARKETING");
       setDescription("");
       loadData();
-      setTimeout(() => setSuccess(null), 3500);
     } catch (err) {
-      setError((err as Error).message ?? "Failed to submit expense.");
+      toast.error((err as Error).message ?? "Failed to submit expense.");
     } finally {
       setSubmitting(false);
     }
@@ -112,14 +110,12 @@ export default function ExpensesPage() {
   const handleApprove = async (id: string) => {
     if (!accessToken) return;
     setActionLoadingId(id);
-    setError(null);
     try {
       await approveExpense(id, accessToken);
-      setSuccess("Expense approved successfully.");
+      toast.success("Expense approved successfully.");
       loadData();
-      setTimeout(() => setSuccess(null), 3500);
     } catch (err) {
-      setError((err as Error).message ?? "Action failed.");
+      toast.error((err as Error).message ?? "Action failed.");
     } finally {
       setActionLoadingId(null);
     }
@@ -128,14 +124,12 @@ export default function ExpensesPage() {
   const handleReject = async (id: string) => {
     if (!accessToken) return;
     setActionLoadingId(id);
-    setError(null);
     try {
       await rejectExpense(id, accessToken);
-      setSuccess("Expense rejected successfully.");
+      toast.success("Expense rejected successfully.");
       loadData();
-      setTimeout(() => setSuccess(null), 3500);
     } catch (err) {
-      setError((err as Error).message ?? "Action failed.");
+      toast.error((err as Error).message ?? "Action failed.");
     } finally {
       setActionLoadingId(null);
     }
@@ -283,21 +277,6 @@ export default function ExpensesPage() {
             <button
               onClick={() => setError(null)}
               className="text-xs font-bold text-rose-800 underline"
-            >
-              Dismiss
-            </button>
-          </div>
-        )}
-
-        {success && (
-          <div className="flex items-center justify-between gap-2 p-4 bg-primary-50 border border-primary-200 rounded-2xl text-sm text-primary-900 shadow-xs">
-            <div className="flex items-center gap-2.5">
-              <CheckCircle2 className="w-4 h-4 text-primary-600 shrink-0" />
-              <p className="font-semibold">{success}</p>
-            </div>
-            <button
-              onClick={() => setSuccess(null)}
-              className="text-xs font-bold text-primary-800 underline"
             >
               Dismiss
             </button>

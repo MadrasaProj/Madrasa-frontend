@@ -41,12 +41,50 @@ export interface AttendanceEntry {
 export interface StudentAttendanceResponse {
   studentId: string;
   total: number;
+  /** All calendar days in the academic year (holidays included). */
+  totalDays?: number;
+  /** Working days from startDate up to today, minus holidays — rate denominator. */
+  totalWorkingDaytillToday?: number;
+  /** Alias of totalWorkingDaytillToday. */
   workingDays?: number;
   workingDates?: string[];
+  academicYearId?: string | null;
+  period?: { from: string | null; to: string | null };
+  /** Present days / working days, capped at 100. */
+  rate?: number;
   skip: number;
   take: number;
   summary: Partial<Record<AttendanceStatus, number>>;
   records: AttendanceRecord[];
+}
+
+export interface WorkingDatesResponse {
+  academicYearId: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  totalDays: number;
+  totalWorkingDaytillToday: number;
+  workingDays: number;
+  workingDates: string[];
+}
+
+export function getWorkingDates(
+  clientId: string,
+  token: string,
+  params?: { classId?: string; academicYearId?: string; from?: string; to?: string },
+  signal?: AbortSignal,
+): Promise<WorkingDatesResponse> {
+  const q = new URLSearchParams();
+  if (params?.classId) q.set("classId", params.classId);
+  if (params?.academicYearId) q.set("academicYearId", params.academicYearId);
+  if (params?.from) q.set("from", params.from);
+  if (params?.to) q.set("to", params.to);
+  const qs = q.toString();
+  return apiFetch<WorkingDatesResponse>(
+    `${DEFAULT_API_BASE}/${clientId}/attendance/working-days${qs ? `?${qs}` : ""}`,
+    token,
+    { signal },
+  );
 }
 
 export interface ClassAttendanceResponse {

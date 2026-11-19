@@ -1,26 +1,28 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, School, Pencil } from "lucide-react";
+import { toast } from "sonner";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, CheckCircle2, Pencil, School } from "lucide-react";
 import { getStudents } from "@/lib/students-api";
+import { getPendingLeaveRequests, type LeaveRequest } from "@/lib/leave-requests-api";
 import {
   bulkDeleteAttendance,
   bulkUpsertAttendance,
   getClassAttendance,
   type AttendanceStatus,
 } from "@/lib/attendance-api";
+import { getHolidayCalendar, type Weekday } from "@/lib/holidays-api";
 import { queryKeys } from "@/lib/queryKeys";
 import { useClasses } from "@/lib/queries";
 import { t } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth";
 import { useActiveClass } from "@/store/activeClass";
 import { useLanguageStore } from "@/store/language";
-import { getPendingLeaveRequests, type LeaveRequest } from "@/lib/leave-requests-api";
 import { Button } from "@/components/ui/button";
-import { ScrollableTabs } from "@/components/ui/ScrollableTabs";
-import { StudentAvatar } from "@/components/teacher/StudentAvatar";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { DrawerSelector } from "@/components/DrawerSelector";
 import { ScrollableDateNavigator } from "@/components/ScrollableDateNavigator";
+import { ScrollableTabs } from "@/components/ui/ScrollableTabs";
+import { StudentAvatar } from "@/components/teacher/StudentAvatar";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import {
   AttendanceEditorContent,
@@ -41,14 +43,24 @@ function todayISO() {
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 }
 
+const WEEKDAY_BY_JS_DAY: Weekday[] = [
+  "SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY",
+];
+
 export function TeacherAttendanceDrawer({
   open,
   onOpenChange,
   initialClassId,
+  initialDate,
+  days,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialClassId?: string;
+  /** YYYY-MM-DD to open the taker on. */
+  initialDate?: string;
+  /** Pending YYYY-MM-DD values. When provided, only these dates are navigable in the taker. */
+  days?: string[];
 }) {
   const { user, accessToken } = useAuthStore();
   const { lang } = useLanguageStore();
@@ -68,7 +80,34 @@ export function TeacherAttendanceDrawer({
   const activeClassId = activeClass?.id ?? "";
   const isOwnClass = activeClass?.classTeacherId === user?.id;
 
-  const [date, setDate] = useState(todayISO);
+  const academicYearId = user?.defaultAcademicYearId;
+  const holidaysQuery = useQuery({
+    queryKey: ["holidays", cid, academicYearId],
+    queryFn: ({ signal }) => getHolidayCalendar(cid, token, academicYearId!, signal),
+    enabled: !!cid && !!token && !!academicYearId,
+    staleTime: 60_000,
+  });
+
+  const [date, setDate] = useState(() => initialDate ?? days?.[days.length - 1] ?? todayISO());
+  const dayCount = days?.length ?? 0;
+
+  const holidayForDate = useMemo(() => {
+    const calendar = holidaysQuery.data;
+    if (!calendar) return null;
+    for (const holiday of calendar.holidays ?? []) {
+      const scoped = holiday.classes ?? [];
+      if (scoped.length > 0 && (!activeClassId || !scoped.includes(activeClassId))) continue;
+      if (date >= holiday.date && date <= (holiday.endDate ?? holiday.date)) {
+        return { title: holiday.title, description: holiday.desc ?? "" };
+      }
+    }
+    const [year, monthNumber, day] = date.split("-").map(Number);
+    const weekday = WEEKDAY_BY_JS_DAY[new Date(year, monthNumber - 1, day).getDay()];
+    if ((calendar.weeklyHolidays ?? []).includes(weekday)) {
+      return { title: t("teacherPages", "attendanceWeeklyHoliday", lang), description: "" };
+    }
+    return null;
+  }, [holidaysQuery.data, date, activeClassId, lang]);
   const [students, setStudents] = useState<
     { id: string; name: string; adno: string; gender?: string; photoUrl?: string | null }[]
   >([]);
@@ -79,15 +118,8 @@ export function TeacherAttendanceDrawer({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
   const [confirmSave, setConfirmSave] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
-  const saveSuccessTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => () => {
-    if (saveSuccessTimer.current) clearTimeout(saveSuccessTimer.current);
-  }, []);
 
   const loadAttendance = useCallback(async (classId: string, dateStr: string, signal?: AbortSignal) => {
     if (!cid || !token || !classId) return;
@@ -143,8 +175,8 @@ export function TeacherAttendanceDrawer({
         gender: student.gender ?? undefined,
         photoUrl: student.photoUrl ?? student.photo,
       })));
-      setLeaveRequests(leaveRes.requests ?? []);
       setRecords(map);
+      setLeaveRequests(leaveRes.requests ?? []);
     } catch (cause) {
       if (signal?.aborted || (cause as Error).name === "AbortError") return;
       setError((cause as Error).message);
@@ -153,18 +185,22 @@ export function TeacherAttendanceDrawer({
     }
   }, [cid, token, user?.defaultAcademicYearId]);
 
+  // Start on the most recent pending day (or the requested date) each time it opens.
   useEffect(() => {
     if (!open) return;
-    const controller = new AbortController();
-    setSaveError(null);
-    setSaveSuccess(false);
     setConfirmSave(false);
     setConfirmClear(false);
     setEditing(false);
     setStatusFilter("ALL");
+    setDate(initialDate ?? days?.[days.length - 1] ?? todayISO());
+  }, [open, initialDate, days]);
+
+  useEffect(() => {
+    if (!open || holidayForDate) return;
+    const controller = new AbortController();
     if (activeClassId) void loadAttendance(activeClassId, date, controller.signal);
     return () => controller.abort();
-  }, [open, activeClassId, date, loadAttendance]);
+  }, [open, holidayForDate, activeClassId, date, loadAttendance]);
 
   const setStatus = (studentId: string, status: ActiveStatus) => {
     setRecords((previous) => {
@@ -180,7 +216,6 @@ export function TeacherAttendanceDrawer({
       });
       return next;
     });
-    setSaveSuccess(false);
   };
 
   const setNotes = (studentId: string, notes: string) => {
@@ -190,7 +225,6 @@ export function TeacherAttendanceDrawer({
       if (record) next.set(studentId, { ...record, notes, dirty: true });
       return next;
     });
-    setSaveSuccess(false);
   };
 
   const setLateComing = (studentId: string, lateComing: boolean, lateComingTime?: string) => {
@@ -205,7 +239,6 @@ export function TeacherAttendanceDrawer({
       });
       return next;
     });
-    setSaveSuccess(false);
   };
 
   const markAll = (status: ActiveStatus) => {
@@ -221,7 +254,6 @@ export function TeacherAttendanceDrawer({
       });
       return next;
     });
-    setSaveSuccess(false);
   };
 
   const hasDirty = useMemo(() => [...records.values()].some((record) => record.dirty), [records]);
@@ -256,12 +288,12 @@ export function TeacherAttendanceDrawer({
   const clearAll = useCallback(async () => {
     if (!activeClassId) return;
     setSaving(true);
-    setSaveError(null);
     try {
       await bulkDeleteAttendance(cid, token, { date, classId: activeClassId });
       await Promise.all([loadAttendance(activeClassId, date), invalidateAttendance()]);
+      toast.success(t("teacherPages", "saved", lang));
     } catch (cause) {
-      setSaveError((cause as Error).message);
+      toast.error((cause as Error).message);
     } finally {
       setSaving(false);
       setConfirmClear(false);
@@ -271,7 +303,6 @@ export function TeacherAttendanceDrawer({
   const doSave = useCallback(async () => {
     if (!activeClassId || !cid || !token) return;
     setSaving(true);
-    setSaveError(null);
     try {
       const entries = [...records].flatMap(([studentId, record]) => record.status === null ? [] : [{
         studentId,
@@ -291,12 +322,10 @@ export function TeacherAttendanceDrawer({
           : {}),
         records: entries,
       });
-      setSaveSuccess(true);
-      if (saveSuccessTimer.current) clearTimeout(saveSuccessTimer.current);
-      saveSuccessTimer.current = setTimeout(() => setSaveSuccess(false), 3000);
+      toast.success(t("teacherPages", "saved", lang));
       await Promise.all([loadAttendance(activeClassId, date), invalidateAttendance()]);
     } catch (cause) {
-      setSaveError((cause as Error).message);
+      toast.error((cause as Error).message);
     } finally {
       setSaving(false);
     }
@@ -320,10 +349,15 @@ export function TeacherAttendanceDrawer({
        
       showBackButton={false}
       title={t("teacherPages", "markAttendanceDesc", lang)}
+      description={dayCount > 0
+        ? t("teacherPages", "attendancePendingDrawerDesc", lang)
+            .replace("{count}", String(dayCount))
+            .replace("{className}", activeClass?.name ?? "")
+        : undefined}
       contentClassName="px-5 py-6 sm:px-6"
     >
       <div className="mx-auto max-w-2xl">
-        {error && (
+        {!holidayForDate && error && (
           <ApiErrorBanner
             message={error}
             onRetry={() => activeClassId ? void loadAttendance(activeClassId, date) : undefined}
@@ -337,6 +371,7 @@ export function TeacherAttendanceDrawer({
               pickerTitle="Choose attendance date"
               disabled={saving}
               hideCalendarButton
+              visibleDates={days}
             />
             <DrawerSelector
               title={t("teacherPages", "selectClassOpt", lang)}
@@ -364,81 +399,94 @@ export function TeacherAttendanceDrawer({
         {classesQuery.error && (
           <ApiErrorBanner message={classesQuery.error.message} onRetry={() => { void classesQuery.refetch(); }} />
         )}
-        {taken && !editing && (
+        {holidayForDate ? (
+          <div className="flex flex-col items-center rounded-3xl border border-amber-100 bg-[#FFF9F0] px-6 py-10 text-center">
+            <img
+              src="/images/attendance-empty-state.png"
+              alt="An open attendance register, pencil, and calendar"
+              className="mb-4 h-40 w-40 object-contain sm:h-48 sm:w-48"
+            />
+            <h3 className="text-lg font-semibold text-[#49352E]">
+              {t("teacherPages", "attendanceHolidayLabel", lang)}: {holidayForDate.title}
+            </h3>
+            <p className="mt-2 max-w-sm text-sm leading-6 text-[#49352E]/75">
+              {holidayForDate.description || t("teacherPages", "attendanceHolidayNoControl", lang)}
+            </p>
+          </div>
+        ) : (
           <>
-            <div className="mb-4 flex min-w-0 items-center gap-3 border-b border-gray-100 pb-3">
-              <ScrollableTabs
-                options={[
-                  { value: "ALL", label: "All" },
-                  { value: "PRESENT", label: "Present" },
-                  { value: "ABSENT", label: "Absent" },
-                  { value: "SICK", label: "Sick" },
-                  { value: "APPROVED", label: "Approved" },
-                  { value: "UNAPPROVED", label: "Unapproved" },
-                ]}
-                value={statusFilter}
-                onValueChange={setStatusFilter}
-                ariaLabel="Filter attendance by status"
-                className="flex-1"
-              />
-              <Button type="button" variant="outline" className="shrink-0" onClick={() => setEditing(true)}><Pencil className="mr-2 size-4" />Edit</Button>
-            </div>
-            <div className="divide-y divide-gray-100">
-              {visibleStudents.map((student) => {
-                const record = records.get(student.id)!;
-                const leave = leaveRequests.find((item) => item.student.id === student.id);
-                const statusLabel = record.status === 'PRESENT' ? 'Present' : record.status === 'ABSENT' ? 'Absent' : record.status === 'SICK' ? 'Sick' : record.status === 'LEAVE' ? 'Leave' : record.status ?? 'Unmarked';
-                const detail = [record.lateComing ? `Late coming${record.lateComingTime ? ` · ${record.lateComingTime}` : ''}` : '', leave ? `${leave.status === 'APPROVED' ? 'Approved' : leave.status === 'PENDING' ? 'Unapproved · pending review' : 'Unapproved · rejected'}${leave.description ? ` · ${leave.description}` : ''}${leave.reviewNote ? ` · ${leave.reviewNote}` : ''}` : '', record.notes].filter(Boolean).join(' · ');
-                return <div key={student.id} className="flex items-center gap-3 py-3">
-                  <StudentAvatar name={student.name} gender={student.gender} photoUrl={student.photoUrl} size="lg" />
-                  <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-gray-900">{student.name} <span className="font-normal text-gray-500">· {student.adno}</span></p>{detail && <p className="mt-0.5 truncate text-xs text-gray-500" title={detail}>{detail}</p>}</div>
-                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${record.status === 'PRESENT' ? 'bg-emerald-50 text-emerald-700' : record.status === 'ABSENT' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700'}`}>{statusLabel}</span>
-                </div>;
-              })}
-              {!visibleStudents.length && <p className="py-8 text-center text-sm text-gray-500">No attendance records match this filter.</p>}
-            </div>
+            {taken && !editing && (
+              <>
+                <div className="mb-4 flex min-w-0 items-center gap-3 border-b border-gray-100 pb-3">
+                  <ScrollableTabs
+                    options={[
+                      { value: "ALL", label: "All" },
+                      { value: "PRESENT", label: "Present" },
+                      { value: "ABSENT", label: "Absent" },
+                      { value: "SICK", label: "Sick" },
+                      { value: "APPROVED", label: "Approved" },
+                      { value: "UNAPPROVED", label: "Unapproved" },
+                    ]}
+                    value={statusFilter}
+                    onValueChange={setStatusFilter}
+                    ariaLabel="Filter attendance by status"
+                    className="flex-1"
+                  />
+                  <Button type="button" variant="outline" className="shrink-0" onClick={() => setEditing(true)}>
+                    <Pencil className="mr-2 size-4" />Edit
+                  </Button>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {visibleStudents.map((student) => {
+                    const record = records.get(student.id)!;
+                    const leave = leaveRequests.find((item) => item.student.id === student.id);
+                    const statusLabel = record.status === 'PRESENT' ? 'Present' : record.status === 'ABSENT' ? 'Absent' : record.status === 'SICK' ? 'Sick' : record.status === 'LEAVE' ? 'Leave' : record.status ?? 'Unmarked';
+                    const detail = [record.lateComing ? `Late coming${record.lateComingTime ? ` · ${record.lateComingTime}` : ''}` : '', leave ? `${leave.status === 'APPROVED' ? 'Approved' : leave.status === 'PENDING' ? 'Unapproved · pending review' : 'Unapproved · rejected'}${leave.description ? ` · ${leave.description}` : ''}${leave.reviewNote ? ` · ${leave.reviewNote}` : ''}` : '', record.notes].filter(Boolean).join(' · ');
+                    return <div key={student.id} className="flex items-center gap-3 py-3">
+                      <StudentAvatar name={student.name} gender={student.gender} photoUrl={student.photoUrl} size="lg" />
+                      <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-gray-900">{student.name} <span className="font-normal text-gray-500">· {student.adno}</span></p>{detail && <p className="mt-0.5 truncate text-xs text-gray-500" title={detail}>{detail}</p>}</div>
+                      <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${record.status === 'PRESENT' ? 'bg-emerald-50 text-emerald-700' : record.status === 'ABSENT' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700'}`}>{statusLabel}</span>
+                    </div>;
+                  })}
+                  {!visibleStudents.length && <p className="py-8 text-center text-sm text-gray-500">No attendance records match this filter.</p>}
+                </div>
+              </>
+            )}
+            {(!taken || editing) && (
+              <div aria-busy={loading || classesLoading}>
+                <AttendanceEditorContent
+                  isOwnClass={isOwnClass}
+                  activeClassId={activeClassId}
+                  classesLoading={classesLoading}
+                  records={records}
+                  summary={summary}
+                  pct={pct}
+                  confirmClear={confirmClear}
+                  setConfirmClear={setConfirmClear}
+                  activeClassName={activeClass?.name}
+                  date={date}
+                  clearAll={() => { void clearAll(); }}
+                  saving={saving}
+                  markAll={markAll}
+                  loading={loading}
+                  error={error}
+                  students={students}
+                  setStatus={setStatus}
+                  setNotes={setNotes}
+                  setLateComing={setLateComing}
+                  hasDirty={hasDirty}
+                  hasExisting={hasExisting}
+                  handleSave={handleSave}
+                  editMode={editing && taken}
+                  onCancelEdit={() => {
+                    setEditing(false);
+                    if (activeClassId) void loadAttendance(activeClassId, date);
+                  }}
+                />
+              </div>
+            )}
           </>
         )}
-        {saveSuccess && (
-          <p role="status" className="mb-4 flex items-center gap-1 text-sm font-semibold text-primary-600">
-            <CheckCircle2 className="size-4" />
-            {t("teacherPages", "saved", lang)}
-          </p>
-        )}
-        {(!taken || editing) && <div aria-busy={loading || classesLoading}>
-          <AttendanceEditorContent
-            isOwnClass={isOwnClass}
-            activeClassId={activeClassId}
-            classesLoading={classesLoading}
-            records={records}
-            summary={summary}
-            pct={pct}
-            confirmClear={confirmClear}
-            setConfirmClear={setConfirmClear}
-            activeClassName={activeClass?.name}
-            date={date}
-            clearAll={() => { void clearAll(); }}
-            saving={saving}
-            markAll={markAll}
-            saveError={saveError}
-            loading={loading}
-            error={error}
-            students={students}
-            setStatus={setStatus}
-            setNotes={setNotes}
-            setLateComing={setLateComing}
-            hasDirty={hasDirty}
-            hasExisting={hasExisting}
-            handleSave={handleSave}
-            editMode={editing && taken}
-            onCancelEdit={() => {
-              setEditing(false);
-              setSaveError(null);
-              setSaveSuccess(false);
-              if (activeClassId) void loadAttendance(activeClassId, date);
-            }}
-          />
-        </div>}
       </div>
       {confirmSave && activeClass && (
         <div className="fixed inset-0 z-1050 flex items-center justify-center bg-black/50 p-4">

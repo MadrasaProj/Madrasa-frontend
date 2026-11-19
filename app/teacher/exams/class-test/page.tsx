@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -139,7 +140,6 @@ export default function TeacherClassTestsPage() {
   const [meLoading, setMeLoading] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [meSaving, setMeSaving] = useState(false);
-  const [meSaved, setMeSaved] = useState(false);
   const isMarkEntryView = searchParams.get("view") === "mark-entry";
   const markEntryExam = exams.find((exam) => exam.id === searchParams.get("examId"));
   const selectedExam = exams.find((exam) => exam.id === selectedExamId);
@@ -208,7 +208,6 @@ export default function TeacherClassTestsPage() {
   };
 
   const loadMarkEntry = useCallback(async (exam: ExamRecord) => {
-    setMeSaved(false);
     setMeLoading(true);
     setMeError(null);
     try {
@@ -372,8 +371,9 @@ export default function TeacherClassTestsPage() {
         setExams((prev) => [...prev, created]);
       }
       setShowDrawer(false);
+      toast.success(editTarget ? "Class test updated successfully" : "Class test created successfully");
     } catch (e) {
-      setSaveError((e as Error).message);
+      toast.error((e as Error).message || "Failed to save class test");
     } finally {
       setSaving(false);
     }
@@ -388,8 +388,9 @@ export default function TeacherClassTestsPage() {
       setExams((prev) => prev.filter((e) => e.id !== id));
       setShowDeleteConfirm(false);
       setDeleteTarget(null);
+      toast.success("Exam deleted successfully");
     } catch (e) {
-      setError((e as Error).message);
+      toast.error((e as Error).message);
     } finally {
       setDeleting(null);
     }
@@ -409,8 +410,9 @@ export default function TeacherClassTestsPage() {
       setExams((prev) =>
         prev.map((e) => (e.id === updated.id ? { ...e, ...updated } : e)),
       );
+      toast.success("Exam published successfully");
     } catch (e) {
-      setError((e as Error).message);
+      toast.error((e as Error).message);
     }
   };
 
@@ -451,11 +453,10 @@ export default function TeacherClassTestsPage() {
         results: items,
       });
       await loadMarkEntry(exam);
-      setMeSaved(true);
-      setTimeout(() => setMeSaved(false), 1500);
+      toast.success("Marks saved successfully");
       return true;
     } catch (e) {
-      setMeError((e as Error).message);
+      toast.error((e as Error).message);
       return false;
     } finally {
       setMeSaving(false);
@@ -797,7 +798,6 @@ fullHeight
               subjectId={meSubjectId}
               lang={lang}
               saving={meSaving}
-              saved={meSaved}
               isLocked={isLocked}
               hasEnteredScores={meStudents.some((student) => meScores[student.id] !== "" && meScores[student.id] !== undefined)}
               saveDisabled={meSaving || isLocked || hasInvalidMarks || meStudents.length === 0}
@@ -822,7 +822,6 @@ fullHeight
                 scores: meScores,
                 isLocked,
                 saving: meSaving,
-                saved: meSaved,
                 loading: meLoading,
                 error: meError,
                 activeExam: markEntryExam,

@@ -140,20 +140,16 @@ export default function AdminConfigPage() {
   const [config, setConfig] = useState<Partial<ClientConfig>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const [attMode, setAttMode] = useState<"CLASS_BASED" | "PERIOD_BASED">(
     "CLASS_BASED",
   );
   const [savingAtt, setSavingAtt] = useState(false);
-  const [savedAtt, setSavedAtt] = useState(false);
   const [attError, setAttError] = useState("");
   const [showCommAtt, setShowCommAtt] = useState(true);
   const [savingCommAtt, setSavingCommAtt] = useState(false);
-  const [savedCommAtt, setSavedCommAtt] = useState(false);
   const [showCommTC, setShowCommTC] = useState(true);
   const [savingCommTC, setSavingCommTC] = useState(false);
-  const [savedCommTC, setSavedCommTC] = useState(false);
 
   const PARENT_MODULES = [
     { key: "attendance", label: "Attendance", desc: "Let parents view their child's attendance records" },
@@ -169,18 +165,15 @@ export default function AdminConfigPage() {
 
   const [disabledModules, setDisabledModules] = useState<string[]>([]);
   const [savingParentToggles, setSavingParentToggles] = useState(false);
-  const [savedParentToggles, setSavedParentToggles] = useState(false);
 
   const [newUsername, setNewUsername] = useState("");
   const [savingUsername, setSavingUsername] = useState(false);
-  const [savedUsername, setSavedUsername] = useState(false);
   const [usernameError, setUsernameError] = useState("");
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPasswords, setShowPasswords] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
-  const [savedPassword, setSavedPassword] = useState(false);
   const [passwordError, setPasswordError] = useState("");
 
   const [ibadahEnabled, setIbadahEnabled] = useState(true);
@@ -188,7 +181,6 @@ export default function AdminConfigPage() {
   const [ibadahBody, setIbadahBody] = useState("");
   const [ibadahTime, setIbadahTime] = useState("19:00");
   const [savingIbadah, setSavingIbadah] = useState(false);
-  const [savedIbadah, setSavedIbadah] = useState(false);
   const [triggeringReminder, setTriggeringReminder] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("general");
 
@@ -251,9 +243,7 @@ export default function AdminConfigPage() {
         logo: config.logo,
       });
       setConfig(updated);
-      setSaved(true);
       toast.success("Settings saved successfully");
-      setTimeout(() => setSaved(false), 3000);
     } catch (e) {
       setError((e as Error).message);
       toast.error((e as Error).message || "Failed to save settings");
@@ -270,9 +260,7 @@ export default function AdminConfigPage() {
       await updateClientConfig(cid, token, { attendanceMode: attMode });
       setConfig((prev) => ({ ...prev, attendanceMode: attMode }));
       setAttendanceMode(attMode);
-      setSavedAtt(true);
       toast.success("Attendance mode updated successfully");
-      setTimeout(() => setSavedAtt(false), 3000);
     } catch (e) {
       setAttError((e as Error).message);
       toast.error((e as Error).message || "Failed to update attendance mode");
@@ -289,10 +277,9 @@ export default function AdminConfigPage() {
         showCommitteeAttendance: showCommAtt,
       });
       setConfig((prev) => ({ ...prev, showCommitteeAttendance: showCommAtt }));
-      setSavedCommAtt(true);
-      setTimeout(() => setSavedCommAtt(false), 3000);
+      toast.success("Committee attendance visibility updated successfully");
     } catch (e) {
-      /* ignore */
+      toast.error((e as Error).message || "Failed to update committee attendance visibility");
     } finally {
       setSavingCommAtt(false);
     }
@@ -303,10 +290,10 @@ export default function AdminConfigPage() {
     setSavingParentToggles(true);
     try {
       await updateClientConfig(cid, token, { disabledParentModules: disabledModules });
-      setSavedParentToggles(true);
-      setTimeout(() => setSavedParentToggles(false), 3000);
-    } catch (e) { /* ignore */ }
-    finally { setSavingParentToggles(false); }
+      toast.success("Parent module settings saved successfully");
+    } catch (e) {
+      toast.error((e as Error).message || "Failed to save parent module settings");
+    } finally { setSavingParentToggles(false); }
   };
 
   const handleSaveCommitteeTeacherCheckin = async () => {
@@ -320,10 +307,9 @@ export default function AdminConfigPage() {
         ...prev,
         showCommitteeTeacherCheckin: showCommTC,
       }));
-      setSavedCommTC(true);
-      setTimeout(() => setSavedCommTC(false), 3000);
+      toast.success("Teacher check-in visibility updated successfully");
     } catch (e) {
-      /* ignore */
+      toast.error((e as Error).message || "Failed to update teacher check-in visibility");
     } finally {
       setSavingCommTC(false);
     }
@@ -339,9 +325,7 @@ export default function AdminConfigPage() {
         const isEmail = newUsername.includes("@");
         return { ...prev, loginEmail: isEmail ? newUsername : null, loginPhone: isEmail ? null : newUsername };
       });
-      setSavedUsername(true);
       toast.success("Admin username updated successfully");
-      setTimeout(() => setSavedUsername(false), 3000);
     } catch (e) {
       setUsernameError((e as Error).message);
       toast.error((e as Error).message || "Failed to update admin username");
@@ -368,11 +352,9 @@ export default function AdminConfigPage() {
     }
     try {
       await updateClientConfig(cid, token, { password: newPassword });
-      setSavedPassword(true);
       toast.success("Admin password changed successfully");
       setNewPassword("");
       setConfirmPassword("");
-      setTimeout(() => setSavedPassword(false), 3000);
     } catch (e) {
       setPasswordError((e as Error).message);
       toast.error((e as Error).message || "Failed to update password");
@@ -398,9 +380,7 @@ export default function AdminConfigPage() {
         ibadahReminderBody: updated.ibadahReminderBody,
         ibadahReminderTime: updated.ibadahReminderTime,
       }));
-      setSavedIbadah(true);
       toast.success("Ibadah alert settings saved successfully");
-      setTimeout(() => setSavedIbadah(false), 3000);
     } catch (e) {
       toast.error((e as Error).message || "Failed to save ibadah settings");
     } finally {
@@ -509,7 +489,6 @@ export default function AdminConfigPage() {
 
             <StickySaveButton
               saving={saving}
-              saved={saved}
               onSave={handleSave}
             />
             </div>
@@ -557,7 +536,6 @@ export default function AdminConfigPage() {
 
             <StickySaveButton
               saving={saving}
-              saved={saved}
               onSave={handleSave}
             />
             </div>
@@ -604,16 +582,11 @@ export default function AdminConfigPage() {
               )}
               <div className="mt-4">
                 <Button
-                  variant={savedAtt ? "secondary" : "default"}
                   onClick={handleSaveAttendanceMode}
                   disabled={savingAtt || attMode === config.attendanceMode}
                 >
                   {savingAtt ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : savedAtt ? (
-                    <>
-                      <CheckCircle2 className="w-4 h-4" /> Saved!
-                    </>
                   ) : (
                     <>
                       <Save className="w-4 h-4" /> Save Attendance Mode
@@ -652,7 +625,6 @@ export default function AdminConfigPage() {
               </div>
               <div className="mt-4">
                 <Button
-                  variant={savedCommAtt ? "secondary" : "default"}
                   onClick={handleSaveCommitteeAttendance}
                   disabled={
                     savingCommAtt || showCommAtt === config.showCommitteeAttendance
@@ -660,10 +632,6 @@ export default function AdminConfigPage() {
                 >
                   {savingCommAtt ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : savedCommAtt ? (
-                    <>
-                      <CheckCircle2 className="w-4 h-4" /> Saved!
-                    </>
                   ) : (
                     <>
                       <Save className="w-4 h-4" /> Save
@@ -702,7 +670,6 @@ export default function AdminConfigPage() {
               </div>
               <div className="mt-4">
                 <Button
-                  variant={savedCommTC ? "secondary" : "default"}
                   onClick={handleSaveCommitteeTeacherCheckin}
                   disabled={
                     savingCommTC ||
@@ -711,10 +678,6 @@ export default function AdminConfigPage() {
                 >
                   {savingCommTC ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : savedCommTC ? (
-                    <>
-                      <CheckCircle2 className="w-4 h-4" /> Saved!
-                    </>
                   ) : (
                     <>
                       <Save className="w-4 h-4" /> Save
@@ -891,16 +854,11 @@ export default function AdminConfigPage() {
             <div className="space-y-3">
               <Button
                 type="button"
-                variant={savedIbadah ? "secondary" : "default"}
                 onClick={handleSaveIbadahReminder}
                 disabled={savingIbadah}
               >
                 {savingIbadah ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
-                ) : savedIbadah ? (
-                  <>
-                    <CheckCircle2 className="w-4 h-4" /> Settings Saved!
-                  </>
                 ) : (
                   <>
                     <Save className="w-4 h-4" /> Save Ibadah Alert Settings
@@ -981,14 +939,11 @@ export default function AdminConfigPage() {
               )}
               <div className="mt-4">
                 <Button
-                  variant={savedUsername ? "secondary" : "default"}
                   onClick={handleSaveUsername}
                   disabled={savingUsername || !newUsername.trim()}
                 >
                   {savingUsername ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : savedUsername ? (
-                    <><CheckCircle2 className="w-4 h-4" /> Saved!</>
                   ) : (
                     <><Save className="w-4 h-4" /> Update Username</>
                   )}
@@ -1069,14 +1024,11 @@ export default function AdminConfigPage() {
               )}
               <div className="mt-4">
                 <Button
-                  variant={savedPassword ? "secondary" : "default"}
                   onClick={handleSavePassword}
                   disabled={savingPassword || !newPassword || !confirmPassword}
                 >
                   {savingPassword ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : savedPassword ? (
-                    <><CheckCircle2 className="w-4 h-4" /> Saved!</>
                   ) : (
                     <><Save className="w-4 h-4" /> Change Password</>
                   )}
@@ -1117,12 +1069,10 @@ export default function AdminConfigPage() {
             </div>
             <div className="mt-4">
               <Button
-                variant={savedParentToggles ? "secondary" : "default"}
                 onClick={handleSaveParentModules}
                 disabled={savingParentToggles}
               >
                 {savingParentToggles ? <Loader2 className="w-4 h-4 animate-spin" /> :
-                 savedParentToggles ? <><CheckCircle2 className="w-4 h-4" /> Saved!</> :
                  <><Save className="w-4 h-4" /> Save Module Settings</>}
               </Button>
             </div>
@@ -1140,26 +1090,16 @@ export default function AdminConfigPage() {
 
 function StickySaveButton({
   saving,
-  saved,
   onSave,
 }: {
   saving: boolean;
-  saved: boolean;
   onSave: () => void;
 }) {
   return (
     <div className="sticky bottom-20 lg:bottom-6">
-      <Button
-        variant={saved ? "secondary" : "default"}
-        onClick={onSave}
-        disabled={saving}
-      >
+      <Button onClick={onSave} disabled={saving}>
         {saving ? (
           <Loader2 className="w-5 h-5 animate-spin" />
-        ) : saved ? (
-          <>
-            <CheckCircle2 className="w-5 h-5" /> Saved!
-          </>
         ) : (
           <>
             <Save className="w-5 h-5" /> Save Configuration

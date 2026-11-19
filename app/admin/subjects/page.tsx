@@ -53,12 +53,10 @@ export default function AdminSubjectsPage() {
   const [editTarget, setEditTarget] = useState<SubjectRecord | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState("");
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkClassId, setBulkClassId] = useState("");
   const [bulkTeacherId, setBulkTeacherId] = useState("");
   const [bulkSaving, setBulkSaving] = useState(false);
-  const [bulkError, setBulkError] = useState("");
 
   const { data: classesData } = useClasses({ clientId, token });
   const { data: teachersData } = useTeachers({ clientId, token });
@@ -106,7 +104,6 @@ export default function AdminSubjectsPage() {
   const openAdd = () => {
     setEditTarget(null);
     setForm({ ...EMPTY_FORM, classId: filterClassId });
-    setSaveError("");
     setShowDrawer(true);
   };
 
@@ -114,21 +111,19 @@ export default function AdminSubjectsPage() {
     setSelectedSubject(null);
     setEditTarget(subject);
     setForm(subjectToForm(subject));
-    setSaveError("");
     setShowDrawer(true);
   };
 
   const handleSave = async () => {
     if (!form.name.trim()) {
-      setSaveError("Subject name is required");
+      toast.error("Subject name is required");
       return;
     }
     if (!editTarget && !form.classId) {
-      setSaveError("Class is required");
+      toast.error("Class is required");
       return;
     }
     setSaving(true);
-    setSaveError("");
     try {
       if (editTarget) {
         await updateSubject(clientId, token, editTarget.id, {
@@ -149,7 +144,6 @@ export default function AdminSubjectsPage() {
       await load(filterClassId, searchQuery);
     } catch (cause) {
       const message = (cause as Error).message || "Failed to save subject";
-      setSaveError(message);
       toast.error(message);
     } finally {
       setSaving(false);
@@ -158,11 +152,10 @@ export default function AdminSubjectsPage() {
 
   const handleBulkAssign = async () => {
     if (!bulkClassId || !bulkTeacherId) {
-      setBulkError("Select both class and teacher");
+      toast.error("Select both class and teacher");
       return;
     }
     setBulkSaving(true);
-    setBulkError("");
     try {
       const result = await bulkAssignTeacher(clientId, token, {
         classId: bulkClassId,
@@ -175,7 +168,6 @@ export default function AdminSubjectsPage() {
       toast.success("Assigned teacher to " + result.updated + " subjects");
     } catch (cause) {
       const message = (cause as Error).message || "Failed to assign teacher";
-      setBulkError(message);
       toast.error(message);
     } finally {
       setBulkSaving(false);
@@ -232,7 +224,6 @@ export default function AdminSubjectsPage() {
               variant="outline"
               className="shadow-none"
               onClick={() => {
-                setBulkError("");
                 setBulkClassId(filterClassId);
                 setShowBulkModal(true);
               }}
@@ -345,8 +336,6 @@ export default function AdminSubjectsPage() {
           </div>
         }
       >
-        {saveError && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{saveError}</p>}
-
         <div className="space-y-1.5">
           <label htmlFor="subject-name" className="block text-xs font-semibold text-gray-600">Display name <span className="text-red-600">*</span></label>
           <Input id="subject-name" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder="e.g. Mathematics" size="lg" className="shadow-none" />
@@ -415,7 +404,6 @@ export default function AdminSubjectsPage() {
           </div>
         }
       >
-        {bulkError && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{bulkError}</p>}
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-gray-600">Class</label>
           <DrawerSelector
