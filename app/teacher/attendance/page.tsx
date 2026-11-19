@@ -556,7 +556,37 @@ export default function TeacherAttendancePage() {
             </div>
           )}
         </section>
-
+{pendingDays > 0 && (
+          <section
+            aria-labelledby="pending-attendance-card-heading"
+            role="button"
+            tabIndex={0}
+            onClick={() => openAttendanceDrawer(undefined, pendingDates)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                openAttendanceDrawer(undefined, pendingDates);
+              }
+            }}
+            className="mt-4 flex cursor-pointer items-center gap-3 rounded-2xl bg-linear-120 from-white via-amber-50 border-2 border-white to-white p-3 shadow-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 sm:gap-4 sm:p-4"
+          >
+            <img
+              src="/imgs/attendance/attendance-checklist.png"
+              alt=""
+              className="size-14 shrink-0 object-contain sm:size-16"
+              loading="lazy"
+            />
+            <div className="min-w-0 flex-1">
+              <h2 id="pending-attendance-card-heading" className="text-sm font-bold text-gray-950 sm:text-base">
+                {t("teacherPages", "attendancePendingDays", lang)}
+              </h2>
+              <p className="mt-0.5 text-xs text-gray-600 sm:text-sm">
+                {t("teacherPages", "attendancePendingCardDesc", lang).replace("{count}", String(pendingDays))}
+              </p>
+            </div>
+            <ChevronRight aria-hidden="true" className="size-5 shrink-0 text-amber-600" />
+          </section>
+        )}
         <section aria-labelledby="student-attendance-title" className="mt-4 overflow-hidden rounded-2xl bg-white">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-3 sm:px-5">
             <h2 id="student-attendance-title" className="text-base font-semibold text-gray-900">
@@ -622,37 +652,7 @@ export default function TeacherAttendancePage() {
           )}
         </section>
 
-        {pendingDays > 0 && (
-          <section
-            aria-labelledby="pending-attendance-card-heading"
-            role="button"
-            tabIndex={0}
-            onClick={() => openAttendanceDrawer(undefined, pendingDates)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                openAttendanceDrawer(undefined, pendingDates);
-              }
-            }}
-            className="mt-4 flex cursor-pointer items-center gap-3 rounded-2xl bg-linear-120 from-white via-amber-50 border-2 border-white to-white p-3 shadow-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 sm:gap-4 sm:p-4"
-          >
-            <img
-              src="/imgs/attendance/attendance-checklist.png"
-              alt=""
-              className="size-14 shrink-0 object-contain sm:size-16"
-              loading="lazy"
-            />
-            <div className="min-w-0 flex-1">
-              <h2 id="pending-attendance-card-heading" className="text-sm font-bold text-gray-950 sm:text-base">
-                {t("teacherPages", "attendancePendingDays", lang)}
-              </h2>
-              <p className="mt-0.5 text-xs text-gray-600 sm:text-sm">
-                {t("teacherPages", "attendancePendingCardDesc", lang).replace("{count}", String(pendingDays))}
-              </p>
-            </div>
-            <ChevronRight aria-hidden="true" className="size-5 shrink-0 text-amber-600" />
-          </section>
-        )}
+        
       </div>
 
       {selectedStudent?.classId === activeClassId && (
