@@ -3,6 +3,7 @@ import type { ExamRecord } from "@/lib/exams-api";
 import type { ClassRecord } from "@/lib/classes-api";
 import type { SubjectRecord } from "@/lib/subjects-api";
 import { cn } from "@/lib/utils";
+import { getEffectiveMaxMarks } from "@/lib/exam-utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import {
@@ -105,8 +106,9 @@ export function   MarkEntryGrid({
   compactStudentRows = false,
 }: MarkEntryGridProps) {
   const filled = Object.values(scores).filter((v) => v !== "").length;
+  const currentClass = classes.find((c) => c.id === classId);
   const currentSubject = subjects.find((s) => s.id === subjectId);
-  const effectiveMaxMarks = currentSubject?.classSubject?.maxMarks ?? activeExam?.maxMarks ?? 50;
+  const effectiveMaxMarks = getEffectiveMaxMarks(activeExam, currentClass, currentSubject, activeExam?.maxMarks ?? 50);
   const hasInvalidMarks = Object.values(scores).some(
     (v) => v !== "" && (Number(v) > effectiveMaxMarks || Number(v) < 0),
   );

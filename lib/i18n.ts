@@ -1644,12 +1644,12 @@ const translations = {
     attendanceMinute: { en: "Minute", ml: "മിനിറ്റ്" },
     clearArrivalTime: { en: "Clear time", ml: "സമയം നീക്കുക" },
     noActiveStudents: { en: "No active students in this class", ml: "ഈ ക്ലാസിൽ സജീവ വിദ്യാർത്ഥികളില്ല" },
-    saveAttendanceCount: { en: "Save Attendance", ml: "ഹാജർ സേവ് ചെയ്യുക" },
+    saveAttendanceCount: { en: "Save", ml: "സേവ് ചെയ്യുക" },
     allMarked: { en: "All marked", ml: "എല്ലാം അടയാളപ്പെടുത്തി" },
 
     // Dashboard action cards
     markAttendanceBtn: { en: "Mark Attendance", ml: "ഹാജർ രേഖപ്പെടുത്തുക" },
-    markAttendanceDesc: { en: "Take Attendance", ml: "ഇന്നത്തെ ഹാജർ എടുക്കുക" },
+    markAttendanceDesc: { en: "Daily Attendance", ml: "ദൈനംദിന ഹാജർ" },
     presentActionDesc: { en: "Today's present students", ml: "ഇന്ന് ഹാജരായ വിദ്യാർത്ഥികൾ" },
     absentActionDesc: { en: "Today's absent list", ml: "ഇന്ന് ഹാജരാകാത്തവരുടെ പട്ടിക" },
     hwOverviewAction: { en: "HW Overview", ml: "HW അവലോകനം" },

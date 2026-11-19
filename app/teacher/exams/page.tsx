@@ -36,7 +36,7 @@ import { ExamStatusBadge, getExamStatusInfo } from "@/components/exam/ExamStatus
 import { TeacherMarkEntryView } from "@/components/exam/TeacherMarkEntryView";
 import { TeacherMarkEntryActions } from "@/components/exam/TeacherMarkEntryActions";
 import { TeacherClassReportPopover } from "@/components/exam/TeacherClassReportPopover";
-import { fmt, shortDate } from "@/lib/exam-utils";
+import { fmt, shortDate, getEffectiveMaxMarks, resolveTermSubjectOverride } from "@/lib/exam-utils";
 
 function isMarkEntryOpen(exam?: ExamRecord) {
   if (!exam || exam.status !== "ACTIVE" || (exam.startDate && new Date(exam.startDate) > new Date())) return false;
@@ -66,6 +66,7 @@ export default function TeacherExamsPage() {
   const setSearchParamsRef = useRef(setSearchParams);
   useEffect(() => { setSearchParamsRef.current = setSearchParams; }, [setSearchParams]);
   const { classes: teacherClasses, activeClassId } = useActiveClass();
+  const activeClass = teacherClasses.find((c) => c.id === activeClassId) ?? null;
   const queryClassId = activeClassId;
   const querySubjectId = searchParams.get("subjectId") ?? "";
 
@@ -102,7 +103,7 @@ export default function TeacherExamsPage() {
   const selectedExam = exams.find((e) => e.id === selectedExamId);
   const isLocked = !isMarkEntryOpen(activeExam);
   const currentSubject = classSubjects.find((subject) => subject.id === querySubjectId);
-  const maxMarks = currentSubject?.classSubject?.maxMarks ?? 50;
+  const maxMarks = getEffectiveMaxMarks(activeExam, activeClass, currentSubject, activeExam?.maxMarks ?? 50);
   const hasInvalidMarks = Object.values(scores).some(
     (value) => value !== "" && (Number(value) < 0 || Number(value) > maxMarks),
   );
@@ -192,7 +193,11 @@ export default function TeacherExamsPage() {
       getSubjects(cid, token, { classId: queryClassId, limit: 200 })
         .then((r) => {
           if (cancelled) return;
-          const subs = r.data ?? [];
+          const rawSubs = r.data ?? [];
+          const subs = rawSubs.filter((s) => {
+            const setting = resolveTermSubjectOverride(activeExam, cls, s);
+            return setting !== false;
+          });
           setClassSubjects(subs);
           if (subs.length === 0) setEntryLoading(false);
           setSearchParamsRef.current((prev) => {
@@ -205,7 +210,11 @@ export default function TeacherExamsPage() {
         .catch((e: Error) => { if (!cancelled) { setEntryError(e.message); setEntryLoading(false); } })
         .finally(() => { if (!cancelled) setSubjectLoading(false); });
     } else {
-      const mine = mySubjects.filter((s) => s.classId === queryClassId);
+      const mineRaw = mySubjects.filter((s) => s.classId === queryClassId);
+      const mine = mineRaw.filter((s) => {
+        const setting = resolveTermSubjectOverride(activeExam, cls, s);
+        return setting !== false;
+      });
       setClassSubjects(mine);
       if (mine.length === 0) setEntryLoading(false);
       setSearchParamsRef.current((prev) => {
@@ -218,6 +227,7 @@ export default function TeacherExamsPage() {
     return () => { cancelled = true; };
   }, [
     queryClassId,
+    activeExam,
     teacherClasses,
     mySubjects,
     teacherId,
@@ -277,8 +287,7 @@ export default function TeacherExamsPage() {
     setEntryError(null);
     try {
       const currentSubject = classSubjects.find((s) => s.id === querySubjectId);
-      const subjectMaxMarks =
-        currentSubject?.classSubject?.maxMarks ?? activeExam?.maxMarks ?? 50;
+      const subjectMaxMarks = getEffectiveMaxMarks(activeExam, activeClass, currentSubject, activeExam?.maxMarks ?? 50);
       const items = students
         .filter((s) => scores[s.id] !== "" && scores[s.id] !== undefined)
         .map((s) => ({

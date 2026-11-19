@@ -30,6 +30,7 @@ import {
 import {
   createStudent,
   bulkImportStudentsV2,
+  getCanonicalPhone,
   type StudentRecord,
   type CreateStudentPayload,
 } from "@/lib/students-api";
@@ -51,10 +52,12 @@ import {
   Trash2,
   Users,
   Upload,
+  Download,
   X,
   SlidersHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { StudentExportModal } from "@/components/admin/StudentExportModal";
 
 const DEFAULT_PAGE_SIZE = 20;
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
@@ -134,6 +137,15 @@ const STUDENT_IMPORT_COLUMNS: ImportColumnDef[] = [
     header: "Phone",
     field: "parentPhone",
     example: "9876543210",
+    parse: (val): ParseResult => {
+      const clean = val.trim();
+      if (!clean) return { ok: true, value: undefined };
+      const canonical = getCanonicalPhone(clean);
+      if (canonical && canonical.length === 10) {
+        return { ok: true, value: canonical };
+      }
+      return { ok: true, value: clean.replace(/\s+/g, "") };
+    },
     validate: (val) => {
       if (!val) return null;
       if (!/^\d{10}$/.test(String(val))) return `Phone must be 10 digits`;
@@ -144,6 +156,15 @@ const STUDENT_IMPORT_COLUMNS: ImportColumnDef[] = [
     header: "Alt Phone",
     field: "parentAltPhone",
     example: "9876543211",
+    parse: (val): ParseResult => {
+      const clean = val.trim();
+      if (!clean) return { ok: true, value: undefined };
+      const canonical = getCanonicalPhone(clean);
+      if (canonical && canonical.length === 10) {
+        return { ok: true, value: canonical };
+      }
+      return { ok: true, value: clean.replace(/\s+/g, "") };
+    },
     validate: (val) => {
       if (!val) return null;
       if (!/^\d{10}$/.test(String(val))) return `Alt phone must be 10 digits`;
@@ -264,6 +285,8 @@ export default function AdminStudentsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<StudentRecord | null>(null);
   const [showImport, setShowImport] = useState(false);
+  const [showExport, setShowExport] = useState(false);
+  const [exportScope, setExportScope] = useState<"all" | "filtered" | "selected">("all");
 
   const ctx = useMemo(
     () => ({ clientId: activeClientId!, token: accessToken! }),
@@ -373,6 +396,8 @@ export default function AdminStudentsPage() {
         "Phone": "9876543210",
         "Relation": "father",
       })),
+      groupBy: (row) => getCanonicalPhone(row.parentPhone),
+      chunkSize: 100,
       createRow: (row) =>
         createStudent(activeClientId!, accessToken!, {
           ...row,
@@ -380,18 +405,15 @@ export default function AdminStudentsPage() {
             ? { accademicYearId: user.defaultAcademicYearId }
             : {}),
         }),
-      createBulk: async (rows) => {
+      createBulk: async (rows, meta) => {
         // Frontend pre-validation: check that students sharing a parent phone have consistent passwords
         const phoneGroups = new Map<string, Array<{ rowNum: number; password: string }>>();
         rows.forEach((r, idx) => {
-          let digits = r.parentPhone ? String(r.parentPhone).replace(/\D/g, "") : "";
-          if (digits.length === 12 && digits.startsWith("91")) {
-            digits = digits.slice(2);
-          }
-          if (digits && digits.length >= 7) {
-            if (!phoneGroups.has(digits)) phoneGroups.set(digits, []);
-            phoneGroups.get(digits)!.push({
-              rowNum: idx + 1,
+          const canonical = getCanonicalPhone(r.parentPhone);
+          if (canonical) {
+            if (!phoneGroups.has(canonical)) phoneGroups.set(canonical, []);
+            phoneGroups.get(canonical)!.push({
+              rowNum: meta?.rowIndices?.[idx] ?? idx + 1,
               password: r.parentPassword ? String(r.parentPassword).trim() : "",
             });
           }
@@ -614,6 +636,10 @@ export default function AdminStudentsPage() {
       {canWrite && (
         <div className="p-0!">
           <ButtonGroup aria-label="Student actions" className="fixed bottom-[92px] left-1/2 z-40 max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-xl bg-white p-1 shadow-lg lg:bottom-6">
+          <Button type="button" size="lg" variant="outline" className="border-gray-200 bg-white shadow-none" onClick={() => { setExportScope(selectedIds.size > 0 ? "selected" : activeFilterCount > 0 ? "filtered" : "all"); setShowExport(true); }}>
+            <Download aria-hidden="true" />
+            {t("adminPages", "exportBtn", lang)}
+          </Button>
           <Button type="button" size="lg" variant="outline" className="border-gray-200 bg-white shadow-none" onClick={() => setShowImport(true)}>
             <Upload aria-hidden="true" />
             {t("adminPages", "importBtn", lang)}
@@ -632,6 +658,19 @@ export default function AdminStudentsPage() {
             {visibleSelectedCount} {t("common", "selected", lang)}
           </span>
           <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="bg-white shadow-none gap-1.5"
+              onClick={() => {
+                setExportScope("selected");
+                setShowExport(true);
+              }}
+            >
+              <Download className="h-3.5 w-3.5" aria-hidden="true" />
+              {t("adminPages", "exportBtn", lang)} ({visibleSelectedCount})
+            </Button>
             <Button type="button" size="sm" variant="outline" className="bg-white shadow-none" onClick={() => setSelectedIds(new Set())}>
               <X aria-hidden="true" />
               {t("common", "cancel", lang)}
@@ -806,6 +845,24 @@ export default function AdminStudentsPage() {
           invalidateList();
         }}
         onClose={() => setShowImport(false)}
+      />
+
+      <StudentExportModal
+        open={showExport}
+        onClose={() => setShowExport(false)}
+        clientId={activeClientId ?? ""}
+        token={accessToken ?? ""}
+        totalCount={total}
+        filteredCount={students.length}
+        selectedIds={Array.from(selectedIds)}
+        activeClassId={activeClassId}
+        activeClassName={classes.find((c) => c.id === activeClassId)?.name}
+        gender={gender}
+        status={statusFilter}
+        search={searchInput}
+        sortBy={sortBy}
+        sortOrder={sortDir}
+        initialScope={exportScope}
       />
 
       <ResponsivePopover

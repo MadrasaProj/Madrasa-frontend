@@ -48,14 +48,105 @@ export interface ImportConfig<TPayload = Record<string, unknown>> {
  * the message will be shown to the user). Rows referenced in the error
  * metadata are auto-marked failed; other rows are auto-marked imported.
  */
- createBulk?: (rows: TPayload[]) => Promise<{
+ createBulk?: (
+  rows: TPayload[],
+  meta?: { rowIndices: number[] },
+ ) => Promise<{
   imported?: Array<{ rowIndex: number; action?: "created" | "updated" }>
   failed?: Array<{ rowIndex: number; message: string }>
  }>
+ /** Max records per bulk chunk (default: 100). */
+ chunkSize?: number
+ /**
+ * Optional grouping key extractor (e.g. canonical parent phone for students).
+ * When provided:
+ * 1. Valid rows are sorted and grouped by this key.
+ * 2. Chunking ensures rows sharing the same key are NEVER split across chunks.
+ * 3. Rows where `groupBy` returns null, undefined, or empty string are treated as
+ *    independent single-row groups (not grouped with each other).
+ */
+ groupBy?: (row: TPayload) => string | null | undefined
  /** Sample rows for the template — one per class/division etc. Maps column header → value. */
  templateSamples?: Record<string, string>[]
  /** Passed as second arg to every `parse` / `validate` callback. */
  context?: ImportContext
+}
+
+/**
+ * Partitions items into chunks respecting chunkSize and keeping items with the same group key together.
+ * If getKey is provided:
+ * 1. Items with non-empty keys are grouped together (atomic groups) and sorted by key.
+ * 2. Items with no key (null, undefined, "") are treated as independent items of size 1.
+ * 3. Chunks are formed such that atomic groups are NEVER split across chunks.
+ * 4. If a single group is larger than chunkSize, it is placed in its own chunk so it remains together.
+ */
+export function partitionIntoChunks<T>(
+ items: T[],
+ chunkSize: number = 100,
+ getKey?: (item: T) => string | null | undefined,
+): T[][] {
+ if (items.length === 0) return []
+ const targetChunkSize = Math.max(1, chunkSize)
+
+ if (!getKey) {
+  const chunks: T[][] = []
+  for (let i = 0; i < items.length; i += targetChunkSize) {
+   chunks.push(items.slice(i, i + targetChunkSize))
+  }
+  return chunks
+ }
+
+ // 1. Group keyed items together, preserve unkeyed items as individual items
+ const keyedGroups = new Map<string, T[]>()
+ const unkeyedItems: T[] = []
+
+ for (const item of items) {
+  const rawKey = getKey(item)
+  const key = rawKey != null ? String(rawKey).trim() : ""
+  if (key) {
+   if (!keyedGroups.has(key)) {
+    keyedGroups.set(key, [])
+   }
+   keyedGroups.get(key)!.push(item)
+  } else {
+   unkeyedItems.push(item)
+  }
+ }
+
+ // 2. Sort keyed groups deterministically by their key (e.g. mobile number)
+ const sortedKeys = Array.from(keyedGroups.keys()).sort((a, b) =>
+  a.localeCompare(b, undefined, { numeric: true }),
+ )
+
+ // 3. Assemble atomic groups:
+ // Each keyed group is an atomic group that cannot be broken.
+ // Each unkeyed item is an atomic group of 1 item.
+ const atomicGroups: T[][] = []
+ for (const key of sortedKeys) {
+  atomicGroups.push(keyedGroups.get(key)!)
+ }
+ for (const unkeyed of unkeyedItems) {
+  atomicGroups.push([unkeyed])
+ }
+
+ // 4. Pack atomic groups into chunks respecting targetChunkSize
+ const chunks: T[][] = []
+ let currentChunk: T[] = []
+
+ for (const group of atomicGroups) {
+  // If adding this group exceeds targetChunkSize and currentChunk already has items, start a new chunk
+  if (currentChunk.length > 0 && currentChunk.length + group.length > targetChunkSize) {
+   chunks.push(currentChunk)
+   currentChunk = []
+  }
+  currentChunk.push(...group)
+ }
+
+ if (currentChunk.length > 0) {
+  chunks.push(currentChunk)
+ }
+
+ return chunks
 }
 
 // ── Internal ─────────────────────────────────────────────────────────────────
@@ -594,20 +685,51 @@ export function ImportModal<TPayload>({ show, config, onComplete, onClose }: Imp
     setScreen("importing")
 
     if (config.createBulk) {
-      const chunkSize = 100;
+      const targetChunkSize = config.chunkSize ?? 100;
+      const chunks = partitionIntoChunks(
+        valid,
+        targetChunkSize,
+        config.groupBy ? (row) => config.groupBy!(row.parsed as TPayload) : undefined,
+      );
+
+      // Pre-check for any individual chunk exceeding maximum allowed backend limit (500)
+      for (const chunk of chunks) {
+        if (chunk.length > 500) {
+          const sample = chunk[0];
+          const rawKey = config.groupBy ? config.groupBy(sample.parsed as TPayload) : "";
+          const msg = `Cannot import: ${chunk.length} rows share the key "${rawKey}", which exceeds the maximum allowed batch size of 500.`;
+          chunk.forEach((row) => {
+            const idx = updated.findIndex((r) => r.index === row.index);
+            if (idx >= 0) {
+              updated[idx].status = "failed";
+              updated[idx].failMessage = msg;
+            }
+            failed.push({
+              index: row.index,
+              name: String(row.raw[nameField] ?? `Row ${row.index}`),
+              error: msg,
+            });
+          });
+          setRows(updated);
+          setFailedRows(failed);
+          setScreen("results");
+          return;
+        }
+      }
+
       let doneCount = 0;
 
-      for (let i = 0; i < valid.length; i += chunkSize) {
-        const chunk = valid.slice(i, i + chunkSize);
-        
+      for (const chunk of chunks) {
         try {
-          const result = await config.createBulk(chunk.map(r => r.parsed as TPayload));
+          const payload = chunk.map((r) => r.parsed as TPayload);
+          const meta = { rowIndices: chunk.map((r) => r.index) };
+          const result = await config.createBulk(payload, meta);
           const failedMap = new Map(
-            (result.failed ?? []).map(f => [f.rowIndex, f.message] as const)
+            (result.failed ?? []).map((f) => [f.rowIndex, f.message] as const),
           );
 
           chunk.forEach((row, localIdx) => {
-            const idx = updated.findIndex(r => r.index === row.index);
+            const idx = updated.findIndex((r) => r.index === row.index);
             if (idx >= 0) {
               const isLocalFailed = failedMap.has(localIdx + 1);
               if (isLocalFailed) {
@@ -627,8 +749,8 @@ export function ImportModal<TPayload>({ show, config, onComplete, onClose }: Imp
         } catch (e) {
           // Whole-chunk failure: mark all rows in this chunk as failed.
           const msg = (e as Error).message || "Import failed";
-          chunk.forEach(row => {
-            const idx = updated.findIndex(r => r.index === row.index);
+          chunk.forEach((row) => {
+            const idx = updated.findIndex((r) => r.index === row.index);
             if (idx >= 0) {
               updated[idx].status = "failed";
               updated[idx].failMessage = msg;
@@ -642,9 +764,9 @@ export function ImportModal<TPayload>({ show, config, onComplete, onClose }: Imp
         }
         doneCount += chunk.length;
         setProgress({ done: doneCount, total: valid.length });
-        
+
         // Brief delay to allow progress bar animation to smoothly render
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, 50));
       }
     } else {
       // Per-row fallback loop.

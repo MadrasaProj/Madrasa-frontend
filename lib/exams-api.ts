@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/fetch";
+import type { ExamTermRecord } from "@/lib/super-admin-api";
 
 const API_ORIGIN = import.meta.env.VITE_API_ORIGIN ?? "http://localhost:3000";
 const V2_BASE    = `${API_ORIGIN}/api/v2`;
@@ -12,6 +13,8 @@ export interface ExamRecord {
   name: string;
   status: ExamRecordStatus;
   type?: ExamType;
+  termId?: string | null;
+  term?: { id: string; name: string; term?: string | null; config?: any } | null;
   classId?: string | null;
   subjectId?: string | null;
   startDate?: string | null;
@@ -52,11 +55,19 @@ export const getExams = (
 export const getExam = (clientId: string, token: string, id: string) =>
   apiFetch<ExamRecord>(`${V2_BASE}/${clientId}/exams/${id}`, token);
 
+export const getExamTerms = (clientId: string, token: string, signal?: AbortSignal) =>
+  apiFetch<{ data: ExamTermRecord[] }>(
+    `${V2_BASE}/${clientId}/exams/terms`,
+    token,
+    { signal },
+  );
+
 export const createExam = (
   clientId: string, token: string,
   data: {
     name: string; accademicYearId: string;
     type?: ExamType; classId?: string; subjectId?: string;
+    termId?: string | null;
     startDate?: string; endDate?: string;
     markEntryLastDate?: string; publishedDate?: string | null; status?: ExamRecordStatus;
     maxMarks?: number; passMarks?: number;
@@ -74,7 +85,7 @@ export const createExam = (
 
 export const updateExam = (
   clientId: string, token: string, id: string,
-  data: Partial<{ name: string; startDate: string | null; endDate: string | null; markEntryLastDate: string | null; publishedDate: string | null; status: ExamRecordStatus; maxMarks: number; passMarks: number }>,
+  data: Partial<{ name: string; termId: string | null; startDate: string | null; endDate: string | null; markEntryLastDate: string | null; publishedDate: string | null; status: ExamRecordStatus; maxMarks: number; passMarks: number }>,
 ) =>
   apiFetch<ExamRecord>(`${V2_BASE}/${clientId}/exams/${id}`, token, {
     method: "PATCH", body: JSON.stringify(data),

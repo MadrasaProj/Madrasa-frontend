@@ -19,7 +19,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { StudentAvatar } from "@/components/teacher/StudentAvatar";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
-import { Switch } from "@/components/ui/switch";
+ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -100,6 +100,8 @@ interface AttendanceEditorContentProps {
   hasDirty: boolean;
   hasExisting: boolean;
   handleSave: () => void;
+  editMode?: boolean;
+  onCancelEdit?: () => void;
 }
 
 export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
@@ -128,6 +130,8 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
     hasDirty,
     hasExisting,
     handleSave,
+    editMode = false,
+    onCancelEdit,
   } = props;
   const detailsStudent = students.find(
     (student) => student.id === detailsStudentId,
@@ -442,14 +446,20 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
       </ResponsivePopover>
 
       {activeClassId && (hasDirty || hasExisting) && (
-        <div className="sticky bottom-0 z-20 w-max py-4">
-          <div className="pointer-events-auto mx-auto flex w-full max-w-2xl gap-3">
+        <div className="sticky bottom-0 z-20 w-full py-4">
+          <div className="pointer-events-auto   flex w-full max-w-2xl  ">
+            <ButtonGroup>
+            {editMode && (
+              <Button type="button" variant="outline" onClick={onCancelEdit} disabled={saving} size={undefined}>
+                {t("common", "cancel", lang)}
+              </Button>
+            )}
             {hasExisting && (
               <Button
                 type="button"
                 variant="destructive"
                 onClick={() => setConfirmClear(true)}
-                size="lg"
+                size={undefined}
                 className="bg-red-500 text-white hover:bg-red-600"
               >
                 <Trash2 className="w-5 h-5" />{" "}
@@ -462,7 +472,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
                 type="button"
                 onClick={handleSave}
                 disabled={saving}
-                size="lg"
+                size={undefined}
                 className="bg-primary-600 text-white hover:bg-primary-700"
               >
                 {saving ? (
@@ -475,6 +485,7 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
                 )}
               </Button>
             )}
+            </ButtonGroup>
           </div>
         </div>
       )}

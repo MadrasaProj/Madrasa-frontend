@@ -81,8 +81,7 @@ import TeacherIbadahPage from "../app/teacher/ibadah/page";
 import TeacherNotificationsPage from "../app/teacher/notifications/page";
 import TeacherDashboard from "../app/teacher/page";
 import TeacherFeesPage from "../app/teacher/fees/page";
-import TeacherPerformancePage from "../app/teacher/performance/page";
-import TeacherBestPerformancePage from "../app/teacher/best-performance/page";
+ import TeacherBestPerformancePage from "../app/teacher/best-performance/page";
 import TeacherIndividualReportPage from "../app/teacher/reports/individual/page";
 import TeacherPresentPage from "../app/teacher/present/page";
 import TeacherSocialFramesPage from "../app/teacher/social-frames/page";
@@ -356,8 +355,7 @@ export default function App() {
         <Route path="/teacher/exams/class-test" element={<TeacherClassTestsPage />} />
         <Route path="/teacher/exams/class-report" element={<TeacherClassReportPage />} />
         <Route path="/teacher/notifications" element={<TeacherNotificationsPage />} />
-        <Route path="/teacher/performance" element={<TeacherPerformancePage />} />
-        <Route path="/teacher/best-performance" element={<TeacherBestPerformancePage />} />
+         <Route path="/teacher/best-performance" element={<TeacherBestPerformancePage />} />
         <Route path="/teacher/reports/individual" element={<TeacherIndividualReportPage />} />
         <Route path="/teacher/social-frames" element={<TeacherSocialFramesPage />} />
         <Route path="/teacher/social-frames/:id" element={<TeacherSocialFrameViewPage />} />
@@ -392,8 +390,7 @@ export default function App() {
         <Route path="/m/:slug/teacher/exams/class-test" element={<TeacherClassTestsPage />} />
         <Route path="/m/:slug/teacher/exams/class-report" element={<TeacherClassReportPage />} />
         <Route path="/m/:slug/teacher/notifications" element={<TeacherNotificationsPage />} />
-        <Route path="/m/:slug/teacher/performance" element={<TeacherPerformancePage />} />
-        <Route path="/m/:slug/teacher/best-performance" element={<TeacherBestPerformancePage />} />
+         <Route path="/m/:slug/teacher/best-performance" element={<TeacherBestPerformancePage />} />
         <Route path="/m/:slug/teacher/reports/individual" element={<TeacherIndividualReportPage />} />
         <Route path="/m/:slug/teacher/social-frames" element={<TeacherSocialFramesPage />} />
         <Route path="/m/:slug/teacher/social-frames/:id" element={<TeacherSocialFrameViewPage />} />
