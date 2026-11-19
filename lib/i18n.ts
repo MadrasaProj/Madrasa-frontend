@@ -146,6 +146,28 @@ const translations = {
     helloYourAccount: { en: "Hello, {name} — your account at a glance", ml: "ഹലോ, {name} — നിങ്ങളുടെ അക്കൗണ്ട് ഒറ്റനോട്ടത്തിൽ" },
   },
 
+  // ── Homework filter (shared by parent & teacher) ─────────────────────────
+  hwFilter: {
+    title: { en: "Filter homework", ml: "ഹോംവർക്ക് ഫിൽട്ടർ" },
+    filter: { en: "Filter", ml: "ഫിൽട്ടർ" },
+    dueDate: { en: "Due date", ml: "അവസാന തീയതി" },
+    subject: { en: "Subject", ml: "വിഷയം" },
+    customRange: { en: "Custom range", ml: "ഇഷ്ടാനുസൃത പരിധി" },
+    all: { en: "All", ml: "എല്ലാം" },
+    today: { en: "Today", ml: "ഇന്ന്" },
+    yesterday: { en: "Yesterday", ml: "ഇന്നലെ" },
+    thisWeek: { en: "This week", ml: "ഈ ആഴ്ച" },
+    lastWeek: { en: "Last week", ml: "കഴിഞ്ഞ ആഴ്ച" },
+    thisMonth: { en: "This month", ml: "ഈ മാസം" },
+    lastMonth: { en: "Last month", ml: "കഴിഞ്ഞ മാസം" },
+    reset: { en: "Reset filters", ml: "ഫിൽട്ടറുകൾ മായ്ക്കുക" },
+    noRange: {
+      en: "Pick a start and end date",
+      ml: "ആരംഭ, അവസാന തീയതികൾ തിരഞ്ഞെടുക്കുക",
+    },
+    noResults: { en: "No homework matches your filters", ml: "ഫിൽട്ടറിന് അനുയോജ്യമായ ഹോംവർക്ക് ഇല്ല" },
+  },
+
   // ── Login Page ────────────────────────────────────────────────────────────
   login: {
     welcomeBack: { en: "Welcome back", ml: "തിരികെ സ്വാഗതം" },

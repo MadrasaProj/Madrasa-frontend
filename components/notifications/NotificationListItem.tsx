@@ -20,7 +20,7 @@ export function NotificationListItem({ notification, onClick, ariaLabel, unread 
   const config = ICONS[notification.type] ?? ICONS.GENERAL;
   return (
     <button type="button" onClick={onClick} aria-label={ariaLabel ?? notification.title}
-      className={cn("flex w-full items-center gap-3 px-4 py-4 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500", unread && "bg-blue-50/40")}>
+      className={cn("flex w-full items-center gap-3 px-4 py-4 text-left  bg-white hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-500", unread && "bg-blue-50/40")}>
       <span aria-hidden="true" className={cn("flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-white", config.gradient)}>
         <Icon icon={config.icon} className="size-5" />
       </span>

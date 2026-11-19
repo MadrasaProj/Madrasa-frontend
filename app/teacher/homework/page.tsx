@@ -1,8 +1,10 @@
 import { DrawerSelector } from "@/components/DrawerSelector";
 import { toast } from "sonner";
-import { useState, useEffect, useCallback } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
+import type { DateRange } from "react-day-picker";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { HomeworkAssignmentDrawer } from "@/components/teacher/HomeworkAssignmentDrawer";
+import { HomeworkFilterBar } from "@/components/homework/HomeworkFilterBar";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { IllustratedEmptyState } from "@/components/ui/IllustratedEmptyState";
 import { Button } from "@/components/ui/button";
@@ -16,6 +18,7 @@ import {
   type HomeworkAssignment, type HomeworkStatus, type SubmissionsResponse,
 } from "@/lib/homework-api";
 import { getSubjects, type SubjectRecord } from "@/lib/subjects-api";
+import { isWithinDueDateFilter, type DueDatePreset } from "@/lib/homework-filter";
 import { useAuthStore } from "@/store/auth";
 import { useActiveClass } from "@/store/activeClass";
 import { useLanguageStore } from "@/store/language";
@@ -23,7 +26,7 @@ import { t, type Lang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Icon } from "@iconify/react";
 import {
-  Plus, Trash2, Loader2, Check, Pencil, Ellipsis,
+  BookOpen, Plus, Trash2, Loader2, Check, Pencil, Ellipsis,
 } from "lucide-react";
 import { Skeleton, SkeletonList } from "@/components/ui/Skeleton";
 
@@ -86,6 +89,11 @@ export default function TeacherHomeworkPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<HomeworkAssignment | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const [search, setSearch] = useState("");
+  const [dueDatePreset, setDueDatePreset] = useState<DueDatePreset>("all");
+  const [customRange, setCustomRange] = useState<DateRange | undefined>();
+  const [filterSubjectId, setFilterSubjectId] = useState("all");
 
   const [showHomeworkDrawer, setShowHomeworkDrawer] = useState(false);
   const { activeClassId } = useActiveClass();
@@ -273,6 +281,22 @@ export default function TeacherHomeworkPage() {
     return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
   };
 
+  const subjectOptions = useMemo(
+    () => classSubjects.map((subject) => ({ id: subject.id, name: subject.name })),
+    [classSubjects],
+  );
+  const query = search.trim().toLocaleLowerCase();
+  const filtered = homework.filter((hw) =>
+    isWithinDueDateFilter(hw.dueDate, dueDatePreset, customRange) &&
+    (filterSubjectId === "all" || hw.subjectId === filterSubjectId) &&
+    (!query ||
+      [hw.title, hw.subject?.name ?? "", hw.description ?? ""].some((value) =>
+        value.toLocaleLowerCase().includes(query),
+      )),
+  );
+  const hasActiveFilters =
+    dueDatePreset !== "all" || filterSubjectId !== "all" || !!query;
+
   return (
     <DashboardLayout>
       <PageHeader title={t("teacherPages", "homeworkTitle", lang)}
@@ -312,7 +336,30 @@ export default function TeacherHomeworkPage() {
           action={<Button size="lg" onClick={openCreate} className="rounded-full"><Plus className="h-4 w-4" />{t("teacherPages", "newHwBtn", lang)}</Button>}
         />
       ) : (
-        <div className="mt-5">
+        <div className="mt-5 space-y-4">
+          <HomeworkFilterBar
+            lang={lang}
+            search={search}
+            onSearchChange={setSearch}
+            searchPlaceholder={t("teacherPages", "searchHomework", lang)}
+            dueDatePreset={dueDatePreset}
+            onDueDatePresetChange={setDueDatePreset}
+            customRange={customRange}
+            onCustomRangeChange={setCustomRange}
+            subjects={subjectOptions}
+            subjectId={filterSubjectId}
+            onSubjectChange={setFilterSubjectId}
+          />
+          {filtered.length === 0 ? (
+            <div className="rounded-2xl border border-border/70 bg-card px-6 py-16 text-center text-muted-foreground">
+              <BookOpen className="mx-auto mb-3 size-9 opacity-40" />
+              <p className="font-medium">
+                {hasActiveFilters
+                  ? t("hwFilter", "noResults", lang)
+                  : t("teacherPages", "noHwFound", lang)}
+              </p>
+            </div>
+          ) : (
           <div className="divide-y card bg-background  !p-0  rounded-2xl overflow-hidden divide-gray-100     ">
             <div className=" p-2 px-4 bg-linear-120 from-sky-100/50 via-primary-50/50 to-white/25 flex flex-wrap items-center gap-x-4 gap-y-2   text-xs text-gray-600">
               {(["NOT_SUBMITTED", "SUBMITTED", "CHECKED"] as HomeworkStatus[]).map((status) => (
@@ -331,7 +378,7 @@ export default function TeacherHomeworkPage() {
                 </span>
               ))}
             </div>
-            {homework.map((hw) => {
+            {filtered.map((hw) => {
               const rows = submissions[hw.id]?.submissions ?? [];
               const countByStatus = {
                 NOT_SUBMITTED: rows.filter((row) => row.status === "NOT_SUBMITTED").length,
@@ -379,6 +426,7 @@ export default function TeacherHomeworkPage() {
               );
             })}
           </div>
+          )}
         </div>
       )}
 
