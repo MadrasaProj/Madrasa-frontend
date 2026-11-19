@@ -2090,6 +2090,47 @@ const translations = {
       en: "No attendance records found",
       ml: "ഹാജർ രേഖകളൊന്നും കണ്ടെത്തിയില്ല",
     },
+    // Holiday display on the parent attendance calendar
+    holidayLabel: { en: "Holiday", ml: "അവധി" },
+    weeklyHolidayLabel: { en: "Weekly off", ml: "പ്രതിവാര അവധി" },
+    holidaysThisMonth: { en: "Holidays this month", ml: "ഈ മാസത്തെ അവധികൾ" },
+    noHolidaysThisMonth: {
+      en: "No holidays this month",
+      ml: "ഈ മാസം അവധികളൊന്നുമില്ല",
+    },
+    weeklyOffDays: { en: "Weekly off days", ml: "പ്രതിവാര അവധി ദിവസങ്ങൾ" },
+    // Tapped-day detail drawer
+    dayDetailsSub: { en: "Attendance & holiday details", ml: "ഹാജറും അവധി വിവരങ്ങളും" },
+    dayEmptyImageAlt: {
+      en: "An open attendance register, pencil, and calendar",
+      ml: "തുറന്ന ഹാജർ രജിസ്റ്റർ, പെൻസിൽ, കലണ്ടർ",
+    },
+    noRecordForDay: {
+      en: "No attendance recorded for this day",
+      ml: "ഈ ദിവസത്തേക്ക് ഹാജർ രേഖപ്പെടുത്തിയിട്ടില്ല",
+    },
+    noRecordForDayDesc: {
+      en: "No status was recorded. This may be a holiday or a day without attendance.",
+      ml: "സ്ഥിതി രേഖപ്പെടുത്തിയിട്ടില്ല. ഇത് അവധി ദിവസമോ ഹാജർ ഇല്ലാത്ത ദിവസമോ ആകാം.",
+    },
+    dayLateComing: { en: "Late coming", ml: "വൈകി എത്തിയത്" },
+    dayArrivalTime: { en: "Arrival time", ml: "എത്തിയ സമയം" },
+    dayNotes: { en: "Notes", ml: "കുറിപ്പ്" },
+    dayMarkedBy: { en: "Marked by", ml: "രേഖപ്പെടുത്തിയത്" },
+    absenceTypes: { en: "Absence types", ml: "അഭാവ്യ തരങ്ങൾ" },
+    presentNote: { en: "Marked present for this day.", ml: "ഈ ദിവസം ഹാജരായി രേഖപ്പെടുത്തി." },
+    presentLateNote: { en: "Marked present — arrived late.", ml: "ഹാജരായി രേഖപ്പെടുത്തി — വൈകി എത്തി." },
+    absentNote: {
+      en: "Marked absent. Leave, sick leave and excused absences are tracked as separate statuses.",
+      ml: "ഗൈർഹാജരായി രേഖപ്പെടുത്തി. ലീവ്, അസുഖ അവധി, ഒഴിവാക്കിയ അഭാവ്യ എന്നിവ വെവ്വേറെ സ്ഥിതികളായി രേഖപ്പെടുത്തുന്നു.",
+    },
+    lateNote: { en: "Marked late for this day.", ml: "ഈ ദിവസം വൈകിയായി രേഖപ്പെടുത്തി." },
+    leaveNote: { en: "Approved leave for this day.", ml: "ഈ ദിവസം അനുവദിച്ച ലീവ്." },
+    sickNote: { en: "Sick leave for this day.", ml: "ഈ ദിവസം അസുഖ അവധി." },
+    excusedNote: { en: "Excused absence for this day.", ml: "ഈ ദിവസം ഒഴിവാക്കിയ അഭാവ്യ." },
+    holidayDayNote: { en: "No classes today. Enjoy the break!", ml: "ഇന്ന് ക്ലാസുകളില്ല. അവധി ആസ്വദിക്കൂ!" },
+    dayDate: { en: "Date", ml: "തീയതി" },
+    dayDescription: { en: "Description", ml: "വിവരണം" },
     // Leave requests
     leaveRequestsTitle: { en: "Leave Requests", ml: "ലീവ് അപേക്ഷകൾ" },
     leaveRequestsSub: {

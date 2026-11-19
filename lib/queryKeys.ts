@@ -28,6 +28,12 @@ export const queryKeys = {
       ["attendance", "student", cid, sid, params ?? {}] as const,
   },
 
+  holidays: {
+    all: ["holidays"] as const,
+    calendar: (cid: string, academicYearId: string) =>
+      ["holidays", "calendar", cid, academicYearId] as const,
+  },
+
   fees: {
     all: ["fees"] as const,
     student: (cid: string, sid: string) => ["fees", "student", cid, sid] as const,

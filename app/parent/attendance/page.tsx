@@ -1,18 +1,20 @@
-import { useState, useMemo, useId, useEffect } from "react";
+import { useState, useMemo, useId, useEffect, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
+import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useLanguageStore } from "@/store/language";
-import { t } from "@/lib/i18n";
+import { t, type Lang } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth";
 import {
   AlertCircle,
   CalendarDays,
+  CalendarOff,
   CheckCircle2,
   XCircle,
   Clock,
@@ -32,8 +34,9 @@ const DAY_HEADER_KEYS = [
   "dayFri",
   "daySat",
 ];
-import type { AttendanceStatus } from "@/lib/attendance-api";
-import { useStudentAttendance } from "@/lib/queries";
+import type { AttendanceRecord, AttendanceStatus } from "@/lib/attendance-api";
+import type { HolidayEntry, Weekday } from "@/lib/holidays-api";
+import { useStudentAttendance, useHolidayCalendar } from "@/lib/queries";
 
 const STATUS_CONFIG: Record<
   AttendanceStatus,
@@ -99,6 +102,332 @@ function getCalendarDays(year: number, month: number) {
   return days;
 }
 
+const WEEKDAY_BY_JS_DAY: Weekday[] = [
+  "SUNDAY",
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY",
+];
+
+const DAY_LABEL_KEYS: Record<
+  Weekday,
+  | "weekdayMonday"
+  | "weekdayTuesday"
+  | "weekdayWednesday"
+  | "weekdayThursday"
+  | "weekdayFriday"
+  | "weekdaySaturday"
+  | "weekdaySunday"
+> = {
+  MONDAY: "weekdayMonday",
+  TUESDAY: "weekdayTuesday",
+  WEDNESDAY: "weekdayWednesday",
+  THURSDAY: "weekdayThursday",
+  FRIDAY: "weekdayFriday",
+  SATURDAY: "weekdaySaturday",
+  SUNDAY: "weekdaySunday",
+};
+
+type DayHoliday = {
+  title: string;
+  desc?: string;
+  date: string;
+  endDate?: string;
+  weekly?: boolean;
+};
+
+type Tone =
+  | "emerald"
+  | "red"
+  | "amber"
+  | "yellow"
+  | "blue"
+  | "orange"
+  | "violet"
+  | "warm";
+
+const TONE_CLASSES: Record<Tone, string> = {
+  emerald: "border-emerald-100 bg-emerald-50/70 text-emerald-900",
+  red: "border-red-100 bg-red-50/70 text-red-900",
+  amber: "border-amber-100 bg-amber-50/70 text-amber-900",
+  yellow: "border-yellow-100 bg-yellow-50/80 text-yellow-900",
+  blue: "border-blue-100 bg-blue-50/70 text-blue-900",
+  orange: "border-orange-100 bg-orange-50/70 text-orange-900",
+  violet: "border-violet-100 bg-violet-50/70 text-violet-900",
+  // Warm, paper-like empty state — matches the admin attendance register.
+  warm: "border-amber-100 bg-[#FFF9F0] text-[#49352E]",
+};
+
+const STATUS_TONES: Record<AttendanceStatus, { tone: Tone; pill: string }> = {
+  PRESENT: { tone: "emerald", pill: "bg-emerald-50 text-emerald-800" },
+  ABSENT: { tone: "red", pill: "bg-red-50 text-red-800" },
+  LATE: { tone: "yellow", pill: "bg-yellow-50 text-yellow-800" },
+  EXCUSED: { tone: "blue", pill: "bg-blue-50 text-blue-800" },
+  LEAVE: { tone: "amber", pill: "bg-amber-50 text-amber-800" },
+  SICK: { tone: "orange", pill: "bg-orange-50 text-orange-800" },
+};
+
+function holidayEnd(holiday: Pick<HolidayEntry, "date" | "endDate">) {
+  return holiday.endDate && holiday.endDate >= holiday.date
+    ? holiday.endDate
+    : holiday.date;
+}
+
+/** Every calendar day covered by a holiday, inclusive of both ends. */
+function holidayDates(holiday: Pick<HolidayEntry, "date" | "endDate">): string[] {
+  const dates: string[] = [];
+  const cursor = new Date(`${holiday.date}T00:00:00`);
+  const last = new Date(`${holidayEnd(holiday)}T00:00:00`);
+  while (cursor <= last && dates.length < 10000) {
+    dates.push(
+      `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`,
+    );
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return dates;
+}
+
+function formatHolidayRange(
+  holiday: Pick<DayHoliday, "date" | "endDate">,
+  locale: string,
+) {
+  const start = new Date(`${holiday.date}T00:00:00`);
+  const end = new Date(`${holidayEnd(holiday)}T00:00:00`);
+  if (holiday.date === holidayEnd(holiday)) {
+    return start.toLocaleDateString(locale, {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  }
+  return `${start.toLocaleDateString(locale, { day: "numeric", month: "short" })} – ${end.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" })}`;
+}
+
+function DayStatusCard({
+  tone,
+  icon,
+  image,
+  imageAlt,
+  title,
+  description,
+}: {
+  tone: Tone;
+  icon?: ReactNode;
+  image?: string;
+  imageAlt?: string;
+  title: string;
+  description?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col items-center rounded-3xl border px-6 py-8 text-center",
+        TONE_CLASSES[tone],
+      )}
+    >
+      {image ? (
+        <img
+          src={image}
+          alt={imageAlt ?? ""}
+          className="mb-4 h-40 w-40 object-contain sm:h-48 sm:w-48"
+        />
+      ) : (
+        <div className="mb-3">{icon}</div>
+      )}
+      <h3 className="text-base font-semibold">{title}</h3>
+      {description && (
+        <p className="mt-2 max-w-sm text-xs leading-5 opacity-80">{description}</p>
+      )}
+    </div>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-3 px-4 py-3">
+      <span className="shrink-0 text-xs text-gray-500">{label}</span>
+      <span className="min-w-0 text-right text-sm font-medium text-gray-900">
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function DayDetailContent({
+  record,
+  holiday,
+  lang,
+  locale,
+}: {
+  record?: AttendanceRecord;
+  holiday?: DayHoliday;
+  lang: Lang;
+  locale: string;
+}) {
+  const labelFor = (status: AttendanceStatus) =>
+    STATUS_CONFIG[status][lang === "ml" ? "labelMl" : "label"];
+
+  if (record) {
+    const tone = STATUS_TONES[record.status];
+    const isLate =
+      record.status === "LATE" ||
+      (record.status === "PRESENT" && !!record.lateComing);
+    const icon =
+      record.status === "PRESENT" ? (
+        <CheckCircle2 className="size-7" />
+      ) : record.status === "ABSENT" ? (
+        <XCircle className="size-7" />
+      ) : isLate ? (
+        <Clock className="size-7" />
+      ) : (
+        <CalendarDays className="size-7" />
+      );
+    type StatusNoteKey =
+      | "presentNote"
+      | "presentLateNote"
+      | "absentNote"
+      | "lateNote"
+      | "leaveNote"
+      | "sickNote"
+      | "excusedNote";
+    const descriptionKey: Record<AttendanceStatus, StatusNoteKey> = {
+      PRESENT: isLate ? "presentLateNote" : "presentNote",
+      ABSENT: "absentNote",
+      LATE: "lateNote",
+      LEAVE: "leaveNote",
+      SICK: "sickNote",
+      EXCUSED: "excusedNote",
+    };
+
+    return (
+      <div className="space-y-4">
+        <DayStatusCard
+          tone={
+            record.status === "PRESENT" && isLate ? "amber" : tone.tone
+          }
+          icon={icon}
+          title={
+            isLate
+              ? `${labelFor(record.status)} · ${t("parentPages", "dayLateComing", lang)}`
+              : labelFor(record.status)
+          }
+          description={t("parentPages", descriptionKey[record.status], lang)}
+        />
+        <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white">
+          <DetailRow
+            label={t("parentPages", "statusLabel", lang)}
+            value={
+              <span
+                className={cn(
+                  "shrink-0 rounded-full px-3 py-1 text-xs font-semibold",
+                  tone.pill,
+                )}
+              >
+                {labelFor(record.status)}
+              </span>
+            }
+          />
+          {isLate && record.lateComingTime && (
+            <DetailRow
+              label={t("parentPages", "dayArrivalTime", lang)}
+              value={record.lateComingTime}
+            />
+          )}
+          {record.status !== "PRESENT" && (
+            <DetailRow
+              label={t("parentPages", "absenceTypes", lang)}
+              value={
+                <span className="text-xs">
+                  {(["LEAVE", "SICK", "EXCUSED"] as AttendanceStatus[])
+                    .map(labelFor)
+                    .join(" · ")}
+                </span>
+              }
+            />
+          )}
+          {record.notes && (
+            <DetailRow
+              label={t("parentPages", "dayNotes", lang)}
+              value={record.notes}
+            />
+          )}
+          {record.class?.name && (
+            <DetailRow
+              label={t("parentPages", "classLabel", lang)}
+              value={record.class.name}
+            />
+          )}
+          {record.markedBy?.name && (
+            <DetailRow
+              label={t("parentPages", "dayMarkedBy", lang)}
+              value={record.markedBy.name}
+            />
+          )}
+          {holiday && (
+            <DetailRow
+              label={t("parentPages", "holidayLabel", lang)}
+              value={holiday.title}
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (holiday) {
+    return (
+      <div className="space-y-4">
+        <DayStatusCard
+          tone="violet"
+          image="/images/attendance-empty-state.png"
+          imageAlt={t("parentPages", "dayEmptyImageAlt", lang)}
+          title={holiday.title}
+          description={
+            holiday.weekly
+              ? t("parentPages", "weeklyHolidayLabel", lang)
+              : holiday.desc || t("parentPages", "holidayDayNote", lang)
+          }
+        />
+        <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white">
+          <DetailRow
+            label={t("parentPages", "statusLabel", lang)}
+            value={
+              <span className="shrink-0 rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-800">
+                {holiday.weekly
+                  ? t("parentPages", "weeklyHolidayLabel", lang)
+                  : t("parentPages", "holidayLabel", lang)}
+              </span>
+            }
+          />
+          <DetailRow
+            label={t("parentPages", "dayDate", lang)}
+            value={formatHolidayRange(holiday, locale)}
+          />
+          {holiday.desc && (
+            <DetailRow
+              label={t("parentPages", "dayDescription", lang)}
+              value={holiday.desc}
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <DayStatusCard
+      tone="warm"
+      image="/images/attendance-empty-state.png"
+      imageAlt={t("parentPages", "dayEmptyImageAlt", lang)}
+      title={t("parentPages", "noRecordForDay", lang)}
+      description={t("parentPages", "noRecordForDayDesc", lang)}
+    />
+  );
+}
+
 const DAY_HEADERS = DAY_HEADER_KEYS;
 
 export default function ParentAttendancePage() {
@@ -126,6 +455,13 @@ export default function ParentAttendancePage() {
     user?.defaultAcademicYearId
       ? { academicYearId: user.defaultAcademicYearId }
       : undefined,
+  );
+
+  // Holidays are optional: a failed/absent calendar must not hide attendance.
+  const holidayYearId = data?.academicYearId ?? user?.defaultAcademicYearId;
+  const { data: holidayCalendar } = useHolidayCalendar(
+    { clientId: user?.clientId ?? "", token: accessToken ?? "" },
+    holidayYearId ?? undefined,
   );
 
   const presentCount =
@@ -165,8 +501,13 @@ export default function ParentAttendancePage() {
     if (data?.records?.length) {
       for (const r of data.records) set.add(monthKey(r.date));
     }
+    // Make months that only contain holidays navigable too.
+    for (const h of holidayCalendar?.holidays ?? []) {
+      set.add(monthKey(h.date));
+      if (h.endDate) set.add(monthKey(h.endDate));
+    }
     return Array.from(set).sort();
-  }, [data?.records, activeMonthKey, paramMonth]);
+  }, [data?.records, activeMonthKey, paramMonth, holidayCalendar]);
 
   // Default view is ALWAYS the current active month (Issue 10)
   const [selectedMonth, setSelectedMonth] = useState<string>(activeMonthKey);
@@ -218,16 +559,95 @@ export default function ParentAttendancePage() {
 
   const [cy, cm] = currentMonth ? currentMonth.split("-").map(Number) : [0, 0];
   const calendarDays = currentMonth ? getCalendarDays(cy, cm - 1) : [];
-  const dayRecords = useMemo(() => {
-    if (!currentMonth || !data?.records)
-      return new Map<string, AttendanceStatus>();
-    const map = new Map<string, AttendanceStatus>();
-    for (const r of data.records) {
-      if (r.date.startsWith(currentMonth))
-        map.set(r.date.slice(0, 10), r.status);
+
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [dayAnchor, setDayAnchor] = useState<HTMLElement | null>(null);
+
+  // Close the day drawer when the user switches months (the anchor may unmount).
+  useEffect(() => {
+    setSelectedDay(null);
+  }, [currentMonth]);
+
+  const dayRecordDetails = useMemo(() => {
+    const map = new Map<string, AttendanceRecord>();
+    for (const r of data?.records ?? []) {
+      if (currentMonth && r.date.startsWith(currentMonth)) {
+        map.set(r.date.slice(0, 10), r);
+      }
     }
     return map;
   }, [currentMonth, data?.records]);
+
+  const dayRecords = useMemo(() => {
+    const map = new Map<string, AttendanceStatus>();
+    dayRecordDetails.forEach((record, date) => map.set(date, record.status));
+    return map;
+  }, [dayRecordDetails]);
+
+  // Class id from the attendance records, used to filter class-specific holidays.
+  const studentClassId = data?.records?.find((r) => r.class?.id)?.class?.id;
+
+  const applicableHolidays = useMemo(() => {
+    return (holidayCalendar?.holidays ?? []).filter((h) => {
+      if (!h.classes?.length) return true;
+      // If the child's class is unknown, keep the holiday visible.
+      if (!studentClassId) return true;
+      return h.classes.includes(studentClassId);
+    });
+  }, [holidayCalendar, studentClassId]);
+
+  // Every holiday date in the visible month, with details for the day drawer.
+  const holidayByDate = useMemo(() => {
+    const map = new Map<string, DayHoliday>();
+    if (!currentMonth) return map;
+    const [year, month] = currentMonth.split("-").map(Number);
+    const weekly = new Set(holidayCalendar?.weeklyHolidays ?? []);
+    const weeklyLabel = t("parentPages", "weeklyHolidayLabel", lang);
+
+    const lastDay = new Date(year, month, 0).getDate();
+    for (let d = 1; d <= lastDay; d++) {
+      const weekday = WEEKDAY_BY_JS_DAY[new Date(year, month - 1, d).getDay()];
+      if (weekly.has(weekday)) {
+        const iso = `${currentMonth}-${String(d).padStart(2, "0")}`;
+        map.set(iso, { title: weeklyLabel, date: iso, weekly: true });
+      }
+    }
+    // Dated holidays override the weekly label when they fall on the same day.
+    for (const holiday of applicableHolidays) {
+      for (const iso of holidayDates(holiday)) {
+        if (iso.startsWith(currentMonth)) {
+          map.set(iso, {
+            title: holiday.title,
+            desc: holiday.desc,
+            date: holiday.date,
+            endDate: holiday.endDate,
+          });
+        }
+      }
+    }
+    return map;
+  }, [currentMonth, holidayCalendar, applicableHolidays, lang]);
+
+  const holidayDateTitles = useMemo(() => {
+    const map = new Map<string, string>();
+    holidayByDate.forEach((holiday, iso) => map.set(iso, holiday.title));
+    return map;
+  }, [holidayByDate]);
+
+  const monthHolidays = useMemo(() => {
+    if (!currentMonth) return [];
+    return applicableHolidays
+      .filter((h) => {
+        const first = h.date.slice(0, 7);
+        const last = holidayEnd(h).slice(0, 7);
+        return first <= currentMonth && currentMonth <= last;
+      })
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [applicableHolidays, currentMonth]);
+
+  const weeklyOffSummary = (holidayCalendar?.weeklyHolidays ?? [])
+    .map((w) => t("holidays", DAY_LABEL_KEYS[w], lang))
+    .join(", ");
 
   const filteredRangeRecords = useMemo(() => {
     if (!data?.records) return [];
@@ -501,14 +921,26 @@ export default function ParentAttendancePage() {
                         }
                         const dateStr = `${currentMonth}-${String(day).padStart(2, "0")}`;
                         const status = dayRecords.get(dateStr) ?? null;
+                        const holidayTitle = holidayDateTitles.get(dateStr) ?? null;
+                        const isHoliday = !!holidayTitle && !status;
                         const isToday = dateStr === todayStr;
                         const isTargetDate = dateStr === paramDate;
+                        const detailLabel = status
+                          ? STATUS_CONFIG[status][lang === "ml" ? "labelMl" : "label"]
+                          : holidayTitle ?? t("parentPages", "noRecordForDay", lang);
 
                         return (
-                          <div
+                          <button
+                            type="button"
                             key={dateStr}
+                            title={holidayTitle ?? undefined}
+                            aria-label={`${dateStr} — ${detailLabel}`}
+                            onClick={(event) => {
+                              setSelectedDay(dateStr);
+                              setDayAnchor(event.currentTarget);
+                            }}
                             className={cn(
-                              "aspect-square rounded-xl flex flex-col items-center justify-center transition-all",
+                              "aspect-square rounded-xl flex flex-col items-center justify-center transition-all cursor-pointer hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
                               status && "bg-gradient-to-tr",
                               status === "PRESENT" && "from-primary-200 to-transparent border border-primary-200/50",
                               status === "ABSENT" && "from-red-200 to-transparent border border-red-200/50",
@@ -516,7 +948,8 @@ export default function ParentAttendancePage() {
                               status === "EXCUSED" && "from-blue-200 to-transparent border border-blue-200/50",
                               status === "LEAVE" && "from-amber-200 to-transparent border border-amber-200/50",
                               status === "SICK" && "from-orange-200 to-transparent border border-orange-200/50",
-                              !status && "bg-gray-50/50",
+                              isHoliday && "bg-violet-50 border border-dashed border-violet-300",
+                              !status && !isHoliday && "bg-gray-50/50",
                               isToday && "ring-2 ring-primary-400 ring-offset-1",
                               isTargetDate && "ring-2 ring-indigo-500 ring-offset-1 shadow-md bg-indigo-50/50",
                             )}>
@@ -528,12 +961,16 @@ export default function ParentAttendancePage() {
                               status === "EXCUSED" && "text-blue-700",
                               status === "LEAVE" && "text-amber-700",
                               status === "SICK" && "text-orange-700",
-                              !status && "text-gray-300",
-                              isToday && !status && "text-primary-600",
+                              isHoliday && "text-violet-600",
+                              !status && !isHoliday && "text-gray-300",
+                              isToday && !status && !isHoliday && "text-primary-600",
                             )}>
                               {day}
                             </span>
-                          </div>
+                            {isHoliday && (
+                              <span className="mt-0.5 h-1 w-1 rounded-full bg-violet-400" />
+                            )}
+                          </button>
                         );
                       })}
                     </motion.div>
@@ -550,51 +987,142 @@ export default function ParentAttendancePage() {
                         </div>
                       );
                     })}
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2 h-2 rounded-full bg-violet-400" />
+                      <span className="text-[10px] text-gray-500">
+                        {t("parentPages", "holidayLabel", lang)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}
 
-              {/* ── Daily Log ──────────────────────────────────────────────────── */}
-              {currentMonth && (() => {
-                const monthRecs = data?.records.filter((r) => r.date.startsWith(currentMonth)) ?? [];
-                return monthRecs.length > 0 ? (
-                  <div className="bg-white rounded-2xl border border-gray-100 p-4 lg:flex-1 lg:max-w-sm">
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-                      {monthLabel(currentMonth, locale)}
-                    </p>
-                    <div className="space-y-2">
-                      {monthRecs.map((rec) => {
-                        const cfg = STATUS_CONFIG[rec.status];
-                        const d = new Date(rec.date);
-                        const day = d.getDate();
-                        const dayName = d.toLocaleDateString(locale, { weekday: "short" });
-                        return (
-                          <div key={rec.id} className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-50 transition-colors">
-                            <div className={cn("w-0.5 h-8 rounded-full shrink-0", cfg.dot)} />
-                            <div className="text-center shrink-0">
-                              <p className="text-[10px] text-gray-400 leading-none">{dayName}</p>
-                              <p className="text-base font-bold text-gray-800 leading-tight">{day}</p>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-gray-800">
-                                {cfg[lang === "ml" ? "labelMl" : "label"]}
-                              </p>
-                              {rec.notes && <p className="text-xs text-gray-400 truncate">{rec.notes}</p>}
-                            </div>
-                            <div className={cn("w-2 h-2 rounded-full shrink-0", cfg.dot)} />
-                          </div>
-                        );
-                      })}
+              <div className="space-y-4 lg:flex-1 lg:max-w-sm">
+                {/* ── Holidays this month ─────────────────────────────────────── */}
+                {currentMonth && (
+                  <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                        {t("parentPages", "holidaysThisMonth", lang)}
+                      </p>
+                      {weeklyOffSummary && (
+                        <span className="text-[10px] text-gray-400">
+                          {t("parentPages", "weeklyOffDays", lang)}: {weeklyOffSummary}
+                        </span>
+                      )}
                     </div>
+                    {monthHolidays.length > 0 ? (
+                      <div className="space-y-2">
+                        {monthHolidays.map((h) => {
+                          const start = new Date(`${h.date}T00:00:00`);
+                          const end = new Date(`${holidayEnd(h)}T00:00:00`);
+                          const range =
+                            h.date === holidayEnd(h)
+                              ? start.toLocaleDateString(locale, {
+                                  weekday: "short",
+                                  day: "numeric",
+                                  month: "short",
+                                })
+                              : `${start.toLocaleDateString(locale, { day: "numeric", month: "short" })} – ${end.toLocaleDateString(locale, { day: "numeric", month: "short" })}`;
+                          return (
+                            <div
+                              key={h.id ?? `${h.date}-${h.title}`}
+                              className="flex items-start gap-3 px-2 py-2 rounded-lg bg-violet-50/60"
+                            >
+                              <CalendarOff className="w-4 h-4 mt-0.5 text-violet-500 shrink-0" />
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-gray-800">{h.title}</p>
+                                <p className="text-[11px] text-gray-400">{range}</p>
+                                {h.desc && (
+                                  <p className="text-[11px] text-gray-400 truncate">{h.desc}</p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-400">
+                        {t("parentPages", "noHolidaysThisMonth", lang)}
+                        {weeklyOffSummary ? ` (${t("parentPages", "weeklyOffDays", lang)}: ${weeklyOffSummary})` : ""}
+                      </p>
+                    )}
                   </div>
-                ) : null;
-              })()}
+                )}
+
+                {/* ── Daily Log ────────────────────────────────────────────────── */}
+                {currentMonth && (() => {
+                  const monthRecs = data?.records.filter((r) => r.date.startsWith(currentMonth)) ?? [];
+                  return monthRecs.length > 0 ? (
+                    <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
+                        {monthLabel(currentMonth, locale)}
+                      </p>
+                      <div className="space-y-2">
+                        {monthRecs.map((rec) => {
+                          const cfg = STATUS_CONFIG[rec.status];
+                          const d = new Date(rec.date);
+                          const day = d.getDate();
+                          const dayName = d.toLocaleDateString(locale, { weekday: "short" });
+                          return (
+                            <div key={rec.id} className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                              <div className={cn("w-0.5 h-8 rounded-full shrink-0", cfg.dot)} />
+                              <div className="text-center shrink-0">
+                                <p className="text-[10px] text-gray-400 leading-none">{dayName}</p>
+                                <p className="text-base font-bold text-gray-800 leading-tight">{day}</p>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-gray-800">
+                                  {cfg[lang === "ml" ? "labelMl" : "label"]}
+                                </p>
+                                {rec.notes && <p className="text-xs text-gray-400 truncate">{rec.notes}</p>}
+                              </div>
+                              <div className={cn("w-2 h-2 rounded-full shrink-0", cfg.dot)} />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
+              </div>
             </div>
           
 
           <div className="pb-8" />
         </motion.div>
       )}
+
+      {/* Tapped-day detail: anchored popover on desktop, drawer on mobile. */}
+      <ResponsivePopover
+        open={!!selectedDay}
+        onOpenChange={(open) => {
+          if (!open) setSelectedDay(null);
+        }}
+        title={
+          selectedDay
+            ? new Date(`${selectedDay}T00:00:00`).toLocaleDateString(locale, {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })
+            : ""
+        }
+        description={t("parentPages", "dayDetailsSub", lang)}
+        popoverAnchor={dayAnchor}
+        compact
+        contentClassName="px-4 pb-6 pt-3"
+      >
+        {selectedDay && (
+          <DayDetailContent
+            record={dayRecordDetails.get(selectedDay)}
+            holiday={holidayByDate.get(selectedDay)}
+            lang={lang}
+            locale={locale}
+          />
+        )}
+      </ResponsivePopover>
     </DashboardLayout>
   );
 }
