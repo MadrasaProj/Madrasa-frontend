@@ -284,6 +284,26 @@ export const LEAD_STATUS_LABELS: Record<string, string> = {
   TRIAL_CREATED: "Trial Shared",
 };
 
+export const SHORT_STATUS_LABELS: Record<string, string> = {
+  NEW: "New",
+  CONTACTED: "Contacted",
+  INTERESTED: "Interested",
+  FOLLOW_UP: "Follow-up",
+  QUALITY_LEAD: "Quality",
+  TRIAL_SHARED: "Trial",
+  OFFLINE_DEMO_SCHEDULED: "Demo Sched",
+  OFFLINE_DEMO_COMPLETED: "Demo Done",
+  NEGOTIATION: "Negotiation",
+  DATA_COLLECTION: "Data Col",
+  PAYMENT_PENDING: "Payment",
+  WON: "Won",
+  LOST: "Lost",
+  ON_HOLD: "On Hold",
+  DEMO_SCHEDULED: "Demo Sched",
+  DEMO_COMPLETED: "Demo Done",
+  TRIAL_CREATED: "Trial",
+};
+
 export const LEAD_STATUSES = [
   "NEW",
   "CONTACTED",
@@ -645,6 +665,34 @@ export default function CrmLeadsPage() {
 
   // Detail tab
   const [activeLeadTab, setActiveLeadTab] = useState<"activity" | "details" | "pipeline">("activity");
+
+  // Mobile horizontal scroll refs for auto-scrolling active chips
+  const presetsScrollRef = useRef<HTMLDivElement>(null);
+  const activePresetRef = useRef<HTMLButtonElement>(null);
+  const stagesScrollRef = useRef<HTMLDivElement>(null);
+  const activeStageRef = useRef<HTMLButtonElement>(null);
+
+  // Auto-scroll active preset chip into view on mobile/desktop
+  useEffect(() => {
+    if (activePresetRef.current && presetsScrollRef.current) {
+      activePresetRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "nearest",
+      });
+    }
+  }, [smartPreset]);
+
+  // Auto-scroll active pipeline stage into view on mobile/desktop
+  useEffect(() => {
+    if (activeStageRef.current && stagesScrollRef.current) {
+      activeStageRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "nearest",
+      });
+    }
+  }, [activeStage]);
 
   // Close card popovers on click outside or Escape (exempts date picker dialogs and form elements)
   useEffect(() => {
@@ -1853,6 +1901,33 @@ export default function CrmLeadsPage() {
       .slice(0, 4);
   }, [leads]);
 
+  const hasActiveFilters =
+    activeStage !== "ALL" ||
+    smartPreset !== "ALL" ||
+    selectedDistrict !== "ALL" ||
+    selectedAssignee !== "ALL" ||
+    dueDateFilter !== "ALL" ||
+    lastContactedFilter !== "ALL" ||
+    leadScoreFilter !== "ALL" ||
+    institutionSizeFilter !== "ALL" ||
+    search !== "" ||
+    sortBy !== "SMART_PRIORITY";
+
+  const handleResetAllFilters = () => {
+    setActiveStage("ALL");
+    setSmartPreset("ALL");
+    setSelectedDistrict("ALL");
+    setSelectedAssignee("ALL");
+    setDueDateFilter("ALL");
+    setDueDateFrom("");
+    setDueDateTo("");
+    setLastContactedFilter("ALL");
+    setLeadScoreFilter("ALL");
+    setInstitutionSizeFilter("ALL");
+    setSearch("");
+    setSortBy("SMART_PRIORITY");
+  };
+
   // Auto-select first lead on desktop (>= 1024px) if none is currently selected
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -2460,22 +2535,22 @@ export default function CrmLeadsPage() {
           </AnimatePresence>
         </div>
 
-        {/* ── Tabs Navigation Bar ── */}
-        <div className="flex items-center gap-2 p-1.5 bg-gray-100 rounded-2xl border border-gray-200 text-xs sm:text-sm font-bold">
+        {/* ── Tabs Navigation Bar (Fully responsive on mobile & desktop) ── */}
+        <div className="flex items-center gap-1 sm:gap-2 p-1 sm:p-1.5 bg-gray-100 rounded-2xl border border-gray-200 text-xs sm:text-sm font-bold">
           <button
             type="button"
             onClick={() => setActiveLeadTab("activity")}
             className={cn(
-              "flex-1 min-h-[44px] py-2.5 px-2 sm:px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 sm:gap-2",
+              "flex-1 min-h-[42px] sm:min-h-[44px] py-2 sm:py-2.5 px-1 sm:px-3 rounded-xl transition-all flex items-center justify-center gap-1 sm:gap-2 select-none",
               activeLeadTab === "activity"
                 ? "bg-white text-gray-900 shadow-xs font-black border border-gray-200"
                 : "text-gray-600 hover:text-gray-900"
             )}
           >
-            <Clock className="w-4 h-4 text-blue-600 shrink-0" />
+            <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 shrink-0" />
             <span className="hidden sm:inline">Activity &amp; Notes</span>
-            <span className="sm:hidden text-xs font-bold">Activity</span>
-            <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-800 font-bold shrink-0">
+            <span className="sm:hidden text-xs font-bold whitespace-nowrap">Activity</span>
+            <span className="text-[10px] sm:text-[11px] px-1.5 py-0.2 rounded-full bg-blue-50 text-blue-800 font-bold shrink-0">
               {lead.timeline?.length ?? 0}
             </span>
           </button>
@@ -2484,16 +2559,16 @@ export default function CrmLeadsPage() {
             type="button"
             onClick={() => setActiveLeadTab("details")}
             className={cn(
-              "flex-1 min-h-[44px] py-2.5 px-2 sm:px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 sm:gap-2",
+              "flex-1 min-h-[42px] sm:min-h-[44px] py-2 sm:py-2.5 px-1 sm:px-3 rounded-xl transition-all flex items-center justify-center gap-1 sm:gap-2 select-none",
               activeLeadTab === "details"
                 ? "bg-white text-gray-900 shadow-xs font-black border border-gray-200"
                 : "text-gray-600 hover:text-gray-900"
             )}
           >
-            <Building2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 shrink-0" />
             <span className="hidden sm:inline">Institution Profile</span>
-            <span className="sm:hidden text-xs font-bold">Profile</span>
-            <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-bold shrink-0">
+            <span className="sm:hidden text-xs font-bold whitespace-nowrap">Profile</span>
+            <span className="text-[10px] sm:text-[11px] px-1.5 py-0.2 rounded-full bg-emerald-50 text-emerald-800 font-bold shrink-0">
               {lead.contacts?.length ?? 0}
             </span>
           </button>
@@ -2502,15 +2577,15 @@ export default function CrmLeadsPage() {
             type="button"
             onClick={() => setActiveLeadTab("pipeline")}
             className={cn(
-              "flex-1 min-h-[44px] py-2.5 px-2 sm:px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 sm:gap-2",
+              "flex-1 min-h-[42px] sm:min-h-[44px] py-2 sm:py-2.5 px-1 sm:px-3 rounded-xl transition-all flex items-center justify-center gap-1 sm:gap-2 select-none",
               activeLeadTab === "pipeline"
                 ? "bg-white text-gray-900 shadow-xs font-black border border-gray-200"
                 : "text-gray-600 hover:text-gray-900"
             )}
           >
-            <TrendingUp className="w-4 h-4 text-violet-600 shrink-0" />
+            <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-violet-600 shrink-0" />
             <span className="hidden sm:inline">Pipeline &amp; Setup</span>
-            <span className="sm:hidden text-xs font-bold">Pipeline</span>
+            <span className="sm:hidden text-xs font-bold whitespace-nowrap">Pipeline</span>
           </button>
         </div>
 
@@ -3710,8 +3785,8 @@ export default function CrmLeadsPage() {
         {/* ── Search & Filter Suite (Desktop & Mobile Friendly) ── */}
         <div className="bg-white rounded-3xl border border-gray-200/90 p-4 sm:p-5 shadow-xs space-y-3.5 mb-5">
           {/* Top Row: Search Input + Selects + Filters Toggle */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-2.5">
-            <div className="relative sm:col-span-2 md:col-span-12 lg:col-span-4">
+          <div className="grid grid-cols-12 gap-2 sm:gap-2.5">
+            <div className="relative col-span-9 sm:col-span-12 lg:col-span-4">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
@@ -3731,11 +3806,32 @@ export default function CrmLeadsPage() {
               )}
             </div>
 
-            <div className="sm:col-span-1 md:col-span-3 lg:col-span-2">
+            <div className="col-span-3 sm:col-span-4 md:col-span-2 lg:col-span-1 flex items-center">
+              <button
+                type="button"
+                onClick={() => setShowAdvancedFilters((p) => !p)}
+                className={cn(
+                  "w-full min-h-[44px] px-2 py-2 rounded-2xl text-xs font-bold border transition-all flex items-center justify-center gap-1 active:scale-95",
+                  showAdvancedFilters || (dueDateFilter !== "ALL" || lastContactedFilter !== "ALL" || leadScoreFilter !== "ALL" || institutionSizeFilter !== "ALL")
+                    ? "bg-primary-50 text-primary-900 border-primary-300 shadow-2xs font-black"
+                    : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                )}
+                title="Toggle advanced filters"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-primary-600 shrink-0" />
+                <span className="hidden xs:inline sm:inline">Filters</span>
+                {(dueDateFilter !== "ALL" || lastContactedFilter !== "ALL" || leadScoreFilter !== "ALL" || institutionSizeFilter !== "ALL") && (
+                  <span className="w-2 h-2 rounded-full bg-primary-600 shrink-0" />
+                )}
+                {showAdvancedFilters ? <ChevronUp className="w-3 h-3 ml-0.5" /> : <ChevronDown className="w-3 h-3 ml-0.5" />}
+              </button>
+            </div>
+
+            <div className="col-span-6 sm:col-span-4 md:col-span-3 lg:col-span-2">
               <select
                 value={selectedDistrict}
                 onChange={(e) => setSelectedDistrict(e.target.value)}
-                className="w-full min-h-[44px] bg-gray-50 border border-gray-200 text-xs sm:text-sm font-semibold py-2.5 px-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 text-gray-800"
+                className="w-full min-h-[42px] sm:min-h-[44px] bg-gray-50 border border-gray-200 text-xs sm:text-sm font-semibold py-2 px-2.5 sm:px-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 text-gray-800"
               >
                 <option value="ALL">Districts ({availableDistricts.length})</option>
                 {availableDistricts.map((d) => (
@@ -3746,15 +3842,15 @@ export default function CrmLeadsPage() {
               </select>
             </div>
 
-            <div className="sm:col-span-1 md:col-span-3 lg:col-span-2">
+            <div className="col-span-6 sm:col-span-4 md:col-span-3 lg:col-span-2">
               <select
                 value={selectedAssignee}
                 onChange={(e) => setSelectedAssignee(e.target.value)}
-                className="w-full min-h-[44px] bg-gray-50 border border-gray-200 text-xs sm:text-sm font-semibold py-2.5 px-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 text-gray-800"
+                className="w-full min-h-[42px] sm:min-h-[44px] bg-gray-50 border border-gray-200 text-xs sm:text-sm font-semibold py-2 px-2.5 sm:px-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 text-gray-800"
               >
                 <option value="ALL">All Assignees</option>
-                <option value="ME">⭐ Assigned to Me ({user?.name || "You"})</option>
-                <option value="UNASSIGNED">⚠️ Unassigned Leads</option>
+                <option value="ME">⭐ Mine ({user?.name || "You"})</option>
+                <option value="UNASSIGNED">⚠️ Unassigned</option>
                 {assigneeOptions
                   .filter((u) => u.id !== effectiveUserId)
                   .map((u) => (
@@ -3765,17 +3861,17 @@ export default function CrmLeadsPage() {
               </select>
             </div>
 
-            <div className="sm:col-span-1 md:col-span-4 lg:col-span-3">
+            <div className="col-span-12 sm:col-span-4 md:col-span-4 lg:col-span-3">
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="w-full min-h-[44px] bg-gray-50 border border-gray-200 text-xs sm:text-sm font-semibold py-2.5 px-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 text-gray-800"
+                className="w-full min-h-[42px] sm:min-h-[44px] bg-gray-50 border border-gray-200 text-xs sm:text-sm font-semibold py-2 px-2.5 sm:px-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 text-gray-800"
               >
                 <option value="SMART_PRIORITY">⭐ AI Smart Queue (Recommended)</option>
                 <option value="URGENT">🚨 Urgency (Overdue &amp; Today First)</option>
                 <option value="FOLLOWUP_ASC">📅 Follow-up Due (Earliest First)</option>
                 <option value="FOLLOWUP_DESC">📅 Follow-up Due (Latest First)</option>
-                <option value="LAST_FOLLOWUP_ASC">⏳ Last Followed Up (Oldest / Untouched First)</option>
+                <option value="LAST_FOLLOWUP_ASC">⏳ Last Followed Up (Oldest First)</option>
                 <option value="LAST_FOLLOWUP_DESC">⚡ Last Followed Up (Recent First)</option>
                 <option value="STATUS_CHANGED_DESC">🔄 Status Changed (Newest First)</option>
                 <option value="STATUS_CHANGED_ASC">🔄 Status Changed (Oldest First)</option>
@@ -3785,27 +3881,6 @@ export default function CrmLeadsPage() {
                 <option value="OLDEST">📜 Oldest Prospect Added</option>
                 <option value="NAME">🔤 Name (A-Z)</option>
               </select>
-            </div>
-
-            <div className="sm:col-span-1 md:col-span-2 lg:col-span-1 flex items-center">
-              <button
-                type="button"
-                onClick={() => setShowAdvancedFilters((p) => !p)}
-                className={cn(
-                  "w-full min-h-[44px] px-2.5 py-2 rounded-2xl text-xs font-bold border transition-all flex items-center justify-center gap-1 active:scale-95",
-                  showAdvancedFilters || (dueDateFilter !== "ALL" || lastContactedFilter !== "ALL" || leadScoreFilter !== "ALL" || institutionSizeFilter !== "ALL")
-                    ? "bg-primary-50 text-primary-900 border-primary-300 shadow-2xs font-black"
-                    : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
-                )}
-                title="Toggle advanced filters"
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5 text-primary-600" />
-                <span>Filters</span>
-                {(dueDateFilter !== "ALL" || lastContactedFilter !== "ALL" || leadScoreFilter !== "ALL" || institutionSizeFilter !== "ALL") && (
-                  <span className="w-2 h-2 rounded-full bg-primary-600 shrink-0" />
-                )}
-                {showAdvancedFilters ? <ChevronUp className="w-3 h-3 ml-0.5" /> : <ChevronDown className="w-3 h-3 ml-0.5" />}
-              </button>
             </div>
           </div>
 
@@ -3914,146 +3989,156 @@ export default function CrmLeadsPage() {
             )}
           </AnimatePresence>
 
-          {/* Quick Presets Segmented Bar (Smooth scrolling on mobile & desktop) */}
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pt-1 pb-0.5 flex-nowrap touch-pan-x">
-            <span className="text-xs uppercase font-black tracking-wider text-gray-400 shrink-0 flex items-center gap-1.5 mr-1">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Presets:
-            </span>
+          {/* Quick Presets Segmented Bar (Optimized for mobile touch & desktop) */}
+          <div className="space-y-1.5 pt-1">
+            <div className="flex items-center justify-between gap-2 px-0.5">
+              <span className="text-[11px] sm:text-xs uppercase font-black tracking-wider text-gray-400 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Presets &amp; Queues
+              </span>
 
-            {[
-              { key: "ALL", label: "All Leads", count: smartCounts.all, activeColor: "bg-gray-900 text-white border-gray-900" },
-              { key: "AI_PRIORITY", label: "🤖 Next to Follow Up", count: smartCounts.aiPriority, activeColor: "bg-gradient-to-r from-amber-600 to-primary-600 text-white border-transparent" },
-              { key: "OVERDUE", label: "🚨 Overdue", count: smartCounts.overdue, activeColor: "bg-rose-600 text-white border-rose-600" },
-              { key: "TODAY", label: "⏱️ Due Today", count: smartCounts.today, activeColor: "bg-amber-600 text-white border-amber-600" },
-              { key: "UNTREATED", label: "⚠️ Never Contacted", count: smartCounts.untreated, activeColor: "bg-teal-700 text-white border-teal-700" },
-              { key: "STALE", label: "⏳ Stale (>7d)", count: smartCounts.stale, activeColor: "bg-orange-700 text-white border-orange-700" },
-              { key: "HOT_WARM", label: "🔥 Warm & Hot", count: smartCounts.hotWarm, activeColor: "bg-orange-600 text-white border-orange-600" },
-              { key: "QUALITY", label: "💎 Quality Leads", count: smartCounts.quality, activeColor: "bg-violet-600 text-white border-violet-600" },
-              { key: "ACTIVE_TRIALS", label: "🚀 Active Trials", count: smartCounts.activeTrials, activeColor: "bg-indigo-600 text-white border-indigo-600" },
-              { key: "NO_FOLLOWUP", label: "⚠️ Needs Date", count: smartCounts.noFollowup, activeColor: "bg-slate-700 text-white border-slate-700" },
-            ].map((pill) => {
-              const isSelected = smartPreset === pill.key;
-              return (
+              {hasActiveFilters && (
                 <button
-                  key={pill.key}
                   type="button"
-                  onClick={() => {
-                    setSmartPreset((prev) => (prev === pill.key ? "ALL" : (pill.key as any)));
-                  }}
-                  className={cn(
-                    "min-h-[38px] shrink-0 px-3.5 py-1.5 text-xs font-bold rounded-xl border transition-all flex items-center gap-2",
-                    isSelected
-                      ? cn(pill.activeColor, "shadow-2xs scale-[1.02]")
-                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                  )}
+                  onClick={handleResetAllFilters}
+                  className="min-h-[28px] px-2.5 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 active:scale-95 shrink-0 border border-rose-200"
+                  title="Reset all filters"
                 >
-                  <span>{pill.label}</span>
-                  <span
-                    className={cn(
-                      "px-2 py-0.5 rounded-full text-xs font-black",
-                      isSelected ? "bg-white/20 text-white" : "bg-gray-100 text-gray-700"
-                    )}
-                  >
-                    {pill.count}
-                  </span>
+                  <RotateCcw className="w-3 h-3 text-rose-600" />
+                  <span>Reset Filters</span>
                 </button>
-              );
-            })}
+              )}
+            </div>
 
-            {/* Reset Button */}
-            {(activeStage !== "ALL" ||
-              smartPreset !== "ALL" ||
-              selectedDistrict !== "ALL" ||
-              selectedAssignee !== "ALL" ||
-              dueDateFilter !== "ALL" ||
-              lastContactedFilter !== "ALL" ||
-              leadScoreFilter !== "ALL" ||
-              institutionSizeFilter !== "ALL" ||
-              search !== "" ||
-              sortBy !== "SMART_PRIORITY") && (
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveStage("ALL");
-                  setSmartPreset("ALL");
-                  setSelectedDistrict("ALL");
-                  setSelectedAssignee("ALL");
-                  setDueDateFilter("ALL");
-                  setDueDateFrom("");
-                  setDueDateTo("");
-                  setLastContactedFilter("ALL");
-                  setLeadScoreFilter("ALL");
-                  setInstitutionSizeFilter("ALL");
-                  setSearch("");
-                  setSortBy("SMART_PRIORITY");
-                }}
-                className="min-h-[38px] flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all shrink-0 ml-auto"
-                title="Reset all filters"
+            {/* Horizontal Scrolling Chips Track */}
+            <div className="relative -mx-4 px-4 sm:mx-0 sm:px-0">
+              <div
+                ref={presetsScrollRef}
+                className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto scrollbar-none py-1 flex-nowrap touch-pan-x scroll-smooth"
               >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Reset</span>
-              </button>
-            )}
+                {[
+                  { key: "ALL", label: "All Leads", shortLabel: "All", count: smartCounts.all, activeColor: "bg-gray-900 text-white border-gray-900" },
+                  { key: "AI_PRIORITY", label: "🤖 Next to Follow Up", shortLabel: "🤖 Next Up", count: smartCounts.aiPriority, activeColor: "bg-gradient-to-r from-amber-600 to-primary-600 text-white border-transparent" },
+                  { key: "OVERDUE", label: "🚨 Overdue", shortLabel: "🚨 Overdue", count: smartCounts.overdue, activeColor: "bg-rose-600 text-white border-rose-600" },
+                  { key: "TODAY", label: "⏱️ Due Today", shortLabel: "⏱️ Today", count: smartCounts.today, activeColor: "bg-amber-600 text-white border-amber-600" },
+                  { key: "UNTREATED", label: "⚠️ Never Contacted", shortLabel: "⚠️ Untreated", count: smartCounts.untreated, activeColor: "bg-teal-700 text-white border-teal-700" },
+                  { key: "STALE", label: "⏳ Stale (>7d)", shortLabel: "⏳ Stale", count: smartCounts.stale, activeColor: "bg-orange-700 text-white border-orange-700" },
+                  { key: "HOT_WARM", label: "🔥 Warm & Hot", shortLabel: "🔥 Hot/Warm", count: smartCounts.hotWarm, activeColor: "bg-orange-600 text-white border-orange-600" },
+                  { key: "QUALITY", label: "💎 Quality Leads", shortLabel: "💎 Quality", count: smartCounts.quality, activeColor: "bg-violet-600 text-white border-violet-600" },
+                  { key: "ACTIVE_TRIALS", label: "🚀 Active Trials", shortLabel: "🚀 Trials", count: smartCounts.activeTrials, activeColor: "bg-indigo-600 text-white border-indigo-600" },
+                  { key: "NO_FOLLOWUP", label: "⚠️ Needs Date", shortLabel: "⚠️ No Date", count: smartCounts.noFollowup, activeColor: "bg-slate-700 text-white border-slate-700" },
+                ].map((pill) => {
+                  const isSelected = smartPreset === pill.key;
+                  return (
+                    <button
+                      key={pill.key}
+                      ref={isSelected ? activePresetRef : undefined}
+                      type="button"
+                      onClick={() => {
+                        setSmartPreset((prev) => (prev === pill.key ? "ALL" : (pill.key as any)));
+                      }}
+                      className={cn(
+                        "min-h-[36px] sm:min-h-[38px] shrink-0 px-2.5 sm:px-3.5 py-1.5 text-xs font-bold rounded-xl border transition-all flex items-center gap-1.5 sm:gap-2 active:scale-95 whitespace-nowrap",
+                        isSelected
+                          ? cn(pill.activeColor, "shadow-2xs scale-[1.02]")
+                          : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                      )}
+                    >
+                      <span className="hidden sm:inline">{pill.label}</span>
+                      <span className="sm:hidden">{pill.shortLabel}</span>
+                      <span
+                        className={cn(
+                          "px-1.5 sm:px-2 py-0.2 rounded-full text-[10px] sm:text-xs font-black",
+                          isSelected ? "bg-white/20 text-white" : "bg-gray-100 text-gray-700"
+                        )}
+                      >
+                        {pill.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           {/* Pipeline Stages Dedicated Filter Bar (Sales Team Primary Pipeline View) */}
-          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-2.5 border-t border-gray-100 flex-nowrap touch-pan-x">
-            <span className="text-xs uppercase font-black tracking-wider text-gray-400 shrink-0 flex items-center gap-1.5 mr-1">
-              <TrendingUp className="w-3.5 h-3.5 text-emerald-600" /> Stages:
-            </span>
-
-            <button
-              type="button"
-              onClick={() => {
-                setActiveStage("ALL");
-              }}
-              className={cn(
-                "min-h-[36px] shrink-0 px-3 py-1.5 text-xs font-bold rounded-xl border transition-all flex items-center gap-1.5 active:scale-95",
-                activeStage === "ALL"
-                  ? "bg-primary-600 text-white border-primary-600 shadow-2xs"
-                  : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-              )}
-            >
-              <span>All Stages</span>
-              <span
-                className={cn(
-                  "px-1.5 py-0.2 rounded-full text-[11px] font-black",
-                  activeStage === "ALL" ? "bg-white/20 text-white" : "bg-gray-100 text-gray-600"
-                )}
-              >
-                {stageCounts.ALL ?? baseFilteredLeads.length}
+          <div className="pt-2.5 border-t border-gray-100 space-y-1.5">
+            <div className="flex items-center justify-between text-xs px-0.5">
+              <span className="text-[11px] sm:text-xs uppercase font-black tracking-wider text-gray-400 flex items-center gap-1.5">
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-600" /> Pipeline Stages
               </span>
-            </button>
-
-            {LEAD_STATUSES.map((st) => {
-              const isSelected = activeStage === st;
-              const count = stageCounts[st] ?? 0;
-              return (
+              {activeStage !== "ALL" && (
                 <button
-                  key={st}
+                  type="button"
+                  onClick={() => setActiveStage("ALL")}
+                  className="text-[11px] font-bold text-primary-600 hover:underline"
+                >
+                  Show All Stages
+                </button>
+              )}
+            </div>
+
+            <div className="relative -mx-4 px-4 sm:mx-0 sm:px-0">
+              <div
+                ref={stagesScrollRef}
+                className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1 flex-nowrap touch-pan-x scroll-smooth"
+              >
+                <button
+                  ref={activeStage === "ALL" ? activeStageRef : undefined}
                   type="button"
                   onClick={() => {
-                    setActiveStage((prev) => (prev === st ? "ALL" : st));
+                    setActiveStage("ALL");
                   }}
                   className={cn(
-                    "min-h-[36px] shrink-0 px-3 py-1.5 text-xs font-bold rounded-xl border transition-all flex items-center gap-1.5 active:scale-95",
-                    isSelected
-                      ? "bg-primary-600 text-white border-primary-600 shadow-2xs scale-[1.02]"
+                    "min-h-[34px] sm:min-h-[36px] shrink-0 px-2.5 sm:px-3 py-1 text-xs font-bold rounded-xl border transition-all flex items-center gap-1.5 active:scale-95 whitespace-nowrap",
+                    activeStage === "ALL"
+                      ? "bg-primary-600 text-white border-primary-600 shadow-2xs font-black"
                       : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
                   )}
                 >
-                  <span>{LEAD_STATUS_LABELS[st] ?? st}</span>
+                  <span>All Stages</span>
                   <span
                     className={cn(
-                      "px-1.5 py-0.2 rounded-full text-[11px] font-black",
-                      isSelected ? "bg-white/20 text-white" : "bg-gray-100 text-gray-600"
+                      "px-1.5 py-0.2 rounded-full text-[10px] sm:text-[11px] font-black",
+                      activeStage === "ALL" ? "bg-white/20 text-white" : "bg-gray-100 text-gray-600"
                     )}
                   >
-                    {count}
+                    {stageCounts.ALL ?? baseFilteredLeads.length}
                   </span>
                 </button>
-              );
-            })}
+
+                {LEAD_STATUSES.map((st) => {
+                  const isSelected = activeStage === st;
+                  const count = stageCounts[st] ?? 0;
+                  return (
+                    <button
+                      key={st}
+                      ref={isSelected ? activeStageRef : undefined}
+                      type="button"
+                      onClick={() => {
+                        setActiveStage((prev) => (prev === st ? "ALL" : st));
+                      }}
+                      className={cn(
+                        "min-h-[34px] sm:min-h-[36px] shrink-0 px-2.5 sm:px-3 py-1 text-xs font-bold rounded-xl border transition-all flex items-center gap-1.5 active:scale-95 whitespace-nowrap",
+                        isSelected
+                          ? "bg-primary-600 text-white border-primary-600 shadow-2xs font-black scale-[1.02]"
+                          : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                      )}
+                    >
+                      <span className="hidden sm:inline">{LEAD_STATUS_LABELS[st] ?? st}</span>
+                      <span className="sm:hidden">{SHORT_STATUS_LABELS[st] ?? LEAD_STATUS_LABELS[st] ?? st}</span>
+                      <span
+                        className={cn(
+                          "px-1.5 py-0.2 rounded-full text-[10px] sm:text-[11px] font-black",
+                          isSelected ? "bg-white/20 text-white" : "bg-gray-100 text-gray-600"
+                        )}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
 
