@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DrawerSelector } from "@/components/DrawerSelector";
+import { DatePickerDrawer } from "@/components/DatePickerDrawer";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -21,9 +22,20 @@ import { getAllClasses, type ClassRecord } from "@/lib/classes-api";
 import { useAuthStore } from "@/store/auth";
 import { cn } from "@/lib/utils";
 import {
-  CreditCard, Plus, Loader2, Zap, ArrowLeft, Pencil, Trash2,
+  CreditCard, Plus, Loader2, Zap, ArrowLeft, Pencil, Trash2, Calendar,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
+
+/** Format an ISO date string (or yyyy-mm-dd) as a local, timezone-safe short date. */
+function formatFeeDate(value?: string | null): string | null {
+  if (!value) return null;
+  return new Date(`${value.slice(0, 10)}T00:00:00`).toLocaleDateString("en-IN", {
+    day: "numeric", month: "short", year: "numeric",
+  });
+}
+
+type FeeDateField = "create-start" | "create-end" | "edit-start" | "edit-end";
 
 export default function AdminFeeTypesPage() {
   const tenantPath = useTenantPath();
@@ -58,6 +70,8 @@ export default function AdminFeeTypesPage() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  const [activeFeeDateField, setActiveFeeDateField] = useState<FeeDateField | null>(null);
+
   const load = useCallback(async () => {
     if (!cid || !token) return;
     setLoading(true);
@@ -80,6 +94,10 @@ export default function AdminFeeTypesPage() {
 
   const handleCreate = async () => {
     if (!newFee.name || (!newFee.isDonation && !newFee.amount)) return;
+    if (newFee.startDate && newFee.endDate && newFee.endDate < newFee.startDate) {
+      toast.error("End date must be on or after the start date");
+      return;
+    }
     setCreating(true);
     setCreateError(null);
     try {
@@ -105,6 +123,8 @@ export default function AdminFeeTypesPage() {
       kind: ft.kind,
       frequency: ft.frequency ?? undefined,
       dueDay: ft.dueDay ?? undefined,
+      startDate: ft.startDate?.slice(0, 10) ?? undefined,
+      endDate: ft.endDate?.slice(0, 10) ?? undefined,
       targetClassIds: ft.targetClassIds ?? undefined,
       status: ft.status,
     });
@@ -114,6 +134,10 @@ export default function AdminFeeTypesPage() {
 
   const handleUpdate = async () => {
     if (!editingFee) return;
+    if (editFee.startDate && editFee.endDate && editFee.endDate < editFee.startDate) {
+      toast.error("End date must be on or after the start date");
+      return;
+    }
     setUpdating(true);
     setEditError(null);
     try {
@@ -203,6 +227,11 @@ export default function AdminFeeTypesPage() {
                       {" · "}{targetClasses.length ? targetClasses.map((item) => item.name).join(", ") : "All classes"}
                       {" · "}{feeType._count?.payments ?? 0} records
                     </span>
+                    {feeType.kind === "RECURRING" && (feeType.startDate || feeType.endDate) && (
+                      <span className="mt-0.5 block text-xs text-gray-400">
+                        {formatFeeDate(feeType.startDate) ?? "No start date"} – {formatFeeDate(feeType.endDate) ?? "Ongoing"}
+                      </span>
+                    )}
                   </span>
                   <span className="shrink-0 text-right">
                     <span className="block text-sm font-semibold tabular-nums text-gray-950">{feeType.isDonation ? "Variable" : `₹${Number(feeType.amount).toLocaleString("en-IN")}`}</span>
@@ -220,12 +249,12 @@ export default function AdminFeeTypesPage() {
         </section>
       )}
 
-      <ResponsivePopover open={showCreate} onOpenChange={setShowCreate} title="New fee type" fullHeight>
-        <div className="mx-auto w-full max-w-xl pb-5">
+      <ResponsivePopover open={showCreate} onOpenChange={(open) => { setShowCreate(open); if (!open) setActiveFeeDateField(null); }} title="New fee type" fullHeight>
+        <div className="mx-auto w-full  pb-5">
                 <div className="px-5 py-4 space-y-4">
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Name *</label>
-                    <Input
+                    <Input size="lg"
                       type="text" value={newFee.name ?? ""}
                       placeholder="e.g. Monthly Fee, SKSBV Fund"
                       onChange={(e) => setNewFee((n) => ({ ...n, name: e.target.value }))}
@@ -234,7 +263,7 @@ export default function AdminFeeTypesPage() {
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Amount (₹) {newFee.isDonation ? "(not applicable)" : "*"}</label>
-                    <Input
+                    <Input size="lg"
                       type="number" value={newFee.isDonation ? "" : (newFee.amount ?? "")} placeholder={newFee.isDonation ? "Entered during collection" : "500"}
                       disabled={newFee.isDonation}
                       onChange={(e) => setNewFee((n) => ({ ...n, amount: Number(e.target.value) }))}
@@ -247,15 +276,14 @@ export default function AdminFeeTypesPage() {
                   </label>
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Description (optional)</label>
-                    <Input
-                      type="text" value={newFee.description ?? ""} placeholder="Details…"
+                    <Textarea value={newFee.description ?? ""} placeholder="Details…"
                       onChange={(e) => setNewFee((n) => ({ ...n, description: e.target.value }))}
                       className="w-full"
                     />
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Type</label>
-                    <Tabs value={newFee.kind ?? "ONE_TIME"} onValueChange={(value) => setNewFee((current) => ({ ...current, kind: value as "ONE_TIME" | "RECURRING" }))}>
+                    <Tabs value={newFee.kind ?? "ONE_TIME"} onValueChange={(value) => setNewFee((current) => ({ ...current, kind: value as "ONE_TIME" | "RECURRING", ...(value === "ONE_TIME" ? { startDate: undefined, endDate: undefined } : {}) }))}>
                       <TabsList className="grid w-full grid-cols-2 shadow-none">
                         <TabsTrigger value="ONE_TIME" className="shadow-none!">One time</TabsTrigger>
                         <TabsTrigger value="RECURRING" className="shadow-none!">Recurring</TabsTrigger>
@@ -263,26 +291,57 @@ export default function AdminFeeTypesPage() {
                     </Tabs>
                   </div>
                   {newFee.kind === "RECURRING" && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Frequency</label>
-                        <DrawerSelector title="Frequency" value={newFee.frequency ?? "monthly"} options={["monthly", "quarterly", "yearly"].map((frequency) => ({ value: frequency, label: frequency.charAt(0).toUpperCase() + frequency.slice(1) }))} onChange={(value) => setNewFee((current) => ({ ...current, frequency: value }))} />
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Frequency</label>
+                          <DrawerSelector title="Frequency" value={newFee.frequency ?? "monthly"} options={["monthly", "quarterly", "yearly"].map((frequency) => ({ value: frequency, label: frequency.charAt(0).toUpperCase() + frequency.slice(1) }))} onChange={(value) => setNewFee((current) => ({ ...current, frequency: value }))} />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Due Day</label>
+                          <Input size="lg"
+                            type="number" min={1} max={31} placeholder="5"
+                            value={newFee.dueDay ?? ""}
+                            onChange={(e) => setNewFee((n) => ({ ...n, dueDay: Number(e.target.value) }))}
+                            className="w-full"
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Due Day</label>
-                        <Input
-                          type="number" min={1} max={31} placeholder="5"
-                          value={newFee.dueDay ?? ""}
-                          onChange={(e) => setNewFee((n) => ({ ...n, dueDay: Number(e.target.value) }))}
-                          className="w-full"
-                        />
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Start Date (optional)</label>
+                          <Button
+                          size="lg"
+                            type="button" variant="outline"
+                            aria-haspopup="dialog" aria-expanded={activeFeeDateField === "create-start"}
+                            aria-label={`Start Date: ${formatFeeDate(newFee.startDate) ?? "Select date"}`}
+                            onClick={() => setActiveFeeDateField("create-start")}
+
+                            >
+                            <Calendar className="size-4 shrink-0 text-gray-500" />
+                            <span className="truncate">{formatFeeDate(newFee.startDate) ?? "Select date"}</span>
+                          </Button>
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-gray-600 mb-1.5 block">End Date (optional)</label>
+                          <Button
+                          size="lg"
+                            type="button" variant="outline"
+                            aria-haspopup="dialog" aria-expanded={activeFeeDateField === "create-end"}
+                            aria-label={`End Date: ${formatFeeDate(newFee.endDate) ?? "Select date"}`}
+                            onClick={() => setActiveFeeDateField("create-end")}
+
+                            >
+                            <Calendar className="size-4 shrink-0 text-gray-500" />
+                            <span className="truncate">{formatFeeDate(newFee.endDate) ?? "Select date"}</span>
+                          </Button>
+                        </div>
                       </div>
-                    </div>
+                     </div>
                   )}
                   {classes.length > 0 && (
                     <div>
-                      <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Target Classes (leave empty = all classes)</label>
-                      <div className="flex flex-wrap gap-2">
+                       <div className="flex flex-wrap gap-2">
                         {classes.map((c) => {
                           const selected = (newFee.targetClassIds ?? []).includes(c.id);
                           return (
@@ -313,7 +372,7 @@ export default function AdminFeeTypesPage() {
                   <Button
                     onClick={handleCreate}
                     disabled={creating || !newFee.name || (!newFee.isDonation && !newFee.amount)}
-                    className="w-full bg-primary-600 text-white font-bold py-4 rounded-2xl disabled:opacity-60 flex items-center justify-center gap-2"
+                    className=" text-white font-bold   disabled:opacity-60 flex items-center justify-center gap-2"
                   >
                     {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                     Create Fee Type
@@ -335,13 +394,13 @@ export default function AdminFeeTypesPage() {
         )}
       </ResponsivePopover>
 
-      <ResponsivePopover open={showEdit && editingFee !== null} onOpenChange={(open) => { if (!open) { setShowEdit(false); setEditingFee(null); } }} title={editingFee ? `Edit ${editingFee.name}` : "Edit fee type"} fullHeight>
-        <div className="mx-auto w-full max-w-xl pb-5">
+      <ResponsivePopover open={showEdit && editingFee !== null} onOpenChange={(open) => { if (!open) { setShowEdit(false); setEditingFee(null); setActiveFeeDateField(null); } }} title={editingFee ? `Edit ${editingFee.name}` : "Edit fee type"} fullHeight>
+        <div className="mx-auto w-full  pb-5">
                 <div className="px-5 py-4 space-y-4">
 
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Name *</label>
-                    <Input
+                    <Input size="lg"
                       type="text" value={editFee.name ?? ""}
                       placeholder="e.g. Monthly Fee, SKSBV Fund"
                       onChange={(e) => setEditFee((n) => ({ ...n, name: e.target.value }))}
@@ -350,7 +409,7 @@ export default function AdminFeeTypesPage() {
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Amount (₹) {editFee.isDonation ? "(not applicable)" : "*"}</label>
-                    <Input
+                    <Input size="lg"
                       type="number" value={editFee.isDonation ? "" : (editFee.amount ?? "")} placeholder={editFee.isDonation ? "Entered during collection" : "500"} disabled={editFee.isDonation}
                       onChange={(e) => setEditFee((n) => ({ ...n, amount: Number(e.target.value) }))}
                       className="w-full"
@@ -362,7 +421,7 @@ export default function AdminFeeTypesPage() {
                   </label>
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Description (optional)</label>
-                    <Input
+                    <Input size="lg"
                       type="text" value={editFee.description ?? ""} placeholder="Details…"
                       onChange={(e) => setEditFee((n) => ({ ...n, description: e.target.value }))}
                       className="w-full"
@@ -370,7 +429,7 @@ export default function AdminFeeTypesPage() {
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Type</label>
-                    <Tabs value={editFee.kind ?? "ONE_TIME"} onValueChange={(value) => setEditFee((current) => ({ ...current, kind: value as "ONE_TIME" | "RECURRING" }))}>
+                    <Tabs value={editFee.kind ?? "ONE_TIME"} onValueChange={(value) => setEditFee((current) => ({ ...current, kind: value as "ONE_TIME" | "RECURRING", ...(value === "ONE_TIME" ? { startDate: undefined, endDate: undefined } : {}) }))}>
                       <TabsList className="grid w-full grid-cols-2 shadow-none">
                         <TabsTrigger value="ONE_TIME" className="shadow-none!">One time</TabsTrigger>
                         <TabsTrigger value="RECURRING" className="shadow-none!">Recurring</TabsTrigger>
@@ -378,21 +437,51 @@ export default function AdminFeeTypesPage() {
                     </Tabs>
                   </div>
                   {editFee.kind === "RECURRING" && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Frequency</label>
-                        <DrawerSelector title="Frequency" value={editFee.frequency ?? "monthly"} options={["monthly", "quarterly", "yearly"].map((frequency) => ({ value: frequency, label: frequency.charAt(0).toUpperCase() + frequency.slice(1) }))} onChange={(value) => setEditFee((current) => ({ ...current, frequency: value }))} />
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Frequency</label>
+                          <DrawerSelector title="Frequency" value={editFee.frequency ?? "monthly"} options={["monthly", "quarterly", "yearly"].map((frequency) => ({ value: frequency, label: frequency.charAt(0).toUpperCase() + frequency.slice(1) }))} onChange={(value) => setEditFee((current) => ({ ...current, frequency: value }))} />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Due Day</label>
+                          <Input size="lg"
+                            type="number" min={1} max={31} placeholder="5"
+                            value={editFee.dueDay ?? ""}
+                            onChange={(e) => setEditFee((n) => ({ ...n, dueDay: Number(e.target.value) }))}
+                            className="w-full"
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Due Day</label>
-                        <Input
-                          type="number" min={1} max={31} placeholder="5"
-                          value={editFee.dueDay ?? ""}
-                          onChange={(e) => setEditFee((n) => ({ ...n, dueDay: Number(e.target.value) }))}
-                          className="w-full"
-                        />
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Start Date (optional)</label>
+                          <Button
+                            type="button" variant="outline"
+                                size={"lg"}
+                            aria-haspopup="dialog" aria-expanded={activeFeeDateField === "edit-start"}
+                            aria-label={`Start Date: ${formatFeeDate(editFee.startDate) ?? "Select date"}`}
+                            onClick={() => setActiveFeeDateField("edit-start")}
+                           >
+                            <Calendar className="size-4 shrink-0 text-gray-500" />
+                            <span className="truncate">{formatFeeDate(editFee.startDate) ?? "Select date"}</span>
+                          </Button>
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-gray-600 mb-1.5 block">End Date (optional)</label>
+                          <Button
+                            type="button" variant="outline"
+                            size={"lg"}
+                            aria-haspopup="dialog" aria-expanded={activeFeeDateField === "edit-end"}
+                            aria-label={`End Date: ${formatFeeDate(editFee.endDate) ?? "Select date"}`}
+                            onClick={() => setActiveFeeDateField("edit-end")}
+                           >
+                            <Calendar className="size-4 shrink-0 text-gray-500" />
+                            <span className="truncate">{formatFeeDate(editFee.endDate) ?? "Select date"}</span>
+                          </Button>
+                        </div>
                       </div>
-                    </div>
+                     </div>
                   )}
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Status</label>
@@ -405,7 +494,7 @@ export default function AdminFeeTypesPage() {
                   </div>
                   {classes.length > 0 && (
                     <div>
-                      <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Target Classes (leave empty = all classes)</label>
+                      
                       <div className="flex flex-wrap gap-2">
                         {classes.map((c) => {
                           const selected = (editFee.targetClassIds ?? []).includes(c.id);
@@ -437,7 +526,7 @@ export default function AdminFeeTypesPage() {
                   <Button
                     onClick={handleUpdate}
                     disabled={updating || !editFee.name || (!editFee.isDonation && !editFee.amount)}
-                    className="w-full bg-primary-600 text-white font-bold py-4 rounded-2xl disabled:opacity-60 flex items-center justify-center gap-2"
+                    className=" text-white font-bold py-4 disabled:opacity-60 flex items-center justify-center gap-2"
                   >
                     {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
                     Update Fee Type
@@ -445,6 +534,35 @@ export default function AdminFeeTypesPage() {
                 </div>
         </div>
       </ResponsivePopover>
+
+      <DatePickerDrawer
+        open={activeFeeDateField !== null}
+        onOpenChange={(open) => { if (!open) setActiveFeeDateField(null); }}
+        date={
+          activeFeeDateField === "create-start" ? (newFee.startDate ?? "")
+          : activeFeeDateField === "create-end" ? (newFee.endDate ?? "")
+          : activeFeeDateField === "edit-start" ? (editFee.startDate ?? "")
+          : activeFeeDateField === "edit-end" ? (editFee.endDate ?? "")
+          : ""
+        }
+        onDateChange={(date) => {
+          const value = date || undefined;
+          if (activeFeeDateField === "create-start") setNewFee((n) => ({ ...n, startDate: value }));
+          else if (activeFeeDateField === "create-end") setNewFee((n) => ({ ...n, endDate: value }));
+          else if (activeFeeDateField === "edit-start") setEditFee((n) => ({ ...n, startDate: value }));
+          else if (activeFeeDateField === "edit-end") setEditFee((n) => ({ ...n, endDate: value }));
+        }}
+        title={
+          activeFeeDateField === "create-start" || activeFeeDateField === "edit-start" ? "Start Date" : "End Date"
+        }
+        disableFuture={false}
+        minDate={
+          activeFeeDateField === "create-end" ? newFee.startDate
+          : activeFeeDateField === "edit-end" ? editFee.startDate
+          : undefined
+        }
+        allowClear
+      />
     </DashboardLayout>
   );
 }
