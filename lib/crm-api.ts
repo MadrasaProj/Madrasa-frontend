@@ -140,6 +140,7 @@ export interface LeadListItem {
     user?: { name: string };
   }>;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface LeadDetail extends LeadListItem {
@@ -469,6 +470,7 @@ export interface DistrictItem {
   headUserId?: string;
   headUser?: { id: string; name: string; username: string };
   createdAt: string;
+  updatedAt?: string;
 }
 
 export function listDistricts(token: string) {
@@ -499,6 +501,7 @@ export interface ExpenseItem {
   approvedBy?: { id: string; name: string; username: string };
   approvedAt?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export function listExpenses(token: string) {

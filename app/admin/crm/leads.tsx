@@ -58,24 +58,210 @@ import {
   TrendingUp,
   ArrowLeft,
   ChevronDown,
+  ChevronUp,
   ChevronLeft,
   ExternalLink,
   ShieldCheck,
   CheckCircle2,
+  SlidersHorizontal,
+  ArrowUpDown,
+  Flame,
+  History,
+  Inbox,
+  Filter,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 // ─── Pipeline stage config ────────────────────────────────────────────────────
 export type LeadSortOption =
+  | "SMART_PRIORITY"
   | "URGENT"
   | "FOLLOWUP_ASC"
   | "FOLLOWUP_DESC"
   | "LAST_FOLLOWUP_ASC"
   | "LAST_FOLLOWUP_DESC"
-  | "NEWEST"
+  | "STATUS_CHANGED_DESC"
+  | "STATUS_CHANGED_ASC"
+  | "SCORE_DESC"
   | "STUDENTS"
+  | "NEWEST"
+  | "OLDEST"
   | "NAME";
+
+export interface SmartPriorityResult {
+  score: number;
+  urgencyLevel: "CRITICAL" | "HIGH" | "MEDIUM" | "NORMAL" | "CLOSED";
+  primaryReason: string;
+  badgeColor: string;
+  isOverdue: boolean;
+  isToday: boolean;
+  isUntreated: boolean;
+  isStale: boolean;
+  daysSinceLastContact: number;
+  dueDaysDiff: number | null;
+}
+
+export function calculateLeadSmartPriority(lead: LeadListItem): SmartPriorityResult {
+  if (lead.status === "WON" || lead.status === "LOST") {
+    return {
+      score: -1000,
+      urgencyLevel: "CLOSED",
+      primaryReason: lead.status === "WON" ? "Account Won" : "Lead Closed",
+      badgeColor: "bg-gray-100 text-gray-500 border-gray-200",
+      isOverdue: false,
+      isToday: false,
+      isUntreated: false,
+      isStale: false,
+      daysSinceLastContact: 0,
+      dueDaysDiff: null,
+    };
+  }
+
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  // Follow-up due calculation
+  let dueDaysDiff: number | null = null;
+  let isOverdue = false;
+  let isToday = false;
+
+  if (lead.nextFollowUpDate) {
+    const fDate = new Date(lead.nextFollowUpDate);
+    fDate.setHours(0, 0, 0, 0);
+    dueDaysDiff = Math.round((fDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    if (dueDaysDiff < 0) isOverdue = true;
+    else if (dueDaysDiff === 0) isToday = true;
+  }
+
+  // Last touch / follow-up calculation
+  let lastTouchDate: Date | null = null;
+  if (lead.timeline && lead.timeline.length > 0) {
+    lastTouchDate = new Date(lead.timeline[0].createdAt);
+  }
+
+  const daysSinceLastContact = lastTouchDate
+    ? Math.floor((now.getTime() - lastTouchDate.getTime()) / (1000 * 60 * 60 * 24))
+    : -1;
+
+  const isUntreated = daysSinceLastContact === -1 && (!lead.timeline || lead.timeline.length === 0);
+  const isStale = daysSinceLastContact >= 7;
+
+  let score = 50;
+  let primaryReason = "Standard Follow-up";
+  let urgencyLevel: "CRITICAL" | "HIGH" | "MEDIUM" | "NORMAL" = "NORMAL";
+  let badgeColor = "bg-blue-50 text-blue-700 border-blue-200";
+
+  // Urgency & Scheduling scoring
+  if (isOverdue) {
+    const daysOverdue = Math.abs(dueDaysDiff!);
+    score += 110 + Math.min(daysOverdue * 6, 50);
+    urgencyLevel = "CRITICAL";
+    primaryReason = `🚨 Overdue by ${daysOverdue}d`;
+    badgeColor = "bg-rose-100 text-rose-800 border-rose-300";
+  } else if (isToday) {
+    score += 95;
+    urgencyLevel = "HIGH";
+    primaryReason = "⏱️ Follow-up Due Today";
+    badgeColor = "bg-amber-100 text-amber-800 border-amber-300";
+  } else if (dueDaysDiff === 1) {
+    score += 70;
+    urgencyLevel = "MEDIUM";
+    primaryReason = "📅 Due Tomorrow";
+    badgeColor = "bg-indigo-50 text-indigo-700 border-indigo-200";
+  } else if (!lead.nextFollowUpDate) {
+    if (isUntreated) {
+      score += 90;
+      urgencyLevel = "HIGH";
+      primaryReason = "⚡ Untreated Lead (Needs Call)";
+      badgeColor = "bg-teal-100 text-teal-800 border-teal-300";
+    } else if (isStale) {
+      score += 80;
+      urgencyLevel = "HIGH";
+      primaryReason = `⚠️ Stale: Untouched ${daysSinceLastContact}d`;
+      badgeColor = "bg-amber-100 text-amber-800 border-amber-300";
+    } else {
+      score += 45;
+      primaryReason = "⚠️ Needs Follow-up Date";
+      badgeColor = "bg-slate-100 text-slate-700 border-slate-300";
+    }
+  }
+
+  // If lead is untreated (no timeline at all)
+  if (isUntreated && !isOverdue && !isToday) {
+    score += 45;
+    urgencyLevel = "HIGH";
+    primaryReason = "⚡ Untreated Lead (Never Contacted)";
+    badgeColor = "bg-teal-100 text-teal-800 border-teal-300";
+  }
+
+  // Quality & Volume weighting
+  if (lead.score === "HOT") {
+    score += 35;
+    if (!isOverdue) {
+      primaryReason += " • 🔥 Hot Deal";
+    }
+  } else if (lead.score === "WARM") {
+    score += 20;
+  }
+
+  // Institutional Student Count (deal size weighting)
+  if ((lead.studentCount || 0) >= 400) {
+    score += 30;
+    if (urgencyLevel !== "CRITICAL") {
+      primaryReason += ` • 💎 High Volume (${lead.studentCount} stu)`;
+    }
+  } else if ((lead.studentCount || 0) >= 200) {
+    score += 15;
+  }
+
+  // Stage weighting
+  if (lead.status === "QUALITY_LEAD" || lead.status === "NEGOTIATION" || lead.status === "TRIAL_SHARED") {
+    score += 25;
+  }
+
+  return {
+    score,
+    urgencyLevel,
+    primaryReason,
+    badgeColor,
+    isOverdue,
+    isToday,
+    isUntreated,
+    isStale,
+    daysSinceLastContact,
+    dueDaysDiff,
+  };
+}
+
+export function formatRelativeTime(dateStr?: string | null): string {
+  if (!dateStr) return "Never";
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHours = Math.floor(diffMin / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffSec < 60) return "Just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+  return date.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+}
+
+export const OUTCOME_DISPOSITIONS = [
+  { label: "Interested", icon: "⭐", text: "Interested in Smart Madrasa. Discussed setup requirements." },
+  { label: "Follow-up Needed", icon: "🔄", text: "Discussion had; follow-up requested for later." },
+  { label: "No Answer / Busy", icon: "📵", text: "Call unanswered / line busy. Scheduled retry." },
+  { label: "WhatsApp Info Sent", icon: "💬", text: "Sent feature brochures & intro via WhatsApp." },
+  { label: "Demo Requested", icon: "🖥️", text: "Demo requested for committee members / Usthad." },
+  { label: "Pricing Discussed", icon: "💰", text: "Discussed fee plans & student count packages." },
+  { label: "Not Interested Right Now", icon: "⏸️", text: "Not interested currently; review in future." },
+];
 
 export const LEAD_STATUS_LABELS: Record<string, string> = {
   NEW: "New Lead",
@@ -224,12 +410,35 @@ export default function CrmLeadsPage() {
 
   const [activeStage, setActiveStage] = useState<string>("ALL");
   const [smartPreset, setSmartPreset] = useState<
-    "ALL" | "OVERDUE" | "TODAY" | "HOT_WARM" | "ACTIVE_TRIALS" | "NO_FOLLOWUP"
+    | "ALL"
+    | "AI_PRIORITY"
+    | "OVERDUE"
+    | "TODAY"
+    | "UNTREATED"
+    | "STALE"
+    | "HOT_WARM"
+    | "QUALITY"
+    | "ACTIVE_TRIALS"
+    | "NO_FOLLOWUP"
   >("ALL");
   const [selectedDistrict, setSelectedDistrict] = useState<string>("ALL");
   const [selectedAssignee, setSelectedAssignee] = useState<string>("ALL");
-  const [sortBy, setSortBy] = useState<LeadSortOption>("URGENT");
+  const [sortBy, setSortBy] = useState<LeadSortOption>("SMART_PRIORITY");
   const [showMobileDetail, setShowMobileDetail] = useState(false);
+
+  // Advanced Filters State
+  const [dueDateFilter, setDueDateFilter] = useState<
+    "ALL" | "OVERDUE" | "TODAY" | "TOMORROW" | "THIS_WEEK" | "NEXT_WEEK" | "CUSTOM"
+  >("ALL");
+  const [dueDateFrom, setDueDateFrom] = useState<string>("");
+  const [dueDateTo, setDueDateTo] = useState<string>("");
+  const [lastContactedFilter, setLastContactedFilter] = useState<
+    "ALL" | "UNTREATED" | "STALE_7D" | "STALE_3D" | "RECENT_48H"
+  >("ALL");
+  const [leadScoreFilter, setLeadScoreFilter] = useState<string>("ALL");
+  const [institutionSizeFilter, setInstitutionSizeFilter] = useState<"ALL" | "LARGE" | "MEDIUM" | "SMALL">("ALL");
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [isAiQueueCollapsed, setIsAiQueueCollapsed] = useState(false);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -592,7 +801,7 @@ export default function CrmLeadsPage() {
     const filterParam = searchParams.get("filter");
     if (filterParam) {
       const upper = filterParam.toUpperCase();
-      if (["ALL", "OVERDUE", "TODAY", "HOT_WARM", "ACTIVE_TRIALS", "NO_FOLLOWUP"].includes(upper)) {
+      if (["ALL", "AI_PRIORITY", "OVERDUE", "TODAY", "UNTREATED", "STALE", "HOT_WARM", "QUALITY", "ACTIVE_TRIALS", "NO_FOLLOWUP"].includes(upper)) {
         setSmartPreset(upper as any);
       }
     }
@@ -601,13 +810,18 @@ export default function CrmLeadsPage() {
       const upper = sortParam.toUpperCase();
       if (
         [
+          "SMART_PRIORITY",
           "URGENT",
           "FOLLOWUP_ASC",
           "FOLLOWUP_DESC",
           "LAST_FOLLOWUP_ASC",
           "LAST_FOLLOWUP_DESC",
-          "NEWEST",
+          "STATUS_CHANGED_DESC",
+          "STATUS_CHANGED_ASC",
+          "SCORE_DESC",
           "STUDENTS",
+          "NEWEST",
+          "OLDEST",
           "NAME",
         ].includes(upper)
       ) {
@@ -1350,72 +1564,66 @@ export default function CrmLeadsPage() {
     });
   }, [leads, selectedDistrict, selectedAssignee, debouncedSearch, effectiveUserId, user, assigneeOptions]);
 
-  // Counts for the Preset Chips (Overdue, Due Today, etc.)
+  // Counts for the Preset Chips (Overdue, Due Today, AI Next, etc.)
   // Evaluated on baseFilteredLeads + activeStage (so if a stage is active, presets show counts for that stage!)
   const smartCounts = useMemo(() => {
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-
     const pool = activeStage === "ALL"
       ? baseFilteredLeads
       : baseFilteredLeads.filter((l) => l.status === activeStage);
 
+    let aiPriority = 0;
     let overdue = 0;
     let today = 0;
+    let untreated = 0;
+    let stale = 0;
     let hotWarm = 0;
+    let quality = 0;
     let activeTrials = 0;
     let noFollowup = 0;
 
     for (const l of pool) {
-      if (l.score === "HOT" || l.score === "WARM") hotWarm++;
-      if (l.status === "TRIAL_SHARED" || l.status === "TRIAL_CREATED" || l.status.includes("TRIAL"))
-        activeTrials++;
-
+      const priority = calculateLeadSmartPriority(l);
       if (l.status !== "WON" && l.status !== "LOST") {
-        if (!l.nextFollowUpDate) {
-          noFollowup++;
-        } else {
-          const d = new Date(l.nextFollowUpDate);
-          d.setHours(0, 0, 0, 0);
-          if (d.getTime() < now.getTime()) overdue++;
-          else if (d.getTime() === now.getTime()) today++;
-        }
+        if (priority.score >= 80) aiPriority++;
+        if (priority.isOverdue) overdue++;
+        if (priority.isToday) today++;
+        if (priority.isUntreated) untreated++;
+        if (priority.isStale) stale++;
+        if (!l.nextFollowUpDate) noFollowup++;
+        if (l.score === "HOT" || l.score === "WARM") hotWarm++;
+        if (l.status === "QUALITY_LEAD" || l.score === "HOT") quality++;
+      }
+      if (l.status === "TRIAL_SHARED" || l.status === "TRIAL_CREATED" || l.status.includes("TRIAL")) {
+        activeTrials++;
       }
     }
 
     return {
       all: pool.length,
+      aiPriority,
       overdue,
       today,
+      untreated,
+      stale,
       hotWarm,
+      quality,
       activeTrials,
       noFollowup,
     };
   }, [baseFilteredLeads, activeStage]);
 
   // Counts for the Stage Chips (New, Follow-up, Quality Lead, etc.)
-  // Evaluated on baseFilteredLeads + smartPreset (so if a preset is active, stage chips show counts for that preset!)
   const stageCounts = useMemo(() => {
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-
     const pool = baseFilteredLeads.filter((l) => {
+      const priority = calculateLeadSmartPriority(l);
       if (smartPreset === "ALL") return true;
-      if (smartPreset === "OVERDUE") {
-        if (l.status === "WON" || l.status === "LOST" || !l.nextFollowUpDate) return false;
-        const d = new Date(l.nextFollowUpDate);
-        d.setHours(0, 0, 0, 0);
-        return d.getTime() < now.getTime();
-      }
-      if (smartPreset === "TODAY") {
-        if (l.status === "WON" || l.status === "LOST" || !l.nextFollowUpDate) return false;
-        const d = new Date(l.nextFollowUpDate);
-        d.setHours(0, 0, 0, 0);
-        return d.getTime() === now.getTime();
-      }
-      if (smartPreset === "HOT_WARM") {
-        return l.score === "HOT" || l.score === "WARM";
-      }
+      if (smartPreset === "AI_PRIORITY") return priority.score >= 80 && l.status !== "WON" && l.status !== "LOST";
+      if (smartPreset === "OVERDUE") return priority.isOverdue;
+      if (smartPreset === "TODAY") return priority.isToday;
+      if (smartPreset === "UNTREATED") return priority.isUntreated;
+      if (smartPreset === "STALE") return priority.isStale;
+      if (smartPreset === "HOT_WARM") return (l.score === "HOT" || l.score === "WARM") && l.status !== "WON" && l.status !== "LOST";
+      if (smartPreset === "QUALITY") return (l.status === "QUALITY_LEAD" || l.score === "HOT") && l.status !== "WON" && l.status !== "LOST";
       if (smartPreset === "ACTIVE_TRIALS") {
         return (
           l.status === "TRIAL_SHARED" ||
@@ -1444,42 +1652,80 @@ export default function CrmLeadsPage() {
   }, [baseFilteredLeads, smartPreset]);
 
   const filteredLeads = useMemo(() => {
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-
     return baseFilteredLeads
       .filter((l) => {
         if (activeStage !== "ALL" && l.status !== activeStage) return false;
 
-        if (smartPreset === "OVERDUE") {
-          if (l.status === "WON" || l.status === "LOST" || !l.nextFollowUpDate) return false;
-          const d = new Date(l.nextFollowUpDate);
-          d.setHours(0, 0, 0, 0);
-          return d.getTime() < now.getTime();
+        const priority = calculateLeadSmartPriority(l);
+
+        // Smart Presets Filter
+        if (smartPreset === "AI_PRIORITY") {
+          if (l.status === "WON" || l.status === "LOST" || priority.score < 80) return false;
+        } else if (smartPreset === "OVERDUE") {
+          if (!priority.isOverdue) return false;
+        } else if (smartPreset === "TODAY") {
+          if (!priority.isToday) return false;
+        } else if (smartPreset === "UNTREATED") {
+          if (!priority.isUntreated || l.status === "WON" || l.status === "LOST") return false;
+        } else if (smartPreset === "STALE") {
+          if (!priority.isStale || l.status === "WON" || l.status === "LOST") return false;
+        } else if (smartPreset === "HOT_WARM") {
+          if (l.status === "WON" || l.status === "LOST" || (l.score !== "HOT" && l.score !== "WARM")) return false;
+        } else if (smartPreset === "QUALITY") {
+          if (l.status === "WON" || l.status === "LOST" || (l.status !== "QUALITY_LEAD" && l.score !== "HOT")) return false;
+        } else if (smartPreset === "ACTIVE_TRIALS") {
+          if (l.status !== "TRIAL_SHARED" && l.status !== "TRIAL_CREATED" && !l.status.includes("TRIAL")) return false;
+        } else if (smartPreset === "NO_FOLLOWUP") {
+          if (l.nextFollowUpDate || l.status === "WON" || l.status === "LOST") return false;
         }
-        if (smartPreset === "TODAY") {
-          if (l.status === "WON" || l.status === "LOST" || !l.nextFollowUpDate) return false;
-          const d = new Date(l.nextFollowUpDate);
-          d.setHours(0, 0, 0, 0);
-          return d.getTime() === now.getTime();
+
+        // Due Date Range Filter
+        if (dueDateFilter === "OVERDUE" && !priority.isOverdue) return false;
+        if (dueDateFilter === "TODAY" && !priority.isToday) return false;
+        if (dueDateFilter === "TOMORROW" && priority.dueDaysDiff !== 1) return false;
+        if (dueDateFilter === "THIS_WEEK") {
+          if (priority.dueDaysDiff === null || priority.dueDaysDiff < 0 || priority.dueDaysDiff > 7) return false;
         }
-        if (smartPreset === "HOT_WARM") {
-          return l.score === "HOT" || l.score === "WARM";
+        if (dueDateFilter === "NEXT_WEEK") {
+          if (priority.dueDaysDiff === null || priority.dueDaysDiff <= 7 || priority.dueDaysDiff > 14) return false;
         }
-        if (smartPreset === "ACTIVE_TRIALS") {
-          return (
-            l.status === "TRIAL_SHARED" ||
-            l.status === "TRIAL_CREATED" ||
-            l.status.includes("TRIAL")
-          );
+        if (dueDateFilter === "CUSTOM") {
+          if (dueDateFrom) {
+            if (!l.nextFollowUpDate || l.nextFollowUpDate.split("T")[0] < dueDateFrom) return false;
+          }
+          if (dueDateTo) {
+            if (!l.nextFollowUpDate || l.nextFollowUpDate.split("T")[0] > dueDateTo) return false;
+          }
         }
-        if (smartPreset === "NO_FOLLOWUP") {
-          return !l.nextFollowUpDate && l.status !== "WON" && l.status !== "LOST";
+
+        // Last Contacted Filter
+        if (lastContactedFilter === "UNTREATED" && !priority.isUntreated) return false;
+        if (lastContactedFilter === "STALE_7D" && !priority.isStale && !priority.isUntreated) return false;
+        if (lastContactedFilter === "STALE_3D") {
+          const isStale3 = priority.daysSinceLastContact >= 3 || priority.isUntreated;
+          if (!isStale3) return false;
         }
+        if (lastContactedFilter === "RECENT_48H") {
+          if (priority.daysSinceLastContact < 0 || priority.daysSinceLastContact > 2) return false;
+        }
+
+        // Lead Score Filter
+        if (leadScoreFilter !== "ALL" && l.score !== leadScoreFilter) return false;
+
+        // Institution Size Filter
+        if (institutionSizeFilter === "LARGE" && (l.studentCount || 0) < 300) return false;
+        if (institutionSizeFilter === "MEDIUM" && ((l.studentCount || 0) < 100 || (l.studentCount || 0) >= 300)) return false;
+        if (institutionSizeFilter === "SMALL" && (l.studentCount || 0) >= 100) return false;
 
         return true;
       })
       .sort((a, b) => {
+        if (sortBy === "SMART_PRIORITY") {
+          const priorityA = calculateLeadSmartPriority(a);
+          const priorityB = calculateLeadSmartPriority(b);
+          if (priorityB.score !== priorityA.score) return priorityB.score - priorityA.score;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
         if (sortBy === "URGENT") {
           const isAClosed = a.status === "WON" || a.status === "LOST";
           const isBClosed = b.status === "WON" || b.status === "LOST";
@@ -1542,8 +1788,27 @@ export default function CrmLeadsPage() {
           if (lastTouchA !== lastTouchB) return lastTouchB - lastTouchA;
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         }
+        if (sortBy === "STATUS_CHANGED_DESC") {
+          const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : new Date(a.createdAt).getTime();
+          const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : new Date(b.createdAt).getTime();
+          return dateB - dateA;
+        }
+        if (sortBy === "STATUS_CHANGED_ASC") {
+          const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : new Date(a.createdAt).getTime();
+          const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : new Date(b.createdAt).getTime();
+          return dateA - dateB;
+        }
+        if (sortBy === "SCORE_DESC") {
+          const scoreWeight = (s?: string) => (s === "HOT" ? 3 : s === "WARM" ? 2 : 1);
+          const diff = scoreWeight(b.score) - scoreWeight(a.score);
+          if (diff !== 0) return diff;
+          return (b.studentCount || 0) - (a.studentCount || 0);
+        }
         if (sortBy === "NEWEST") {
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+        if (sortBy === "OLDEST") {
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
         }
         if (sortBy === "STUDENTS") {
           return (b.studentCount || 0) - (a.studentCount || 0);
@@ -1553,7 +1818,18 @@ export default function CrmLeadsPage() {
         }
         return 0;
       });
-  }, [leads, activeStage, selectedDistrict, selectedAssignee, smartPreset, sortBy, effectiveUserId, user]);
+  }, [
+    baseFilteredLeads,
+    activeStage,
+    smartPreset,
+    dueDateFilter,
+    dueDateFrom,
+    dueDateTo,
+    lastContactedFilter,
+    leadScoreFilter,
+    institutionSizeFilter,
+    sortBy,
+  ]);
 
   const totalPages = Math.max(1, Math.ceil(filteredLeads.length / pageSize));
 
@@ -1567,6 +1843,15 @@ export default function CrmLeadsPage() {
     const start = (currentPage - 1) * pageSize;
     return filteredLeads.slice(start, start + pageSize);
   }, [filteredLeads, currentPage, pageSize]);
+
+  // Top smart queue: highest priority leads that need immediate follow-up
+  const aiFollowUpQueue = useMemo(() => {
+    return leads
+      .filter((l) => l.status !== "WON" && l.status !== "LOST")
+      .map((l) => ({ lead: l, priority: calculateLeadSmartPriority(l) }))
+      .sort((a, b) => b.priority.score - a.priority.score)
+      .slice(0, 4);
+  }, [leads]);
 
   // Auto-select first lead on desktop (>= 1024px) if none is currently selected
   useEffect(() => {
@@ -1653,6 +1938,17 @@ export default function CrmLeadsPage() {
         badge: "High Intent",
         description: "Prospect shows strong buying signals. Propose a product demo or subscription setup.",
         onAction: () => setActiveSection("convert"),
+      };
+    }
+
+    if (!lead.timeline || lead.timeline.length === 0) {
+      return {
+        tone: "urgent" as const,
+        title: "Untreated Lead — Never Contacted",
+        actionLabel: "Make First Contact",
+        badge: "Untreated",
+        description: "No outreach or follow-up has ever been logged for this institution. Make your first contact via Phone Call or WhatsApp today!",
+        onAction: () => setActiveSection("followup"),
       };
     }
 
@@ -2442,6 +2738,32 @@ export default function CrmLeadsPage() {
                       </div>
                     </div>
 
+                    {/* Quick Outcome Disposition Selector */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
+                        ⚡ Quick Follow-up Outcome (1-tap note):
+                      </label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {OUTCOME_DISPOSITIONS.map((disp) => (
+                          <button
+                            key={disp.label}
+                            type="button"
+                            onClick={() => {
+                              setActivityForm((p) => {
+                                const prefix = `[${disp.label}] `;
+                                const notes = p.notes.trim() ? `${p.notes} • ${disp.text}` : `${prefix}${disp.text}`;
+                                return { ...p, notes };
+                              });
+                            }}
+                            className="px-2.5 py-1 rounded-xl text-xs font-semibold bg-white border border-blue-200 text-blue-900 hover:bg-blue-100 hover:border-blue-300 transition-all flex items-center gap-1 active:scale-95 shadow-2xs"
+                          >
+                            <span>{disp.icon}</span>
+                            <span>{disp.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
                     <div className="space-y-1">
                       <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
                         Discussion Summary &amp; Key Notes *
@@ -2828,11 +3150,32 @@ export default function CrmLeadsPage() {
                     ) : (
                       <>
                         <div className="flex items-center justify-between text-xs text-gray-500">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-gray-800 bg-gray-100 px-2 py-0.5 rounded-lg uppercase">
-                              {item.type}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span
+                              className={cn(
+                                "font-bold px-2 py-0.5 rounded-lg uppercase tracking-wider text-[11px]",
+                                item.type === "CALL"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : item.type === "WHATSAPP"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : item.type === "MEETING"
+                                  ? "bg-violet-100 text-violet-800"
+                                  : item.type === "SITE_VISIT"
+                                  ? "bg-amber-100 text-amber-800"
+                                  : "bg-gray-100 text-gray-800"
+                              )}
+                            >
+                              {item.type === "CALL"
+                                ? "📞 Call"
+                                : item.type === "WHATSAPP"
+                                ? "💬 WhatsApp"
+                                : item.type === "MEETING"
+                                ? "🤝 Meeting"
+                                : item.type === "SITE_VISIT"
+                                ? "🏫 Campus Visit"
+                                : item.type}
                             </span>
-                            <span>
+                            <span className="font-semibold text-gray-700">
                               {new Date(item.createdAt).toLocaleDateString("en-IN", {
                                 day: "numeric",
                                 month: "short",
@@ -2840,9 +3183,12 @@ export default function CrmLeadsPage() {
                                 minute: "2-digit",
                               })}
                             </span>
+                            <span className="text-[11px] font-bold text-gray-400 bg-gray-50 px-1.5 py-0.2 rounded border border-gray-200">
+                              {formatRelativeTime(item.createdAt)}
+                            </span>
                           </div>
 
-                          <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
+                          <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity shrink-0">
                             <button
                               type="button"
                               onClick={() => handleStartEditTimeline(item)}
@@ -2862,18 +3208,18 @@ export default function CrmLeadsPage() {
                           </div>
                         </div>
 
-                        <p className="text-xs sm:text-sm text-gray-900 leading-relaxed font-medium whitespace-pre-wrap">
+                        <p className="text-xs sm:text-sm text-gray-900 leading-relaxed font-medium whitespace-pre-wrap bg-gray-50/50 p-2.5 rounded-xl border border-gray-100">
                           {item.notes}
                         </p>
 
-                        <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-                          <span>
-                            By <strong className="text-gray-800">{item.user?.name ?? "System"}</strong>
+                        <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500 flex-wrap gap-2">
+                          <span className="flex items-center gap-1">
+                            <span>Logged by:</span> <strong className="text-gray-800 font-bold">{item.user?.name ?? "System / Admin"}</strong>
                           </span>
                           {item.followUpDate && (
-                            <span className="text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 font-bold flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              Scheduled: {new Date(item.followUpDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                            <span className="text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200 font-bold flex items-center gap-1 text-[11px]">
+                              <Clock className="w-3 h-3 text-emerald-600" />
+                              Scheduled Follow-up: {new Date(item.followUpDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                             </span>
                           )}
                         </div>
@@ -3363,7 +3709,7 @@ export default function CrmLeadsPage() {
 
         {/* ── Search & Filter Suite (Desktop & Mobile Friendly) ── */}
         <div className="bg-white rounded-3xl border border-gray-200/90 p-4 sm:p-5 shadow-xs space-y-3.5 mb-5">
-          {/* Top Row: Search Input + Selects */}
+          {/* Top Row: Search Input + Selects + Filters Toggle */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-2.5">
             <div className="relative sm:col-span-2 md:col-span-12 lg:col-span-4">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -3371,7 +3717,7 @@ export default function CrmLeadsPage() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by madrasa name, place, district..."
+                placeholder="Search madrasa, place, district, phone..."
                 className="w-full min-h-[44px] pl-10 pr-9 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 transition-all font-medium text-gray-900"
               />
               {search && (
@@ -3385,13 +3731,13 @@ export default function CrmLeadsPage() {
               )}
             </div>
 
-            <div className="sm:col-span-1 md:col-span-4 lg:col-span-3">
+            <div className="sm:col-span-1 md:col-span-3 lg:col-span-2">
               <select
                 value={selectedDistrict}
                 onChange={(e) => setSelectedDistrict(e.target.value)}
                 className="w-full min-h-[44px] bg-gray-50 border border-gray-200 text-xs sm:text-sm font-semibold py-2.5 px-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 text-gray-800"
               >
-                <option value="ALL">All Districts ({availableDistricts.length})</option>
+                <option value="ALL">Districts ({availableDistricts.length})</option>
                 {availableDistricts.map((d) => (
                   <option key={d} value={d}>
                     {d}
@@ -3400,7 +3746,7 @@ export default function CrmLeadsPage() {
               </select>
             </div>
 
-            <div className="sm:col-span-1 md:col-span-4 lg:col-span-3">
+            <div className="sm:col-span-1 md:col-span-3 lg:col-span-2">
               <select
                 value={selectedAssignee}
                 onChange={(e) => setSelectedAssignee(e.target.value)}
@@ -3419,23 +3765,154 @@ export default function CrmLeadsPage() {
               </select>
             </div>
 
-            <div className="sm:col-span-2 md:col-span-4 lg:col-span-2">
+            <div className="sm:col-span-1 md:col-span-4 lg:col-span-3">
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
                 className="w-full min-h-[44px] bg-gray-50 border border-gray-200 text-xs sm:text-sm font-semibold py-2.5 px-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 text-gray-800"
               >
-                <option value="URGENT">Sort: Urgency (Default)</option>
-                <option value="FOLLOWUP_ASC">Sort: Follow-up Date (Oldest First)</option>
-                <option value="FOLLOWUP_DESC">Sort: Follow-up Date (Newest First)</option>
-                <option value="LAST_FOLLOWUP_ASC">Sort: Last Followed Up (Oldest First)</option>
-                <option value="LAST_FOLLOWUP_DESC">Sort: Last Followed Up (Recent First)</option>
-                <option value="NEWEST">Sort: Newest Lead</option>
-                <option value="STUDENTS">Sort: Students (High to Low)</option>
-                <option value="NAME">Sort: Name (A-Z)</option>
+                <option value="SMART_PRIORITY">⭐ AI Smart Queue (Recommended)</option>
+                <option value="URGENT">🚨 Urgency (Overdue &amp; Today First)</option>
+                <option value="FOLLOWUP_ASC">📅 Follow-up Due (Earliest First)</option>
+                <option value="FOLLOWUP_DESC">📅 Follow-up Due (Latest First)</option>
+                <option value="LAST_FOLLOWUP_ASC">⏳ Last Followed Up (Oldest / Untouched First)</option>
+                <option value="LAST_FOLLOWUP_DESC">⚡ Last Followed Up (Recent First)</option>
+                <option value="STATUS_CHANGED_DESC">🔄 Status Changed (Newest First)</option>
+                <option value="STATUS_CHANGED_ASC">🔄 Status Changed (Oldest First)</option>
+                <option value="SCORE_DESC">🔥 Deal Quality (Hot → Warm → Cold)</option>
+                <option value="STUDENTS">🏫 Madrasa Size (Highest Students)</option>
+                <option value="NEWEST">✨ Newest Prospect Added</option>
+                <option value="OLDEST">📜 Oldest Prospect Added</option>
+                <option value="NAME">🔤 Name (A-Z)</option>
               </select>
             </div>
+
+            <div className="sm:col-span-1 md:col-span-2 lg:col-span-1 flex items-center">
+              <button
+                type="button"
+                onClick={() => setShowAdvancedFilters((p) => !p)}
+                className={cn(
+                  "w-full min-h-[44px] px-2.5 py-2 rounded-2xl text-xs font-bold border transition-all flex items-center justify-center gap-1 active:scale-95",
+                  showAdvancedFilters || (dueDateFilter !== "ALL" || lastContactedFilter !== "ALL" || leadScoreFilter !== "ALL" || institutionSizeFilter !== "ALL")
+                    ? "bg-primary-50 text-primary-900 border-primary-300 shadow-2xs font-black"
+                    : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                )}
+                title="Toggle advanced filters"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-primary-600" />
+                <span>Filters</span>
+                {(dueDateFilter !== "ALL" || lastContactedFilter !== "ALL" || leadScoreFilter !== "ALL" || institutionSizeFilter !== "ALL") && (
+                  <span className="w-2 h-2 rounded-full bg-primary-600 shrink-0" />
+                )}
+                {showAdvancedFilters ? <ChevronUp className="w-3 h-3 ml-0.5" /> : <ChevronDown className="w-3 h-3 ml-0.5" />}
+              </button>
+            </div>
           </div>
+
+          {/* ── Advanced Filters Drawer ── */}
+          <AnimatePresence>
+            {showAdvancedFilters && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="pt-3 pb-2 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-gray-50/70 p-4 rounded-2xl border border-gray-200/70">
+                  {/* Due Date Presets & Range */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-amber-600" /> Follow-up Due:
+                    </label>
+                    <select
+                      value={dueDateFilter}
+                      onChange={(e) => setDueDateFilter(e.target.value as any)}
+                      className="w-full min-h-[38px] bg-white border border-gray-200 text-xs font-semibold py-1.5 px-2.5 rounded-xl text-gray-800"
+                    >
+                      <option value="ALL">All Due Dates</option>
+                      <option value="OVERDUE">🚨 Overdue Only</option>
+                      <option value="TODAY">⏱️ Due Today</option>
+                      <option value="TOMORROW">📅 Due Tomorrow</option>
+                      <option value="THIS_WEEK">🗓️ Due This Week (Next 7d)</option>
+                      <option value="NEXT_WEEK">🗓️ Due Next Week</option>
+                      <option value="CUSTOM">🎯 Custom Date Range...</option>
+                    </select>
+
+                    {dueDateFilter === "CUSTOM" && (
+                      <div className="grid grid-cols-2 gap-1.5 pt-1.5">
+                        <input
+                          type="date"
+                          value={dueDateFrom}
+                          onChange={(e) => setDueDateFrom(e.target.value)}
+                          placeholder="From"
+                          className="bg-white border border-gray-200 text-xs p-1 rounded-lg"
+                        />
+                        <input
+                          type="date"
+                          value={dueDateTo}
+                          onChange={(e) => setDueDateTo(e.target.value)}
+                          placeholder="To"
+                          className="bg-white border border-gray-200 text-xs p-1 rounded-lg"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Last Followed Up / Staleness */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1">
+                      <History className="w-3 h-3 text-blue-600" /> Last Contacted / Activity:
+                    </label>
+                    <select
+                      value={lastContactedFilter}
+                      onChange={(e) => setLastContactedFilter(e.target.value as any)}
+                      className="w-full min-h-[38px] bg-white border border-gray-200 text-xs font-semibold py-1.5 px-2.5 rounded-xl text-gray-800"
+                    >
+                      <option value="ALL">All Activity</option>
+                      <option value="UNTREATED">⚡ Untreated (Never Contacted)</option>
+                      <option value="STALE_7D">⏳ Stale: Untouched &gt; 7 Days</option>
+                      <option value="STALE_3D">⏳ Untouched &gt; 3 Days</option>
+                      <option value="RECENT_48H">✨ Contacted within 48 Hours</option>
+                    </select>
+                  </div>
+
+                  {/* Lead Quality / Score */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1">
+                      <Flame className="w-3 h-3 text-orange-600" /> Lead Priority &amp; Score:
+                    </label>
+                    <select
+                      value={leadScoreFilter}
+                      onChange={(e) => setLeadScoreFilter(e.target.value)}
+                      className="w-full min-h-[38px] bg-white border border-gray-200 text-xs font-semibold py-1.5 px-2.5 rounded-xl text-gray-800"
+                    >
+                      <option value="ALL">All Priority Levels</option>
+                      <option value="HOT">🔥 Hot Deals (High Intent)</option>
+                      <option value="WARM">☀️ Warm Prospects</option>
+                      <option value="COLD">❄️ Cold Leads</option>
+                    </select>
+                  </div>
+
+                  {/* Institution Student Size */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1">
+                      <Building2 className="w-3 h-3 text-emerald-600" /> Madrasa Scale:
+                    </label>
+                    <select
+                      value={institutionSizeFilter}
+                      onChange={(e) => setInstitutionSizeFilter(e.target.value as any)}
+                      className="w-full min-h-[38px] bg-white border border-gray-200 text-xs font-semibold py-1.5 px-2.5 rounded-xl text-gray-800"
+                    >
+                      <option value="ALL">All Madrasa Sizes</option>
+                      <option value="LARGE">🏫 Large (300+ Students)</option>
+                      <option value="MEDIUM">🏫 Medium (100 - 300 Students)</option>
+                      <option value="SMALL">🏫 Small (&lt; 100 Students)</option>
+                    </select>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Quick Presets Segmented Bar (Smooth scrolling on mobile & desktop) */}
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pt-1 pb-0.5 flex-nowrap touch-pan-x">
@@ -3445,9 +3922,13 @@ export default function CrmLeadsPage() {
 
             {[
               { key: "ALL", label: "All Leads", count: smartCounts.all, activeColor: "bg-gray-900 text-white border-gray-900" },
+              { key: "AI_PRIORITY", label: "🤖 Next to Follow Up", count: smartCounts.aiPriority, activeColor: "bg-gradient-to-r from-amber-600 to-primary-600 text-white border-transparent" },
               { key: "OVERDUE", label: "🚨 Overdue", count: smartCounts.overdue, activeColor: "bg-rose-600 text-white border-rose-600" },
               { key: "TODAY", label: "⏱️ Due Today", count: smartCounts.today, activeColor: "bg-amber-600 text-white border-amber-600" },
+              { key: "UNTREATED", label: "⚠️ Never Contacted", count: smartCounts.untreated, activeColor: "bg-teal-700 text-white border-teal-700" },
+              { key: "STALE", label: "⏳ Stale (>7d)", count: smartCounts.stale, activeColor: "bg-orange-700 text-white border-orange-700" },
               { key: "HOT_WARM", label: "🔥 Warm & Hot", count: smartCounts.hotWarm, activeColor: "bg-orange-600 text-white border-orange-600" },
+              { key: "QUALITY", label: "💎 Quality Leads", count: smartCounts.quality, activeColor: "bg-violet-600 text-white border-violet-600" },
               { key: "ACTIVE_TRIALS", label: "🚀 Active Trials", count: smartCounts.activeTrials, activeColor: "bg-indigo-600 text-white border-indigo-600" },
               { key: "NO_FOLLOWUP", label: "⚠️ Needs Date", count: smartCounts.noFollowup, activeColor: "bg-slate-700 text-white border-slate-700" },
             ].map((pill) => {
@@ -3484,8 +3965,12 @@ export default function CrmLeadsPage() {
               smartPreset !== "ALL" ||
               selectedDistrict !== "ALL" ||
               selectedAssignee !== "ALL" ||
+              dueDateFilter !== "ALL" ||
+              lastContactedFilter !== "ALL" ||
+              leadScoreFilter !== "ALL" ||
+              institutionSizeFilter !== "ALL" ||
               search !== "" ||
-              sortBy !== "URGENT") && (
+              sortBy !== "SMART_PRIORITY") && (
               <button
                 type="button"
                 onClick={() => {
@@ -3493,8 +3978,14 @@ export default function CrmLeadsPage() {
                   setSmartPreset("ALL");
                   setSelectedDistrict("ALL");
                   setSelectedAssignee("ALL");
+                  setDueDateFilter("ALL");
+                  setDueDateFrom("");
+                  setDueDateTo("");
+                  setLastContactedFilter("ALL");
+                  setLeadScoreFilter("ALL");
+                  setInstitutionSizeFilter("ALL");
                   setSearch("");
-                  setSortBy("URGENT");
+                  setSortBy("SMART_PRIORITY");
                 }}
                 className="min-h-[38px] flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all shrink-0 ml-auto"
                 title="Reset all filters"
@@ -3565,6 +4056,146 @@ export default function CrmLeadsPage() {
             })}
           </div>
         </div>
+
+        {/* ── AI Follow-up Queue ("Whom You Must Follow Up Next") ── */}
+        {!loading && aiFollowUpQueue.length > 0 && (
+          <div className="bg-gradient-to-br from-amber-500/10 via-primary-500/10 to-indigo-500/10 border border-amber-300/80 rounded-3xl p-4 sm:p-5 shadow-xs mb-5 space-y-3.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-amber-200/60">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-sm sm:text-base font-black text-gray-900 tracking-tight">
+                      Whom You Must Follow Up Next
+                    </h3>
+                    <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-900 border border-amber-300">
+                      AI Follow-up Priority
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-600 font-medium mt-0.5">
+                    Smart prioritization of overdue tasks, untreated prospects, and high-volume deals so nothing slips through.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSmartPreset("AI_PRIORITY");
+                    setSortBy("SMART_PRIORITY");
+                  }}
+                  className="text-xs font-bold text-primary-800 hover:text-primary-900 bg-white/80 hover:bg-white border border-primary-200 px-3 py-1.5 rounded-xl transition-all shadow-2xs active:scale-95"
+                >
+                  View All Priority Queue ({smartCounts.aiPriority})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsAiQueueCollapsed((p) => !p)}
+                  className="p-1.5 text-gray-500 hover:text-gray-800 rounded-lg hover:bg-white/60 transition-all"
+                  title={isAiQueueCollapsed ? "Expand Queue" : "Collapse Queue"}
+                >
+                  {isAiQueueCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {!isAiQueueCollapsed && (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+                {aiFollowUpQueue.map(({ lead: l, priority }) => {
+                  const primaryC = l.contacts?.find((c) => c.isPrimary) || l.contacts?.[0];
+                  const cleanPhone = primaryC?.phone?.replace(/[^0-9]/g, "") || "";
+                  const waPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+
+                  return (
+                    <div
+                      key={l.id}
+                      onClick={() => selectLead(l.id)}
+                      className={cn(
+                        "bg-white/95 backdrop-blur-xs border rounded-2xl p-3.5 space-y-2.5 transition-all shadow-2xs hover:shadow-xs cursor-pointer active:scale-[0.99] flex flex-col justify-between",
+                        selectedLeadId === l.id
+                          ? "border-primary-500 ring-2 ring-primary-500/20"
+                          : "border-gray-200/90 hover:border-amber-400"
+                      )}
+                    >
+                      <div className="space-y-1.5">
+                        <div className="flex items-start justify-between gap-1.5">
+                          <span
+                            className={cn(
+                              "text-[10px] font-extrabold px-2 py-0.5 rounded-md border truncate max-w-[190px]",
+                              priority.badgeColor
+                            )}
+                          >
+                            {priority.primaryReason}
+                          </span>
+                          {renderScoreBadge(l.score)}
+                        </div>
+
+                        <div>
+                          <h4 className="text-sm font-black text-gray-900 truncate leading-snug">
+                            {l.name}
+                          </h4>
+                          <p className="text-[11px] text-gray-500 truncate">
+                            📍 {l.place || "Kerala"}{l.district ? `, ${l.district}` : ""} • {l.studentCount || 0} students
+                          </p>
+                        </div>
+
+                        {primaryC && (
+                          <p className="text-xs text-gray-700 font-semibold truncate pt-1 border-t border-gray-100">
+                            👤 {primaryC.name || "Contact"}{primaryC.phone ? ` • ${primaryC.phone}` : ""}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-1.5">
+                        {primaryC?.phone ? (
+                          <div className="flex items-center gap-1">
+                            <a
+                              href={`tel:${primaryC.phone}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-bold border border-blue-200 transition-all active:scale-95"
+                              title="Call"
+                            >
+                              <Phone className="w-3.5 h-3.5" />
+                            </a>
+                            <a
+                              href={`https://wa.me/${waPhone}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold border border-emerald-200 transition-all active:scale-95"
+                              title="WhatsApp"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5" />
+                            </a>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-gray-400 italic">No phone</span>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            selectLead(l.id);
+                            setActiveLeadTab("activity");
+                            setActiveSection("followup");
+                          }}
+                          className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition-all shadow-2xs active:scale-95 flex items-center gap-1 ml-auto"
+                        >
+                          <Clock className="w-3 h-3" />
+                          <span>Follow Up</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Loading Indicator */}
         {loading && (
@@ -3642,6 +4273,7 @@ export default function CrmLeadsPage() {
                   const cleanPhone = primaryC?.phone?.replace(/[^0-9]/g, "") || "";
                   const waPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
                   const fuStatus = getFollowUpStatus(l.nextFollowUpDate);
+                  const priority = calculateLeadSmartPriority(l);
 
                   return (
                     <div
@@ -3682,6 +4314,26 @@ export default function CrmLeadsPage() {
                             {l.district ? `, ${l.district}` : ""} • {l.studentCount || 0} students
                             {l.createdBy ? ` • by ${l.createdBy}` : ""}
                           </p>
+                          <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+                            <span
+                              className={cn(
+                                "text-[10px] font-extrabold px-2 py-0.5 rounded-md border inline-flex items-center gap-1",
+                                priority.badgeColor
+                              )}
+                            >
+                              {priority.primaryReason}
+                            </span>
+                            {priority.isUntreated && (
+                              <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200">
+                                ⚠️ Never Contacted
+                              </span>
+                            )}
+                            {priority.daysSinceLastContact > 0 && (
+                              <span className="text-[10px] font-semibold text-gray-500">
+                                Last touch: {priority.daysSinceLastContact}d ago
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
 
