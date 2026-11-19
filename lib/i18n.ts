@@ -2586,6 +2586,149 @@ const translations = {
       ml: "തിരഞ്ഞെടുപ്പൊന്നും കണ്ടെത്തിയില്ല",
     },
   },
+
+  // ── Holidays ──────────────────────────────────────────────────────────────
+  holidays: {
+    title: { en: "Holidays", ml: "അവധി ദിവസങ്ങൾ" },
+    addHoliday: { en: "Add holiday", ml: "അവധി ചേർക്കുക" },
+    editHoliday: { en: "Edit holiday", ml: "അവധി എഡിറ്റ് ചെയ്യുക" },
+    editHolidayDesc: {
+      en: "Update or remove this holiday.",
+      ml: "ഈ അവധി അപ്‌ഡേറ്റ് ചെയ്യുക അല്ലെങ്കിൽ നീക്കം ചെയ്യുക.",
+    },
+    addHolidayDesc: {
+      en: "Pick a date and give the holiday a title.",
+      ml: "തീയതി തിരഞ്ഞെടുത്ത് അവധിക്ക് ഒരു പേര് നൽകുക.",
+    },
+    weeklyHolidays: { en: "Weekly holidays", ml: "പ്രതിവാര അവധികൾ" },
+    weeklyHolidaysDesc: {
+      en: "Select the regular days when the madrasa is closed.",
+      ml: "മദ്‌റസ അടച്ചിരിക്കുന്ന സ്ഥിരം ദിവസങ്ങൾ തിരഞ്ഞെടുക്കുക.",
+    },
+    daysSelected: {
+      en: "days selected · Changes save automatically",
+      ml: "ദിവസങ്ങൾ തിരഞ്ഞെടുത്തു · മാറ്റങ്ങൾ സ്വയമേവ സേവ് ചെയ്യും",
+    },
+    daySelected: {
+      en: "day selected · Changes save automatically",
+      ml: "ദിവസം തിരഞ്ഞെടുത്തു · മാറ്റങ്ങൾ സ്വയമേവ സേവ് ചെയ്യും",
+    },
+    noWeeklySelected: {
+      en: "No weekly holidays selected · Changes save automatically",
+      ml: "പ്രതിവാര അവധികൾ തിരഞ്ഞെടുത്തിട്ടില്ല · മാറ്റങ്ങൾ സ്വയമേവ സേവ് ചെയ്യും",
+    },
+    calendar: { en: "Calendar", ml: "കലണ്ടർ" },
+    list: { en: "List", ml: "പട്ടിക" },
+    noHolidaysThisMonth: {
+      en: "No holidays this month. Tap any date to add one.",
+      ml: "ഈ മാസം അവധികളില്ല. ചേർക്കാൻ ഏതെങ്കിലും തീയതി ടാപ്പ് ചെയ്യുക.",
+    },
+    howItWorks: { en: "How it works", ml: "ഇത് എങ്ങനെ പ്രവർത്തിക്കുന്നു" },
+    howItWorksDesc: {
+      en: "Tap a date to add a holiday. Tap a highlighted date to edit it.",
+      ml: "അവധി ചേർക്കാൻ തീയതി ടാപ്പ് ചെയ്യുക. എഡിറ്റ് ചെയ്യാൻ ഹൈലൈറ്റ് ചെയ്ത തീയതി ടാപ്പ് ചെയ്യുക.",
+    },
+    holidayAllClasses: {
+      en: "Holiday (all classes)",
+      ml: "അവധി (എല്ലാ ക്ലാസുകൾക്കും)",
+    },
+    classSpecificHoliday: {
+      en: "Class-specific holiday",
+      ml: "ക്ലാസ് അനുസരിച്ചുള്ള അവധി",
+    },
+    weeklyOff: { en: "Weekly off", ml: "പ്രതിവാര അവധി" },
+    noHolidaysYet: { en: "No holidays yet", ml: "അവധികളൊന്നുമില്ല" },
+    noHolidaysDesc: {
+      en: "Add a holiday or tap a date in the calendar view.",
+      ml: "അവധി ചേർക്കുക അല്ലെങ്കിൽ കലണ്ടറിൽ ഒരു തീയതി ടാപ്പ് ചെയ്യുക.",
+    },
+    saveChanges: { en: "Save changes", ml: "മാറ്റങ്ങൾ സേവ് ചെയ്യുക" },
+    chooseDateError: {
+      en: "Choose a date for the holiday.",
+      ml: "അവധിക്ക് ഒരു തീയതി തിരഞ്ഞെടുക്കുക.",
+    },
+    enterTitleError: {
+      en: "Enter a holiday title.",
+      ml: "അവധിക്ക് ഒരു പേര് നൽകുക.",
+    },
+    duplicateAll: {
+      en: "A holiday already exists on this date for all classes.",
+      ml: "ഈ തീയതിയിൽ എല്ലാ ക്ലാസുകൾക്കും അവധി ഇതിനകം നിലവിലുണ്ട്.",
+    },
+    duplicateClasses: {
+      en: "A holiday already exists on this date for one of the selected classes.",
+      ml: "തിരഞ്ഞെടുത്ത ക്ലാസുകളിലൊന്നിന് ഈ തീയതിയിൽ അവധി ഇതിനകം നിലവിലുണ്ട്.",
+    },
+    holidayUpdated: { en: "Holiday updated", ml: "അവധി അപ്‌ഡേറ്റ് ചെയ്‌തു" },
+    holidayAdded: { en: "Holiday added", ml: "അവധി ചേർത്തു" },
+    holidayRemoved: { en: "Holiday removed", ml: "അവധി നീക്കം ചെയ്‌തു" },
+    quickPresets: { en: "Quick presets", ml: "ദ്രുത പ്രീസെറ്റുകൾ" },
+    presetRainLabel: { en: "Rain · Red Alert", ml: "മഴ · റെഡ് അലർട്ട്" },
+    presetRainTitle: { en: "Rain – Red Alert", ml: "മഴ – റെഡ് അലർട്ട്" },
+    presetRainDesc: {
+      en: "Heavy rain and a red alert have been declared in the area. The madrasa will remain closed.",
+      ml: "പ്രദേശത്ത് കനത്ത മഴയും റെഡ് അലർട്ടും പ്രഖ്യാപിച്ചു. മദ്‌റസ അടച്ചിരിക്കും.",
+    },
+    presetRangeLabel: { en: "Range Meeting", ml: "റേഞ്ച് മീറ്റിംഗ്" },
+    presetRangeTitle: { en: "Range Meeting", ml: "റേഞ്ച് മീറ്റിംഗ്" },
+    presetRangeDesc: {
+      en: "The madrasa will remain closed for the range meeting.",
+      ml: "റേഞ്ച് മീറ്റിംഗിനായി മദ്‌റസ അടച്ചിരിക്കും.",
+    },
+    presetsAria: {
+      en: "Holiday title and description presets",
+      ml: "അവധി പേരിനും വിവരണത്തിനുമുള്ള പ്രീസെറ്റുകൾ",
+    },
+    chooseDate: { en: "Choose date", ml: "തീയതി തിരഞ്ഞെടുക്കുക" },
+    chooseHolidayDate: {
+      en: "Choose holiday date",
+      ml: "അവധി തീയതി തിരഞ്ഞെടുക്കുക",
+    },
+    titleLabel: { en: "Title", ml: "പേര്" },
+    titlePlaceholder: { en: "e.g. Eid al-Fitr", ml: "ഉദാ: ഈദുൽ ഫിത്ർ" },
+    descLabel: { en: "Description (optional)", ml: "വിവരണം (ഓപ്ഷണൽ)" },
+    descPlaceholder: {
+      en: "Add a note about this holiday…",
+      ml: "ഈ അവധിയെക്കുറിച്ച് ഒരു കുറിപ്പ് ചേർക്കുക…",
+    },
+    appliesTo: { en: "Applies to", ml: "ബാധകമാകുന്നത്" },
+    allClasses: { en: "All classes", ml: "എല്ലാ ക്ലാസുകൾ" },
+    classesCount: { en: "Classes", ml: "ക്ലാസുകൾ" },
+    appliesOnlyTo: { en: "Applies only to", ml: "ബാധകമാകുന്നത് ഇവർക്ക് മാത്രം" },
+    appliesAllClasses: {
+      en: "Applies to all classes",
+      ml: "എല്ലാ ക്ലാസുകൾക്കും ബാധകമാണ്",
+    },
+    selectClasses: { en: "Select classes", ml: "ക്ലാസുകൾ തിരഞ്ഞെടുക്കുക" },
+    deleteHoliday: {
+      en: "Delete this holiday",
+      ml: "ഈ അവധി ഇല്ലാതാക്കുക",
+    },
+    saving: { en: "Saving…", ml: "സേവ് ചെയ്യുന്നു…" },
+    notSavedRetry: {
+      en: "Not saved · Retry",
+      ml: "സേവ് ചെയ്‌തിട്ടില്ല · വീണ്ടും ശ്രമിക്കുക",
+    },
+    setAcademicYearFirst: {
+      en: "Set a current academic year first",
+      ml: "ആദ്യം നിലവിലെ അക്കാദമിക് വർഷം സെറ്റ് ചെയ്യുക",
+    },
+    saveFailed: {
+      en: "Could not save holiday calendar",
+      ml: "അവധി കലണ്ടർ സേവ് ചെയ്യാനായില്ല",
+    },
+    loadFailed: {
+      en: "Could not load holidays",
+      ml: "അവധികൾ ലോഡ് ചെയ്യാനായില്ല",
+    },
+    weekdayMonday: { en: "Monday", ml: "തിങ്കളാഴ്ച" },
+    weekdayTuesday: { en: "Tuesday", ml: "ചൊവ്വാഴ്ച" },
+    weekdayWednesday: { en: "Wednesday", ml: "ബുധനാഴ്ച" },
+    weekdayThursday: { en: "Thursday", ml: "വ്യാഴാഴ്ച" },
+    weekdayFriday: { en: "Friday", ml: "വെള്ളിയാഴ്ച" },
+    weekdaySaturday: { en: "Saturday", ml: "ശനിയാഴ്ച" },
+    weekdaySunday: { en: "Sunday", ml: "ഞായറാഴ്ച" },
+  },
 } as const;
 
 // ─────────────────────────────────────────────────────────────────────────────

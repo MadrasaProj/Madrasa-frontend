@@ -75,7 +75,6 @@ export function ExamConfigForm({
   const [loading, setLoading] = useState(true);
   const [saving,  setSaving]  = useState(false);
   const [error,   setError]   = useState<string | null>(null);
-  const [msg,     setMsg]     = useState<string | null>(null);
 
   const [passedLabel,   setPassedLabel]   = useState("Passed");
   const [failedLabel,   setFailedLabel]   = useState("Failed");
@@ -131,7 +130,6 @@ export function ExamConfigForm({
   const handleSave = async () => {
     if (isSubjectMode) return;
     setSaving(true);
-    setMsg(null);
     try {
       await updateExamConfig(clientId, token, {
         passedLabel, failedLabel, promotedLabel, withheldLabel,
@@ -139,11 +137,9 @@ export function ExamConfigForm({
         defaultMaxMarks: defaultMax,
         gradeConfig: rowsToGradeConfig(gradeRows),
       });
-      setMsg("Configuration saved successfully");
       toast.success("Exam configuration saved successfully");
       onSaved?.();
     } catch (e: any) {
-      setMsg(`Error: ${e.message}`);
       toast.error(e.message || "Failed to save configuration");
     } finally {
       setSaving(false);
@@ -172,18 +168,6 @@ export function ExamConfigForm({
 
   return (
     <div className={cn("space-y-6", !embedded && "max-w-2xl mx-auto px-4 py-6")}>
-      {msg && (
-        <div className={cn(
-          "flex items-center gap-2 px-4 py-3 rounded-xl text-sm",
-          msg.startsWith("Error")
-            ? "bg-red-50 text-red-700 border border-red-100"
-            : "bg-primary-50 text-primary-700 border border-primary-100",
-        )}>
-          {msg.startsWith("Error") ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
-          {msg}
-        </div>
-      )}
-
       {isSubjectMode && (
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
           <div className="flex items-center gap-2.5 px-5 py-4 border-b border-gray-100">

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle2, School } from "lucide-react";
 import { getStudents } from "@/lib/students-api";
@@ -73,15 +74,8 @@ export function TeacherAttendanceDrawer({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
   const [confirmSave, setConfirmSave] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
-  const saveSuccessTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => () => {
-    if (saveSuccessTimer.current) clearTimeout(saveSuccessTimer.current);
-  }, []);
 
   const loadAttendance = useCallback(async (classId: string, dateStr: string, signal?: AbortSignal) => {
     if (!cid || !token || !classId) return;
@@ -148,8 +142,6 @@ export function TeacherAttendanceDrawer({
   useEffect(() => {
     if (!open) return;
     const controller = new AbortController();
-    setSaveError(null);
-    setSaveSuccess(false);
     setConfirmSave(false);
     setConfirmClear(false);
     if (activeClassId) void loadAttendance(activeClassId, date, controller.signal);
@@ -170,7 +162,6 @@ export function TeacherAttendanceDrawer({
       });
       return next;
     });
-    setSaveSuccess(false);
   };
 
   const setNotes = (studentId: string, notes: string) => {
@@ -180,7 +171,6 @@ export function TeacherAttendanceDrawer({
       if (record) next.set(studentId, { ...record, notes, dirty: true });
       return next;
     });
-    setSaveSuccess(false);
   };
 
   const setLateComing = (studentId: string, lateComing: boolean, lateComingTime?: string) => {
@@ -195,7 +185,6 @@ export function TeacherAttendanceDrawer({
       });
       return next;
     });
-    setSaveSuccess(false);
   };
 
   const markAll = (status: ActiveStatus) => {
@@ -211,7 +200,6 @@ export function TeacherAttendanceDrawer({
       });
       return next;
     });
-    setSaveSuccess(false);
   };
 
   const hasDirty = useMemo(() => [...records.values()].some((record) => record.dirty), [records]);
@@ -237,12 +225,12 @@ export function TeacherAttendanceDrawer({
   const clearAll = useCallback(async () => {
     if (!activeClassId) return;
     setSaving(true);
-    setSaveError(null);
     try {
       await bulkDeleteAttendance(cid, token, { date, classId: activeClassId });
       await Promise.all([loadAttendance(activeClassId, date), invalidateAttendance()]);
+      toast.success(t("teacherPages", "saved", lang));
     } catch (cause) {
-      setSaveError((cause as Error).message);
+      toast.error((cause as Error).message);
     } finally {
       setSaving(false);
       setConfirmClear(false);
@@ -252,7 +240,6 @@ export function TeacherAttendanceDrawer({
   const doSave = useCallback(async () => {
     if (!activeClassId || !cid || !token) return;
     setSaving(true);
-    setSaveError(null);
     try {
       const entries = [...records].flatMap(([studentId, record]) => record.status === null ? [] : [{
         studentId,
@@ -272,12 +259,10 @@ export function TeacherAttendanceDrawer({
           : {}),
         records: entries,
       });
-      setSaveSuccess(true);
-      if (saveSuccessTimer.current) clearTimeout(saveSuccessTimer.current);
-      saveSuccessTimer.current = setTimeout(() => setSaveSuccess(false), 3000);
+      toast.success(t("teacherPages", "saved", lang));
       await Promise.all([loadAttendance(activeClassId, date), invalidateAttendance()]);
     } catch (cause) {
-      setSaveError((cause as Error).message);
+      toast.error((cause as Error).message);
     } finally {
       setSaving(false);
     }
@@ -345,12 +330,6 @@ export function TeacherAttendanceDrawer({
         {classesQuery.error && (
           <ApiErrorBanner message={classesQuery.error.message} onRetry={() => { void classesQuery.refetch(); }} />
         )}
-        {saveSuccess && (
-          <p role="status" className="mb-4 flex items-center gap-1 text-sm font-semibold text-primary-600">
-            <CheckCircle2 className="size-4" />
-            {t("teacherPages", "saved", lang)}
-          </p>
-        )}
         <div aria-busy={loading || classesLoading}>
           <AttendanceEditorContent
             isOwnClass={isOwnClass}
@@ -366,7 +345,6 @@ export function TeacherAttendanceDrawer({
             clearAll={() => { void clearAll(); }}
             saving={saving}
             markAll={markAll}
-            saveError={saveError}
             loading={loading}
             error={error}
             students={students}

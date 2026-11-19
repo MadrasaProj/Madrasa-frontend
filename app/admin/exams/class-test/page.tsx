@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -149,7 +150,6 @@ export default function AdminClassTestsPage() {
   const [meLoading, setMeLoading] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [meSaving, setMeSaving] = useState(false);
-  const [meSaved, setMeSaved] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportData, setReportData] = useState<ClassReport | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
@@ -223,7 +223,6 @@ export default function AdminClassTestsPage() {
   };
 
   const loadMarkEntry = useCallback(async (exam: ExamRecord) => {
-    setMeSaved(false);
     setMeLoading(true);
     setMeError(null);
     try {
@@ -391,8 +390,9 @@ export default function AdminClassTestsPage() {
         setExams((prev) => [...prev, created]);
       }
       setShowDrawer(false);
+      toast.success(editTarget ? "Class test updated successfully" : "Class test created successfully");
     } catch (e) {
-      setSaveError((e as Error).message);
+      toast.error((e as Error).message || "Failed to save class test");
     } finally {
       setSaving(false);
     }
@@ -407,8 +407,9 @@ export default function AdminClassTestsPage() {
       setExams((prev) => prev.filter((e) => e.id !== id));
       setShowDeleteConfirm(false);
       setDeleteTarget(null);
+      toast.success("Exam deleted successfully");
     } catch (e) {
-      setError((e as Error).message);
+      toast.error((e as Error).message);
     } finally {
       setDeleting(null);
     }
@@ -428,8 +429,9 @@ export default function AdminClassTestsPage() {
       setExams((prev) =>
         prev.map((e) => (e.id === updated.id ? { ...e, ...updated } : e)),
       );
+      toast.success("Exam published successfully");
     } catch (e) {
-      setError((e as Error).message);
+      toast.error((e as Error).message);
     }
   };
 
@@ -470,14 +472,11 @@ export default function AdminClassTestsPage() {
         results: items,
       });
       await loadMarkEntry(exam);
-      setMeSaved(true);
-      setTimeout(() => {
-        setMeSaved(false);
-        if (submit) closeMarkEntry();
-      }, 1500);
+      toast.success("Marks saved successfully");
+      if (submit) setTimeout(() => closeMarkEntry(), 1500);
       return true;
     } catch (e) {
-      setMeError((e as Error).message);
+      toast.error((e as Error).message);
       return false;
     } finally {
       setMeSaving(false);
@@ -798,7 +797,7 @@ export default function AdminClassTestsPage() {
                 <Button type="button" variant="outline" size="lg" className="shrink-0 shadow-none" disabled={meSaving || meStudents.length === 0} onClick={resetScores}>Reset</Button>
                 <Button type="button" variant="outline" size="lg" className="shrink-0 shadow-none" disabled={meSaving || isLocked || hasInvalidMarks || meStudents.length === 0} onClick={() => handleMeSave(false)}>Save as Draft</Button>
                 <Button type="button" size="lg" className="shrink-0 shadow-none" disabled={meSaving || isLocked || hasInvalidMarks || meStudents.length === 0} onClick={() => handleMeSave(true)}>
-                  {meSaving ? "Saving…" : meSaved ? "Saved" : "Save"}
+                  {meSaving ? "Saving…" : "Save"}
                 </Button>
               </ButtonGroup>
             </div>
@@ -817,7 +816,6 @@ export default function AdminClassTestsPage() {
                 scores: meScores,
                 isLocked,
                 saving: meSaving,
-                saved: meSaved,
                 loading: meLoading,
                 error: meError,
                 activeExam: markEntryExam,

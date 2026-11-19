@@ -518,12 +518,6 @@ function ResultsScreen({
  </div>
  )}
 
- {imported > 0 && failed === 0 && (
- <div className="flex flex-col items-center gap-2 py-4 text-center">
- <CheckCircle2 className="w-10 h-10 text-primary-500" />
- <p className="font-semibold text-gray-800">All {entityName} imported successfully!</p>
- </div>
- )}
 
  <button
  onClick={onDone}

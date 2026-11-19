@@ -89,7 +89,6 @@ export default function AdminFeeTypesPage() {
       setNewFee({ kind: "ONE_TIME", amount: 0, isDonation: false });
       load();
     } catch (e) {
-      setCreateError((e as Error).message);
       toast.error((e as Error).message || "Failed to create fee type");
     } finally {
       setCreating(false);
@@ -124,7 +123,6 @@ export default function AdminFeeTypesPage() {
       setEditingFee(null);
       load();
     } catch (e) {
-      setEditError((e as Error).message);
       toast.error((e as Error).message || "Failed to update fee type");
     } finally {
       setUpdating(false);
@@ -141,7 +139,6 @@ export default function AdminFeeTypesPage() {
       });
       toast.success(`Generated ${res.generated} payment records${res.message ? ` — ${res.message}` : ""}`);
     } catch (e) {
-      setError((e as Error).message);
       toast.error((e as Error).message || "Failed to generate payments");
     } finally {
       setGenerating(null);
@@ -158,7 +155,6 @@ export default function AdminFeeTypesPage() {
       toast.success("Fee type deleted successfully");
       setDeleteTarget(null);
     } catch (e) {
-      setDeleteError((e as Error).message);
       toast.error((e as Error).message || "Failed to delete fee type");
     } finally {
       setDeleting(false);
@@ -227,9 +223,6 @@ export default function AdminFeeTypesPage() {
       <ResponsivePopover open={showCreate} onOpenChange={setShowCreate} title="New fee type" fullHeight>
         <div className="mx-auto w-full max-w-xl pb-5">
                 <div className="px-5 py-4 space-y-4">
-                  {createError && (
-                    <div className="bg-red-50 text-red-600 text-sm px-3 py-2 rounded-xl">{createError}</div>
-                  )}
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Name *</label>
                     <Input
@@ -333,7 +326,7 @@ export default function AdminFeeTypesPage() {
         {deleteTarget && (
           <div className="space-y-4 px-4 pb-6 pt-2 sm:px-6">
             <p className="text-sm text-gray-600">Remove <strong className="text-gray-900">{deleteTarget.name}</strong> from the active fee types?</p>
-            {deleteError && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{deleteError}</p>}
+
             <div className="flex gap-2">
               <Button type="button" variant="outline" className="flex-1" disabled={deleting} onClick={() => setDeleteTarget(null)}>Keep</Button>
               <Button type="button" variant="destructive" className="flex-1" disabled={deleting} onClick={handleDelete}><Trash2 className="size-4" /> Delete</Button>
@@ -345,9 +338,7 @@ export default function AdminFeeTypesPage() {
       <ResponsivePopover open={showEdit && editingFee !== null} onOpenChange={(open) => { if (!open) { setShowEdit(false); setEditingFee(null); } }} title={editingFee ? `Edit ${editingFee.name}` : "Edit fee type"} fullHeight>
         <div className="mx-auto w-full max-w-xl pb-5">
                 <div className="px-5 py-4 space-y-4">
-                  {editError && (
-                    <div className="bg-red-50 text-red-600 text-sm px-3 py-2 rounded-xl">{editError}</div>
-                  )}
+
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Name *</label>
                     <Input

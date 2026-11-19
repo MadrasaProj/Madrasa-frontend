@@ -1,13 +1,12 @@
 import type { Dispatch, SetStateAction } from "react";
 import { motion } from "framer-motion";
-import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DrawerSelector } from "@/components/DrawerSelector";
 import { ScrollableTabs } from "@/components/ui/ScrollableTabs";
 import { RankPoster } from "@/components/exam/RankPoster";
 import { MarklistPoster } from "@/components/exam/MarklistPoster";
 import { ResultAnnouncementPoster } from "@/components/exam/ResultAnnouncementPoster";
-import { cn } from "@/lib/utils";
 import {
   type ClassReport, type ClassReportRow, type ResultStatus, type TotalGrade,
 } from "@/lib/results-api";
@@ -67,13 +66,12 @@ export function ReportMarklistTab({ report, marklistStudId, setMarklistStudId, m
 
 // ── Report sub-tab: Final Status ────────────────────────────────────────────
 
-export function ReportStatusTab({ report, statusMap, setStatusMap, savingId, savingAll, statusMsg, onSave, onSaveAll }: {
+export function ReportStatusTab({ report, statusMap, setStatusMap, savingId, savingAll, onSave, onSaveAll }: {
   report: ClassReport;
   statusMap: Record<string, { finalStatus: ResultStatus; totalGrade?: TotalGrade | null }>;
   setStatusMap: Dispatch<SetStateAction<typeof statusMap>>;
   savingId: string | null;
   savingAll: boolean;
-  statusMsg: string | null;
   onSave: (row: ClassReportRow) => void;
   onSaveAll: () => void;
 }) {
@@ -99,15 +97,6 @@ export function ReportStatusTab({ report, statusMap, setStatusMap, savingId, sav
           Save All
         </Button>
       </div>
-      {statusMsg && (
-        <div className={cn(
-          "px-4 py-3 rounded-xl text-sm flex items-center gap-2",
-          statusMsg.startsWith("Error") ? "bg-red-50 text-red-700 border border-red-100" : "bg-primary-50 text-primary-700 border border-primary-100",
-        )}>
-          {statusMsg.startsWith("Error") ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
-          {statusMsg}
-        </div>
-      )}
       <div className="rounded-xl border border-gray-200 overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">

@@ -252,16 +252,16 @@ export default function ParentIbadahPage() {
         notes: form.notes || undefined,
         academicYearId: user?.defaultAcademicYearId ?? undefined,
       });
+      toast.success(t("parentPages", "saved", lang));
       setRecordOpen(false);
     } catch (e) {
-      // surfaced via mutation state
+      toast.error((e as Error).message || "Failed to save");
     }
   };
 
   const prayerCount = activePrayers.filter((p) => form[p] != null).length;
   const dateLabel = new Date(date).toLocaleDateString(lang === "ml" ? "ml-IN" : "en-GB", { weekday: "short", day: "numeric", month: "short" });
   const errorMessage = error instanceof Error ? error.message : null;
-  const saveError = saveMutation.error instanceof Error ? saveMutation.error.message : null;
 
   return (
     <DashboardLayout>
@@ -364,7 +364,6 @@ export default function ParentIbadahPage() {
           
           footer={
             <div className="border-t border-gray-100 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-              {saveError && <p role="alert" className="mb-2 flex items-center gap-2 text-sm text-red-600"><AlertCircle className="size-4 shrink-0" />{saveError}</p>}
               <Button type="button" size="lg" onClick={handleSave} disabled={saveMutation.isPending}>
                 {saveMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
                 {t("parentPages", "saveFor", lang)} {dateLabel}

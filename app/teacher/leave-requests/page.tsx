@@ -96,7 +96,6 @@ export default function TeacherLeaveRequestsPage() {
       queryClient.invalidateQueries({ queryKey: queryKeys.leaveRequests.all });
       loadRequests();
     } catch (e) {
-      setError((e as Error).message);
       toast.error((e as Error).message || "Failed to update leave request");
     } finally {
       setReviewingSave(false);

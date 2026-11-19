@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import {
   getGlobalMetrics,
   getDailyOperations,
@@ -74,8 +75,9 @@ export default function OperationsDashboard() {
     try {
       await runChurnCheck(accessToken);
       await loadData();
+      toast.success("CS audit completed successfully");
     } catch (e) {
-      setError("Failed to run churn diagnostic: " + (e as Error).message);
+      toast.error("Failed to run churn diagnostic: " + (e as Error).message);
       setRefreshing(false);
     }
   };

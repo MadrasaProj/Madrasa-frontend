@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
@@ -67,7 +68,6 @@ export default function AdminProfilePage() {
   const [showCon, setShowCon] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   useEffect(() => {
@@ -91,7 +91,6 @@ export default function AdminProfilePage() {
 
   const openDrawer = (tab: "account" | "security") => {
     resetForm();
-    setSuccess(null);
     setDrawerTab(tab);
     setDrawerOpen(true);
   };
@@ -125,9 +124,9 @@ export default function AdminProfilePage() {
       const result = await uploadProfilePhoto(accessToken, file);
       updateUser({ photo: result.photo, photoUrl: result.photoUrl });
       setPicPreview(result.photoUrl);
-      setSuccess("Profile picture updated successfully.");
+      toast.success("Profile picture updated successfully.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to upload photo.");
+      toast.error(err instanceof Error ? err.message : "Failed to upload photo.");
     } finally {
       setUploadingPhoto(false);
       event.target.value = "";
@@ -142,9 +141,9 @@ export default function AdminProfilePage() {
       await deleteProfilePhoto(accessToken);
       updateUser({ photo: null, photoUrl: null });
       setPicPreview(null);
-      setSuccess("Profile picture removed successfully.");
+      toast.success("Profile picture removed successfully.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to remove photo.");
+      toast.error(err instanceof Error ? err.message : "Failed to remove photo.");
     } finally {
       setUploadingPhoto(false);
     }
@@ -183,10 +182,10 @@ export default function AdminProfilePage() {
       if (dto.email !== undefined) updateUser({ email: dto.email });
       if (dto.phone !== undefined) updateUser({ phone: dto.phone, parentPhone: dto.phone });
       if (dto.address !== undefined) updateUser({ address: dto.address });
-      setSuccess(drawerTab === "security" ? "Password updated successfully." : t("parentPages", "profileUpdated", lang));
+      toast.success(drawerTab === "security" ? "Password updated successfully." : t("parentPages", "profileUpdated", lang));
       closeDrawer();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update profile.");
+      toast.error(err instanceof Error ? err.message : "Failed to update profile.");
     } finally {
       setSaving(false);
     }
@@ -219,12 +218,6 @@ export default function AdminProfilePage() {
     <DashboardLayout>
       <PageHeader title={t("nav", "profile", lang)} />
       <div className="space-y-6 pb-24 pt-6">
-        {success && (
-          <div role="status" className="flex items-center justify-between gap-2 rounded-2xl border border-primary-200 bg-primary-50 p-3 text-sm text-primary-800">
-            <span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 shrink-0" />{success}</span>
-            <Button type="button" variant="ghost" size="icon-xs" aria-label="Dismiss message" onClick={() => setSuccess(null)}><X className="h-4 w-4" /></Button>
-          </div>
-        )}
         {error && !drawerOpen && <ApiErrorBanner message={error} onRetry={() => setError(null)} />}
 
         <section className="overflow-hidden rounded-2xl bg-gradient-to-br from-white to-sky-50">

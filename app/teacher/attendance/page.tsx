@@ -140,8 +140,6 @@ export default function TeacherAttendancePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
   const [confirmSave, setConfirmSave] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -151,14 +149,6 @@ export default function TeacherAttendancePage() {
     student: ClassAttendanceSummary["students"][number];
   } | null>(null);
   const [studentDrawerOpen, setStudentDrawerOpen] = useState(false);
-
-  const saveSuccessTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(
-    () => () => {
-      if (saveSuccessTimer.current) clearTimeout(saveSuccessTimer.current);
-    },
-    [],
-  );
 
   const { activeClass: defaultClass, isLoading: activeClassLoading } = useActiveClass();
   const classesQuery = useClasses({ clientId: cid, token });
@@ -278,8 +268,6 @@ export default function TeacherAttendancePage() {
 
   useEffect(() => {
     const ac = new AbortController();
-    setSaveError(null);
-    setSaveSuccess(false);
     setConfirmSave(false);
     setConfirmClear(false);
     if (activeClassId) loadAttendance(activeClassId, date, ac.signal);
@@ -304,7 +292,6 @@ export default function TeacherAttendancePage() {
       next.set(studentId, { ...existing, status, notes: status === "PRESENT" ? "" : existing.notes, lateComing: status === "PRESENT" ? existing.lateComing : false, lateComingTime: status === "PRESENT" ? existing.lateComingTime : "", dirty: true });
       return next;
     });
-    setSaveSuccess(false);
   };
 
   const setNotes = (studentId: string, notes: string) => {
@@ -320,7 +307,6 @@ export default function TeacherAttendancePage() {
       next.set(studentId, { ...existing, notes, dirty: true });
       return next;
     });
-    setSaveSuccess(false);
   };
 
   const setLateComing = (studentId: string, lateComing: boolean, lateComingTime?: string) => {
@@ -330,7 +316,6 @@ export default function TeacherAttendancePage() {
       if (record) next.set(studentId, { ...record, lateComing, lateComingTime: lateComing ? (lateComingTime ?? record.lateComingTime) : "", dirty: true });
       return next;
     });
-    setSaveSuccess(false);
   };
 
   const clearAll = useCallback(async () => {
@@ -346,7 +331,6 @@ export default function TeacherAttendancePage() {
         queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all }),
       ]);
     } catch (e) {
-      setSaveError((e as Error).message);
       toast.error((e as Error).message || "Failed to clear attendance");
     } finally {
       setSaving(false);
@@ -361,7 +345,6 @@ export default function TeacherAttendancePage() {
         next.set(sid, { ...next.get(sid)!, status, notes: status === "PRESENT" ? "" : next.get(sid)!.notes, lateComing: false, lateComingTime: "", dirty: true });
       return next;
     });
-    setSaveSuccess(false);
   };
 
   const isOwnClass = activeClass?.classTeacherId === user?.id;
@@ -397,7 +380,6 @@ export default function TeacherAttendancePage() {
   const doSave = useCallback(async () => {
     if (!activeClassId || !cid || !token) return;
     setSaving(true);
-    setSaveError(null);
     try {
       const entries: {
         studentId: string;
@@ -436,10 +418,7 @@ export default function TeacherAttendancePage() {
         for (const [sid, rec] of next) next.set(sid, { ...rec, dirty: false });
         return next;
       });
-      setSaveSuccess(true);
       toast.success("Attendance saved successfully");
-      if (saveSuccessTimer.current) clearTimeout(saveSuccessTimer.current);
-      saveSuccessTimer.current = setTimeout(() => setSaveSuccess(false), 3000);
       await Promise.all([
         loadAttendance(activeClassId, date),
         queryClient.invalidateQueries({ queryKey: queryKeys.reports.attendanceSummary(cid) }),
@@ -447,7 +426,6 @@ export default function TeacherAttendancePage() {
         queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all }),
       ]);
     } catch (e) {
-      setSaveError((e as Error).message);
       toast.error((e as Error).message || "Failed to save attendance");
     } finally {
       setSaving(false);

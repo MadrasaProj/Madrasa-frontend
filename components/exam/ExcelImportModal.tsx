@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { toast } from "sonner";
 import { FileDown, Upload, CheckCircle2, AlertCircle, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { bulkUpsertResults, type BulkResultItem, type SubjectMeta } from "@/lib/results-api";
@@ -26,7 +27,6 @@ export function ExcelImportModal({
   const [rows, setRows]       = useState<BulkResultItem[] | null>(null);
   const [parseErr, setParseErr] = useState<string | null>(null);
   const [saving, setSaving]   = useState(false);
-  const [saved, setSaved]     = useState<number | null>(null);
 
   // ── Download sample template ──────────────────────────────────────────────
 
@@ -116,10 +116,10 @@ export function ExcelImportModal({
     setSaving(true);
     try {
       const res = await bulkUpsertResults(clientId, token, { examId, classId, accademicYearId, results: rows });
-      setSaved(res.saved);
+      toast.success(`${res.saved} records saved successfully.`);
       onSuccess(res.saved);
     } catch (err: any) {
-      setParseErr(err.message ?? "Upload failed.");
+      toast.error(err.message ?? "Upload failed.");
     } finally {
       setSaving(false);
     }
@@ -178,14 +178,6 @@ export function ExcelImportModal({
             <div className="flex gap-2 p-3 rounded-lg bg-red-50 border border-red-100 text-sm text-red-700">
               <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
               <pre className="whitespace-pre-wrap text-xs">{parseErr}</pre>
-            </div>
-          )}
-
-          {/* Success */}
-          {saved !== null && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-primary-50 border border-primary-100 text-sm text-primary-700">
-              <CheckCircle2 className="w-4 h-4" />
-              {saved} records saved successfully.
             </div>
           )}
         </div>

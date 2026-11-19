@@ -1,4 +1,5 @@
 import { DrawerSelector } from "@/components/DrawerSelector";
+import { toast } from "sonner";
 import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { HomeworkAssignmentDrawer } from "@/components/teacher/HomeworkAssignmentDrawer";
@@ -152,7 +153,7 @@ export default function TeacherHomeworkPage() {
         ...prev,
         [hwId]: Object.fromEntries(data.submissions.map((s) => [s.student!.id, s.status])),
       }));
-    } catch (e) { setError((e as Error).message); }
+    } catch (e) { toast.error((e as Error).message); }
     finally { setLoadingSubs(null); }
   };
 
@@ -172,7 +173,8 @@ export default function TeacherHomeworkPage() {
       setSubmissions((prev) => ({ ...prev, [hwId]: data }));
       setShowAssessDrawer(false);
       setAssessHw(null);
-    } catch (e) { setError((e as Error).message); }
+      toast.success("Homework submissions updated successfully");
+    } catch (e) { toast.error((e as Error).message); }
     finally { setSavingSubs(false); }
   };
 
@@ -207,7 +209,8 @@ export default function TeacherHomeworkPage() {
       });
       setShowHomeworkDrawer(false);
       await reload();
-    } catch (e) { setError((e as Error).message); }
+      toast.success("Homework assigned successfully");
+    } catch (e) { toast.error((e as Error).message); }
     finally { setCreating(false); }
   };
 
@@ -241,8 +244,9 @@ export default function TeacherHomeworkPage() {
       setShowHomeworkDrawer(false);
       setEditTarget(null);
       await reload();
+      toast.success("Homework updated successfully");
     } catch (e) {
-      setError((e as Error).message);
+      toast.error((e as Error).message);
     } finally {
       setUpdating(false);
     }
@@ -253,9 +257,10 @@ export default function TeacherHomeworkPage() {
     try {
       await deleteHomework(cid, token, id);
       await reload();
+      toast.success("Homework deleted successfully");
       return true;
     } catch (e) {
-      setError((e as Error).message);
+      toast.error((e as Error).message);
       return false;
     }
     finally { setDeletingId(null); }

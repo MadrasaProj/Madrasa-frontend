@@ -87,7 +87,6 @@ interface AttendanceEditorContentProps {
   clearAll: () => void;
   saving: boolean;
   markAll: (status: ActiveStatus) => void;
-  saveError: string | null;
   loading: boolean;
   error: string | null;
   students: { id: string; name: string; adno: string; gender?: string; photoUrl?: string | null }[];
@@ -120,7 +119,6 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
     clearAll,
     saving,
     markAll,
-    saveError,
     loading,
     error,
     students,
@@ -203,13 +201,6 @@ export function AttendanceEditorContent(props: AttendanceEditorContentProps) {
           </div>
         )}
       </AnimatePresence>
-
-      {saveError && (
-        <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl mb-4 flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          {saveError}
-        </div>
-      )}
 
       {activeClassId &&
         (loading ? (

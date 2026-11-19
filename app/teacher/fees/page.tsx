@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { IllustratedEmptyState } from "@/components/ui/IllustratedEmptyState";
@@ -533,7 +534,7 @@ export function TeacherFeesContent({ classId, feeTypeId, inlineDetails = false, 
         ? Number(donationAmount)
         : Number(p.dueAmount);
       if (!amount || amount <= 0) {
-        setError("Enter a donation amount greater than zero");
+        toast.error("Enter a donation amount greater than zero");
         return;
       }
       const paymentData = {
@@ -563,8 +564,9 @@ export function TeacherFeesContent({ classId, feeTypeId, inlineDetails = false, 
       setDonationAmount("");
       loadPayments();
       onPaymentChange?.();
+      toast.success("Payment recorded successfully");
     } catch (e) {
-      setError((e as Error).message);
+      toast.error((e as Error).message);
     } finally {
       setSaving(false);
     }
@@ -575,7 +577,7 @@ export function TeacherFeesContent({ classId, feeTypeId, inlineDetails = false, 
     try {
       setReceipt(await getPaymentReceipt(cid, token, id));
     } catch (e) {
-      setError((e as Error).message);
+      toast.error((e as Error).message);
     } finally {
       setLoadingReceipt(null);
     }
@@ -628,8 +630,9 @@ export function TeacherFeesContent({ classId, feeTypeId, inlineDetails = false, 
             : payment;
         }),
       );
+      toast.success("Payment cancelled successfully");
     } catch (e) {
-      setError((e as Error).message);
+      toast.error((e as Error).message);
     } finally {
       setCancellingSave(false);
     }
@@ -642,8 +645,9 @@ export function TeacherFeesContent({ classId, feeTypeId, inlineDetails = false, 
       setSelectedPayment(null);
       loadPayments();
       onPaymentChange?.();
+      toast.success("Payment restored successfully");
     } catch (e) {
-      setError((e as Error).message);
+      toast.error((e as Error).message);
     } finally {
       setCancellingSave(false);
     }
@@ -652,15 +656,14 @@ export function TeacherFeesContent({ classId, feeTypeId, inlineDetails = false, 
   const adjustFee = async (p: FeePayment) => {
     const amount = Number(adjustAmount);
     if (!Number.isFinite(amount) || amount < 0) {
-      setError("Enter a valid fee amount");
+      toast.error("Enter a valid fee amount");
       return;
     }
     if (amount < Number(p.paidAmount ?? 0)) {
-      setError("Adjusted fee cannot be less than the amount already paid");
+      toast.error("Adjusted fee cannot be less than the amount already paid");
       return;
     }
     setCancellingSave(true);
-    setError(null);
     try {
       if (p.virtual) {
         await recordPayment(cid, token, {
@@ -680,8 +683,9 @@ export function TeacherFeesContent({ classId, feeTypeId, inlineDetails = false, 
       setSelectedPayment(null);
       await loadPayments();
       onPaymentChange?.();
+      toast.success("Fee adjusted successfully");
     } catch (e) {
-      setError((e as Error).message);
+      toast.error((e as Error).message);
     } finally {
       setCancellingSave(false);
     }
@@ -689,7 +693,6 @@ export function TeacherFeesContent({ classId, feeTypeId, inlineDetails = false, 
 
   const paymentFooter = selectedPayment ? (
     <div className="border-t bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-      {error && <p role="alert" className="mb-3 text-sm text-red-700">{error}</p>}
       {selectedPayment.status === "WAIVED" ? (
         <Button
           type="button"

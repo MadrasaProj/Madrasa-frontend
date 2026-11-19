@@ -1,4 +1,5 @@
 import { REQUEST_REASON_SCHEMA as REASON_CONFIG, getRequestConfigSummary } from "@/lib/request-reasons";
+import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -67,11 +68,16 @@ export default function AdminLeaveRequestsPage() {
         status,
         reviewNote: reviewNote || undefined,
       });
+      toast.success(
+        status === "APPROVED"
+          ? "Leave request approved"
+          : "Leave request rejected",
+      );
       setSelectedRequest(null);
       setReviewNote("");
       loadRequests();
     } catch (e) {
-      setError((e as Error).message);
+      toast.error((e as Error).message || "Failed to update leave request");
     } finally {
       setReviewingSave(false);
     }

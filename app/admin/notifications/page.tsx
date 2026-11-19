@@ -245,7 +245,6 @@ export default function AdminNotificationsPage() {
         }
       >
         <div className="space-y-5 px-5 pb-6 pt-2">
-          {sendError && <p role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{sendError}</p>}
           <div className="space-y-1.5">
             <label htmlFor="notification-title" className="text-xs font-semibold text-gray-600">Title *</label>
             <Input id="notification-title" size="lg" value={cTitle} onChange={(event) => setCTitle(event.target.value)} placeholder="Notification title" />

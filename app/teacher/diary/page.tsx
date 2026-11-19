@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
@@ -7,7 +8,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DatePickerDrawer } from "@/components/DatePickerDrawer";
-import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
   upsertDiary, updateDiary, deleteDiary,
@@ -205,10 +205,7 @@ export default function TeacherDiaryPage() {
   const entries = (diaryData ?? []).filter((entry) => entry.classId === activeClassId);
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [customError, setCustomError] = useState<string | null>(null);
   const loading = loadingDiary || saving;
-  const error = customError;
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Drawer state
@@ -387,11 +384,10 @@ export default function TeacherDiaryPage() {
           academicYearId: user?.defaultAcademicYearId ?? undefined,
         });
       }
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      toast.success(t("teacherPages", "savedExcl", lang));
       closeDrawer();
       qc.invalidateQueries({ queryKey: queryKeys.diary.all });
-    } catch (e) { setCustomError((e as Error).message); }
+    } catch (e) { toast.error((e as Error).message); }
     finally { setSaving(false); }
   };
 
@@ -400,7 +396,7 @@ export default function TeacherDiaryPage() {
     try {
       await deleteDiary(cid, token, id);
       qc.invalidateQueries({ queryKey: queryKeys.diary.all });
-    } catch (e) { setCustomError((e as Error).message); }
+    } catch (e) { toast.error((e as Error).message); }
     finally { setDeletingId(null); }
   };
 
@@ -425,13 +421,6 @@ export default function TeacherDiaryPage() {
             </Button>
           )}
         />
-
-      {error && (
-        <ApiErrorBanner
-          message={error}
-          onRetry={() => qc.invalidateQueries({ queryKey: queryKeys.diary.all })}
-        />
-      )}
 
       {loading ? (
         <div className="space-y-3">
@@ -483,13 +472,9 @@ export default function TeacherDiaryPage() {
               size="lg"
               onClick={handleSave}
               disabled={saving || !title.trim() || !content.trim()}
-              className={cn(
-                "w-full rounded-xl",
-                saved ? "bg-primary-100 text-primary-700" : "bg-primary-600 text-white hover:bg-primary-700",
-              )}
+              className="w-full rounded-xl bg-primary-600 text-white hover:bg-primary-700"
             >
               {saving ? <Loader2 className="w-5 h-5 animate-spin" /> :
-               saved  ? <><CheckCircle2 className="w-5 h-5" /> {t("teacherPages", "savedExcl", lang)}</> :
                          <><Save className="w-5 h-5" /> {editingEntry ? t("teacherPages", "updateEntryBtn", lang) : t("teacherPages", "postEntryBtn", lang)}</>}
             </Button>
           </div>

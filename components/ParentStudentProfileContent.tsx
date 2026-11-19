@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { ParentStudentSwitcher } from "@/components/ParentStudentSwitcher";
 import { Button } from "@/components/ui/button";
@@ -49,8 +50,6 @@ export function ParentStudentProfileContent({
     emergencyContactPhone: "",
     medicalNotes: "",
   });
-  const [editError, setEditError] = useState("");
-  const [success, setSuccess] = useState("");
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
@@ -90,8 +89,6 @@ export function ParentStudentProfileContent({
       emergencyContactPhone: student.emergencyContactPhone ?? "",
       medicalNotes: student.medicalNotes ?? "",
     });
-    setEditError("");
-    setSuccess("");
     setShowEdit(true);
   };
 
@@ -104,10 +101,9 @@ export function ParentStudentProfileContent({
     try {
       await updateMutation.mutateAsync({ studentId: student.id, data: payload });
       setShowEdit(false);
-      setSuccess(t("parentPages", "profileUpdated", lang));
-      setTimeout(() => setSuccess(""), 3000);
+      toast.success(t("parentPages", "profileUpdated", lang));
     } catch (e: any) {
-      setEditError(e?.message ?? "Failed to update");
+      toast.error(e?.message ?? "Failed to update");
     }
   };
 
@@ -116,10 +112,9 @@ export function ParentStudentProfileContent({
     try {
       await photoMutation.mutateAsync({ studentId: student.id, file });
       setAvatarPreview(null);
-      setSuccess(t("parentPages", "photoUpdated", lang));
-      setTimeout(() => setSuccess(""), 3000);
+      toast.success(t("parentPages", "photoUpdated", lang));
     } catch (e: any) {
-      setEditError(e?.message ?? "Photo upload failed");
+      toast.error(e?.message ?? "Photo upload failed");
     }
   };
 
@@ -159,12 +154,6 @@ export function ParentStudentProfileContent({
 
   return (
     <div className="">
-      {success && (
-        <div className="mb-4 p-3 bg-primary-50 border border-primary-200 rounded-xl flex items-center gap-2 text-xs text-primary-700">
-          <CheckCircle className="w-4 h-4 shrink-0" /> {success}
-        </div>
-      )}
-
       {/* Active student */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}
@@ -344,12 +333,6 @@ export function ParentStudentProfileContent({
         }
       >
         <div className="space-y-6 pb-4">
-          {editError && (
-            <div role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
-              {editError}
-            </div>
-          )}
-
           <section>
             <p className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-700">
               {t("parentPages", "photoSection", lang)}

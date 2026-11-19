@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ResponsivePopover } from "@/components/ui/responsivePopover";
@@ -13,7 +14,7 @@ import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Loader2, CheckCircle, AlertCircle, Phone, Mail,
   KeyRound, Eye, EyeOff,
@@ -150,7 +151,6 @@ export default function ProfilePage({ config, layout }: ProfilePageProps) {
 
   // UI state
   const [saving, setSaving] = useState(false);
-  const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerTab, setDrawerTab] = useState<"account" | "security">("account");
@@ -181,7 +181,6 @@ export default function ProfilePage({ config, layout }: ProfilePageProps) {
   const openDrawer = (tab: "account" | "security" = "account") => {
     resetForm();
     setDrawerTab(tab);
-    setSuccess("");
     setDrawerOpen(true);
   };
 
@@ -251,13 +250,13 @@ export default function ProfilePage({ config, layout }: ProfilePageProps) {
       if (dto.phone !== undefined) updateUser({ phone: cleanPhone || undefined, parentPhone: cleanPhone || undefined });
       if (dto.address !== undefined) updateUser({ address: address.trim() || undefined });
       if (dto.msrId !== undefined) updateUser({ msrId: msrId.trim() || undefined });
-      setSuccess(t("parentPages", "profileUpdated", lang));
+      toast.success(t("parentPages", "profileUpdated", lang));
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
       setTimeout(() => closeDrawer(), 600);
     } catch (e: any) {
-      setError(e?.message ?? "Failed to update profile.");
+      toast.error(e?.message ?? "Failed to update profile.");
     } finally {
       setSaving(false);
     }
@@ -274,8 +273,9 @@ export default function ProfilePage({ config, layout }: ProfilePageProps) {
       const result = await uploadProfilePhoto(accessToken!, file);
       updateUser({ photo: result.photo, photoUrl: result.photoUrl });
       setPicPreview(result.photoUrl);
+      toast.success("Profile picture updated successfully.");
     } catch (err: any) {
-      setError(err?.message ?? "Failed to upload photo");
+      toast.error(err?.message ?? "Failed to upload photo");
     } finally {
       setUploadingPhoto(false);
     }
@@ -288,8 +288,9 @@ export default function ProfilePage({ config, layout }: ProfilePageProps) {
       await deleteProfilePhoto(accessToken!);
       updateUser({ photo: null, photoUrl: null });
       setPicPreview(null);
+      toast.success("Profile picture removed successfully.");
     } catch (err: any) {
-      setError(err?.message ?? "Failed to remove photo");
+      toast.error(err?.message ?? "Failed to remove photo");
     } finally {
       setUploadingPhoto(false);
     }
@@ -322,17 +323,6 @@ export default function ProfilePage({ config, layout }: ProfilePageProps) {
   return (
     <DashboardLayout>
       <PageHeader title={t("nav", "profile", lang)} />
-
-      <AnimatePresence>
-        {success && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-            className="mb-4 p-3 bg-primary-50 border border-primary-200 rounded-2xl flex items-center gap-2 text-sm text-primary-700"
-          >
-            <CheckCircle className="w-4 h-4 shrink-0" /> {success}
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {compactLayout ? (
         <div className="pt-6 pb-24">

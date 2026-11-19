@@ -5,7 +5,14 @@ const API_BASE = `${API_ORIGIN}${import.meta.env.VITE_API_BASE_PATH ?? '/api/v2'
 
 export const WEEKDAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'] as const;
 export type Weekday = typeof WEEKDAYS[number];
-export interface HolidayEntry { date: string; title: string; desc?: string }
+export interface HolidayEntry {
+  id?: string;
+  date: string;
+  title: string;
+  desc?: string;
+  /** Class ids this holiday applies to. Omitted/empty means it applies to all classes. */
+  classes?: string[];
+}
 export interface HolidayCalendar { id?: string; clientId: string; academicYearId: string; holidays: HolidayEntry[]; weeklyHolidays: Weekday[] }
 
 export const getHolidayCalendar = (clientId: string, token: string, academicYearId: string, signal?: AbortSignal) =>

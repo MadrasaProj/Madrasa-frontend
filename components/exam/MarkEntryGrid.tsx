@@ -45,7 +45,6 @@ export interface MarkEntryGridProps {
   remarks?: Record<string, string>;
   isLocked: boolean;
   saving: boolean;
-  saved: boolean;
   error: string | null;
   loading?: boolean;
   activeExam?: ExamRecord | null;
@@ -83,7 +82,6 @@ export function   MarkEntryGrid({
   remarks = {},
   isLocked,
   saving,
-  saved,
   error,
   loading = false,
   activeExam,
@@ -505,12 +503,10 @@ export function   MarkEntryGrid({
               >
                 {saving ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : saved ? (
-                  <CheckCircle2 className="w-3.5 h-3.5" />
                 ) : (
                   <Save className="w-3.5 h-3.5" />
                 )}
-                {saved ? "Saved" : "Save Marks"}
+                Save Marks
               </button>
             </div>}
           </div>

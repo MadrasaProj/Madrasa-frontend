@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -83,7 +84,6 @@ export default function TeacherExamsPage() {
   const [entryError, setEntryError] = useState<string | null>(null);
   const entryRequestRef = useRef(0);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [classSubjects, setClassSubjects] = useState<SubjectRecord[]>([]);
@@ -302,11 +302,10 @@ export default function TeacherExamsPage() {
       });
 
       await loadExamData();
-      setSaved(true);
-      setTimeout(() => setSaved(false), 1500);
+      toast.success("Marks saved successfully");
       return true;
     } catch (e: any) {
-      setEntryError(e.message ?? t("teacherPages", "saveFailedMsg", lang));
+      toast.error(e.message ?? t("teacherPages", "saveFailedMsg", lang));
       return false;
     } finally {
       setSaving(false);
@@ -636,7 +635,6 @@ export default function TeacherExamsPage() {
               className={teacherClasses.find((cls) => cls.id === queryClassId)?.name ?? "Class"}
               lang={lang}
               saving={saving}
-              saved={saved}
               isLocked={isLocked}
               hasEnteredScores={students.some((student) => scores[student.id] !== "" && scores[student.id] !== undefined)}
               saveDisabled={entryLoading || subjectLoading || saving || isLocked || hasInvalidMarks || students.length === 0}
@@ -665,7 +663,6 @@ export default function TeacherExamsPage() {
                 remarks,
                 isLocked,
                 saving,
-                saved,
                 loading: entryLoading || subjectLoading,
                 error: entryError,
                 activeExam,

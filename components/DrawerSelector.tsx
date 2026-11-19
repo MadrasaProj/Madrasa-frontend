@@ -28,6 +28,8 @@ interface DrawerSelectorBaseProps {
   triggerIcon?: ReactNode;
   disabled?: boolean;
   className?: string;
+  /** Extra classes for the drawer/popover panel. */
+  panelClassName?: string;
   optionClassName?: string;
   /** Custom content for each option; the selector keeps selection and keyboard behavior. */
   renderOption?: (option: DrawerSelectorOption, selected: boolean) => ReactNode;
@@ -68,6 +70,7 @@ export function DrawerSelector({
   triggerIcon,
   disabled = false,
   className,
+  panelClassName,
   optionClassName,
   renderOption,
 }: DrawerSelectorProps) {
@@ -138,8 +141,7 @@ export function DrawerSelector({
         title={title}
         description={description}
         showCloseButton={showCloseButton}
-        className="mx-auto w-full max-w-lg rounded-t-2xl"
-        
+        className={cn("mx-auto w-full max-w-lg rounded-t-2xl", panelClassName)}
       >
         {children != null && (title || description) && (
           <div className="hidden px-4 pt-4 md:block">

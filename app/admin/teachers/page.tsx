@@ -107,7 +107,6 @@ export default function AdminTeachersPage() {
   const [fPhotoUrl, setFPhotoUrl] = useState<string | null>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState("");
  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
  const [deleting, setDeleting] = useState(false);
 
@@ -162,7 +161,7 @@ export default function AdminTeachersPage() {
   setFDateOfBirth(""); setFBloodGroup(""); setFGender("");
   setFEmergencyName(""); setFEmergencyPhone("");
   setFPhotoUrl(null);
-  setSaveError(""); setShowPw(false); setShowNewPw(false);
+  setShowPw(false); setShowNewPw(false);
   setAllClasses([]); setAllSubjects([]); setAssignError("");
   setSubjectSearch(""); setExpandedGroups(new Set());
   setShowDeleteConfirm(false); setDeleting(false);
@@ -170,7 +169,6 @@ export default function AdminTeachersPage() {
   const handleDelete = async () => {
     if (!editTarget || !cid || !token) return;
     setDeleting(true);
-    setSaveError("");
     try {
       await deleteTeacher(cid, token, editTarget.id);
       toast.success("Teacher deleted successfully");
@@ -180,7 +178,6 @@ export default function AdminTeachersPage() {
       setPage(1);
       load(search, 1, DEFAULT_PAGE_SIZE, sortBy, sortDir);
     } catch (e) {
-      setSaveError((e as Error).message);
       toast.error((e as Error).message || "Failed to delete teacher");
       setShowDeleteConfirm(false);
     } finally {
@@ -205,7 +202,7 @@ export default function AdminTeachersPage() {
    setFStatus((t.status as "ACTIVE" | "INACTIVE") ?? "ACTIVE");
    setFClassIds(new Set(t.classes?.map((c) => c.id) ?? []));
    setFSubjectIds(teacherSubjectIds);
-   setSaveError(""); setShowPw(false); setShowNewPw(false);
+   setShowPw(false); setShowNewPw(false);
    setAllClasses([]); setAllSubjects([]); setAssignError("");
    setSubjectSearch(""); setExpandedGroups(new Set());
    setShowDrawer(true);
@@ -248,7 +245,7 @@ export default function AdminTeachersPage() {
   // ── Save (single call for everything) ─────────────────────────────────────
   const handleSave = async () => {
   if (!fName.trim() || !fUsername.trim() || (!editTarget && !fPassword)) return;
-  setSaveError(""); setSaving(true);
+  setSaving(true);
   try {
   if (editTarget) {
   const payload: UpdateTeacherPayload = {
@@ -297,7 +294,6 @@ export default function AdminTeachersPage() {
   setPage(1);
   load(search, 1, DEFAULT_PAGE_SIZE, sortBy, sortDir);
   } catch (e) {
-  setSaveError((e as Error).message);
   toast.error((e as Error).message || "Failed to save teacher");
   } finally {
   setSaving(false);
@@ -313,7 +309,6 @@ export default function AdminTeachersPage() {
     setFPhotoUrl(res.photoUrl);
     toast.success("Photo uploaded successfully");
    } catch (err) {
-    setSaveError((err as Error).message);
     toast.error((err as Error).message || "Failed to upload photo");
    } finally {
     setPhotoUploading(false);
@@ -328,7 +323,6 @@ export default function AdminTeachersPage() {
     setFPhotoUrl(null);
     toast.success("Photo removed successfully");
    } catch (err) {
-    setSaveError((err as Error).message);
     toast.error((err as Error).message || "Failed to remove photo");
    } finally {
     setPhotoUploading(false);
@@ -620,10 +614,6 @@ export default function AdminTeachersPage() {
    >
  {/* Scrollable body */}
  <div className="space-y-4 px-5 py-4 pb-8">
- {saveError && (
- <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl">{saveError}</div>
- )}
-
  {/* ── Basic fields ── */}
  <div>
  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Full Name *</label>
