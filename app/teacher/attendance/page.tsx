@@ -20,6 +20,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronRight,
   School,
   UserCheck,
   X,
@@ -131,6 +132,8 @@ export default function TeacherAttendancePage() {
   const token = accessToken ?? "";
 
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerDate, setDrawerDate] = useState<string | undefined>(undefined);
+  const [drawerDays, setDrawerDays] = useState<string[] | undefined>(undefined);
   const [date, setDate] = useState(todayISO());
   const [students, setStudents] = useState<
     { id: string; name: string; adno: string; gender?: string; photoUrl?: string | null }[]
@@ -169,6 +172,18 @@ export default function TeacherAttendancePage() {
     overall?.byStatus.find((entry) => entry.status === "ABSENT")?._count.id ?? 0;
   const overallRate = Math.max(0, Math.min(100, overall?.rate ?? 0));
   const overallOther = Math.max(0, (overall?.total ?? 0) - (overall?.present ?? 0) - overallAbsent);
+  // Working days on which attendance has not been taken for this class yet.
+  const pendingDates = useMemo(() => {
+    const marked = new Set(overall?.markedDates ?? []);
+    return (overall?.workingDates ?? []).filter((date) => !marked.has(date));
+  }, [overall?.workingDates, overall?.markedDates]);
+  const pendingDays = pendingDates.length;
+
+  const openAttendanceDrawer = useCallback((date?: string, days?: string[]) => {
+    setDrawerDays(days);
+    setDrawerDate(days ? undefined : date ?? todayISO());
+    setDrawerOpen(true);
+  }, []);
 
   // Load students + existing attendance whenever class or date changes
   const loadAttendance = useCallback(
@@ -471,7 +486,7 @@ export default function TeacherAttendancePage() {
            
         backHref="/teacher"
         action={!drawerOpen && (
-          <Button className="hidden lg:inline-flex" onClick={() => setDrawerOpen(true)}>
+          <Button className="hidden lg:inline-flex" onClick={() => openAttendanceDrawer()}>
             <UserCheck aria-hidden="true" className="size-4" />
             {t("teacherPages", "markAttendanceDesc", lang)}
           </Button>
@@ -487,7 +502,8 @@ export default function TeacherAttendancePage() {
             <div className="space-y-4 bg-white/90 p-5" aria-busy="true">
               <Skeleton className="mx-auto h-24 w-full max-w-52 rounded-t-full sm:h-28 sm:max-w-56" />
               <Skeleton className="mx-auto h-3 w-48" />
-              <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4">
+              <div className="grid grid-cols-3 gap-3 border-t border-gray-100 pt-4">
+                <Skeleton className="h-10 w-full" />
                 <Skeleton className="h-10 w-full" />
                 <Skeleton className="h-10 w-full" />
               </div>
@@ -521,14 +537,20 @@ export default function TeacherAttendancePage() {
                   <span><span className="mr-1 inline-block size-2 rounded-full bg-amber-500" />{t("teacherPages", "otherAttendance", lang)}</span>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-px border-t border-gray-100 bg-gray-100">
-                <div className="bg-white/90 p-3 sm:p-4">
-                  <p className="text-sm font-medium text-gray-600">{t("teacherPages", "attendanceTotalDays", lang)}</p>
-                  <strong className="mt-0 block text-2xl font-semibold tabular-nums text-gray-950">{overall?.totalWorkingDaytillToday ?? "—"}</strong>
+              <div className="grid grid-cols-3 gap-px border-t border-gray-100 bg-gray-100">
+                <div className="bg-white/90 p-2.5 sm:p-4">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">{t("teacherPages", "attendanceTotalDays", lang)}</p>
+                  <strong className="mt-0 block text-xl sm:text-2xl font-semibold tabular-nums text-gray-950">{overall?.totalWorkingDaytillToday ?? "—"}</strong>
                 </div>
-                <div className="bg-white/90 p-3 sm:p-4">
-                  <p className="text-sm font-medium text-gray-600">{t("teacherPages", "attendanceAverage", lang)}</p>
-                  <strong className="mt-0 block text-2xl font-semibold tabular-nums text-gray-950">{overallRate}%</strong>
+                <div className="bg-white/90 p-2.5 sm:p-4">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">{t("teacherPages", "attendancePendingDays", lang)}</p>
+                  <strong className={`mt-0 block text-xl sm:text-2xl font-semibold tabular-nums ${pendingDays > 0 ? "text-amber-600" : "text-gray-950"}`}>
+                    {pendingDays}
+                  </strong>
+                </div>
+                <div className="bg-white/90 p-2.5 sm:p-4">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">{t("teacherPages", "attendanceAverage", lang)}</p>
+                  <strong className="mt-0 block text-xl sm:text-2xl font-semibold tabular-nums text-gray-950">{overallRate}%</strong>
                 </div>
               </div>
             </div>
@@ -599,6 +621,38 @@ export default function TeacherAttendancePage() {
             </div>
           )}
         </section>
+
+        {pendingDays > 0 && (
+          <section
+            aria-labelledby="pending-attendance-card-heading"
+            role="button"
+            tabIndex={0}
+            onClick={() => openAttendanceDrawer(undefined, pendingDates)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                openAttendanceDrawer(undefined, pendingDates);
+              }
+            }}
+            className="mt-4 flex cursor-pointer items-center gap-3 rounded-2xl bg-linear-120 from-white via-amber-50 border-2 border-white to-white p-3 shadow-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 sm:gap-4 sm:p-4"
+          >
+            <img
+              src="/imgs/attendance/attendance-checklist.png"
+              alt=""
+              className="size-14 shrink-0 object-contain sm:size-16"
+              loading="lazy"
+            />
+            <div className="min-w-0 flex-1">
+              <h2 id="pending-attendance-card-heading" className="text-sm font-bold text-gray-950 sm:text-base">
+                {t("teacherPages", "attendancePendingDays", lang)}
+              </h2>
+              <p className="mt-0.5 text-xs text-gray-600 sm:text-sm">
+                {t("teacherPages", "attendancePendingCardDesc", lang).replace("{count}", String(pendingDays))}
+              </p>
+            </div>
+            <ChevronRight aria-hidden="true" className="size-5 shrink-0 text-amber-600" />
+          </section>
+        )}
       </div>
 
       {selectedStudent?.classId === activeClassId && (
@@ -615,7 +669,7 @@ export default function TeacherAttendancePage() {
 
       {!drawerOpen && (
         <div className="fixed bottom-[92px] left-1/2 z-40 w-max -translate-x-1/2 p-0! lg:hidden">
-          <Button type="button" size="lg" className="w-max gap-2 rounded-full shadow-lg shadow-primary-900/20" onClick={() => setDrawerOpen(true)}>
+          <Button type="button" size="lg" className="w-max gap-2 rounded-full shadow-lg shadow-primary-900/20" onClick={() => openAttendanceDrawer()}>
             <UserCheck aria-hidden="true" className="size-4" />
             {t("teacherPages", "markAttendanceDesc", lang)}
           </Button>
@@ -623,9 +677,12 @@ export default function TeacherAttendancePage() {
       )}
 
        <TeacherAttendanceDrawer
+                key={drawerDays ? "pending" : drawerDate ?? "default"}
                 open={drawerOpen}
                 onOpenChange={setDrawerOpen}
                 initialClassId={activeClassId}
+                initialDate={drawerDate}
+                days={drawerDays}
               />
       {showImport && (
         <AttendanceImportModal

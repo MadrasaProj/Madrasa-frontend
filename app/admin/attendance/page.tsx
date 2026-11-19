@@ -111,14 +111,17 @@ export default function AdminAttendancePage() {
     // intersected with the selected range — not from marked dates only.
     const from = range.from === "ALL" ? "" : range.from.slice(0, 10);
     const to = range.to === "ALL" ? "" : range.to.slice(0, 10);
-    const totalDays = (overall?.workingDates ?? []).filter(
+    const marked = new Set(overall?.markedDates ?? []);
+    const workingDatesInRange = (overall?.workingDates ?? []).filter(
       (date) => (!from || date >= from) && (!to || date <= to),
-    ).length;
+    );
+    const totalDays = workingDatesInRange.length;
+    const pendingDays = workingDatesInRange.filter((date) => !marked.has(date)).length;
     return {
-      total, present, absent, other: total - present - absent, totalDays,
+      total, present, absent, other: total - present - absent, totalDays, pendingDays,
       rate: totalDays > 0 ? Math.min(100, Math.round((present / totalDays) * 100)) : 0,
     };
-  }, [rangeRecords, range.from, range.to, overall?.workingDates]);
+  }, [rangeRecords, range.from, range.to, overall?.workingDates, overall?.markedDates]);
 
   useEffect(() => {
     if (!cid || !token || !activeClassId) {
@@ -503,8 +506,8 @@ export default function AdminAttendancePage() {
             <div className="space-y-4 bg-white/90 p-5" aria-busy="true">
               <Skeleton className="mx-auto h-24 w-full max-w-52 rounded-t-full" />
               <Skeleton className="mx-auto h-3 w-48" />
-              <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4">
-                <Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" />
+              <div className="grid grid-cols-3 gap-3 border-t border-gray-100 pt-4">
+                <Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" />
               </div>
             </div>
           ) : classesQuery.isError || rangeError ? (
@@ -532,14 +535,20 @@ export default function AdminAttendancePage() {
                   <span><span className="mr-1 inline-block size-2 rounded-full bg-amber-500" />{t("teacherPages", "otherAttendance", lang)}</span>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-px border-t border-gray-100 bg-gray-100">
+              <div className="grid grid-cols-3 gap-px border-t border-gray-100 bg-gray-100">
                 <div className="bg-white/90 p-2.5 sm:p-3">
-                  <p className="text-sm font-medium text-gray-600">{t("teacherPages", "attendanceTotalDays", lang)}</p>
-                  <strong className="block text-2xl font-semibold tabular-nums text-gray-950">{rangeTotals.totalDays}</strong>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">{t("teacherPages", "attendanceTotalDays", lang)}</p>
+                  <strong className="block text-xl sm:text-2xl font-semibold tabular-nums text-gray-950">{rangeTotals.totalDays}</strong>
                 </div>
                 <div className="bg-white/90 p-2.5 sm:p-3">
-                  <p className="text-sm font-medium text-gray-600">{t("teacherPages", "attendanceAverage", lang)}</p>
-                  <strong className="block text-2xl font-semibold tabular-nums text-gray-950">{rangeTotals.rate}%</strong>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">{t("teacherPages", "attendancePendingDays", lang)}</p>
+                  <strong className={`block text-xl sm:text-2xl font-semibold tabular-nums ${rangeTotals.pendingDays > 0 ? "text-amber-600" : "text-gray-950"}`}>
+                    {rangeTotals.pendingDays}
+                  </strong>
+                </div>
+                <div className="bg-white/90 p-2.5 sm:p-3">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">{t("teacherPages", "attendanceAverage", lang)}</p>
+                  <strong className="block text-xl sm:text-2xl font-semibold tabular-nums text-gray-950">{rangeTotals.rate}%</strong>
                 </div>
               </div>
             </div>

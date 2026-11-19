@@ -1,10 +1,10 @@
-import { useQueries } from "@tanstack/react-query";
+import { useQuery, useQueries } from "@tanstack/react-query";
 import {
   ClassProgressOverview,
   type ClassProgress,
 } from "@/components/admin/ClassProgressOverview";
 import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
-import { getClassAttendance } from "@/lib/attendance-api";
+import { getClassAttendance, getWorkingDates } from "@/lib/attendance-api";
 import type { ClassRecord } from "@/lib/classes-api";
 import { queryKeys } from "@/lib/queryKeys";
 
@@ -69,6 +69,32 @@ export function AttendanceOverview({
       },
     })),
   });
+  const workingDatesQuery = useQuery({
+    queryKey: [
+      ...queryKeys.attendance.all,
+      "working-days",
+      clientId,
+      academicYearId,
+      date ?? range,
+    ],
+    enabled: !!clientId && !!token,
+    staleTime: 60_000,
+    queryFn: ({ signal }: { signal: AbortSignal }) =>
+      getWorkingDates(
+        clientId,
+        token,
+        {
+          academicYearId: academicYearId ?? undefined,
+          ...(date
+            ? { from: date, to: date }
+            : range.from === "ALL"
+              ? {}
+              : { from: range.from, to: range.to }),
+        },
+        signal,
+      ),
+  });
+  const workingDates = workingDatesQuery.data?.workingDates ?? [];
   const failed = queries.filter((query) => query.isError);
   if (failed.length)
     return (
@@ -83,24 +109,29 @@ export function AttendanceOverview({
         }}
       />
     );
-  const progress: ClassProgress[] = queries.flatMap((query, index) =>
-    query.data
-      ? [
+  const progress: ClassProgress[] = queries.flatMap((query, index) => {
+    if (!query.data) return [];
+    const recordedDays = new Set(query.data.days);
+    return [
+      {
+        classId: classes[index].id,
+        completed: query.data.present,
+        total: query.data.present + query.data.absent + query.data.other,
+        metrics: [
+          { label: "Present", value: query.data.present },
+          { label: "Absent", value: query.data.absent },
+          { label: "Other statuses", value: query.data.other },
+          { label: "Days recorded", value: query.data.days.length },
           {
-            classId: classes[index].id,
-            completed: query.data.present,
-            total: query.data.present + query.data.absent + query.data.other,
-            metrics: [
-              { label: "Present", value: query.data.present },
-              { label: "Absent", value: query.data.absent },
-              { label: "Other statuses", value: query.data.other },
-              { label: "Days recorded", value: query.data.days.length },
-            ],
+            label: "Pending attendance",
+            value: workingDates.filter((day) => !recordedDays.has(day)).length,
           },
-        ]
-      : [],
-  );
+        ],
+      },
+    ];
+  });
   const allDays = new Set(queries.flatMap((query) => query.data?.days ?? []));
+  const pendingDays = workingDates.filter((day) => !allDays.has(day)).length;
   return (
     <ClassProgressOverview
       classes={classes}
@@ -124,6 +155,7 @@ export function AttendanceOverview({
           value: progress.reduce((sum, item) => sum + item.total, 0),
         },
         { label: "Days recorded", value: allDays.size },
+        { label: "Pending attendance", value: pendingDays },
       ]}
       onClassChange={onClassChange}
     />

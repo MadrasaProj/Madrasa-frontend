@@ -33,6 +33,8 @@ export interface ClassAttendanceSummary {
   totalDays: number;
   totalWorkingDaytillToday?: number;
   workingDates?: string[];
+  /** Dates on which attendance was taken for this class. */
+  markedDates?: string[];
   present: number;
   rate: number;
   students: {

@@ -43,10 +43,16 @@ export function TeacherAttendanceDrawer({
   open,
   onOpenChange,
   initialClassId,
+  initialDate,
+  days,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialClassId?: string;
+  /** YYYY-MM-DD to open the taker on. */
+  initialDate?: string;
+  /** Pending YYYY-MM-DD values. When provided, only these dates are navigable in the taker. */
+  days?: string[];
 }) {
   const { user, accessToken } = useAuthStore();
   const { lang } = useLanguageStore();
@@ -66,7 +72,8 @@ export function TeacherAttendanceDrawer({
   const activeClassId = activeClass?.id ?? "";
   const isOwnClass = activeClass?.classTeacherId === user?.id;
 
-  const [date, setDate] = useState(todayISO);
+  const [date, setDate] = useState(() => initialDate ?? days?.[days.length - 1] ?? todayISO());
+  const dayCount = days?.length ?? 0;
   const [students, setStudents] = useState<
     { id: string; name: string; adno: string; gender?: string; photoUrl?: string | null }[]
   >([]);
@@ -139,11 +146,17 @@ export function TeacherAttendanceDrawer({
     }
   }, [cid, token, user?.defaultAcademicYearId]);
 
+  // Start on the most recent pending day (or the requested date) each time it opens.
+  useEffect(() => {
+    if (!open) return;
+    setConfirmSave(false);
+    setConfirmClear(false);
+    setDate(initialDate ?? days?.[days.length - 1] ?? todayISO());
+  }, [open, initialDate, days]);
+
   useEffect(() => {
     if (!open) return;
     const controller = new AbortController();
-    setConfirmSave(false);
-    setConfirmClear(false);
     if (activeClassId) void loadAttendance(activeClassId, date, controller.signal);
     return () => controller.abort();
   }, [open, activeClassId, date, loadAttendance]);
@@ -286,6 +299,11 @@ export function TeacherAttendanceDrawer({
        
       showBackButton={false}
       title={t("teacherPages", "markAttendanceDesc", lang)}
+      description={dayCount > 0
+        ? t("teacherPages", "attendancePendingDrawerDesc", lang)
+            .replace("{count}", String(dayCount))
+            .replace("{className}", activeClass?.name ?? "")
+        : undefined}
       contentClassName="px-5 py-6 sm:px-6"
     >
       <div className="mx-auto max-w-2xl">
@@ -303,6 +321,7 @@ export function TeacherAttendanceDrawer({
               pickerTitle="Choose attendance date"
               disabled={saving}
               hideCalendarButton
+              visibleDates={days}
             />
             <DrawerSelector
               title={t("teacherPages", "selectClassOpt", lang)}

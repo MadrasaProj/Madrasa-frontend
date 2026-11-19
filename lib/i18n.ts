@@ -1592,6 +1592,9 @@ const translations = {
     // Attendance page
     attendancePageTitle: { en: "Attendance", ml: "ഹാജർ" },
     attendanceTotalDays: { en: "Total days", ml: "ആകെ ദിവസങ്ങൾ" },
+    attendancePendingDays: { en: "Pending attendance", ml: "ബാക്കിയുള്ള ഹാജർ" },
+    attendancePendingCardDesc: { en: "{count} day(s) pending · tap to view", ml: "{count} ദിവസം ബാക്കിയുണ്ട് · കാണാൻ ടാപ്പ് ചെയ്യുക" },
+    attendancePendingDrawerDesc: { en: "{count} working day(s) without attendance for {className}", ml: "{className} ക്ലാസിന് ഹാജർ രേഖപ്പെടുത്താത്ത {count} പ്രവർത്തി ദിവസങ്ങൾ" },
     attendanceAverage: { en: "Average", ml: "ശരാശരി ഹാജർ" },
     studentAttendanceTitle: { en: "Student attendance", ml: "വിദ്യാർത്ഥികളുടെ ഹാജർ" },
     studentAttendanceDetails: { en: "Attendance details", ml: "ഹാജർ വിശദാംശങ്ങൾ" },
