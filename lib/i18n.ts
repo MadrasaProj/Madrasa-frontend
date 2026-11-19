@@ -283,6 +283,71 @@ const translations = {
     contentMedia: { en: "Content & Media", ml: "കണ്ടന്റ് & മീഡിയ" },
     coreManagement: { en: "Core Management", ml: "പ്രധാന മാനേജ്‌മെന്റ്" },
     ibadahConfig: { en: "Ibadah Setup", ml: "ഇബാദത്ത് ക്രമീകരണം" },
+    academicYears: { en: "Academic Years", ml: "അക്കാദമിക് വർഷങ്ങൾ" },
+  },
+
+  // ── Academic Years ────────────────────────────────────────────────────────
+  academicYears: {
+    title: { en: "Academic Years", ml: "അക്കാദമിക് വർഷങ്ങൾ" },
+    allYears: { en: "All academic years", ml: "എല്ലാ അക്കാദമിക് വർഷങ്ങളും" },
+    addYear: { en: "Add academic year", ml: "അക്കാദമിക് വർഷം ചേർക്കുക" },
+    editYear: { en: "Edit academic year", ml: "അക്കാദമിക് വർഷം എഡിറ്റ് ചെയ്യുക" },
+    deleteTitle: { en: "Delete academic year", ml: "അക്കാദമിക് വർഷം ഇല്ലാതാക്കുക" },
+    addDesc: {
+      en: "Academic years scope students, classes, exams and fees.",
+      ml: "വിദ്യാർത്ഥികൾ, ക്ലാസുകൾ, പരീക്ഷകൾ, ഫീസ് എന്നിവ അക്കാദമിക് വർഷത്തോട് ബന്ധപ്പെട്ടിരിക്കുന്നു.",
+    },
+    editDesc: {
+      en: "Rename this year or make it the current academic year.",
+      ml: "ഈ വർഷത്തിന്റെ പേര് മാറ്റുകയോ നിലവിലെ അക്കാദമിക് വർഷമാക്കുകയോ ചെയ്യുക.",
+    },
+    searchPlaceholder: { en: "Search by year name", ml: "വർഷത്തിന്റെ പേര് തിരയുക" },
+    nameLabel: { en: "Year name", ml: "വർഷത്തിന്റെ പേര്" },
+    nameHint: { en: "For example: 2026-27", ml: "ഉദാഹരണം: 2026-27" },
+    nameRequired: { en: "Enter the year name", ml: "വർഷത്തിന്റെ പേര് നൽകുക" },
+    duplicateName: {
+      en: "An academic year with this name already exists",
+      ml: "ഈ പേരിൽ ഒരു അക്കാദമിക് വർഷം ഇതിനകം ഉണ്ട്",
+    },
+    totalYears: { en: "Total years", ml: "ആകെ വർഷങ്ങൾ" },
+    currentYear: { en: "Current year", ml: "നിലവിലെ വർഷം" },
+    pastYears: { en: "Past years", ml: "കഴിഞ്ഞ വർഷങ്ങൾ" },
+    upcomingYears: { en: "Upcoming years", ml: "വരാനിരിക്കുന്ന വർഷങ്ങൾ" },
+    currentYearBadge: { en: "Current", ml: "നിലവിലെ" },
+    setCurrent: { en: "Set as current", ml: "നിലവിലെയാക്കുക" },
+    currentSet: {
+      en: "Current academic year updated",
+      ml: "നിലവിലെ അക്കാദമിക് വർഷം മാറ്റി",
+    },
+    startDate: { en: "Start date", ml: "ആരംഭ തീയതി" },
+    endDate: { en: "End date", ml: "അവസാന തീയതി" },
+    chooseStartDate: { en: "Choose start date", ml: "ആരംഭ തീയതി തിരഞ്ഞെടുക്കുക" },
+    chooseEndDate: { en: "Choose end date", ml: "അവസാന തീയതി തിരഞ്ഞെടുക്കുക" },
+    clearStartDate: { en: "Clear start date", ml: "ആരംഭ തീയതി നീക്കം ചെയ്യുക" },
+    clearEndDate: { en: "Clear end date", ml: "അവസാന തീയതി നീക്കം ചെയ്യുക" },
+    invalidDateRange: {
+      en: "The start date must be before the end date",
+      ml: "ആരംഭ തീയതി അവസാന തീയതിക്ക് മുമ്പായിരിക്കണം",
+    },
+    startsOn: { en: "Starts", ml: "ആരംഭം" },
+    endsOn: { en: "Ends", ml: "അവസാനം" },
+    noDateRange: { en: "No date range set", ml: "തീയതി പരിധി ഇല്ല" },
+    noYears: { en: "No academic years yet", ml: "ഇതുവരെ അക്കാദമിക് വർഷങ്ങളില്ല" },
+    noResults: {
+      en: "No academic years match your search",
+      ml: "തിരയലിന് അനുയോജ്യമായ അക്കാദമിക് വർഷങ്ങളില്ല",
+    },
+    deleteConfirm: {
+      en: "Delete {name}? This cannot be undone.",
+      ml: "{name} ഇല്ലാതാക്കണോ? ഇത് പഴയപടിയാക്കാനാകില്ല.",
+    },
+    deleteBlockedCurrent: {
+      en: "Set another year as current before deleting this one",
+      ml: "ഇത് ഇല്ലാതാക്കുന്നതിന് മുമ്പ് മറ്റൊരു വർഷം നിലവിലെയാക്കുക",
+    },
+    created: { en: "Academic year added", ml: "അക്കാദമിക് വർഷം ചേർത്തു" },
+    updated: { en: "Academic year updated", ml: "അക്കാദമിക് വർഷം അപ് ഡേറ്റ് ചെയ്തു" },
+    deleted: { en: "Academic year deleted", ml: "അക്കാദമിക് വർഷം ഇല്ലാതാക്കി" },
   },
 
   // ── Admin Dashboard ───────────────────────────────────────────────────────
@@ -2597,8 +2662,8 @@ const translations = {
       ml: "ഈ അവധി അപ്‌ഡേറ്റ് ചെയ്യുക അല്ലെങ്കിൽ നീക്കം ചെയ്യുക.",
     },
     addHolidayDesc: {
-      en: "Pick a date and give the holiday a title.",
-      ml: "തീയതി തിരഞ്ഞെടുത്ത് അവധിക്ക് ഒരു പേര് നൽകുക.",
+      en: "Pick a start date, an optional end date, and give the holiday a title.",
+      ml: "ആരംഭ തീയതിയും ആവശ്യമെങ്കിൽ അവസാന തീയതിയും തിരഞ്ഞെടുത്ത് അവധിക്ക് ഒരു പേര് നൽകുക.",
     },
     weeklyHolidays: { en: "Weekly holidays", ml: "പ്രതിവാര അവധികൾ" },
     weeklyHolidaysDesc: {
@@ -2684,6 +2749,18 @@ const translations = {
       en: "Choose holiday date",
       ml: "അവധി തീയതി തിരഞ്ഞെടുക്കുക",
     },
+    startDate: { en: "Start date", ml: "ആരംഭ തീയതി" },
+    endDate: { en: "End date", ml: "അവസാന തീയതി" },
+    chooseEndDate: { en: "Choose end date", ml: "അവസാന തീയതി തിരഞ്ഞെടുക്കുക" },
+    invalidDateRange: {
+      en: "The end date must be on or after the start date.",
+      ml: "അവസാന തീയതി ആരംഭ തീയതിക്ക് ശേഷമോ തുല്യമോ ആയിരിക്കണം.",
+    },
+    rangeHint: {
+      en: "Leave the end date empty for a single-day holiday.",
+      ml: "ഒരു ദിവസത്തെ അവധിക്ക് അവസാന തീയതി ഒഴിച്ചിടുക.",
+    },
+    clearEndDate: { en: "Clear end date", ml: "അവസാന തീയതി നീക്കം ചെയ്യുക" },
     titleLabel: { en: "Title", ml: "പേര്" },
     titlePlaceholder: { en: "e.g. Eid al-Fitr", ml: "ഉദാ: ഈദുൽ ഫിത്ർ" },
     descLabel: { en: "Description (optional)", ml: "വിവരണം (ഓപ്ഷണൽ)" },

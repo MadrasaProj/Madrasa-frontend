@@ -70,7 +70,8 @@ export function StudentAttendanceDrawer({
   }, [attendance.data]);
   const overallWorkingDays = attendance.data?.workingDates?.length ?? 0;
   const overallPresentDays = attendance.data?.records.filter((record) => record.status === "PRESENT").length ?? 0;
-  const overallPercentage = overallWorkingDays > 0 ? Math.round((overallPresentDays / overallWorkingDays) * 100) : 0;
+  const overallPercentage = attendance.data?.rate
+    ?? (overallWorkingDays > 0 ? Math.min(100, Math.round((overallPresentDays / overallWorkingDays) * 100)) : 0);
   const selectedRecord = selectedDate ? recordsByDate.get(selectedDate) : undefined;
 
   function statusLabel(status: AttendanceStatus) {
@@ -131,7 +132,7 @@ export function StudentAttendanceDrawer({
               const lastDay = new Date(year, monthNumber, 0).getDate();
               const workingDays = attendance.data?.workingDates?.filter((date) => date.startsWith(monthKey)).length ?? 0;
               const presentDays = attendance.data?.records.filter((record) => record.date.startsWith(monthKey) && record.status === "PRESENT").length ?? 0;
-              const percentage = workingDays > 0 ? Math.round((presentDays / workingDays) * 100) : 0;
+              const percentage = workingDays > 0 ? Math.min(100, Math.round((presentDays / workingDays) * 100)) : 0;
               return (
                 <section key={monthKey} className="py-5">
                   <h3 className="text-base font-semibold text-gray-900">{monthLabel}</h3>

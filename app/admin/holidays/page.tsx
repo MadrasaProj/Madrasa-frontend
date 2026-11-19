@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ScrollableTabs } from '@/components/ui/ScrollableTabs';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar } from '@/components/ui/calendar';
+import { Calendar, CalendarDayButton } from '@/components/ui/calendar';
 import { ResponsivePopover } from '@/components/ui/responsivePopover';
 import { DatePickerDrawer } from '@/components/DatePickerDrawer';
 import { DrawerSelector } from '@/components/DrawerSelector';
@@ -50,12 +50,13 @@ type SyncState = 'idle' | 'saving' | 'error';
 
 interface HolidayForm {
   date: string;
+  endDate: string;
   title: string;
   desc: string;
   classIds: string[];
 }
 
-const EMPTY_FORM: HolidayForm = { date: '', title: '', desc: '', classIds: [] };
+const EMPTY_FORM: HolidayForm = { date: '', endDate: '', title: '', desc: '', classIds: [] };
 
 const HOLIDAY_PRESETS = [
   {
@@ -96,8 +97,59 @@ function formatFullDate(iso: string, locale: string) {
   });
 }
 
+function formatShortDate(iso: string, locale: string) {
+  return parseISODate(iso).toLocaleDateString(locale, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
 const formatMonth = (date: Date, locale: string) => date.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
 const formatMonthKey = (key: string, locale: string) => formatMonth(parseISODate(`${key}-01`), locale);
+
+const holidayEnd = (holiday: Pick<HolidayEntry, 'date' | 'endDate'>) =>
+  holiday.endDate && holiday.endDate >= holiday.date ? holiday.endDate : holiday.date;
+
+/** Every calendar day covered by a holiday, inclusive of both ends. */
+function holidayDates(holiday: Pick<HolidayEntry, 'date' | 'endDate'>): string[] {
+  const dates: string[] = [];
+  const cursor = parseISODate(holiday.date);
+  const last = parseISODate(holidayEnd(holiday));
+  while (cursor <= last && dates.length < 10000) {
+    dates.push(toLocalISO(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return dates;
+}
+
+/** Sunday-based week row of a date, used to show one title per calendar row. */
+function weekRowKey(iso: string) {
+  const date = parseISODate(iso);
+  return toLocalISO(new Date(date.getFullYear(), date.getMonth(), date.getDate() - date.getDay()));
+}
+
+function rangesOverlap(a: Pick<HolidayEntry, 'date' | 'endDate'>, b: Pick<HolidayEntry, 'date' | 'endDate'>) {
+  return a.date <= holidayEnd(b) && b.date <= holidayEnd(a);
+}
+
+function holidayOverlapsMonth(holiday: Pick<HolidayEntry, 'date' | 'endDate'>, monthKey: string) {
+  const first = `${monthKey}-01`;
+  const [year, month] = monthKey.split('-').map(Number);
+  const last = toLocalISO(new Date(year, month, 0));
+  return rangesOverlap(holiday, { date: first, endDate: last });
+}
+
+function formatHolidayRange(holiday: Pick<HolidayEntry, 'date' | 'endDate'>, locale: string) {
+  const start = parseISODate(holiday.date);
+  const end = parseISODate(holidayEnd(holiday));
+  const dayMonth = (date: Date) => date.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+  if (holidayEnd(holiday) === holiday.date) return dayMonth(start);
+  if (start.getFullYear() === end.getFullYear() && start.getMonth() === end.getMonth()) {
+    return `${start.getDate()}–${end.getDate()} ${start.toLocaleDateString(locale, { month: 'short', year: 'numeric' })}`;
+  }
+  return `${dayMonth(start)} ${start.getFullYear()} – ${dayMonth(end)} ${end.getFullYear()}`;
+}
 
 function SyncBadge({ state, onRetry, lang }: { state: SyncState; onRetry: () => void; lang: Lang }) {
   if (state === 'saving') {
@@ -139,6 +191,7 @@ export default function AdminHolidaysPage() {
   const [form, setForm] = useState<HolidayForm>(EMPTY_FORM);
   const [formError, setFormError] = useState<string | null>(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [endDatePickerOpen, setEndDatePickerOpen] = useState(false);
   const [classPickerOpen, setClassPickerOpen] = useState(false);
 
   const yearIdRef = useRef(user?.defaultAcademicYearId ?? '');
@@ -221,19 +274,72 @@ export default function AdminHolidaysPage() {
     setWeekly((current) => current.includes(day) ? current.filter((item) => item !== day) : [...current, day]);
   };
 
-  const holidayDateSet = useMemo(() => new Set(holidays.map((holiday) => holiday.date)), [holidays]);
-  const holidaySet = useMemo(
-    () => new Set(holidays.filter((holiday) => !holiday.classes?.length).map((holiday) => holiday.date)),
-    [holidays],
-  );
-  const classHolidaySet = useMemo(
-    () => new Set(holidays.filter((holiday) => holiday.classes?.length).map((holiday) => holiday.date)),
-    [holidays],
-  );
+  const holidayDateSet = useMemo(() => new Set(holidays.flatMap(holidayDates)), [holidays]);
+
+  /** Per-day info for every holiday: position in its range and whether to print its title. */
+  const holidayDayInfo = useMemo(() => {
+    const map = new Map<string, {
+      title: string;
+      position: 'single' | 'start' | 'middle' | 'end';
+      showTitle: boolean;
+    }>();
+    for (const holiday of holidays) {
+      const dates = holidayDates(holiday);
+      dates.forEach((iso, index) => {
+        if (map.has(iso)) return;
+        const row = weekRowKey(iso);
+        const previousRow = index > 0 ? weekRowKey(dates[index - 1]) : null;
+        map.set(iso, {
+          title: holiday.title,
+          position: dates.length === 1
+            ? 'single'
+            : index === 0
+              ? 'start'
+              : index === dates.length - 1
+                ? 'end'
+                : 'middle',
+          showTitle: row !== previousRow,
+        });
+      });
+    }
+    return map;
+  }, [holidays]);
+
+  const HolidayDayButton = useCallback(({
+    day, className, children, ...props
+  }: ComponentProps<typeof CalendarDayButton>) => {
+    const info = holidayDayInfo.get(toLocalISO(day.date));
+    if (!info) {
+      return <CalendarDayButton day={day} className={className} {...props}>{children}</CalendarDayButton>;
+    }
+    return (
+      <CalendarDayButton
+        day={day}
+        className={cn(
+          className,
+          'rounded-none bg-gradient-to-b from-red-100 to-red-50 font-medium text-red-900 hover:from-red-100 hover:to-red-50',
+          info.position === 'single' && 'rounded-lg',
+          info.position === 'start' && 'rounded-l-lg',
+          info.position === 'end' && 'rounded-r-lg',
+        )}
+        {...props}
+      >
+        {children}
+        {info.showTitle && (
+          <span
+            title={info.title}
+            className="hidden w-full truncate text-red-700 !text-[9px] !leading-none !opacity-100 sm:block"
+          >
+            {info.title}
+          </span>
+        )}
+      </CalendarDayButton>
+    );
+  }, [holidayDayInfo]);
 
   const viewMonthKey = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`;
   const monthHolidays = useMemo(
-    () => holidays.filter((holiday) => holiday.date.startsWith(viewMonthKey)),
+    () => holidays.filter((holiday) => holidayOverlapsMonth(holiday, viewMonthKey)),
     [holidays, viewMonthKey],
   );
 
@@ -250,7 +356,7 @@ export default function AdminHolidaysPage() {
 
   const openCreate = (date = '') => {
     setEditingId(null);
-    setForm({ ...EMPTY_FORM, date });
+    setForm({ ...EMPTY_FORM, date, endDate: date });
     setFormError(null);
     setClassPickerOpen(false);
     setFormOpen(true);
@@ -260,6 +366,7 @@ export default function AdminHolidaysPage() {
     setEditingId(holiday.id ?? null);
     setForm({
       date: holiday.date,
+      endDate: holiday.endDate ?? '',
       title: holiday.title,
       desc: holiday.desc ?? '',
       classIds: holiday.classes ?? [],
@@ -271,7 +378,7 @@ export default function AdminHolidaysPage() {
 
   const handleDayClick = (day: Date) => {
     const iso = toLocalISO(day);
-    const onDate = holidays.filter((holiday) => holiday.date === iso);
+    const onDate = holidays.filter((holiday) => holidayDates(holiday).includes(iso));
     if (onDate.length === 1) openEdit(onDate[0]);
     else openCreate(iso);
   };
@@ -287,16 +394,21 @@ export default function AdminHolidaysPage() {
 
   const submitForm = () => {
     if (!form.date) { setFormError(t('holidays', 'chooseDateError', lang)); return; }
+    if (form.endDate && form.endDate < form.date) {
+      setFormError(t('holidays', 'invalidDateRange', lang));
+      return;
+    }
     if (!form.title.trim()) { setFormError(t('holidays', 'enterTitleError', lang)); return; }
 
     const classIds = Array.from(new Set(form.classIds));
+    const range = { date: form.date, endDate: form.endDate || undefined };
     const scopesOverlap = (other: HolidayEntry) => {
       const otherClassIds = other.classes ?? [];
       if (!classIds.length || !otherClassIds.length) return true;
       return otherClassIds.some((id) => classIds.includes(id));
     };
     const duplicate = holidays.some((holiday) =>
-      holiday.id !== editingId && holiday.date === form.date && scopesOverlap(holiday)
+      holiday.id !== editingId && rangesOverlap(range, holiday) && scopesOverlap(holiday)
     );
     if (duplicate) {
       setFormError(
@@ -308,6 +420,7 @@ export default function AdminHolidaysPage() {
     const entry: HolidayEntry = {
       id: holidays.find((holiday) => holiday.id === editingId)?.id ?? createEntryId(),
       date: form.date,
+      endDate: form.endDate && form.endDate !== form.date ? form.endDate : undefined,
       title: form.title.trim(),
       desc: form.desc.trim() || undefined,
       classes: classIds.length ? classIds : undefined,
@@ -342,19 +455,29 @@ export default function AdminHolidaysPage() {
 
   return (
     <DashboardLayout>
-      <div className="mx-auto w-full max-w-5xl space-y-5 p-4 md:p-6">
-        <PageHeader title={t('holidays', 'title', lang)} action={ <Button type="button" onClick={() => openCreate()}>
-                  <Plus className="size-4" /> {t('holidays', 'addHoliday', lang)}
-                </Button>}   />
+      <div className="p-0! pb-24! lg:pb-8!">
+        <PageHeader title={t('holidays', 'title', lang)} />
+
+        <div className="px-3 pb-3 pt-4">
+          <div className="flex w-full items-center justify-end gap-2">
+            <Button
+              type="button"
+              onClick={() => openCreate()}
+              className="hidden shadow-none sm:inline-flex"
+            >
+              <Plus className="size-4" /> {t('holidays', 'addHoliday', lang)}
+            </Button>
+          </div>
+        </div>
 
         {loading ? (
-          <div className="space-y-5">
+          <div className="mx-3 space-y-5">
             <Skeleton className="h-40 rounded-2xl" />
             <Skeleton className="h-[520px] rounded-2xl" />
           </div>
         ) : (
           <>
-            <section className="space-y-4">
+            <section className="mx-3 space-y-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
                    <div>
@@ -390,7 +513,7 @@ export default function AdminHolidaysPage() {
 
               
             </section>
-             <section className="space-y-4   p-4 pr-6 rounded-lg bg-white  ">
+             <section className="mx-3 space-y-4 rounded-lg bg-white p-4 pr-6 mt-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <Tabs value={view} onValueChange={(value) => setView(value as View)}>
                   <TabsList>
@@ -414,19 +537,13 @@ export default function AdminHolidaysPage() {
                         onMonthChange={setMonth}
                         onDayClick={handleDayClick}
                         modifiers={{
-                          holiday: (date) => holidaySet.has(toLocalISO(date)),
-                          classHoliday: (date) => {
-                            const iso = toLocalISO(date);
-                            return classHolidaySet.has(iso) && !holidaySet.has(iso);
-                          },
                           weeklyOff: (date) => weekly.includes(WEEKDAY_BY_JS_DAY[date.getDay()]) && !holidayDateSet.has(toLocalISO(date)),
                         }}
                         modifiersClassNames={{
-                          holiday: '[&>button]:bg-red-500! [&>button]:text-white! [&>button]:font-semibold [&>button]:shadow-sm [&>button]:shadow-red-500/30 [&>button:hover]:bg-red-600!',
-                          classHoliday: '[&>button]:bg-amber-400! [&>button]:text-white! [&>button]:font-semibold [&>button]:shadow-sm [&>button]:shadow-amber-400/30 [&>button:hover]:bg-amber-500!',
                           weeklyOff: '[&>button]:bg-red-50/70! [&>button]:text-red-500! [&>button:hover]:bg-red-100!',
                         }}
-                        className="w-full [--cell-size:2.5rem] sm:[--cell-size:2.75rem]"
+                        components={{ DayButton: HolidayDayButton }}
+                        className="w-full [--cell-size:2.5rem] sm:[--cell-size:3.5rem] lg:[--cell-size:4rem]"
                       />
                     </div>
 
@@ -442,6 +559,7 @@ export default function AdminHolidaysPage() {
                           <div className="space-y-1.5">
                             {monthHolidays.map((holiday) => {
                               const date = parseISODate(holiday.date);
+                              const isRange = holidayEnd(holiday) !== holiday.date;
                               return (
                                 <button
                                   key={holiday.id}
@@ -457,7 +575,14 @@ export default function AdminHolidaysPage() {
                                   </span>
                                   <span className="min-w-0 flex-1">
                                     <span className="block truncate text-sm font-medium text-gray-800">{holiday.title}</span>
-                                    <span className="mt-0.5 block truncate text-[11px] text-gray-400">{classScopeLabel(holiday.classes)}</span>
+                                    <span className="mt-0.5 block truncate text-[11px] text-gray-400">
+                                      {isRange && (
+                                        <span className="mr-1 font-semibold text-red-500">
+                                          {t('holidays', 'endDate', lang)}: {formatShortDate(holidayEnd(holiday), locale)}
+                                        </span>
+                                      )}
+                                      {classScopeLabel(holiday.classes)}
+                                    </span>
                                   </span>
                                 </button>
                               );
@@ -473,10 +598,7 @@ export default function AdminHolidaysPage() {
                         <p className="text-xs leading-5 text-gray-500">{t('holidays', 'howItWorksDesc', lang)}</p>
                         <div className="mt-3 space-y-2 text-xs text-gray-600">
                           <span className="flex items-center gap-2">
-                            <span className="size-3 rounded-full bg-red-500" /> {t('holidays', 'holidayAllClasses', lang)}
-                          </span>
-                          <span className="flex items-center gap-2">
-                            <span className="size-3 rounded-full bg-amber-400" /> {t('holidays', 'classSpecificHoliday', lang)}
+                            <span className="size-3 rounded-full bg-gradient-to-b from-red-100 to-red-50 ring-1 ring-red-200" /> {t('holidays', 'holidayAllClasses', lang)}
                           </span>
                           <span className="flex items-center gap-2">
                             <span className="size-3 rounded-full bg-red-50 ring-1 ring-red-200" /> {t('holidays', 'weeklyOff', lang)}
@@ -512,25 +634,23 @@ export default function AdminHolidaysPage() {
                                   <span className="min-w-0 flex-1">
                                     <span className="block truncate text-sm font-semibold text-gray-900">{holiday.title}</span>
                                      <span className=" flex flex-wrap items-center gap-1.5">
+                                      {holidayEnd(holiday) !== holiday.date && (
+                                        <span className="inline-flex rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-600">
+                                          {formatHolidayRange(holiday, locale)}
+                                        </span>
+                                      )}
                                       <span className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-600">
                                         {classScopeLabel(holiday.classes)}
                                       </span>
                                     </span>
+                                    {holiday.endDate && holiday.endDate !== holiday.date && (
+                                      <span className="mt-1 block text-[11px] text-gray-500">
+                                        {t('holidays', 'endDate', lang)}: {formatShortDate(holiday.endDate, locale)}
+                                      </span>
+                                    )}
                                    </span>
                                 </button>
-                                <div className="flex shrink-0 items-center">
-                                  
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon-sm"
-                                    aria-label={`${t('common', 'delete', lang)} ${holiday.title}`}
-                                    className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                                    onClick={() => removeHoliday(holiday.id!)}
-                                  >
-                                    <Trash2 className="size-4" />
-                                  </Button>
-                                </div>
+                                
                               </div>
                             );
                           })}
@@ -600,20 +720,43 @@ export default function AdminHolidaysPage() {
               />
             </div>
 
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold text-gray-600">{t('common', 'date', lang)} *</label>
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                className="w-full justify-start font-normal"
-                onClick={() => setDatePickerOpen(true)}
-                aria-label={t('holidays', 'chooseHolidayDate', lang)}
-              >
-                <CalendarDays className="size-4 text-red-500" />
-                {form.date ? formatFullDate(form.date, locale) : t('holidays', 'chooseDate', lang)}
-              </Button>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <p className="mb-1.5 block text-xs font-semibold text-gray-600">{t('holidays', 'startDate', lang)} *</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  className="w-full justify-start gap-1.5 px-2.5 font-normal"
+                  onClick={() => setDatePickerOpen(true)}
+                  aria-label={t('holidays', 'chooseHolidayDate', lang)}
+                >
+                  <CalendarDays className="size-4 " />
+                  <span className="truncate">
+                    {form.date ? formatFullDate(form.date, locale) : t('holidays', 'chooseDate', lang)}
+                  </span>
+                </Button>
+              </div>
+              <div>
+                <p className="mb-1.5 block text-xs font-semibold text-gray-600">{t('holidays', 'endDate', lang)}</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  className="w-full justify-start gap-1.5 px-2.5 font-normal"
+                  onClick={() => setEndDatePickerOpen(true)}
+                  aria-label={t('holidays', 'chooseEndDate', lang)}
+                >
+                  <CalendarDays className="size-4 " />
+                  <span className="truncate">
+                    {form.endDate && form.endDate !== form.date
+                      ? formatFullDate(form.endDate, locale)
+                      : t('holidays', 'chooseEndDate', lang)}
+                  </span>
+                </Button>
+              </div>
             </div>
+            <p className="-mt-2 text-xs text-gray-400">{t('holidays', 'rangeHint', lang)}</p>
 
             <div>
               <label htmlFor="holiday-title" className="mb-1.5 block text-xs font-semibold text-gray-600">{t('holidays', 'titleLabel', lang)} *</label>
@@ -727,11 +870,37 @@ export default function AdminHolidaysPage() {
           open={datePickerOpen}
           onOpenChange={setDatePickerOpen}
           date={form.date}
-          onDateChange={(date) => setForm((current) => ({ ...current, date }))}
+          onDateChange={(date) => setForm((current) => ({
+            ...current,
+            date,
+            endDate: current.endDate && current.endDate >= date ? current.endDate : '',
+          }))}
           title={t('holidays', 'chooseHolidayDate', lang)}
           disableFuture={false}
         />
+        <DatePickerDrawer
+          open={endDatePickerOpen}
+          onOpenChange={setEndDatePickerOpen}
+          date={form.endDate}
+          onDateChange={(date) => setForm((current) => ({ ...current, endDate: date }))}
+          title={t('holidays', 'chooseEndDate', lang)}
+          disableFuture={false}
+          minDate={form.date || undefined}
+          allowClear
+          clearLabel={t('holidays', 'clearEndDate', lang)}
+        />
       </div>
+
+      {!loading && (
+        <Button
+          type="button"
+          size="lg"
+          onClick={() => openCreate()}
+          className="fixed bottom-[92px] left-1/2 z-40 -translate-x-1/2 rounded-full px-5 shadow-lg sm:hidden"
+        >
+          <Plus className="size-5" /> {t('holidays', 'addHoliday', lang)}
+        </Button>
+      )}
     </DashboardLayout>
   );
 }

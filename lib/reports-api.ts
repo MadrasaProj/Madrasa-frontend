@@ -20,6 +20,8 @@ export interface AttendanceSummary {
   byClass:  { classId: string; _count: { id: number } }[];
   total:    number;
   totalDays?: number;
+  totalWorkingDaytillToday?: number;
+  workingDates?: string[];
   present:  number;
   rate:     number;
 }
@@ -29,6 +31,8 @@ export interface ClassAttendanceSummary {
   byStatus: { status: string; _count: { id: number } }[];
   total: number;
   totalDays: number;
+  totalWorkingDaytillToday?: number;
+  workingDates?: string[];
   present: number;
   rate: number;
   students: {
@@ -37,6 +41,7 @@ export interface ClassAttendanceSummary {
     adno: string;
     presentDays: number;
     totalDays: number;
+    totalWorkingDaytillToday?: number;
     rate: number | null;
   }[];
 }

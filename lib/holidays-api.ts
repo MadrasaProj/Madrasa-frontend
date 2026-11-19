@@ -7,7 +7,10 @@ export const WEEKDAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY',
 export type Weekday = typeof WEEKDAYS[number];
 export interface HolidayEntry {
   id?: string;
+  /** First day of the holiday. */
   date: string;
+  /** Optional last day (inclusive). When absent, the holiday lasts one day. */
+  endDate?: string;
   title: string;
   desc?: string;
   /** Class ids this holiday applies to. Omitted/empty means it applies to all classes. */

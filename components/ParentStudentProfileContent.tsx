@@ -144,11 +144,12 @@ export function ParentStudentProfileContent({
   const studentName =
     students.find((s) => s.id === studentId)?.name ?? student.name;
 
-  const attTotal = attendance?.total ?? 0;
+  const attTotal = attendance?.workingDays ?? attendance?.total ?? 0;
   const attPresent = attendance?.summary?.PRESENT ?? 0;
   const attAbsent = attendance?.summary?.ABSENT ?? 0;
   const attLate = attendance?.summary?.LATE ?? 0;
-  const attPct = attTotal > 0 ? Math.round((attPresent / attTotal) * 100) : 0;
+  const attPct = attendance?.rate
+    ?? (attTotal > 0 ? Math.min(100, Math.round((attPresent / attTotal) * 100)) : 0);
 
   const labelCls = "block text-xs font-semibold text-gray-600 mb-1.5";
 

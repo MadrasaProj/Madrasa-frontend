@@ -15,6 +15,7 @@ import TeacherOAuthAuthorizePage from "../app/oauth/authorize/page";
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
 import AdminAbsentPage from "../app/admin/absent/page";
+import AdminAcademicYearPage from "../app/admin/academic-year/page";
 import AdminAttendancePage from "../app/admin/attendance/page";
 import AdminBestPerformancePage from "../app/admin/best-performance/page";
 import AdminLeaveRequestsPage from "../app/admin/leave-requests/page";
@@ -167,6 +168,7 @@ export default function App() {
           path="/admin/other-payments"
           element={<AdminOtherPaymentsPage />}
         />
+        <Route path="/admin/academic-year" element={<AdminAcademicYearPage />} />
         <Route path="/admin/classes" element={<AdminClassesPage />} />
         <Route path="/admin/subjects" element={<AdminSubjectsPage />} />
         <Route path="/admin/teachers" element={<AdminTeachersPage />} />
@@ -283,6 +285,10 @@ export default function App() {
         <Route
           path="/m/:slug/admin/other-payments"
           element={<AdminOtherPaymentsPage />}
+        />
+        <Route
+          path="/m/:slug/admin/academic-year"
+          element={<AdminAcademicYearPage />}
         />
         <Route path="/m/:slug/admin/classes" element={<AdminClassesPage />} />
         <Route path="/m/:slug/admin/subjects" element={<AdminSubjectsPage />} />

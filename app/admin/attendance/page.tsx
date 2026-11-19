@@ -101,16 +101,24 @@ export default function AdminAttendancePage() {
   const overall = overallAttendance.data;
   const rangeTotals = useMemo(() => {
     const byStatus = new Map<string, number>();
-    const days = new Set<string>();
     for (const record of rangeRecords) {
       byStatus.set(record.status, (byStatus.get(record.status) ?? 0) + 1);
-      days.add(record.date.slice(0, 10));
     }
     const total = rangeRecords.length;
     const present = byStatus.get("PRESENT") ?? 0;
     const absent = byStatus.get("ABSENT") ?? 0;
-    return { total, present, absent, other: total - present - absent, totalDays: days.size, rate: total ? Math.round((present / total) * 100) : 0 };
-  }, [rangeRecords]);
+    // Working days come from the academic year calendar (minus holidays),
+    // intersected with the selected range — not from marked dates only.
+    const from = range.from === "ALL" ? "" : range.from.slice(0, 10);
+    const to = range.to === "ALL" ? "" : range.to.slice(0, 10);
+    const totalDays = (overall?.workingDates ?? []).filter(
+      (date) => (!from || date >= from) && (!to || date <= to),
+    ).length;
+    return {
+      total, present, absent, other: total - present - absent, totalDays,
+      rate: totalDays > 0 ? Math.min(100, Math.round((present / totalDays) * 100)) : 0,
+    };
+  }, [rangeRecords, range.from, range.to, overall?.workingDates]);
 
   useEffect(() => {
     if (!cid || !token || !activeClassId) {
@@ -571,7 +579,7 @@ export default function AdminAttendancePage() {
                     {student.name} <span className="text-xs font-normal text-gray-500">· {student.adno}</span>
                   </p>
                   <span className="shrink-0 text-sm font-medium tabular-nums text-gray-600">
-                    {student.presentDays}/{student.totalDays}<span className="hidden sm:inline"> {t("teacherPages", "daysLabel", lang)}</span>
+                    {student.presentDays}/{student.totalWorkingDaytillToday ?? student.totalDays}<span className="hidden sm:inline"> {t("teacherPages", "daysLabel", lang)}</span>
                   </span>
                   <StudentAttendanceRadial
                     rate={student.rate}

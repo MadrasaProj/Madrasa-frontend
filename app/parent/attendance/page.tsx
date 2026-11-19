@@ -135,8 +135,8 @@ export default function ParentAttendancePage() {
     (data?.summary?.LATE ?? 0) +
     (data?.summary?.LEAVE ?? 0) +
     (data?.summary?.SICK ?? 0);
-  const total = data?.total ?? 0;
-  const percentage = total > 0 ? Math.round((presentCount / total) * 100) : 0;
+  const total = data?.workingDays ?? data?.total ?? 0;
+  const percentage = total > 0 ? Math.min(100, Math.round((presentCount / total) * 100)) : 0;
   const chartConfig = {
     present: {
       label: t("parentPages", "presentLower", lang),
@@ -253,10 +253,12 @@ export default function ParentAttendancePage() {
       else if (r.status === "EXCUSED") excused++;
     }
     const effectivePresent = present + excused;
-    const totalDays = filteredRangeRecords.length;
-    const pct = totalDays > 0 ? Math.round((effectivePresent / totalDays) * 100) : 0;
+    const totalDays = (data?.workingDates ?? []).filter(
+      (date) => (!customFrom || date >= customFrom) && (!customTo || date <= customTo),
+    ).length;
+    const pct = totalDays > 0 ? Math.min(100, Math.round((effectivePresent / totalDays) * 100)) : 0;
     return { present, absent, leave, sick, late, excused, totalDays, pct };
-  }, [filteredRangeRecords]);
+  }, [filteredRangeRecords, data?.workingDates, customFrom, customTo]);
 
   const errorMessage = error instanceof Error ? error.message : null;
 

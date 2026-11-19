@@ -524,7 +524,7 @@ export default function TeacherAttendancePage() {
               <div className="grid grid-cols-2 gap-px border-t border-gray-100 bg-gray-100">
                 <div className="bg-white/90 p-3 sm:p-4">
                   <p className="text-sm font-medium text-gray-600">{t("teacherPages", "attendanceTotalDays", lang)}</p>
-                  <strong className="mt-0 block text-2xl font-semibold tabular-nums text-gray-950">{overall?.totalDays ?? "—"}</strong>
+                  <strong className="mt-0 block text-2xl font-semibold tabular-nums text-gray-950">{overall?.totalWorkingDaytillToday ?? "—"}</strong>
                 </div>
                 <div className="bg-white/90 p-3 sm:p-4">
                   <p className="text-sm font-medium text-gray-600">{t("teacherPages", "attendanceAverage", lang)}</p>
@@ -581,13 +581,13 @@ export default function TeacherAttendancePage() {
                   </p>
                   <span
                     className="shrink-0 text-sm font-medium tabular-nums text-gray-600"
-                    aria-label={student.totalDays > 0
+                    aria-label={(student.totalWorkingDaytillToday ?? student.totalDays) > 0
                       ? t("teacherPages", "attendanceDaysCount", lang)
                         .replace("{present}", String(student.presentDays))
-                        .replace("{total}", String(student.totalDays))
+                        .replace("{total}", String(student.totalWorkingDaytillToday ?? student.totalDays))
                       : t("teacherPages", "noAttendanceRecords", lang)}
                   >
-                    {student.presentDays}/{student.totalDays}
+                    {student.presentDays}/{student.totalWorkingDaytillToday ?? student.totalDays}
                     <span className="hidden sm:inline"> {t("teacherPages", "daysLabel", lang)}</span>
                   </span>
                   <StudentAttendanceRadial

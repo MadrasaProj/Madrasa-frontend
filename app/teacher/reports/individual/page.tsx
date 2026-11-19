@@ -313,6 +313,7 @@ function ReportPrintModal({
   from,
   to,
   attendance,
+  workingDays,
   homework,
   ibadah,
   onClose,
@@ -322,6 +323,7 @@ function ReportPrintModal({
   from: string;
   to: string;
   attendance: AttendanceRecord[];
+  workingDays?: number;
   homework: StudentHomeworkItem[];
   ibadah: StudentIbadahLog[];
   onClose: () => void;
@@ -331,8 +333,8 @@ function ReportPrintModal({
   const presentCount = attendance.filter((a) => a.status === "PRESENT").length;
   const absentCount = attendance.filter((a) => a.status === "ABSENT").length;
   const leaveCount = attendance.filter((a) => a.status === "LEAVE" || a.status === "SICK").length;
-  const totalDays = attendance.length;
-  const attendanceRate = totalDays > 0 ? Math.round((presentCount / totalDays) * 100) : 0;
+  const totalDays = workingDays || attendance.length;
+  const attendanceRate = totalDays > 0 ? Math.min(100, Math.round((presentCount / totalDays) * 100)) : 0;
 
   const totalQuranPages = ibadah.reduce((sum, item) => sum + (item.quranPages || 0), 0);
   const prayerDays = ibadah.filter((l) => l.fajr || l.dhuhr || l.asr || l.maghrib || l.isha).length;
@@ -899,6 +901,7 @@ export default function TeacherIndividualReportPage() {
   const [studentHomework, setStudentHomework] = useState<StudentHomeworkItem[]>([]);
   const [studentIbadah, setStudentIbadah] = useState<StudentIbadahLog[]>([]);
   const [studentAttendance, setStudentAttendance] = useState<AttendanceRecord[]>([]);
+  const [studentWorkingDays, setStudentWorkingDays] = useState(0);
   const [reportLoading, setReportLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
 
@@ -964,7 +967,9 @@ export default function TeacherIndividualReportPage() {
         const [hwRes, ibRes, attRes] = await Promise.all([
           getStudentHomework(cid, token, studentId),
           getStudentIbadah(cid, token, studentId, { from, to, limit: 90 }),
-          getStudentAttendance(cid, token, studentId, { from, to, take: 500 }),
+          getStudentAttendance(cid, token, studentId, {
+            from, to, take: 500, classId: selectedStudent?.classId ?? undefined,
+          }),
         ]);
         const filteredHw = hwRes.homework.filter(
           (item) => item.dueDate.slice(0, 10) >= from && item.dueDate.slice(0, 10) <= to,
@@ -972,13 +977,14 @@ export default function TeacherIndividualReportPage() {
         setStudentHomework(filteredHw);
         setStudentIbadah(ibRes.logs || []);
         setStudentAttendance(attRes.records || []);
+        setStudentWorkingDays(attRes.workingDays ?? 0);
       } catch (e) {
         setError((e as Error).message);
       } finally {
         setReportLoading(false);
       }
     },
-    [cid, token, from, to],
+    [cid, token, from, to, selectedStudent?.classId],
   );
 
   const selectStudent = (student: StudentRecord) => {
@@ -1046,10 +1052,12 @@ export default function TeacherIndividualReportPage() {
     const absent = studentAttendance.filter((a) => a.status === "ABSENT").length;
     const leave = studentAttendance.filter((a) => a.status === "LEAVE" || a.status === "SICK").length;
     const late = studentAttendance.filter((a) => a.status === "LATE").length;
-    const total = studentAttendance.length;
-    const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+    // Working days from the academic year calendar (holidays excluded) are the
+    // denominator; fall back to marked records only if no year is configured.
+    const total = studentWorkingDays || studentAttendance.length;
+    const rate = total > 0 ? Math.min(100, Math.round((present / total) * 100)) : 0;
     return { present, absent, leave, late, total, rate };
-  }, [studentAttendance]);
+  }, [studentAttendance, studentWorkingDays]);
 
   const studentHwMetrics = useMemo(() => {
     const total = studentHomework.length;
@@ -1675,6 +1683,7 @@ export default function TeacherIndividualReportPage() {
           from={from}
           to={to}
           attendance={studentAttendance}
+          workingDays={studentWorkingDays}
           homework={studentHomework}
           ibadah={studentIbadah}
           schoolName={user?.name ?? ""}
