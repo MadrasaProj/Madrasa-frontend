@@ -1,8 +1,10 @@
 export type StudentInfo = {
   name: string;
+  gender?: string | null;
   regNo: string;
   className: string;
-  avatarUrl: string;
+  /** Real avatar URL. When empty/null, an initials placeholder is generated. */
+  avatarUrl?: string | null;
   rank?: string | null;
 };
 
@@ -56,6 +58,13 @@ const escapeHTML = (value: unknown): string =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
+/** Initials avatar used only when the student has no uploaded photo. */
+const getFallbackAvatar = (name: string, gender?: string | null): string => {
+  const initial = encodeURIComponent((name || 'S').trim().charAt(0).toUpperCase() || 'S');
+  const fill = gender === 'FEMALE' ? '%23be185d' : '%2308984e';
+  return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220'%3E%3Crect width='220' height='220' fill='${fill}'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='central' text-anchor='middle' font-family='sans-serif' font-weight='700' font-size='110' fill='%23FFFFFF'%3E${initial}%3C/text%3E%3C/svg%3E`;
+};
+
 const getGradePillClass = (grade = ''): string => {
   const normalized = grade.trim().toUpperCase();
   if (normalized.startsWith('A')) return 'grade-pill--a';
@@ -88,6 +97,11 @@ export function generateResultCardHTML(data: ResultCardParams): string {
 
   const firstLetter = escapeHTML((institution.name || 'D').trim().charAt(0).toUpperCase());
   const defaultLogo = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Crect width='80' height='80' rx='18' fill='%231D4ED8'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-weight='800' font-size='38' fill='%23FFFFFF'%3E${firstLetter}%3C/text%3E%3C/svg%3E`;
+
+  // Prefer the student's uploaded avatar; only fall back to initials when absent.
+  const avatarUrl = student.avatarUrl?.trim()
+    ? student.avatarUrl
+    : getFallbackAvatar(student.name, student.gender);
 
   const subjectRowsHTML = subjects
     .map((sub) => {
@@ -190,7 +204,7 @@ export function generateResultCardHTML(data: ResultCardParams): string {
       position: relative;
       gap: 36px;
       background-image:
-        linear-gradient(to right, rgba(15, 23, 42, 0.03) 1px, transparent 1px),
+        linear-gradient(to right, rgba(15, 23, 42, 0.06) 1px, transparent 1px),
         linear-gradient(to bottom, rgba(15, 23, 42, 0.05) 1px, transparent 1px);
       background-size: 10mm 10mm;
     }
@@ -601,8 +615,9 @@ export function generateResultCardHTML(data: ResultCardParams): string {
       <div class="portrait-1-2-wrap">
         <div class="portrait-1-2-box">
           <img
-            src="${escapeHTML(student.avatarUrl)}"
+            src="${escapeHTML(avatarUrl)}"
             alt="${escapeHTML(student.name)}"
+            crossorigin="anonymous"
           />
         </div>
         ${student.rank ? `<span class="rank-tag">${escapeHTML(student.rank)}</span>` : ''}
@@ -660,6 +675,7 @@ export function generateResultCardHTML(data: ResultCardParams): string {
           class="brand-logo"
           src="${escapeHTML(institution.logoUrl ?? defaultLogo)}"
           alt="${escapeHTML(institution.name)} Logo"
+          crossorigin="anonymous"
         />
         <div>
           <div class="institution-name">${escapeHTML(institution.name)}</div>

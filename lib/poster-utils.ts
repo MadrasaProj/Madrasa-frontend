@@ -37,6 +37,40 @@ export function getCoverImageUrl(sceneData: unknown): string | null {
 
 // ── Core capture ──────────────────────────────────────────────────────────────
 
+/**
+ * html2canvas can only rasterise images it can read. Converting remote images
+ * (R2 avatars/logos) to data URLs before capture makes exports reliable even
+ * when the canvas library's own CORS handling is inconsistent.
+ */
+export async function inlineImagesForCapture(root: ParentNode): Promise<void> {
+  const images = Array.from(root.querySelectorAll("img"));
+  await Promise.all(images.map(async (img) => {
+    const src = img.getAttribute("src");
+    if (!src || src.startsWith("data:") || src.startsWith("blob:")) return;
+    try {
+      const res = await fetch(src, { mode: "cors", cache: "no-store" });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload  = () => resolve(String(reader.result));
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      if (!img.complete || img.naturalWidth === 0) {
+        await new Promise<void>((resolve) => {
+          img.onload = img.onerror = () => resolve();
+          img.src = dataUrl;
+        });
+      } else {
+        img.src = dataUrl;
+      }
+    } catch {
+      // Keep the original src — html2canvas will still attempt its CORS path.
+    }
+  }));
+}
+
 export async function captureElement(
   el: HTMLElement,
   options: { scale?: number; bg?: string | null } = {},

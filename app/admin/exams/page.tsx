@@ -112,7 +112,7 @@ const EMPTY_FORM: ExamForm = {
 interface MarkEntryState {
   classId: string;
   subjectId: string;
-  students: { id: string; name: string; adno: string }[];
+  students: { id: string; name: string; adno: string; photoUrl?: string | null }[];
   subjects: SubjectRecord[];
   scores: Record<string, string>;
   loading: boolean;
@@ -190,6 +190,14 @@ export default function AdminExamsPage() {
 
   const [contentTab, setContentTab] = useState<"markentry" | "report">("markentry");
   const [reportData, setReportData] = useState<ClassReport | null>(null);
+
+  // Photos come from the student list loaded for mark entry; the report payload
+  // itself does not include them. The poster template falls back to initials
+  // for any student without a photo.
+  const studentPhotoMap = useMemo(
+    () => Object.fromEntries(markEntry.students.map((s) => [s.id, s.photoUrl ?? null])),
+    [markEntry.students],
+  );
   const [resultSheetData, setResultSheetData] = useState<ClassReport | null>(null);
   const [reportControlsContainer, setReportControlsContainer] = useState<HTMLDivElement | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
@@ -1173,7 +1181,7 @@ export default function AdminExamsPage() {
                                       setMarklistStudId={setMarklistStudId}
                                       madrasaName={reportData.clientName ?? ""}
                                       madrasaLogo={reportData.clientLogo ?? null}
-                                      studentPhotoMap={{}}
+                                      studentPhotoMap={studentPhotoMap}
                                     />
                                   )}
 
@@ -1196,7 +1204,7 @@ export default function AdminExamsPage() {
                                       setPosterStudentId={setPosterStudentId}
                                       madrasaName={reportData.clientName ?? ""}
                                       madrasaLogo={reportData.clientLogo ?? null}
-                                      studentPhotoMap={{}}
+                                      studentPhotoMap={studentPhotoMap}
                                     />
                                   )}
                                 </div>

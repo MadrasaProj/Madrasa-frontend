@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, Share2, Loader2, Upload, X, FileText, Printer } from "lucide-react";
 import type { ClassReport, ClassReportRow } from "@/lib/results-api";
-import { downloadAsJPG, downloadAsPDF, shareAsPNG, downloadAsPNG } from "@/lib/poster-utils";
+import { downloadAsJPG, downloadAsPDF, shareAsPNG, downloadAsPNG, inlineImagesForCapture } from "@/lib/poster-utils";
 import {
   generateResultCardHTML,
   type ResultCardParams,
@@ -27,12 +27,6 @@ const PAGE_H = 297 * MM_TO_PX;
 const BODY_PADDING = 24; // matches `body { padding: 24px }` in the template
 const DOC_W = PAGE_W + BODY_PADDING * 2;
 const DOC_H = PAGE_H + BODY_PADDING * 2;
-
-function fallbackAvatar(name: string, gender: string): string {
-  const initial = encodeURIComponent((name || "S").trim().charAt(0).toUpperCase() || "S");
-  const fill = gender === "FEMALE" ? "%23be185d" : "%2308984e";
-  return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220'%3E%3Crect width='220' height='220' fill='${fill}'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='central' text-anchor='middle' font-family='sans-serif' font-weight='700' font-size='110' fill='%23FFFFFF'%3E${initial}%3C/text%3E%3C/svg%3E`;
-}
 
 /** Wait until the iframe has loaded its fonts/images before rasterising it. */
 async function waitForAssets(doc: Document | null | undefined): Promise<void> {
@@ -119,9 +113,11 @@ export function ResultCardPoster({ row, report, madrasaName, madrasaLogo, studen
       badgeText: "Result Card",
       student: {
         name: student.name,
+        gender: student.gender,
         regNo: student.adno,
         className: cls.name,
-        avatarUrl: photo ?? fallbackAvatar(student.name, student.gender),
+        // null => the template renders an initials placeholder; a real photo wins.
+        avatarUrl: photo ?? null,
         rank: summary.rank ? (RANK_LABELS[summary.rank] ?? `#${summary.rank}`) : null,
       },
       subjects: subjects.map((sub) => {
@@ -159,6 +155,7 @@ export function ResultCardPoster({ row, report, madrasaName, madrasaLogo, studen
     setExporting(type);
     try {
       await waitForAssets(doc);
+      if (doc) await inlineImagesForCapture(doc);
       if (type === "jpg")   await downloadAsJPG(el, stem);
       if (type === "png")   await downloadAsPNG(el, stem);
       if (type === "pdf")   await downloadAsPDF(el, stem, "a4");
