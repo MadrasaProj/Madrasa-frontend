@@ -5,7 +5,7 @@ import { ApiErrorBanner } from "@/components/ui/ApiErrorBanner";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ClassResultTable } from "@/components/exam/ClassResultTable";
 import { RankPoster } from "@/components/exam/RankPoster";
-import { MarklistPoster } from "@/components/exam/MarklistPoster";
+import { ResultCardPoster } from "@/components/poster/ResultCardPoster";
 import { ResultAnnouncementPoster } from "@/components/exam/ResultAnnouncementPoster";
 import { ExcelImportModal } from "@/components/exam/ExcelImportModal";
 import {
@@ -372,7 +372,7 @@ function MarklistTab({ report, marklistStudId, setMarklistStudId, madrasaName, m
  animate={{ opacity: 1, y: 0 }}
  className="max-w-sm mx-auto"
  >
- <MarklistPoster row={activeRow} report={report} madrasaName={madrasaName} madrasaLogo={madrasaLogo} studentPhotoMap={studentPhotoMap} />
+ <ResultCardPoster row={activeRow} report={report} madrasaName={madrasaName} madrasaLogo={madrasaLogo} studentPhotoMap={studentPhotoMap} />
  </motion.div>
  ) : (
  <div className="flex flex-col items-center justify-center py-16 text-gray-400 gap-3">

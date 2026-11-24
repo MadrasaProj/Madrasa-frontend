@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { DrawerSelector } from "@/components/DrawerSelector";
 import { ScrollableTabs } from "@/components/ui/ScrollableTabs";
 import { RankPoster } from "@/components/exam/RankPoster";
-import { MarklistPoster } from "@/components/exam/MarklistPoster";
+import { ResultCardPoster } from "@/components/poster/ResultCardPoster";
 import { ResultAnnouncementPoster } from "@/components/exam/ResultAnnouncementPoster";
 import {
   type ClassReport, type ClassReportRow, type ResultStatus, type TotalGrade,
@@ -52,7 +52,7 @@ export function ReportMarklistTab({ report, marklistStudId, setMarklistStudId, m
           animate={{ opacity: 1, y: 0 }}
           className="max-w-sm mx-auto"
         >
-          <MarklistPoster row={activeRow} report={report} madrasaName={madrasaName} madrasaLogo={madrasaLogo} studentPhotoMap={studentPhotoMap} />
+          <ResultCardPoster row={activeRow} report={report} madrasaName={madrasaName} madrasaLogo={madrasaLogo} studentPhotoMap={studentPhotoMap} />
         </motion.div>
       ) : (
         <div className="flex flex-col items-center justify-center py-16 text-gray-400 gap-3">
