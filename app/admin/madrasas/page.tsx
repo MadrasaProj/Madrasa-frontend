@@ -10,12 +10,15 @@ import {
   getClientLogs,
   createClient,
   listEducationSystems,
+  listSuperAdminUsers,
+  assignClient,
   type ClientListItem,
   type ClientPayment,
   type ActivityLogItem,
   type CreateClientDto,
   type UpdateClientDto,
   type EducationSystemInfo,
+  type SuperAdminUser,
 } from "@/lib/super-admin-api";
 import {
   getAllClasses,
@@ -42,6 +45,11 @@ import {
   Share2,
   Search,
   Filter,
+  UserCheck,
+  UserX,
+  AlertCircle,
+  TrendingUp,
+  Info,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -103,8 +111,10 @@ function EditMadrasaDrawer({
     password: "",
     committieUsername: "",
     committiePassword: "",
+    assigneeId: client.assigneeId ?? null,
   });
   const [saving, setSaving] = useState(false);
+  const [superUsers, setSuperUsers] = useState<SuperAdminUser[]>([]);
   const [editDivisions, setEditDivisions] = useState<Record<string, string[]>>({});
   const [existingClasses, setExistingClasses] = useState<ClassRecord[]>([]);
   const [classesLoading, setClassesLoading] = useState(true);
@@ -112,6 +122,11 @@ function EditMadrasaDrawer({
 
   useEffect(() => {
     let cancelled = false;
+    listSuperAdminUsers(token)
+      .then((res) => {
+        if (!cancelled) setSuperUsers(res.data || []);
+      })
+      .catch(() => {});
     Promise.all([
       getAllClasses(client.id, token),
       client.educationSystemId ? listEducationSystems(token) : Promise.resolve(null),
@@ -270,6 +285,29 @@ function EditMadrasaDrawer({
                 placeholder="Optional"
               />
             </div>
+          </div>
+
+          {/* Assignee Selection */}
+          <div>
+            <label className={labelCls}>Madrasa Assignee / Account Manager</label>
+            <select
+              value={form.assigneeId || ""}
+              onChange={(e) => setForm((f) => ({ ...f, assigneeId: e.target.value || null }))}
+              className={inputCls}
+            >
+              <option value="">-- No Assignee (Unassigned) --</option>
+              {superUsers.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name} ({u.role?.replace(/_/g, " ")}) - {u.identifier}
+                </option>
+              ))}
+            </select>
+            {!form.assigneeId && (
+              <p className="text-[11px] text-amber-600 mt-1 flex items-center gap-1 font-medium">
+                <AlertCircle className="w-3 h-3" />
+                Assignee is required for customer success and usage accountability.
+              </p>
+            )}
           </div>
 
           {/* Admin Account */}
@@ -784,6 +822,7 @@ const emptyForm: CreateClientDto = {
   committiePassword: "",
   status: "ACTIVE",
   isLoginEnabled: true,
+  assigneeId: "",
 };
 
 function slugify(s: string) {
@@ -816,6 +855,13 @@ function NewMadrasaDrawer({
   const [eduSystems, setEduSystems] = useState<EducationSystemInfo[]>([]);
   const [systemsLoading, setSystemsLoading] = useState(true);
   const [selectedSystem, setSelectedSystem] = useState<EducationSystemInfo | null>(null);
+  const [superUsers, setSuperUsers] = useState<SuperAdminUser[]>([]);
+
+  useEffect(() => {
+    listSuperAdminUsers(token)
+      .then((res) => setSuperUsers(res.data || []))
+      .catch(() => {});
+  }, [token]);
 
   useEffect(() => {
     listEducationSystems(token)
@@ -848,6 +894,10 @@ function NewMadrasaDrawer({
       !form.adminPassword
     ) {
       toast.error("Please fill in all required fields.");
+      return;
+    }
+    if (!form.assigneeId) {
+      toast.error("Please select an assignee. Assignee is required for madrasa ownership.");
       return;
     }
     setSaving(true);
@@ -1081,6 +1131,30 @@ function NewMadrasaDrawer({
               onChange={setGlDivisions}
               gradeLevels={selectedSystem?.gradeLevels ?? []}
             />
+
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide border-t border-gray-100 pt-6 mt-8">
+              Account Ownership & Assignee
+            </p>
+            <div>
+              <label className={labelCls}>
+                Assigned Team Member <span className="text-red-500">* (Required)</span>
+              </label>
+              <select
+                value={form.assigneeId || ""}
+                onChange={(e) => set("assigneeId", e.target.value)}
+                className={inputCls}
+              >
+                <option value="">-- Select Assignee (Required) --</option>
+                {superUsers.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} ({u.role?.replace(/_/g, " ")}) - {u.identifier}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[11px] text-gray-500 mt-1">
+                Every madrasa requires an internal assigned owner for product adoption, customer success, and usage tracking.
+              </p>
+            </div>
 
             <p className="text-xs font-bold text-gray-500 uppercase tracking-wide border-t border-gray-100 pt-6 mt-8">
               Admin Account
@@ -1401,6 +1475,26 @@ export default function AdminMadrasasPage() {
                             : "Class-based"}{" "}
                           attendance
                         </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                        {client.assignee ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200">
+                            <UserCheck className="w-3 h-3 text-indigo-500" />
+                            Assignee: {client.assignee.name}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200">
+                            <AlertCircle className="w-3 h-3 text-amber-600" />
+                            Unassigned (Required)
+                          </span>
+                        )}
+                        <button
+                          onClick={() => navigate(`/admin/usage-health?search=${encodeURIComponent(client.name)}`)}
+                          className="inline-flex items-center gap-1 text-[11px] font-medium text-primary-600 hover:text-primary-700 hover:underline cursor-pointer"
+                        >
+                          <TrendingUp className="w-3 h-3" />
+                          Usage Health Score
+                        </button>
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">

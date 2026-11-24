@@ -75,12 +75,12 @@ export const LeadFormDrawer: React.FC<LeadFormDrawerProps> = ({
           animate={{ x: 0 }}
           exit={{ x: "100%" }}
           transition={{ type: "spring", damping: 28, stiffness: 260 }}
-          className="relative bg-white w-full max-w-lg h-full max-h-screen overflow-y-auto p-4 sm:p-7 space-y-5 sm:space-y-6 shadow-2xl z-10 flex flex-col"
+          className="relative bg-white w-full max-w-lg h-full max-h-[100dvh] overflow-y-auto p-4 sm:p-7 space-y-5 sm:space-y-6 shadow-2xl z-10 flex flex-col"
         >
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-3">
             <div>
-              <h3 className="text-xl font-black text-gray-900 flex items-center gap-2">
+              <h3 className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
                 <Building2 className="w-5 h-5 text-primary-600" />
                 <span>{mode === "create" ? "Add New Lead" : "Edit Lead Details"}</span>
               </h3>
@@ -94,13 +94,14 @@ export const LeadFormDrawer: React.FC<LeadFormDrawerProps> = ({
               type="button"
               disabled={isSaving}
               onClick={onClose}
-              className="p-2 text-gray-400 hover:bg-gray-100 rounded-xl disabled:opacity-50"
+              aria-label="Close form drawer"
+              className="min-h-[36px] min-w-[36px] flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors disabled:opacity-50"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          <form onSubmit={onSubmit} className="space-y-4 flex-1">
+          <form onSubmit={onSubmit} className="space-y-3.5 flex-1 pb-6">
             {/* Madrasa Name */}
             <div className="space-y-1">
               <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
@@ -112,7 +113,7 @@ export const LeadFormDrawer: React.FC<LeadFormDrawerProps> = ({
                 value={formData.name}
                 onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
                 placeholder="e.g. Darul Uloom Kozhikode"
-                className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600"
+                className="w-full min-h-[38px] sm:min-h-[40px] bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600"
               />
             </div>
 
@@ -125,7 +126,7 @@ export const LeadFormDrawer: React.FC<LeadFormDrawerProps> = ({
                 <select
                   value={formData.status}
                   onChange={(e) => setFormData((p) => ({ ...p, status: e.target.value }))}
-                  className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none"
+                  className="w-full min-h-[38px] sm:min-h-[40px] bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none"
                 >
                   {LEAD_STATUSES.map((s, idx) => (
                     <option key={s} value={s}>
@@ -142,7 +143,7 @@ export const LeadFormDrawer: React.FC<LeadFormDrawerProps> = ({
                 <select
                   value={formData.type}
                   onChange={(e) => setFormData((p) => ({ ...p, type: e.target.value }))}
-                  className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none"
+                  className="w-full min-h-[38px] sm:min-h-[40px] bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none"
                 >
                   {["Samastha", "AP", "Fadhila", "Other"].map((t) => (
                     <option key={t} value={t}>
@@ -170,7 +171,7 @@ export const LeadFormDrawer: React.FC<LeadFormDrawerProps> = ({
                       district: d?.name ?? "",
                     }));
                   }}
-                  className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none"
+                  className="w-full min-h-[38px] sm:min-h-[40px] bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none"
                 >
                   <option value="">Select District *</option>
                   {districts.map((d) => (
@@ -190,7 +191,7 @@ export const LeadFormDrawer: React.FC<LeadFormDrawerProps> = ({
                   value={formData.place}
                   onChange={(e) => setFormData((p) => ({ ...p, place: e.target.value }))}
                   placeholder="e.g. Koduvally, Chemmad"
-                  className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs sm:text-sm text-gray-900 focus:outline-none"
+                  className="w-full min-h-[38px] sm:min-h-[40px] bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs sm:text-sm text-gray-900 focus:outline-none"
                 />
               </div>
             </div>
@@ -205,12 +206,12 @@ export const LeadFormDrawer: React.FC<LeadFormDrawerProps> = ({
                 value={formData.address}
                 onChange={(e) => setFormData((p) => ({ ...p, address: e.target.value }))}
                 placeholder="Complete postal address / landmark"
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs sm:text-sm text-gray-900 focus:outline-none resize-none"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-xs sm:text-sm text-gray-900 focus:outline-none resize-none"
               />
             </div>
 
             {/* Source, Students, Teachers */}
-            <div className="grid grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <div className="space-y-1">
                 <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
                   Lead Source
@@ -218,7 +219,7 @@ export const LeadFormDrawer: React.FC<LeadFormDrawerProps> = ({
                 <select
                   value={formData.source}
                   onChange={(e) => setFormData((p) => ({ ...p, source: e.target.value }))}
-                  className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl px-2 py-2 text-xs font-semibold focus:outline-none"
+                  className="w-full min-h-[38px] sm:min-h-[40px] bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs sm:text-sm font-semibold focus:outline-none"
                 >
                   {LEAD_SOURCES.map((s) => (
                     <option key={s} value={s}>
@@ -239,7 +240,7 @@ export const LeadFormDrawer: React.FC<LeadFormDrawerProps> = ({
                     setFormData((p) => ({ ...p, studentCount: Number(e.target.value) }))
                   }
                   placeholder="0"
-                  className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl p-2 text-xs sm:text-sm font-bold text-gray-900 text-center focus:outline-none"
+                  className="w-full min-h-[38px] sm:min-h-[40px] bg-gray-50 border border-gray-200 rounded-xl p-2 text-xs sm:text-sm font-bold text-gray-900 text-center focus:outline-none"
                 />
               </div>
 
@@ -254,13 +255,13 @@ export const LeadFormDrawer: React.FC<LeadFormDrawerProps> = ({
                     setFormData((p) => ({ ...p, teacherCount: Number(e.target.value) }))
                   }
                   placeholder="0"
-                  className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl p-2 text-xs sm:text-sm font-bold text-gray-900 text-center focus:outline-none"
+                  className="w-full min-h-[38px] sm:min-h-[40px] bg-gray-50 border border-gray-200 rounded-xl p-2 text-xs sm:text-sm font-bold text-gray-900 text-center focus:outline-none"
                 />
               </div>
             </div>
 
             {/* Primary Contact Person */}
-            <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200 space-y-3">
+            <div className="bg-gray-50 p-3.5 sm:p-4 rounded-2xl border border-gray-200 space-y-3">
               <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700">
                 Primary Contact Person
               </h4>
@@ -272,7 +273,7 @@ export const LeadFormDrawer: React.FC<LeadFormDrawerProps> = ({
                     value={formData.contactName}
                     onChange={(e) => setFormData((p) => ({ ...p, contactName: e.target.value }))}
                     placeholder="e.g. Usthad Abdul Hameed"
-                    className="w-full min-h-[40px] bg-white border border-gray-200 rounded-xl px-3 text-xs sm:text-sm focus:outline-none"
+                    className="w-full min-h-[38px] sm:min-h-[40px] bg-white border border-gray-200 rounded-xl px-3 text-xs sm:text-sm focus:outline-none"
                   />
                 </div>
                 <div>
@@ -282,7 +283,7 @@ export const LeadFormDrawer: React.FC<LeadFormDrawerProps> = ({
                     value={formData.contactPhone}
                     onChange={(e) => setFormData((p) => ({ ...p, contactPhone: e.target.value }))}
                     placeholder="9876543210"
-                    className="w-full min-h-[40px] bg-white border border-gray-200 rounded-xl px-3 text-xs sm:text-sm font-mono focus:outline-none"
+                    className="w-full min-h-[38px] sm:min-h-[40px] bg-white border border-gray-200 rounded-xl px-3 text-xs sm:text-sm font-mono focus:outline-none"
                   />
                 </div>
               </div>
@@ -296,7 +297,7 @@ export const LeadFormDrawer: React.FC<LeadFormDrawerProps> = ({
                       setFormData((p) => ({ ...p, contactSecondaryPhone: e.target.value }))
                     }
                     placeholder="Alternative phone number"
-                    className="w-full min-h-[40px] bg-white border border-gray-200 rounded-xl px-3 text-xs sm:text-sm font-mono focus:outline-none"
+                    className="w-full min-h-[38px] sm:min-h-[40px] bg-white border border-gray-200 rounded-xl px-3 text-xs sm:text-sm font-mono focus:outline-none"
                   />
                 </div>
                 <div>
@@ -304,7 +305,7 @@ export const LeadFormDrawer: React.FC<LeadFormDrawerProps> = ({
                   <select
                     value={formData.contactRole}
                     onChange={(e) => setFormData((p) => ({ ...p, contactRole: e.target.value }))}
-                    className="w-full min-h-[40px] bg-white border border-gray-200 rounded-xl px-3 text-xs sm:text-sm focus:outline-none text-gray-800 font-medium"
+                    className="w-full min-h-[38px] sm:min-h-[40px] bg-white border border-gray-200 rounded-xl px-3 text-xs sm:text-sm focus:outline-none text-gray-800 font-medium"
                   >
                     <option value="">Select Role / Title</option>
                     {CONTACT_ROLES.map((r) => (
@@ -327,12 +328,12 @@ export const LeadFormDrawer: React.FC<LeadFormDrawerProps> = ({
                 value={formData.existingSoftware}
                 onChange={(e) => setFormData((p) => ({ ...p, existingSoftware: e.target.value }))}
                 placeholder="e.g. Excel, Registers, Custom software"
-                className="w-full min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl px-3 text-xs sm:text-sm focus:outline-none"
+                className="w-full min-h-[38px] sm:min-h-[40px] bg-gray-50 border border-gray-200 rounded-xl px-3 text-xs sm:text-sm focus:outline-none"
               />
             </div>
 
             {/* Lead Ownership & Assignee */}
-            <div className="bg-emerald-50/50 p-4 rounded-2xl space-y-3.5 border border-emerald-200">
+            <div className="bg-emerald-50/50 p-3.5 sm:p-4 rounded-2xl space-y-3 border border-emerald-200">
               <div className="flex items-center justify-between pb-2 border-b border-emerald-200/70">
                 <div>
                   <h4 className="text-xs font-bold text-emerald-950 uppercase tracking-wider flex items-center gap-1.5">
@@ -363,7 +364,7 @@ export const LeadFormDrawer: React.FC<LeadFormDrawerProps> = ({
                       return { ...p, contributors: next };
                     });
                   }}
-                  className="w-full min-h-[44px] bg-white border border-gray-200 rounded-xl px-3 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none"
+                  className="w-full min-h-[38px] sm:min-h-[40px] bg-white border border-gray-200 rounded-xl px-3 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none"
                 >
                   <option value="">Select Team Member to Assign</option>
                   {assigneeOptions.map((u) => (
@@ -389,7 +390,7 @@ export const LeadFormDrawer: React.FC<LeadFormDrawerProps> = ({
                   />
                 </div>
                 {formData.enableCommission && (
-                  <div className="mt-2.5 flex items-center gap-2">
+                  <div className="mt-2 flex items-center gap-2">
                     <span className="text-xs text-gray-600">Base Commission:</span>
                     <input
                       type="number"
@@ -397,7 +398,7 @@ export const LeadFormDrawer: React.FC<LeadFormDrawerProps> = ({
                       onChange={(e) =>
                         setFormData((p) => ({ ...p, commissionPercentage: Number(e.target.value) }))
                       }
-                      className="w-20 min-h-[36px] bg-white border border-gray-200 rounded-xl px-2 text-xs font-bold text-center"
+                      className="w-20 min-h-[34px] bg-white border border-gray-200 rounded-xl px-2 text-xs font-bold text-center"
                     />
                     <span className="text-xs font-bold text-gray-600">%</span>
                   </div>
@@ -406,19 +407,19 @@ export const LeadFormDrawer: React.FC<LeadFormDrawerProps> = ({
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
+            <div className="flex items-center gap-2.5 pt-3 border-t border-gray-100">
               <button
                 type="button"
                 disabled={isSaving}
                 onClick={onClose}
-                className="min-h-[44px] flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs sm:text-sm rounded-xl transition-all"
+                className="min-h-[38px] sm:min-h-[40px] flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs sm:text-sm rounded-xl transition-all"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSaving}
-                className="min-h-[44px] flex-1 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs active:scale-[0.98]"
+                className="min-h-[38px] sm:min-h-[40px] flex-1 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs active:scale-[0.98]"
               >
                 {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                 <span>{mode === "create" ? "Create Lead" : "Save Changes"}</span>

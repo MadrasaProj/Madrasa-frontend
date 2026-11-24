@@ -168,6 +168,36 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Universal form controls appearance & typography consistency across mobile & desktop */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  font-family: inherit;
+}
+
+@supports (appearance: base-select) {
+  select,
+  ::picker(select) {
+    appearance: base-select;
+  }
+}
+
+select option {
+  padding: 8px 14px;
+  font-family: inherit;
+  font-size: 13px;
+  background-color: #ffffff;
+  color: #111827;
+}
+
+input[type="date"],
+input[type="text"],
+input[type="search"],
+textarea {
+  font-family: inherit;
+}
+
 /* ── Mobile & Touch Experience (PWA, mobile web & wrapped app) ───────────────── */
 @media (pointer: coarse), (max-width: 1024px) {
   html,
@@ -197,11 +227,11 @@ body {
     opacity: 0.92;
   }
 
-  /* Prevent iOS Safari / WKWebView auto-zoom on input focus */
-  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]),
-  select,
-  textarea {
-    font-size: 16px !important;
+  /* Ensure form controls inherit consistent typography and prevent OS widget font blow-ups */
+  select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
   }
 }
 

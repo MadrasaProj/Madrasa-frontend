@@ -53,6 +53,7 @@ import AdminStudentDetailPage from "../app/admin/students/[id]/page";
 import AdminStudentsPage from "../app/admin/students/page";
 import AdminSubjectsPage from "../app/admin/subjects/page";
 import AdminSuperUsersPage from "../app/admin/super-users/page";
+import AdminUsageHealthPage from "../app/admin/usage-health/page";
 import AdminTeachersPage from "../app/admin/teachers/page";
 import AdminTeacherAttendancePage from "../app/admin/teacher-attendance/page";
 import AdminClassTestsPage from "../app/admin/exams/class-test/page";
@@ -208,6 +209,8 @@ export default function App() {
 
         {/* Super Admin platform routes */}
         <Route path="/admin/madrasas" element={<AdminMadrasasPage />} />
+        <Route path="/admin/usage-health" element={<AdminUsageHealthPage />} />
+        <Route path="/admin/madrasas/usage" element={<AdminUsageHealthPage />} />
         <Route path="/admin/super-users" element={<AdminSuperUsersPage />} />
         <Route
           path="/admin/platform-reports"

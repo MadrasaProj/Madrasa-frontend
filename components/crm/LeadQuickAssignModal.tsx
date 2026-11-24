@@ -1,6 +1,6 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Users, Loader2, Sparkles } from "lucide-react";
+import { X, Users, Loader2, Sparkles, ChevronDown } from "lucide-react";
 import type { LeadDetail, InternalUserItem } from "@/lib/crm-api";
 
 interface LeadQuickAssignModalProps {
@@ -55,47 +55,51 @@ export const LeadQuickAssignModal: React.FC<LeadQuickAssignModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 text-gray-400 hover:bg-gray-100 rounded-xl"
+              aria-label="Close reassignment modal"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3.5">
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
                 Select Sales Representative *
               </label>
-              <select
-                value={selectedUserId}
-                onChange={(e) => onSelectUserId(e.target.value)}
-                className="w-full min-h-[46px] bg-gray-50 border border-gray-200 rounded-xl px-3 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600"
-              >
-                <option value="">-- Choose Sales Rep / Admin --</option>
-                {assigneeOptions.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.id === effectiveUserId ? `⭐ ${u.name} (You)` : `${u.name} (${u.role?.replace(/_/g, " ")})`}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  value={selectedUserId}
+                  onChange={(e) => onSelectUserId(e.target.value)}
+                  className="w-full h-9 bg-gray-50 border border-gray-200 rounded-lg pl-3 pr-8 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                >
+                  <option value="">{"\u00A0\u00A0"}-- Choose Sales Rep / Admin --</option>
+                  {assigneeOptions.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {"\u00A0\u00A0"}{u.id === effectiveUserId ? `⭐ ${u.name} (You)` : `${u.name} (${u.role?.replace(/_/g, " ")})`}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+              </div>
             </div>
 
             {effectiveUserId && (
               <button
                 type="button"
                 onClick={() => onSelectUserId(effectiveUserId)}
-                className="w-full py-2 px-3 rounded-xl border border-primary-200 bg-primary-50 hover:bg-primary-100 text-primary-800 text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                className="w-full min-h-[36px] px-3.5 rounded-xl border border-primary-200 bg-primary-50 hover:bg-primary-100 text-primary-800 text-xs font-bold transition-all flex items-center justify-center gap-1.5"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>Assign to Me</span>
               </button>
             )}
 
-            <div className="flex items-center gap-3 pt-2">
+            <div className="flex items-center gap-2.5 pt-2">
               <button
                 type="button"
                 onClick={onClose}
-                className="min-h-[44px] flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs sm:text-sm rounded-xl transition-all"
+                className="min-h-[38px] sm:min-h-[40px] flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs sm:text-sm rounded-xl transition-all"
               >
                 Cancel
               </button>
@@ -103,7 +107,7 @@ export const LeadQuickAssignModal: React.FC<LeadQuickAssignModalProps> = ({
                 type="button"
                 disabled={isLoading || !selectedUserId}
                 onClick={() => onConfirm(selectedUserId)}
-                className="min-h-[44px] flex-1 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs active:scale-[0.98]"
+                className="min-h-[38px] sm:min-h-[40px] flex-1 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs active:scale-[0.98]"
               >
                 {isLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />

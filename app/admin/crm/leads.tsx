@@ -1039,7 +1039,7 @@ export default function LeadsCrmPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-4">
+      <div className="space-y-3 pb-28 sm:pb-12">
         {/* Toast */}
         <AnimatePresence>
           {toastMessage && (
@@ -1067,39 +1067,38 @@ export default function LeadsCrmPage() {
         {/* CRM Sub Navigation */}
         {/* <CrmSubNav /> */}
 
-        {/* ── Top Header: Title & Direct Action Buttons ── */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
-              <span>Leads &amp; Sales Funnel</span>
-              <span className="text-xs font-extrabold px-2 py-0.5 rounded-full bg-primary-100 text-primary-800 border border-primary-200">
-                {leads.length} records
+        {/* ── Top Header: Single Row Compact Header ── */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-base sm:text-xl font-bold text-gray-900 tracking-tight truncate">
+                Leads &amp; Sales Funnel
+              </h1>
+              <span className="text-[11px] font-bold px-1.5 py-0.2 rounded-full bg-primary-50 text-primary-700 border border-primary-200 shrink-0">
+                {leads.length}
               </span>
-            </h1>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Portfolio view for{" "}
-              <strong className="text-gray-800">
-                {user?.name || "Representative"}
-              </strong>
+            </div>
+            <p className="text-[11px] sm:text-xs text-gray-500 truncate">
+              Portfolio: <span className="font-medium text-gray-700">{user?.name || "Representative"}</span>
             </p>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
               onClick={() => setShowImportModal(true)}
-              className="min-h-[42px] px-3.5 py-2 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-bold text-xs sm:text-sm flex items-center gap-1.5 transition-all active:scale-95 shadow-2xs"
+              className="h-8 px-2.5 rounded-lg bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-semibold text-xs flex items-center gap-1 transition-all active:scale-95 shadow-2xs"
             >
-              <Upload className="w-4 h-4 text-emerald-600" />
+              <Upload className="w-3.5 h-3.5 text-emerald-600" />
               <span>Import</span>
             </button>
 
             <button
               type="button"
               onClick={handleOpenCreateDrawer}
-              className="min-h-[42px] px-4 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 transition-all shadow-xs active:scale-95"
+              className="h-8 px-3 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-semibold text-xs flex items-center gap-1 transition-all shadow-xs active:scale-95"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5" />
               <span>Add Lead</span>
             </button>
           </div>
@@ -1144,9 +1143,9 @@ export default function LeadsCrmPage() {
         {/* ── Split Layout: Master List & Detail Panel (Zero Nested Scroll Traps) ── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
           {/* Left Column: Lead List Cards */}
-          <div className="w-full lg:col-span-5 xl:col-span-4 2xl:col-span-4 relative flex flex-col bg-white border border-gray-200/90 rounded-3xl shadow-xs overflow-hidden">
+          <div className="w-full lg:col-span-5 xl:col-span-4 2xl:col-span-4 relative flex flex-col bg-white border border-gray-200/90 rounded-2xl sm:rounded-3xl shadow-2xs overflow-hidden">
             {/* Header: Select All & Counts */}
-            <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/80 flex items-center justify-between shrink-0">
+            <div className="px-3 sm:px-4 py-2 sm:py-2.5 border-b border-gray-100 bg-gray-50/70 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -1161,10 +1160,10 @@ export default function LeadsCrmPage() {
                     else paginatedLeads.forEach((l) => next.delete(l.id));
                     setSelectedLeadIds(next);
                   }}
-                  className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500 border-gray-300 cursor-pointer"
+                  className="w-3.5 h-3.5 rounded text-primary-600 focus:ring-primary-500 border-gray-300 cursor-pointer"
                   title="Select all on this page"
                 />
-                <span className="text-xs font-black text-gray-700 uppercase tracking-wider">
+                <span className="text-xs font-bold text-gray-800 tracking-tight">
                   {smartPreset !== "ALL"
                     ? smartPreset.replace(/_/g, " ")
                     : activeStage === "ALL"
@@ -1173,13 +1172,13 @@ export default function LeadsCrmPage() {
                         activeStage)}
                 </span>
               </div>
-              <span className="text-xs font-bold bg-gray-100 text-gray-700 px-2.5 py-0.5 rounded-full border border-gray-200">
+              <span className="text-[11px] font-semibold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full border border-gray-200">
                 {filteredLeads.length} records
               </span>
             </div>
 
             {/* List Container: Natural document flow with zero scroll limits */}
-            <div className="p-3 sm:p-3.5 space-y-3">
+            <div className="p-2.5 sm:p-3.5 space-y-2 sm:space-y-3">
               {loading && (
                 <div className="py-16 text-center text-gray-400 flex flex-col items-center justify-center gap-2">
                   <Loader2 className="w-6 h-6 animate-spin text-primary-600" />
@@ -1351,20 +1350,20 @@ export default function LeadsCrmPage() {
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", damping: 28, stiffness: 280 }}
-                className="relative z-10 w-full max-h-[92vh] bg-white rounded-t-3xl shadow-2xl flex flex-col overflow-hidden border-t border-gray-200"
+                className="relative z-10 w-full max-h-[calc(100dvh-2rem)] bg-white rounded-t-3xl shadow-2xl flex flex-col overflow-hidden border-t border-gray-200"
               >
                 {/* Pull handle bar */}
-                <div className="pt-3 pb-1 flex justify-center shrink-0">
+                <div className="pt-3 pb-1 flex justify-center shrink-0 cursor-grab">
                   <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
                 </div>
 
                 {/* Mobile Drawer Accessible Header */}
                 <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
                   <div className="min-w-0 flex-1 pr-2">
-                    <h3 className="text-base font-bold text-gray-900 truncate">
+                    <h3 className="text-sm sm:text-base font-bold text-gray-900 truncate">
                       {selectedLead?.name || "Lead Details"}
                     </h3>
-                    <p className="text-[11px] text-gray-500 truncate">
+                    <p className="text-[11px] text-gray-500 truncate mt-0.5">
                       {selectedLead?.place ? `${selectedLead.place} • ` : ""}
                       {selectedLead?.district || ""}
                     </p>
@@ -1375,9 +1374,9 @@ export default function LeadsCrmPage() {
                       <button
                         type="button"
                         onClick={() => handleStartEditLead(selectedLead)}
-                        className="min-h-[38px] px-3 py-1 text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl flex items-center gap-1 transition-all active:scale-95"
+                        className="h-7.5 px-2.5 text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg flex items-center gap-1 transition-all active:scale-95"
                       >
-                        <Pencil className="w-3.5 h-3.5" />
+                        <Pencil className="w-3 h-3 text-gray-600" />
                         <span>Edit</span>
                       </button>
                     )}
@@ -1385,17 +1384,17 @@ export default function LeadsCrmPage() {
                     <button
                       type="button"
                       onClick={closeLead}
-                      className="min-h-[40px] min-w-[40px] rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center transition-all active:scale-95 ml-1"
+                      className="h-7.5 w-7.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center transition-all active:scale-95"
                       aria-label="Close details drawer"
                     >
-                      <X className="w-5 h-5" />
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
 
                 {/* Single, Smooth, Native Drawer Scroll Container */}
                 <div
-                  className="flex-1 overflow-y-auto overscroll-contain p-4 pb-24"
+                  className="flex-1 overflow-y-auto overscroll-contain p-4 pb-28"
                   style={{ WebkitOverflowScrolling: "touch" }}
                 >
                   {detailLoading || !selectedLead ? (
@@ -1466,7 +1465,7 @@ export default function LeadsCrmPage() {
                         new Set(filteredLeads.map((l) => l.id)),
                       )
                     }
-                    className="text-[11px] font-bold text-primary-400 hover:text-primary-300 underline ml-1"
+                    className="text-xs font-bold text-primary-400 hover:text-primary-300 underline ml-1"
                   >
                     Select All ({filteredLeads.length})
                   </button>
@@ -1482,9 +1481,9 @@ export default function LeadsCrmPage() {
                     );
                     setBulkModalType("ASSIGN");
                   }}
-                  className="min-h-[32px] px-2.5 py-1 bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-bold rounded-xl transition-all flex items-center gap-1"
+                  className="min-h-[36px] sm:min-h-[34px] px-3 py-1.5 bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
                 >
-                  <Users className="w-3.5 h-3.5 text-blue-400" />
+                  <Users className="w-4 h-4 text-blue-400" />
                   <span>Assign</span>
                 </button>
 
@@ -1495,9 +1494,9 @@ export default function LeadsCrmPage() {
                     setBulkRemarks("");
                     setBulkModalType("STATUS");
                   }}
-                  className="min-h-[32px] px-2.5 py-1 bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-bold rounded-xl transition-all flex items-center gap-1"
+                  className="min-h-[36px] sm:min-h-[34px] px-3 py-1.5 bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <Sparkles className="w-4 h-4 text-amber-400" />
                   <span>Stage</span>
                 </button>
 
@@ -1508,9 +1507,9 @@ export default function LeadsCrmPage() {
                     setBulkRemarks("");
                     setBulkModalType("FOLLOW_UP");
                   }}
-                  className="min-h-[32px] px-2.5 py-1 bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-bold rounded-xl transition-all flex items-center gap-1"
+                  className="min-h-[36px] sm:min-h-[34px] px-3 py-1.5 bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
                 >
-                  <CalendarClock className="w-3.5 h-3.5 text-emerald-400" />
+                  <CalendarClock className="w-4 h-4 text-emerald-400" />
                   <span>Follow-up</span>
                 </button>
 
@@ -1518,9 +1517,9 @@ export default function LeadsCrmPage() {
                   <button
                     type="button"
                     onClick={() => setBulkModalType("DELETE")}
-                    className="min-h-[32px] px-2.5 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 active:scale-95 text-xs font-bold rounded-xl transition-all flex items-center gap-1"
+                    className="min-h-[36px] sm:min-h-[34px] px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 active:scale-95 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
                   >
-                    <Trash className="w-3.5 h-3.5" />
+                    <Trash className="w-4 h-4" />
                     <span>Delete</span>
                   </button>
                 )}
@@ -1528,10 +1527,11 @@ export default function LeadsCrmPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedLeadIds(new Set())}
-                  className="min-h-[32px] px-2 py-1 bg-white/10 hover:bg-white/20 text-gray-400 hover:text-white rounded-xl text-xs font-bold transition-all ml-1 flex items-center justify-center"
+                  className="min-h-[36px] min-w-[36px] bg-white/10 hover:bg-white/20 text-gray-400 hover:text-white rounded-xl text-xs font-bold transition-all ml-1 flex items-center justify-center"
                   title="Clear selection"
+                  aria-label="Clear selection"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             </motion.div>

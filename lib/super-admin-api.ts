@@ -43,6 +43,8 @@ export interface ClientListItem {
   currentAcademicYearId?: string | null;
   loginEmail?: string;
   loginPhone?: string;
+  assigneeId?: string | null;
+  assignee?: { id: string; name: string; username: string; role: string } | null;
   _count: { users: number; students: number };
 }
 
@@ -70,10 +72,15 @@ export interface UpdateClientDto {
   gradeLevelIds?: string[];
   classLevels?: number[];
   divisions?: Record<string, string[]>;
+  assigneeId?: string | null;
 }
 
 export function updateClient(clientId: string, dto: UpdateClientDto, token: string) {
   return mutateJson<Partial<ClientListItem>>("PATCH", `/super-admin/clients/${clientId}`, dto, token);
+}
+
+export function assignClient(clientId: string, assigneeId: string | null, token: string) {
+  return mutateJson<ClientListItem>("PATCH", `/super-admin/clients/${clientId}/assign`, { assigneeId }, token);
 }
 
 // ── Subscription Payments ────────────────────────────────────────────────────
@@ -194,6 +201,7 @@ export interface CreateClientDto {
   gradeLevelIds?: string[];
   classLevels?: number[];
   divisions?: Record<string, string[]>;
+  assigneeId?: string;
 }
 
 export function createClient(dto: CreateClientDto, token: string) {
@@ -541,4 +549,110 @@ export const listEducationSystemYearlyExams = listEducationSystemExamTerms;
 export const createEducationSystemYearlyExam = createEducationSystemExamTerm;
 export const updateEducationSystemYearlyExam = updateEducationSystemExamTerm;
 export const deleteEducationSystemYearlyExam = deleteEducationSystemExamTerm;
+
+// ── Usage Health & Adoption Intelligence ─────────────────────────────────────
+
+export interface UsageHealthMetrics {
+  attendance: {
+    score: number;
+    total30d: number;
+    total7d: number;
+    lastDate: string | null;
+    status: "HIGH" | "MED" | "LOW";
+  };
+  ibadah: {
+    score: number;
+    total30d: number;
+    total7d: number;
+    lastDate: string | null;
+    status: "HIGH" | "MED" | "LOW";
+  };
+  homework: {
+    score: number;
+    total30d: number;
+    status: "HIGH" | "MED" | "LOW";
+  };
+  vitality: {
+    score: number;
+    lastLoginDaysAgo: number | null;
+  };
+}
+
+export interface UsageHealthScoring {
+  overallScore: number;
+  healthTier: "HEALTHY" | "MODERATE" | "AT_RISK" | "DORMANT";
+  recommendation: string;
+  priorityAction: string;
+}
+
+export interface UsageHealthClientItem {
+  id: string;
+  name: string;
+  slug: string;
+  arabicName?: string;
+  city?: string;
+  state?: string;
+  status: string;
+  createdAt: string;
+  lastLoginAt?: string;
+  attendanceMode: string;
+  assigneeId?: string | null;
+  assignee?: { id: string; name: string; username: string; role?: string } | null;
+  counts: {
+    students: number;
+    classes: number;
+    teachers: number;
+  };
+  metrics: UsageHealthMetrics;
+  scoring: UsageHealthScoring;
+}
+
+export interface UsageHealthSummary {
+  totalClientsInScope: number;
+  avgOverallScore: number;
+  avgIbadahScore: number;
+  avgAttendanceScore: number;
+  avgHomeworkScore: number;
+  healthyCount: number;
+  moderateCount: number;
+  atRiskCount: number;
+  dormantCount: number;
+  totalUnassignedCount: number;
+  totalMadrasasCount: number;
+}
+
+export interface UsageHealthResponse {
+  data: UsageHealthClientItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  summary: UsageHealthSummary;
+}
+
+export interface UsageHealthQueryParams {
+  page?: number;
+  limit?: number;
+  assigneeId?: string;
+  search?: string;
+  tier?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+}
+
+export function getUsageHealth(params: UsageHealthQueryParams, token: string) {
+  const query = new URLSearchParams();
+  if (params.page !== undefined) query.set("page", String(params.page));
+  if (params.limit !== undefined) query.set("limit", String(params.limit));
+  if (params.assigneeId !== undefined) query.set("assigneeId", params.assigneeId);
+  if (params.search) query.set("search", params.search);
+  if (params.tier) query.set("tier", params.tier);
+  if (params.sortBy) query.set("sortBy", params.sortBy);
+  if (params.sortOrder) query.set("sortOrder", params.sortOrder);
+
+  const qs = query.toString();
+  return getJson<UsageHealthResponse>(`/super-admin/usage-health${qs ? `?${qs}` : ""}`, token);
+}
 

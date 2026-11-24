@@ -286,6 +286,7 @@ const translations = {
     notifications: { en: "Notifications", ml: "അറിയിപ്പുകൾ" },
     holidays: { en: "Holidays", ml: "അവധി ദിവസങ്ങൾ" },
     madrasas: { en: "Madrasas", ml: "മദ്‌റസകൾ" },
+    usageHealth: { en: "Usage & Health", ml: "യൂസേജ് & ഹെൽത്ത്" },
     superUsers: { en: "Admin Users", ml: "അഡ്‌മിൻ യൂസേഴ്സ്" },
     platformReports: { en: "Platform Reports", ml: "പ്ലാറ്റ്ഫോം റിപ്പോർട്ടുകൾ" },
     profile: { en: "Profile", ml: "പ്രൊഫൈൽ" },

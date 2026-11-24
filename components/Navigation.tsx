@@ -92,6 +92,7 @@ type NavKey =
   | "notifications"
   | "holidays"
   | "madrasas"
+  | "usageHealth"
   | "superUsers"
   | "platformReports"
   | "profile"
@@ -283,6 +284,7 @@ const committeeLinks = [
 const superAdminLinks: NavLink[] = [
   { href: "/admin", icon: LayoutDashboard, key: "dashboard" as NavKey, exact: true },
   { href: "/admin/madrasas", icon: Building2, key: "madrasas" as NavKey },
+  { href: "/admin/usage-health", icon: Activity, key: "usageHealth" as NavKey },
   {
     href: "/admin/super-users",
     icon: ShieldCheck,
@@ -320,6 +322,7 @@ const getSuperAdminCategories = (role: string, actorType?: string) => {
       links: [
         { href: "/admin", icon: LayoutDashboard, key: "dashboard" as NavKey, exact: true },
         { href: "/admin/madrasas", icon: Building2, key: "madrasas" as NavKey },
+        { href: "/admin/usage-health", icon: Activity, key: "usageHealth" as NavKey },
         { href: "/admin/super-users", icon: ShieldCheck, key: "superUsers" as NavKey },
         { href: "/admin/global-class-subjects", icon: BookOpen, key: "globalClassSubjects" as NavKey },
         { href: "/admin/platform-reports", icon: BarChart3, key: "platformReports" as NavKey },

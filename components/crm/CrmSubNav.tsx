@@ -111,16 +111,16 @@ export function CrmSubNav({ className }: CrmSubNavProps) {
               ref={isActive ? activeTabRef : undefined}
               to={item.href}
               className={cn(
-                "group shrink-0 inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-150",
-                "min-h-[36px] sm:min-h-[40px] touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
+                "group shrink-0 inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-150",
+                "min-h-[34px] sm:min-h-[36px] touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
                 isActive
-                  ? "bg-emerald-600 text-white shadow-2xs font-black ring-1 ring-emerald-700/20"
+                  ? "bg-emerald-600 text-white shadow-2xs font-bold ring-1 ring-emerald-700/20"
                   : "text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 active:bg-gray-200/60"
               )}
             >
               <Icon
                 className={cn(
-                  "w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 transition-transform duration-150 group-hover:scale-105",
+                  "w-4 h-4 shrink-0 transition-transform duration-150 group-hover:scale-105",
                   isActive ? "text-white" : "text-emerald-600"
                 )}
               />
@@ -129,7 +129,7 @@ export function CrmSubNav({ className }: CrmSubNavProps) {
               {item.badge !== undefined && (
                 <span
                   className={cn(
-                    "ml-0.5 px-1.5 py-0.2 text-[10px] font-black rounded-full leading-none",
+                    "ml-0.5 px-1.5 py-0.5 text-xs font-black rounded-full leading-none",
                     isActive
                       ? "bg-emerald-700 text-white"
                       : "bg-gray-100 text-gray-700"
