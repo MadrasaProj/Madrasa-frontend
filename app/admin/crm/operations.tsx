@@ -517,7 +517,7 @@ export default function OperationsDashboard() {
                   if (list.length === 0) {
                     return (
                       <div className="text-center py-6 text-primary-800 text-xs font-semibold">
-                        {queueSearch ? "No items matching filter." : "🎉 All clear! Zero overdue follow-up calls."}
+                        {queueSearch ? "No items matching filter." : "All clear! Zero overdue follow-up calls."}
                       </div>
                     );
                   }
@@ -541,8 +541,9 @@ export default function OperationsDashboard() {
                               </span>
                             </p>
                             {f.timeline && f.timeline.length > 0 && f.timeline[0]?.notes && (
-                              <p className="text-xs text-gray-600 line-clamp-1 italic bg-gray-50 px-2 py-1 rounded-lg border border-gray-100">
-                                💬 {f.timeline[0].notes}
+                              <p className="text-xs text-gray-600 line-clamp-1 italic bg-gray-50 px-2 py-1 rounded-lg border border-gray-100 flex items-center gap-1">
+                                <MessageSquare className="w-3 h-3 text-gray-400 shrink-0" />
+                                <span className="truncate">{f.timeline[0].notes}</span>
                               </p>
                             )}
                           </div>
@@ -617,8 +618,9 @@ export default function OperationsDashboard() {
                               </span>
                             </p>
                             {f.timeline && f.timeline.length > 0 && f.timeline[0]?.notes && (
-                              <p className="text-xs text-gray-600 line-clamp-1 italic bg-gray-50 px-2 py-1 rounded-lg border border-gray-100">
-                                💬 {f.timeline[0].notes}
+                              <p className="text-xs text-gray-600 line-clamp-1 italic bg-gray-50 px-2 py-1 rounded-lg border border-gray-100 flex items-center gap-1">
+                                <MessageSquare className="w-3 h-3 text-gray-400 shrink-0" />
+                                <span className="truncate">{f.timeline[0].notes}</span>
                               </p>
                             )}
                           </div>

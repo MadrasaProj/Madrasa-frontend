@@ -29,8 +29,6 @@ import {
 import {
   LEAD_STATUSES,
   LEAD_STATUS_LABELS,
-  STAGE_ICONS,
-  DAILY_WORK_STAGE_ORDER,
   type LeadStatus,
   type LeadSortOption,
 } from "@/components/crm/crm-types";
@@ -44,9 +42,15 @@ import {
 import { LeadToolbar } from "@/components/crm/LeadToolbar";
 import { LeadCard } from "@/components/crm/LeadCard";
 import { LeadDetailView } from "@/components/crm/LeadDetailView";
-import { LeadFormDrawer, type LeadFormData } from "@/components/crm/LeadFormDrawer";
+import {
+  LeadFormDrawer,
+  type LeadFormData,
+} from "@/components/crm/LeadFormDrawer";
 import { LeadQuickAssignModal } from "@/components/crm/LeadQuickAssignModal";
-import { LeadBulkModal, type BulkModalType } from "@/components/crm/LeadBulkModal";
+import {
+  LeadBulkModal,
+  type BulkModalType,
+} from "@/components/crm/LeadBulkModal";
 import { createCrmImportConfig } from "@/components/crm/crm-import-config";
 import { ImportModal } from "@/components/ui/ImportModal";
 import {
@@ -62,6 +66,9 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  CheckCircle2,
+  AlertTriangle,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -81,7 +88,9 @@ export default function LeadsCrmPage() {
   const [activeStage, setActiveStage] = useState<string>("ALL");
   const [smartPreset, setSmartPreset] = useState<string>("ALL");
   const [selectedDistrict, setSelectedDistrict] = useState<string>("ALL");
-  const [selectedAssignee, setSelectedAssignee] = useState<"ME" | "ALL" | "UNASSIGNED">("ME");
+  const [selectedAssignee, setSelectedAssignee] = useState<
+    "ME" | "ALL" | "UNASSIGNED"
+  >("ME");
   const [sortBy, setSortBy] = useState<LeadSortOption>("SMART_PRIORITY");
 
   // Granular Filters
@@ -90,7 +99,8 @@ export default function LeadsCrmPage() {
   const [dueDateTo, setDueDateTo] = useState<string>("");
   const [lastContactedFilter, setLastContactedFilter] = useState<string>("ALL");
   const [leadScoreFilter, setLeadScoreFilter] = useState<string>("ALL");
-  const [institutionSizeFilter, setInstitutionSizeFilter] = useState<string>("ALL");
+  const [institutionSizeFilter, setInstitutionSizeFilter] =
+    useState<string>("ALL");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   // Pagination & Mobile View
@@ -99,11 +109,14 @@ export default function LeadsCrmPage() {
   const [showMobileDetail, setShowMobileDetail] = useState(false);
 
   // Selection & Bulk
-  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
+  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [bulkModalType, setBulkModalType] = useState<BulkModalType>(null);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
   const [bulkSelectedUserId, setBulkSelectedUserId] = useState("");
-  const [bulkSelectedStatus, setBulkSelectedStatus] = useState<LeadStatus>("FOLLOW_UP");
+  const [bulkSelectedStatus, setBulkSelectedStatus] =
+    useState<LeadStatus>("FOLLOW_UP");
   const [bulkFollowUpDate, setBulkFollowUpDate] = useState("");
   const [bulkRemarks, setBulkRemarks] = useState("");
 
@@ -121,7 +134,10 @@ export default function LeadsCrmPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [copiedText, setCopiedText] = useState<string | null>(null);
-  const [toastMessage, setToastMessage] = useState<{ text: string; isError?: boolean } | null>(null);
+  const [toastMessage, setToastMessage] = useState<{
+    text: string;
+    isError?: boolean;
+  } | null>(null);
 
   const toast = useCallback((text: string, isError = false) => {
     setToastMessage({ text, isError });
@@ -168,14 +184,25 @@ export default function LeadsCrmPage() {
   // Reset pagination on filter change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, activeStage, smartPreset, selectedDistrict, selectedAssignee, sortBy]);
+  }, [
+    debouncedSearch,
+    activeStage,
+    smartPreset,
+    selectedDistrict,
+    selectedAssignee,
+    sortBy,
+  ]);
 
   // User Identifiers
   const myTeamUser = useMemo(() => {
     if (!user) return null;
     return (
       teamUsers.find((u) => u.id === user.id) ||
-      teamUsers.find((u) => u.name && u.name.trim().toLowerCase() === user.name?.trim().toLowerCase()) ||
+      teamUsers.find(
+        (u) =>
+          u.name &&
+          u.name.trim().toLowerCase() === user.name?.trim().toLowerCase(),
+      ) ||
       null
     );
   }, [teamUsers, user]);
@@ -187,8 +214,18 @@ export default function LeadsCrmPage() {
     if (user?.id) set.add(user.id.toLowerCase().trim());
     if (effectiveUserId) set.add(effectiveUserId.toLowerCase().trim());
     if (user?.name) set.add(user.name.trim().toLowerCase());
-    if ((user as any)?.username) set.add(String((user as any).username).trim().toLowerCase());
-    if ((user as any)?.email) set.add(String((user as any).email).trim().toLowerCase());
+    if ((user as any)?.username)
+      set.add(
+        String((user as any).username)
+          .trim()
+          .toLowerCase(),
+      );
+    if ((user as any)?.email)
+      set.add(
+        String((user as any).email)
+          .trim()
+          .toLowerCase(),
+      );
     if (myTeamUser?.id) set.add(myTeamUser.id.toLowerCase().trim());
     if (myTeamUser?.name) set.add(myTeamUser.name.trim().toLowerCase());
     return set;
@@ -244,42 +281,49 @@ export default function LeadsCrmPage() {
   });
 
   // Data Loading
-  const loadData = useCallback(async (isSilent = false) => {
-    if (!accessToken) return;
-    if (!isSilent) setLoading(true);
-    try {
-      const [leadsRes, teamRes, districtsRes] = await Promise.allSettled([
-        listLeads(accessToken, {}),
-        listInternalUsers(accessToken),
-        listDistricts(accessToken),
-      ]);
+  const loadData = useCallback(
+    async (isSilent = false) => {
+      if (!accessToken) return;
+      if (!isSilent) setLoading(true);
+      try {
+        const [leadsRes, teamRes, districtsRes] = await Promise.allSettled([
+          listLeads(accessToken, {}),
+          listInternalUsers(accessToken),
+          listDistricts(accessToken),
+        ]);
 
-      if (leadsRes.status === "fulfilled") setLeads(leadsRes.value || []);
-      if (teamRes.status === "fulfilled") setTeamUsers(teamRes.value || []);
-      if (districtsRes.status === "fulfilled") setDistricts(districtsRes.value || []);
-    } catch (err: any) {
-      toast(err.message || "Failed to load CRM data", true);
-    } finally {
-      if (!isSilent) setLoading(false);
-    }
-  }, [accessToken, toast]);
+        if (leadsRes.status === "fulfilled") setLeads(leadsRes.value || []);
+        if (teamRes.status === "fulfilled") setTeamUsers(teamRes.value || []);
+        if (districtsRes.status === "fulfilled")
+          setDistricts(districtsRes.value || []);
+      } catch (err: any) {
+        toast(err.message || "Failed to load CRM data", true);
+      } finally {
+        if (!isSilent) setLoading(false);
+      }
+    },
+    [accessToken, toast],
+  );
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  const loadLeadDetail = useCallback(async (id: string) => {
-    if (!accessToken) return;
-    setDetailLoading(true);
-    try {
-      const res = await getLead(id, accessToken);
-      setSelectedLead(res);
-    } catch (err: any) {
-      toast(err.message || "Failed to load lead details", true);
-    } finally {
-      setDetailLoading(false);
-    }
-  }, [accessToken, toast]);
+  const loadLeadDetail = useCallback(
+    async (id: string) => {
+      if (!accessToken) return;
+      setDetailLoading(true);
+      try {
+        const res = await getLead(id, accessToken);
+        setSelectedLead(res);
+      } catch (err: any) {
+        toast(err.message || "Failed to load lead details", true);
+      } finally {
+        setDetailLoading(false);
+      }
+    },
+    [accessToken, toast],
+  );
 
   const selectLead = (id: string) => {
     setSelectedLeadId(id);
@@ -299,12 +343,18 @@ export default function LeadsCrmPage() {
     setActionLoading(true);
     try {
       await updateLead(leadId, { status: newStage as LeadStatus }, accessToken);
-      toast(`Moved to ${LEAD_STATUS_LABELS[newStage as LeadStatus] ?? newStage}`);
+      toast(
+        `Moved to ${LEAD_STATUS_LABELS[newStage as LeadStatus] ?? newStage}`,
+      );
       setLeads((prev) =>
-        prev.map((l) => (l.id === leadId ? { ...l, status: newStage as LeadStatus } : l))
+        prev.map((l) =>
+          l.id === leadId ? { ...l, status: newStage as LeadStatus } : l,
+        ),
       );
       if (selectedLead?.id === leadId) {
-        setSelectedLead((prev) => (prev ? { ...prev, status: newStage as LeadStatus } : null));
+        setSelectedLead((prev) =>
+          prev ? { ...prev, status: newStage as LeadStatus } : null,
+        );
         loadLeadDetail(leadId);
       }
     } catch (err: any) {
@@ -317,18 +367,26 @@ export default function LeadsCrmPage() {
   const handleQuickUpdateFollowUp = async (
     targetDate: string | null,
     leadId: string,
-    remarks?: string
+    remarks?: string,
   ) => {
     if (!accessToken) return;
     try {
       await updateFollowUpDate(leadId, targetDate, accessToken, remarks);
-      toast(targetDate ? `Follow-up scheduled for ${targetDate}` : "Follow-up schedule cleared");
+      toast(
+        targetDate
+          ? `Follow-up scheduled for ${targetDate}`
+          : "Follow-up schedule cleared",
+      );
       const nextDate = targetDate || undefined;
       setLeads((prev) =>
-        prev.map((l) => (l.id === leadId ? { ...l, nextFollowUpDate: nextDate } : l))
+        prev.map((l) =>
+          l.id === leadId ? { ...l, nextFollowUpDate: nextDate } : l,
+        ),
       );
       if (selectedLead?.id === leadId) {
-        setSelectedLead((prev) => (prev ? { ...prev, nextFollowUpDate: nextDate } : null));
+        setSelectedLead((prev) =>
+          prev ? { ...prev, nextFollowUpDate: nextDate } : null,
+        );
         loadLeadDetail(leadId);
       }
     } catch (err: any) {
@@ -340,7 +398,11 @@ export default function LeadsCrmPage() {
     if (!accessToken || !effectiveUserId) return;
     setActionLoading(true);
     try {
-      await assignLead(leadId, [{ userId: effectiveUserId, percentage: 100 }], accessToken);
+      await assignLead(
+        leadId,
+        [{ userId: effectiveUserId, percentage: 100 }],
+        accessToken,
+      );
       toast("Lead claimed successfully! ⭐");
       await loadData(true);
       if (selectedLead?.id === leadId) await loadLeadDetail(leadId);
@@ -355,7 +417,11 @@ export default function LeadsCrmPage() {
     if (!selectedLead || !accessToken) return;
     setQuickAssignLoading(true);
     try {
-      await assignLead(selectedLead.id, [{ userId, percentage: 100 }], accessToken);
+      await assignLead(
+        selectedLead.id,
+        [{ userId, percentage: 100 }],
+        accessToken,
+      );
       toast("Lead reassigned successfully");
       setShowQuickAssignModal(false);
       await loadData(true);
@@ -393,7 +459,8 @@ export default function LeadsCrmPage() {
   };
 
   const handleStartEditLead = (lead: LeadDetail) => {
-    const primaryC = lead.contacts?.find((c) => c.isPrimary) || lead.contacts?.[0];
+    const primaryC =
+      lead.contacts?.find((c) => c.isPrimary) || lead.contacts?.[0];
     const initialContributors =
       lead.contributors && lead.contributors.length > 0
         ? lead.contributors.map((c) => ({
@@ -401,14 +468,21 @@ export default function LeadsCrmPage() {
             percentage: Number(c.percentage || 0),
             notes: c.notes || "",
           }))
-        : [{ userId: effectiveUserId, percentage: Number(lead.commissionPercentage ?? 20) }];
+        : [
+            {
+              userId: effectiveUserId,
+              percentage: Number(lead.commissionPercentage ?? 20),
+            },
+          ];
 
     setFormData({
       name: lead.name || "",
       type: lead.type || "Samastha",
       districtId:
         lead.districtId ||
-        districts.find((d) => d.name.toLowerCase() === (lead.district || "").toLowerCase())?.id ||
+        districts.find(
+          (d) => d.name.toLowerCase() === (lead.district || "").toLowerCase(),
+        )?.id ||
         "",
       district: lead.district || "",
       place: lead.place || "",
@@ -434,7 +508,8 @@ export default function LeadsCrmPage() {
     e.preventDefault();
     if (!accessToken) return;
     if (!formData.name.trim()) return toast("Madrasa name is required", true);
-    if (!formData.district.trim() && !formData.districtId) return toast("District is required", true);
+    if (!formData.district.trim() && !formData.districtId)
+      return toast("District is required", true);
 
     setFormSaving(true);
     try {
@@ -450,7 +525,9 @@ export default function LeadsCrmPage() {
         existingSoftware: formData.existingSoftware,
         source: formData.source,
         status: formData.status as LeadStatus,
-        commissionPercentage: formData.enableCommission ? Number(formData.commissionPercentage) : 0,
+        commissionPercentage: formData.enableCommission
+          ? Number(formData.commissionPercentage)
+          : 0,
         contributors: formData.contributors.filter((c) => Boolean(c.userId)),
       };
 
@@ -483,7 +560,11 @@ export default function LeadsCrmPage() {
   };
 
   // Detail Action Handlers
-  const handleLogActivity = async (dto: { type: string; notes: string; followUpDate?: string }) => {
+  const handleLogActivity = async (dto: {
+    type: string;
+    notes: string;
+    followUpDate?: string;
+  }) => {
     if (!selectedLead || !accessToken || !dto.notes.trim()) return;
     setActionLoading(true);
     try {
@@ -494,9 +575,9 @@ export default function LeadsCrmPage() {
           notes: dto.notes,
           followUpDate: dto.followUpDate || undefined,
         },
-        accessToken
+        accessToken,
       );
-      toast("Interaction logged successfully! 📝");
+      toast("Interaction logged successfully");
       await loadLeadDetail(selectedLead.id);
       await loadData(true);
     } catch (err: any) {
@@ -508,13 +589,13 @@ export default function LeadsCrmPage() {
 
   const handleUpdateActivity = async (
     timelineId: string,
-    dto: { type?: string; notes?: string; followUpDate?: string | null }
+    dto: { type?: string; notes?: string; followUpDate?: string | null },
   ) => {
     if (!selectedLead || !accessToken) return;
     setActionLoading(true);
     try {
       await updateActivity(selectedLead.id, timelineId, dto, accessToken);
-      toast("Interaction updated successfully! ✏️");
+      toast("Interaction updated successfully");
       await loadLeadDetail(selectedLead.id);
       await loadData(true);
     } catch (err: any) {
@@ -526,7 +607,10 @@ export default function LeadsCrmPage() {
 
   const handleDeleteActivity = async (timelineId: string) => {
     if (!selectedLead || !accessToken) return;
-    if (!window.confirm("Are you sure you want to delete this interaction note?")) return;
+    if (
+      !window.confirm("Are you sure you want to delete this interaction note?")
+    )
+      return;
     setActionLoading(true);
     try {
       await deleteActivity(selectedLead.id, timelineId, accessToken);
@@ -544,7 +628,7 @@ export default function LeadsCrmPage() {
     if (!accessToken) return;
     if (
       !window.confirm(
-        "Are you sure you want to permanently delete this madrasa lead record? This action cannot be undone."
+        "Are you sure you want to permanently delete this madrasa lead record? This action cannot be undone.",
       )
     )
       return;
@@ -588,7 +672,7 @@ export default function LeadsCrmPage() {
     setActionLoading(true);
     try {
       await convertLead(selectedLead.id, dto, accessToken);
-      toast("🎉 Madrasa converted to active subscription!");
+      toast("Madrasa converted to active subscription!");
       await loadLeadDetail(selectedLead.id);
       await loadData(true);
     } catch (err: any) {
@@ -614,7 +698,7 @@ export default function LeadsCrmPage() {
             action: "ASSIGN",
             contributors: [{ userId: bulkSelectedUserId, percentage: 100 }],
           },
-          accessToken
+          accessToken,
         );
         toast(`Reassigned ${ids.length} leads successfully.`);
       } else if (bulkModalType === "STATUS") {
@@ -625,7 +709,7 @@ export default function LeadsCrmPage() {
             status: bulkSelectedStatus,
             remarks: bulkRemarks || undefined,
           },
-          accessToken
+          accessToken,
         );
         toast(`Updated stage for ${ids.length} leads.`);
       } else if (bulkModalType === "FOLLOW_UP") {
@@ -636,14 +720,15 @@ export default function LeadsCrmPage() {
             followUpDate: bulkFollowUpDate || null,
             remarks: bulkRemarks || undefined,
           },
-          accessToken
+          accessToken,
         );
         toast(`Updated follow-up for ${ids.length} leads.`);
       }
       setSelectedLeadIds(new Set());
       setBulkModalType(null);
       await loadData(true);
-      if (selectedLeadId && ids.includes(selectedLeadId)) await loadLeadDetail(selectedLeadId);
+      if (selectedLeadId && ids.includes(selectedLeadId))
+        await loadLeadDetail(selectedLeadId);
     } catch (err: any) {
       toast(err.message || "Failed to execute bulk action", true);
     } finally {
@@ -655,7 +740,8 @@ export default function LeadsCrmPage() {
   const baseFilteredLeads = useMemo(() => {
     return leads.filter((l) => {
       if (selectedAssignee === "ME") {
-        if (!isLeadAssignedToUser(l, myIdentifiers, effectiveUserId)) return false;
+        if (!isLeadAssignedToUser(l, myIdentifiers, effectiveUserId))
+          return false;
       } else if (selectedAssignee === "UNASSIGNED") {
         if (!isLeadUnassigned(l)) return false;
       }
@@ -695,8 +781,13 @@ export default function LeadsCrmPage() {
 
     baseFilteredLeads.forEach((l) => {
       const p = calculateLeadSmartPriority(l, myIdentifiers, effectiveUserId);
-      if (p.urgencyLevel === "CRITICAL" || p.urgencyLevel === "HIGH") aiPriority++;
-      if (["DATA_COLLECTION", "LOGGED_IN", "ADVANCE", "FULL_PAID"].includes(l.status))
+      if (p.urgencyLevel === "CRITICAL" || p.urgencyLevel === "HIGH")
+        aiPriority++;
+      if (
+        ["DATA_COLLECTION", "LOGGED_IN", "ADVANCE", "FULL_PAID"].includes(
+          l.status,
+        )
+      )
         closingFocus++;
       if (p.isOverdue) overdue++;
       if (p.isToday) today++;
@@ -704,7 +795,8 @@ export default function LeadsCrmPage() {
       if (p.isStale) stale++;
       if (l.score === "HOT" || l.score === "WARM") hotWarm++;
       if (l.status === "QUALITY_LEAD") quality++;
-      if (!l.nextFollowUpDate && !["WON", "LOST"].includes(l.status)) noFollowup++;
+      if (!l.nextFollowUpDate && !["WON", "LOST"].includes(l.status))
+        noFollowup++;
     });
 
     return {
@@ -733,31 +825,51 @@ export default function LeadsCrmPage() {
   const filteredLeads = useMemo(() => {
     return baseFilteredLeads.filter((l) => {
       if (activeStage !== "ALL" && l.status !== activeStage) return false;
-      if (selectedDistrict !== "ALL" && l.district !== selectedDistrict) return false;
+      if (selectedDistrict !== "ALL" && l.district !== selectedDistrict)
+        return false;
 
-      const priority = calculateLeadSmartPriority(l, myIdentifiers, effectiveUserId);
+      const priority = calculateLeadSmartPriority(
+        l,
+        myIdentifiers,
+        effectiveUserId,
+      );
 
-      if (smartPreset === "AI_PRIORITY" && priority.urgencyLevel !== "CRITICAL" && priority.urgencyLevel !== "HIGH")
+      if (
+        smartPreset === "AI_PRIORITY" &&
+        priority.urgencyLevel !== "CRITICAL" &&
+        priority.urgencyLevel !== "HIGH"
+      )
         return false;
       if (
         smartPreset === "CLOSING_FOCUS" &&
-        !["DATA_COLLECTION", "LOGGED_IN", "ADVANCE", "FULL_PAID"].includes(l.status)
+        !["DATA_COLLECTION", "LOGGED_IN", "ADVANCE", "FULL_PAID"].includes(
+          l.status,
+        )
       )
         return false;
       if (smartPreset === "OVERDUE" && !priority.isOverdue) return false;
       if (smartPreset === "TODAY" && !priority.isToday) return false;
       if (smartPreset === "UNTREATED" && !priority.isUntreated) return false;
-      if (smartPreset === "STALE" && !priority.isStale && !priority.isUntreated) return false;
-      if (smartPreset === "HOT_WARM" && l.score !== "HOT" && l.score !== "WARM") return false;
-      if (smartPreset === "QUALITY" && l.status !== "QUALITY_LEAD") return false;
-      if (smartPreset === "NO_FOLLOWUP" && Boolean(l.nextFollowUpDate)) return false;
+      if (smartPreset === "STALE" && !priority.isStale && !priority.isUntreated)
+        return false;
+      if (smartPreset === "HOT_WARM" && l.score !== "HOT" && l.score !== "WARM")
+        return false;
+      if (smartPreset === "QUALITY" && l.status !== "QUALITY_LEAD")
+        return false;
+      if (smartPreset === "NO_FOLLOWUP" && Boolean(l.nextFollowUpDate))
+        return false;
 
       // Granular
       if (dueDateFilter === "OVERDUE" && !priority.isOverdue) return false;
       if (dueDateFilter === "TODAY" && !priority.isToday) return false;
-      if (dueDateFilter === "TOMORROW" && priority.dueDaysDiff !== 1) return false;
+      if (dueDateFilter === "TOMORROW" && priority.dueDaysDiff !== 1)
+        return false;
       if (dueDateFilter === "THIS_WEEK") {
-        if (priority.dueDaysDiff === null || priority.dueDaysDiff < 0 || priority.dueDaysDiff > 7)
+        if (
+          priority.dueDaysDiff === null ||
+          priority.dueDaysDiff < 0 ||
+          priority.dueDaysDiff > 7
+        )
           return false;
       }
       if (dueDateFilter === "CUSTOM" && dueDateFrom && dueDateTo) {
@@ -766,29 +878,52 @@ export default function LeadsCrmPage() {
         if (d < dueDateFrom || d > dueDateTo) return false;
       }
 
-      if (lastContactedFilter === "UNTREATED" && !priority.isUntreated) return false;
-      if (lastContactedFilter === "STALE_7D" && !priority.isStale && !priority.isUntreated) return false;
-      if (lastContactedFilter === "RECENT_48H" && priority.daysSinceLastContact > 2) return false;
+      if (lastContactedFilter === "UNTREATED" && !priority.isUntreated)
+        return false;
+      if (
+        lastContactedFilter === "STALE_7D" &&
+        !priority.isStale &&
+        !priority.isUntreated
+      )
+        return false;
+      if (
+        lastContactedFilter === "RECENT_48H" &&
+        priority.daysSinceLastContact > 2
+      )
+        return false;
 
-      if (leadScoreFilter !== "ALL" && l.score !== leadScoreFilter) return false;
+      if (leadScoreFilter !== "ALL" && l.score !== leadScoreFilter)
+        return false;
 
-      if (institutionSizeFilter === "LARGE" && (l.studentCount || 0) < 300) return false;
+      if (institutionSizeFilter === "LARGE" && (l.studentCount || 0) < 300)
+        return false;
       if (
         institutionSizeFilter === "MEDIUM" &&
         ((l.studentCount || 0) < 100 || (l.studentCount || 0) >= 300)
       )
         return false;
-      if (institutionSizeFilter === "SMALL" && (l.studentCount || 0) >= 100) return false;
+      if (institutionSizeFilter === "SMALL" && (l.studentCount || 0) >= 100)
+        return false;
 
       if (debouncedSearch.trim()) {
         const q = debouncedSearch.toLowerCase().trim();
-        const primaryC = l.contacts?.find((c) => c.isPrimary) || l.contacts?.[0];
+        const primaryC =
+          l.contacts?.find((c) => c.isPrimary) || l.contacts?.[0];
         const matchName = l.name?.toLowerCase().includes(q);
         const matchPlace = l.place?.toLowerCase().includes(q);
         const matchDistrict = l.district?.toLowerCase().includes(q);
         const matchContact = primaryC?.name?.toLowerCase().includes(q);
-        const matchPhone = primaryC?.phone?.replace(/[^0-9]/g, "").includes(q.replace(/[^0-9]/g, ""));
-        if (!matchName && !matchPlace && !matchDistrict && !matchContact && !matchPhone) return false;
+        const matchPhone = primaryC?.phone
+          ?.replace(/[^0-9]/g, "")
+          .includes(q.replace(/[^0-9]/g, ""));
+        if (
+          !matchName &&
+          !matchPlace &&
+          !matchDistrict &&
+          !matchContact &&
+          !matchPhone
+        )
+          return false;
       }
 
       return true;
@@ -812,27 +947,51 @@ export default function LeadsCrmPage() {
   const sortedLeads = useMemo(() => {
     return [...filteredLeads].sort((a, b) => {
       if (sortBy === "SMART_PRIORITY") {
-        const scoreA = calculateLeadSmartPriority(a, myIdentifiers, effectiveUserId).score;
-        const scoreB = calculateLeadSmartPriority(b, myIdentifiers, effectiveUserId).score;
+        const scoreA = calculateLeadSmartPriority(
+          a,
+          myIdentifiers,
+          effectiveUserId,
+        ).score;
+        const scoreB = calculateLeadSmartPriority(
+          b,
+          myIdentifiers,
+          effectiveUserId,
+        ).score;
         return scoreB - scoreA;
       }
       if (sortBy === "URGENT") {
-        const diffA = a.nextFollowUpDate ? new Date(a.nextFollowUpDate).getTime() : Infinity;
-        const diffB = b.nextFollowUpDate ? new Date(b.nextFollowUpDate).getTime() : Infinity;
+        const diffA = a.nextFollowUpDate
+          ? new Date(a.nextFollowUpDate).getTime()
+          : Infinity;
+        const diffB = b.nextFollowUpDate
+          ? new Date(b.nextFollowUpDate).getTime()
+          : Infinity;
         return diffA - diffB;
       }
       if (sortBy === "FOLLOWUP_ASC") {
-        const diffA = a.nextFollowUpDate ? new Date(a.nextFollowUpDate).getTime() : Infinity;
-        const diffB = b.nextFollowUpDate ? new Date(b.nextFollowUpDate).getTime() : Infinity;
+        const diffA = a.nextFollowUpDate
+          ? new Date(a.nextFollowUpDate).getTime()
+          : Infinity;
+        const diffB = b.nextFollowUpDate
+          ? new Date(b.nextFollowUpDate).getTime()
+          : Infinity;
         return diffA - diffB;
       }
       if (sortBy === "FOLLOWUP_DESC") {
-        const diffA = a.nextFollowUpDate ? new Date(a.nextFollowUpDate).getTime() : -Infinity;
-        const diffB = b.nextFollowUpDate ? new Date(b.nextFollowUpDate).getTime() : -Infinity;
+        const diffA = a.nextFollowUpDate
+          ? new Date(a.nextFollowUpDate).getTime()
+          : -Infinity;
+        const diffB = b.nextFollowUpDate
+          ? new Date(b.nextFollowUpDate).getTime()
+          : -Infinity;
         return diffB - diffA;
       }
-      if (sortBy === "STUDENTS") return (b.studentCount || 0) - (a.studentCount || 0);
-      if (sortBy === "NEWEST") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      if (sortBy === "STUDENTS")
+        return (b.studentCount || 0) - (a.studentCount || 0);
+      if (sortBy === "NEWEST")
+        return (
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
       if (sortBy === "NAME") return a.name.localeCompare(b.name);
       return 0;
     });
@@ -892,17 +1051,21 @@ export default function LeadsCrmPage() {
                 "fixed top-4 right-4 z-50 px-4 py-2.5 rounded-2xl shadow-xl text-xs sm:text-sm font-bold flex items-center gap-2 border",
                 toastMessage.isError
                   ? "bg-rose-50 border-rose-300 text-rose-900"
-                  : "bg-emerald-50 border-emerald-300 text-emerald-950"
+                  : "bg-emerald-50 border-emerald-300 text-emerald-950",
               )}
             >
-              <span>{toastMessage.isError ? "⚠️" : "✓"}</span>
+              {toastMessage.isError ? (
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              )}
               <span>{toastMessage.text}</span>
             </motion.div>
           )}
         </AnimatePresence>
 
         {/* CRM Sub Navigation */}
-        <CrmSubNav />
+        {/* <CrmSubNav /> */}
 
         {/* ── Top Header: Title & Direct Action Buttons ── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -914,7 +1077,10 @@ export default function LeadsCrmPage() {
               </span>
             </h1>
             <p className="text-xs text-gray-500 mt-0.5">
-              Portfolio view for <strong className="text-gray-800">{user?.name || "Representative"}</strong>
+              Portfolio view for{" "}
+              <strong className="text-gray-800">
+                {user?.name || "Representative"}
+              </strong>
             </p>
           </div>
 
@@ -975,24 +1141,23 @@ export default function LeadsCrmPage() {
           setInstitutionSizeFilter={setInstitutionSizeFilter}
         />
 
-        {/* ── Split Layout: Master List & Detail Panel ── */}
+        {/* ── Split Layout: Master List & Detail Panel (Zero Nested Scroll Traps) ── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
           {/* Left Column: Lead List Cards */}
-          <div
-            className={cn(
-              "w-full lg:col-span-5 xl:col-span-4 2xl:col-span-4 relative flex flex-col bg-white border border-gray-200/90 rounded-3xl shadow-xs",
-              "lg:sticky lg:top-6 lg:max-h-[calc(100vh-2.5rem)] lg:overflow-hidden"
-            )}
-          >
+          <div className="w-full lg:col-span-5 xl:col-span-4 2xl:col-span-4 relative flex flex-col bg-white border border-gray-200/90 rounded-3xl shadow-xs overflow-hidden">
             {/* Header: Select All & Counts */}
             <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/80 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  checked={paginatedLeads.length > 0 && paginatedLeads.every((l) => selectedLeadIds.has(l.id))}
+                  checked={
+                    paginatedLeads.length > 0 &&
+                    paginatedLeads.every((l) => selectedLeadIds.has(l.id))
+                  }
                   onChange={(e) => {
                     const next = new Set(selectedLeadIds);
-                    if (e.target.checked) paginatedLeads.forEach((l) => next.add(l.id));
+                    if (e.target.checked)
+                      paginatedLeads.forEach((l) => next.add(l.id));
                     else paginatedLeads.forEach((l) => next.delete(l.id));
                     setSelectedLeadIds(next);
                   }}
@@ -1003,21 +1168,24 @@ export default function LeadsCrmPage() {
                   {smartPreset !== "ALL"
                     ? smartPreset.replace(/_/g, " ")
                     : activeStage === "ALL"
-                    ? "All Leads"
-                    : LEAD_STATUS_LABELS[activeStage as LeadStatus] ?? activeStage}
+                      ? "All Leads"
+                      : (LEAD_STATUS_LABELS[activeStage as LeadStatus] ??
+                        activeStage)}
                 </span>
               </div>
-              <span className="text-xs font-bold bg-primary-50 text-primary-800 px-2.5 py-0.5 rounded-full border border-primary-200">
+              <span className="text-xs font-bold bg-gray-100 text-gray-700 px-2.5 py-0.5 rounded-full border border-gray-200">
                 {filteredLeads.length} records
               </span>
             </div>
 
-            {/* List Container: natural document flow on mobile, scrollable on desktop */}
-            <div className="p-3 sm:p-3.5 space-y-3 lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:scrollbar-thin">
+            {/* List Container: Natural document flow with zero scroll limits */}
+            <div className="p-3 sm:p-3.5 space-y-3">
               {loading && (
                 <div className="py-16 text-center text-gray-400 flex flex-col items-center justify-center gap-2">
                   <Loader2 className="w-6 h-6 animate-spin text-primary-600" />
-                  <span className="text-xs font-semibold">Loading prospects...</span>
+                  <span className="text-xs font-semibold">
+                    Loading prospects...
+                  </span>
                 </div>
               )}
 
@@ -1026,9 +1194,12 @@ export default function LeadsCrmPage() {
                   <div className="w-12 h-12 rounded-2xl bg-gray-100 text-gray-500 flex items-center justify-center">
                     <Inbox className="w-6 h-6" />
                   </div>
-                  <p className="text-sm font-bold text-gray-700">No leads match criteria</p>
+                  <p className="text-sm font-bold text-gray-700">
+                    No leads match criteria
+                  </p>
                   <p className="text-xs text-gray-500 max-w-xs">
-                    Try clearing filters or switching scope to view all prospects.
+                    Try clearing filters or switching scope to view all
+                    prospects.
                   </p>
                   {hasActiveFilters && (
                     <button
@@ -1069,7 +1240,8 @@ export default function LeadsCrmPage() {
             {totalPages > 1 && (
               <div className="p-3 border-t border-gray-100 bg-white flex items-center justify-between shrink-0 text-xs">
                 <span className="text-gray-500 font-medium">
-                  Page <strong className="text-gray-800">{currentPage}</strong> of {totalPages}
+                  Page <strong className="text-gray-800">{currentPage}</strong>{" "}
+                  of {totalPages}
                 </span>
                 <div className="flex items-center gap-1">
                   <button
@@ -1093,22 +1265,24 @@ export default function LeadsCrmPage() {
             )}
           </div>
 
-          {/* Right Column: Desktop Detail View */}
+          {/* Right Column: Desktop Detail View (Clean Sticky Panel, Zero Double Scroll Traps) */}
           <div
             className={cn(
               "hidden lg:flex lg:col-span-7 xl:col-span-8 2xl:col-span-8 relative flex-col bg-white border border-gray-200/90 rounded-3xl shadow-xs overflow-hidden",
-              "lg:sticky lg:top-6 lg:max-h-[calc(100vh-2.5rem)]"
+              "lg:sticky lg:top-6",
             )}
           >
             {selectedLeadId && detailLoading && (
-              <div className="flex-1 flex flex-col items-center justify-center p-12 text-center text-gray-400 gap-2">
+              <div className="flex-1 flex flex-col items-center justify-center p-16 text-center text-gray-400 gap-2">
                 <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
-                <span className="text-xs font-bold">Loading lead dossier...</span>
+                <span className="text-xs font-bold">
+                  Loading lead dossier...
+                </span>
               </div>
             )}
 
             {selectedLeadId && !detailLoading && selectedLead && (
-              <div className="overflow-y-auto overscroll-contain flex-1 p-5 sm:p-6 scrollbar-thin">
+              <div className="p-5 sm:p-6">
                 <LeadDetailView
                   lead={selectedLead}
                   myIdentifiers={myIdentifiers}
@@ -1123,7 +1297,10 @@ export default function LeadsCrmPage() {
                   onSelfClaim={handleSelfClaim}
                   onOpenQuickAssign={() => {
                     setQuickAssignUserId(
-                      selectedLead.contributors?.[0]?.userId || effectiveUserId || assigneeOptions[0]?.id || ""
+                      selectedLead.contributors?.[0]?.userId ||
+                        effectiveUserId ||
+                        assigneeOptions[0]?.id ||
+                        "",
                     );
                     setShowQuickAssignModal(true);
                   }}
@@ -1139,84 +1316,128 @@ export default function LeadsCrmPage() {
             )}
 
             {!selectedLeadId && !detailLoading && (
-              <div className="flex-1 flex flex-col items-center justify-center p-12 text-center gap-3">
-                <div className="w-14 h-14 rounded-full bg-primary-50 flex items-center justify-center text-primary-600">
+              <div className="py-24 flex flex-col items-center justify-center text-center gap-3 px-4">
+                <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
                   <Users className="w-7 h-7" />
                 </div>
-                <h3 className="text-base font-black text-gray-800">Select a Prospect</h3>
+                <h3 className="text-base font-bold text-gray-800">
+                  Select a Prospect
+                </h3>
                 <p className="text-xs text-gray-500 max-w-xs leading-relaxed">
-                  Click any lead from the list to view institutional parameters, outreach timeline, and manage stage progressions.
+                  Click any lead from the list to view institutional parameters,
+                  outreach timeline, and manage stage progressions.
                 </p>
               </div>
             )}
           </div>
         </div>
 
-        {/* ── Mobile & Tablet Full-Screen Detail View (Zero scroll conflicts) ── */}
+        {/* ── Mobile Slide-Up Bottom Drawer Sheet (True Mobile-Native UX) ── */}
         <AnimatePresence>
           {showMobileDetail && selectedLeadId && (
-            <div className="fixed inset-0 z-50 lg:hidden flex flex-col bg-white">
-              {/* Mobile Header Bar */}
-              <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between shrink-0 bg-white">
-                <button
-                  type="button"
-                  onClick={closeLead}
-                  className="min-h-[42px] flex items-center gap-1.5 text-xs font-bold text-gray-700 hover:text-gray-900 px-2 rounded-xl active:bg-gray-100"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span>Back to List</span>
-                </button>
+            <div className="fixed inset-0 z-50 lg:hidden flex flex-col justify-end">
+              {/* Semi-transparent backdrop blur */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={closeLead}
+                className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+              />
 
-                {selectedLead && (
-                  <button
-                    type="button"
-                    onClick={() => handleStartEditLead(selectedLead)}
-                    className="min-h-[38px] px-3.5 py-1 text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 rounded-xl flex items-center gap-1.5 active:scale-95 transition-all"
-                  >
-                    <Pencil className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Edit</span>
-                  </button>
-                )}
-              </div>
-
-              {/* Mobile Dedicated Single Scrollable Container */}
-              <div
-                className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 pb-16"
-                style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-y" }}
+              {/* Bottom Sheet Drawer Panel */}
+              <motion.div
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", damping: 28, stiffness: 280 }}
+                className="relative z-10 w-full max-h-[92vh] bg-white rounded-t-3xl shadow-2xl flex flex-col overflow-hidden border-t border-gray-200"
               >
-                {detailLoading || !selectedLead ? (
-                  <div className="py-20 text-center text-gray-400">
-                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary-600" />
+                {/* Pull handle bar */}
+                <div className="pt-3 pb-1 flex justify-center shrink-0">
+                  <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
+                </div>
+
+                {/* Mobile Drawer Accessible Header */}
+                <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
+                  <div className="min-w-0 flex-1 pr-2">
+                    <h3 className="text-base font-bold text-gray-900 truncate">
+                      {selectedLead?.name || "Lead Details"}
+                    </h3>
+                    <p className="text-[11px] text-gray-500 truncate">
+                      {selectedLead?.place ? `${selectedLead.place} • ` : ""}
+                      {selectedLead?.district || ""}
+                    </p>
                   </div>
-                ) : (
-                  <LeadDetailView
-                    lead={selectedLead}
-                    myIdentifiers={myIdentifiers}
-                    effectiveUserId={effectiveUserId}
-                    assigneeOptions={assigneeOptions}
-                    actionLoading={actionLoading}
-                    canDelete={canDelete}
-                    copiedText={copiedText}
-                    copyToClipboard={copyToClipboard}
-                    onUpdateStage={handleUpdateStage}
-                    onStartEdit={handleStartEditLead}
-                    onSelfClaim={handleSelfClaim}
-                    onOpenQuickAssign={() => {
-                      setQuickAssignUserId(
-                        selectedLead.contributors?.[0]?.userId || effectiveUserId || assigneeOptions[0]?.id || ""
-                      );
-                      setShowQuickAssignModal(true);
-                    }}
-                    onQuickUpdateFollowUp={handleQuickUpdateFollowUp}
-                    onLogActivity={handleLogActivity}
-                    onUpdateActivity={handleUpdateActivity}
-                    onDeleteActivity={handleDeleteActivity}
-                    onProvisionTrial={handleProvisionTrial}
-                    onConvertToMadrasa={handleConvertToMadrasa}
-                    onDeleteLead={handleDeleteLead}
-                  />
-                )}
-              </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {selectedLead && (
+                      <button
+                        type="button"
+                        onClick={() => handleStartEditLead(selectedLead)}
+                        className="min-h-[38px] px-3 py-1 text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl flex items-center gap-1 transition-all active:scale-95"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                        <span>Edit</span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={closeLead}
+                      className="min-h-[40px] min-w-[40px] rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center transition-all active:scale-95 ml-1"
+                      aria-label="Close details drawer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Single, Smooth, Native Drawer Scroll Container */}
+                <div
+                  className="flex-1 overflow-y-auto overscroll-contain p-4 pb-24"
+                  style={{ WebkitOverflowScrolling: "touch" }}
+                >
+                  {detailLoading || !selectedLead ? (
+                    <div className="py-20 text-center text-gray-400">
+                      <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary-600" />
+                      <p className="text-xs font-medium text-gray-500 mt-2">
+                        Loading details...
+                      </p>
+                    </div>
+                  ) : (
+                    <LeadDetailView
+                      lead={selectedLead}
+                      myIdentifiers={myIdentifiers}
+                      effectiveUserId={effectiveUserId}
+                      assigneeOptions={assigneeOptions}
+                      actionLoading={actionLoading}
+                      canDelete={canDelete}
+                      copiedText={copiedText}
+                      copyToClipboard={copyToClipboard}
+                      onUpdateStage={handleUpdateStage}
+                      onStartEdit={handleStartEditLead}
+                      onSelfClaim={handleSelfClaim}
+                      onOpenQuickAssign={() => {
+                        setQuickAssignUserId(
+                          selectedLead.contributors?.[0]?.userId ||
+                            effectiveUserId ||
+                            assigneeOptions[0]?.id ||
+                            "",
+                        );
+                        setShowQuickAssignModal(true);
+                      }}
+                      onQuickUpdateFollowUp={handleQuickUpdateFollowUp}
+                      onLogActivity={handleLogActivity}
+                      onUpdateActivity={handleUpdateActivity}
+                      onDeleteActivity={handleDeleteActivity}
+                      onProvisionTrial={handleProvisionTrial}
+                      onConvertToMadrasa={handleConvertToMadrasa}
+                      onDeleteLead={handleDeleteLead}
+                    />
+                  )}
+                </div>
+              </motion.div>
             </div>
           )}
         </AnimatePresence>
@@ -1234,11 +1455,17 @@ export default function LeadsCrmPage() {
                 <span className="text-xs font-extrabold bg-primary-600 text-white px-2 py-0.5 rounded-full">
                   {selectedLeadIds.size}
                 </span>
-                <span className="text-xs font-semibold text-gray-200 hidden sm:inline">selected</span>
+                <span className="text-xs font-semibold text-gray-200 hidden sm:inline">
+                  selected
+                </span>
                 {selectedLeadIds.size < filteredLeads.length && (
                   <button
                     type="button"
-                    onClick={() => setSelectedLeadIds(new Set(filteredLeads.map((l) => l.id)))}
+                    onClick={() =>
+                      setSelectedLeadIds(
+                        new Set(filteredLeads.map((l) => l.id)),
+                      )
+                    }
                     className="text-[11px] font-bold text-primary-400 hover:text-primary-300 underline ml-1"
                   >
                     Select All ({filteredLeads.length})
@@ -1250,7 +1477,9 @@ export default function LeadsCrmPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setBulkSelectedUserId(effectiveUserId || assigneeOptions[0]?.id || "");
+                    setBulkSelectedUserId(
+                      effectiveUserId || assigneeOptions[0]?.id || "",
+                    );
                     setBulkModalType("ASSIGN");
                   }}
                   className="min-h-[32px] px-2.5 py-1 bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-bold rounded-xl transition-all flex items-center gap-1"
@@ -1299,9 +1528,10 @@ export default function LeadsCrmPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedLeadIds(new Set())}
-                  className="min-h-[32px] px-2 py-1 bg-white/10 hover:bg-white/20 text-gray-400 hover:text-white rounded-xl text-xs font-bold transition-all ml-1"
+                  className="min-h-[32px] px-2 py-1 bg-white/10 hover:bg-white/20 text-gray-400 hover:text-white rounded-xl text-xs font-bold transition-all ml-1 flex items-center justify-center"
+                  title="Clear selection"
                 >
-                  ✕
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </div>
             </motion.div>
